@@ -1658,86 +1658,13 @@ async function applyEditsAndRegenerate() {
 async function analyzeLabForm() {
   if (!currentSample) { showToast('No sample loaded', 'error'); return; }
   if (!labImageB64) { showToast('Upload a lab form image first', 'error'); return; }
-
   const aiKey = localStorage.getItem('ai_key');
   if (!aiKey) { showToast('No API key configured', 'error'); return; }
 
   const btn = document.getElementById('labAnalyzeBtn');
   btn.disabled = true;
-  document.getElementById('labStatus').textContent = '⏳ Sending to AI — reading sieve weights…';
 
-  const prompt = `You are an expert Delaware DOT geotechnical lab technician. Read this handwritten Field Control Sheet image carefully.
-
-The target test number is ${currentSample.test_no}.
-
-COLUMN IDENTIFICATION — CRITICAL:
-Step 1: Look at the very top row of the form. It contains test numbers like "T-1007", "T-1008", "T-1009", or "1143", "1144". Find the column with "${currentSample.test_no}" in the header.
-Step 2: Note the PHYSICAL POSITION of that column (e.g. "second column from left", "third column from left"). Call this your TARGET COLUMN POSITION.
-Step 3: For EVERY row on the form — LL bottle weights, PL bottle weights, Organic weights, Total Sample weight, Wash WT, and ALL sieve rows — read the value at your TARGET COLUMN POSITION. Never deviate from this position.
-Step 4: Cross-check — the test number "${currentSample.test_no}" should appear at the top of your chosen column. If it doesn't, you have the wrong column.
-
-IMPORTANT RULES:
-- If two adjacent columns have identical values, you must still read only from your TARGET COLUMN POSITION.
-- "NP" or "NV" in the first column does NOT apply to other columns. Each column is independent.
-- A blank cell in your target column = 0 for sieves, null for Atterberg weights.
-- The sieve row LABELS are on the far left of the form (e.g. "3/8" (9.52mm)"). These labels are shared by ALL columns. Read the label to know which sieve, then read the value at your TARGET COLUMN POSITION for that row.
-
-THE FORM HAS THESE SECTIONS — READ EACH ONE SEPARATELY AND CAREFULLY:
-
-SECTION 1 — TOP ROWS (LL, PL, Organic bottle data):
-- The form has columns for Liquid Limit, Plastic Limit, and Organic.
-- Each column has its own data: Bottle No, WT Wet Soil & Bottle, WT Dry Soil & Bottle, WT Bottle.
-- IMPORTANT: "NP" (Non-Plastic) or "NV" (No Value) may be written in the LL or PL section of ANY column including the target column. This means the Atterberg test was not performed — return null for all LL/PL/Organic bottle weights for that test. However, NP/NV in the Atterberg section has NO effect on the sieve data. ALWAYS read the sieve rows regardless of what appears in the Atterberg section. A sample can be NP and still have full sieve data.
-- CRITICAL: WT WET > WT DRY > WT BOTTLE always. If your values violate this, re-read.
-- Decimal digits matter enormously. "20.10" must NOT be read as "26.1" — read ALL digits. A round digit after a decimal is 0 not 6.
-- WT OF BOTTLE (tare) for LL and PL is typically between 10g and 25g. If over 28g, re-examine.
-- WT DRY SOIL & BOTTLE for PL is typically within 2g of WT WET SOIL & BOTTLE.
-- The three PL rows decrease going down: Wet (~30g), Dry (~29g), Bottle (~20g).
-- If the target column has numbers in the LL/PL rows, extract them even if neighboring columns say NP/NV.
-
-SECTION 2 — SIEVE DATA:
-- "WT. of Total Sample": 4-digit number 900-1800g (e.g. 1026.7). Read from target column.
-- "Wash WT": Labeled row between #10 and #40. Typically 100-200g (e.g. 114.3, 119.1).
-- Read EVERY sieve row independently from your target column. A zero on an upper sieve does NOT mean skip the rows below it. NP or NV written in the Atterberg section at the TOP of the form does NOT mean skip the sieves — always read the sieve section regardless. Rows 3/8", #4, and #10 will typically have values even when 2" and 1" are zero.
-- Sieve rows and their JSON keys:
-  "2 (50.8mm)" -> "2in" (0 if blank)
-  "1 (25.4mm)" -> "1in" (0 if blank)
-  "3/8 (9.52mm)" -> "0.375in" (READ THIS ROW even if 2" and 1" were 0)
-  "No. 4 (4.76mm)" -> "no4" (READ THIS ROW even if above rows were 0)
-  "No. 10 (2.00mm)" -> "no10" (READ THIS ROW even if above rows were 0)
-  "No. 40 (0.42mm)" -> "no40"
-  "No. 200 (0.074mm)" -> "no200" (this row only, NOT the Pass #200 row below it)
-- "Pass #200" is a calculated row at the bottom — ignore it entirely for sieve extraction.
-- The #200 retained weight is always LESS than the wash weight (e.g. 81.1, not 114.3).
-
-SECTION 3 — ORGANIC (T-267):
-- Pre-ignition = dish + dry soil weight (wt_wet_soil_bottle)
-- Post-ignition = dish + ignited soil weight (wt_dry_bottle) 
-- Dish tare = wt_bottle
-- Organic loss is typically under 10% for mineral soils. If you calculate >20%, re-read.
-
-Return ONLY valid JSON, no markdown:
-{
-  "total_sample_wt": null,
-  "wash_sample_wt": null,
-  "liquid_limit": { "bottle_no": "", "wt_wet_soil_bottle": null, "wt_dry_bottle": null, "wt_bottle": null, "blows": null },
-  "plastic_limit": { "bottle_no": "", "wt_wet_soil_bottle": null, "wt_dry_bottle": null, "wt_bottle": null },
-  "organic": { "bottle_no": "", "wt_wet_soil_bottle": null, "wt_dry_bottle": null, "wt_bottle": null },
-  "total_sample_wt": null,
-  "wash_sample_wt": null,
-  "sieves": {
-    "2in":   0,
-    "1in":   0,
-    "0.375in": 0,
-    "no4":   0,
-    "no10":  0,
-    "no40":  0,
-    "no200": 0
-  },
-  "notes": ""
-}`;
-
-  try {
+  async function callAI(prompt) {
     const resp = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
       headers: {
@@ -1748,28 +1675,98 @@ Return ONLY valid JSON, no markdown:
       },
       body: JSON.stringify({
         model: 'claude-sonnet-4-20250514',
-        max_tokens: 1200,
-        messages: [{
-          role: 'user',
-          content: [
-            { type: 'image', source: { type: 'base64', media_type: labImageType, data: labImageB64 } },
-            { type: 'text', text: prompt }
-          ]
-        }]
+        max_tokens: 1000,
+        messages: [{ role: 'user', content: [
+          { type: 'image', source: { type: 'base64', media_type: labImageType, data: labImageB64 } },
+          { type: 'text', text: prompt }
+        ]}]
       })
     });
-
     const data = await resp.json();
     if (data.error) throw new Error(data.error.message);
-
     const raw = data.content.map(c => c.text || '').join('');
-    let parsed;
-    try { parsed = JSON.parse(raw.replace(/```json|```/g,'').trim()); }
-    catch { const m = raw.match(/\{[\s\S]*\}/); parsed = m ? JSON.parse(m[0]) : null; }
-    if (!parsed) throw new Error('Could not parse AI response');
+    try { return JSON.parse(raw.replace(/```json|```/g,'').trim()); }
+    catch { const m = raw.match(/\{[\s\S]*\}/); return m ? JSON.parse(m[0]) : null; }
+  }
 
-    // Save lab results to Supabase
-    // saving handled by finishLabGeneration
+  try {
+    // ── CALL 1: Atterberg + Organic only
+    document.getElementById('labStatus').textContent = '⏳ Step 1/2 — Reading Atterberg limits…';
+    const col = currentSample.test_no;
+    const atterbergPrompt = `You are a Delaware DOT lab technician. Read this handwritten Field Control Sheet.
+
+Target test number: ${col}
+Find the column headed "${col}" and read ONLY the Atterberg/Organic section (top half of form).
+
+COLUMN ID: Find "${col}" in the top row. Note its physical position (1st, 2nd, 3rd column from left). Stay in that column.
+
+Read these rows from your target column:
+- Liquid Limit Bottle #, WT Wet Soil & Bottle, WT Dry & Bottle, WT Bottle, Blows
+- Plastic Limit Bottle #, WT Wet Soil & Bottle, WT Dry & Bottle, WT Bottle
+- Organic Bottle #, WT Dry & Bottle (pre-ignition), WT Ignition & Bottle (post-ignition), WT Bottle (dish tare)
+- Also read: WT of Total Sample (top of form, 4-digit number 900-1800g)
+
+If "NP" or "NV" is written for LL or PL, return null for those bottle weights.
+Decimal digits are critical — 20.10 ≠ 26.1. WT WET > WT DRY > WT BOTTLE always.
+
+Return ONLY JSON:
+{
+  "total_sample_wt": null,
+  "liquid_limit": {"bottle_no":"","wt_wet_soil_bottle":null,"wt_dry_bottle":null,"wt_bottle":null,"blows":null},
+  "plastic_limit": {"bottle_no":"","wt_wet_soil_bottle":null,"wt_dry_bottle":null,"wt_bottle":null},
+  "organic": {"bottle_no":"","wt_wet_soil_bottle":null,"wt_dry_bottle":null,"wt_bottle":null}
+}`;
+
+    const atterbergData = await callAI(atterbergPrompt);
+    if (!atterbergData) throw new Error('Could not read Atterberg data');
+
+    // ── CALL 2: Sieves only
+    document.getElementById('labStatus').textContent = '⏳ Step 2/2 — Reading sieve weights…';
+    const sievePrompt = `You are a Delaware DOT lab technician. Read this handwritten Field Control Sheet.
+
+Target test number: ${col}
+Find the column headed "${col}" and read ONLY the sieve analysis section (bottom half of form).
+
+COLUMN ID: Find "${col}" in the top row. Note its physical position. Stay in that column for ALL sieve rows.
+
+IGNORE the top section (LL, PL, Organic) completely — focus only on the sieve table.
+
+Read these labeled rows from your target column:
+- "WT of Total Sample" row → total_sample_wt (4-digit, 900-1800g e.g. 1005.2, 1026.7)
+- "Wash WT" row → wash_sample_wt (3-digit, 100-200g e.g. 114.3, 120.6) — this row is BETWEEN #10 and #40
+- "2 (50.8mm)" row → "2in" (0 if blank)
+- "1 (25.4mm)" row → "1in" (0 if blank)  
+- "3/8 (9.52mm)" row → "0.375in" (READ even if 2" and 1" were 0 — this row often has the first value)
+- "No. 4 (4.76mm)" row → "no4"
+- "No. 10 (2.00mm)" row → "no10"
+- "No. 40 (0.42mm)" row → "no40"
+- "No. 200 (0.074mm)" row → "no200" (NOT the Pass #200 row below it — retained weight is LESS than wash weight)
+
+Each row is INDEPENDENT. Read every single one. A blank 2" or 1" does NOT mean skip the rest.
+
+Return ONLY JSON:
+{
+  "total_sample_wt": null,
+  "wash_sample_wt": null,
+  "sieves": {
+    "2in": 0, "1in": 0, "0.375in": 0,
+    "no4": 0, "no10": 0, "no40": 0, "no200": 0
+  }
+}`;
+
+    const sieveData = await callAI(sievePrompt);
+    if (!sieveData) throw new Error('Could not read sieve data');
+
+    // ── Merge both results
+    const parsed = {
+      total_sample_wt: sieveData.total_sample_wt || atterbergData.total_sample_wt,
+      wash_sample_wt:  sieveData.wash_sample_wt,
+      liquid_limit:    atterbergData.liquid_limit,
+      plastic_limit:   atterbergData.plastic_limit,
+      organic:         atterbergData.organic,
+      sieves:          sieveData.sieves,
+      notes: ''
+    };
 
     document.getElementById('labStatus').textContent = '✓ Analysis complete — generating report…';
     await finishLabGeneration(parsed);
