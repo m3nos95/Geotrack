@@ -381,6 +381,39 @@ nav {
 .ib-passing.none { color: #991b1b; }
 .ib-note { font-size: 6pt; color: #9ca3af; font-style: italic; margin-top: 2px; line-height: 1.3; }
 
+
+/* ── MANUAL ENTRY ── */
+.lab-mode-tabs { display:flex; gap:0; margin-bottom:16px; border:1px solid var(--border); border-radius:var(--radius); overflow:hidden; }
+.lab-mode-tab { flex:1; padding:11px; text-align:center; font-family:var(--mono); font-size:11px; letter-spacing:1px; cursor:pointer; background:var(--panel); color:var(--muted); border:none; transition:all 0.15s; }
+.lab-mode-tab.active { background:var(--accent); color:#fff; }
+.lab-mode-tab:hover:not(.active) { background:var(--border); color:var(--text); }
+
+.manual-section { margin-bottom:14px; }
+.manual-section-title { font-family:var(--mono); font-size:9px; letter-spacing:2px; color:var(--gold); text-transform:uppercase; margin-bottom:10px; padding-bottom:5px; border-bottom:1px solid var(--border); }
+.manual-grid { display:grid; grid-template-columns:repeat(4,1fr); gap:8px; }
+.manual-grid.five { grid-template-columns:repeat(5,1fr); }
+.manual-grid.two { grid-template-columns:1fr 1fr; }
+.mf { display:flex; flex-direction:column; gap:4px; }
+.mf label { font-size:9px; font-family:var(--mono); color:var(--muted); letter-spacing:0.5px; }
+.mf input { background:var(--panel); border:1px solid var(--border); color:var(--text); font-family:var(--mono); font-size:13px; padding:7px 9px; border-radius:var(--radius); outline:none; width:100%; }
+.mf input:focus { border-color:var(--accent2); }
+.mf input.calc-field { background:rgba(46,125,82,0.1); border-color:rgba(46,125,82,0.4); color:var(--green2); }
+.sieve-manual-table { width:100%; border-collapse:collapse; }
+.sieve-manual-table th { background:var(--panel); border:1px solid var(--border); padding:7px 10px; font-family:var(--mono); font-size:9px; color:var(--muted); text-align:center; letter-spacing:1px; }
+.sieve-manual-table td { border:1px solid var(--border); padding:4px 6px; }
+.sieve-manual-table td:first-child { font-family:var(--mono); font-size:11px; color:var(--text); padding:4px 10px; background:var(--panel); font-weight:600; }
+.sieve-manual-table input { background:transparent; border:none; color:var(--text); font-family:var(--mono); font-size:12px; padding:4px 6px; outline:none; width:100%; text-align:center; }
+.sieve-manual-table input:focus { background:rgba(74,144,200,0.1); border-radius:2px; }
+.sieve-manual-table .wash-row td { background:rgba(200,167,67,0.08); }
+.sieve-manual-table .wash-row td:first-child { color:var(--gold); }
+
+/* ── EDIT OVERLAY ── */
+.edit-overlay { display:none; position:fixed; inset:0; background:rgba(0,0,0,0.85); z-index:500; overflow-y:auto; padding:20px; }
+.edit-overlay.open { display:flex; align-items:flex-start; justify-content:center; }
+.edit-panel { background:var(--surface); border:1px solid var(--border); border-radius:var(--radius); width:100%; max-width:700px; margin:auto; padding:24px; }
+.edit-panel h2 { font-family:var(--display); font-size:20px; color:var(--accent2); letter-spacing:2px; margin-bottom:4px; }
+.edit-panel p { color:var(--muted); font-size:11px; font-family:var(--mono); margin-bottom:20px; }
+
 </style>
 </head>
 <body>
@@ -614,67 +647,169 @@ nav {
       </div>
 
       <div id="labForm" style="display:none;">
-        <!-- Image upload -->
-        <div class="card">
-          <div class="card-title">Lab Form Image</div>
-          <div class="upload-zone" id="labDropZone">
-            <input type="file" id="labImageInput" accept="image/*">
-            <p>📋 Drop or tap to upload photo of handwritten lab sheet<br><span style="font-size:11px;">JPG, PNG, HEIC</span></p>
-            <img class="thumb" id="labThumb">
+
+        <!-- MODE TABS -->
+        <div class="lab-mode-tabs">
+          <button class="lab-mode-tab active" id="modeTabAI" onclick="setLabMode('ai')">📷 AI PHOTO ANALYSIS</button>
+          <button class="lab-mode-tab" id="modeTabManual" onclick="setLabMode('manual')">⌨️ MANUAL DATA ENTRY</button>
+        </div>
+
+        <!-- AI MODE -->
+        <div id="aiModePanel">
+          <div class="card">
+            <div class="card-title">Lab Form Image</div>
+            <div class="upload-zone" id="labDropZone">
+              <input type="file" id="labImageInput" accept="image/*">
+              <p>📋 Drop or tap to upload photo of handwritten lab sheet<br><span style="font-size:11px;">JPG, PNG, HEIC</span></p>
+              <img class="thumb" id="labThumb">
+            </div>
           </div>
         </div>
 
-        <!-- Lab report fields -->
+        <!-- MANUAL MODE -->
+        <div id="manualModePanel" style="display:none;">
+          <div class="card">
+            <div class="card-title">Atterberg Limits — Liquid Limit (T-89)</div>
+            <div class="manual-grid five">
+              <div class="mf"><label>Bottle No.</label><input type="text" id="m_ll_bottle" placeholder="B"></div>
+              <div class="mf"><label>Wt. Wet Soil &amp; Bottle</label><input type="number" step="0.01" id="m_ll_wet" placeholder="30.68"></div>
+              <div class="mf"><label>Wt. Dry Soil &amp; Bottle</label><input type="number" step="0.01" id="m_ll_dry" placeholder="27.42"></div>
+              <div class="mf"><label>Wt. Bottle (Tare)</label><input type="number" step="0.01" id="m_ll_tare" placeholder="20.11"></div>
+              <div class="mf"><label>Blows for Closure</label><input type="number" id="m_ll_blows" placeholder="25"></div>
+            </div>
+          </div>
+
+          <div class="card">
+            <div class="card-title">Atterberg Limits — Plastic Limit (T-90)</div>
+            <div class="manual-grid" style="grid-template-columns:repeat(4,1fr);">
+              <div class="mf"><label>Bottle No.</label><input type="text" id="m_pl_bottle" placeholder="C"></div>
+              <div class="mf"><label>Wt. Wet Soil &amp; Bottle</label><input type="number" step="0.01" id="m_pl_wet" placeholder="30.00"></div>
+              <div class="mf"><label>Wt. Dry Soil &amp; Bottle</label><input type="number" step="0.01" id="m_pl_dry" placeholder="29.01"></div>
+              <div class="mf"><label>Wt. Bottle (Tare)</label><input type="number" step="0.01" id="m_pl_tare" placeholder="20.10"></div>
+            </div>
+          </div>
+
+          <div class="card">
+            <div class="card-title">Organic Content (T-267)</div>
+            <div class="manual-grid" style="grid-template-columns:repeat(4,1fr);">
+              <div class="mf"><label>Dish No.</label><input type="text" id="m_org_bottle" placeholder="3"></div>
+              <div class="mf"><label>Pre-Ignition (Dish+Dry)</label><input type="number" step="0.01" id="m_org_pre" placeholder="30.21"></div>
+              <div class="mf"><label>Post-Ignition (Dish+Ignited)</label><input type="number" step="0.01" id="m_org_post" placeholder="28.66"></div>
+              <div class="mf"><label>Dish Tare</label><input type="number" step="0.01" id="m_org_tare" placeholder="11.22"></div>
+            </div>
+          </div>
+
+          <div class="card">
+            <div class="card-title">Sieve Analysis</div>
+            <div class="manual-grid two" style="margin-bottom:14px;">
+              <div class="mf"><label>Wt. of Total Sample (g)</label><input type="number" step="0.1" id="m_total_wt" placeholder="1026.7"></div>
+              <div class="mf"><label>Wt. of Wash Sample (g)</label><input type="number" step="0.1" id="m_wash_wt" placeholder="114.3"></div>
+            </div>
+            <table class="sieve-manual-table">
+              <thead><tr><th>SIEVE</th><th>CUM. WT. RETAINED (g)</th></tr></thead>
+              <tbody>
+                <tr><td>2" (50.8mm)</td><td><input type="number" step="0.1" id="m_s_in2" placeholder="0.0"></td></tr>
+                <tr><td>1" (25.4mm)</td><td><input type="number" step="0.1" id="m_s_in1" placeholder="0.0"></td></tr>
+                <tr><td>3/8" (9.52mm)</td><td><input type="number" step="0.1" id="m_s_in38" placeholder="117.1"></td></tr>
+                <tr><td>#4 (4.76mm)</td><td><input type="number" step="0.1" id="m_s_no4" placeholder="178.3"></td></tr>
+                <tr><td>#10 (2.00mm)</td><td><input type="number" step="0.1" id="m_s_no10" placeholder="276.7"></td></tr>
+                <tr class="wash-row"><td>↓ WASH SPLIT ↓</td><td style="text-align:center;color:var(--gold);font-family:var(--mono);font-size:11px;">Wash Wt entered above</td></tr>
+                <tr><td>#40 (0.42mm)</td><td><input type="number" step="0.1" id="m_s_no40" placeholder="39.4"></td></tr>
+                <tr><td>#200 (0.074mm)</td><td><input type="number" step="0.1" id="m_s_no200" placeholder="81.1"></td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- REPORT FIELDS (shared by both modes) -->
         <div class="card">
           <div class="card-title">Report Fields</div>
           <div class="form-grid three">
-            <div class="form-group">
-              <label>Reported By</label>
-              <input type="text" id="l_reported_by" placeholder="Name">
-            </div>
-            <div class="form-group">
-              <label>Reviewed By</label>
-              <input type="text" id="l_reviewed_by" placeholder="Name">
-            </div>
-            <div class="form-group">
-              <label>QA Supervisor</label>
-              <input type="text" id="l_qa_sup" placeholder="Jennifer Pinkerton">
-            </div>
-            <div class="form-group">
-              <label>IA Supervisor</label>
-              <input type="text" id="l_ia_sup" placeholder="Name">
-            </div>
-            <div class="form-group">
-              <label>Geotechnical Engineer</label>
-              <input type="text" id="l_geo_eng" placeholder="Name">
-            </div>
-            <div class="form-group">
-              <label>Date Received</label>
-              <input type="date" id="l_date_received">
-            </div>
-            <div class="form-group">
-              <label>Date Tested</label>
-              <input type="date" id="l_date_tested">
-            </div>
-            <div class="form-group">
-              <label>Date Reported</label>
-              <input type="date" id="l_date_reported">
-            </div>
+            <div class="form-group"><label>Reported By</label><input type="text" id="l_reported_by" placeholder="Name"></div>
+            <div class="form-group"><label>Reviewed By</label><input type="text" id="l_reviewed_by" placeholder="Name"></div>
+            <div class="form-group"><label>QA Supervisor</label><input type="text" id="l_qa_sup" placeholder="Jennifer Pinkerton"></div>
+            <div class="form-group"><label>IA Supervisor</label><input type="text" id="l_ia_sup" placeholder="Name"></div>
+            <div class="form-group"><label>Geotechnical Engineer</label><input type="text" id="l_geo_eng" placeholder="Name"></div>
+            <div class="form-group"><label>Date Received</label><input type="date" id="l_date_received"></div>
+            <div class="form-group"><label>Date Tested</label><input type="date" id="l_date_tested"></div>
+            <div class="form-group"><label>Date Reported</label><input type="date" id="l_date_reported"></div>
             <div class="form-group">
               <label>Conforms?</label>
               <div style="background:var(--panel);border:1px solid var(--border);border-radius:var(--radius);padding:9px 11px;font-family:var(--mono);font-size:11px;color:var(--muted);">Auto-determined from Material Type</div>
             </div>
-            <div class="form-group span2">
-              <label>Remarks</label>
-              <input type="text" id="l_remarks" placeholder="COMPARISON: Aaron Wieczorek">
-            </div>
+            <div class="form-group span2"><label>Remarks</label><input type="text" id="l_remarks" placeholder="COMPARISON: Aaron Wieczorek"></div>
           </div>
         </div>
 
         <div class="btn-row">
-          <button class="btn btn-success" id="labAnalyzeBtn" onclick="analyzeLabForm()">🔬 ANALYZE &amp; GENERATE LB-44</button>
+          <button class="btn btn-success" id="labAnalyzeBtn" onclick="submitLabEntry()">🔬 GENERATE LB-44</button>
         </div>
         <div style="font-family:var(--mono);font-size:11px;color:var(--muted);margin-top:8px;" id="labStatus"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── EDIT OVERLAY ── -->
+  <div class="edit-overlay" id="editOverlay">
+    <div class="edit-panel">
+      <h2>EDIT / OVERRIDE VALUES</h2>
+      <p>Correct any AI misread values below. All calculations update automatically when you regenerate.</p>
+
+      <div class="manual-section">
+        <div class="manual-section-title">Liquid Limit (T-89)</div>
+        <div class="manual-grid five">
+          <div class="mf"><label>Bottle No.</label><input type="text" id="e_ll_bottle"></div>
+          <div class="mf"><label>Wt. Wet &amp; Bottle</label><input type="number" step="0.01" id="e_ll_wet"></div>
+          <div class="mf"><label>Wt. Dry &amp; Bottle</label><input type="number" step="0.01" id="e_ll_dry"></div>
+          <div class="mf"><label>Wt. Bottle</label><input type="number" step="0.01" id="e_ll_tare"></div>
+          <div class="mf"><label>Blows</label><input type="number" id="e_ll_blows"></div>
+        </div>
+      </div>
+
+      <div class="manual-section">
+        <div class="manual-section-title">Plastic Limit (T-90)</div>
+        <div class="manual-grid" style="grid-template-columns:repeat(4,1fr);">
+          <div class="mf"><label>Bottle No.</label><input type="text" id="e_pl_bottle"></div>
+          <div class="mf"><label>Wt. Wet &amp; Bottle</label><input type="number" step="0.01" id="e_pl_wet"></div>
+          <div class="mf"><label>Wt. Dry &amp; Bottle</label><input type="number" step="0.01" id="e_pl_dry"></div>
+          <div class="mf"><label>Wt. Bottle</label><input type="number" step="0.01" id="e_pl_tare"></div>
+        </div>
+      </div>
+
+      <div class="manual-section">
+        <div class="manual-section-title">Organic (T-267)</div>
+        <div class="manual-grid" style="grid-template-columns:repeat(4,1fr);">
+          <div class="mf"><label>Dish No.</label><input type="text" id="e_org_bottle"></div>
+          <div class="mf"><label>Pre-Ignition</label><input type="number" step="0.01" id="e_org_pre"></div>
+          <div class="mf"><label>Post-Ignition</label><input type="number" step="0.01" id="e_org_post"></div>
+          <div class="mf"><label>Dish Tare</label><input type="number" step="0.01" id="e_org_tare"></div>
+        </div>
+      </div>
+
+      <div class="manual-section">
+        <div class="manual-section-title">Sieve Analysis</div>
+        <div class="manual-grid two" style="margin-bottom:12px;">
+          <div class="mf"><label>Wt. Total Sample (g)</label><input type="number" step="0.1" id="e_total_wt"></div>
+          <div class="mf"><label>Wt. Wash Sample (g)</label><input type="number" step="0.1" id="e_wash_wt"></div>
+        </div>
+        <table class="sieve-manual-table">
+          <thead><tr><th>SIEVE</th><th>CUM. WT. RETAINED (g)</th></tr></thead>
+          <tbody>
+            <tr><td>2" (50.8mm)</td><td><input type="number" step="0.1" id="e_s_in2"></td></tr>
+            <tr><td>1" (25.4mm)</td><td><input type="number" step="0.1" id="e_s_in1"></td></tr>
+            <tr><td>3/8" (9.52mm)</td><td><input type="number" step="0.1" id="e_s_in38"></td></tr>
+            <tr><td>#4 (4.76mm)</td><td><input type="number" step="0.1" id="e_s_no4"></td></tr>
+            <tr><td>#10 (2.00mm)</td><td><input type="number" step="0.1" id="e_s_no10"></td></tr>
+            <tr class="wash-row"><td>↓ WASH SPLIT ↓</td><td style="text-align:center;color:var(--gold);font-family:var(--mono);font-size:11px;">Wash Wt above</td></tr>
+            <tr><td>#40 (0.42mm)</td><td><input type="number" step="0.1" id="e_s_no40"></td></tr>
+            <tr><td>#200 (0.074mm)</td><td><input type="number" step="0.1" id="e_s_no200"></td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="btn-row" style="margin-top:16px;">
+        <button class="btn btn-success" onclick="applyEditsAndRegenerate()">✓ APPLY &amp; REGENERATE REPORT</button>
+        <button class="btn btn-ghost" onclick="closeEditOverlay()">CANCEL</button>
       </div>
     </div>
   </div>
@@ -684,6 +819,7 @@ nav {
     <div style="padding:20px;">
       <div class="report-toolbar">
         <button onclick="window.print()">🖨️ PRINT / SAVE PDF</button>
+        <button onclick="openEditOverlay()" style="background:var(--gold);color:#0d0f11;">✎ EDIT / OVERRIDE VALUES</button>
         <button onclick="switchView('lab')">← BACK TO LAB</button>
       </div>
       <div id="lb44Output"></div>
@@ -1015,6 +1151,183 @@ function handleLabImage(file) {
   r.readAsDataURL(file);
 }
 
+
+// ══════════════════════════════════════════════
+// LAB MODE SWITCHING
+// ══════════════════════════════════════════════
+let currentLabMode = 'ai';
+let lastLabData = null; // stores last parsed data for edit overlay
+
+function setLabMode(mode) {
+  currentLabMode = mode;
+  document.getElementById('modeTabAI').classList.toggle('active', mode === 'ai');
+  document.getElementById('modeTabManual').classList.toggle('active', mode === 'manual');
+  document.getElementById('aiModePanel').style.display = mode === 'ai' ? 'block' : 'none';
+  document.getElementById('manualModePanel').style.display = mode === 'manual' ? 'block' : 'none';
+  document.getElementById('labAnalyzeBtn').textContent = mode === 'ai' ? '🔬 ANALYZE & GENERATE LB-44' : '⌨️ GENERATE LB-44 FROM MANUAL DATA';
+}
+
+// ══════════════════════════════════════════════
+// UNIFIED LAB SUBMIT — routes to AI or manual
+// ══════════════════════════════════════════════
+function submitLabEntry() {
+  if (currentLabMode === 'ai') {
+    analyzeLabForm();
+  } else {
+    generateFromManual();
+  }
+}
+
+// ══════════════════════════════════════════════
+// MANUAL DATA ENTRY → REPORT
+// ══════════════════════════════════════════════
+function generateFromManual() {
+  if (!currentSample) { showToast('No sample loaded', 'error'); return; }
+
+  function gv(id) { const el = document.getElementById(id); return el ? (el.value.trim() || null) : null; }
+  function gn(id) { const el = document.getElementById(id); const v = parseFloat(el?.value); return isNaN(v) ? null : v; }
+
+  const parsed = {
+    total_sample_wt: gn('m_total_wt'),
+    wash_sample_wt:  gn('m_wash_wt'),
+    liquid_limit: {
+      bottle_no:          gv('m_ll_bottle'),
+      wt_wet_soil_bottle: gn('m_ll_wet'),
+      wt_dry_bottle:      gn('m_ll_dry'),
+      wt_bottle:          gn('m_ll_tare'),
+      blows:              gn('m_ll_blows'),
+    },
+    plastic_limit: {
+      bottle_no:          gv('m_pl_bottle'),
+      wt_wet_soil_bottle: gn('m_pl_wet'),
+      wt_dry_bottle:      gn('m_pl_dry'),
+      wt_bottle:          gn('m_pl_tare'),
+    },
+    organic: {
+      bottle_no:          gv('m_org_bottle'),
+      wt_wet_soil_bottle: gn('m_org_pre'),
+      wt_dry_bottle:      gn('m_org_post'),
+      wt_bottle:          gn('m_org_tare'),
+    },
+    sieves: {
+      in2:   { wt_retained: gn('m_s_in2')   },
+      in1:   { wt_retained: gn('m_s_in1')   },
+      in38:  { wt_retained: gn('m_s_in38')  },
+      no4:   { wt_retained: gn('m_s_no4')   },
+      no10:  { wt_retained: gn('m_s_no10')  },
+      no40:  { wt_retained: gn('m_s_no40')  },
+      no200: { wt_retained: gn('m_s_no200') },
+    },
+    notes: 'Manual entry'
+  };
+
+  if (!parsed.total_sample_wt) { showToast('Enter Total Sample Weight', 'error'); return; }
+
+  finishLabGeneration(parsed);
+}
+
+// ══════════════════════════════════════════════
+// SHARED FINISH — used by both AI and manual
+// ══════════════════════════════════════════════
+async function finishLabGeneration(parsed) {
+  lastLabData = parsed;
+
+  const labData = {
+    status: 'complete',
+    lab_data: parsed,
+    reported_by:  v('l_reported_by'),
+    reviewed_by:  v('l_reviewed_by'),
+    qa_supervisor: v('l_qa_sup'),
+    ia_supervisor: v('l_ia_sup'),
+    geo_engineer:  v('l_geo_eng'),
+    date_received: v('l_date_received'),
+    date_tested:   v('l_date_tested'),
+    date_reported: v('l_date_reported'),
+    conforms: 'auto',
+    lab_remarks:   v('l_remarks'),
+  };
+
+  await db.from('samples').update(labData).eq('id', currentSample.id);
+
+  const calc = calculateSieve(parsed);
+  const merged = { ...currentSample, ...labData, lab_data: parsed };
+  renderLB44(merged, parsed, calc);
+  switchView('report');
+  showToast('LB-44 generated ✓', 'success');
+}
+
+// ══════════════════════════════════════════════
+// EDIT OVERLAY
+// ══════════════════════════════════════════════
+function openEditOverlay() {
+  if (!lastLabData) { showToast('Generate a report first', 'error'); return; }
+
+  // Populate fields from lastLabData
+  function se(id, val) { const el = document.getElementById(id); if (el && val != null) el.value = val; }
+  const ll = lastLabData.liquid_limit || {};
+  const pl = lastLabData.plastic_limit || {};
+  const org = lastLabData.organic || {};
+  const sv = lastLabData.sieves || {};
+
+  se('e_ll_bottle', ll.bottle_no);       se('e_ll_wet', ll.wt_wet_soil_bottle);
+  se('e_ll_dry', ll.wt_dry_bottle);      se('e_ll_tare', ll.wt_bottle);
+  se('e_ll_blows', ll.blows);
+
+  se('e_pl_bottle', pl.bottle_no);       se('e_pl_wet', pl.wt_wet_soil_bottle);
+  se('e_pl_dry', pl.wt_dry_bottle);      se('e_pl_tare', pl.wt_bottle);
+
+  se('e_org_bottle', org.bottle_no);     se('e_org_pre',  org.wt_wet_soil_bottle);
+  se('e_org_post', org.wt_dry_bottle);   se('e_org_tare', org.wt_bottle);
+
+  se('e_total_wt', lastLabData.total_sample_wt);
+  se('e_wash_wt',  lastLabData.wash_sample_wt);
+  se('e_s_in2',    sv.in2?.wt_retained);   se('e_s_in1',   sv.in1?.wt_retained);
+  se('e_s_in38',   sv.in38?.wt_retained);  se('e_s_no4',   sv.no4?.wt_retained);
+  se('e_s_no10',   sv.no10?.wt_retained);  se('e_s_no40',  sv.no40?.wt_retained);
+  se('e_s_no200',  sv.no200?.wt_retained);
+
+  document.getElementById('editOverlay').classList.add('open');
+}
+
+function closeEditOverlay() {
+  document.getElementById('editOverlay').classList.remove('open');
+}
+
+async function applyEditsAndRegenerate() {
+  function gv(id) { const el = document.getElementById(id); return el ? (el.value.trim() || null) : null; }
+  function gn(id) { const el = document.getElementById(id); const v = parseFloat(el?.value); return isNaN(v) ? null : v; }
+
+  const edited = {
+    total_sample_wt: gn('e_total_wt'),
+    wash_sample_wt:  gn('e_wash_wt'),
+    liquid_limit: {
+      bottle_no: gv('e_ll_bottle'), wt_wet_soil_bottle: gn('e_ll_wet'),
+      wt_dry_bottle: gn('e_ll_dry'), wt_bottle: gn('e_ll_tare'), blows: gn('e_ll_blows'),
+    },
+    plastic_limit: {
+      bottle_no: gv('e_pl_bottle'), wt_wet_soil_bottle: gn('e_pl_wet'),
+      wt_dry_bottle: gn('e_pl_dry'), wt_bottle: gn('e_pl_tare'),
+    },
+    organic: {
+      bottle_no: gv('e_org_bottle'), wt_wet_soil_bottle: gn('e_org_pre'),
+      wt_dry_bottle: gn('e_org_post'), wt_bottle: gn('e_org_tare'),
+    },
+    sieves: {
+      in2:   { wt_retained: gn('e_s_in2')   }, in1:   { wt_retained: gn('e_s_in1')   },
+      in38:  { wt_retained: gn('e_s_in38')  }, no4:   { wt_retained: gn('e_s_no4')   },
+      no10:  { wt_retained: gn('e_s_no10')  }, no40:  { wt_retained: gn('e_s_no40')  },
+      no200: { wt_retained: gn('e_s_no200') },
+    },
+    notes: lastLabData?.notes || ''
+  };
+
+  closeEditOverlay();
+  document.getElementById('labStatus').textContent = '⏳ Regenerating report…';
+  await finishLabGeneration(edited);
+  document.getElementById('labStatus').textContent = '';
+  showToast('Report updated with corrected values ✓', 'success');
+}
+
 async function analyzeLabForm() {
   if (!currentSample) { showToast('No sample loaded', 'error'); return; }
   if (!labImageB64) { showToast('Upload a lab form image first', 'error'); return; }
@@ -1036,8 +1349,11 @@ SECTION 1 — TOP ROWS (LL, PL, Organic bottle data):
 - The form has columns for Liquid Limit, Plastic Limit, and Organic
 - Each has: Bottle No, WT Wet Soil & Bottle, WT Dry Soil & Bottle, WT Bottle
 - CRITICAL: WT WET > WT DRY > WT BOTTLE always. If your values violate this, re-read.
-- Decimal digits matter: 27.42 ≠ 27.92. Re-examine any decimal carefully.
-- WT OF BOTTLE for PL is typically a small number (5–25g). If you read a large number (>30g) for WT BOTTLE of PL, re-examine — it may be the WT DRY row instead.
+- Decimal digits matter enormously. A decimal point followed by digits like "20.10" must NOT be read as "26.1" or "20.1" — read ALL digits after the decimal. The digit after a decimal point that looks round is likely 0, not 6.
+- WT OF BOTTLE (tare) for both LL and PL is typically between 10g and 25g. Common values: 11.22, 20.10, 20.11, 15.43. If you read a bottle tare over 28g, re-examine — it is likely misread.
+- WT DRY SOIL & BOTTLE for PL is typically very close to WT WET SOIL & BOTTLE (within 2g). The difference is the small amount of water in a plastic limit thread roll.
+- The three PL rows in sequence are: Wet (~30g), Dry (~29g), Bottle (~20g). They decrease in value going down.
+- If calculated PL % seems too high (over 20%), re-check the bottle tare — it is likely being misread as too high.
 
 SECTION 2 — SIEVE DATA (two separate rows in the form):
 - "WT. of Total Sample" row: 4-digit number 900–1800g (e.g. 1026.7, 1042.8). This is ABOVE the sieve table.
@@ -1102,28 +1418,10 @@ Return ONLY valid JSON, no markdown:
     if (!parsed) throw new Error('Could not parse AI response');
 
     // Save lab results to Supabase
-    const labData = {
-      status: 'complete',
-      lab_data: parsed,
-      reported_by: v('l_reported_by'),
-      reviewed_by: v('l_reviewed_by'),
-      qa_supervisor: v('l_qa_sup'),
-      ia_supervisor: v('l_ia_sup'),
-      geo_engineer: v('l_geo_eng'),
-      date_received: v('l_date_received'),
-      date_tested: v('l_date_tested'),
-      date_reported: v('l_date_reported'),
-      conforms: 'auto', // determined from material type at render time
-      lab_remarks: v('l_remarks'),
-    };
-    await db.from('samples').update(labData).eq('id', currentSample.id);
+    // saving handled by finishLabGeneration
 
     document.getElementById('labStatus').textContent = '✓ Analysis complete — generating report…';
-    const calc = calculateSieve(parsed);
-    const merged = { ...currentSample, ...labData, lab_data: parsed };
-    renderLB44(merged, parsed, calc);
-    switchView('report');
-    showToast('LB-44 generated ✓', 'success');
+    await finishLabGeneration(parsed);
 
   } catch (e) {
     document.getElementById('labStatus').textContent = '✗ Error: ' + e.message;
