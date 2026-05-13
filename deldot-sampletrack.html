@@ -1376,7 +1376,10 @@ async function analyzeLabForm() {
 
   const prompt = `You are an expert Delaware DOT geotechnical lab technician. Read this handwritten Field Control Sheet image carefully.
 
-The target test number is ${currentSample.test_no}. Find the column for this test number and extract ONLY that column's data.
+The target test number is ${currentSample.test_no}.
+
+COLUMN IDENTIFICATION — CRITICAL:
+The form has multiple columns, one per test. The very first row of the form shows TEST NUMBERS (e.g. "T-1007", "T-1008", "1143", "1144"). Find the column headed EXACTLY "${currentSample.test_no}" and use ONLY that column for ALL values. Do not use any other column. If the test number appears in the second column, use the second column's values for every row. Count the columns carefully from left to right and stay in the same column throughout.
 
 THE FORM HAS THESE SECTIONS — READ EACH ONE SEPARATELY AND CAREFULLY:
 
@@ -1942,14 +1945,14 @@ function renderLB44(sample, labData, calc) {
   const llWetSoil=parseFloat(ll.wt_wet_soil_bottle)||0, llDryBotl=parseFloat(ll.wt_dry_bottle)||0, llBotl=parseFloat(ll.wt_bottle)||0;
   const llDry=llDryBotl&&llBotl?(llDryBotl-llBotl).toFixed(1):'';
   const llWater=llWetSoil&&llDryBotl?(llWetSoil-llDryBotl).toFixed(1):'';
-  const llPct=llDry&&llWater?((parseFloat(llWater)/parseFloat(llDry))*100).toFixed(0):'';
+  const llPct=llDry&&llWater?((parseFloat(llWater)/parseFloat(llDry))*100).toFixed(1):'';
 
   // PL math
   const plWetSoil=parseFloat(pl.wt_wet_soil_bottle)||0, plDryBotl=parseFloat(pl.wt_dry_bottle)||0, plBotl=parseFloat(pl.wt_bottle)||0;
   const plDry=plDryBotl&&plBotl?(plDryBotl-plBotl).toFixed(1):'';
   const plWater=plWetSoil&&plDryBotl?(plWetSoil-plDryBotl).toFixed(1):'';
-  const plPct=plDry&&plWater?((parseFloat(plWater)/parseFloat(plDry))*100).toFixed(0):'';
-  const piPct=(llPct&&plPct)?(parseInt(llPct)-parseInt(plPct)).toString():'';
+  const plPct=plDry&&plWater?((parseFloat(plWater)/parseFloat(plDry))*100).toFixed(1):'';
+  const piPct=(llPct&&plPct)?(parseFloat(llPct)-parseFloat(plPct)).toFixed(1):'';
   const llD=llPct?llPct:'NV', plD=plPct?plPct:'NP', piD=piPct?piPct:'NP';
 
   // Organic math (T-267 Loss on Ignition)
@@ -1963,7 +1966,7 @@ function renderLB44(sample, labData, calc) {
   const orgDrySoil = orgPre&&orgDish ? (orgPre-orgDish).toFixed(1) : '';
   const orgLoss    = orgPre&&orgPost  ? (orgPre-orgPost).toFixed(1)  : '';
   const orgPct     = orgPre&&orgPost&&orgDish&&(orgPre-orgDish)>0
-    ? ((orgPre-orgPost)/(orgPre-orgDish)*100).toFixed(1) : '';
+    ? ((orgPre-orgPost)/(orgPre-orgDish)*100).toFixed(2) : '';
 
   // Auto-determine pass/fail from material type
   const llScoreVal = llPct ? parseFloat(llPct) : null;
