@@ -363,6 +363,24 @@ nav {
 .chart-spec-label { position: absolute; top: -14px; font-size: 6.5pt; color: #ef4444; transform: translateX(-50%); white-space: nowrap; font-weight: 700; }
 .borrow-note { font-size: 7.5pt; color: #6b7280; font-style: italic; margin-top: 10px; border-top: 1px solid #e5e7eb; padding-top: 6px; }
 
+
+/* Inline borrow score in summary column */
+.inline-borrow { padding: 4px 6px; }
+.ib-cards { display: grid; grid-template-columns: repeat(5,1fr); gap: 3px; margin-bottom: 4px; }
+.ib-card { border-radius: 2px; border: 1.5px solid; padding: 3px 2px; text-align: center; }
+.ib-card.pass { border-color: #166534; background: #f0fff4; }
+.ib-card.fail { border-color: #991b1b; background: #fff5f5; }
+.ib-card .ibc-type { font-size: 10pt; font-weight: 700; line-height: 1.1; }
+.ib-card.pass .ibc-type { color: #166534; }
+.ib-card.fail .ibc-type { color: #991b1b; }
+.ib-card .ibc-st { font-size: 5.5pt; font-weight: 700; letter-spacing: 0.3px; }
+.ib-card.pass .ibc-st { color: #166534; }
+.ib-card.fail .ibc-st { color: #991b1b; }
+.ib-passing { font-size: 7pt; font-weight: 700; padding: 3px 0 1px; }
+.ib-passing.ok { color: #166534; }
+.ib-passing.none { color: #991b1b; }
+.ib-note { font-size: 6pt; color: #9ca3af; font-style: italic; margin-top: 2px; line-height: 1.3; }
+
 </style>
 </head>
 <body>
@@ -1452,6 +1470,28 @@ function renderBorrowSection(calc, llVal, piVal) {
   </div>`;
 }
 
+
+function renderInlineBorrow(calc, llVal, piVal) {
+  const types = scoreBorrow(calc, llVal, piVal);
+  const passing = Object.entries(types).filter(([,t]) => t.passes).map(([k]) => k);
+
+  const cards = Object.entries(types).map(([key, t]) => `
+    <div class="ib-card ${t.passes ? 'pass' : 'fail'}">
+      <div class="ibc-type">${key}</div>
+      <div class="ibc-st">${t.passes ? '✓' : '✗'}</div>
+    </div>`).join('');
+
+  const passLine = passing.length > 0
+    ? `<div class="ib-passing ok">PASSES: Type ${passing.join(', ')}</div>`
+    : `<div class="ib-passing none">NO BORROW TYPE PASSES</div>`;
+
+  return `<div class="inline-borrow">
+    <div class="ib-cards">${cards}</div>
+    ${passLine}
+    <div class="ib-note">MDD ≥ 90 pcf req. — verify via Proctor. Type F: field verify organics/boulders.</div>
+  </div>`;
+}
+
 // ══════════════════════════════════════════════
 // LB-44 REPORT RENDER
 // ══════════════════════════════════════════════
@@ -1564,6 +1604,8 @@ function renderLB44(sample, labData, calc) {
         <div class="summary-item"><span class="si-lbl">% CLAY:</span><span class="si-val">—</span></div>
         <div class="summary-divider">Classification</div>
         <div class="summary-item hl" style="background:#dbeafe;"><span class="si-lbl">CLASSIFICATION:</span><span class="si-val" style="font-size:11pt;color:#1e3a8a;">${calc.classification}</span></div>
+        <div class="summary-divider">Section 1001 Borrow</div>
+        ${inlineBorrowHtml}
       </div>
     </div>
     <div class="lb44-approval">
@@ -1593,9 +1635,11 @@ function renderLB44(sample, labData, calc) {
 
   // Compute LL and PI values for borrow scoring
   const llScore = llPct ? parseInt(llPct) : null;
-  const piScore = piPct && llPct ? (parseInt(llPct) - parseInt(plPct)) : null;
-  const borrowHtml = renderBorrowSection(calc, llScore, piScore);
-  document.getElementById('lb44Output').innerHTML = html + borrowHtml;
+  const piScore = (llPct && plPct) ? (parseInt(llPct) - parseInt(plPct)) : null;
+  const inlineBorrowHtml = renderInlineBorrow(calc, llScore, piScore);
+  // Re-inject with borrow inline (template literal already has ${inlineBorrowHtml} placeholder)
+  const finalHtml = html.replace('${inlineBorrowHtml}', inlineBorrowHtml);
+  document.getElementById('lb44Output').innerHTML = finalHtml;
 }
 
 // ══════════════════════════════════════════════
