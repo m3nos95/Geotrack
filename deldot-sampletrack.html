@@ -1041,6 +1041,9 @@ CRITICAL READING RULES:
   SPLIT 1 (dry sieved top stack): 2", 1", 3/8", #4, #10 — these are CUMULATIVE weights retained from top of stack down.
   SPLIT 2 (wet sieved bottom stack): Wash WT is total entering bottom split. #40 and #200 are CUMULATIVE weights retained within the bottom split only.
 - Read all handwritten numbers exactly as they appear. Do not add or remove digits.
+- For LL and PL bottle weights: read decimal values very carefully. A value like 27.42 must not be read as 27.92 or 27.4. When in doubt about a decimal digit, re-examine carefully.
+- The WT. DRY SOIL & BOTTLE value for LL is typically between the WT. WET SOIL & BOTTLE and WT. OF BOTTLE values. It must be less than Wet and greater than Bottle tare.
+- For Organic (T-267): wt_wet_soil_bottle = pre-ignition dish+dry soil, wt_dry_bottle = post-ignition dish+ignited soil, wt_bottle = dish tare only. Organic loss is typically small (under 5% for most mineral soils).
 
 Return ONLY valid JSON, no markdown:
 {
@@ -1224,7 +1227,9 @@ function calculateSieve(d) {
   const wtPass10 = total > 0 ? (total - cum10).toFixed(0) : '';
 
   // AASHTO classification
-  const classification = aashto(pctPass200, pctPassWash);
+  // Pass p40 and LL/PI — these come from labData, but calculateSieve doesn't have them
+  // We pass null here; renderLB44 will re-call aashto with full params after computing LL/PI
+  const classification = aashto(pctPass200, pctPassWash, null, null, null);
 
   // Helper to build a result row
   function row(indRet, cumWt, pctRetInd, cumPctRet, pctPassVal, key) {
@@ -1264,13 +1269,65 @@ function calculateSieve(d) {
   };
 }
 
-function aashto(p200, p10) {
-  if (p200 <= 10) return 'A-1-a';
-  if (p200 <= 15) return 'A-1-b';
-  if (p200 <= 25) return 'A-1-b';
-  if (p200 <= 35) return 'A-2-4';
-  if (p200 <= 50) return 'A-4';
-  return 'A-6';
+function aashto(p200, p10, p40, ll, pi) {
+  // AASHTO M145 full classification
+  // p200, p40, p10 = % passing those sieves
+  // ll = liquid limit (numeric), pi = plasticity index (numeric)
+  // If ll/pi null (NV/NP), treat as 0 for classification purposes
+
+  const LL = ll  != null ? ll  : 0;
+  const PI = pi  != null ? pi  : 0;
+  const P200 = p200 != null ? p200 : 0;
+  const P40  = p40  != null ? p40  : 100;
+  const P10  = p10  != null ? p10  : 100;
+
+  let grp = '';
+  let gi  = 0;
+
+  if (P200 <= 35) {
+    // Granular materials
+    if (P10 <= 50 && P40 <= 30 && P200 <= 15 && PI <= 6) {
+      grp = 'A-1-a';
+    } else if (P40 <= 50 && P200 <= 25 && PI <= 6) {
+      grp = 'A-1-b';
+    } else if (P200 <= 10 && PI === 0) {
+      grp = 'A-3';
+    } else if (P200 <= 35 && LL <= 40 && PI <= 10) {
+      grp = 'A-2-4'; gi = 0;
+    } else if (P200 <= 35 && LL > 40 && PI <= 10) {
+      grp = 'A-2-5'; gi = 0;
+    } else if (P200 <= 35 && LL <= 40 && PI > 10) {
+      grp = 'A-2-6';
+      gi = Math.max(0, Math.round(0.01 * (P200 - 15) * (PI - 10)));
+    } else if (P200 <= 35 && LL > 40 && PI > 10) {
+      grp = 'A-2-7';
+      gi = Math.max(0, Math.round(0.01 * (P200 - 15) * (PI - 10)));
+    } else {
+      grp = 'A-2-4';
+    }
+  } else {
+    // Silt-clay materials
+    if (LL <= 40 && PI <= 10) {
+      grp = 'A-4';
+      gi = Math.max(0, Math.round((P200 - 35) * (0.2 + 0.005*(LL-40)) + 0.01*(P200-15)*(PI-10)));
+    } else if (LL > 40 && PI <= 10) {
+      grp = 'A-5';
+      gi = Math.max(0, Math.round((P200 - 35) * (0.2 + 0.005*(LL-40)) + 0.01*(P200-15)*(PI-10)));
+    } else if (LL <= 40 && PI > 10) {
+      grp = 'A-6';
+      gi = Math.max(0, Math.round((P200 - 35) * (0.2 + 0.005*(LL-40)) + 0.01*(P200-15)*(PI-10)));
+    } else if (LL > 40 && PI > 10) {
+      // A-7-5 or A-7-6
+      if (PI <= LL - 30) {
+        grp = 'A-7-5';
+      } else {
+        grp = 'A-7-6';
+      }
+      gi = Math.max(0, Math.round((P200 - 35) * (0.2 + 0.005*(LL-40)) + 0.01*(P200-15)*(PI-10)));
+    }
+  }
+
+  return gi > 0 ? grp + '(' + gi + ')' : grp;
 }
 
 
@@ -1625,7 +1682,13 @@ function renderLB44(sample, labData, calc) {
         <div class="summary-divider">Organic</div>
         <div class="summary-item hl"><span class="si-lbl">% ORGANIC LOSS:</span><span class="si-val">${orgPct?orgPct+'%':'NV'}</span></div>
         <div class="summary-divider">Classification</div>
-        <div class="summary-item hl" style="background:#dbeafe;"><span class="si-lbl">CLASSIFICATION:</span><span class="si-val" style="font-size:11pt;color:#1e3a8a;">${calc.classification}</span></div>
+        <div class="summary-item hl" style="background:#dbeafe;"><span class="si-lbl">CLASSIFICATION:</span><span class="si-val" style="font-size:11pt;color:#1e3a8a;">${aashto(
+          calc.results.no200?.pctPass != null ? parseFloat(calc.results.no200.pctPass) : 0,
+          calc.results.no10?.pctPass  != null ? parseFloat(calc.results.no10.pctPass)  : 100,
+          calc.results.no40?.pctPass  != null ? parseFloat(calc.results.no40.pctPass)  : 100,
+          llPct ? parseFloat(llPct) : null,
+          piPct ? parseFloat(piPct) : null
+        )}</span></div>
         <div class="summary-divider">Section 1001 Borrow</div>
         __INLINE_BORROW__
       </div>
@@ -1656,8 +1719,8 @@ function renderLB44(sample, labData, calc) {
   </div>`;
 
   // Compute LL and PI values for borrow scoring
-  const llScore = llPct ? parseInt(llPct) : null;
-  const piScore = (llPct && plPct) ? (parseInt(llPct) - parseInt(plPct)) : null;
+  const llScore = llPct ? parseFloat(llPct) : null;
+  const piScore = piPct ? parseFloat(piPct) : null;
   const inlineBorrowHtml = renderInlineBorrow(calc, llScore, piScore);
   // Re-inject with borrow inline (template literal already has __INLINE_BORROW__ placeholder)
   const finalHtml = html.replace('__INLINE_BORROW__', inlineBorrowHtml);
