@@ -1036,6 +1036,7 @@ The target test number is ${currentSample.test_no}. Find the column for this tes
 CRITICAL READING RULES:
 - "WT. of Total Sample" is typically a 4-digit number between 900 and 1800 grams (e.g. 1026.7, 1626.7). Read it carefully.
 - "Wash WT" is the weight of the washed portion. It is typically under 200 grams (e.g. 114.3, 119.1, 125.1).
+- For the ORGANIC column (T-267): wt_wet_soil_bottle = pre-ignition dish+dry soil weight, wt_dry_bottle = post-ignition dish+ignited soil weight, wt_bottle = dish tare weight
 - TWO-SPLIT GeoSystem method:
   SPLIT 1 (dry sieved top stack): 2", 1", 3/8", #4, #10 — these are CUMULATIVE weights retained from top of stack down.
   SPLIT 2 (wet sieved bottom stack): Wash WT is total entering bottom split. #40 and #200 are CUMULATIVE weights retained within the bottom split only.
@@ -1047,6 +1048,7 @@ Return ONLY valid JSON, no markdown:
   "wash_sample_wt": null,
   "liquid_limit": { "bottle_no": "", "wt_wet_soil_bottle": null, "wt_dry_bottle": null, "wt_bottle": null, "blows": null },
   "plastic_limit": { "bottle_no": "", "wt_wet_soil_bottle": null, "wt_dry_bottle": null, "wt_bottle": null },
+  "organic": { "bottle_no": "", "wt_wet_soil_bottle": null, "wt_dry_bottle": null, "wt_bottle": null },
   "sieves": {
     "in2":   { "wt_retained": null },
     "in1":   { "wt_retained": null },
@@ -1500,19 +1502,36 @@ function renderLB44(sample, labData, calc) {
   const fv = (val) => (val && val !== 'null') ? val : '';
   const fn = (val) => val != null ? val : '';
 
-  const ll = labData.liquid_limit || {};
-  const pl = labData.plastic_limit || {};
+  const ll  = labData.liquid_limit  || {};
+  const pl  = labData.plastic_limit  || {};
+  const org = labData.organic        || {};
 
+  // LL math
   const llWetSoil=parseFloat(ll.wt_wet_soil_bottle)||0, llDryBotl=parseFloat(ll.wt_dry_bottle)||0, llBotl=parseFloat(ll.wt_bottle)||0;
-  const plWetSoil=parseFloat(pl.wt_wet_soil_bottle)||0, plDryBotl=parseFloat(pl.wt_dry_bottle)||0, plBotl=parseFloat(pl.wt_bottle)||0;
   const llDry=llDryBotl&&llBotl?(llDryBotl-llBotl).toFixed(1):'';
   const llWater=llWetSoil&&llDryBotl?(llWetSoil-llDryBotl).toFixed(1):'';
   const llPct=llDry&&llWater?((parseFloat(llWater)/parseFloat(llDry))*100).toFixed(0):'';
+
+  // PL math
+  const plWetSoil=parseFloat(pl.wt_wet_soil_bottle)||0, plDryBotl=parseFloat(pl.wt_dry_bottle)||0, plBotl=parseFloat(pl.wt_bottle)||0;
   const plDry=plDryBotl&&plBotl?(plDryBotl-plBotl).toFixed(1):'';
   const plWater=plWetSoil&&plDryBotl?(plWetSoil-plDryBotl).toFixed(1):'';
   const plPct=plDry&&plWater?((parseFloat(plWater)/parseFloat(plDry))*100).toFixed(0):'';
   const piPct=(llPct&&plPct)?(parseInt(llPct)-parseInt(plPct)).toString():'';
   const llD=llPct?llPct:'NV', plD=plPct?plPct:'NP', piD=piPct?piPct:'NP';
+
+  // Organic math (T-267 Loss on Ignition)
+  // Row mapping: wt_wet_soil_bottle = Pre-ignition (Dish+Dry Soil)
+  //              wt_dry_bottle      = Post-ignition (Dish+Ignited Soil)
+  //              wt_bottle          = Dish tare
+  // % Organic Loss = (Pre - Post) / (Pre - Dish) * 100
+  const orgPre  = parseFloat(org.wt_wet_soil_bottle)||0;
+  const orgPost = parseFloat(org.wt_dry_bottle)||0;
+  const orgDish = parseFloat(org.wt_bottle)||0;
+  const orgDrySoil = orgPre&&orgDish ? (orgPre-orgDish).toFixed(1) : '';
+  const orgLoss    = orgPre&&orgPost  ? (orgPre-orgPost).toFixed(1)  : '';
+  const orgPct     = orgPre&&orgPost&&orgDish&&(orgPre-orgDish)>0
+    ? ((orgPre-orgPost)/(orgPre-orgDish)*100).toFixed(1) : '';
 
   const conforms = sample.conforms !== 'no';
   const dateRpt = sample.date_reported || new Date().toLocaleDateString('en-US');
@@ -1556,20 +1575,19 @@ function renderLB44(sample, labData, calc) {
     </div>
     <div class="lb44-body">
       <div class="lb44-left">
-        <div class="form-sec-head">
+        <div class="form-sec-head" style="grid-template-columns:repeat(3,1fr);">
           <span>LIQUID LIMIT<br><span style="font-weight:400;font-size:6.5pt;">T-89</span></span>
           <span>PLASTIC LIMIT<br><span style="font-weight:400;font-size:6.5pt;">T-90</span></span>
-          <span>MOISTURE<br><span style="font-weight:400;font-size:6.5pt;">T-265</span></span>
           <span>ORGANIC<br><span style="font-weight:400;font-size:6.5pt;">T-267</span></span>
         </div>
-        <div class="test-row"><div class="row-lbl">BOTTLE NO.:</div><div class="row-val">${fn(ll.bottle_no)}</div><div class="row-val">${fn(pl.bottle_no)}</div><div class="row-val"></div><div class="row-val">PRE-IGNITION</div></div>
-        <div class="test-row"><div class="row-lbl">WT. WET SOIL &amp; BOTTLE:</div><div class="row-val">${fn(ll.wt_wet_soil_bottle)}</div><div class="row-val">${fn(pl.wt_wet_soil_bottle)}</div><div class="row-val"></div><div class="row-val">DISH &amp; SOIL:</div></div>
-        <div class="test-row"><div class="row-lbl">WT. DRY SOIL &amp; BOTTLE:</div><div class="row-val">${fn(ll.wt_dry_bottle)}</div><div class="row-val">${fn(pl.wt_dry_bottle)}</div><div class="row-val"></div><div class="row-val">WT. OF WATER LOST:</div></div>
-        <div class="test-row"><div class="row-lbl">WT. OF BOTTLE:</div><div class="row-val">${fn(ll.wt_bottle)}</div><div class="row-val">${fn(pl.wt_bottle)}</div><div class="row-val"></div><div class="row-val">POST-IGNITION</div></div>
-        <div class="test-row"><div class="row-lbl">WT. OF DRY SOIL:</div><div class="row-val">${llDry}</div><div class="row-val">${plDry}</div><div class="row-val"></div><div class="row-val">DISH &amp; SOIL:</div></div>
-        <div class="test-row"><div class="row-lbl">PERCENT OF WATER:</div><div class="row-val">${llPct?llPct+'%':''}</div><div class="row-val">${plPct?plPct+'%':''}</div><div class="row-val"></div><div class="row-val">DISH:</div></div>
-        <div class="test-row"><div class="row-lbl">BLOWS FOR CLOSURE:</div><div class="row-val">${fn(ll.blows)}</div><div class="row-val"></div><div class="row-val"></div><div class="row-val">NV LOSS %</div></div>
-        <div class="test-row"><div class="row-lbl">CORRECTED LIQUID LIMIT %:</div><div class="row-val result">${llD!=='NV'?llD:''}</div><div class="row-val"></div><div class="row-val"></div><div class="row-val">NV</div></div>
+        <div class="test-row" style="grid-template-columns:150px repeat(3,1fr);"><div class="row-lbl">BOTTLE NO.:</div><div class="row-val">${fn(ll.bottle_no)}</div><div class="row-val">${fn(pl.bottle_no)}</div><div class="row-val">${fn(org.bottle_no)}</div></div>
+        <div class="test-row" style="grid-template-columns:150px repeat(3,1fr);"><div class="row-lbl">WT. WET SOIL &amp; BOTTLE:</div><div class="row-val">${fn(ll.wt_wet_soil_bottle)}</div><div class="row-val">${fn(pl.wt_wet_soil_bottle)}</div><div class="row-val">${fn(org.wt_wet_soil_bottle)}</div></div>
+        <div class="test-row" style="grid-template-columns:150px repeat(3,1fr);"><div class="row-lbl">WT. DRY SOIL &amp; BOTTLE:</div><div class="row-val">${fn(ll.wt_dry_bottle)}</div><div class="row-val">${fn(pl.wt_dry_bottle)}</div><div class="row-val">${fn(org.wt_dry_bottle)}</div></div>
+        <div class="test-row" style="grid-template-columns:150px repeat(3,1fr);"><div class="row-lbl">WT. OF BOTTLE:</div><div class="row-val">${fn(ll.wt_bottle)}</div><div class="row-val">${fn(pl.wt_bottle)}</div><div class="row-val">${fn(org.wt_bottle)}</div></div>
+        <div class="test-row" style="grid-template-columns:150px repeat(3,1fr);"><div class="row-lbl">WT. OF DRY SOIL:</div><div class="row-val">${llDry}</div><div class="row-val">${plDry}</div><div class="row-val">${orgDrySoil}</div></div>
+        <div class="test-row" style="grid-template-columns:150px repeat(3,1fr);"><div class="row-lbl">PERCENT OF WATER / LOSS:</div><div class="row-val">${llPct?llPct+'%':''}</div><div class="row-val">${plPct?plPct+'%':''}</div><div class="row-val result">${orgPct?orgPct+'%':''}</div></div>
+        <div class="test-row" style="grid-template-columns:150px repeat(3,1fr);"><div class="row-lbl">BLOWS FOR CLOSURE:</div><div class="row-val">${fn(ll.blows)}</div><div class="row-val"></div><div class="row-val"></div></div>
+        <div class="test-row" style="grid-template-columns:150px repeat(3,1fr);"><div class="row-lbl">CORRECTED LIQUID LIMIT %:</div><div class="row-val result">${llD!=='NV'?llD:''}</div><div class="row-val"></div><div class="row-val"></div></div>
         <div class="test-row" style="background:#f8f9fa;">
           <div class="row-lbl" style="font-weight:700;">WT. OF TOTAL SAMPLE:</div>
           <div class="row-val result" style="grid-column:span 2;">${fn(labData.total_sample_wt)}</div>
@@ -1591,7 +1609,7 @@ function renderLB44(sample, labData, calc) {
         ${sieveRowHtml('#40 (0.42mm)', r.no40)}
         ${sieveRowHtml('#200 (0.074mm)', r.no200)}
         <div class="sieve-row pass200"><div class="s-lbl">PASS #200</div><div class="s-val">${calc.pass200wt||''}</div><div class="s-val">${calc.pass200wt||''}</div><div class="s-val pct">${r.pass200?.pctPass?r.pass200.pctPass+'%':''}</div><div class="s-val pct" style="background:#e6f9ee;color:#166534;">${r.pass200?.pctPass?r.pass200.pctPass+'%':''}</div></div>
-        <div class="sieve-total"><div class="t-lbl">SELECT GRADING (A–F):</div><div class="t-val">${fv(labData.select_grading)}</div></div>
+
       </div>
       <div class="lb44-right">
         <div class="summary-head">PHYSICAL TEST CONSTANTS SUMMARY</div>
@@ -1604,6 +1622,8 @@ function renderLB44(sample, labData, calc) {
         <div class="summary-item hl"><span class="si-lbl">% SAND AND GRAVEL:</span><span class="si-val">${calc.pctSandGravel?calc.pctSandGravel+'%':'—'}</span></div>
         <div class="summary-item"><span class="si-lbl">% SILT:</span><span class="si-val">—</span></div>
         <div class="summary-item"><span class="si-lbl">% CLAY:</span><span class="si-val">—</span></div>
+        <div class="summary-divider">Organic</div>
+        <div class="summary-item hl"><span class="si-lbl">% ORGANIC LOSS:</span><span class="si-val">${orgPct?orgPct+'%':'NV'}</span></div>
         <div class="summary-divider">Classification</div>
         <div class="summary-item hl" style="background:#dbeafe;"><span class="si-lbl">CLASSIFICATION:</span><span class="si-val" style="font-size:11pt;color:#1e3a8a;">${calc.classification}</span></div>
         <div class="summary-divider">Section 1001 Borrow</div>
