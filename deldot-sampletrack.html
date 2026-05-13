@@ -1030,19 +1030,26 @@ async function analyzeLabForm() {
 
 The target test number is ${currentSample.test_no}. Find the column for this test number and extract ONLY that column's data.
 
-CRITICAL READING RULES:
-- "WT. of Total Sample" is typically a 4-digit number between 900 and 1800 grams (e.g. 1026.7, 1626.7). Read it carefully.
-- "Wash WT" is the weight of the washed portion. It is typically under 200 grams (e.g. 114.3, 119.1, 125.1).
-- For the ORGANIC column (T-267): wt_wet_soil_bottle = pre-ignition dish+dry soil weight, wt_dry_bottle = post-ignition dish+ignited soil weight, wt_bottle = dish tare weight
-- TWO-SPLIT GeoSystem method:
-  SPLIT 1 (dry sieved top stack): 2", 1", 3/8", #4, #10 — these are CUMULATIVE weights retained from top of stack down.
-  SPLIT 2 (wet sieved bottom stack): Wash WT is total entering bottom split. #40 and #200 are CUMULATIVE weights retained within the bottom split only.
-- Read all handwritten numbers EXACTLY. Decimal digits are critical — 27.42 ≠ 27.92.
-- VALIDATION RULES you must enforce before returning values:
-  * WT. WET SOIL & BOTTLE > WT. DRY SOIL & BOTTLE > WT. OF BOTTLE (always, for LL and PL)
-  * WT. OF DRY SOIL = WT. DRY SOIL & BOTTLE minus WT. OF BOTTLE (must be positive)
-  * If your read values violate these rules, re-examine the image and correct them
-- For Organic (T-267): the column has PRE-IGNITION (dish+dry soil) and POST-IGNITION (dish+ignited soil) and DISH weight. Map: wt_wet_soil_bottle=pre-ignition, wt_dry_bottle=post-ignition, wt_bottle=dish tare. Organic loss % is typically UNDER 10% for mineral soils — if your calculation gives over 20%, re-read the values.
+THE FORM HAS THESE SECTIONS — READ EACH ONE SEPARATELY AND CAREFULLY:
+
+SECTION 1 — TOP ROWS (LL, PL, Organic bottle data):
+- The form has columns for Liquid Limit, Plastic Limit, and Organic
+- Each has: Bottle No, WT Wet Soil & Bottle, WT Dry Soil & Bottle, WT Bottle
+- CRITICAL: WT WET > WT DRY > WT BOTTLE always. If your values violate this, re-read.
+- Decimal digits matter: 27.42 ≠ 27.92. Re-examine any decimal carefully.
+- WT OF BOTTLE for PL is typically a small number (5–25g). If you read a large number (>30g) for WT BOTTLE of PL, re-examine — it may be the WT DRY row instead.
+
+SECTION 2 — SIEVE DATA (two separate rows in the form):
+- "WT. of Total Sample" row: 4-digit number 900–1800g (e.g. 1026.7, 1042.8). This is ABOVE the sieve table.
+- "Wash WT" row: This is a SEPARATE labeled row between #10 and #40 in the sieve table. It is typically 100–200g (e.g. 114.3, 119.1, 125.1, 129.5). DO NOT confuse this with the #40 retained weight. The Wash WT row is clearly labeled "Wash WT" on the form. Read the value in the correct column for test ${currentSample.test_no}.
+- SPLIT 1 sieves (2", 1", 3/8", #4, #10): CUMULATIVE weights retained, dry sieved.
+- SPLIT 2 sieves (#40, #200): CUMULATIVE weights retained within the washed split only.
+
+SECTION 3 — ORGANIC (T-267):
+- Pre-ignition = dish + dry soil weight (wt_wet_soil_bottle)
+- Post-ignition = dish + ignited soil weight (wt_dry_bottle) 
+- Dish tare = wt_bottle
+- Organic loss is typically under 10% for mineral soils. If you calculate >20%, re-read.
 
 Return ONLY valid JSON, no markdown:
 {
@@ -1060,7 +1067,6 @@ Return ONLY valid JSON, no markdown:
     "no40":  { "wt_retained": null },
     "no200": { "wt_retained": null }
   },
-  "select_grading": "",
   "notes": ""
 }`;
 
@@ -1214,13 +1220,13 @@ function calculateSieve(d) {
 
   // % passing for split 2 sieves
   const pctPass40  = 100 - cumPctRet_at40;
-  const pctPass200 = 100 - cumPctRet_at200;
+  const pctPass200 = Math.min(100, Math.max(0, 100 - cumPctRet_at200));
 
   // Pass #200 physical weight = pan catch from split 2
   const pass200_pan = washWt > 0 ? Math.max(0, washWt - cum200_s2) : 0;
 
   // % Sand & Gravel = everything retained on or above #200
-  const pctSandGravel = cumPctRet_at200.toFixed(1);
+  const pctSandGravel = Math.min(100, Math.max(0, cumPctRet_at200)).toFixed(1);
 
   // WT passing #10 (for summary box)
   const wtPass10 = total > 0 ? (total - cum10).toFixed(0) : '';
