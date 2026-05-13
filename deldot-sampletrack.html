@@ -1245,13 +1245,13 @@ function generateFromManual() {
       wt_bottle:          gn('m_org_tare'),
     },
     sieves: {
-      in2:   { wt_retained: gn('m_s_in2')   },
-      in1:   { wt_retained: gn('m_s_in1')   },
-      in38:  { wt_retained: gn('m_s_in38')  },
-      no4:   { wt_retained: gn('m_s_no4')   },
-      no10:  { wt_retained: gn('m_s_no10')  },
-      no40:  { wt_retained: gn('m_s_no40')  },
-      no200: { wt_retained: gn('m_s_no200') },
+      '2in':     gn('m_s_in2'),
+      '1in':     gn('m_s_in1'),
+      '0.375in': gn('m_s_in38'),
+      'no4':     gn('m_s_no4'),
+      'no10':    gn('m_s_no10'),
+      'no40':    gn('m_s_no40'),
+      'no200':   gn('m_s_no200'),
     },
     notes: 'Manual entry'
   };
@@ -1316,10 +1316,18 @@ function openEditOverlay() {
 
   se('e_total_wt', lastLabData.total_sample_wt);
   se('e_wash_wt',  lastLabData.wash_sample_wt);
-  se('e_s_in2',    sv.in2?.wt_retained);   se('e_s_in1',   sv.in1?.wt_retained);
-  se('e_s_in38',   sv.in38?.wt_retained);  se('e_s_no4',   sv.no4?.wt_retained);
-  se('e_s_no10',   sv.no10?.wt_retained);  se('e_s_no40',  sv.no40?.wt_retained);
-  se('e_s_no200',  sv.no200?.wt_retained);
+  function readSv(k, legacy) {
+    const v = sv[k] != null ? sv[k] : (legacy ? sv[legacy] : null);
+    if (v == null) return null;
+    return typeof v === 'object' ? v.wt_retained : v;
+  }
+  se('e_s_in2',   readSv('2in',     'in2'));
+  se('e_s_in1',   readSv('1in',     'in1'));
+  se('e_s_in38',  readSv('0.375in', 'in38'));
+  se('e_s_no4',   readSv('no4'));
+  se('e_s_no10',  readSv('no10'));
+  se('e_s_no40',  readSv('no40'));
+  se('e_s_no200', readSv('no200'));
 
   document.getElementById('editOverlay').classList.add('open');
 }
@@ -1348,10 +1356,13 @@ async function applyEditsAndRegenerate() {
       wt_dry_bottle: gn('e_org_post'), wt_bottle: gn('e_org_tare'),
     },
     sieves: {
-      in2:   { wt_retained: gn('e_s_in2')   }, in1:   { wt_retained: gn('e_s_in1')   },
-      in38:  { wt_retained: gn('e_s_in38')  }, no4:   { wt_retained: gn('e_s_no4')   },
-      no10:  { wt_retained: gn('e_s_no10')  }, no40:  { wt_retained: gn('e_s_no40')  },
-      no200: { wt_retained: gn('e_s_no200') },
+      '2in':     gn('e_s_in2'),
+      '1in':     gn('e_s_in1'),
+      '0.375in': gn('e_s_in38'),
+      'no4':     gn('e_s_no4'),
+      'no10':    gn('e_s_no10'),
+      'no40':    gn('e_s_no40'),
+      'no200':   gn('e_s_no200'),
     },
     notes: lastLabData?.notes || ''
   };
@@ -1396,9 +1407,14 @@ SECTION 1 — TOP ROWS (LL, PL, Organic bottle data):
 SECTION 2 — SIEVE DATA (two separate rows in the form):
 - "WT. of Total Sample" row: 4-digit number 900–1800g (e.g. 1026.7, 1042.8). This is ABOVE the sieve table.
 - "Wash WT" row: This is a SEPARATE labeled row between #10 and #40 in the sieve table. It is typically 100–200g (e.g. 114.3, 119.1, 125.1, 129.5). DO NOT confuse this with the #40 retained weight. The Wash WT row is clearly labeled "Wash WT" on the form. Read the value in the correct column for test ${currentSample.test_no}.
-- SPLIT 1 sieves (2", 1", 3/8", #4, #10): CUMULATIVE weights retained, dry sieved.
-  IMPORTANT: Each sieve row on the form is LABELED with its size (2", 1", 3/8", #4, #10). Read the label on each row and put the value in the matching field. If a sieve row is blank or shows 0, record null or 0 for that sieve — do NOT shift values up to fill blank rows. A blank 2" row means in2=0, not that the 3/8" value goes into in2.
-- SPLIT 2 sieves (#40, #200): CUMULATIVE weights retained within the washed split only.
+- SPLIT 1 sieves: The form has labeled rows: "2" (50.8mm)", "1" (25.4mm)", "3/8" (9.52mm)", "No. 4 (4.76mm)", "No. 10 (2.00mm)". For each labeled row, read the value in the target column and record it in the matching JSON field:
+  * "2in" = value on the 2" row (null if blank)
+  * "1in" = value on the 1" row (null if blank)
+  * "0.375in" = value on the 3/8" row (null if blank)
+  * "no4" = value on the No.4 row (null if blank)
+  * "no10" = value on the No.10 row (null if blank)
+  NEVER move a value from one row to another. A blank row = null. Do not shift values.
+- SPLIT 2 sieves: "no40" = value on No.40 row, "no200" = value on No.200 row. These reset after wash.
 
 SECTION 3 — ORGANIC (T-267):
 - Pre-ignition = dish + dry soil weight (wt_wet_soil_bottle)
@@ -1414,13 +1430,13 @@ Return ONLY valid JSON, no markdown:
   "plastic_limit": { "bottle_no": "", "wt_wet_soil_bottle": null, "wt_dry_bottle": null, "wt_bottle": null },
   "organic": { "bottle_no": "", "wt_wet_soil_bottle": null, "wt_dry_bottle": null, "wt_bottle": null },
   "sieves": {
-    "in2":   { "wt_retained": null },
-    "in1":   { "wt_retained": null },
-    "in38":  { "wt_retained": null },
-    "no4":   { "wt_retained": null },
-    "no10":  { "wt_retained": null },
-    "no40":  { "wt_retained": null },
-    "no200": { "wt_retained": null }
+    "2in":   null,
+    "1in":   null,
+    "0.375in": null,
+    "no4":   null,
+    "no10":  null,
+    "no40":  null,
+    "no200": null
   },
   "notes": ""
 }`;
@@ -1519,18 +1535,30 @@ function calculateSieve(d) {
   const total  = parseFloat(d.total_sample_wt) || 0;
   const washWt = parseFloat(d.wash_sample_wt)  || 0;
   const sieves = d.sieves || {};
-  function g(k) { return parseFloat(sieves[k]?.wt_retained) || 0; }
+  // Support both old key format (wt_retained object) and new flat format
+  function g(k) {
+    const v = sieves[k];
+    if (v == null) return 0;
+    if (typeof v === 'object') return parseFloat(v.wt_retained) || 0;
+    return parseFloat(v) || 0;
+  }
+  // Also support legacy key names
+  function gSieve(newKey, legacyKey) {
+    if (sieves[newKey] != null) return g(newKey);
+    if (legacyKey && sieves[legacyKey] != null) return g(legacyKey);
+    return 0;
+  }
 
   // Split 1 — values as recorded (CUMULATIVE within split 1)
-  const cum2   = g('in2');
-  const cum1   = g('in1');
-  const cum38  = g('in38');
-  const cum4   = g('no4');
-  const cum10  = g('no10');
+  const cum2   = gSieve('2in',     'in2');
+  const cum1   = gSieve('1in',     'in1');
+  const cum38  = gSieve('0.375in', 'in38');
+  const cum4   = gSieve('no4',     'no4');
+  const cum10  = gSieve('no10',    'no10');
 
   // Split 2 — values as recorded (CUMULATIVE within split 2, resets after wash)
-  const cum40_s2  = g('no40');
-  const cum200_s2 = g('no200');
+  const cum40_s2  = gSieve('no40',  'no40');
+  const cum200_s2 = gSieve('no200', 'no200');
 
   // Derive individual WT RT for split 1 (from cumulative)
   const ret2   = cum2;
