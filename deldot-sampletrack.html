@@ -1605,7 +1605,7 @@ function renderLB44(sample, labData, calc) {
         <div class="summary-divider">Classification</div>
         <div class="summary-item hl" style="background:#dbeafe;"><span class="si-lbl">CLASSIFICATION:</span><span class="si-val" style="font-size:11pt;color:#1e3a8a;">${calc.classification}</span></div>
         <div class="summary-divider">Section 1001 Borrow</div>
-        ${inlineBorrowHtml}
+        __INLINE_BORROW__
       </div>
     </div>
     <div class="lb44-approval">
@@ -1637,8 +1637,8 @@ function renderLB44(sample, labData, calc) {
   const llScore = llPct ? parseInt(llPct) : null;
   const piScore = (llPct && plPct) ? (parseInt(llPct) - parseInt(plPct)) : null;
   const inlineBorrowHtml = renderInlineBorrow(calc, llScore, piScore);
-  // Re-inject with borrow inline (template literal already has ${inlineBorrowHtml} placeholder)
-  const finalHtml = html.replace('${inlineBorrowHtml}', inlineBorrowHtml);
+  // Re-inject with borrow inline (template literal already has __INLINE_BORROW__ placeholder)
+  const finalHtml = html.replace('__INLINE_BORROW__', inlineBorrowHtml);
   document.getElementById('lb44Output').innerHTML = finalHtml;
 }
 
