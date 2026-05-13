@@ -1478,7 +1478,7 @@ SECTION 2 — SIEVE DATA (two separate rows in the form):
   * "0.375in" = value on the 3/8" row (null if blank)
   * "no4" = value on the No.4 row (null if blank)
   * "no10" = value on the No.10 row (null if blank)
-  NEVER move a value from one row to another. A blank row = null. Do not shift values.
+  NEVER move a value from one row to another. A blank row = 0. Do not shift values. If 2" and 1" are blank, return 0 for both — do not put the 3/8" value in those fields.
 - SPLIT 2 sieves: "no40" = value on No.40 row, "no200" = value on No.200 row. These reset after wash.
 
 SECTION 3 — ORGANIC (T-267):
@@ -1495,13 +1495,13 @@ Return ONLY valid JSON, no markdown:
   "plastic_limit": { "bottle_no": "", "wt_wet_soil_bottle": null, "wt_dry_bottle": null, "wt_bottle": null },
   "organic": { "bottle_no": "", "wt_wet_soil_bottle": null, "wt_dry_bottle": null, "wt_bottle": null },
   "sieves": {
-    "2in":   null,
-    "1in":   null,
-    "0.375in": null,
-    "no4":   null,
-    "no10":  null,
-    "no40":  null,
-    "no200": null
+    "2in":   0,
+    "1in":   0,
+    "0.375in": 0,
+    "no4":   0,
+    "no10":  0,
+    "no40":  0,
+    "no200": 0
   },
   "notes": ""
 }`;
@@ -1669,12 +1669,13 @@ function calculateSieve(d) {
 
   // Helper to build a result row
   function row(indRet, cumWt, pctRetInd, cumPctRet, pctPassVal, key) {
-    const show = indRet > 0 || ['in2','in1'].includes(key);
+    const hasMat = indRet > 0;
+    const isUpper = ['in2','in1'].includes(key);
     return {
-      ret:     show         ? indRet.toFixed(1)    : null,
-      cum:     show         ? cumWt.toFixed(1)      : null,
-      pctRet:  total > 0    ? pctRetInd.toFixed(1) : null,
-      pctPass: total > 0    ? pctPassVal.toFixed(1): null,
+      ret:     hasMat ? indRet.toFixed(1) : (isUpper ? '0.0' : null),
+      cum:     hasMat ? cumWt.toFixed(1)  : (isUpper ? '0.0' : null),
+      pctRet:  hasMat || isUpper ? pctRetInd.toFixed(1)  : null,
+      pctPass: hasMat || isUpper ? pctPassVal.toFixed(1) : null,
     };
   }
 
