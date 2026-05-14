@@ -1472,7 +1472,10 @@ async function finishLabGeneration(parsed) {
   await db.from('samples').update(labData).eq('id', currentSample.id);
 
   const calc = calculateSieve(parsed);
+  // Important: spread order ensures fresh parsed lab_data overrides any stale currentSample.lab_data
   const merged = { ...currentSample, ...labData, lab_data: parsed };
+  // Also update currentSample in memory so subsequent edits use fresh data
+  currentSample = { ...currentSample, ...labData, lab_data: parsed };
   renderLB44(merged, parsed, calc);
   switchView('report');
   showToast('LB-44 generated ✓', 'success');
