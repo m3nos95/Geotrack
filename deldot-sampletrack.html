@@ -1143,132 +1143,38 @@ function printQRLabel() {
                    document.querySelector('#qrcode-container img');
   if (!qrCanvas) { showToast('No QR code to print', 'error'); return; }
 
-  const testNo   = document.getElementById('qrTestNo').textContent;
-  const infoText = document.getElementById('qrInfo').textContent;
-  const imgSrc   = qrCanvas.tagName === 'CANVAS' ? qrCanvas.toDataURL('image/png') : qrCanvas.src;
-  const matType  = document.getElementById('qrInfo').dataset.material || '';
+  const testNo  = document.getElementById('qrTestNo').textContent;
+  const imgSrc  = qrCanvas.tagName === 'CANVAS' ? qrCanvas.toDataURL('image/png') : qrCanvas.src;
+  const matType = document.getElementById('qrInfo').dataset.material || '';
+  const contract = document.getElementById('qrInfo').textContent.split('|')[0].trim();
 
-  const win = window.open('', '_blank', 'width=400,height=500');
-  win.document.write(`<!DOCTYPE html>
-<html>
-<head>
-<title>QR Label — ${testNo}</title>
-<style>
-  @page { margin: 0.25in; size: 3in 3in; }
-  * { box-sizing: border-box; margin: 0; padding: 0; }
-  body {
-    font-family: 'Arial', sans-serif;
-    display: flex; flex-direction: column;
-    align-items: center; justify-content: center;
-    min-height: 100vh; padding: 12px;
-    background: #fff; color: #111;
-  }
-  .label-box {
-    border: 2px solid #1a2535;
-    border-radius: 4px;
-    padding: 12px 14px;
-    text-align: center;
-    width: 100%;
-    max-width: 280px;
-  }
-  .agency { font-size: 9px; letter-spacing: 1.5px; color: #555; text-transform: uppercase; margin-bottom: 6px; }
-  .qr-img { width: 180px; height: 180px; margin: 6px auto; display: block; }
-  .test-no { font-size: 22px; font-weight: 700; letter-spacing: 2px; color: #1a2535; margin: 6px 0 4px; }
-  .info { font-size: 9px; color: #555; line-height: 1.6; white-space: pre-line; }
-  .footer { font-size: 7px; color: #aaa; margin-top: 8px; letter-spacing: 0.5px; }
-</style>
-</head>
-<body>
-<div class="label-box">
-  <div class="agency">DelDOT Materials &amp; Research Laboratory</div>
-  <img class="qr-img" src="${imgSrc}" alt="QR Code">
-  <div class="test-no">${testNo}</div>
-  <div class="info">${infoText.replace(/\n/g,'\n')}</div>
-  <div style="margin-top:8px;font-size:13px;font-weight:700;color:#1a2535;letter-spacing:1px;border-top:1px solid #ddd;padding-top:8px;">MATERIAL: ${matType}</div>
-  <div class="footer">Scan to access sample record • SampleTrack</div>
-</div>
-<script>window.onload = function(){ window.print(); window.onafterprint = function(){ window.close(); }; };<\/script>
+  const labelHTML = '<!DOCTYPE html><html><head><title>QR Label</title><style>' +
+    '@page{margin:0.1in;size:2.5in 3in;}' +
+    '*{box-sizing:border-box;margin:0;padding:0;}' +
+    'body{font-family:Arial,sans-serif;display:flex;align-items:center;justify-content:center;min-height:100vh;background:#fff;color:#111;}' +
+    '.box{border:1.5px solid #1a2535;border-radius:3px;padding:10px;text-align:center;width:220px;}' +
+    '.agency{font-size:7px;letter-spacing:1.5px;color:#777;text-transform:uppercase;margin-bottom:4px;}' +
+    '.qr{width:160px;height:160px;margin:4px auto;display:block;}' +
+    '.testno{font-size:20px;font-weight:700;letter-spacing:2px;color:#1a2535;margin:6px 0 3px;}' +
+    '.contract{font-size:9px;color:#555;margin-bottom:3px;}' +
+    '.material{font-size:12px;font-weight:700;color:#1a2535;letter-spacing:1px;border-top:1px solid #ddd;padding-top:5px;margin-top:5px;}' +
+    '</style></head><body>' +
+    '<div class="box">' +
+    '<div class="agency">DelDOT M&R Lab</div>' +
+    '<img class="qr" src="' + imgSrc + '">' +
+    '<div class="testno">' + testNo + '</div>' +
+    '<div class="contract">' + contract + '</div>' +
+    '<div class="material">' + matType + '</div>' +
+    '</div>' +
+    '<script>window.onload=function(){window.print();window.onafterprint=function(){window.close();};};<\/script>' +
+    '</body></html>';
 
-  <!-- ── SIEVE ENTRY OVERLAY (shown after AI reads Atterberg) ── -->
-  <div class="edit-overlay" id="sieveEntryOverlay">
-    <div class="edit-panel">
-      <h2>ENTER SIEVE DATA</h2>
-      <p>AI has read the Atterberg and Organic values. Now enter the sieve weights from the form.</p>
-
-      <div class="manual-section">
-        <div class="manual-section-title">Sample Weights</div>
-        <div class="manual-grid two">
-          <div class="mf"><label>Wt. of Total Sample (g)</label><input type="number" step="0.1" id="se_total_wt" placeholder="1026.7"></div>
-          <div class="mf"><label>Wt. of Wash Sample (g)</label><input type="number" step="0.1" id="se_wash_wt" placeholder="114.3"></div>
-        </div>
-      </div>
-
-      <div class="manual-section">
-        <div class="manual-section-title">Sieve Weights — Cumulative Retained (g)</div>
-        <p style="color:var(--muted);font-family:var(--mono);font-size:10px;margin-bottom:10px;">Enter 0 for any sieve with no material retained. Split 1 = dry sieved. Split 2 = wet sieved after wash.</p>
-        <table class="sieve-manual-table">
-          <thead><tr><th>SIEVE</th><th>SPLIT</th><th>CUM. WT. RETAINED (g)</th></tr></thead>
-          <tbody>
-            <tr><td>2" (50.8mm)</td><td style="text-align:center;font-family:var(--mono);font-size:10px;color:var(--muted);">1</td><td><input type="number" step="0.1" id="se_in2" placeholder="0.0" value="0"></td></tr>
-            <tr><td>1" (25.4mm)</td><td style="text-align:center;font-family:var(--mono);font-size:10px;color:var(--muted);">1</td><td><input type="number" step="0.1" id="se_in1" placeholder="0.0" value="0"></td></tr>
-            <tr><td>3/8" (9.52mm)</td><td style="text-align:center;font-family:var(--mono);font-size:10px;color:var(--muted);">1</td><td><input type="number" step="0.1" id="se_in38" placeholder="117.1"></td></tr>
-            <tr><td>#4 (4.76mm)</td><td style="text-align:center;font-family:var(--mono);font-size:10px;color:var(--muted);">1</td><td><input type="number" step="0.1" id="se_no4" placeholder="178.3"></td></tr>
-            <tr><td>#10 (2.00mm)</td><td style="text-align:center;font-family:var(--mono);font-size:10px;color:var(--muted);">1</td><td><input type="number" step="0.1" id="se_no10" placeholder="276.7"></td></tr>
-            <tr class="wash-row"><td>↓ WASH SPLIT ↓</td><td></td><td style="text-align:center;color:var(--gold);font-family:var(--mono);font-size:11px;">Wash Wt entered above</td></tr>
-            <tr><td>#40 (0.42mm)</td><td style="text-align:center;font-family:var(--mono);font-size:10px;color:var(--muted);">2</td><td><input type="number" step="0.1" id="se_no40" placeholder="39.4"></td></tr>
-            <tr><td>#200 (0.074mm)</td><td style="text-align:center;font-family:var(--mono);font-size:10px;color:var(--muted);">2</td><td><input type="number" step="0.1" id="se_no200" placeholder="81.1"></td></tr>
-          </tbody>
-        </table>
-      </div>
-
-      <div class="btn-row" style="margin-top:16px;">
-        <button class="btn btn-success" onclick="submitSieveEntry()">✓ GENERATE LB-44 REPORT</button>
-        <button class="btn btn-ghost" onclick="document.getElementById('sieveEntryOverlay').classList.remove('open')">CANCEL</button>
-      </div>
-    </div>
-  </div>
-
-  <!-- ── EDIT SAMPLE OVERLAY ── -->
-  <div class="edit-overlay" id="editSampleOverlay">
-    <div class="edit-panel">
-      <h2>EDIT SAMPLE INFO</h2>
-      <p>Update any field entry information for this sample. Test number cannot be changed.</p>
-      <input type="hidden" id="es_id">
-
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px;">
-        <div class="mf"><label>Contract No.</label><input type="text" id="es_contract"></div>
-        <div class="mf"><label>F.A. Project</label><input type="text" id="es_fa_project"></div>
-        <div class="mf"><label>Contractor</label><input type="text" id="es_contractor"></div>
-        <div class="mf"><label>Road</label><input type="text" id="es_road"></div>
-        <div class="mf" style="grid-column:span 2;"><label>Location / Description</label><input type="text" id="es_location"></div>
-        <div class="mf"><label>Depth</label><input type="text" id="es_depth"></div>
-        <div class="mf"><label>Elevation</label><input type="text" id="es_elevation"></div>
-        <div class="mf"><label>Source</label><input type="text" id="es_source"></div>
-        <div class="mf"><label>Type &amp; Use of Material</label><input type="text" id="es_material_type" placeholder="209C, 209ACF..."></div>
-        <div class="mf"><label>Method Placed</label><input type="text" id="es_method_placed"></div>
-        <div class="mf"><label>Type of Sample</label>
-          <select id="es_sample_type" style="background:var(--panel);border:1px solid var(--border);color:var(--text);font-family:var(--sans);font-size:13px;padding:7px 9px;border-radius:var(--radius);outline:none;">
-            <option>Field Control</option>
-            <option>Acceptance</option>
-            <option>Verification</option>
-            <option>Informational</option>
-          </select>
-        </div>
-        <div class="mf"><label>Date Sampled</label><input type="date" id="es_date_sampled"></div>
-        <div class="mf"><label>Sampled By</label><input type="text" id="es_sampled_by"></div>
-        <div class="mf" style="grid-column:span 2;"><label>Remarks</label><input type="text" id="es_remarks"></div>
-      </div>
-
-      <div class="btn-row">
-        <button class="btn btn-success" onclick="saveEditSample()">✓ SAVE CHANGES</button>
-        <button class="btn btn-ghost" onclick="document.getElementById('editSampleOverlay').classList.remove('open')">CANCEL</button>
-      </div>
-    </div>
-  </div>
-</body>
-</html>`);
+  const win = window.open('', '_blank', 'width=300,height=400');
+  win.document.write(labelHTML);
   win.document.close();
 }
+
+
 
 async function submitFieldSample() {
   if (!db) { showToast('Not connected to database', 'error'); return; }
