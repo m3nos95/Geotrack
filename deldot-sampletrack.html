@@ -1636,22 +1636,29 @@ Return ONLY JSON:
 Target test number: ${col}
 Find the column headed "${col}" and read ONLY the sieve analysis section (bottom half of form).
 
-COLUMN ID: Find "${col}" in the top row. Note its physical position. Stay in that column for ALL sieve rows.
+COLUMN ID: Find "${col}" in the top row. Note its physical position (1st, 2nd, 3rd column from left). Stay in THAT column for every row.
 
-IGNORE the top section (LL, PL, Organic) completely — focus only on the sieve table.
+IGNORE the top section (LL, PL, Organic) completely.
 
-Read these labeled rows from your target column:
-- "WT of Total Sample" row → total_sample_wt (4-digit, 900-1800g e.g. 1005.2, 1026.7)
-- "Wash WT" row → wash_sample_wt (3-digit, 100-200g e.g. 114.3, 120.6) — this row is BETWEEN #10 and #40
-- "2 (50.8mm)" row → "2in" (0 if blank)
-- "1 (25.4mm)" row → "1in" (0 if blank)  
-- "3/8 (9.52mm)" row → "0.375in" (READ even if 2" and 1" were 0 — this row often has the first value)
-- "No. 4 (4.76mm)" row → "no4"
-- "No. 10 (2.00mm)" row → "no10"
-- "No. 40 (0.42mm)" row → "no40"
-- "No. 200 (0.074mm)" row → "no200" (NOT the Pass #200 row below it — retained weight is LESS than wash weight)
+THE SIEVE TABLE ROWS — in exact top-to-bottom order as they appear on the form:
+1. "WT of Total Sample" → total_sample_wt. This is ABOVE the sieve table. Always a 4-digit number (900–1800g).
+2. "2 (50.8mm)"  → "2in". Usually 0 or blank.
+3. "1 (25.4mm)"  → "1in". Usually 0 or blank.
+4. "3/8 (9.52mm)" → "0.375in". This is the FIRST sieve that typically has a significant value (e.g. 117.1, 133.3, 156.2).
+5. "No. 4 (4.76mm)" → "no4". Cumulative — always GREATER than 3/8" value.
+6. "No. 10 (2.00mm)" → "no10". Cumulative — always GREATER than #4 value.
+7. "Wash WT" → wash_sample_wt. This is a SEPARATE row labeled "Wash WT" between #10 and #40. It is the wash split weight, typically 100–200g (e.g. 112.8, 114.3, 119.1, 125.1). THIS IS NOT A SIEVE — do not put this value into any sieve field.
+8. "No. 40 (0.42mm)" → "no40". This is AFTER the Wash WT row. Cumulative within the wash split — typically 50–120g.
+9. "No. 200 (0.074mm)" → "no200". Cumulative within wash split — typically GREATER than #40 value and LESS than wash weight.
+10. "Pass #200" → IGNORE this row entirely. It is calculated, not measured.
 
-Each row is INDEPENDENT. Read every single one. A blank 2" or 1" does NOT mean skip the rest.
+VALIDATION — check these before returning:
+- total_sample_wt must be 900–1800g
+- wash_sample_wt must be 100–200g. If you think wash_sample_wt is over 200g, you have read the wrong row — re-examine.
+- no4 must be greater than 0.375in
+- no10 must be greater than no4
+- no200 must be greater than no40 and less than wash_sample_wt
+- Wash WT value must NEVER appear in "0.375in", "no4", "no10", "no40", or "no200" fields
 
 Return ONLY JSON:
 {
@@ -1665,6 +1672,35 @@ Return ONLY JSON:
 
     const sieveData = await callAI(sievePrompt);
     if (!sieveData) throw new Error('Could not read sieve data');
+
+    // ── Post-AI validation: catch common shift errors
+    const sv = sieveData.sieves || {};
+    const washWt = parseFloat(sieveData.wash_sample_wt) || 0;
+    const totalWt = parseFloat(sieveData.total_sample_wt) || 0;
+
+    // If wash_sample_wt > 200g it's likely a sieve value — find the real wash
+    // by checking if 0.375in is suspiciously large (close to total sample wt)
+    if (washWt > 200 || washWt > totalWt * 0.5) {
+      // Wash got misread — likely the 3/8" value ended up there
+      // Shift: move 0.375in→wash, no4→0.375in, no10→no4, no40→no10... etc
+      // But we don't know exactly where it shifted, so flag for manual entry
+      document.getElementById('labStatus').textContent = '⚠ Wash weight seems wrong — please use Edit/Override to correct sieve values';
+    }
+
+    // Validate cumulative order: no4 >= 0.375in, no10 >= no4
+    const in38 = parseFloat(sv['0.375in']) || 0;
+    const no4  = parseFloat(sv['no4'])     || 0;
+    const no10 = parseFloat(sv['no10'])    || 0;
+    const no40 = parseFloat(sv['no40'])    || 0;
+    const no200= parseFloat(sv['no200'])   || 0;
+
+    // If cumulative order is violated, values likely shifted — log warning
+    if (no4 > 0 && in38 > 0 && no4 < in38) {
+      console.warn('Sieve validation: no4 < 0.375in — possible shift error');
+    }
+    if (no10 > 0 && no4 > 0 && no10 < no4) {
+      console.warn('Sieve validation: no10 < no4 — possible shift error');
+    }
 
     // ── Merge both results
     const parsed = {
