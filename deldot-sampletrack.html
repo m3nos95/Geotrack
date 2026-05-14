@@ -1143,51 +1143,35 @@ function printQRLabel() {
                    document.querySelector('#qrcode-container img');
   if (!qrCanvas) { showToast('No QR code to print', 'error'); return; }
 
-  const testNo   = document.getElementById('qrTestNo').textContent;
-  const infoText = document.getElementById('qrInfo').textContent;
-  const imgSrc   = qrCanvas.tagName === 'CANVAS' ? qrCanvas.toDataURL('image/png') : qrCanvas.src;
-  const matType  = document.getElementById('qrInfo').dataset.material || '';
+  const testNo  = document.getElementById('qrTestNo').textContent;
+  const imgSrc  = qrCanvas.tagName === 'CANVAS' ? qrCanvas.toDataURL('image/png') : qrCanvas.src;
+  const matType = document.getElementById('qrInfo').dataset.material || '';
+  const contract = document.getElementById('qrInfo').textContent.split('|')[0].trim();
 
-  const win = window.open('', '_blank', 'width=400,height=500');
-  win.document.write(`<!DOCTYPE html>
-<html>
-<head>
-<title>QR Label — ${testNo}</title>
-<style>
-  @page { margin: 0.25in; size: 3in 3in; }
-  * { box-sizing: border-box; margin: 0; padding: 0; }
-  body {
-    font-family: 'Arial', sans-serif;
-    display: flex; flex-direction: column;
-    align-items: center; justify-content: center;
-    min-height: 100vh; padding: 12px;
-    background: #fff; color: #111;
-  }
-  .label-box {
-    border: 2px solid #1a2535;
-    border-radius: 4px;
-    padding: 12px 14px;
-    text-align: center;
-    width: 100%;
-    max-width: 280px;
-  }
-  .agency { font-size: 9px; letter-spacing: 1.5px; color: #555; text-transform: uppercase; margin-bottom: 6px; }
-  .qr-img { width: 180px; height: 180px; margin: 6px auto; display: block; }
-  .test-no { font-size: 22px; font-weight: 700; letter-spacing: 2px; color: #1a2535; margin: 6px 0 4px; }
-  .info { font-size: 9px; color: #555; line-height: 1.6; white-space: pre-line; }
-  .footer { font-size: 7px; color: #aaa; margin-top: 8px; letter-spacing: 0.5px; }
-</style>
-</head>
-<body>
-<div class="label-box">
-  <div class="agency">DelDOT Materials &amp; Research Laboratory</div>
-  <img class="qr-img" src="${imgSrc}" alt="QR Code">
-  <div class="test-no">${testNo}</div>
-  <div class="info">${infoText.replace(/\n/g,'\n')}</div>
-  <div style="margin-top:8px;font-size:13px;font-weight:700;color:#1a2535;letter-spacing:1px;border-top:1px solid #ddd;padding-top:8px;">MATERIAL: ${matType}</div>
-  <div class="footer">Scan to access sample record • SampleTrack</div>
-</div>
-<script>window.onload = function(){ window.print(); window.onafterprint = function(){ window.close(); }; };<\/script>
+  const labelHTML = '<!DOCTYPE html><html><head><title>QR Label</title><style>' +
+    '@page{margin:0.1in;size:2.5in 3in;}' +
+    '*{box-sizing:border-box;margin:0;padding:0;}' +
+    'body{font-family:Arial,sans-serif;display:flex;align-items:center;justify-content:center;min-height:100vh;background:#fff;color:#111;}' +
+    '.box{border:1.5px solid #1a2535;border-radius:3px;padding:10px;text-align:center;width:220px;}' +
+    '.agency{font-size:7px;letter-spacing:1.5px;color:#777;text-transform:uppercase;margin-bottom:4px;}' +
+    '.qr{width:160px;height:160px;margin:4px auto;display:block;}' +
+    '.testno{font-size:20px;font-weight:700;letter-spacing:2px;color:#1a2535;margin:6px 0 3px;}' +
+    '.contract{font-size:9px;color:#555;margin-bottom:3px;}' +
+    '.material{font-size:12px;font-weight:700;color:#1a2535;letter-spacing:1px;border-top:1px solid #ddd;padding-top:5px;margin-top:5px;}' +
+    '</style></head><body>' +
+    '<div class="box">' +
+    '<div class="agency">DelDOT M&R Lab</div>' +
+    '<img class="qr" src="' + imgSrc + '">' +
+    '<div class="testno">' + testNo + '</div>' +
+    '<div class="contract">' + contract + '</div>' +
+    '<div class="material">' + matType + '</div>' +
+    '</div>' +
+    '<script>window.onload=function(){window.print();window.onafterprint=function(){window.close();};};<\/script>' +
+    '</body></html>';
+
+  const win = window.open('', '_blank', 'width=300,height=400');
+  win.document.write(labelHTML);
+  win.document.close();
 
   <!-- ── SIEVE ENTRY OVERLAY (shown after AI reads Atterberg) ── -->
   <div class="edit-overlay" id="sieveEntryOverlay">
