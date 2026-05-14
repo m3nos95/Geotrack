@@ -760,20 +760,42 @@ nav {
 
         <!-- AGGREGATE LAB PANEL -->
         <div id="aggLabPanel" style="display:none;">
-          <div class="card">
-            <div class="card-title">Aggregate Sieve Weights</div>
-            <p style="color:var(--muted);font-size:11px;font-family:var(--mono);margin-bottom:14px;">
-              Enter cumulative retained weights from sieve nest. PAN = total sample weight (sum of all retained + pan catch).
-            </p>
-            <div id="aggSieveInputs">
-              <!-- Dynamically populated based on aggregate type -->
-              <p style="color:var(--muted);font-family:var(--mono);font-size:11px;">Load a sample with an aggregate type selected to see sieve inputs.</p>
-            </div>
-            <div class="mf" style="margin-top:12px;max-width:200px;">
-              <label style="font-family:var(--mono);font-size:9px;color:var(--gold);letter-spacing:1px;">PAN WEIGHT = TOTAL SAMPLE (g)</label>
-              <input type="number" step="0.1" id="agg_pan" placeholder="e.g. 6802.0" style="background:rgba(200,167,67,0.1);border-color:var(--gold);">
+
+          <!-- Aggregate mode tabs -->
+          <div class="lab-mode-tabs" id="aggModeTabs">
+            <button class="lab-mode-tab active" id="aggTabManual" onclick="setAggMode('manual')">⌨️ MANUAL ENTRY</button>
+            <button class="lab-mode-tab" id="aggTabAI" onclick="setAggMode('ai')">📷 AI PHOTO (CARD BACK)</button>
+          </div>
+
+          <!-- Aggregate AI photo mode -->
+          <div id="aggAIPanel" style="display:none;">
+            <div class="card">
+              <div class="card-title">Upload Photo of Sieve Card</div>
+              <div class="upload-zone" id="aggDropZone">
+                <input type="file" id="aggImageInput" accept="image/*">
+                <p>📋 Photo of the back of the sample card<br><span style="font-size:11px;">Showing sieve labels and weights</span></p>
+                <img class="thumb" id="aggThumb">
+              </div>
             </div>
           </div>
+
+          <!-- Aggregate manual mode -->
+          <div id="aggManualPanel">
+            <div class="card">
+              <div class="card-title">Sieve Weights — Cumulative Retained</div>
+              <p style="color:var(--muted);font-size:11px;font-family:var(--mono);margin-bottom:14px;">
+                Enter cumulative retained weights. PAN weight = total sample (all retained + pan catch).
+              </p>
+              <div id="aggSieveInputs">
+                <p style="color:var(--muted);font-family:var(--mono);font-size:11px;">Sieve inputs will appear here.</p>
+              </div>
+              <div class="mf" style="margin-top:12px;max-width:220px;">
+                <label style="font-family:var(--mono);font-size:9px;color:var(--gold);letter-spacing:1px;">PAN WT. = TOTAL SAMPLE (g)</label>
+                <input type="number" step="0.1" id="agg_pan" placeholder="e.g. 6802.0" style="background:rgba(200,167,67,0.1);border:1px solid var(--gold);border-radius:var(--radius);color:var(--text);padding:9px 11px;width:100%;font-family:var(--mono);font-size:14px;outline:none;">
+              </div>
+            </div>
+          </div>
+
         </div><!-- end aggLabPanel -->
 
         <!-- REPORT FIELDS (shared by both modes) -->
@@ -1423,9 +1445,21 @@ function loadSampleIntoLab(sample) {
   if (aggPanel) aggPanel.style.display = isAgg ? 'block' : 'none';
   if (soilPanel) soilPanel.style.display = isAgg ? 'none' : 'block';
 
-  // Update analyze button text
+  // Update analyze button text and populate sieve inputs
   const btn = document.getElementById('labAnalyzeBtn');
-  if (btn) btn.textContent = isAgg ? '🔬 GENERATE AGGREGATE REPORT' : '🔬 ANALYZE & GENERATE LB-44';
+  if (btn) btn.textContent = isAgg ? '⚖️ GENERATE AGGREGATE REPORT' : '🔬 ANALYZE & GENERATE LB-44';
+
+  // Populate aggregate sieve inputs immediately
+  if (isAgg && sample.agg_type) {
+    // Small timeout to ensure DOM is visible first
+    setTimeout(() => populateAggSieveInputs(sample.agg_type), 50);
+  }
+
+  // Hide AI/Manual tabs for aggregate — aggregate uses its own panel
+  const aiTab = document.getElementById('modeTabAI');
+  const manTab = document.getElementById('modeTabManual');
+  const modeTabsEl = document.querySelector('.lab-mode-tabs');
+  if (modeTabsEl) modeTabsEl.style.display = isAgg ? 'none' : 'flex';
 }
 
 function handleLabImage(file) {
@@ -2284,6 +2318,48 @@ function renderInlineBorrow(calc, llVal, piVal, types) {
 
 
 
+
+// ══════════════════════════════════════════════
+// AGGREGATE LAB MODE
+// ══════════════════════════════════════════════
+let aggImageB64 = null;
+let aggImageType = null;
+
+function setAggMode(mode) {
+  document.getElementById('aggTabManual').classList.toggle('active', mode === 'manual');
+  document.getElementById('aggTabAI').classList.toggle('active', mode === 'ai');
+  document.getElementById('aggManualPanel').style.display = mode === 'manual' ? 'block' : 'none';
+  document.getElementById('aggAIPanel').style.display = mode === 'ai' ? 'block' : 'none';
+  const btn = document.getElementById('labAnalyzeBtn');
+  if (btn) btn.textContent = mode === 'ai' ? '📷 READ CARD & GENERATE REPORT' : '⚖️ GENERATE AGGREGATE REPORT';
+}
+
+// Wire up aggregate image upload
+document.addEventListener('DOMContentLoaded', () => {
+  const aggInput = document.getElementById('aggImageInput');
+  const aggDrop  = document.getElementById('aggDropZone');
+  if (aggInput) {
+    aggInput.addEventListener('change', e => handleAggImage(e.target.files[0]));
+  }
+  if (aggDrop) {
+    aggDrop.addEventListener('dragover', e => { e.preventDefault(); aggDrop.classList.add('drag'); });
+    aggDrop.addEventListener('dragleave', () => aggDrop.classList.remove('drag'));
+    aggDrop.addEventListener('drop', e => { e.preventDefault(); aggDrop.classList.remove('drag'); handleAggImage(e.dataTransfer.files[0]); });
+  }
+});
+
+function handleAggImage(file) {
+  if (!file) return;
+  const r = new FileReader();
+  r.onload = ev => {
+    aggImageB64 = ev.target.result.split(',')[1];
+    aggImageType = file.type || 'image/jpeg';
+    const thumb = document.getElementById('aggThumb');
+    if (thumb) { thumb.src = ev.target.result; thumb.style.display = 'block'; }
+  };
+  r.readAsDataURL(file);
+}
+
 // ══════════════════════════════════════════════
 // AGGREGATE LAB ENTRY
 // ══════════════════════════════════════════════
@@ -2318,6 +2394,16 @@ async function generateAggregateReport() {
   if (!aggType || !AGG_TYPES[aggType]) { showToast('No aggregate type set for this sample', 'error'); return; }
 
   const spec = AGG_TYPES[aggType];
+  const aggMode = document.getElementById('aggTabAI')?.classList.contains('active') ? 'ai' : 'manual';
+
+  // AI mode — read the card photo
+  if (aggMode === 'ai') {
+    if (!aggImageB64) { showToast('Upload a photo of the sieve card first', 'error'); return; }
+    await readAggCardWithAI(aggType, spec);
+    return;
+  }
+
+  // Manual mode
   const panWt = parseFloat(document.getElementById('agg_pan')?.value) || 0;
   if (!panWt) { showToast('Enter the PAN weight (total sample weight)', 'error'); return; }
 
@@ -2462,6 +2548,78 @@ function renderAggregateReport(sample, calc) {
   </div>`;
 
   document.getElementById('lb44Output').innerHTML = reportHTML;
+}
+
+
+async function readAggCardWithAI(aggType, spec) {
+  const aiKey = localStorage.getItem('ai_key');
+  if (!aiKey) { showToast('No API key configured', 'error'); return; }
+
+  document.getElementById('labStatus').textContent = '⏳ Reading sieve card…';
+  document.getElementById('labAnalyzeBtn').disabled = true;
+
+  const sieveList = spec.sieves.map(k => `${SIEVE_LABELS[k]||k} → "${k}"`).join('\n  ');
+
+  const prompt = `You are a Delaware DOT lab technician. This is a handwritten aggregate sieve card showing cumulative retained weights.
+
+Read the sieve size label and its weight from each row. The last row labeled "PAN" is the total sample weight.
+
+Map the values to these JSON keys:
+  ${sieveList}
+  PAN → pan_weight (total sample weight)
+
+Return ONLY JSON, no markdown:
+{
+  "pan_weight": null,
+  ${spec.sieves.map(k => `"${k}": 0`).join(',\n  ')}
+}`;
+
+  try {
+    const resp = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': aiKey,
+        'anthropic-version': '2023-06-01',
+        'anthropic-dangerous-direct-browser-access': 'true'
+      },
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-20250514',
+        max_tokens: 500,
+        messages: [{ role: 'user', content: [
+          { type: 'image', source: { type: 'base64', media_type: aggImageType, data: aggImageB64 } },
+          { type: 'text', text: prompt }
+        ]}]
+      })
+    });
+
+    const data = await resp.json();
+    if (data.error) throw new Error(data.error.message);
+    const raw = data.content.map(c => c.text||'').join('');
+    let parsed;
+    try { parsed = JSON.parse(raw.replace(/\`\`\`json|\`\`\`/g,'').trim()); }
+    catch { const m = raw.match(/\{[\s\S]*\}/); parsed = m ? JSON.parse(m[0]) : null; }
+    if (!parsed) throw new Error('Could not parse AI response');
+
+    document.getElementById('labStatus').textContent = '✓ Card read — generating report…';
+
+    // Fill manual fields with AI values so tech can review
+    if (parsed.pan_weight) document.getElementById('agg_pan').value = parsed.pan_weight;
+    for (const key of spec.sieves) {
+      const el = document.getElementById('agg_' + key);
+      if (el && parsed[key] != null) el.value = parsed[key];
+    }
+
+    // Switch to manual view so tech can verify before generating
+    setAggMode('manual');
+    showToast('Card read ✓ — review values then click Generate', 'success');
+    document.getElementById('labStatus').textContent = '✓ Values populated — review and click Generate Report';
+
+  } catch(e) {
+    document.getElementById('labStatus').textContent = '✗ Error: ' + e.message;
+    showToast('AI error: ' + e.message, 'error');
+  }
+  document.getElementById('labAnalyzeBtn').disabled = false;
 }
 
 // ══════════════════════════════════════════════
