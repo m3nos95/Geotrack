@@ -3143,15 +3143,47 @@ table.fc-borrow-tbl tr.fc-borrow-detail-row td{background:var(--surface);border-
         <div class="dash-kpi-card" id="dkpi-breaks"><div class="dkpi-icon"></div><div class="dkpi-val">—</div><div class="dkpi-lbl"></div><div class="dkpi-sub"></div></div>
       </div>
 
+      <!-- Production work focus -->
+      <div class="dash-section-label">Today's Work</div>
+      <div class="dash-work-grid">
+        <div class="dash-work-panel dash-work-main">
+          <div class="dash-work-hdr">
+            <div>
+              <div class="dash-work-title">Priority Queue</div>
+              <div class="dash-work-sub" id="dashWorkSummary">Loading operational queue...</div>
+            </div>
+            <button class="dash-work-link" onclick="switchView('dashboard')">All Samples</button>
+          </div>
+          <div class="dash-priority-list" id="dashPriorityList"></div>
+        </div>
+        <div class="dash-work-side">
+          <button class="dash-work-card" id="dashWorkLab" onclick="switchView('labhub')">
+            <span class="dash-work-card-label">Lab Queue</span>
+            <strong>—</strong>
+            <small>Awaiting analysis</small>
+          </button>
+          <button class="dash-work-card" id="dashWorkApprovals" onclick="slGoToApprovalQueue()">
+            <span class="dash-work-card-label">Approvals</span>
+            <strong>—</strong>
+            <small>Need review</small>
+          </button>
+          <button class="dash-work-card" id="dashWorkBreaks" onclick="switchView('conchub')">
+            <span class="dash-work-card-label">Concrete Breaks</span>
+            <strong>—</strong>
+            <small>Pending cylinders</small>
+          </button>
+        </div>
+      </div>
 
       <!-- Module shortcuts grid -->
-      <div style="font-family:var(--mono);font-size:8px;letter-spacing:2px;color:var(--muted);margin-bottom:10px;text-transform:uppercase;">Lab Modules</div>
+      <div class="dash-section-label">Production Workspaces</div>
       <div class="dash-module-grid">
 
         <div class="dash-mod-card" onclick="switchView('labhub')">
           <div class="dash-mod-img-wrap" style="background:#0d1421;">
             <img id="dmc-soil" class="dash-mod-img">
           </div>
+          <div class="dash-mod-badge live">LIVE</div>
           <div class="dash-mod-footer">
             <div class="dash-mod-label">Soil &amp; Agg</div>
             <div class="dash-mod-sub">T-89 · T-90 · T-27</div>
@@ -3162,6 +3194,7 @@ table.fc-borrow-tbl tr.fc-borrow-detail-row td{background:var(--surface);border-
           <div class="dash-mod-img-wrap" style="background:#0d1421;">
             <img id="dmc-concrete" class="dash-mod-img" src="data:image/jpeg;base64,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">
           </div>
+          <div class="dash-mod-badge live">LIVE</div>
           <div class="dash-mod-footer">
             <div class="dash-mod-label">Concrete</div>
             <div class="dash-mod-sub">Cylinder breaks · T-22</div>
@@ -3205,6 +3238,7 @@ table.fc-borrow-tbl tr.fc-borrow-detail-row td{background:var(--surface);border-
           <div class="dash-mod-img-wrap" style="background:#0d1421;">
             <img id="dmc-field" class="dash-mod-img">
           </div>
+          <div class="dash-mod-badge live">LIVE</div>
           <div class="dash-mod-footer">
             <div class="dash-mod-label">Field Control</div>
             <div class="dash-mod-sub">Nuclear · LB-68 · Samples</div>
@@ -7167,8 +7201,117 @@ function renderDashboard() {
     dueTodayN > 0 && overdueN === 0,
     overdueN > 0);
 
+  renderDashboardWorkflow(samples, allPendCyls, todayStr);
+
   // Render interactive calendar
   _renderDashCal();
+}
+
+function dashOpenSampleForWork(id, targetView) {
+  if (targetView === 'approval') {
+    switchView('soillab');
+    setTimeout(function(){ slStatusFilter = 'approval'; slRenderQueue(); slLoadSample(id); }, 120);
+    return;
+  }
+  if (targetView === 'lab') {
+    switchView('soillab');
+    setTimeout(function(){ slLoadSample(id); }, 120);
+    return;
+  }
+  openSample(id);
+}
+
+function renderDashboardWorkflow(samples, pendingCyls, todayStr) {
+  const list = document.getElementById('dashPriorityList');
+  const summary = document.getElementById('dashWorkSummary');
+  if (!list) return;
+
+  const weekAgo = new Date(Date.now() - 7*86400000).toISOString().slice(0,10);
+  const needsLab = samples.filter(s =>
+    s.sample_type !== 'nuclear_placeholder' &&
+    s.status !== 'density' &&
+    (!s.status || s.status === 'pending')
+  );
+  const overdueLab = needsLab.filter(s => (s.date_sampled || '') && s.date_sampled < weekAgo);
+  const approvals = samples.filter(s => s.dist_status === 'pending_review' && canApproveThisReport(s));
+  const todaySamples = samples.filter(s => (s.date_sampled || '') === todayStr || (s.created_at || '').slice(0,10) === todayStr);
+  const overdueBreaks = pendingCyls.filter(c => c.dueStatus?.cls === 'overdue');
+  const dueTodayBreaks = pendingCyls.filter(c => c.dueStatus?.cls === 'due-today');
+
+  setDashWorkCard('dashWorkLab', needsLab.length, 'Awaiting analysis', needsLab.length > 10 ? 'warn' : '');
+  setDashWorkCard('dashWorkApprovals', approvals.length, canApproveReports() ? 'Need review' : 'Visible to approvers', approvals.length ? 'warn' : '');
+  setDashWorkCard('dashWorkBreaks', pendingCyls.length, overdueBreaks.length ? `${overdueBreaks.length} overdue` : dueTodayBreaks.length ? `${dueTodayBreaks.length} due today` : 'Pending cylinders', overdueBreaks.length ? 'alert' : dueTodayBreaks.length ? 'warn' : '');
+
+  const rows = [];
+  approvals.slice(0, 3).forEach(s => rows.push({
+    tag: 'Approval',
+    title: s.test_no || s.id,
+    meta: `${s.contract || 'No contract'} · ${s.material_type || s.location || 'Report waiting'}`,
+    cls: 'warn',
+    cta: 'Review',
+    onclick: `dashOpenSampleForWork(${ltJsArg(s.id)},'approval')`
+  }));
+  overdueLab.slice(0, 3).forEach(s => rows.push({
+    tag: 'Overdue',
+    title: s.test_no || s.id,
+    meta: `${s.contract || 'No contract'} · sampled ${s.date_sampled || 'unknown date'}`,
+    cls: 'alert',
+    cta: 'Open',
+    onclick: `dashOpenSampleForWork(${ltJsArg(s.id)},'lab')`
+  }));
+  needsLab.filter(s => !overdueLab.includes(s)).slice(0, 4).forEach(s => rows.push({
+    tag: 'Lab',
+    title: s.test_no || s.id,
+    meta: `${s.test_category === 'aggregate' ? 'Aggregate' : 'Soil'} · ${s.material_type || s.location || 'Awaiting analysis'}`,
+    cls: '',
+    cta: 'Analyze',
+    onclick: `dashOpenSampleForWork(${ltJsArg(s.id)},'lab')`
+  }));
+  [...overdueBreaks, ...dueTodayBreaks].slice(0, 3).forEach(c => rows.push({
+    tag: c.dueStatus?.cls === 'overdue' ? 'Break overdue' : 'Break due',
+    title: c.setId || 'Concrete set',
+    meta: `${c.age || ''} day · ${c.location || 'No location'} · due ${c.dueDate || ''}`,
+    cls: c.dueStatus?.cls === 'overdue' ? 'alert' : 'warn',
+    cta: 'Concrete',
+    onclick: "switchView('conchub')"
+  }));
+
+  if (summary) {
+    const parts = [
+      `${needsLab.length} lab pending`,
+      `${approvals.length} approval${approvals.length === 1 ? '' : 's'}`,
+      `${todaySamples.length} logged today`
+    ];
+    summary.textContent = parts.join(' · ');
+  }
+
+  const uniqueRows = rows.slice(0, 7);
+  if (!uniqueRows.length) {
+    list.innerHTML = '<div class="dash-empty">No urgent work items. Use the workspaces below to start a new sample or review recent activity.</div>';
+    return;
+  }
+
+  list.innerHTML = uniqueRows.map(r => `
+    <div class="dash-priority-row ${r.cls || ''}" onclick="${r.onclick}">
+      <div class="dash-priority-tag">${ltEscapeHtml(r.tag)}</div>
+      <div class="dash-priority-main">
+        <div class="dash-priority-title">${ltEscapeHtml(r.title)}</div>
+        <div class="dash-priority-meta">${ltEscapeHtml(r.meta)}</div>
+      </div>
+      <div class="dash-priority-cta">${ltEscapeHtml(r.cta)}</div>
+    </div>
+  `).join('');
+}
+
+function setDashWorkCard(id, value, sub, state) {
+  const card = document.getElementById(id);
+  if (!card) return;
+  const strong = card.querySelector('strong');
+  const small = card.querySelector('small');
+  if (strong) strong.textContent = value;
+  if (small) small.textContent = sub || '';
+  card.classList.toggle('alert', state === 'alert');
+  card.classList.toggle('warn', state === 'warn');
 }
 
 // ---- Dashboard Calendar ----
@@ -11434,7 +11577,7 @@ async function saveTeamAssignments() {
 // Check if current user can approve a specific sample
 function canApproveThisReport(sample) {
   if (!currentUser) return false;
-  const isApprover = currentUser.role === 'admin' || currentUser.can_approve_reports;
+  const isApprover = currentUser.role === 'admin' || currentUser.role === 'section_admin' || currentUser.can_approve_reports;
   if (!isApprover) return false;
 
   const myAssignments = currentUser.assigned_tech_ids || [];
@@ -18606,6 +18749,166 @@ table.fc-borrow-tbl th {
   font-size: 9px;
   color: var(--muted);
   letter-spacing: 0.8px;
+}
+.dash-section-label {
+  font-family: var(--mono);
+  font-size: 8px;
+  letter-spacing: 2px;
+  color: var(--muted);
+  margin: 0 0 10px;
+  text-transform: uppercase;
+}
+.dash-work-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.7fr) minmax(260px, 0.8fr);
+  gap: 14px;
+  margin-bottom: 22px;
+}
+@media(max-width:900px){ .dash-work-grid { grid-template-columns: 1fr; } }
+.dash-work-panel,
+.dash-work-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  box-shadow: inset 0 1px 0 var(--hairline), 0 10px 32px rgba(0,0,0,0.34);
+}
+.dash-work-panel { padding: 18px 20px; }
+.dash-work-hdr {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding-bottom: 12px;
+  margin-bottom: 12px;
+  border-bottom: 1px solid var(--border);
+}
+.dash-work-title {
+  font-family: var(--mono);
+  font-size: 11px;
+  letter-spacing: 1.8px;
+  color: var(--text);
+  text-transform: uppercase;
+  font-weight: 700;
+}
+.dash-work-sub {
+  font-family: var(--mono);
+  font-size: 9px;
+  color: var(--muted);
+  letter-spacing: 0.4px;
+  margin-top: 3px;
+}
+.dash-work-link {
+  background: rgba(255,255,255,0.035);
+  border: 1px solid rgba(255,255,255,0.09);
+  border-radius: 7px;
+  color: var(--accent3);
+  cursor: pointer;
+  font-family: var(--mono);
+  font-size: 9px;
+  letter-spacing: 1px;
+  padding: 7px 10px;
+  text-transform: uppercase;
+}
+.dash-work-link:hover { border-color: rgba(240,168,78,0.42); background: rgba(240,168,78,0.1); }
+.dash-priority-list { display: flex; flex-direction: column; gap: 8px; }
+.dash-priority-row {
+  display: grid;
+  grid-template-columns: 76px minmax(0,1fr) auto;
+  gap: 12px;
+  align-items: center;
+  min-height: 52px;
+  padding: 10px 12px;
+  border: 1px solid rgba(255,255,255,0.055);
+  border-left: 3px solid var(--border-2);
+  border-radius: 9px;
+  background: rgba(255,255,255,0.018);
+  cursor: pointer;
+  transition: border-color var(--transition), background var(--transition), transform var(--transition);
+}
+.dash-priority-row:hover {
+  border-left-color: var(--accent3);
+  background: rgba(240,168,78,0.055);
+  transform: translateX(2px);
+}
+.dash-priority-row.alert { border-left-color: var(--red2); }
+.dash-priority-row.warn  { border-left-color: var(--gold); }
+.dash-priority-row.ok    { border-left-color: var(--green2); }
+.dash-priority-tag {
+  font-family: var(--mono);
+  font-size: 8px;
+  letter-spacing: 1px;
+  color: var(--muted);
+  text-transform: uppercase;
+}
+.dash-priority-main {
+  min-width: 0;
+}
+.dash-priority-title {
+  font-family: var(--mono);
+  font-size: 12px;
+  color: var(--text);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.dash-priority-meta {
+  font-family: var(--mono);
+  font-size: 9px;
+  color: var(--muted);
+  margin-top: 2px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.dash-priority-cta {
+  font-family: var(--mono);
+  font-size: 9px;
+  color: var(--accent3);
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+.dash-work-side { display: grid; grid-template-columns: 1fr; gap: 10px; }
+.dash-work-card {
+  text-align: left;
+  padding: 14px 16px;
+  cursor: pointer;
+  color: var(--text);
+  transition: border-color var(--transition), background var(--transition), transform var(--transition);
+}
+.dash-work-card:hover {
+  border-color: rgba(240,168,78,0.42);
+  background: rgba(240,168,78,0.055);
+  transform: translateY(-1px);
+}
+.dash-work-card-label {
+  display: block;
+  font-family: var(--mono);
+  font-size: 8px;
+  letter-spacing: 1.5px;
+  color: var(--muted);
+  text-transform: uppercase;
+}
+.dash-work-card strong {
+  display: block;
+  font-family: var(--mono);
+  font-size: 30px;
+  line-height: 1;
+  margin: 7px 0 4px;
+  color: var(--text);
+}
+.dash-work-card small {
+  display: block;
+  font-family: var(--mono);
+  font-size: 9px;
+  color: var(--accent3);
+  letter-spacing: 0.4px;
+}
+.dash-work-card.alert strong { color: var(--red2); }
+.dash-work-card.warn strong  { color: var(--gold); }
+.dash-mod-badge.live {
+  background: rgba(34,211,112,0.18);
+  border-color: rgba(34,211,112,0.42);
+  color: var(--green2);
 }
 
 </style>
