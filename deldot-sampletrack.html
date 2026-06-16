@@ -5959,6 +5959,40 @@ document.addEventListener('click', function() { closeDropdowns(); });
 // AUDIT / CHAIN OF CUSTODY
 // ══════════════════════════════════════════════
 const AUDIT_LOG_TABLE = 'st_audit_log';
+const LABTRAK_PERMISSIONS = {
+  'projects.manage':        ['admin', 'section_admin'],
+  'samples.manage':         ['admin', 'section_admin'],
+  'samples.create':         ['admin', 'section_admin', 'field', 'lab'],
+  'field.sample.submit':    ['admin', 'section_admin', 'field'],
+  'lab.report.generate':    ['admin', 'section_admin', 'lab'],
+  'reports.approve':        ['admin', 'section_admin'],
+  'users.manage':           ['admin'],
+  'sources.manage':         ['admin', 'section_admin', 'lab'],
+  'concrete.manage':        ['admin', 'section_admin', 'concrete']
+};
+
+function currentRole() {
+  return currentUser?.role || null;
+}
+
+function hasPermission(permission) {
+  const role = currentRole();
+  if (!role) return false;
+  if (role === 'admin') return true;
+  if (permission === 'reports.approve') return canApproveReports();
+  const allowed = LABTRAK_PERMISSIONS[permission] || [];
+  return allowed.includes(role);
+}
+
+function requirePermission(permission, message) {
+  if (hasPermission(permission)) return true;
+  showToast(message || 'You do not have permission for that action', 'error');
+  auditLog('permission.denied', 'security', permission, `Permission denied: ${permission}`, {
+    role: currentRole(),
+    user: currentUser?.name || null
+  });
+  return false;
+}
 
 function auditActor() {
   return {
@@ -6117,6 +6151,7 @@ async function renderProjectCards(projects) {
 
   grid.innerHTML = projects.map(p => {
     const c = counts[p.contract] || { total:0, complete:0, pending:0 };
+    const canManageProjects = hasPermission('projects.manage');
     const projectName  = p.road || p.description || p.contractor || 'Unnamed Project';
     const contract     = p.contract || '';
     const contractor   = p.contractor || '';
@@ -6128,8 +6163,8 @@ async function renderProjectCards(projects) {
     <div class="project-card" onclick="filterByProject(${ltJsArg(contract)},${ltJsArg(projectName)})">
       <div class="pc-actions" onclick="event.stopPropagation()">
         <button class="pc-action-btn" onclick="openProjectMap(${ltJsArg(contract)},${ltJsArg(p.road || p.contractor || 'Project')})">&#128506; Map</button>
-        <button class="pc-action-btn" onclick="openEditProject(${ltJsArg(p.id)})">&#9998; Edit</button>
-        <button class="pc-action-btn" onclick="deleteProject(${ltJsArg(p.id)},${ltJsArg(contract)},${ltJsArg(p.road || p.contractor || 'this project')});event.stopPropagation();" style="color:#ef4444;border-color:#ef4444;">&#10005; Delete</button>
+        ${canManageProjects ? `<button class="pc-action-btn" onclick="openEditProject(${ltJsArg(p.id)})">&#9998; Edit</button>
+        <button class="pc-action-btn" onclick="deleteProject(${ltJsArg(p.id)},${ltJsArg(contract)},${ltJsArg(p.road || p.contractor || 'this project')});event.stopPropagation();" style="color:#ef4444;border-color:#ef4444;">&#10005; Delete</button>` : ''}
       </div>
       <div class="pc-contract">${contract ? ltEscapeHtml(contract) : '—'}</div>
       <div class="pc-name">${ltEscapeHtml(projectName)}</div>
@@ -6184,6 +6219,7 @@ function clearProjectFilter() {
 }
 
 function openNewProject() {
+  if (!requirePermission('projects.manage', 'Only administrators can create projects.')) return;
   document.getElementById('projOverlayTitle').textContent = 'NEW PROJECT';
   document.getElementById('proj_id').value = '';
   ['proj_contract','proj_fa_project','proj_contractor','proj_road','proj_material_type',
@@ -6194,6 +6230,7 @@ function openNewProject() {
 }
 
 async function openEditProject(id) {
+  if (!requirePermission('projects.manage', 'Only administrators can edit projects.')) return;
   const proj = allProjects.find(p => p.id === id);
   if (!proj) return;
   document.getElementById('projOverlayTitle').textContent = 'EDIT PROJECT';
@@ -6211,6 +6248,7 @@ async function openEditProject(id) {
 }
 
 async function saveProject() {
+  if (!requirePermission('projects.manage', 'Only administrators can save projects.')) return;
   const gv = id => document.getElementById(id)?.value?.trim() || null;
   const id = document.getElementById('proj_id').value;
   const data = {
@@ -6237,6 +6275,7 @@ async function saveProject() {
 }
 
 async function deleteProject(id, contract, name) {
+  if (!requirePermission('projects.manage', 'Only administrators can archive projects.')) return;
   if (!confirm('Archive project "' + contract + ' — ' + name + '"?\n\nThe project record will be hidden from active lists. Soil/aggregate samples linked to this contract are NOT deleted.')) return;
   const { error } = await db.from('projects').update({ deleted_at: new Date().toISOString(), status: 'archived' }).eq('id', id);
   if (error) { showToast('Delete failed: ' + error.message, 'error'); return; }
@@ -6385,7 +6424,7 @@ function emailCurrentReport() {
 // ── Returns true if the current user can approve reports ──────────
 function canApproveReports() {
   if (!currentUser) return false;
-  if (currentUser.role === 'admin') return true;
+  if (currentUser.role === 'admin' || currentUser.role === 'section_admin') return true;
   return !!(currentUser.can_approve_reports);
 }
 
@@ -6841,6 +6880,7 @@ function showSetup() {
 }
 
 async function unlockPermissions() {
+  if (!requirePermission('users.manage', 'Only administrators can unlock permission settings.')) return;
   const entered = (document.getElementById('permKeyInput')?.value || '').trim();
   const errEl   = document.getElementById('permLockErr');
   const inp     = document.getElementById('permKeyInput');
@@ -7021,6 +7061,7 @@ function updateTopbarStatus() {
 }
 
 async function unarchiveSample(id, testNo) {
+  if (!requirePermission('samples.manage', 'Only administrators can restore archived samples.')) return;
   const { error } = await db.from('samples').update({ archived: false }).eq('id', id);
   if (error) { showToast('Restore failed: ' + error.message, 'error'); return; }
   await auditLog('sample.unarchived', 'sample', id, `Sample ${testNo} restored from archive`, { test_no: testNo });
@@ -7782,6 +7823,7 @@ function _sampleRowHtml(s) {
   const statusRaw = String(s.status || 'pending').toLowerCase();
   const statusClass = /^[a-z0-9_-]+$/.test(statusRaw) ? statusRaw : 'pending';
   const statusLabel = String(s.status || 'pending').toUpperCase();
+  const canManageSamples = hasPermission('samples.manage');
   return `<tr>
       <td class="test-no">${ltEscapeHtml(testNo)}</td>
       <td>${s.contract ? ltEscapeHtml(s.contract) : '—'}</td>
@@ -7802,13 +7844,13 @@ function _sampleRowHtml(s) {
               <div class="action-menu-item purple" onclick="closeDropdowns();openNuclearDensity(${idArg})"><span class="ami-icon">☢️</span> Nuclear Density (DMF-68C)</div>
               <div class="action-menu-item purple" onclick="closeDropdowns();openDensity(${idArg})"><span class="ami-icon">⚖️</span> LB-68 Field Density Summary</div>
             ` : ''}
-            <div class="action-menu-item" onclick="closeDropdowns();openEditSample(${idArg})"><span class="ami-icon">✎</span> Edit Info</div>
             <div class="action-menu-item accent" onclick="closeDropdowns();openAuditTrail('sample',${idArg},${testNoArg})"><span class="ami-icon">🧾</span> Chain of Custody</div>
-            ${s.archived ?
+            ${canManageSamples ? `<div class="action-menu-item" onclick="closeDropdowns();openEditSample(${idArg})"><span class="ami-icon">✎</span> Edit Info</div>` : ''}
+            ${canManageSamples ? (s.archived ?
               `<div class="action-menu-item gold" onclick="closeDropdowns();unarchiveSample(${idArg},${testNoArg})"><span class="ami-icon">📤</span> Restore</div>` :
               `<div class="action-menu-item gold" onclick="closeDropdowns();archiveSample(${idArg},${testNoArg})"><span class="ami-icon">📦</span> Archive</div>`
-            }
-            <div class="action-menu-item danger" onclick="closeDropdowns();deleteSample(${idArg},${testNoArg})"><span class="ami-icon">🗑</span> Delete</div>
+            ) : ''}
+            ${canManageSamples ? `<div class="action-menu-item danger" onclick="closeDropdowns();deleteSample(${idArg},${testNoArg})"><span class="ami-icon">🗑</span> Delete</div>` : ''}
           </div>
         </div>
       </td>
@@ -7907,6 +7949,7 @@ function filterTable() {
 // EDIT SAMPLE INFO
 // ══════════════════════════════════════════════
 async function openEditSample(id) {
+  if (!requirePermission('samples.manage', 'Only administrators can edit sample field information.')) return;
   const sample = await fetchSample(id);
   if (!sample) return;
 
@@ -7930,6 +7973,7 @@ async function openEditSample(id) {
 }
 
 async function saveEditSample() {
+  if (!requirePermission('samples.manage', 'Only administrators can save sample edits.')) return;
   const id = document.getElementById('es_id').value;
   if (!id) return;
 
@@ -7960,6 +8004,7 @@ async function saveEditSample() {
 }
 
 async function archiveSample(id, testNo) {
+  if (!requirePermission('samples.manage', 'Only administrators can archive samples.')) return;
   if (!confirm(`Archive sample ${testNo}? It will be hidden from the dashboard but not deleted. You can restore it anytime.`)) return;
   const { error } = await db.from('samples').update({ archived: true }).eq('id', id);
   if (error) { showToast('Archive failed: ' + error.message, 'error'); return; }
@@ -7969,6 +8014,7 @@ async function archiveSample(id, testNo) {
 }
 
 async function deleteSample(id, testNo) {
+  if (!requirePermission('samples.manage', 'Only administrators can move samples to deleted records.')) return;
   if (!confirm(`Move sample ${testNo} to deleted records?\n\nThis hides it from active lists but keeps the lab record recoverable.`)) return;
   const { error } = await db.from('samples').update({ deleted_at: new Date().toISOString() }).eq('id', id);
   if (error) { showToast('Delete failed: ' + error.message, 'error'); return; }
@@ -8501,6 +8547,7 @@ function generateFromManual() {
 // SHARED FINISH — used by both AI and manual
 // ══════════════════════════════════════════════
 async function finishLabGeneration(parsed) {
+  if (!requirePermission('lab.report.generate', 'Only lab users can generate lab reports.')) return;
   lastLabData = parsed;
 
   const labData = {
@@ -9271,6 +9318,7 @@ function loadSampleIntoLabWithAgg(sample) {
 }
 
 async function generateAggregateReport() {
+  if (!requirePermission('lab.report.generate', 'Only lab users can generate aggregate reports.')) return;
   if (!currentSample) { showToast('No sample loaded', 'error'); return; }
   const aggType = currentSample.agg_type;
   if (!aggType || !AGG_TYPES[aggType]) { showToast('No aggregate type set for this sample', 'error'); return; }
@@ -11111,6 +11159,7 @@ async function umRenderUsers() {
 }
 
 async function umAddUser() {
+  if (!requirePermission('users.manage', 'Only administrators can add users.')) return;
   const name     = document.getElementById('um_name')?.value.trim();
   const role     = document.getElementById('um_role')?.value || 'field';
   const pin      = document.getElementById('um_pin')?.value || '';
@@ -11413,6 +11462,7 @@ function canApproveThisReport(sample) {
 }
 
 async function umToggleApprover(userId, checked) {
+  if (!requirePermission('users.manage', 'Only administrators can change approval permissions.')) return;
   const users = await getUsers();
   const updated = users.map(u => u.id === userId ? { ...u, can_approve_reports: checked } : u);
   await saveUsers(updated);
@@ -11537,6 +11587,7 @@ async function saveMyCredentials() {
 }
 
 async function umDeleteUser(id) {
+  if (!requirePermission('users.manage', 'Only administrators can delete users.')) return;
   _stUsersCache = null;
   if (db) {
     try {
@@ -11556,6 +11607,7 @@ async function umDeleteUser(id) {
 }
 
 async function emergencyClearPins() {
+  if (!requirePermission('users.manage', 'Only administrators can clear PINs.')) return;
   const key = prompt('Admin verification required.\n\nEnter the product key to clear all PINs:');
   if (!key) return;
   const stored = localStorage.getItem('ai_key') || '';
@@ -11571,6 +11623,7 @@ async function emergencyClearPins() {
 }
 
 async function umClearPin(id) {
+  if (!requirePermission('users.manage', 'Only administrators can clear PINs.')) return;
   const users = (await getUsers()).map(u => u.id === id ? { ...u, pin: '' } : u);
   await saveUsers(users);
   _stUsersCache = null;
@@ -12624,6 +12677,7 @@ async function slHandleDistribution(sample) {
 
 // ── Shared finish: save + render + switch view ─────────────────
 async function slFinishLab(parsed) {
+  if (!requirePermission('lab.report.generate', 'Only lab users can generate lab reports.')) return;
   slLastLabData = parsed;
   const fields  = slReportFields();
   const updates = { status: 'complete', lab_data: parsed, conforms: 'auto', ...fields };
@@ -12651,6 +12705,7 @@ async function slFinishLab(parsed) {
 
 // ── Aggregate manual report ────────────────────────────────────
 async function slGenerateAggReport() {
+  if (!requirePermission('lab.report.generate', 'Only lab users can generate aggregate reports.')) return;
   if (!slCurrentSample) { showToast('No sample loaded', 'error'); return; }
   const aggType = slCurrentSample.agg_type;
   if (!aggType || !AGG_TYPES[aggType]) { showToast('No aggregate type on this sample', 'error'); return; }
@@ -12850,6 +12905,7 @@ function slNsAutoFillProject(contract) {
 }
 
 async function slCreateNewSample() {
+  if (!requirePermission('samples.create', 'You do not have permission to create lab samples.')) return;
   if (!db) { showToast('Not connected to database', 'error'); return; }
   const errEl = document.getElementById('sl_ns_err');
   if (errEl) errEl.textContent = '';
@@ -13041,6 +13097,10 @@ ALTER TABLE samples ADD COLUMN IF NOT EXISTS gps_coordinates TEXT;
 ALTER TABLE samples ADD COLUMN IF NOT EXISTS deleted_at TIMESTAMPTZ DEFAULT NULL;
 ALTER TABLE samples ENABLE ROW LEVEL SECURITY;
 CREATE POLICY "Allow all" ON samples FOR ALL USING (true) WITH CHECK (true);
+
+-- Prototype policies above keep the single-file app easy to test.
+-- For production, enable Supabase Auth and apply:
+-- supabase/migrations/20260616_production_rls.sql
 
 CREATE TABLE IF NOT EXISTS st_audit_log (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -13587,6 +13647,7 @@ function initFC_View() {
 
 // ── Start a new test session ──────────────────────────────────
 async function startFC_Session() {
+  if (!requirePermission('samples.create', 'You do not have permission to start sample sessions.')) return;
   if (!db) { showToast('Not connected to database', 'error'); return; }
   const contract = null; // filled in on the Lab Sample detail form
   const category = (document.getElementById('fc_s_category')?.value || 'soil');
@@ -13982,6 +14043,7 @@ async function srcLoad() {
 }
 
 async function srcSeedData() {
+  if (!requirePermission('sources.manage', 'Only authorized lab/admin users can seed approved sources.')) return;
   // Insert in batches of 25 to avoid Supabase payload limits
   const batchSize = 25;
   for (let i = 0; i < SRC_SEED.length; i += batchSize) {
@@ -14117,6 +14179,7 @@ function srcRender() {
 }
 
 function srcOpenCell(stockpile, matId) {
+  if (!requirePermission('sources.manage', 'Only authorized lab/admin users can edit approved sources.')) return;
   const rec = srcData.find(r => r.stockpile_location === stockpile && r.material_type === matId);
   const mat = srcMaterials.find(m => m.id === matId);
   srcModalCtx = { stockpile, matId, record_id: rec?.id || null };
@@ -14189,6 +14252,7 @@ function srcCloseModal() {
 }
 
 async function srcSaveCell() {
+  if (!requirePermission('sources.manage', 'Only authorized lab/admin users can save approved sources.')) return;
   if (!srcModalCtx) return;
   const { stockpile, matId, record_id } = srcModalCtx;
 
@@ -14224,6 +14288,7 @@ async function srcSaveCell() {
 
 // ── Add / Remove Stockpiles ──
 function srcOpenAddStockpile() {
+  if (!requirePermission('sources.manage', 'Only authorized lab/admin users can add approved sources.')) return;
   document.getElementById('src-new-loc').value    = '';
   document.getElementById('src-new-source').value = '';
   document.getElementById('src-add-stockpile-modal').style.display = 'flex';
@@ -14232,6 +14297,7 @@ function srcCloseAddStockpile() {
   document.getElementById('src-add-stockpile-modal').style.display = 'none';
 }
 async function srcConfirmAddStockpile() {
+  if (!requirePermission('sources.manage', 'Only authorized lab/admin users can add approved sources.')) return;
   const loc = document.getElementById('src-new-loc').value.trim();
   if (!loc) { showToast('Source name required', 'error'); return; }
   if (srcStockpiles.find(s => s.name.toLowerCase() === loc.toLowerCase())) {
@@ -14256,6 +14322,7 @@ async function srcConfirmAddStockpile() {
 }
 
 async function srcDeleteStockpile(loc) {
+  if (!requirePermission('sources.manage', 'Only authorized lab/admin users can remove approved sources.')) return;
   if (!confirm(`Remove source "${loc}" and all its approval records?`)) return;
   const { error } = await db.from('approved_sources').delete().eq('stockpile_location', loc);
   if (error) { showToast('Error: ' + error.message, 'error'); return; }
@@ -14610,6 +14677,7 @@ function switchFCTab(tab) {
 
 // ── Submit lab sample (upgrades the session record) ───────────
 async function submitFieldSample() {
+  if (!requirePermission('field.sample.submit', 'Only field users can submit field samples.')) return;
   if (!activeFC_sessionId) { showToast('No active session', 'error'); return; }
   const labCollected = document.getElementById('fc_lab_sample_toggle')?.checked;
   if (!labCollected) { showToast('Lab sample toggle is OFF — nothing submitted', 'info'); return; }
