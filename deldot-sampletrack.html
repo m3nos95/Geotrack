@@ -14275,8 +14275,8 @@ function offlineUpdateBanner() {
     const text = document.getElementById('offlineBannerText');
     if (text) {
       if (!isOnline && q.length === 0) text.innerHTML = '⚡ Offline mode — data will sync when connected';
-      else if (!isOnline) text.innerHTML = `Offline — <span id="offlineQueueCount">${q.length}</span> records queued`;
-      else text.innerHTML = `<span id="offlineQueueCount">${q.length}</span> records pending sync…`;
+      else if (!isOnline) text.innerHTML = `Offline — <span class="offline-queue-count">${q.length}</span> records queued`;
+      else text.innerHTML = `<span class="offline-queue-count">${q.length}</span> records pending sync…`;
     }
     if (syncBtn) syncBtn.style.display = (isOnline && q.length > 0) ? '' : 'none';
   } else {
@@ -16553,7 +16553,7 @@ function renderSectionEditor(s) {
       <div><label class="label">City</label><input class="input" id="edit-city" value="${escapeHtml(a.city || '')}" /></div>
       <div><label class="label">State</label><input class="input" id="edit-state" value="${escapeHtml(a.state || '')}" maxlength="2" /></div>
       <div><label class="label">ZIP</label><input class="input" id="edit-zip" value="${escapeHtml(a.zip || '')}" /></div>
-      <div class="col-span-2"><label class="label">Revised by</label><input class="input" id="edit-revisedby" value="${escapeHtml(s.lastRevisedBy || '')}" placeholder="Your name" /></div>
+      <div class="col-span-2"><label class="label">Revised by</label><input class="input" id="edit-revisedby-address" value="${escapeHtml(s.lastRevisedBy || '')}" placeholder="Your name" /></div>
     </div>`;
   }
   return `<div class="mt-3 max-w-2xl">
@@ -16570,7 +16570,8 @@ window.r18_cancelEdit = () => { state.editingSectionId = null; renderView(); };
 window.r18_saveSection = async (id) => {
   const section = state.sections.find(x => x.id === id);
   if (!section) return;
-  const revisedBy = document.getElementById('edit-revisedby').value.trim() || 'Unknown';
+  const revisedByEl = document.getElementById('edit-revisedby') || document.getElementById('edit-revisedby-address');
+  const revisedBy = revisedByEl?.value.trim() || 'Unknown';
   let newContent;
   if (section.contentType === 'address') {
     newContent = {
