@@ -2505,7 +2505,7 @@ table.fc-borrow-tbl tr.fc-borrow-detail-row td{background:var(--surface);border-
     <h3>AI FEATURES</h3>
     <div class="setup-steps">
       <p>
-        Enter your product key to enable AI-powered lab form reading and photo analysis. Contact your system administrator for your key.
+        Enter your LabTrak product key to enable server-side AI lab form reading and photo analysis. The Anthropic API key stays in Supabase Edge Function secrets.
       </p>
     </div>
     <div class="setup-field">
@@ -2517,7 +2517,8 @@ table.fc-borrow-tbl tr.fc-borrow-detail-row td{background:var(--surface);border-
     <input type="hidden" id="sbKey" value="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFsd2FxZGxsZGxkeW9zaHlnbG11Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzg2MDQxOTEsImV4cCI6MjA5NDE4MDE5MX0.VRDDiDxGay5npABiVHiJ1o0-M6mHrwAVWaclWMBNU_k">
     <button class="btn-setup" onclick="saveAiKey()">✦ ENABLE AI FEATURES</button>
     <div class="setup-err" id="setupErr"></div>
-    <p style="color:var(--muted);font-size:10px;font-family:var(--mono);margin-top:14px;">Key saved to this browser — you only need to enter it once per device.</p>
+    <p style="color:var(--muted);font-size:10px;font-family:var(--mono);margin-top:14px;">Product key saved to this browser — provider API keys are never stored here.</p>
+    <p style="color:var(--muted);font-size:9px;font-family:var(--mono);margin-top:8px;line-height:1.5;">Admin setup: deploy the <code style="background:var(--bg);padding:1px 5px;border-radius:3px;">labtrak-ai</code> Supabase Edge Function and set <code style="background:var(--bg);padding:1px 5px;border-radius:3px;">ANTHROPIC_API_KEY</code> in Edge Function secrets.</p>
 
     <!-- ── PERMISSION LOCK ── -->
     <div class="user-mgmt-section" id="permLockSection" style="display:none;">
@@ -5485,6 +5486,60 @@ function ltSafeId(value) {
   return String(value ?? '').replace(/[^A-Za-z0-9_-]/g, '_');
 }
 
+const LABTRAK_AI_FUNCTION = 'labtrak-ai';
+const LABTRAK_AI_MODEL = 'claude-sonnet-4-20250514';
+
+function getAiFeatureKey() {
+  return (localStorage.getItem('ai_key') || '').trim();
+}
+
+function parseLabTrakAiJson(raw) {
+  const text = String(raw || '').replace(/```json|```/g, '').trim();
+  try { return JSON.parse(text); }
+  catch {
+    const match = text.match(/\{[\s\S]*\}/);
+    return match ? JSON.parse(match[0]) : null;
+  }
+}
+
+async function callLabTrakAI(prompt, options = {}) {
+  if (!db || !db.functions || typeof db.functions.invoke !== 'function') {
+    throw new Error('Connect to Supabase before using AI features.');
+  }
+
+  const featureKey = getAiFeatureKey();
+  if (!featureKey) {
+    throw new Error('No AI product key configured. Open Config and enter the lab AI product key.');
+  }
+
+  const body = {
+    prompt,
+    model: options.model || LABTRAK_AI_MODEL,
+    max_tokens: Math.min(Math.max(parseInt(options.maxTokens || 1000, 10), 1), 2000)
+  };
+
+  if (options.imageB64) {
+    body.image = {
+      data: options.imageB64,
+      media_type: options.imageType || 'image/jpeg'
+    };
+  }
+
+  const { data, error } = await db.functions.invoke(LABTRAK_AI_FUNCTION, {
+    body,
+    headers: { 'x-labtrak-ai-key': featureKey }
+  });
+
+  if (error) throw new Error(error.message || 'AI Edge Function failed');
+  if (!data) throw new Error('AI Edge Function returned no data');
+  if (data.error) throw new Error(data.error.message || data.error);
+
+  const raw = data.text || (Array.isArray(data.content) ? data.content.map(c => c.text || '').join('') : '');
+  const parsed = data.json || parseLabTrakAiJson(raw);
+  if (!parsed) throw new Error('Could not parse AI response');
+  return parsed;
+}
+
 // ══════════════════════════════════════════════
 // INIT
 // ══════════════════════════════════════════════
@@ -8439,36 +8494,14 @@ async function applyEditsAndRegenerate() {
 async function analyzeLabForm() {
   if (!currentSample) { showToast('No sample loaded', 'error'); return; }
   if (!labImageB64) { showToast('Upload a lab form image first', 'error'); return; }
-  const aiKey = localStorage.getItem('ai_key');
-  if (!aiKey) { showToast('No API key configured', 'error'); return; }
 
   const btn = document.getElementById('labAnalyzeBtn');
   btn.disabled = true;
-
-  async function callAI(prompt) {
-    const resp = await fetch('https://api.anthropic.com/v1/messages', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'x-api-key': aiKey,
-        'anthropic-version': '2023-06-01',
-        'anthropic-dangerous-direct-browser-access': 'true'
-      },
-      body: JSON.stringify({
-        model: 'claude-sonnet-4-20250514',
-        max_tokens: 1000,
-        messages: [{ role: 'user', content: [
-          { type: 'image', source: { type: 'base64', media_type: labImageType, data: labImageB64 } },
-          { type: 'text', text: prompt }
-        ]}]
-      })
-    });
-    const data = await resp.json();
-    if (data.error) throw new Error(data.error.message);
-    const raw = data.content.map(c => c.text || '').join('');
-    try { return JSON.parse(raw.replace(/```json|```/g,'').trim()); }
-    catch { const m = raw.match(/\{[\s\S]*\}/); return m ? JSON.parse(m[0]) : null; }
-  }
+  const callAI = prompt => callLabTrakAI(prompt, {
+    imageB64: labImageB64,
+    imageType: labImageType,
+    maxTokens: 1000
+  });
 
   try {
     // ── CALL 1: Atterberg + Organic only
@@ -9276,9 +9309,6 @@ function renderAggregateReport(sample, calc) {
 
 
 async function readAggCardWithAI(aggType, spec) {
-  const aiKey = localStorage.getItem('ai_key');
-  if (!aiKey) { showToast('No API key configured', 'error'); return; }
-
   document.getElementById('labStatus').textContent = '⏳ Reading sieve card…';
   document.getElementById('labAnalyzeBtn').disabled = true;
 
@@ -9299,31 +9329,11 @@ Return ONLY JSON, no markdown:
 }`;
 
   try {
-    const resp = await fetch('https://api.anthropic.com/v1/messages', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'x-api-key': aiKey,
-        'anthropic-version': '2023-06-01',
-        'anthropic-dangerous-direct-browser-access': 'true'
-      },
-      body: JSON.stringify({
-        model: 'claude-sonnet-4-20250514',
-        max_tokens: 500,
-        messages: [{ role: 'user', content: [
-          { type: 'image', source: { type: 'base64', media_type: aggImageType, data: aggImageB64 } },
-          { type: 'text', text: prompt }
-        ]}]
-      })
+    const parsed = await callLabTrakAI(prompt, {
+      imageB64: aggImageB64,
+      imageType: aggImageType,
+      maxTokens: 500
     });
-
-    const data = await resp.json();
-    if (data.error) throw new Error(data.error.message);
-    const raw = data.content.map(c => c.text||'').join('');
-    let parsed;
-    try { parsed = JSON.parse(raw.replace(/\`\`\`json|\`\`\`/g,'').trim()); }
-    catch { const m = raw.match(/\{[\s\S]*\}/); parsed = m ? JSON.parse(m[0]) : null; }
-    if (!parsed) throw new Error('Could not parse AI response');
 
     document.getElementById('labStatus').textContent = '✓ Card read — generating report…';
 
@@ -12349,37 +12359,15 @@ function slSubmitEntry() {
 // ── Soil AI photo analysis ─────────────────────────────────────
 async function slAnalyzeSoilPhoto() {
   if (!slImageB64) { showToast('Upload a lab form image first', 'error'); return; }
-  const aiKey = localStorage.getItem('ai_key');
-  if (!aiKey) { showToast('No API key configured', 'error'); return; }
 
   const btn = document.getElementById('sl_analyze_btn');
   if (btn) btn.disabled = true;
   const st = id => { const el = document.getElementById('sl_status'); if (el) el.textContent = id; };
-
-  async function callAI(prompt) {
-    const resp = await fetch('https://api.anthropic.com/v1/messages', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'x-api-key': aiKey,
-        'anthropic-version': '2023-06-01',
-        'anthropic-dangerous-direct-browser-access': 'true'
-      },
-      body: JSON.stringify({
-        model: 'claude-sonnet-4-20250514',
-        max_tokens: 1000,
-        messages: [{ role: 'user', content: [
-          { type: 'image', source: { type: 'base64', media_type: slImageType, data: slImageB64 } },
-          { type: 'text', text: prompt }
-        ]}]
-      })
-    });
-    const data = await resp.json();
-    if (data.error) throw new Error(data.error.message);
-    const raw = data.content.map(c => c.text || '').join('');
-    try { return JSON.parse(raw.replace(/```json|```/g,'').trim()); }
-    catch { const m = raw.match(/\{[\s\S]*\}/); return m ? JSON.parse(m[0]) : null; }
-  }
+  const callAI = prompt => callLabTrakAI(prompt, {
+    imageB64: slImageB64,
+    imageType: slImageType,
+    maxTokens: 1000
+  });
 
   try {
     const col = slCurrentSample.test_no;
@@ -12553,8 +12541,6 @@ async function slGenerateAggReport() {
 // ── Aggregate AI photo ─────────────────────────────────────────
 async function slAnalyzeAggPhoto() {
   if (!slAggImageB64) { showToast('Upload a photo of the card back first', 'error'); return; }
-  const aiKey = localStorage.getItem('ai_key');
-  if (!aiKey) { showToast('No API key configured', 'error'); return; }
   const aggType = slCurrentSample?.agg_type;
   if (!aggType || !AGG_TYPES[aggType]) { showToast('No aggregate type on this sample', 'error'); return; }
 
@@ -12566,30 +12552,12 @@ async function slAnalyzeAggPhoto() {
   try {
     const spec   = AGG_TYPES[aggType];
     const labels = spec.sieves.map(k => `${SIEVE_LABELS[k]||k} → key "${k}"`).join(', ');
-    const resp   = await fetch('https://api.anthropic.com/v1/messages', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'x-api-key': aiKey,
-        'anthropic-version': '2023-06-01',
-        'anthropic-dangerous-direct-browser-access': 'true'
-      },
-      body: JSON.stringify({
-        model: 'claude-sonnet-4-20250514', max_tokens: 800,
-        messages: [{ role: 'user', content: [
-          { type: 'image', source: { type: 'base64', media_type: slAggImageType, data: slAggImageB64 } },
-          { type: 'text', text: `Read this aggregate sieve card. Extract cumulative retained weights for these sieves: ${labels}. Also find the total sample / pan weight.
-Return ONLY JSON: {"total_sample_wt": 0, "sieve_data": {${spec.sieves.map(k=>`"${k}": 0`).join(', ')}}}` }
-        ]}]
-      })
+    const parsed = await callLabTrakAI(`Read this aggregate sieve card. Extract cumulative retained weights for these sieves: ${labels}. Also find the total sample / pan weight.
+Return ONLY JSON: {"total_sample_wt": 0, "sieve_data": {${spec.sieves.map(k=>`"${k}": 0`).join(', ')}}}`, {
+      imageB64: slAggImageB64,
+      imageType: slAggImageType,
+      maxTokens: 800
     });
-    const data = await resp.json();
-    if (data.error) throw new Error(data.error.message);
-    const raw = data.content.map(c => c.text||'').join('');
-    let parsed;
-    try { parsed = JSON.parse(raw.replace(/```json|```/g,'').trim()); }
-    catch { const m = raw.match(/\{[\s\S]*\}/); parsed = m ? JSON.parse(m[0]) : null; }
-    if (!parsed) throw new Error('Could not parse AI response');
 
     // Pre-fill the manual form with AI values and let user review
     const sieveData = parsed.sieve_data || {};
