@@ -5956,6 +5956,129 @@ function closeDropdowns() {
 document.addEventListener('click', function() { closeDropdowns(); });
 
 // ══════════════════════════════════════════════
+// AUDIT / CHAIN OF CUSTODY
+// ══════════════════════════════════════════════
+const AUDIT_LOG_TABLE = 'st_audit_log';
+
+function auditActor() {
+  return {
+    actor_id: currentUser?.id || null,
+    actor_name: currentUser?.name || 'System',
+    actor_role: currentUser?.role || null
+  };
+}
+
+function auditLocalFallback(entry) {
+  try {
+    const key = 'labtrak_audit_fallback';
+    const raw = JSON.parse(localStorage.getItem(key) || '[]');
+    raw.push({ ...entry, local_only: true });
+    localStorage.setItem(key, JSON.stringify(raw.slice(-200)));
+  } catch(e) {}
+}
+
+async function auditLog(action, entityType, entityId, summary, metadata = {}) {
+  const entry = {
+    action,
+    entity_type: entityType,
+    entity_id: entityId ? String(entityId) : null,
+    summary,
+    metadata,
+    ...auditActor(),
+    created_at: new Date().toISOString()
+  };
+
+  if (!db || !navigator.onLine) {
+    auditLocalFallback(entry);
+    return;
+  }
+
+  try {
+    const { error } = await db.from(AUDIT_LOG_TABLE).insert(entry);
+    if (error) {
+      // Keep audit non-blocking until the table is deployed everywhere.
+      if (error.code !== '42P01') console.warn('auditLog:', error.message);
+      auditLocalFallback(entry);
+    }
+  } catch(e) {
+    console.warn('auditLog:', e);
+    auditLocalFallback(entry);
+  }
+}
+
+async function loadAuditTrail(entityType, entityId) {
+  const rows = [];
+  if (db) {
+    try {
+      const { data, error } = await db.from(AUDIT_LOG_TABLE)
+        .select('*')
+        .eq('entity_type', entityType)
+        .eq('entity_id', String(entityId))
+        .order('created_at', { ascending: false })
+        .limit(75);
+      if (!error && data) rows.push(...data);
+    } catch(e) {}
+  }
+
+  try {
+    const local = JSON.parse(localStorage.getItem('labtrak_audit_fallback') || '[]');
+    rows.push(...local.filter(r => r.entity_type === entityType && String(r.entity_id) === String(entityId)));
+  } catch(e) {}
+
+  return rows.sort((a, b) => String(b.created_at || '').localeCompare(String(a.created_at || '')));
+}
+
+function ensureAuditOverlay() {
+  let overlay = document.getElementById('auditTrailOverlay');
+  if (overlay) return overlay;
+
+  overlay = document.createElement('div');
+  overlay.className = 'edit-overlay';
+  overlay.id = 'auditTrailOverlay';
+  overlay.innerHTML = `
+    <div class="edit-panel" style="max-width:760px;">
+      <h2>CHAIN OF CUSTODY</h2>
+      <p id="auditTrailSubtitle">Loading activity...</p>
+      <div id="auditTrailBody" style="max-height:55vh;overflow:auto;"></div>
+      <div class="btn-row" style="margin-top:16px;">
+        <button class="btn btn-ghost" onclick="document.getElementById('auditTrailOverlay').classList.remove('open')">CLOSE</button>
+      </div>
+    </div>`;
+  document.body.appendChild(overlay);
+  return overlay;
+}
+
+async function openAuditTrail(entityType, entityId, label) {
+  const overlay = ensureAuditOverlay();
+  const subtitle = document.getElementById('auditTrailSubtitle');
+  const body = document.getElementById('auditTrailBody');
+  overlay.classList.add('open');
+  if (subtitle) subtitle.textContent = `${entityType.toUpperCase()} · ${label || entityId}`;
+  if (body) body.innerHTML = '<div class="sl-empty">Loading audit trail...</div>';
+
+  const rows = await loadAuditTrail(entityType, entityId);
+  if (!body) return;
+  if (!rows.length) {
+    body.innerHTML = '<div class="sl-empty">No audit entries yet for this record.</div>';
+    return;
+  }
+
+  body.innerHTML = rows.map(r => {
+    const when = r.created_at ? new Date(r.created_at).toLocaleString() : 'Unknown time';
+    const actor = r.actor_name || 'System';
+    const role = r.actor_role ? ` · ${String(r.actor_role).toUpperCase()}` : '';
+    const summary = r.summary || r.action || 'Activity recorded';
+    return `<div class="audit-row">
+      <div class="audit-row-time">${ltEscapeHtml(when)}</div>
+      <div class="audit-row-main">
+        <div class="audit-row-title">${ltEscapeHtml(summary)}</div>
+        <div class="audit-row-meta">${ltEscapeHtml(actor + role)}${r.local_only ? ' · LOCAL PENDING' : ''}</div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+// ══════════════════════════════════════════════
 // PROJECTS MODULE
 // ══════════════════════════════════════════════
 let allProjects = [];
@@ -6107,6 +6230,7 @@ async function saveProject() {
     ({ error } = await db.from('projects').insert(data));
   }
   if (error) { showToast('Save failed: ' + error.message, 'error'); return; }
+  await auditLog(id ? 'project.updated' : 'project.created', 'project', id || data.contract, id ? `Project ${data.contract} updated` : `Project ${data.contract} created`, data);
   document.getElementById('projectOverlay').classList.remove('open');
   showToast(id ? 'Project updated ✓' : 'Project created ✓', 'success');
   loadProjects();
@@ -6116,6 +6240,7 @@ async function deleteProject(id, contract, name) {
   if (!confirm('Archive project "' + contract + ' — ' + name + '"?\n\nThe project record will be hidden from active lists. Soil/aggregate samples linked to this contract are NOT deleted.')) return;
   const { error } = await db.from('projects').update({ deleted_at: new Date().toISOString(), status: 'archived' }).eq('id', id);
   if (error) { showToast('Delete failed: ' + error.message, 'error'); return; }
+  await auditLog('project.archived', 'project', id, `Project ${contract} archived`, { contract, name });
   showToast('Project archived ✓', 'success');
   loadProjects();
 }
@@ -6360,6 +6485,10 @@ async function slApproveForDistribution() {
   slCurrentSample = updated;
   currentSample   = updated;
   allSamples = allSamples.map(s => s.id === updated.id ? updated : s);
+  await auditLog('report.approved', 'sample', updated.id, `Report ${updated.test_no || updated.id} approved for distribution`, {
+    approved_by: approvedBy,
+    approved_at: approvedAt
+  });
 
   refreshReportEmailBtn(updated);
   refreshApprovalBadge();
@@ -6484,6 +6613,9 @@ async function slSubmitRejection() {
   slCurrentSample = updated;
   currentSample   = updated;
   allSamples = allSamples.map(s => s.id === updated.id ? updated : s);
+  await auditLog('report.rejected', 'sample', updated.id, `Report ${updated.test_no || updated.id} rejected`, {
+    reason: comment || '(No reason provided)'
+  });
 
   refreshReportEmailBtn(updated);
   refreshApprovalBadge();
@@ -6891,6 +7023,7 @@ function updateTopbarStatus() {
 async function unarchiveSample(id, testNo) {
   const { error } = await db.from('samples').update({ archived: false }).eq('id', id);
   if (error) { showToast('Restore failed: ' + error.message, 'error'); return; }
+  await auditLog('sample.unarchived', 'sample', id, `Sample ${testNo} restored from archive`, { test_no: testNo });
   showToast(`Sample ${testNo} restored`, 'success');
   loadSamples();
 }
@@ -7670,6 +7803,7 @@ function _sampleRowHtml(s) {
               <div class="action-menu-item purple" onclick="closeDropdowns();openDensity(${idArg})"><span class="ami-icon">⚖️</span> LB-68 Field Density Summary</div>
             ` : ''}
             <div class="action-menu-item" onclick="closeDropdowns();openEditSample(${idArg})"><span class="ami-icon">✎</span> Edit Info</div>
+            <div class="action-menu-item accent" onclick="closeDropdowns();openAuditTrail('sample',${idArg},${testNoArg})"><span class="ami-icon">🧾</span> Chain of Custody</div>
             ${s.archived ?
               `<div class="action-menu-item gold" onclick="closeDropdowns();unarchiveSample(${idArg},${testNoArg})"><span class="ami-icon">📤</span> Restore</div>` :
               `<div class="action-menu-item gold" onclick="closeDropdowns();archiveSample(${idArg},${testNoArg})"><span class="ami-icon">📦</span> Archive</div>`
@@ -7818,6 +7952,7 @@ async function saveEditSample() {
 
   const { error } = await db.from('samples').update(updates).eq('id', id);
   if (error) { showToast('Save failed: ' + error.message, 'error'); return; }
+  await auditLog('sample.updated', 'sample', id, `Sample ${document.getElementById('es_id').value} field information updated`, updates);
 
   document.getElementById('editSampleOverlay').classList.remove('open');
   showToast('Sample updated ✓', 'success');
@@ -7828,6 +7963,7 @@ async function archiveSample(id, testNo) {
   if (!confirm(`Archive sample ${testNo}? It will be hidden from the dashboard but not deleted. You can restore it anytime.`)) return;
   const { error } = await db.from('samples').update({ archived: true }).eq('id', id);
   if (error) { showToast('Archive failed: ' + error.message, 'error'); return; }
+  await auditLog('sample.archived', 'sample', id, `Sample ${testNo} archived`, { test_no: testNo });
   showToast(`Sample ${testNo} archived`, 'success');
   loadSamples();
 }
@@ -7836,6 +7972,7 @@ async function deleteSample(id, testNo) {
   if (!confirm(`Move sample ${testNo} to deleted records?\n\nThis hides it from active lists but keeps the lab record recoverable.`)) return;
   const { error } = await db.from('samples').update({ deleted_at: new Date().toISOString() }).eq('id', id);
   if (error) { showToast('Delete failed: ' + error.message, 'error'); return; }
+  await auditLog('sample.deleted', 'sample', id, `Sample ${testNo} moved to deleted records`, { test_no: testNo });
   showToast(`Sample ${testNo} moved to deleted records`, 'success');
   loadSamples();
 }
@@ -8382,6 +8519,10 @@ async function finishLabGeneration(parsed) {
   };
 
   await dbWrite('samples', 'update', labData, currentSample.id);
+  await auditLog('lab.soil_report_generated', 'sample', currentSample.id, `Soil report ${currentSample.test_no || currentSample.id} generated`, {
+    conforms: labData.conforms,
+    date_reported: labData.date_reported
+  });
 
   const calc = calculateSieve(parsed);
   // Important: spread order ensures fresh parsed lab_data overrides any stale currentSample.lab_data
@@ -9174,6 +9315,10 @@ async function generateAggregateReport() {
 
   await dbWrite('samples', 'update', labData, currentSample.id);
   currentSample = { ...currentSample, ...labData };
+  await auditLog('lab.aggregate_report_generated', 'sample', currentSample.id, `Aggregate report ${currentSample.test_no || currentSample.id} generated`, {
+    conforms: labData.conforms,
+    date_reported: labData.date_reported
+  });
 
   renderAggregateReport(currentSample, calc);
   switchView('report');
@@ -10485,6 +10630,7 @@ async function slConfirmDelete() {
 
   const { error } = await db.from('samples').update({ deleted_at: new Date().toISOString() }).eq('id', target.id);
   if (error) { showToast('Delete failed: ' + error.message, 'error'); return; }
+  await auditLog('sample.deleted', 'sample', target.id, `Sample ${testNo} moved to deleted records from soil lab`, { test_no: testNo });
 
   // Remove from in-memory array immediately
   if (allSamples) allSamples = allSamples.filter(function(s) { return s.id !== target.id; });
@@ -10522,6 +10668,7 @@ async function slUndoDelete() {
 
   const { error } = await db.from('samples').update({ deleted_at: null }).eq('id', target.id);
   if (error) { showToast('Undo failed: ' + error.message, 'error'); return; }
+  await auditLog('sample.restored', 'sample', target.id, `Sample ${target.test_no || target.id} restored from deleted records`, { test_no: target.test_no });
 
   // Restore to in-memory array
   if (allSamples) allSamples.unshift(target);
@@ -12468,6 +12615,9 @@ async function slHandleDistribution(sample) {
   slCurrentSample = updated;
   currentSample   = updated;
   allSamples = allSamples.map(s => s.id === updated.id ? updated : s);
+  await auditLog('report.submitted_for_review', 'sample', updated.id, `Report ${updated.test_no || updated.id} submitted for approval`, {
+    sync_to_chart: syncToChart
+  });
   refreshApprovalBadge();
   showToast('Report queued for admin approval ✓', 'success');
 }
@@ -12478,6 +12628,10 @@ async function slFinishLab(parsed) {
   const fields  = slReportFields();
   const updates = { status: 'complete', lab_data: parsed, conforms: 'auto', ...fields };
   await db.from('samples').update(updates).eq('id', slCurrentSample.id);
+  await auditLog('lab.soil_report_generated', 'sample', slCurrentSample.id, `Soil-lab report ${slCurrentSample.test_no || slCurrentSample.id} generated`, {
+    conforms: updates.conforms,
+    date_reported: updates.date_reported
+  });
 
   const calc   = calculateSieve(parsed);
   const merged = { ...slCurrentSample, ...updates, lab_data: parsed };
@@ -12521,6 +12675,10 @@ async function slGenerateAggReport() {
   const fields  = slReportFields();
   const updates = { status: 'complete', lab_data: labData, conforms: 'auto', ...fields };
   await db.from('samples').update(updates).eq('id', slCurrentSample.id);
+  await auditLog('lab.aggregate_report_generated', 'sample', slCurrentSample.id, `Soil-lab aggregate report ${slCurrentSample.test_no || slCurrentSample.id} generated`, {
+    conforms: updates.conforms,
+    date_reported: updates.date_reported
+  });
 
   const aggCalc = calculateAggregate(sieveData, aggType);
   const merged  = { ...slCurrentSample, ...updates, lab_data: labData };
@@ -12789,6 +12947,10 @@ async function slCreateNewSample() {
 
   // Add to local cache and re-render queue
   allSamples.unshift(inserted);
+  await auditLog('sample.created', 'sample', inserted.id, `Sample ${inserted.test_no || inserted.id} created in soil lab`, {
+    test_category: inserted.test_category || record.test_category,
+    contract: inserted.contract || record.contract
+  });
   slRenderQueue();
   loadSamples();
 
@@ -12879,6 +13041,23 @@ ALTER TABLE samples ADD COLUMN IF NOT EXISTS gps_coordinates TEXT;
 ALTER TABLE samples ADD COLUMN IF NOT EXISTS deleted_at TIMESTAMPTZ DEFAULT NULL;
 ALTER TABLE samples ENABLE ROW LEVEL SECURITY;
 CREATE POLICY "Allow all" ON samples FOR ALL USING (true) WITH CHECK (true);
+
+CREATE TABLE IF NOT EXISTS st_audit_log (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  entity_type TEXT NOT NULL,
+  entity_id TEXT,
+  action TEXT NOT NULL,
+  summary TEXT,
+  metadata JSONB DEFAULT '{}'::jsonb,
+  actor_id TEXT,
+  actor_name TEXT,
+  actor_role TEXT,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+CREATE INDEX IF NOT EXISTS st_audit_log_entity_idx ON st_audit_log(entity_type, entity_id, created_at DESC);
+ALTER TABLE st_audit_log ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Allow audit read" ON st_audit_log FOR SELECT USING (true);
+CREATE POLICY "Allow audit insert" ON st_audit_log FOR INSERT WITH CHECK (true);
 ══════════════════════════════════════ -->
 
   <!-- ── SIEVE ENTRY OVERLAY (shown after AI reads Atterberg) ── -->
@@ -13456,6 +13635,10 @@ async function startFC_Session() {
   allSamples.unshift(data);
   activeFC_sessionId = data.id;
   activeFC_testNo    = data.test_no;
+  await auditLog('sample.session_started', 'sample', data.id, `Field Control session ${data.test_no || data.id} started`, {
+    test_category: data.test_category || category,
+    queued
+  });
   // Pre-fill sample form with session data
   fcPrefillSampleForm(data);
   // Adjust tab visibility based on category
@@ -14485,6 +14668,10 @@ async function submitFieldSample() {
   // Update local cache
   const idx = allSamples.findIndex(s => s.id === activeFC_sessionId);
   if (idx >= 0) allSamples[idx] = data; else allSamples.unshift(data);
+  await auditLog('sample.submitted_to_lab', 'sample', activeFC_sessionId, `${cat} sample ${data.test_no || activeFC_sessionId} submitted to lab queue`, {
+    test_category: cat,
+    queued
+  });
   showQR(data);
   updateFCSessionBanner();
   const cat = isAgg ? 'aggregate' : 'soil';
@@ -14522,10 +14709,11 @@ async function clearFC_Session() {
       // Truly empty session — offer to discard the placeholder row entirely
       const ok = confirm(`Test No. ${activeFC_testNo} has no nuke, density, or lab data saved.\n\nDiscard this empty session? (Cancel = keep it as pending)`);
       if (ok) {
-        const { error } = await db.from('samples').delete().eq('id', activeFC_sessionId);
+        const { error } = await db.from('samples').update({ deleted_at: new Date().toISOString() }).eq('id', activeFC_sessionId);
         if (error) {
           showToast('Could not discard: ' + error.message, 'error');
         } else {
+          await auditLog('sample.session_discarded', 'sample', activeFC_sessionId, `Empty Field Control session ${activeFC_testNo} discarded`, { test_no: activeFC_testNo });
           allSamples = allSamples.filter(x => x.id !== activeFC_sessionId);
           showToast(`Session ${activeFC_testNo} discarded`, 'info');
         }
@@ -14536,6 +14724,7 @@ async function clearFC_Session() {
       if (!error) {
         const idx = allSamples.findIndex(x => x.id === activeFC_sessionId);
         if (idx >= 0) allSamples[idx].status = 'density';
+        await auditLog('sample.closed_density_only', 'sample', activeFC_sessionId, `Test ${activeFC_testNo} closed as density-only`, { test_no: activeFC_testNo });
         showToast(`Test ${activeFC_testNo} closed as density-only`, 'success');
       }
     }
@@ -18318,6 +18507,37 @@ table.fc-borrow-tbl th {
   box-shadow: 0 12px 34px rgba(0,0,0,0.5);
   backdrop-filter: blur(14px);
   -webkit-backdrop-filter: blur(14px);
+}
+.audit-row {
+  display: grid;
+  grid-template-columns: 170px 1fr;
+  gap: 14px;
+  padding: 12px 0;
+  border-bottom: 1px solid var(--border);
+}
+.audit-row:last-child { border-bottom: none; }
+.audit-row-time {
+  font-family: var(--mono);
+  font-size: 10px;
+  color: var(--muted);
+  letter-spacing: 0.4px;
+}
+.audit-row-main {
+  border-left: 3px solid rgba(240,168,78,0.5);
+  padding-left: 12px;
+}
+.audit-row-title {
+  font-family: var(--mono);
+  font-size: 12px;
+  color: var(--text);
+  letter-spacing: 0.2px;
+}
+.audit-row-meta {
+  margin-top: 3px;
+  font-family: var(--mono);
+  font-size: 9px;
+  color: var(--muted);
+  letter-spacing: 0.8px;
 }
 
 </style>
