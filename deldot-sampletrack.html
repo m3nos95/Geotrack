@@ -6058,13 +6058,8 @@ async function auditLog(action, entityType, entityId, summary, metadata = {}) {
     created_at: new Date().toISOString()
   };
 
-  if (!db || !navigator.onLine) {
-    auditLocalFallback(entry);
-    return;
-  }
-
   try {
-    const { error } = await db.from(AUDIT_LOG_TABLE).insert(entry);
+    const { error } = await dbWrite(AUDIT_LOG_TABLE, 'insert', entry);
     if (error) {
       // Keep audit non-blocking until the table is deployed everywhere.
       if (error.code !== '42P01') console.warn('auditLog:', error.message);
@@ -6174,7 +6169,10 @@ async function getLatestReportVersion(sampleId) {
 
   try {
     const local = JSON.parse(localStorage.getItem('labtrak_report_version_fallback') || '[]');
-    return local
+    const queued = offlineQueueGet()
+      .filter(op => op.table === REPORT_VERSION_TABLE && op.op === 'insert')
+      .map(op => ({ ...(op.payload || {}), id: op.tempId || op.matchId, queued: true }));
+    return [...local, ...queued]
       .filter(r => String(r.sample_id) === String(sampleId))
       .sort((a, b) => Number(b.version_no || 0) - Number(a.version_no || 0))[0] || null;
   } catch(e) {
@@ -6200,15 +6198,13 @@ async function createReportVersion(sample, reportType, labData, status = 'draft'
     created_at: new Date().toISOString()
   };
 
-  if (!db || !navigator.onLine) return reportVersionLocalFallback(row);
-
   try {
-    const { data, error } = await db.from(REPORT_VERSION_TABLE).insert(row).select('*').single();
+    const { data, error, queued } = await dbWrite(REPORT_VERSION_TABLE, 'insert', row);
     if (error) {
       if (error.code !== '42P01') console.warn('createReportVersion:', error.message);
       return reportVersionLocalFallback(row);
     }
-    return data;
+    return queued ? { ...data, version_no: versionNo, queued: true } : data;
   } catch(e) {
     console.warn('createReportVersion:', e);
     return reportVersionLocalFallback(row);
@@ -6226,7 +6222,7 @@ async function updateLatestReportVersionStatus(sampleId, status, metadata = {}) 
     metadata: { ...(latest.metadata || {}), ...metadata }
   };
 
-  if (latest.local_only || !db || !navigator.onLine) {
+  if (latest.local_only) {
     latest.status = status;
     latest.reviewed_by_id = updated.reviewed_by_id;
     latest.reviewed_by_name = updated.reviewed_by_name;
@@ -6236,13 +6232,9 @@ async function updateLatestReportVersionStatus(sampleId, status, metadata = {}) 
   }
 
   try {
-    const { data, error } = await db.from(REPORT_VERSION_TABLE)
-      .update(updated)
-      .eq('id', latest.id)
-      .select('*')
-      .single();
+    const { data, error, queued } = await dbWrite(REPORT_VERSION_TABLE, 'update', updated, latest.id);
     if (error) throw error;
-    return data;
+    return queued ? { ...latest, ...updated, queued: true } : data;
   } catch(e) {
     console.warn('updateLatestReportVersionStatus:', e);
     return latest;
@@ -6414,26 +6406,26 @@ async function saveProject() {
     track_sources:      document.getElementById('proj_track_sources')?.checked || false,
   };
   if (!data.contract) { showToast('Contract number is required', 'error'); return; }
-  let error;
+  let error, queued;
   if (id) {
-    ({ error } = await db.from('projects').update(data).eq('id', id));
+    ({ error, queued } = await dbWrite('projects', 'update', data, id));
   } else {
-    ({ error } = await db.from('projects').insert(data));
+    ({ error, queued } = await dbWrite('projects', 'insert', data));
   }
   if (error) { showToast('Save failed: ' + error.message, 'error'); return; }
   await auditLog(id ? 'project.updated' : 'project.created', 'project', id || data.contract, id ? `Project ${data.contract} updated` : `Project ${data.contract} created`, data);
   document.getElementById('projectOverlay').classList.remove('open');
-  showToast(id ? 'Project updated ✓' : 'Project created ✓', 'success');
+  showToast(queued ? 'Project saved offline — will sync when connected ✓' : (id ? 'Project updated ✓' : 'Project created ✓'), 'success');
   loadProjects();
 }
 
 async function deleteProject(id, contract, name) {
   if (!requirePermission('projects.manage', 'Only administrators can archive projects.')) return;
   if (!confirm('Archive project "' + contract + ' — ' + name + '"?\n\nThe project record will be hidden from active lists. Soil/aggregate samples linked to this contract are NOT deleted.')) return;
-  const { error } = await db.from('projects').update({ deleted_at: new Date().toISOString(), status: 'archived' }).eq('id', id);
+  const { error, queued } = await dbWrite('projects', 'update', { deleted_at: new Date().toISOString(), status: 'archived' }, id);
   if (error) { showToast('Delete failed: ' + error.message, 'error'); return; }
   await auditLog('project.archived', 'project', id, `Project ${contract} archived`, { contract, name });
-  showToast('Project archived ✓', 'success');
+  showToast(queued ? 'Project archive queued offline ✓' : 'Project archived ✓', 'success');
   loadProjects();
 }
 
@@ -6478,6 +6470,10 @@ async function generateReportPdfBase64() {
 // ── Auto-email report to project distribution list ─────────────
 async function autoEmailReport(sample) {
   if (!sample) return;
+  if (!navigator.onLine) {
+    showToast('Email distribution is unavailable offline. Sync first, then send.', 'error');
+    return;
+  }
   const proj = (allProjects || []).find(p =>
     p.contract && sample.contract &&
     p.contract.toLowerCase() === sample.contract.toLowerCase()
@@ -6665,6 +6661,7 @@ function refreshReportEmailBtn(sample) {
 async function slApproveForDistribution() {
   if (!slCurrentSample) return;
   if (!canApproveReports()) { showToast('You do not have permission to approve reports', 'error'); return; }
+  if (!navigator.onLine) { showToast('Approval and email distribution require an online connection.', 'error'); return; }
   const approvedBy = currentUser?.name || 'Admin';
   const approvedAt = new Date().toISOString();
   const { error } = await db.from('samples').update({
@@ -6799,6 +6796,7 @@ function slOpenRejectModal() {
 
 async function slSubmitRejection() {
   if (!slCurrentSample) return;
+  if (!navigator.onLine) { showToast('Report rejection requires an online connection.', 'error'); return; }
   const comment = (document.getElementById('slRejectComment')?.value || '').trim();
   const { error } = await db.from('samples').update({
     dist_status:          'rejected',
@@ -7227,10 +7225,10 @@ function updateTopbarStatus() {
 
 async function unarchiveSample(id, testNo) {
   if (!requirePermission('samples.manage', 'Only administrators can restore archived samples.')) return;
-  const { error } = await db.from('samples').update({ archived: false }).eq('id', id);
+  const { error, queued } = await dbWrite('samples', 'update', { archived: false }, id);
   if (error) { showToast('Restore failed: ' + error.message, 'error'); return; }
   await auditLog('sample.unarchived', 'sample', id, `Sample ${testNo} restored from archive`, { test_no: testNo });
-  showToast(`Sample ${testNo} restored`, 'success');
+  showToast(queued ? `Restore queued for ${testNo}` : `Sample ${testNo} restored`, 'success');
   loadSamples();
 }
 
@@ -8268,32 +8266,32 @@ async function saveEditSample() {
     remarks:       document.getElementById('es_remarks').value.trim(),
   };
 
-  const { error } = await db.from('samples').update(updates).eq('id', id);
+  const { error, queued } = await dbWrite('samples', 'update', updates, id);
   if (error) { showToast('Save failed: ' + error.message, 'error'); return; }
   await auditLog('sample.updated', 'sample', id, `Sample ${document.getElementById('es_id').value} field information updated`, updates);
 
   document.getElementById('editSampleOverlay').classList.remove('open');
-  showToast('Sample updated ✓', 'success');
+  showToast(queued ? 'Sample edit queued offline ✓' : 'Sample updated ✓', 'success');
   loadSamples();
 }
 
 async function archiveSample(id, testNo) {
   if (!requirePermission('samples.manage', 'Only administrators can archive samples.')) return;
   if (!confirm(`Archive sample ${testNo}? It will be hidden from the dashboard but not deleted. You can restore it anytime.`)) return;
-  const { error } = await db.from('samples').update({ archived: true }).eq('id', id);
+  const { error, queued } = await dbWrite('samples', 'update', { archived: true }, id);
   if (error) { showToast('Archive failed: ' + error.message, 'error'); return; }
   await auditLog('sample.archived', 'sample', id, `Sample ${testNo} archived`, { test_no: testNo });
-  showToast(`Sample ${testNo} archived`, 'success');
+  showToast(queued ? `Archive queued for ${testNo}` : `Sample ${testNo} archived`, 'success');
   loadSamples();
 }
 
 async function deleteSample(id, testNo) {
   if (!requirePermission('samples.manage', 'Only administrators can move samples to deleted records.')) return;
   if (!confirm(`Move sample ${testNo} to deleted records?\n\nThis hides it from active lists but keeps the lab record recoverable.`)) return;
-  const { error } = await db.from('samples').update({ deleted_at: new Date().toISOString() }).eq('id', id);
+  const { error, queued } = await dbWrite('samples', 'update', { deleted_at: new Date().toISOString() }, id);
   if (error) { showToast('Delete failed: ' + error.message, 'error'); return; }
   await auditLog('sample.deleted', 'sample', id, `Sample ${testNo} moved to deleted records`, { test_no: testNo });
-  showToast(`Sample ${testNo} moved to deleted records`, 'success');
+  showToast(queued ? `Delete queued for ${testNo}` : `Sample ${testNo} moved to deleted records`, 'success');
   loadSamples();
 }
 
@@ -10961,12 +10959,12 @@ function slHideDeleteModal() {
 }
 
 async function slConfirmDelete() {
-  if (!slCurrentSample || !db) return;
+  if (!slCurrentSample) return;
   slHideDeleteModal();
   const target = slCurrentSample;
   const testNo = target.test_no || 'Sample';
 
-  const { error } = await db.from('samples').update({ deleted_at: new Date().toISOString() }).eq('id', target.id);
+  const { error } = await dbWrite('samples', 'update', { deleted_at: new Date().toISOString() }, target.id);
   if (error) { showToast('Delete failed: ' + error.message, 'error'); return; }
   await auditLog('sample.deleted', 'sample', target.id, `Sample ${testNo} moved to deleted records from soil lab`, { test_no: testNo });
 
@@ -10998,13 +10996,13 @@ function _showDeleteToast(testNo) {
 }
 
 async function slUndoDelete() {
-  if (!_slDeleteTarget || !db) return;
+  if (!_slDeleteTarget) return;
   if (_slUndoTimer) clearTimeout(_slUndoTimer);
   document.getElementById('toast').classList.remove('show');
   const target = _slDeleteTarget;
   _slDeleteTarget = null;
 
-  const { error } = await db.from('samples').update({ deleted_at: null }).eq('id', target.id);
+  const { error } = await dbWrite('samples', 'update', { deleted_at: null }, target.id);
   if (error) { showToast('Undo failed: ' + error.message, 'error'); return; }
   await auditLog('sample.restored', 'sample', target.id, `Sample ${target.test_no || target.id} restored from deleted records`, { test_no: target.test_no });
 
@@ -12947,12 +12945,11 @@ async function slHandleDistribution(sample) {
   const syncToChart = !!(tracksSource || pushToSources);
 
   // Always queue for admin approval first — Gmail only needed at send time
-  if (!db) { showToast('Not connected to database', 'error'); return; }
-  const { error } = await db.from('samples').update({
+  const { error, queued } = await dbWrite('samples', 'update', {
     dist_status: 'pending_review',
     dist_submitted_by: currentUser?.id || '',
     sync_to_chart: syncToChart,
-  }).eq('id', sample.id);
+  }, sample.id);
   if (error) { console.error('dist_status update failed:', error.message); return; }
   const updated = { ...sample, dist_status: 'pending_review', dist_submitted_by: currentUser?.id || '' };
   slCurrentSample = updated;
@@ -12967,7 +12964,7 @@ async function slHandleDistribution(sample) {
     version_no: version?.version_no
   });
   refreshApprovalBadge();
-  showToast('Report queued for admin approval ✓', 'success');
+  showToast(queued ? 'Report review request queued offline ✓' : 'Report queued for admin approval ✓', 'success');
 }
 
 // ── Shared finish: save + render + switch view ─────────────────
@@ -12976,7 +12973,8 @@ async function slFinishLab(parsed) {
   slLastLabData = parsed;
   const fields  = slReportFields();
   const updates = { status: 'complete', lab_data: parsed, conforms: 'auto', ...fields };
-  await db.from('samples').update(updates).eq('id', slCurrentSample.id);
+  const saveResult = await dbWrite('samples', 'update', updates, slCurrentSample.id);
+  if (saveResult.error) { showToast('Save failed: ' + saveResult.error.message, 'error'); return; }
   await auditLog('lab.soil_report_generated', 'sample', slCurrentSample.id, `Soil-lab report ${slCurrentSample.test_no || slCurrentSample.id} generated`, {
     conforms: updates.conforms,
     date_reported: updates.date_reported
@@ -13033,7 +13031,8 @@ async function slGenerateAggReport() {
   };
   const fields  = slReportFields();
   const updates = { status: 'complete', lab_data: labData, conforms: 'auto', ...fields };
-  await db.from('samples').update(updates).eq('id', slCurrentSample.id);
+  const saveResult = await dbWrite('samples', 'update', updates, slCurrentSample.id);
+  if (saveResult.error) { showToast('Save failed: ' + saveResult.error.message, 'error'); return; }
   await auditLog('lab.aggregate_report_generated', 'sample', slCurrentSample.id, `Soil-lab aggregate report ${slCurrentSample.test_no || slCurrentSample.id} generated`, {
     conforms: updates.conforms,
     date_reported: updates.date_reported
@@ -13298,7 +13297,7 @@ async function slCreateNewSample() {
       const next = await getNextTestNumber(_slNsCat);
       if (next != null) row.test_no = String(next);
     }
-    const { data, error } = await db.from('samples').insert(row).select().single();
+    const { data, error, queued } = await dbWrite('samples', 'insert', row);
     if (!error) { inserted = data; break; }
     lastError = error;
     const msg = (error.message || '').toLowerCase();
@@ -13327,7 +13326,7 @@ async function slCreateNewSample() {
   document.getElementById('slNewSampleOverlay').classList.remove('open');
   // Small delay so queue renders before we try to load
   setTimeout(() => slLoadSample(inserted.id), 150);
-  showToast(`Sample ${inserted.test_no} created and loaded ✓`, 'success');
+  showToast(inserted._offline ? `Sample ${inserted.test_no || inserted.id} queued offline ✓` : `Sample ${inserted.test_no} created and loaded ✓`, 'success');
 }
 
 // ── Clear form ─────────────────────────────────────────────────
@@ -14814,6 +14813,58 @@ function offlineQueueClear() {
   offlineUpdateBanner();
 }
 
+function offlineQueueSummary(q) {
+  const counts = q.reduce((acc, op) => {
+    const key = op.table === 'samples' ? 'sample' :
+      op.table === 'projects' ? 'project' :
+      op.table === REPORT_VERSION_TABLE ? 'report version' :
+      op.table === AUDIT_LOG_TABLE ? 'audit' : 'record';
+    acc[key] = (acc[key] || 0) + 1;
+    return acc;
+  }, {});
+  const parts = Object.entries(counts).map(([name, count]) => `${count} ${name}${count === 1 ? '' : 's'}`);
+  return parts.slice(0, 3).join(', ') + (parts.length > 3 ? '...' : '');
+}
+
+function offlineQueueDetails() {
+  const q = offlineQueueGet();
+  let overlay = document.getElementById('offlineQueueOverlay');
+  if (!overlay) {
+    overlay = document.createElement('div');
+    overlay.className = 'edit-overlay';
+    overlay.id = 'offlineQueueOverlay';
+    overlay.innerHTML = `
+      <div class="edit-panel" style="max-width:760px;">
+        <h2>PENDING SYNC</h2>
+        <p id="offlineQueueSubtitle">Queued records waiting for a connection.</p>
+        <div id="offlineQueueBody" style="max-height:55vh;overflow:auto;"></div>
+        <div class="btn-row" style="margin-top:16px;">
+          <button class="btn btn-success" onclick="offlineSync()">SYNC NOW</button>
+          <button class="btn btn-ghost" onclick="document.getElementById('offlineQueueOverlay').classList.remove('open')">CLOSE</button>
+        </div>
+      </div>`;
+    document.body.appendChild(overlay);
+  }
+  const subtitle = document.getElementById('offlineQueueSubtitle');
+  const body = document.getElementById('offlineQueueBody');
+  if (subtitle) subtitle.textContent = q.length ? offlineQueueSummary(q) : 'No queued changes.';
+  if (body) {
+    body.innerHTML = q.length ? q.map((op, i) => {
+      const when = op._queued_at ? new Date(op._queued_at).toLocaleString() : 'Unknown time';
+      const title = `${String(op.op || '').toUpperCase()} · ${op.table || 'record'}`;
+      const target = op.matchId || op.tempId || op.payload?.test_no || op.payload?.sample_test_no || `Queue item ${i + 1}`;
+      return `<div class="audit-row">
+        <div class="audit-row-time">${ltEscapeHtml(when)}</div>
+        <div class="audit-row-main">
+          <div class="audit-row-title">${ltEscapeHtml(title)}</div>
+          <div class="audit-row-meta">${ltEscapeHtml(String(target))}</div>
+        </div>
+      </div>`;
+    }).join('') : '<div class="sl-empty">No pending sync records.</div>';
+  }
+  overlay.classList.add('open');
+}
+
 // ── Banner ──────────────────────────────────────────────────────
 function offlineUpdateBanner() {
   const banner  = document.getElementById('offlineBanner');
@@ -14828,8 +14879,8 @@ function offlineUpdateBanner() {
     const text = document.getElementById('offlineBannerText');
     if (text) {
       if (!isOnline && q.length === 0) text.innerHTML = '⚡ Offline mode — data will sync when connected';
-      else if (!isOnline) text.innerHTML = `Offline — <span class="offline-queue-count">${q.length}</span> records queued`;
-      else text.innerHTML = `<span class="offline-queue-count">${q.length}</span> records pending sync…`;
+      else if (!isOnline) text.innerHTML = `Offline — <span class="offline-queue-count">${q.length}</span> changes queued (${ltEscapeHtml(offlineQueueSummary(q))})`;
+      else text.innerHTML = `<span class="offline-queue-count">${q.length}</span> changes pending sync (${ltEscapeHtml(offlineQueueSummary(q))})`;
     }
     if (syncBtn) syncBtn.style.display = (isOnline && q.length > 0) ? '' : 'none';
   } else {
@@ -14955,6 +15006,8 @@ async function offlineSync() {
     showToast(`✅ Synced ${synced} record${synced>1?'s':''} to server`, 'success');
     // Reload data to get server state
     if (typeof loadAllSamples === 'function') loadAllSamples();
+    if (typeof loadSamples === 'function') loadSamples();
+    if (typeof loadProjects === 'function') loadProjects();
   } else if (synced > 0 && failed > 0) {
     showToast(`Synced ${synced}, failed ${failed} — will retry`, 'info');
   } else if (failed > 0) {
@@ -15114,23 +15167,23 @@ async function clearFC_Session() {
       // Truly empty session — offer to discard the placeholder row entirely
       const ok = confirm(`Test No. ${activeFC_testNo} has no nuke, density, or lab data saved.\n\nDiscard this empty session? (Cancel = keep it as pending)`);
       if (ok) {
-        const { error } = await db.from('samples').update({ deleted_at: new Date().toISOString() }).eq('id', activeFC_sessionId);
+        const { error, queued } = await dbWrite('samples', 'update', { deleted_at: new Date().toISOString() }, activeFC_sessionId);
         if (error) {
           showToast('Could not discard: ' + error.message, 'error');
         } else {
           await auditLog('sample.session_discarded', 'sample', activeFC_sessionId, `Empty Field Control session ${activeFC_testNo} discarded`, { test_no: activeFC_testNo });
           allSamples = allSamples.filter(x => x.id !== activeFC_sessionId);
-          showToast(`Session ${activeFC_testNo} discarded`, 'info');
+          showToast(queued ? `Discard queued for session ${activeFC_testNo}` : `Session ${activeFC_testNo} discarded`, 'info');
         }
       }
     } else if ((hasNuclear || hasDensity) && !hasLab) {
       // Density-only test (nuke + LB-68 saved, no lab sample collected) — mark as 'density'
-      const { error } = await db.from('samples').update({ status: 'density' }).eq('id', activeFC_sessionId);
+      const { error, queued } = await dbWrite('samples', 'update', { status: 'density' }, activeFC_sessionId);
       if (!error) {
         const idx = allSamples.findIndex(x => x.id === activeFC_sessionId);
         if (idx >= 0) allSamples[idx].status = 'density';
         await auditLog('sample.closed_density_only', 'sample', activeFC_sessionId, `Test ${activeFC_testNo} closed as density-only`, { test_no: activeFC_testNo });
-        showToast(`Test ${activeFC_testNo} closed as density-only`, 'success');
+        showToast(queued ? `Density-only close queued for ${activeFC_testNo}` : `Test ${activeFC_testNo} closed as density-only`, 'success');
       }
     }
   }
@@ -19196,6 +19249,7 @@ table.fc-borrow-tbl th {
   <div id="offlineBanner">
     <div class="offline-dot"></div>
     <span id="offlineBannerText">Offline — <span id="offlineQueueCount">0</span> records queued</span>
+    <button onclick="offlineQueueDetails()" style="background:rgba(255,255,255,0.06);border:1px solid rgba(245,158,11,0.25);color:#f59e0b;font-family:var(--mono);font-size:10px;font-weight:700;border-radius:5px;padding:4px 8px;cursor:pointer;">DETAILS</button>
     <button id="offlineSyncBtn" onclick="offlineSync()" style="display:none;">SYNC NOW</button>
     <button onclick="document.getElementById('offlineBanner').classList.remove('visible')"
       style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:14px;margin-left:4px;">✕</button>
