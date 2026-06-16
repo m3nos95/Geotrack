@@ -2811,7 +2811,7 @@ table.fc-borrow-tbl tr.fc-borrow-detail-row td{background:var(--surface);border-
 
     <!-- ── Set new PIN (shown after recovery verified) ── -->
     <div id="pinSetNewSection" style="display:none;">
-      <div style="font-family:var(--mono);font-size:10px;color:var(--green2);margin-bottom:12px;">✓ Identity verified. Set your new PIN.</div>
+      <div id="pinSetNewTitle" style="font-family:var(--mono);font-size:10px;color:var(--green2);margin-bottom:12px;">✓ Identity verified. Set your new PIN.</div>
       <input type="password" id="newPinInput" maxlength="8" autocomplete="new-password"
              placeholder="New PIN (up to 8 chars)"
              onkeydown="if(event.key==='Enter')document.getElementById('newPinConfirm').focus()"
@@ -6601,13 +6601,8 @@ async function connectSupabase(silent = false) {
     document.getElementById('connDot').classList.add('off');
     offlineLoadCached();
     umRenderUsers();
-    const sess = sessionStorage.getItem('st_current_user');
-    if (sess) {
-      try { loginUser(JSON.parse(sess), true); }
-      catch(ex) { showUserLogin(); }
-    } else {
-      showUserLogin();
-    }
+    sessionStorage.removeItem('st_current_user');
+    showUserLogin();
     offlineUpdateBanner();
     if (!url || !key) showToast('Working offline — limited functionality', 'info');
     return;
@@ -6633,14 +6628,9 @@ async function connectSupabase(silent = false) {
     loadSamples();
     loadProjects();
 
-    // Restore session or prompt login
-    const sess = sessionStorage.getItem('st_current_user');
-    if (sess) {
-      try { loginUser(JSON.parse(sess), true); }
-      catch(ex) { showUserLogin(); }
-    } else {
-      showUserLogin();
-    }
+    // Production mode: require an explicit sign-in on each page load.
+    sessionStorage.removeItem('st_current_user');
+    showUserLogin();
   } catch (e) {
     // ── Network failure during connect — launch offline ──
     if (typeof supabase !== 'undefined' && url && key) {
@@ -6650,13 +6640,8 @@ async function connectSupabase(silent = false) {
     document.getElementById('connDot').classList.add('off');
     offlineLoadCached();
     umRenderUsers();
-    const sess3 = sessionStorage.getItem('st_current_user');
-    if (sess3) {
-      try { loginUser(JSON.parse(sess3), true); }
-      catch(ex) { showUserLogin(); }
-    } else {
-      showUserLogin();
-    }
+    sessionStorage.removeItem('st_current_user');
+    showUserLogin();
     offlineUpdateBanner();
     showToast('Working offline — data will sync when connected', 'info');
   }
@@ -10778,7 +10763,7 @@ async function showUsersForLab(role) {
         <div class="user-btn-name">${u.name}</div>
         <div class="user-btn-role">${rd.label.toUpperCase()}</div>
       </div>
-      <div class="user-btn-arrow">${u.pin ? '🔒' : '→'}</div>
+      <div class="user-btn-arrow">${u.pin ? '🔒' : 'SET PIN'}</div>
     </div>`;
   }).join('');
 }
@@ -10793,7 +10778,6 @@ async function selectUserForLogin(id) {
   const users = _stUsersCache || await getUsers();
   const user = users.find(u => u.id === id);
   if (!user) return;
-  if (!user.pin) { loginUser(user); return; }
   pinTarget = user;
   pinBuffer = '';
   document.getElementById('userSelectPanel').style.display = 'none';
@@ -10809,8 +10793,20 @@ async function selectUserForLogin(id) {
   if (inp) { inp.value = ''; inp.type = 'password'; }
   updatePinDots(0);
   setTimeout(() => inp && inp.focus(), 150);
-  // Show pin entry, hide recovery
-  showPinEntry();
+  if (!user.pin) {
+    document.getElementById('pinEntrySection').style.display    = 'none';
+    document.getElementById('pinRecoverySection').style.display = 'none';
+    document.getElementById('pinSetNewSection').style.display   = 'block';
+    const title = document.getElementById('pinSetNewTitle');
+    if (title) title.textContent = 'First sign-in: create a PIN for this account.';
+    document.getElementById('newPinInput').value = '';
+    document.getElementById('newPinConfirm').value = '';
+    document.getElementById('newPinErr').textContent = '';
+    setTimeout(() => document.getElementById('newPinInput')?.focus(), 150);
+  } else {
+    // Show pin entry, hide recovery
+    showPinEntry();
+  }
 }
 
 function pinTextChanged() {
@@ -11316,6 +11312,8 @@ async function checkRecovery() {
     errEl.textContent = '';
     document.getElementById('pinRecoverySection').style.display = 'none';
     document.getElementById('pinSetNewSection').style.display   = 'block';
+    const title = document.getElementById('pinSetNewTitle');
+    if (title) title.textContent = '✓ Identity verified. Set your new PIN.';
     document.getElementById('newPinInput').value   = '';
     document.getElementById('newPinConfirm').value = '';
     document.getElementById('newPinErr').textContent = '';
