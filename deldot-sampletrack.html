@@ -18144,6 +18144,216 @@ body::after {
 .dash-contract-row:last-child { border-bottom: none !important; }
 .dash-contract-row:hover { background: transparent !important; border-color: transparent !important; border-left-color: var(--accent2) !important; border-bottom-color: var(--border) !important; }
 
+/* ══════════════════════════════════════════════════════════════════
+   PRODUCTION VISUAL POLISH — pass 1
+   Final-layer refinements for hierarchy, focus, and operational clarity.
+   ══════════════════════════════════════════════════════════════════ */
+
+:root {
+  --surface-raised: #111c2c;
+  --surface-glass: rgba(15,24,37,0.92);
+  --focus-ring: 0 0 0 3px rgba(240,168,78,0.18);
+  --hairline: rgba(255,255,255,0.065);
+}
+
+::selection { background: rgba(240,168,78,0.28); color: #fff7ed; }
+
+#topbar {
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+}
+.topbar-stat {
+  min-width: 112px;
+  justify-content: center;
+}
+.topbar-stat-dot,
+.conn-dot {
+  outline: 2px solid rgba(255,255,255,0.035);
+  outline-offset: 2px;
+}
+.topbar-section {
+  background: linear-gradient(90deg, rgba(240,168,78,0.055), transparent);
+}
+
+.card,
+.dash-panel,
+.project-card,
+.edit-panel,
+.sl-queue-panel,
+.sl-entry-panel,
+.setup-card,
+.dkpi-card,
+.stat-card {
+  box-shadow:
+    inset 0 1px 0 var(--hairline),
+    0 10px 32px rgba(0,0,0,0.34) !important;
+}
+.card:focus-within,
+.dash-panel:focus-within,
+.project-card:focus-within,
+.edit-panel:focus-within {
+  border-color: rgba(240,168,78,0.42) !important;
+  box-shadow: inset 0 1px 0 var(--hairline), var(--focus-ring), 0 12px 36px rgba(0,0,0,0.42) !important;
+}
+
+button,
+.btn,
+.rail-item,
+.project-card,
+.action-menu-item,
+.user-badge,
+.btn-settings {
+  -webkit-tap-highlight-color: transparent;
+}
+button:focus-visible,
+.btn:focus-visible,
+.rail-item:focus-visible,
+.project-card:focus-visible,
+.action-menu-item:focus-visible,
+.user-badge:focus-visible,
+.btn-settings:focus-visible,
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring) !important;
+  border-color: rgba(240,168,78,0.55) !important;
+}
+
+input:hover,
+select:hover,
+textarea:hover {
+  border-color: rgba(168,190,212,0.32);
+}
+input:disabled,
+select:disabled,
+textarea:disabled,
+button:disabled,
+.btn:disabled {
+  opacity: 0.52 !important;
+  cursor: not-allowed !important;
+  filter: grayscale(0.15);
+}
+
+.sample-table,
+.dash-mini-table,
+.sieve-manual-table,
+table.fc-borrow-tbl {
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  box-shadow: inset 0 0 0 1px var(--border);
+}
+.sample-table thead th,
+.dash-mini-table thead th,
+.sieve-manual-table th,
+table.fc-borrow-tbl th {
+  background: linear-gradient(180deg, rgba(255,255,255,0.035), rgba(255,255,255,0.012)) !important;
+  color: var(--text-2) !important;
+}
+.sample-table .test-no {
+  color: #f3b35d !important;
+  letter-spacing: 0.4px;
+}
+.location-cell {
+  color: var(--text-2);
+}
+
+.action-btn-main,
+.pc-action-btn {
+  background: rgba(255,255,255,0.035) !important;
+  border: 1px solid rgba(255,255,255,0.09) !important;
+  border-radius: 7px !important;
+  color: var(--text-2) !important;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.045);
+}
+.action-btn-main:hover,
+.pc-action-btn:hover {
+  background: rgba(240,168,78,0.12) !important;
+  border-color: rgba(240,168,78,0.42) !important;
+  color: var(--accent3) !important;
+}
+.action-menu {
+  min-width: 236px;
+  border-radius: 10px !important;
+  background: var(--surface-glass) !important;
+  border: 1px solid rgba(255,255,255,0.11) !important;
+  box-shadow: 0 18px 48px rgba(0,0,0,0.62), inset 0 1px 0 rgba(255,255,255,0.055) !important;
+  backdrop-filter: blur(18px);
+  -webkit-backdrop-filter: blur(18px);
+  overflow: hidden;
+}
+.action-menu-item {
+  min-height: 36px;
+  align-items: center;
+  gap: 8px;
+}
+.action-menu-item:hover {
+  background: rgba(240,168,78,0.09) !important;
+}
+
+.project-card {
+  isolation: isolate;
+}
+.project-card::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(circle at 92% 8%, rgba(240,168,78,0.09), transparent 30%),
+    linear-gradient(180deg, rgba(255,255,255,0.025), transparent 42%);
+  opacity: 0;
+  transition: opacity var(--transition);
+  z-index: 0;
+}
+.project-card > * {
+  position: relative;
+  z-index: 1;
+}
+.project-card:hover::after,
+.project-card:focus-within::after {
+  opacity: 1;
+}
+.project-card:hover .pc-actions,
+.project-card:focus-within .pc-actions {
+  opacity: 1;
+}
+.pc-name {
+  letter-spacing: -0.01em;
+}
+.pc-meta {
+  line-height: 1.45;
+}
+
+.dash-empty,
+.hub-empty,
+.sl-empty,
+.fc-borrow-empty {
+  border: 1px dashed rgba(168,190,212,0.18);
+  border-radius: var(--radius-lg);
+  background: rgba(255,255,255,0.018);
+  color: var(--muted) !important;
+}
+
+.edit-overlay.open,
+#setupOverlay,
+#userOverlay {
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+}
+.edit-panel h2,
+.setup-card .setup-logo {
+  text-shadow: 0 0 22px rgba(240,168,78,0.18);
+}
+
+#offlineBanner {
+  background: rgba(8,14,26,0.94);
+  border: 1px solid rgba(240,168,78,0.26);
+  box-shadow: 0 12px 34px rgba(0,0,0,0.5);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+}
+
 </style>
 
 <script id="motion-js">
