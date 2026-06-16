@@ -25,6 +25,8 @@ What the migration enforces:
 - project writes are limited to admin/section admin.
 - sample writes are limited to operational roles.
 - audit trail records are append-only.
+- report versions are append-only; approval/rejection updates the review status
+  on the latest version instead of overwriting history.
 - approved source edits are limited to admin/section admin/lab.
 - concrete set writes are limited to admin/section admin/concrete.
 

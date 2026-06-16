@@ -195,6 +195,68 @@ for delete
 to authenticated
 using (false);
 
+-- Report versions: append report revisions, allow review status updates.
+create table if not exists public.st_report_versions (
+  id uuid primary key default gen_random_uuid(),
+  sample_id text not null,
+  sample_test_no text,
+  report_type text not null,
+  version_no integer not null,
+  status text default 'draft',
+  sample_snapshot jsonb,
+  lab_data jsonb,
+  metadata jsonb default '{}'::jsonb,
+  generated_by_id text,
+  generated_by_name text,
+  reviewed_by_id text,
+  reviewed_by_name text,
+  reviewed_at timestamptz,
+  created_at timestamptz default now()
+);
+
+create unique index if not exists st_report_versions_sample_version_idx
+on public.st_report_versions(sample_id, version_no);
+
+create index if not exists st_report_versions_sample_idx
+on public.st_report_versions(sample_id, created_at desc);
+
+alter table public.st_report_versions enable row level security;
+drop policy if exists "report_versions authenticated read" on public.st_report_versions;
+drop policy if exists "report_versions lab insert" on public.st_report_versions;
+drop policy if exists "report_versions approver update" on public.st_report_versions;
+drop policy if exists "report_versions no delete" on public.st_report_versions;
+
+create policy "report_versions authenticated read"
+on public.st_report_versions
+for select
+to authenticated
+using (public.st_current_role() is not null);
+
+create policy "report_versions lab insert"
+on public.st_report_versions
+for insert
+to authenticated
+with check (public.st_current_role() in ('admin', 'section_admin', 'lab'));
+
+create policy "report_versions approver update"
+on public.st_report_versions
+for update
+to authenticated
+using (
+  public.st_current_role() in ('admin', 'section_admin', 'lab')
+  or public.st_can_approve_reports()
+)
+with check (
+  public.st_current_role() in ('admin', 'section_admin', 'lab')
+  or public.st_can_approve_reports()
+);
+
+create policy "report_versions no delete"
+on public.st_report_versions
+for delete
+to authenticated
+using (false);
+
 -- Optional tables used by richer modules. These blocks are safe to skip when a
 -- table has not been created in a particular deployment.
 do $$
