@@ -5549,6 +5549,8 @@ self.addEventListener('fetch', e => {
   const storedKey = localStorage.getItem('ai_key');
   if (storedKey) document.getElementById('aiKey').value = storedKey;
 
+  loadSupabaseSettings();
+
   // Wait for CDN scripts (Supabase lib etc.) before connecting
   // cdnReady fires when all dynamic scripts have loaded OR failed
   // This ensures we always get past the loading phase, even offline
@@ -6515,6 +6517,63 @@ function wireConcreteProjectAutofill() { return; // no-op
 // ══════════════════════════════════════════════
 // SUPABASE
 // ══════════════════════════════════════════════
+const SB_URL_STORAGE_KEY = 'labtrak_sb_url';
+const SB_KEY_STORAGE_KEY = 'labtrak_sb_anon_key';
+
+function loadSupabaseSettings() {
+  const urlEl = document.getElementById('sbUrl');
+  const keyEl = document.getElementById('sbKey');
+  if (!urlEl || !keyEl) return;
+  const savedUrl = localStorage.getItem(SB_URL_STORAGE_KEY);
+  const savedKey = localStorage.getItem(SB_KEY_STORAGE_KEY);
+  if (savedUrl) urlEl.value = savedUrl;
+  if (savedKey) keyEl.value = savedKey;
+}
+
+function persistSupabaseSettings() {
+  const url = document.getElementById('sbUrl')?.value.trim();
+  const key = document.getElementById('sbKey')?.value.trim();
+  if (url) localStorage.setItem(SB_URL_STORAGE_KEY, url);
+  if (key) localStorage.setItem(SB_KEY_STORAGE_KEY, key);
+}
+
+function updateSupabaseStatus() {
+  const el = document.getElementById('sbConnStatus');
+  if (!el) return;
+  const dot = document.getElementById('connDot');
+  const connected = dot && !dot.classList.contains('off');
+  const url = document.getElementById('sbUrl')?.value.trim() || '';
+  const host = url.replace(/^https?:\/\//, '').replace(/\/$/, '');
+  el.textContent = connected && host ? '✓ Connected to ' + host : 'Not connected — check URL and key, then click Connect';
+  el.style.color = connected ? 'var(--green2)' : 'var(--muted)';
+}
+
+async function saveSupabaseConfig() {
+  const url = document.getElementById('sbUrl')?.value.trim();
+  const key = document.getElementById('sbKey')?.value.trim();
+  const err = document.getElementById('setupErr');
+  if (err) err.style.display = 'none';
+
+  if (!url || !key) {
+    if (err) { err.textContent = 'Enter both Project URL and Anon public key.'; err.style.display = 'block'; }
+    return;
+  }
+  if (!/^https:\/\/[a-z0-9-]+\.supabase\.co\/?$/i.test(url)) {
+    if (err) { err.textContent = 'Project URL should look like https://xxxxx.supabase.co'; err.style.display = 'block'; }
+    return;
+  }
+
+  persistSupabaseSettings();
+  window._appConnected = false;
+  await connectSupabase(false);
+  updateSupabaseStatus();
+
+  const dot = document.getElementById('connDot');
+  if (dot && !dot.classList.contains('off')) {
+    showToast('Database connected ✓', 'success');
+  }
+}
+
 async function connectSupabase(silent = false) {
   const url = document.getElementById('sbUrl').value.trim();
   const key = document.getElementById('sbKey').value.trim();
@@ -6558,6 +6617,8 @@ async function connectSupabase(silent = false) {
 
     document.getElementById('app').style.display = 'grid';
     document.getElementById('connDot').classList.remove('off');
+    persistSupabaseSettings();
+    updateSupabaseStatus();
 
     umRenderUsers();
     loadSamples();
@@ -6623,6 +6684,8 @@ let _permissionsUnlocked = false; // reset each time settings opens
 
 function showSetup() {
   document.getElementById('setupOverlay').style.display = 'flex';
+  loadSupabaseSettings();
+  updateSupabaseStatus();
   _permissionsUnlocked = false; // always start locked
   const isAdmin = currentUser && currentUser.role === 'admin';
 
