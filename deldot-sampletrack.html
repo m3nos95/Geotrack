@@ -4250,6 +4250,7 @@ table.fc-borrow-tbl tr.fc-borrow-detail-row td{background:var(--surface);border-
         <button id="rpt-email-btn" onclick="emailCurrentReport()" style="display:none;background:#064e2b;color:#fff;border-color:#16a34a;">📧 EMAIL REPORT</button>
         <button id="rpt-approve-btn" onclick="slApproveForDistribution()" style="display:none;">✅ APPROVE &amp; SEND</button>
         <button id="rpt-reject-btn"  onclick="slOpenRejectModal()"          style="display:none;">❌ REJECT</button>
+        <button onclick="showActiveSampleHistory()">🕓 HISTORY</button>
         <button onclick="switchView('soillab')">← BACK TO SOIL LAB</button>
       </div>
       <div id="rpt-pending-notice" style="display:none;background:#1c1300;border:1px solid #f59e0b;border-radius:6px;padding:9px 14px;margin-bottom:12px;font-family:var(--mono);font-size:11px;color:#fde68a;">
@@ -4796,6 +4797,7 @@ table.fc-borrow-tbl tr.fc-borrow-detail-row td{background:var(--surface);border-
             </div>
             <div class="sl-banner-actions">
               <span class="badge badge-pending" id="sl_b_status_badge">PENDING</span>
+              <button class="btn btn-ghost" style="font-size:10px;padding:5px 11px;" onclick="showActiveSampleHistory()" title="View audit trail for this sample">🕓 HISTORY</button>
               <button class="btn btn-ghost" style="font-size:10px;padding:5px 11px;" onclick="slViewReport()" id="sl_view_report_btn" title="View existing report">📄 REPORT</button>
             </div>
           </div>
@@ -8688,6 +8690,7 @@ Return ONLY JSON:
 async function viewReport(id) {
   const sample = await fetchSample(id);
   if (!sample || !sample.lab_data) { showToast('No lab data for this sample', 'error'); return; }
+  currentSample = sample;
   if (sample.test_category === 'aggregate') {
     const aggCalc = calculateAggregate(sample.lab_data.sieve_data, sample.lab_data.agg_type || sample.agg_type);
     renderAggregateReport(sample, aggCalc);
@@ -10607,6 +10610,12 @@ const HISTORY_ACTION_LABELS = {
   fc_status: 'Field control status changed',
 };
 
+function showActiveSampleHistory() {
+  const sample = slCurrentSample || currentSample;
+  if (!sample) { showToast('No sample loaded', 'error'); return; }
+  showSampleHistory(sample.id, sample.test_no);
+}
+
 async function showSampleHistory(sampleId, testNo) {
   const modal = document.getElementById('sampleHistoryModal');
   const list = document.getElementById('sampleHistoryList');
@@ -10998,10 +11007,10 @@ function setActiveView(name) {
 // ══════════════════════════════════════════════════════════════
 
 const ROLE_DEFS = {
-  admin:         { label: 'Administrator',    color: '#e09848', tabs: ['home','projects','fieldhub','labhub','conchub','hotmix','precast','chemlab','appsources','r18'] },
+  admin:         { label: 'Administrator',    color: '#e09848', tabs: ['home','projects','dashboard','fieldhub','labhub','conchub','hotmix','precast','chemlab','appsources','r18'] },
   section_admin: { label: 'Section Admin',    color: '#fb923c', tabs: [] }, // tabs come from restricted_hubs
   field:         { label: 'Field Technician', color: '#60a5fa', tabs: ['projects','fieldhub','scan','r18'] },
-  lab:           { label: 'Lab Technician',   color: '#34d399', tabs: ['projects','labhub','soillab','r18'] },
+  lab:           { label: 'Lab Technician',   color: '#34d399', tabs: ['projects','dashboard','labhub','soillab','r18'] },
   concrete:      { label: 'Concrete Tech',    color: '#a78bfa', tabs: ['projects','conchub','concrete','r18'] },
 };
 const ROLE_HOME = { admin:'home', section_admin:'home', field:'fieldhub', lab:'labhub', concrete:'conchub' };
