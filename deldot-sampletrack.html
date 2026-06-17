@@ -5462,6 +5462,17 @@ table.fc-borrow-tbl tr.fc-borrow-detail-row td{background:var(--surface);border-
 
 <div class="toast" id="toast"></div>
 
+<!-- ── SAMPLE HISTORY MODAL ── -->
+<div class="sl-delete-modal" id="sampleHistoryModal" onclick="if(event.target===this)closeSampleHistory()">
+  <div class="sl-delete-modal-box" style="max-width:480px;max-height:80vh;display:flex;flex-direction:column;">
+    <div class="sl-delete-modal-title" id="sampleHistoryTitle">Sample History</div>
+    <div id="sampleHistoryList" style="overflow-y:auto;flex:1;max-height:55vh;margin-top:8px;"></div>
+    <div style="display:flex;justify-content:flex-end;margin-top:14px;">
+      <button class="btn btn-ghost" onclick="closeSampleHistory()" style="font-size:11px;">Close</button>
+    </div>
+  </div>
+</div>
+
 <!-- ── DELETE SAMPLE MODAL ── -->
 <div class="sl-delete-modal" id="sl-delete-modal">
   <div class="sl-delete-modal-box">
@@ -6305,6 +6316,7 @@ async function slApproveForDistribution() {
     dist_approved_at: approvedAt,
   }).eq('id', slCurrentSample.id);
   if (error) { showToast('Approval update failed: ' + error.message, 'error'); return; }
+  logSampleHistory({ sampleId: slCurrentSample.id, testNo: slCurrentSample.test_no, action: 'dist_approved', details: { approved_by: approvedBy } });
 
   const updated = { ...slCurrentSample, dist_status: 'approved', dist_approved_by: approvedBy, dist_approved_at: approvedAt };
   slCurrentSample = updated;
@@ -6427,6 +6439,7 @@ async function slSubmitRejection() {
     dist_rejected_reason: comment || '(No reason provided)',
   }).eq('id', slCurrentSample.id);
   if (error) { showToast('Rejection update failed: ' + error.message, 'error'); return; }
+  logSampleHistory({ sampleId: slCurrentSample.id, testNo: slCurrentSample.test_no, action: 'dist_rejected', details: { reason: comment || '(No reason provided)' } });
 
   document.getElementById('slRejectModal').classList.remove('open');
 
@@ -6638,6 +6651,7 @@ async function connectSupabase(silent = false) {
     document.getElementById('connDot').classList.remove('off');
     persistSupabaseSettings();
     updateSupabaseStatus();
+    flushSampleHistoryQueue();
 
     umRenderUsers();
     loadSamples();
@@ -6922,6 +6936,7 @@ function updateTopbarStatus() {
 async function unarchiveSample(id, testNo) {
   const { error } = await db.from('samples').update({ archived: false }).eq('id', id);
   if (error) { showToast('Restore failed: ' + error.message, 'error'); return; }
+  logSampleHistory({ sampleId: id, testNo, action: 'unarchived' });
   showToast(`Sample ${testNo} restored`, 'success');
   loadSamples();
 }
@@ -7692,6 +7707,7 @@ function _sampleRowHtml(s) {
               <div class="action-menu-item purple" onclick="closeDropdowns();openDensity('${s.id}')"><span class="ami-icon">⚖️</span> LB-68 Field Density Summary</div>
             ` : ''}
             <div class="action-menu-item" onclick="closeDropdowns();openEditSample('${s.id}')"><span class="ami-icon">✎</span> Edit Info</div>
+            <div class="action-menu-item" onclick="closeDropdowns();showSampleHistory('${s.id}','${s.test_no}')"><span class="ami-icon">🕓</span> History</div>
             ${s.archived ?
               `<div class="action-menu-item gold" onclick="closeDropdowns();unarchiveSample('${s.id}','${s.test_no}')"><span class="ami-icon">📤</span> Restore</div>` :
               `<div class="action-menu-item gold" onclick="closeDropdowns();archiveSample('${s.id}','${s.test_no}')"><span class="ami-icon">📦</span> Archive</div>`
@@ -7794,10 +7810,13 @@ function filterTable() {
 // ══════════════════════════════════════════════
 // EDIT SAMPLE INFO
 // ══════════════════════════════════════════════
+let _editSampleTestNo = '';
+
 async function openEditSample(id) {
   const sample = await fetchSample(id);
   if (!sample) return;
 
+  _editSampleTestNo = sample.test_no || '';
   document.getElementById('es_id').value          = sample.id;
   document.getElementById('es_contract').value    = sample.contract || '';
   document.getElementById('es_fa_project').value  = sample.fa_project || '';
@@ -7840,6 +7859,8 @@ async function saveEditSample() {
 
   const { error } = await db.from('samples').update(updates).eq('id', id);
   if (error) { showToast('Save failed: ' + error.message, 'error'); return; }
+  const testNo = _editSampleTestNo || id;
+  logSampleHistory({ sampleId: id, testNo, action: 'updated', details: { fields: Object.keys(updates) } });
 
   document.getElementById('editSampleOverlay').classList.remove('open');
   showToast('Sample updated ✓', 'success');
@@ -7850,6 +7871,7 @@ async function archiveSample(id, testNo) {
   if (!confirm(`Archive sample ${testNo}? It will be hidden from the dashboard but not deleted. You can restore it anytime.`)) return;
   const { error } = await db.from('samples').update({ archived: true }).eq('id', id);
   if (error) { showToast('Archive failed: ' + error.message, 'error'); return; }
+  logSampleHistory({ sampleId: id, testNo, action: 'archived' });
   showToast(`Sample ${testNo} archived`, 'success');
   loadSamples();
 }
@@ -7860,6 +7882,7 @@ async function deleteSample(id, testNo) {
   if (!confirm(`Are you sure? Sample ${testNo} will be gone forever.`)) return;
   const { error } = await db.from('samples').delete().eq('id', id);
   if (error) { showToast('Delete failed: ' + error.message, 'error'); return; }
+  logSampleHistory({ sampleId: id, testNo, action: 'hard_deleted' });
   showToast(`Sample ${testNo} permanently deleted`, 'success');
   loadSamples();
 }
@@ -10509,6 +10532,137 @@ function showToast(msg, type = '') {
 }
 
 // ══════════════════════════════════════════════════════════════
+// SAMPLE HISTORY AUDIT LOG
+// ══════════════════════════════════════════════════════════════
+const HISTORY_QUEUE_KEY = 'labtrak_history_queue';
+
+function _historyActor() {
+  return {
+    actor_id: currentUser?.id || null,
+    actor_name: currentUser?.name || 'System',
+  };
+}
+
+function queueSampleHistory(entry) {
+  try {
+    const q = JSON.parse(localStorage.getItem(HISTORY_QUEUE_KEY) || '[]');
+    q.push(entry);
+    localStorage.setItem(HISTORY_QUEUE_KEY, JSON.stringify(q.slice(-200)));
+  } catch (e) {}
+}
+
+async function logSampleHistory({ sampleId, testNo, action, details }) {
+  const actor = _historyActor();
+  const entry = {
+    sample_id: sampleId || null,
+    test_no: testNo || null,
+    action,
+    actor_id: actor.actor_id,
+    actor_name: actor.actor_name,
+    details: details || {},
+  };
+  if (!db) {
+    queueSampleHistory({ ...entry, created_at: new Date().toISOString() });
+    return;
+  }
+  try {
+    const { error } = await db.from('sample_history').insert(entry);
+    if (error) throw error;
+  } catch (e) {
+    console.warn('logSampleHistory:', e);
+    queueSampleHistory({ ...entry, created_at: new Date().toISOString() });
+  }
+}
+
+async function flushSampleHistoryQueue() {
+  if (!db) return;
+  let q;
+  try { q = JSON.parse(localStorage.getItem(HISTORY_QUEUE_KEY) || '[]'); } catch { return; }
+  if (!q.length) return;
+  const remaining = [];
+  for (const entry of q) {
+    try {
+      const row = { ...entry };
+      delete row.created_at;
+      const { error } = await db.from('sample_history').insert(row);
+      if (error) remaining.push(entry);
+    } catch { remaining.push(entry); }
+  }
+  try { localStorage.setItem(HISTORY_QUEUE_KEY, JSON.stringify(remaining)); } catch (e) {}
+}
+
+const HISTORY_ACTION_LABELS = {
+  created: 'Created',
+  updated: 'Info updated',
+  field_submitted: 'Field sample submitted',
+  lab_complete: 'Lab work completed',
+  dist_queued: 'Queued for approval',
+  dist_approved: 'Report approved',
+  dist_rejected: 'Report rejected',
+  archived: 'Archived',
+  unarchived: 'Unarchived',
+  soft_deleted: 'Deleted (soft)',
+  restored: 'Restored from delete',
+  hard_deleted: 'Permanently deleted',
+  fc_status: 'Field control status changed',
+};
+
+async function showSampleHistory(sampleId, testNo) {
+  const modal = document.getElementById('sampleHistoryModal');
+  const list = document.getElementById('sampleHistoryList');
+  const title = document.getElementById('sampleHistoryTitle');
+  if (!modal || !list) return;
+  if (title) title.textContent = 'History · ' + (testNo || sampleId || 'Sample');
+  list.innerHTML = '<div style="color:var(--muted);font-family:var(--mono);font-size:11px;padding:12px;">Loading…</div>';
+  modal.classList.add('open');
+
+  if (!db) {
+    list.innerHTML = '<div style="color:var(--muted);font-family:var(--mono);font-size:11px;padding:12px;">Connect to the database to view history.</div>';
+    return;
+  }
+
+  const { data, error } = await db.from('sample_history')
+    .select('*')
+    .eq('sample_id', sampleId)
+    .order('created_at', { ascending: false })
+    .limit(50);
+
+  if (error) {
+    list.innerHTML = '<div style="color:var(--red2);font-family:var(--mono);font-size:11px;padding:12px;">' + error.message + '</div>';
+    return;
+  }
+  if (!data || !data.length) {
+    list.innerHTML = '<div style="color:var(--muted);font-family:var(--mono);font-size:11px;padding:12px;">No history recorded yet for this sample.</div>';
+    return;
+  }
+
+  list.innerHTML = data.map(row => {
+    const when = row.created_at ? new Date(row.created_at).toLocaleString() : '—';
+    const label = HISTORY_ACTION_LABELS[row.action] || row.action;
+    const who = row.actor_name || '—';
+    let extra = '';
+    if (row.details && typeof row.details === 'object') {
+      if (row.details.reason) extra = '<div style="color:var(--muted);margin-top:4px;">' + row.details.reason + '</div>';
+      else if (row.details.fields?.length) extra = '<div style="color:var(--muted);margin-top:4px;">Fields: ' + row.details.fields.join(', ') + '</div>';
+      else if (row.details.status) extra = '<div style="color:var(--muted);margin-top:4px;">Status: ' + row.details.status + '</div>';
+    }
+    return `<div style="border-bottom:1px solid var(--border);padding:10px 4px;">
+      <div style="display:flex;justify-content:space-between;gap:8px;align-items:baseline;">
+        <span style="font-weight:600;color:var(--text);font-size:12px;">${label}</span>
+        <span style="font-family:var(--mono);font-size:9px;color:var(--muted);white-space:nowrap;">${when}</span>
+      </div>
+      <div style="font-family:var(--mono);font-size:10px;color:var(--accent2);margin-top:3px;">${who}</div>
+      ${extra}
+    </div>`;
+  }).join('');
+}
+
+function closeSampleHistory() {
+  const modal = document.getElementById('sampleHistoryModal');
+  if (modal) modal.classList.remove('open');
+}
+
+// ══════════════════════════════════════════════════════════════
 // SAMPLE DELETE (soft-delete via deleted_at timestamp)
 // ══════════════════════════════════════════════════════════════
 let _slDeleteTarget = null;
@@ -10554,6 +10708,7 @@ async function slConfirmDelete() {
 
   const { error } = await db.from('samples').update({ deleted_at: new Date().toISOString() }).eq('id', target.id);
   if (error) { showToast('Delete failed: ' + error.message, 'error'); return; }
+  logSampleHistory({ sampleId: target.id, testNo, action: 'soft_deleted' });
 
   // Remove from in-memory array immediately
   if (allSamples) allSamples = allSamples.filter(function(s) { return s.id !== target.id; });
@@ -10591,6 +10746,7 @@ async function slUndoDelete() {
 
   const { error } = await db.from('samples').update({ deleted_at: null }).eq('id', target.id);
   if (error) { showToast('Undo failed: ' + error.message, 'error'); return; }
+  logSampleHistory({ sampleId: target.id, testNo: target.test_no, action: 'restored' });
 
   // Restore to in-memory array
   if (allSamples) allSamples.unshift(target);
@@ -12737,6 +12893,7 @@ async function slHandleDistribution(sample) {
     sync_to_chart: syncToChart,
   }).eq('id', sample.id);
   if (error) { console.error('dist_status update failed:', error.message); return; }
+  logSampleHistory({ sampleId: sample.id, testNo: sample.test_no, action: 'dist_queued', details: { sync_to_chart: syncToChart } });
   const updated = { ...sample, dist_status: 'pending_review', dist_submitted_by: currentUser?.id || '' };
   slCurrentSample = updated;
   currentSample   = updated;
@@ -12751,6 +12908,7 @@ async function slFinishLab(parsed) {
   const fields  = slReportFields();
   const updates = { status: 'complete', lab_data: parsed, conforms: 'auto', ...fields };
   await db.from('samples').update(updates).eq('id', slCurrentSample.id);
+  logSampleHistory({ sampleId: slCurrentSample.id, testNo: slCurrentSample.test_no, action: 'lab_complete', details: { type: 'soil', status: 'complete' } });
 
   const calc   = calculateSieve(parsed);
   const merged = { ...slCurrentSample, ...updates, lab_data: parsed };
@@ -12794,6 +12952,7 @@ async function slGenerateAggReport() {
   const fields  = slReportFields();
   const updates = { status: 'complete', lab_data: labData, conforms: 'auto', ...fields };
   await db.from('samples').update(updates).eq('id', slCurrentSample.id);
+  logSampleHistory({ sampleId: slCurrentSample.id, testNo: slCurrentSample.test_no, action: 'lab_complete', details: { type: 'aggregate', status: 'complete', agg_type: aggType } });
 
   const aggCalc = calculateAggregate(sieveData, aggType);
   const merged  = { ...slCurrentSample, ...updates, lab_data: labData };
@@ -13080,6 +13239,8 @@ async function slCreateNewSample() {
     return;
   }
 
+  logSampleHistory({ sampleId: inserted.id, testNo: inserted.test_no, action: 'created', details: { test_category: inserted.test_category || _slNsCat } });
+
   // Add to local cache and re-render queue
   allSamples.unshift(inserted);
   slRenderQueue();
@@ -13186,6 +13347,7 @@ function slClearEntry() {
 
       <div class="btn-row">
         <button class="btn btn-success" onclick="saveEditSample()">✓ SAVE CHANGES</button>
+        <button class="btn btn-ghost" onclick="showSampleHistory(document.getElementById('es_id').value, _editSampleTestNo)">🕓 HISTORY</button>
         <button class="btn btn-ghost" onclick="document.getElementById('editSampleOverlay').classList.remove('open')">CANCEL</button>
       </div>
     </div>
@@ -14715,12 +14877,13 @@ async function submitFieldSample() {
   if (isAgg  && !updates.material_type) { showToast('Material type is required', 'error'); return; }
   const { data, error, queued } = await dbWrite('samples', 'update', updates, activeFC_sessionId);
   if (error) { showToast('Error saving sample: ' + error.message, 'error'); return; }
+  const cat = isAgg ? 'aggregate' : 'soil';
+  logSampleHistory({ sampleId: data.id, testNo: data.test_no, action: 'field_submitted', details: { test_category: cat } });
   // Update local cache
   const idx = allSamples.findIndex(s => s.id === activeFC_sessionId);
   if (idx >= 0) allSamples[idx] = data; else allSamples.unshift(data);
   showQR(data);
   updateFCSessionBanner();
-  const cat = isAgg ? 'aggregate' : 'soil';
   showToast(queued ? `${cat} sample ${data.test_no} saved locally — will sync when online ✓` : `${cat} sample ${data.test_no} queued for lab ✓`, 'success');
 }
 
