@@ -34,6 +34,10 @@ CREATE TABLE IF NOT EXISTS projects (
   deleted_at    TIMESTAMPTZ DEFAULT NULL
 );
 
+-- Add columns if projects table already existed from an older schema
+ALTER TABLE projects ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ DEFAULT NOW();
+ALTER TABLE projects ADD COLUMN IF NOT EXISTS deleted_at TIMESTAMPTZ DEFAULT NULL;
+
 CREATE INDEX IF NOT EXISTS idx_projects_contract ON projects (contract);
 CREATE INDEX IF NOT EXISTS idx_projects_status   ON projects (status) WHERE deleted_at IS NULL;
 
