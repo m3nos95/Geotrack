@@ -180,7 +180,30 @@ body { background: var(--bg); color: var(--text); font-family: var(--sans); font
 .topbar-wx-cond { display:flex; align-items:center; gap:6px; font-family:var(--mono); font-size:10px; color:var(--muted); }
 .topbar-wx-temp { font-family:var(--display); font-size:16px; font-weight:700; color:var(--text); }
 .topbar-right { margin-left: auto; display: flex; align-items: center; gap: 8px; padding: 0 12px; flex-shrink: 0; }
-.conn-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--green2); box-shadow: 0 0 6px var(--green2); flex-shrink: 0; }
+.sync-status-chip {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 5px 10px; border-radius: 999px;
+  font-family: var(--mono); font-size: 9px; letter-spacing: 0.4px;
+  border: 1px solid var(--border); background: rgba(255,255,255,0.04);
+  color: var(--muted); cursor: pointer; flex-shrink: 0;
+  transition: border-color 0.15s, background 0.15s, color 0.15s;
+  max-width: 160px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.sync-status-chip:hover { border-color: var(--accent2); color: var(--text); }
+.sync-status-dot {
+  width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0;
+  background: var(--muted);
+}
+.sync-status-chip.connected { border-color: rgba(52,211,153,0.35); color: #6ee7b7; background: rgba(52,211,153,0.08); }
+.sync-status-chip.connected .sync-status-dot { background: var(--green2); box-shadow: 0 0 6px var(--green2); }
+.sync-status-chip.pending { border-color: rgba(245,158,11,0.45); color: #fde68a; background: rgba(245,158,11,0.1); }
+.sync-status-chip.pending .sync-status-dot { background: #f59e0b; box-shadow: 0 0 6px #f59e0b; }
+.sync-status-chip.offline { border-color: rgba(248,113,113,0.35); color: #fca5a5; background: rgba(248,113,113,0.08); }
+.sync-status-chip.offline .sync-status-dot { background: var(--red2); }
+.sync-status-chip.syncing { border-color: rgba(96,165,250,0.45); color: #93c5fd; background: rgba(96,165,250,0.1); }
+.sync-status-chip.syncing .sync-status-dot { background: #60a5fa; animation: sync-pulse 1s ease-in-out infinite; }
+@keyframes sync-pulse { 0%,100% { opacity: 1; transform: scale(1); } 50% { opacity: 0.45; transform: scale(0.85); } }
+.conn-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--green2); box-shadow: 0 0 6px var(--green2); flex-shrink: 0; display: none; }
 .conn-dot.off { background: var(--red2); box-shadow: none; }
 .btn-settings { background: rgba(255,255,255,0.06); border: 1px solid var(--border); color: var(--muted); padding: 5px 10px; font-family: var(--mono); font-size: 9px; cursor: pointer; border-radius: var(--radius-sm); transition: all 0.15s; white-space: nowrap; }
 .btn-settings:hover { color: var(--text); border-color: var(--accent2); background: rgba(196,124,42,0.12); }
@@ -2726,7 +2749,8 @@ table.fc-borrow-tbl tr.fc-borrow-detail-row td{background:var(--surface);border-
     </div>
 
     <!-- Close / Cancel button — always visible at bottom -->
-    <div style="margin-top:24px;padding-top:18px;border-top:1px solid var(--border);text-align:center;">
+    <div id="appBuildStamp" style="margin-top:20px;font-family:var(--mono);font-size:9px;color:var(--muted);text-align:center;letter-spacing:0.5px;"></div>
+    <div style="margin-top:12px;padding-top:18px;border-top:1px solid var(--border);text-align:center;">
       <button onclick="document.getElementById('setupOverlay').style.display='none';"
         style="background:transparent;border:1px solid var(--border);color:var(--muted);
                font-family:var(--mono);font-size:10px;letter-spacing:1.5px;
@@ -2907,7 +2931,11 @@ table.fc-borrow-tbl tr.fc-borrow-detail-row td{background:var(--surface);border-
     </div>
 
     <div class="topbar-right">
-      <div class="conn-dot" id="connDot" title="Database connected"></div>
+      <button type="button" class="sync-status-chip offline" id="syncStatusChip" onclick="onSyncChipClick()" title="Database status">
+        <span class="sync-status-dot" aria-hidden="true"></span>
+        <span id="syncStatusLabel">Checking…</span>
+      </button>
+      <div class="conn-dot off" id="connDot" aria-hidden="true"></div>
       <div class="user-badge" id="userBadge" style="display:none;" onclick="showUserLogin()" title="Switch user">
         <div class="ubadge-av" id="ubadgeAv">?</div>
         <div>
@@ -5496,6 +5524,9 @@ table.fc-borrow-tbl tr.fc-borrow-detail-row td{background:var(--surface);border-
 // GLOBALS
 // ══════════════════════════════════════════════
 let db = null;
+const APP_BUILD = '2026.06.17';
+window._dbConnected = false;
+window._syncInProgress = false;
 let currentSample = null;
 let labImageB64 = null;
 let labImageType = null;
@@ -6575,12 +6606,115 @@ function persistSupabaseSettings() {
 function updateSupabaseStatus() {
   const el = document.getElementById('sbConnStatus');
   if (!el) return;
-  const dot = document.getElementById('connDot');
-  const connected = dot && !dot.classList.contains('off');
+  const connected = window._dbConnected && navigator.onLine;
+  const pending = typeof getPendingSyncCount === 'function' ? getPendingSyncCount() : 0;
   const url = document.getElementById('sbUrl')?.value.trim() || '';
   const host = url.replace(/^https?:\/\//, '').replace(/\/$/, '');
-  el.textContent = connected && host ? '✓ Connected to ' + host : 'Not connected — check URL and key, then click Connect';
-  el.style.color = connected ? 'var(--green2)' : 'var(--muted)';
+  if (window._syncInProgress) {
+    el.textContent = '↻ Syncing with database…';
+    el.style.color = '#93c5fd';
+  } else if (connected && pending > 0) {
+    el.textContent = '✓ Connected to ' + host + ' · ' + pending + ' pending sync';
+    el.style.color = '#fde68a';
+  } else if (connected && host) {
+    el.textContent = '✓ Connected to ' + host;
+    el.style.color = 'var(--green2)';
+  } else if (!navigator.onLine) {
+    el.textContent = pending > 0 ? 'Offline · ' + pending + ' changes queued' : 'Offline — data saved locally until connected';
+    el.style.color = 'var(--muted)';
+  } else {
+    el.textContent = 'Not connected — check URL and key, then click Connect';
+    el.style.color = 'var(--muted)';
+  }
+}
+
+function getPendingSyncCount() {
+  let n = 0;
+  try { n += JSON.parse(localStorage.getItem('labtrak_offline_queue') || '[]').length; } catch (e) {}
+  try { n += JSON.parse(localStorage.getItem('labtrak_history_queue') || '[]').length; } catch (e) {}
+  try { n += JSON.parse(localStorage.getItem('st_concrete_sync_queue') || '[]').length; } catch (e) {}
+  return n;
+}
+
+function setDbConnected(connected) {
+  window._dbConnected = !!connected;
+  const dot = document.getElementById('connDot');
+  if (dot) dot.classList.toggle('off', !connected);
+  updateSyncStatusChip();
+}
+
+function setSyncInProgress(active) {
+  window._syncInProgress = !!active;
+  updateSyncStatusChip();
+}
+
+function updateSyncStatusChip() {
+  const chip = document.getElementById('syncStatusChip');
+  const labelEl = document.getElementById('syncStatusLabel');
+  if (!chip || !labelEl) return;
+
+  const pending = getPendingSyncCount();
+  const online = navigator.onLine;
+  const connected = window._dbConnected && online;
+
+  chip.classList.remove('connected', 'offline', 'pending', 'syncing');
+
+  if (window._syncInProgress) {
+    chip.classList.add('syncing');
+    labelEl.textContent = 'Syncing…';
+    chip.title = 'Synchronizing with the database';
+  } else if (!online) {
+    chip.classList.add('offline');
+    labelEl.textContent = pending > 0 ? ('Offline · ' + pending) : 'Offline';
+    chip.title = pending > 0 ? (pending + ' changes queued — will sync when online') : 'No network connection';
+  } else if (!window._dbConnected) {
+    chip.classList.add('offline');
+    labelEl.textContent = 'Not connected';
+    chip.title = 'Click to open Settings and connect to Supabase';
+  } else if (pending > 0) {
+    chip.classList.add('pending');
+    labelEl.textContent = pending + ' pending';
+    chip.title = pending + ' changes waiting to sync — click to sync now';
+  } else {
+    chip.classList.add('connected');
+    labelEl.textContent = 'Connected';
+    const url = document.getElementById('sbUrl')?.value.trim() || '';
+    const host = url.replace(/^https?:\/\//, '').replace(/\/$/, '');
+    chip.title = host ? ('Connected to ' + host) : 'Database connected';
+  }
+
+  updateSupabaseStatus();
+}
+
+function onSyncChipClick() {
+  const pending = getPendingSyncCount();
+  if (!navigator.onLine) {
+    showToast('Offline — connect to the internet to sync', 'info');
+    return;
+  }
+  if (pending > 0) {
+    setSyncInProgress(true);
+    Promise.resolve()
+      .then(() => offlineSync())
+      .then(() => flushSampleHistoryQueue())
+      .then(() => flushConcreteSyncQueue())
+      .finally(() => {
+        setSyncInProgress(false);
+        offlineUpdateBanner();
+        updateSyncStatusChip();
+      });
+    return;
+  }
+  if (!window._dbConnected) {
+    showSetup();
+    return;
+  }
+  showToast('All changes synced ✓', 'success');
+}
+
+function renderAppBuildStamp() {
+  const el = document.getElementById('appBuildStamp');
+  if (el) el.textContent = 'LabTrak build ' + APP_BUILD;
 }
 
 async function saveSupabaseConfig() {
@@ -6603,8 +6737,7 @@ async function saveSupabaseConfig() {
   await connectSupabase(false);
   updateSupabaseStatus();
 
-  const dot = document.getElementById('connDot');
-  if (dot && !dot.classList.contains('off')) {
+  if (window._dbConnected) {
     showToast('Database connected ✓', 'success');
   }
 }
@@ -6622,7 +6755,7 @@ async function connectSupabase(silent = false) {
       try { db = supabase.createClient(url, key); } catch(e) { db = null; }
     }
     document.getElementById('app').style.display = 'grid';
-    document.getElementById('connDot').classList.add('off');
+    setDbConnected(false);
     offlineLoadCached();
     umRenderUsers();
     const sess = sessionStorage.getItem('st_current_user');
@@ -6640,6 +6773,7 @@ async function connectSupabase(silent = false) {
   // ── End offline fast-path ──────────────────────────────────────
 
   try {
+    setSyncInProgress(true);
     db = supabase.createClient(url, key);
     const { error } = await db.from('samples').select('id').limit(1);
     if (error && error.code === '42P01') {
@@ -6647,17 +6781,18 @@ async function connectSupabase(silent = false) {
         err.textContent = '"samples" table not found. Run the setup SQL in Supabase first.';
         err.style.display = 'block';
       }
+      setDbConnected(false);
       return;
     }
     if (error) throw error;
 
     document.getElementById('app').style.display = 'grid';
-    document.getElementById('connDot').classList.remove('off');
+    setDbConnected(true);
     persistSupabaseSettings();
     updateSupabaseStatus();
     flushSampleHistoryQueue();
     await pullAndMergeConcreteSets();
-    flushConcreteSyncQueue();
+    await flushConcreteSyncQueue();
 
     umRenderUsers();
     loadSamples();
@@ -6677,7 +6812,7 @@ async function connectSupabase(silent = false) {
       try { db = supabase.createClient(url, key); } catch(ex) { db = null; }
     }
     document.getElementById('app').style.display = 'grid';
-    document.getElementById('connDot').classList.add('off');
+    setDbConnected(false);
     offlineLoadCached();
     umRenderUsers();
     const sess3 = sessionStorage.getItem('st_current_user');
@@ -6690,6 +6825,8 @@ async function connectSupabase(silent = false) {
     offlineUpdateBanner();
     updateSupabaseStatus();
     showToast('Working offline — data will sync when connected', 'info');
+  } finally {
+    setSyncInProgress(false);
   }
 }
 
@@ -6725,6 +6862,7 @@ let _permissionsUnlocked = false; // reset each time settings opens
 function showSetup() {
   document.getElementById('setupOverlay').style.display = 'flex';
   loadSupabaseSettings();
+  renderAppBuildStamp();
   updateSupabaseStatus();
   _permissionsUnlocked = false; // always start locked
   const isAdmin = currentUser && currentUser.role === 'admin';
@@ -10557,6 +10695,7 @@ function queueSampleHistory(entry) {
     q.push(entry);
     localStorage.setItem(HISTORY_QUEUE_KEY, JSON.stringify(q.slice(-200)));
   } catch (e) {}
+  updateSyncStatusChip();
 }
 
 async function logSampleHistory({ sampleId, testNo, action, details }) {
@@ -10597,6 +10736,7 @@ async function flushSampleHistoryQueue() {
     } catch { remaining.push(entry); }
   }
   try { localStorage.setItem(HISTORY_QUEUE_KEY, JSON.stringify(remaining)); } catch (e) {}
+  updateSyncStatusChip();
 }
 
 const HISTORY_ACTION_LABELS = {
@@ -14657,6 +14797,7 @@ function offlineUpdateBanner() {
   } else {
     banner.classList.remove('visible');
   }
+  updateSyncStatusChip();
 }
 
 // ── Offline-aware DB wrapper ────────────────────────────────────
@@ -14689,7 +14830,7 @@ async function dbWrite(table, op, payload, matchId) {
 // ── Auto-sync when connection restores ─────────────────────────
 window.addEventListener('online', async () => {
   offlineUpdateBanner();
-  document.getElementById('connDot')?.classList.remove('off');
+  setDbConnected(!!db);
   // Reload live data now we're back
   if (db) { loadSamples(); loadProjects(); }
   const q = offlineQueueGet();
@@ -14714,6 +14855,7 @@ async function offlineSync() {
   const q = offlineQueueGet();
   if (q.length === 0) { offlineUpdateBanner(); return; }
 
+  setSyncInProgress(true);
   let synced = 0, failed = 0;
   const remaining = [];
   const idMap = {}; // tempId → real Supabase id
@@ -14784,11 +14926,14 @@ async function offlineSync() {
   }
 
   offlineUpdateBanner();
+  setSyncInProgress(false);
 }
 
 // Initialise banner on load
 document.addEventListener('DOMContentLoaded', () => {
   offlineUpdateBanner();
+  renderAppBuildStamp();
+  updateSyncStatusChip();
   // If we're back online and have a queue, auto-sync after a short delay
   if (navigator.onLine) {
     const q = offlineQueueGet();
@@ -15094,6 +15239,7 @@ function queueConcreteSync(entry) {
     q.push({ ...entry, queued_at: new Date().toISOString() });
     localStorage.setItem(CONCRETE_SYNC_QUEUE_KEY, JSON.stringify(q.slice(-100)));
   } catch (e) {}
+  updateSyncStatusChip();
 }
 
 async function syncConcreteSetToCloud(set) {
@@ -15149,6 +15295,7 @@ async function flushConcreteSyncQueue() {
     }
   }
   try { localStorage.setItem(CONCRETE_SYNC_QUEUE_KEY, JSON.stringify(remaining)); } catch (e) {}
+  updateSyncStatusChip();
 }
 
 async function pullAndMergeConcreteSets() {
@@ -18583,6 +18730,7 @@ body::after {
   .btn-cmd-search .cmd-search-shortcut { display: none; }
   .btn-cmd-search { padding: 8px 10px; font-size: 10px; }
   .user-badge .ubadge-name { display: none; }
+  .sync-status-chip { max-width: 110px; padding: 4px 8px; font-size: 8px; }
   .page-wide { padding: 14px 12px 20px; }
   .stats-grid { grid-template-columns: 1fr 1fr !important; }
   .dash-kpi-row { grid-template-columns: 1fr 1fr !important; }
@@ -18599,7 +18747,7 @@ body::after {
    Strip everything for users who prefer no motion.         */
 @media (prefers-reduced-motion: reduce) {
   body::before, body::after { animation: none !important; }
-  .topbar-stat-dot, .conn-dot { animation: none !important; }
+  .topbar-stat-dot, .conn-dot, .sync-status-chip.syncing .sync-status-dot { animation: none !important; }
   .rail-item.active .rail-icon-wrap,
   .sl-filter-btn.active,
   .sl-queue-card.active { animation: none !important; }
