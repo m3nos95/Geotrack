@@ -5612,6 +5612,8 @@ self.addEventListener('fetch', e => {
   if (storedKey) document.getElementById('aiKey').value = storedKey;
 
   loadSupabaseSettings();
+  renderAppBuildStamp();
+  updateSyncStatusChip();
 
   // Wait for CDN scripts (Supabase lib etc.) before connecting
   // cdnReady fires when all dynamic scripts have loaded OR failed
