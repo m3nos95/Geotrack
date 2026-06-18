@@ -5759,17 +5759,19 @@ async function openProjectMap(contract, projectName) {
 
   // ── Concrete sets
   allConc.forEach(cs => {
-    if (!cs.gps_coordinates && !cs.station) return;
+    const set = typeof concreteRowToSet === 'function' ? concreteRowToSet(cs) : cs;
+    if (!set) return;
+    if (!set.gps_coordinates && !set.station) return;
     // Try GPS first, fall back to stored coords
-    const coords = cs.gps_coordinates ? parseGPS(cs.gps_coordinates) : null;
+    const coords = set.gps_coordinates ? parseGPS(set.gps_coordinates) : null;
     if (!coords) return;
 
     const popup = new mapboxgl.Popup({ offset: 25, maxWidth: '220px' }).setHTML(`
-      <div class="map-popup-title">${cs.id}</div>
-      <div class="map-popup-row"><span class="map-popup-label">Mix Design:</span><span class="map-popup-val">${cs.mix_design||'—'}</span></div>
-      <div class="map-popup-row"><span class="map-popup-label">Location:</span><span class="map-popup-val">${cs.pour_location||'—'}</span></div>
-      <div class="map-popup-row"><span class="map-popup-label">Cast:</span><span class="map-popup-val">${cs.cast_date||'—'}</span></div>
-      <div class="map-popup-row"><span class="map-popup-label">Req. f'c:</span><span class="map-popup-val">${cs.required_fc||'—'} PSI</span></div>
+      <div class="map-popup-title">${set.id}</div>
+      <div class="map-popup-row"><span class="map-popup-label">Mix Design:</span><span class="map-popup-val">${set.mixDesign||'—'}</span></div>
+      <div class="map-popup-row"><span class="map-popup-label">Location:</span><span class="map-popup-val">${set.pourLocation||'—'}</span></div>
+      <div class="map-popup-row"><span class="map-popup-label">Cast:</span><span class="map-popup-val">${set.castDate||'—'}</span></div>
+      <div class="map-popup-row"><span class="map-popup-label">Req. f'c:</span><span class="map-popup-val">${set.requiredFc||'—'} PSI</span></div>
     `);
 
     const el = createMarkerEl('#60a5fa', '■', false);
@@ -6654,6 +6656,8 @@ async function connectSupabase(silent = false) {
     persistSupabaseSettings();
     updateSupabaseStatus();
     flushSampleHistoryQueue();
+    await pullAndMergeConcreteSets();
+    flushConcreteSyncQueue();
 
     umRenderUsers();
     loadSamples();
@@ -6834,6 +6838,7 @@ function switchView(name) {
   if (name === 'projects') { loadProjects(); loadSamples(); }
   if (name === 'fieldcontrol') { initFC_View(); }
   if (name === 'concrete') {
+    refreshConcreteSetsIfConnected();
     switchConcreteTab(activeConcSubTab || 'intake');
     if (currentProjectFilter) {
       const el = document.getElementById('ci_contract');
@@ -6844,7 +6849,7 @@ function switchView(name) {
   if (name === 'appsources') { srcLoad(); }
   if (name === 'fieldhub') { renderFieldHub(); renderBorrowCountReport(); _loadHubNotes('field').then(function(){ renderHubCal('field'); }); }
   if (name === 'labhub')   { renderLabHub();   _loadHubNotes('lab').then(function(){ renderHubCal('lab'); }); }
-  if (name === 'conchub')  { renderConcreteHub(); _loadHubNotes('concrete').then(function(){ renderHubCal('concrete'); }); }
+  if (name === 'conchub')  { refreshConcreteSetsIfConnected(); renderConcreteHub(); _loadHubNotes('concrete').then(function(){ renderHubCal('concrete'); }); }
   if (name === 'r18')     { if (typeof r18Init === 'function') r18Init(); }
   // Reset scroll after browser has laid out the newly visible view
   window.scrollTo(0, 0);
@@ -14981,6 +14986,7 @@ function fcPopulateSampleDropdowns() { /* no longer needed — session-based */ 
 // CONCRETE MODULE — STORAGE & UTILITIES
 // ══════════════════════════════════════════════════════════════
 const CONCRETE_KEY = 'deldot_concrete_sets';
+const CONCRETE_SYNC_QUEUE_KEY = 'st_concrete_sync_queue';
 let activeConcSubTab = 'intake';
 let concreteSelectedFracture = null;
 
@@ -15007,6 +15013,160 @@ function loadConcreteSets() {
 function saveConcreteSets(sets) {
   try { localStorage.setItem(CONCRETE_KEY, JSON.stringify(sets)); } catch(e) {
     if (e.name === 'QuotaExceededError') showToast('Storage full — export data first', 'error');
+  }
+}
+
+function concreteSetToRow(set) {
+  if (!set || !set.id) return null;
+  return {
+    id: set.id,
+    contract: set.contract || null,
+    pour_location: set.pourLocation || null,
+    archived: !!set.archived,
+    data: set,
+  };
+}
+
+function concreteRowToSet(row) {
+  if (!row) return null;
+  const base = row.data && typeof row.data === 'object' ? { ...row.data } : {};
+  const set = {
+    ...base,
+    id: row.id || base.id,
+    contract: row.contract != null ? row.contract : base.contract,
+    pourLocation: row.pour_location != null ? row.pour_location : base.pourLocation,
+    archived: row.archived != null ? row.archived : !!base.archived,
+  };
+  if (row.updated_at) set._cloudUpdatedAt = row.updated_at;
+  return set;
+}
+
+function _concreteLocalTs(set) {
+  const d = set?.updatedAt || set?.createdAt;
+  return d ? new Date(d).getTime() : 0;
+}
+
+let _lastConcretePull = 0;
+async function refreshConcreteSetsIfConnected() {
+  if (!db) return;
+  const now = Date.now();
+  if (now - _lastConcretePull < 30000) return;
+  _lastConcretePull = now;
+  await pullAndMergeConcreteSets();
+}
+
+function mergeConcreteSets(localSets, cloudRows) {
+  const cloudSets = (cloudRows || []).map(concreteRowToSet).filter(Boolean);
+  const byId = new Map();
+
+  cloudSets.forEach(s => {
+    const cloudTs = s._cloudUpdatedAt ? new Date(s._cloudUpdatedAt).getTime() : 0;
+    const copy = { ...s };
+    delete copy._cloudUpdatedAt;
+    byId.set(s.id, { set: copy, cloudTs, push: false });
+  });
+
+  (localSets || []).forEach(s => {
+    const existing = byId.get(s.id);
+    if (!existing) {
+      byId.set(s.id, { set: s, cloudTs: 0, push: true });
+      return;
+    }
+    const localTs = _concreteLocalTs(s);
+    if (localTs > existing.cloudTs) {
+      byId.set(s.id, { set: s, cloudTs: existing.cloudTs, push: true });
+    }
+  });
+
+  const merged = [];
+  const toPush = [];
+  byId.forEach(v => {
+    merged.push(v.set);
+    if (v.push) toPush.push(v.set);
+  });
+  merged.sort((a, b) => (b.createdAt || '').localeCompare(a.createdAt || ''));
+  return { merged, toPush };
+}
+
+function queueConcreteSync(entry) {
+  try {
+    const q = JSON.parse(localStorage.getItem(CONCRETE_SYNC_QUEUE_KEY) || '[]');
+    q.push({ ...entry, queued_at: new Date().toISOString() });
+    localStorage.setItem(CONCRETE_SYNC_QUEUE_KEY, JSON.stringify(q.slice(-100)));
+  } catch (e) {}
+}
+
+async function syncConcreteSetToCloud(set) {
+  const row = concreteSetToRow(set);
+  if (!row) return;
+  if (!db) {
+    queueConcreteSync({ op: 'upsert', set });
+    return;
+  }
+  try {
+    const { error } = await db.from('concrete_sets').upsert(row, { onConflict: 'id' });
+    if (error) throw error;
+  } catch (e) {
+    console.warn('syncConcreteSetToCloud:', e);
+    queueConcreteSync({ op: 'upsert', set });
+  }
+}
+
+async function deleteConcreteSetFromCloud(id) {
+  if (!id) return;
+  if (!db) {
+    queueConcreteSync({ op: 'delete', id });
+    return;
+  }
+  try {
+    const { error } = await db.from('concrete_sets').delete().eq('id', id);
+    if (error) throw error;
+  } catch (e) {
+    console.warn('deleteConcreteSetFromCloud:', e);
+    queueConcreteSync({ op: 'delete', id });
+  }
+}
+
+async function flushConcreteSyncQueue() {
+  if (!db) return;
+  let q;
+  try { q = JSON.parse(localStorage.getItem(CONCRETE_SYNC_QUEUE_KEY) || '[]'); } catch { return; }
+  if (!q.length) return;
+  const remaining = [];
+  for (const entry of q) {
+    try {
+      if (entry.op === 'delete') {
+        const { error } = await db.from('concrete_sets').delete().eq('id', entry.id);
+        if (error) throw error;
+      } else if (entry.set) {
+        const row = concreteSetToRow(entry.set);
+        if (!row) continue;
+        const { error } = await db.from('concrete_sets').upsert(row, { onConflict: 'id' });
+        if (error) throw error;
+      }
+    } catch {
+      remaining.push(entry);
+    }
+  }
+  try { localStorage.setItem(CONCRETE_SYNC_QUEUE_KEY, JSON.stringify(remaining)); } catch (e) {}
+}
+
+async function pullAndMergeConcreteSets() {
+  if (!db) return;
+  try {
+    const { data, error } = await db.from('concrete_sets').select('*').order('updated_at', { ascending: false });
+    if (error) throw error;
+    const local = loadConcreteSets();
+    const { merged, toPush } = mergeConcreteSets(local, data || []);
+    saveConcreteSets(merged);
+    for (const set of toPush) {
+      await syncConcreteSetToCloud(set);
+    }
+    if (activeConcSubTab === 'log') renderConcreteLog();
+    if (activeConcSubTab === 'schedule') renderBreakSchedule();
+    if (typeof renderConcreteHub === 'function') renderConcreteHub();
+  } catch (e) {
+    console.warn('pullAndMergeConcreteSets:', e);
   }
 }
 function nextConcreteId(sets) {
@@ -15210,12 +15370,14 @@ function submitConcreteIntake() {
     cylDiam: diam, requiredFc,
     remarks: gv('ci_remarks'),
     createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
     cylinders
   };
 
   const sets = loadConcreteSets();
   sets.unshift(newSet);
   saveConcreteSets(sets);
+  syncConcreteSetToCloud(newSet);
   showToast(`Set ${newSet.id} created — ${cylinders.length} cylinders logged ✓`, 'success');
   clearConcreteIntakeForm();
   switchConcreteTab('log');
@@ -15310,6 +15472,7 @@ function deleteConcreteSet(id) {
   if (!confirm(`Delete set ${id}? This cannot be undone.`)) return;
   const sets = loadConcreteSets().filter(s => s.id !== id);
   saveConcreteSets(sets);
+  deleteConcreteSetFromCloud(id);
   renderConcreteLog();
   showToast(`Set ${id} deleted`, 'success');
 }
@@ -15460,8 +15623,10 @@ function submitBreakEntry() {
   cyl.fracture   = concreteSelectedFracture;
   cyl.techBreak  = techBreak;
   cyl.brokenDate = breakDate;
+  set.updatedAt = new Date().toISOString();
 
   saveConcreteSets(sets);
+  syncConcreteSetToCloud(set);
   const pass = strength >= set.requiredFc;
   showToast(`${cylId}: ${strength.toLocaleString()} psi — ${pass ? 'PASS ✓' : 'FAIL ✗'}`, pass ? 'success' : 'error');
   clearBreakForm();
