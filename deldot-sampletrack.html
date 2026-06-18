@@ -321,6 +321,7 @@ nav, .nav-top-row { display: none !important; }
 .sl-banner-val { font-size: 12px; color: var(--text); font-weight: 500; margin-top: 1px; max-width: 160px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .sl-banner-actions { display: flex; gap: 7px; align-items: center; flex-shrink: 0; }
 .sl-entry-inner { padding: 14px 18px 48px; }
+.sl-mobile-back { display: none; }
 .sl-delete-modal {
   display: none; position: fixed; inset: 0; z-index: 9999;
   background: rgba(0,0,0,0.65); align-items: center; justify-content: center;
@@ -4797,6 +4798,7 @@ table.fc-borrow-tbl tr.fc-borrow-detail-row td{background:var(--surface);border-
 
           <!-- Sample banner -->
           <div class="sl-sample-banner">
+            <button type="button" class="btn btn-ghost sl-mobile-back" onclick="slBackToQueue()" aria-label="Back to sample queue">← Queue</button>
             <div class="sl-banner-info">
               <div class="sl-banner-block">
                 <div class="sl-banner-label">Test No.</div>
@@ -5524,7 +5526,7 @@ table.fc-borrow-tbl tr.fc-borrow-detail-row td{background:var(--surface);border-
 // GLOBALS
 // ══════════════════════════════════════════════
 let db = null;
-const APP_BUILD = '2026.06.17';
+const APP_BUILD = '2026.06.17.2';
 window._dbConnected = false;
 window._syncInProgress = false;
 let currentSample = null;
@@ -12248,9 +12250,50 @@ let slMineFilter     = 'all';   // 'all' | 'mine'
 let slCurrentMode    = 'ai';    // 'ai' | 'manual'
 let slLastLabData    = null;
 
+// ── Mobile layout: queue ↔ sample detail ─────────────────────
+const SL_MOBILE_BREAK = 768;
+let _slResizeTimer;
+
+function slIsMobileLayout() {
+  return window.innerWidth <= SL_MOBILE_BREAK;
+}
+
+function slSetMobileDetail(on) {
+  const layout = document.querySelector('#soillab-view .soillab-layout');
+  if (!layout) return;
+  if (!slIsMobileLayout()) {
+    layout.classList.remove('sl-mobile-detail');
+    return;
+  }
+  layout.classList.toggle('sl-mobile-detail', !!on);
+}
+
+function slBackToQueue() {
+  slSetMobileDetail(false);
+  const panel = document.getElementById('sl_entry_panel');
+  if (panel) panel.scrollTop = 0;
+}
+
+function slSyncMobileLayout() {
+  const soillab = document.getElementById('soillab-view');
+  if (!soillab || !soillab.classList.contains('active')) return;
+  if (!slIsMobileLayout()) {
+    slSetMobileDetail(false);
+    return;
+  }
+  const hasSample = slCurrentSample && document.getElementById('sl_lab_content')?.style.display !== 'none';
+  slSetMobileDetail(!!hasSample);
+}
+
+window.addEventListener('resize', () => {
+  clearTimeout(_slResizeTimer);
+  _slResizeTimer = setTimeout(slSyncMobileLayout, 150);
+});
+
 // ── Init when tab is activated ─────────────────────────────────
 function loadSoilLab() {
   slRenderQueue();
+  slSyncMobileLayout();
 }
 
 // ── Filter helpers ─────────────────────────────────────────────
@@ -12612,6 +12655,7 @@ async function slLoadSample(id) {
   const content = document.getElementById('sl_lab_content');
   content.style.display = 'flex';
   content.style.flexDirection = 'column';
+  slSetMobileDetail(true);
 
   // Fill banner
   document.getElementById('sl_b_testno').textContent     = sample.test_no;
@@ -18743,6 +18787,54 @@ body::after {
     gap: 6px;
   }
   .hub-two-col { grid-template-columns: 1fr !important; }
+
+  /* Soil Lab: single-panel queue ↔ entry on phones */
+  .soillab-layout {
+    grid-template-columns: 1fr;
+    grid-template-rows: 1fr;
+  }
+  .soillab-layout .sl-queue-panel {
+    display: flex;
+    border-right: none;
+  }
+  .soillab-layout .sl-entry-panel {
+    display: none;
+  }
+  .soillab-layout.sl-mobile-detail .sl-queue-panel {
+    display: none;
+  }
+  .soillab-layout.sl-mobile-detail .sl-entry-panel {
+    display: block;
+  }
+  .soillab-layout.sl-mobile-detail .sl-mobile-back {
+    display: inline-flex;
+    align-items: center;
+    font-size: 10px;
+    padding: 5px 12px;
+    flex: 0 0 100%;
+    width: auto;
+    align-self: flex-start;
+  }
+  .soillab-layout.sl-mobile-detail .sl-sample-banner {
+    flex-wrap: wrap;
+    padding: 10px 12px;
+    gap: 8px;
+  }
+  .soillab-layout.sl-mobile-detail .sl-banner-info {
+    gap: 10px;
+    width: 100%;
+  }
+  .soillab-layout.sl-mobile-detail .sl-banner-val {
+    max-width: 120px;
+  }
+  .soillab-layout.sl-mobile-detail .sl-banner-actions {
+    flex-wrap: wrap;
+    width: 100%;
+    justify-content: flex-start;
+  }
+  .sl-entry-inner {
+    padding-bottom: calc(72px + env(safe-area-inset-bottom, 0px));
+  }
 }
 
 /* ── REDUCED MOTION ─────────────────────────────────────────
