@@ -2574,6 +2574,7 @@ table.fc-borrow-tbl tr.fc-borrow-detail-row td{background:var(--surface);border-
         </div>
         <div style="font-family:var(--mono);font-size:10px;color:var(--muted);margin-bottom:16px;line-height:1.6;">
           Enter your <strong style="color:var(--gold);">admin PIN</strong> to unlock user management,<br>hub restrictions, and team assignments.
+          <br><span style="color:var(--accent2);">Data Maintenance</span> is available below without unlocking.
         </div>
         <div style="display:flex;gap:8px;max-width:340px;margin:0 auto;">
           <input type="password" id="permKeyInput" placeholder="Enter your admin PIN…"
@@ -2589,6 +2590,30 @@ table.fc-borrow-tbl tr.fc-borrow-detail-row td{background:var(--surface);border-
           </button>
         </div>
         <div id="permLockErr" style="color:var(--red2);font-family:var(--mono);font-size:10px;margin-top:8px;"></div>
+      </div>
+    </div>
+
+    <!-- Data maintenance — admin only (no PIN unlock required) -->
+    <div class="user-mgmt-section" id="dataMaintenanceSection" style="display:none;">
+      <div class="user-mgmt-title">DATA MAINTENANCE</div>
+      <p style="font-family:var(--mono);font-size:10px;color:var(--muted);margin:0 0 12px;line-height:1.6;">
+        Remove legacy Field Control stubs from <code style="background:var(--bg);padding:1px 5px;border-radius:3px;">samples</code>
+        (density-only rows, nuclear placeholders) that inflate pending counts but never appear in Soil Lab.
+        Rows are <strong style="color:var(--text);">soft-deleted</strong> — not permanently erased.
+      </p>
+      <div id="dmOrphanSummary" style="font-family:var(--mono);font-size:10px;color:var(--muted);margin-bottom:10px;">Scan to find orphan stubs…</div>
+      <div id="dmOrphanList" style="max-height:140px;overflow:auto;margin-bottom:12px;font-family:var(--mono);font-size:9px;color:var(--muted);"></div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;">
+        <button onclick="dmScanOrphanStubs()"
+          style="flex:1;min-width:120px;background:var(--surface);border:1px solid var(--border);color:var(--text);
+                 padding:9px;font-family:var(--mono);font-size:10px;letter-spacing:1px;border-radius:var(--radius-sm);cursor:pointer;">
+          ↻ SCAN
+        </button>
+        <button onclick="dmPurgeOrphanStubs()"
+          style="flex:1;min-width:120px;background:rgba(229,77,77,0.15);border:1px solid rgba(229,77,77,0.4);color:var(--red2);
+                 padding:9px;font-family:var(--mono);font-size:10px;letter-spacing:1px;border-radius:var(--radius-sm);cursor:pointer;">
+          🗑 SOFT-DELETE STUBS
+        </button>
       </div>
     </div>
 
@@ -2673,30 +2698,6 @@ table.fc-borrow-tbl tr.fc-borrow-detail-row td{background:var(--surface);border-
         style="width:100%;background:var(--surface);border:1px solid var(--border);color:var(--accent2);
                padding:9px;font-family:var(--mono);font-size:10px;letter-spacing:1px;
                border-radius:var(--radius);cursor:pointer;">+ ADD TEAM</button>
-    </div>
-
-    <!-- Data maintenance — admin only -->
-    <div class="user-mgmt-section" id="dataMaintenanceSection" style="display:none;">
-      <div class="user-mgmt-title">DATA MAINTENANCE</div>
-      <p style="font-family:var(--mono);font-size:10px;color:var(--muted);margin:0 0 12px;line-height:1.6;">
-        Remove legacy Field Control stubs from <code style="background:var(--bg);padding:1px 5px;border-radius:3px;">samples</code>
-        (density-only rows, nuclear placeholders) that inflate pending counts but never appear in Soil Lab.
-        Rows are <strong style="color:var(--text);">soft-deleted</strong> — not permanently erased.
-      </p>
-      <div id="dmOrphanSummary" style="font-family:var(--mono);font-size:10px;color:var(--muted);margin-bottom:10px;">Scan to find orphan stubs…</div>
-      <div id="dmOrphanList" style="max-height:140px;overflow:auto;margin-bottom:12px;font-family:var(--mono);font-size:9px;color:var(--muted);"></div>
-      <div style="display:flex;gap:8px;flex-wrap:wrap;">
-        <button onclick="dmScanOrphanStubs()"
-          style="flex:1;min-width:120px;background:var(--surface);border:1px solid var(--border);color:var(--text);
-                 padding:9px;font-family:var(--mono);font-size:10px;letter-spacing:1px;border-radius:var(--radius-sm);cursor:pointer;">
-          ↻ SCAN
-        </button>
-        <button onclick="dmPurgeOrphanStubs()"
-          style="flex:1;min-width:120px;background:rgba(229,77,77,0.15);border:1px solid rgba(229,77,77,0.4);color:var(--red2);
-                 padding:9px;font-family:var(--mono);font-size:10px;letter-spacing:1px;border-radius:var(--radius-sm);cursor:pointer;">
-          🗑 SOFT-DELETE STUBS
-        </button>
-      </div>
     </div>
 
     <!-- Hub Restrictions — admin only -->
@@ -5626,7 +5627,7 @@ table.fc-borrow-tbl tr.fc-borrow-detail-row td{background:var(--surface);border-
 // GLOBALS
 // ══════════════════════════════════════════════
 let db = null;
-const APP_BUILD = '2026.06.25';
+const APP_BUILD = '2026.06.26';
 window._dbConnected = false;
 window._syncInProgress = false;
 let currentSample = null;
@@ -6982,9 +6983,11 @@ function showSetup() {
     if (err) err.textContent = '';
   }
 
-  // All permission sections start hidden until unlocked
-  ['userMgmtSection','emailSettingsSection','manageTeamsSection','dataMaintenanceSection','hubRestrictSection','teamAssignSection']
+  // PIN-locked admin sections
+  ['userMgmtSection','emailSettingsSection','manageTeamsSection','hubRestrictSection','teamAssignSection']
     .forEach(id => { const el = document.getElementById(id); if (el) el.style.display = 'none'; });
+
+  showDataMaintenancePanel(isAdmin);
 
   // My Account — show for any logged-in user, clear fields each open
   const acct = document.getElementById('myAccountSection');
@@ -7051,8 +7054,7 @@ async function unlockPermissions() {
   const mteamSect = document.getElementById('manageTeamsSection');
   if (mteamSect && isAdmin) { mteamSect.style.display = 'block'; renderCustomTeamList(); umRoleDropdownChanged(); }
 
-  const dmSect = document.getElementById('dataMaintenanceSection');
-  if (dmSect && isAdmin) { dmSect.style.display = 'block'; dmScanOrphanStubs(); }
+  showDataMaintenancePanel(isAdmin);
 
   const hubSect = document.getElementById('hubRestrictSection');
   if (hubSect && isAdmin) { hubSect.style.display = 'block'; renderHubRestrictions(); }
@@ -7148,6 +7150,19 @@ function isLabOrphanStub(s) {
 }
 
 let _dmOrphanCache = [];
+
+function showDataMaintenancePanel(isAdmin) {
+  const dmSect = document.getElementById('dataMaintenanceSection');
+  if (!dmSect) return;
+  if (!isAdmin) { dmSect.style.display = 'none'; return; }
+  dmSect.style.display = 'block';
+  const summary = document.getElementById('dmOrphanSummary');
+  if (!db) {
+    if (summary) summary.textContent = 'Connect to Supabase above, then tap SCAN.';
+    return;
+  }
+  if (typeof dmScanOrphanStubs === 'function') dmScanOrphanStubs();
+}
 
 async function dmFetchOrphanStubs() {
   if (db) {
