@@ -286,9 +286,9 @@ CREATE TABLE IF NOT EXISTS sample_history (
 CREATE INDEX IF NOT EXISTS idx_sample_history_sample ON sample_history (sample_id, created_at DESC);
 
 -- ── Row Level Security ─────────────────────────────────────────
--- Starter policies: open access with anon key (matches current app behavior).
--- Tighten these before production — e.g. service-role Edge Functions for writes,
--- or Supabase Auth with role claims.
+-- Dev / prototype: open policies below (anon key + client PINs).
+-- Production: run supabase/migrations/20260617_production_rls.sql AFTER Supabase Auth.
+-- See supabase/docs/production-rls-rollout.md
 
 ALTER TABLE projects         ENABLE ROW LEVEL SECURITY;
 ALTER TABLE samples          ENABLE ROW LEVEL SECURITY;

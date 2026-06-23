@@ -2675,6 +2675,30 @@ table.fc-borrow-tbl tr.fc-borrow-detail-row td{background:var(--surface);border-
                border-radius:var(--radius);cursor:pointer;">+ ADD TEAM</button>
     </div>
 
+    <!-- Data maintenance — admin only -->
+    <div class="user-mgmt-section" id="dataMaintenanceSection" style="display:none;">
+      <div class="user-mgmt-title">DATA MAINTENANCE</div>
+      <p style="font-family:var(--mono);font-size:10px;color:var(--muted);margin:0 0 12px;line-height:1.6;">
+        Remove legacy Field Control stubs from <code style="background:var(--bg);padding:1px 5px;border-radius:3px;">samples</code>
+        (density-only rows, nuclear placeholders) that inflate pending counts but never appear in Soil Lab.
+        Rows are <strong style="color:var(--text);">soft-deleted</strong> — not permanently erased.
+      </p>
+      <div id="dmOrphanSummary" style="font-family:var(--mono);font-size:10px;color:var(--muted);margin-bottom:10px;">Scan to find orphan stubs…</div>
+      <div id="dmOrphanList" style="max-height:140px;overflow:auto;margin-bottom:12px;font-family:var(--mono);font-size:9px;color:var(--muted);"></div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;">
+        <button onclick="dmScanOrphanStubs()"
+          style="flex:1;min-width:120px;background:var(--surface);border:1px solid var(--border);color:var(--text);
+                 padding:9px;font-family:var(--mono);font-size:10px;letter-spacing:1px;border-radius:var(--radius-sm);cursor:pointer;">
+          ↻ SCAN
+        </button>
+        <button onclick="dmPurgeOrphanStubs()"
+          style="flex:1;min-width:120px;background:rgba(229,77,77,0.15);border:1px solid rgba(229,77,77,0.4);color:var(--red2);
+                 padding:9px;font-family:var(--mono);font-size:10px;letter-spacing:1px;border-radius:var(--radius-sm);cursor:pointer;">
+          🗑 SOFT-DELETE STUBS
+        </button>
+      </div>
+    </div>
+
     <!-- Hub Restrictions — admin only -->
     <div class="user-mgmt-section" id="hubRestrictSection" style="display:none;">
       <div class="user-mgmt-title">HUB ACCESS RESTRICTIONS</div>
@@ -5602,7 +5626,7 @@ table.fc-borrow-tbl tr.fc-borrow-detail-row td{background:var(--surface);border-
 // GLOBALS
 // ══════════════════════════════════════════════
 let db = null;
-const APP_BUILD = '2026.06.24';
+const APP_BUILD = '2026.06.25';
 window._dbConnected = false;
 window._syncInProgress = false;
 let currentSample = null;
@@ -6959,7 +6983,7 @@ function showSetup() {
   }
 
   // All permission sections start hidden until unlocked
-  ['userMgmtSection','emailSettingsSection','manageTeamsSection','hubRestrictSection','teamAssignSection']
+  ['userMgmtSection','emailSettingsSection','manageTeamsSection','dataMaintenanceSection','hubRestrictSection','teamAssignSection']
     .forEach(id => { const el = document.getElementById(id); if (el) el.style.display = 'none'; });
 
   // My Account — show for any logged-in user, clear fields each open
@@ -7026,6 +7050,9 @@ async function unlockPermissions() {
 
   const mteamSect = document.getElementById('manageTeamsSection');
   if (mteamSect && isAdmin) { mteamSect.style.display = 'block'; renderCustomTeamList(); umRoleDropdownChanged(); }
+
+  const dmSect = document.getElementById('dataMaintenanceSection');
+  if (dmSect && isAdmin) { dmSect.style.display = 'block'; dmScanOrphanStubs(); }
 
   const hubSect = document.getElementById('hubRestrictSection');
   if (hubSect && isAdmin) { hubSect.style.display = 'block'; renderHubRestrictions(); }
@@ -7109,6 +7136,76 @@ function filterSoilLabSamples(samples) {
 
 function countPendingLabSamples(samples) {
   return filterSoilLabSamples(samples).filter(s => !s.status || s.status === 'pending').length;
+}
+
+/** Legacy FC density / placeholder rows — not real lab samples; safe to soft-delete. */
+function isLabOrphanStub(s) {
+  if (!s || s.deleted_at) return false;
+  if (s.record_kind === 'density_test') return true;
+  if (s.sample_type === 'nuclear_placeholder' || s.sample_type === 'aggregate_placeholder' || s.sample_type === 'density_test') return true;
+  if (s.status === 'density') return true;
+  return false;
+}
+
+let _dmOrphanCache = [];
+
+async function dmFetchOrphanStubs() {
+  if (db) {
+    try {
+      const { data, error } = await db.from('samples').select('id,test_no,contract,status,record_kind,sample_type,deleted_at')
+        .is('deleted_at', null).order('created_at', { ascending: false }).limit(500);
+      if (!error && data) return data.filter(isLabOrphanStub);
+    } catch (e) { console.warn('dmFetchOrphanStubs:', e); }
+  }
+  return (allSamples || []).filter(isLabOrphanStub);
+}
+
+async function dmScanOrphanStubs() {
+  const summary = document.getElementById('dmOrphanSummary');
+  const list = document.getElementById('dmOrphanList');
+  if (summary) summary.textContent = 'Scanning…';
+  _dmOrphanCache = await dmFetchOrphanStubs();
+  if (summary) {
+    summary.textContent = _dmOrphanCache.length
+      ? _dmOrphanCache.length + ' orphan stub' + (_dmOrphanCache.length !== 1 ? 's' : '') + ' found'
+      : 'No orphan stubs found — counts should match Soil Lab.';
+  }
+  if (list) {
+    if (!_dmOrphanCache.length) {
+      list.innerHTML = '';
+    } else {
+      list.innerHTML = _dmOrphanCache.slice(0, 25).map(s =>
+        '<div style="padding:3px 0;border-bottom:1px solid var(--border);">' +
+        (s.test_no || '—') + ' · ' + (s.contract || '—') +
+        ' <span style="color:var(--muted);">(' + (s.record_kind || s.sample_type || s.status || 'stub') + ')</span></div>'
+      ).join('') + (_dmOrphanCache.length > 25 ? '<div style="padding:6px 0;">…and ' + (_dmOrphanCache.length - 25) + ' more</div>' : '');
+    }
+  }
+}
+
+async function dmPurgeOrphanStubs() {
+  if (!db) { showToast('Not connected to database', 'error'); return; }
+  if (!_dmOrphanCache.length) await dmScanOrphanStubs();
+  if (!_dmOrphanCache.length) { showToast('Nothing to clean up', 'info'); return; }
+  const n = _dmOrphanCache.length;
+  if (!confirm('Soft-delete ' + n + ' orphan stub row' + (n !== 1 ? 's' : '') + '?\n\nThese are not real lab samples (density-only / placeholder records).')) return;
+
+  const now = new Date().toISOString();
+  let ok = 0;
+  for (const row of _dmOrphanCache) {
+    const { error } = await db.from('samples').update({ deleted_at: now }).eq('id', row.id);
+    if (!error) {
+      ok++;
+      logSampleHistory({ sampleId: row.id, testNo: row.test_no, action: 'soft_deleted', details: { reason: 'orphan_stub_cleanup' } });
+    }
+  }
+  allSamples = (allSamples || []).filter(s => !_dmOrphanCache.some(o => o.id === s.id));
+  _dmOrphanCache = [];
+  showToast('Removed ' + ok + ' orphan stub' + (ok !== 1 ? 's' : ''), 'success');
+  dmScanOrphanStubs();
+  if (typeof loadSamples === 'function') loadSamples();
+  if (typeof updateTopbarStatus === 'function') updateTopbarStatus();
+  if (typeof renderDashboard === 'function') renderDashboard();
 }
 
 let showingArchived = false;
@@ -15776,10 +15873,15 @@ async function clearFC_Session() {
         else toDelete.push(['samples', activeFC_sessionId]);
         if (activeFC_linkedSampleId && !hasLab) toDelete.push(['samples', activeFC_linkedSampleId]);
         for (const [tbl, rowId] of toDelete) {
-          const { error } = await db.from(tbl).delete().eq('id', rowId);
-          if (error) showToast('Could not discard: ' + error.message, 'error');
-          else if (tbl === 'field_tests') allFieldTests = (allFieldTests || []).filter(x => x.id !== rowId);
-          else allSamples = (allSamples || []).filter(x => x.id !== rowId);
+          if (tbl === 'samples') {
+            const { error } = await db.from('samples').update({ deleted_at: new Date().toISOString() }).eq('id', rowId);
+            if (error) showToast('Could not discard: ' + error.message, 'error');
+            else allSamples = (allSamples || []).filter(x => x.id !== rowId);
+          } else {
+            const { error } = await db.from(tbl).delete().eq('id', rowId);
+            if (error) showToast('Could not discard: ' + error.message, 'error');
+            else if (tbl === 'field_tests') allFieldTests = (allFieldTests || []).filter(x => x.id !== rowId);
+          }
         }
         showToast(`Session ${activeFC_testNo} discarded`, 'info');
       }
