@@ -3729,6 +3729,15 @@ table.fc-borrow-tbl tr.fc-borrow-detail-row td{background:var(--surface);border-
           </div>
         </div>
 
+        <!-- Open field sessions (in progress) -->
+        <div class="card" style="margin-top:14px;" id="fc_open_sessions_card">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
+            <div style="font-family:var(--mono);font-size:9px;letter-spacing:1.5px;color:var(--muted);">OPEN FIELD SESSIONS</div>
+            <button type="button" onclick="loadOpenFieldSessions()" style="background:transparent;border:1px solid var(--border);color:var(--muted);padding:3px 8px;border-radius:4px;font-family:var(--mono);font-size:8px;cursor:pointer;">↻</button>
+          </div>
+          <div id="fc_open_sessions_list" style="font-family:var(--mono);font-size:10px;color:var(--muted);">Loading…</div>
+        </div>
+
       </div><!-- end fc_start_state -->
 
       <!-- ══ STATE B: ACTIVE SESSION — WORKFLOW TABS ══ -->
@@ -5627,7 +5636,7 @@ table.fc-borrow-tbl tr.fc-borrow-detail-row td{background:var(--surface);border-
 // GLOBALS
 // ══════════════════════════════════════════════
 let db = null;
-const APP_BUILD = '2026.06.26';
+const APP_BUILD = '2026.06.27';
 window._dbConnected = false;
 window._syncInProgress = false;
 let currentSample = null;
@@ -9996,9 +10005,15 @@ async function saveNuclearAndGenerate() {
     updateFCSessionBanner();
   }
   document.getElementById('nuclearOverlay').classList.remove('open'); scrollActiveViewTop();
-  renderNuclearReport(currentNuclearSample, nucData);
-  switchView('report');
-  showToast('DMF-68C saved ✓', 'success');
+  if (activeFC_sessionId) {
+    switchView('fieldcontrol');
+    updateFCSessionBanner();
+    showToast('DMF-68C saved ✓', 'success');
+  } else {
+    renderNuclearReport(currentNuclearSample, nucData);
+    switchView('report');
+    showToast('DMF-68C saved ✓', 'success');
+  }
 }
 
 function renderNuclearReport(sample, d) {
@@ -10406,9 +10421,15 @@ async function saveDensityAndGenerate() {
   }
   document.getElementById('densityOverlay').classList.remove('open'); scrollActiveViewTop();
 
-  renderLB68(currentDensitySample, data);
-  switchView('report');
-  showToast('LB-68 generated ✓', 'success');
+  if (activeFC_sessionId) {
+    switchView('fieldcontrol');
+    updateFCSessionBanner();
+    showToast('LB-68 saved ✓', 'success');
+  } else {
+    renderLB68(currentDensitySample, data);
+    switchView('report');
+    showToast('LB-68 generated ✓', 'success');
+  }
 }
 
 function renderLB68(sample, d) {
@@ -14274,6 +14295,32 @@ function fcHasLabSampleSubmitted(s) {
   return s.sample_type === 'Field Control' && !s.remarks;
 }
 
+function fcHasDensityData(rec) {
+  if (!rec?.density_data) return false;
+  try {
+    const d = typeof rec.density_data === 'string' ? JSON.parse(rec.density_data) : rec.density_data;
+    if (Array.isArray(d)) return d.length > 0;
+    if (d.rows && Array.isArray(d.rows)) return d.rows.some(r => r && (r.location || r.dry_density || r.density_no));
+    return typeof d === 'object' && Object.keys(d).length > 0;
+  } catch (e) { return true; }
+}
+
+function fcHasNuclearData(rec) {
+  if (!rec?.nuclear_data) return false;
+  try {
+    const d = typeof rec.nuclear_data === 'string' ? JSON.parse(rec.nuclear_data) : rec.nuclear_data;
+    return d && typeof d === 'object' && Object.keys(d).length > 0;
+  } catch (e) { return true; }
+}
+
+function fcUpdateTabStatusIndicators() {
+  const densityRec = fcGetCachedDensityRecord();
+  const lb = document.getElementById('fc_lb68_status');
+  const nuke = document.getElementById('fc_nuke_status');
+  if (lb) lb.style.display = fcHasDensityData(densityRec) ? '' : 'none';
+  if (nuke) nuke.style.display = fcHasNuclearData(densityRec) ? '' : 'none';
+}
+
 async function fcTryInsert(table, record, requestedTestNo, category) {
   let inserted = null;
   let lastError = null;
@@ -14363,8 +14410,8 @@ function updateFCSessionBanner() {
 
   const chk = document.getElementById('fc_session_checklist');
   if (chk) {
-    const hasDensity = !!(densityRec?.density_data && densityRec.density_data.length > 0);
-    const hasNuke    = !!(densityRec?.nuclear_data && Object.keys(densityRec.nuclear_data).length > 0);
+    const hasDensity = fcHasDensityData(densityRec);
+    const hasNuke    = fcHasNuclearData(densityRec);
     const hasSample  = fcHasLabSampleSubmitted(linkedSample);
     const items = [];
     if (intent !== 'lab') {
@@ -14379,10 +14426,11 @@ function updateFCSessionBanner() {
 
   const badge = document.getElementById('fc_intent_badge');
   if (badge) {
-    const labels = { density: '⚖️ DENSITY ONLY — no lab queue', lab: '🧪 LAB SAMPLE ONLY — no gauge', both: '⚡ DENSITY + LAB SAMPLE' };
+    const labels = { density: '⚖️ DENSITY ONLY — no lab queue', lab: '🧪 LAB SAMPLE ONLY — no gauge', both: '⚡ DENSITY + LAB — fill gauge tabs and submit sample below' };
     badge.textContent = labels[intent] || '';
     badge.style.display = intent ? '' : 'none';
   }
+  fcUpdateTabStatusIndicators();
 }
 
 // ── Auto-fill technician name on all forms ────────────────────
@@ -14408,6 +14456,13 @@ function initFC_View() {
   if (activeFC_testNo && activeFC_sessionId) {
     startEl.style.display  = 'none';
     activeEl.style.display = '';
+    const header = fcGetCachedHeaderRecord() || fcGetCachedLinkedSample();
+    const linked = fcGetCachedLinkedSample();
+    const densityRec = fcGetCachedDensityRecord();
+    const intent = _fcIntent || fcIntentFromRecord(linked || densityRec || header);
+    const cat = (header || linked || densityRec)?.test_category || 'soil';
+    fcApplyCategoryToTabs(cat);
+    fcApplyIntentToTabs(intent, cat);
     updateFCSessionBanner();
   } else {
     startEl.style.display  = '';
@@ -14421,6 +14476,7 @@ function initFC_View() {
     }
     loadFCStartTracker();
     loadDensityRecords();
+    loadOpenFieldSessions();
     // Restore last-used intent + category for this user
     fcRestorePrefs();
   }
@@ -14633,10 +14689,10 @@ function fcApplyIntentToTabs(intent, category) {
       if (tabNuke) tabNuke.style.display  = '';
     }
     if (tabSample) tabSample.style.display = '';
-    if (toggleCard) toggleCard.style.display = '';
+    if (toggleCard) toggleCard.style.display = 'none';
     switchFCTab(category === 'aggregate' ? 'sample' : 'lb68');
     const tog = document.getElementById('fc_lab_sample_toggle');
-    if (tog) { tog.checked = false; fcToggleLabSample(false); }
+    if (tog) { tog.checked = true; fcToggleLabSample(true); }
   }
 }
 
@@ -14667,12 +14723,14 @@ async function getLastTestNumber(category) {
   let max = 0;
   const tables = ['samples', 'field_tests'];
   for (const table of tables) {
-    const { data, error } = await db.from(table)
+    let query = db.from(table)
       .select('test_no, created_at')
       .eq('test_category', category)
       .gte('created_at', startIso)
       .order('created_at', { ascending: false })
       .limit(500);
+    if (table === 'samples') query = query.is('deleted_at', null);
+    const { data, error } = await query;
     if (error || !data) continue;
     data.forEach(r => {
       const n = parseInt(String(r.test_no).replace(/[^\d]/g,''), 10);
@@ -14753,7 +14811,7 @@ async function fcResumeSessionById(id) {
   }
 
   const sample = await fcFetchRecord(id, 'samples');
-  if (!sample) { showToast('Could not load record', 'error'); return; }
+  if (!sample || sample.deleted_at) { showToast('Could not load record', 'error'); return; }
 
   const resumeIntent = fcIntentFromRecord(sample);
   let linkedFieldTest = null;
@@ -14818,6 +14876,67 @@ async function loadDensityRecords() {
   } catch(e) { console.warn('loadDensityRecords:', e); }
 }
 
+async function loadOpenFieldSessions() {
+  const list = document.getElementById('fc_open_sessions_list');
+  const card = document.getElementById('fc_open_sessions_card');
+  if (!list) return;
+  if (!db) {
+    list.textContent = 'Connect to Supabase to see open sessions.';
+    return;
+  }
+  list.textContent = 'Loading…';
+  try {
+    const { data: openTests, error: ftErr } = await db.from('field_tests')
+      .select('id,test_no,contract,location,sampled_by,field_workflow,sample_id,test_category,created_at')
+      .eq('status', 'open')
+      .order('created_at', { ascending: false })
+      .limit(15);
+    if (ftErr) throw ftErr;
+
+    const { data: openLab, error: labErr } = await db.from('samples')
+      .select('id,test_no,contract,location,sampled_by,record_kind,field_test_id,test_category,created_at')
+      .is('deleted_at', null)
+      .in('record_kind', ['lab_sample', 'linked'])
+      .neq('status', 'complete')
+      .order('created_at', { ascending: false })
+      .limit(15);
+    if (labErr) throw labErr;
+
+    const ftIds = new Set((openTests || []).map(r => r.id));
+    const labOnly = (openLab || []).filter(s => !s.field_test_id || !ftIds.has(s.field_test_id));
+
+    if (!(openTests || []).length && !labOnly.length) {
+      list.innerHTML = '<div style="padding:8px 0;color:var(--muted);">No open sessions — start a new field event above.</div>';
+      return;
+    }
+
+    const rows = [];
+    (openTests || []).forEach(ft => {
+      const kind = ft.field_workflow === 'linked' || ft.sample_id ? 'Density + lab' : 'Density only';
+      rows.push(`<div style="display:flex;align-items:center;justify-content:space-between;gap:8px;padding:8px 0;border-bottom:1px solid var(--border);">
+        <div style="min-width:0;">
+          <div style="color:var(--text);font-weight:700;">${ft.test_no || '—'} <span style="color:var(--accent2);font-size:9px;">${kind}</span></div>
+          <div style="font-size:9px;color:var(--muted);">${ft.contract || '—'} · ${ft.location || '—'}</div>
+        </div>
+        <button class="btn btn-ghost" style="font-size:9px;padding:4px 10px;flex-shrink:0;" onclick="fcResumeSessionById('${ft.id}')">OPEN</button>
+      </div>`);
+    });
+    labOnly.forEach(s => {
+      rows.push(`<div style="display:flex;align-items:center;justify-content:space-between;gap:8px;padding:8px 0;border-bottom:1px solid var(--border);">
+        <div style="min-width:0;">
+          <div style="color:var(--text);font-weight:700;">${s.test_no || '—'} <span style="color:var(--green2);font-size:9px;">Lab only</span></div>
+          <div style="font-size:9px;color:var(--muted);">${s.contract || '—'} · ${s.location || '—'}</div>
+        </div>
+        <button class="btn btn-ghost" style="font-size:9px;padding:4px 10px;flex-shrink:0;" onclick="fcResumeSessionById('${s.id}')">OPEN</button>
+      </div>`);
+    });
+    list.innerHTML = rows.join('');
+  } catch (e) {
+    list.textContent = 'Could not load open sessions.';
+    console.warn('loadOpenFieldSessions:', e);
+  }
+}
+
 function fdr_clearFilters() {
   const c = document.getElementById('fdr_filter_contract');
   const d = document.getElementById('fdr_filter_date');
@@ -14833,7 +14952,7 @@ function renderDensityRecords() {
   const contractQ = (document.getElementById('fdr_filter_contract')?.value || '').trim().toLowerCase();
   const dateQ     = (document.getElementById('fdr_filter_date')?.value || '').trim();
 
-  let rows = [...(window.allFieldTests || [])];
+  let rows = [...(window.allFieldTests || [])].filter(r => r.status === 'closed');
 
   if (contractQ) rows = rows.filter(r =>
     (r.contract||'').toLowerCase().includes(contractQ) ||
@@ -14918,19 +15037,8 @@ function fcApplyCategoryToTabs(category) {
   if (isAgg) {
     if (subLB68) subLB68.style.display = 'none';
     if (subNuke) subNuke.style.display = 'none';
-    // Aggregate samples always have a lab sample — skip the toggle, auto-enable it
-    const tog = document.getElementById('fc_lab_sample_toggle');
-    if (tog && !tog.checked) {
-      tog.checked = true;
-      fcToggleLabSample(true);
-    }
-    // Also hide the toggle card entirely for aggregate — not relevant
-    const toggleCard = document.getElementById('fc_lab_toggle_card');
-    if (toggleCard) toggleCard.style.display = 'none';
-  } else {
-    const toggleCard = document.getElementById('fc_lab_toggle_card');
-    if (toggleCard && _fcIntent !== 'lab') toggleCard.style.display = '';
   }
+  // Toggle visibility is managed by fcApplyIntentToTabs (not here).
 }
 
 // ══════════════════════════════════════════════════════════════
@@ -14989,6 +15097,7 @@ async function fcResumeSession() {
   let sample = (allSamples || []).find(s => (s.test_no || '').toLowerCase() === q || s.id === testno);
   if (!sample) {
     const { data } = await db.from('samples').select('*')
+      .is('deleted_at', null)
       .or(`test_no.ilike.${testno},id.eq.${testno}`).limit(1);
     if (data?.length) { sample = data[0]; allSamples.unshift(sample); }
   }
@@ -15868,7 +15977,8 @@ function fcClearSampleForm() {
     const el = document.getElementById(id); if (el) el.value = '';
   });
   document.getElementById('qrCard').style.display = 'none';
-  const s = fcGetCachedLinkedSample() || allSamples.find(x => x.id === sampleId);
+  const sampleId = activeFC_linkedSampleId || (activeFC_table === 'samples' ? activeFC_sessionId : null);
+  const s = sampleId ? (fcGetCachedLinkedSample() || allSamples.find(x => x.id === sampleId)) : null;
   if (s) fcPrefillSampleForm(s);
   _autoFillTech(); // refill name after clear
 }
@@ -15917,6 +16027,21 @@ async function clearFC_Session() {
           showToast(`Test ${activeFC_testNo} closed as density-only — not queued for lab`, 'success');
         }
       }
+    } else if (intent === 'both' || intent === 'lab') {
+      const ftId = activeFC_fieldTestId || (activeFC_table === 'field_tests' ? activeFC_sessionId : null);
+      if (ftId) {
+        const { error } = await db.from('field_tests').update({ status: 'closed' }).eq('id', ftId);
+        if (!error) {
+          fcCacheRecord('field_tests', ftId, { status: 'closed' });
+        }
+      }
+      if (hasLab) {
+        showToast(`Test ${activeFC_testNo} ended — lab sample remains in queue`, 'success');
+      } else if (intent === 'both') {
+        showToast(`Test ${activeFC_testNo} ended — submit lab sample if a bag was collected`, 'info');
+      } else {
+        showToast(`Test ${activeFC_testNo} session ended`, 'info');
+      }
     }
   }
 
@@ -15957,6 +16082,7 @@ async function clearFC_Session() {
   // Refresh tracker — last number just bumped if we kept the session
   loadFCStartTracker();
   loadDensityRecords();
+  loadOpenFieldSessions();
   // Refresh table/dashboards
   if (typeof loadSamples === 'function') loadSamples();
   scrollActiveViewTop();
