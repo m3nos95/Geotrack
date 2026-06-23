@@ -103,6 +103,53 @@ ALTER TABLE samples ADD COLUMN IF NOT EXISTS dist_approved_by TEXT;
 ALTER TABLE samples ADD COLUMN IF NOT EXISTS dist_approved_at TIMESTAMPTZ;
 ALTER TABLE samples ADD COLUMN IF NOT EXISTS dist_rejected_reason TEXT;
 ALTER TABLE samples ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ DEFAULT NOW();
+ALTER TABLE samples ADD COLUMN IF NOT EXISTS record_kind TEXT;
+ALTER TABLE samples ADD COLUMN IF NOT EXISTS field_test_id UUID;
+ALTER TABLE samples ADD COLUMN IF NOT EXISTS nuclear_data JSONB;
+ALTER TABLE samples ADD COLUMN IF NOT EXISTS density_data JSONB;
+
+CREATE INDEX IF NOT EXISTS idx_samples_record_kind ON samples (record_kind);
+CREATE INDEX IF NOT EXISTS idx_samples_field_test  ON samples (field_test_id);
+
+-- ── Field tests (density / nuclear — not lab queue) ─────────────
+CREATE TABLE IF NOT EXISTS field_tests (
+  id               UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  test_no          TEXT,
+  test_category    TEXT,
+  contract         TEXT,
+  fa_project       TEXT,
+  contractor       TEXT,
+  road             TEXT,
+  location         TEXT,
+  material_type    TEXT,
+  sampled_by       TEXT,
+  date_sampled     TEXT,
+  test_date        TEXT,
+  field_workflow   TEXT,
+  sample_id        UUID REFERENCES samples(id) ON DELETE SET NULL,
+  nuclear_data     JSONB,
+  density_data     JSONB,
+  status           TEXT DEFAULT 'open',
+  created_at       TIMESTAMPTZ DEFAULT NOW(),
+  updated_at       TIMESTAMPTZ DEFAULT NOW()
+);
+
+ALTER TABLE samples DROP CONSTRAINT IF EXISTS samples_field_test_id_fkey;
+ALTER TABLE samples
+  ADD CONSTRAINT samples_field_test_id_fkey
+  FOREIGN KEY (field_test_id) REFERENCES field_tests(id) ON DELETE SET NULL;
+
+CREATE INDEX IF NOT EXISTS idx_field_tests_test_no    ON field_tests (test_no);
+CREATE INDEX IF NOT EXISTS idx_field_tests_contract   ON field_tests (contract);
+CREATE INDEX IF NOT EXISTS idx_field_tests_category   ON field_tests (test_category);
+CREATE INDEX IF NOT EXISTS idx_field_tests_created_at ON field_tests (created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_field_tests_sample_id  ON field_tests (sample_id);
+CREATE INDEX IF NOT EXISTS idx_field_tests_status     ON field_tests (status);
+
+DROP TRIGGER IF EXISTS trg_field_tests_updated_at ON field_tests;
+CREATE TRIGGER trg_field_tests_updated_at
+  BEFORE UPDATE ON field_tests
+  FOR EACH ROW EXECUTE FUNCTION set_updated_at();
 
 CREATE INDEX IF NOT EXISTS idx_samples_contract   ON samples (contract);
 CREATE INDEX IF NOT EXISTS idx_samples_test_no    ON samples (test_no);
@@ -250,6 +297,7 @@ ALTER TABLE approved_sources ENABLE ROW LEVEL SECURITY;
 ALTER TABLE st_cal_notes     ENABLE ROW LEVEL SECURITY;
 ALTER TABLE st_hub_notes     ENABLE ROW LEVEL SECURITY;
 ALTER TABLE concrete_sets    ENABLE ROW LEVEL SECURITY;
+ALTER TABLE field_tests      ENABLE ROW LEVEL SECURITY;
 ALTER TABLE sample_history   ENABLE ROW LEVEL SECURITY;
 
 DROP POLICY IF EXISTS "labtrak_projects_all"         ON projects;
@@ -259,6 +307,7 @@ DROP POLICY IF EXISTS "labtrak_approved_sources_all" ON approved_sources;
 DROP POLICY IF EXISTS "labtrak_st_cal_notes_all"     ON st_cal_notes;
 DROP POLICY IF EXISTS "labtrak_st_hub_notes_all"     ON st_hub_notes;
 DROP POLICY IF EXISTS "labtrak_concrete_sets_all"    ON concrete_sets;
+DROP POLICY IF EXISTS "labtrak_field_tests_all"      ON field_tests;
 DROP POLICY IF EXISTS "labtrak_sample_history_all"   ON sample_history;
 
 -- Drop legacy policy names from embedded HTML comment
@@ -272,4 +321,5 @@ CREATE POLICY "labtrak_approved_sources_all" ON approved_sources FOR ALL USING (
 CREATE POLICY "labtrak_st_cal_notes_all"     ON st_cal_notes     FOR ALL USING (true) WITH CHECK (true);
 CREATE POLICY "labtrak_st_hub_notes_all"     ON st_hub_notes     FOR ALL USING (true) WITH CHECK (true);
 CREATE POLICY "labtrak_concrete_sets_all"    ON concrete_sets    FOR ALL USING (true) WITH CHECK (true);
+CREATE POLICY "labtrak_field_tests_all"      ON field_tests      FOR ALL USING (true) WITH CHECK (true);
 CREATE POLICY "labtrak_sample_history_all"   ON sample_history   FOR ALL USING (true) WITH CHECK (true);
