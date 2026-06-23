@@ -3760,7 +3760,7 @@ table.fc-borrow-tbl tr.fc-borrow-detail-row td{background:var(--surface);border-
         <div id="fcsub-sample" style="display:none;">
 
           <!-- Lab sample collected toggle — prominent decision point -->
-          <div class="card" style="border:1px solid rgba(196,124,42,0.3);margin-bottom:14px;">
+          <div id="fc_lab_toggle_card" class="card" style="border:1px solid rgba(196,124,42,0.3);margin-bottom:14px;">
             <div style="display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap;">
               <div>
                 <div style="font-family:var(--mono);font-size:12px;font-weight:700;color:var(--text);margin-bottom:4px;">Lab Sample Collected?</div>
@@ -5599,7 +5599,7 @@ table.fc-borrow-tbl tr.fc-borrow-detail-row td{background:var(--surface);border-
 // GLOBALS
 // ══════════════════════════════════════════════
 let db = null;
-const APP_BUILD = '2026.06.17.2';
+const APP_BUILD = '2026.06.23';
 window._dbConnected = false;
 window._syncInProgress = false;
 let currentSample = null;
@@ -6874,6 +6874,7 @@ async function connectSupabase(silent = false) {
     umRenderUsers();
     loadSamples();
     loadProjects();
+    if (typeof loadDensityRecords === 'function') loadDensityRecords();
 
     // Restore session or prompt login
     const sess = sessionStorage.getItem('st_current_user');
@@ -9663,8 +9664,18 @@ Return ONLY JSON, no markdown:
 // ══════════════════════════════════════════════
 let currentNuclearSample = null;
 
-async function openNuclearDensity(id) {
-  const sample = await fetchSample(id);
+async function openNuclearDensity(id, tableHint) {
+  let sample = null;
+  if (tableHint === 'field_tests') {
+    sample = await fcFetchRecord(id, 'field_tests');
+  } else {
+    sample = await fetchSample(id);
+    if (sample) {
+      const densityRec = await fcResolveDensityRecordFromSample(sample);
+      if (densityRec) sample = densityRec;
+      else sample._fc_table = 'samples';
+    }
+  }
   if (!sample) return;
   currentNuclearSample = sample;
 
@@ -9804,7 +9815,7 @@ async function saveNuclearAndGenerate() {
   if (!currentNuclearSample) return;
 
   const gv = id => document.getElementById(id)?.value?.trim() || null;
-  const data = {
+  const nucData = {
     contract: gv('nuc_contract'), fa: gv('nuc_fa'), date: gv('nuc_date'),
     material: gv('nuc_material'), family: gv('nuc_family'), serial: gv('nuc_serial'),
     density_no: gv('nuc_density_no'), agg_sg: gv('nuc_agg_sg'), test_type: gv('nuc_test_type'),
@@ -9819,16 +9830,22 @@ async function saveNuclearAndGenerate() {
   };
 
   // Save R_calc derived from K2 (specimen moisture) for LB-68 population
-  const fn2 = k => parseFloat(data[k]) || 0;
+  const fn2 = k => parseFloat(nucData[k]) || 0;
   const K2_in = fn2('K2');
   const N2=fn2('N'),O2=fn2('O'),P2=N2>0?N2-O2:0;
   const Q2=P2>0?30*P2:0;
   const R2=Q2>0&&K2_in>0?Q2/(1+K2_in/100):0;
-  if (R2 > 0) data.R_calc = R2.toFixed(1);
+  if (R2 > 0) nucData.R_calc = R2.toFixed(1);
 
-  await dbWrite('samples', 'update', { nuclear_data: data }, currentNuclearSample.id);
+  const tbl = currentNuclearSample._fc_table || 'samples';
+  const { error } = await dbWrite(tbl, 'update', { nuclear_data: nucData }, currentNuclearSample.id);
+  if (!error) {
+    fcCacheRecord(tbl, currentNuclearSample.id, { nuclear_data: nucData });
+    currentNuclearSample.nuclear_data = nucData;
+    updateFCSessionBanner();
+  }
   document.getElementById('nuclearOverlay').classList.remove('open'); scrollActiveViewTop();
-  renderNuclearReport(currentNuclearSample, data);
+  renderNuclearReport(currentNuclearSample, nucData);
   switchView('report');
   showToast('DMF-68C saved ✓', 'success');
 }
@@ -10064,8 +10081,18 @@ function calcDenRow(i) {
   }
 }
 
-async function openDensity(id) {
-  const sample = await fetchSample(id);
+async function openDensity(id, tableHint) {
+  let sample = null;
+  if (tableHint === 'field_tests') {
+    sample = await fcFetchRecord(id, 'field_tests');
+  } else {
+    sample = await fetchSample(id);
+    if (sample) {
+      const densityRec = await fcResolveDensityRecordFromSample(sample);
+      if (densityRec) sample = densityRec;
+      else sample._fc_table = 'samples';
+    }
+  }
   if (!sample) return;
   currentDensitySample = sample;
 
@@ -10219,8 +10246,13 @@ function collectDenData() {
 async function saveDensityAndGenerate() {
   if (!currentDensitySample) return;
   const data = collectDenData();
-
-  await dbWrite('samples', 'update', { density_data: data }, currentDensitySample.id);
+  const tbl = currentDensitySample._fc_table || 'samples';
+  const { error } = await dbWrite(tbl, 'update', { density_data: data }, currentDensitySample.id);
+  if (!error) {
+    fcCacheRecord(tbl, currentDensitySample.id, { density_data: data });
+    currentDensitySample.density_data = data;
+    updateFCSessionBanner();
+  }
   document.getElementById('densityOverlay').classList.remove('open'); scrollActiveViewTop();
 
   renderLB68(currentDensitySample, data);
@@ -14006,8 +14038,160 @@ function addCustomAgeRow() {
 // FIELD CONTROL MODULE
 // ══════════════════════════════════════════════════════════════
 let activeFCTab      = 'lb68';
-let activeFC_testNo  = null;   // test number shared across all tabs
-let activeFC_sessionId = null; // DB record ID of the current session
+let activeFC_testNo  = null;
+let activeFC_sessionId = null;
+let activeFC_table = 'samples';       // 'field_tests' | 'samples'
+let activeFC_linkedSampleId = null;   // samples row when intent is 'both'
+let activeFC_fieldTestId = null;      // field_tests row for density / both
+
+window.allFieldTests = window.allFieldTests || [];
+
+function fcCacheRecord(table, id, patch) {
+  if (table === 'field_tests') {
+    const idx = (allFieldTests || []).findIndex(r => r.id === id);
+    if (idx >= 0) allFieldTests[idx] = { ...allFieldTests[idx], ...patch };
+    else if (patch.id) allFieldTests.unshift(patch);
+  } else {
+    const idx = (allSamples || []).findIndex(r => r.id === id);
+    if (idx >= 0) allSamples[idx] = { ...allSamples[idx], ...patch };
+    else if (patch.id) allSamples.unshift(patch);
+  }
+}
+
+async function fcFetchRecord(id, table) {
+  if (!id) return null;
+  const tbl = table || 'samples';
+  if (tbl === 'field_tests') {
+    const cached = (allFieldTests || []).find(r => r.id === id);
+    if (cached) return { ...cached, _fc_table: 'field_tests' };
+  } else {
+    const cached = (allSamples || []).find(r => r.id === id);
+    if (cached) return { ...cached, _fc_table: 'samples' };
+  }
+  if (!db) return null;
+  const { data, error } = await db.from(tbl).select('*').eq('id', id).single();
+  if (error || !data) return null;
+  const row = { ...data, _fc_table: tbl };
+  if (tbl === 'field_tests') {
+    if (!(allFieldTests || []).find(r => r.id === id)) allFieldTests.unshift(row);
+  } else if (!(allSamples || []).find(r => r.id === id)) {
+    allSamples.unshift(row);
+  }
+  return row;
+}
+
+function fcGetCachedDensityRecord() {
+  if (activeFC_table === 'field_tests' && activeFC_sessionId) {
+    const r = (allFieldTests || []).find(x => x.id === activeFC_sessionId);
+    if (r) return { ...r, _fc_table: 'field_tests' };
+  }
+  if (activeFC_fieldTestId) {
+    const r = (allFieldTests || []).find(x => x.id === activeFC_fieldTestId);
+    if (r) return { ...r, _fc_table: 'field_tests' };
+  }
+  if (activeFC_table === 'samples' && activeFC_sessionId) {
+    const s = (allSamples || []).find(x => x.id === activeFC_sessionId);
+    if (s && (s.record_kind === 'density_test' || s.record_kind === 'linked' || s.nuclear_data || s.density_data || s.sample_type === 'density_test')) {
+      return { ...s, _fc_table: 'samples' };
+    }
+  }
+  return null;
+}
+
+function fcGetCachedLinkedSample() {
+  if (activeFC_linkedSampleId) {
+    return (allSamples || []).find(s => s.id === activeFC_linkedSampleId) || null;
+  }
+  if (activeFC_table === 'samples' && activeFC_sessionId) {
+    return (allSamples || []).find(s => s.id === activeFC_sessionId) || null;
+  }
+  const ft = fcGetCachedDensityRecord();
+  if (ft?.sample_id) return (allSamples || []).find(s => s.id === ft.sample_id) || null;
+  return null;
+}
+
+function fcGetCachedHeaderRecord() {
+  return fcGetCachedDensityRecord() || fcGetCachedLinkedSample();
+}
+
+async function fcGetDensityRecord() {
+  if (activeFC_table === 'field_tests' && activeFC_sessionId) {
+    return fcFetchRecord(activeFC_sessionId, 'field_tests');
+  }
+  if (activeFC_fieldTestId) return fcFetchRecord(activeFC_fieldTestId, 'field_tests');
+  if (activeFC_table === 'samples' && activeFC_sessionId) {
+    const s = await fcFetchRecord(activeFC_sessionId, 'samples');
+    if (s && (s.record_kind === 'density_test' || s.record_kind === 'linked' || s.nuclear_data || s.density_data)) return s;
+  }
+  return null;
+}
+
+function fcHasLabSampleSubmitted(s) {
+  if (!s) return false;
+  if (s.sample_type === 'nuclear_placeholder' || s.sample_type === 'aggregate_placeholder' || s.sample_type === 'density_test') return false;
+  if (s.record_kind === 'density_test') return false;
+  return s.sample_type === 'Field Control' && !s.remarks;
+}
+
+async function fcTryInsert(table, record, requestedTestNo, category) {
+  let inserted = null;
+  let lastError = null;
+  for (let attempt = 0; attempt < 3; attempt++) {
+    const rec = { ...record };
+    if (attempt === 0 && requestedTestNo) rec.test_no = requestedTestNo;
+    else if (attempt > 0) {
+      const next = await getNextTestNumber(category);
+      if (next != null) rec.test_no = String(next);
+    }
+    const { data, error, queued } = await dbWrite(table, 'insert', rec);
+    if (!error) { inserted = data; if (queued) showToast('Offline — session queued locally', 'info'); break; }
+    lastError = error;
+    const msg = (error.message || '').toLowerCase();
+    if (!msg.includes('duplicate') && !msg.includes('unique') && !msg.includes('conflict')) break;
+  }
+  if (!inserted && lastError) throw lastError;
+  return inserted;
+}
+
+function fcActivateSession({ intent, category, primary, table, linkedSample, fieldTest }) {
+  primary._fc_intent = intent;
+  primary._fc_table = table;
+  activeFC_sessionId = primary.id;
+  activeFC_testNo = primary.test_no;
+  activeFC_table = table;
+  activeFC_linkedSampleId = linkedSample?.id || null;
+  activeFC_fieldTestId = fieldTest?.id || (table === 'field_tests' ? primary.id : null);
+  _fcIntent = intent;
+  if (table === 'samples') {
+    if (!(allSamples || []).find(s => s.id === primary.id)) allSamples.unshift(primary);
+  } else if (!(allFieldTests || []).find(r => r.id === primary.id)) {
+    allFieldTests.unshift(primary);
+  }
+  if (linkedSample && !(allSamples || []).find(s => s.id === linkedSample.id)) {
+    allSamples.unshift(linkedSample);
+  }
+  if (fieldTest && fieldTest.id !== primary.id && !(allFieldTests || []).find(r => r.id === fieldTest.id)) {
+    allFieldTests.unshift(fieldTest);
+  }
+  fcPrefillSampleForm(linkedSample || primary);
+  fcApplyCategoryToTabs(category);
+  fcApplyIntentToTabs(intent, category);
+  document.getElementById('fc_start_state').style.display = 'none';
+  document.getElementById('fc_active_state').style.display = '';
+  updateFCSessionBanner();
+}
+
+async function fcResolveDensityRecordFromSample(sample) {
+  if (!sample) return null;
+  if (sample.field_test_id) {
+    const ft = await fcFetchRecord(sample.field_test_id, 'field_tests');
+    if (ft) return { ...ft, test_no: sample.test_no || ft.test_no, _fc_table: 'field_tests', _linked_sample_id: sample.id };
+  }
+  if (sample.record_kind === 'density_test' || sample.sample_type === 'density_test' || sample.nuclear_data || sample.density_data) {
+    return { ...sample, _fc_table: 'samples' };
+  }
+  return null;
+}
 
 // ── Session banner ────────────────────────────────────────────
 function updateFCSessionBanner() {
@@ -14021,24 +14205,26 @@ function updateFCSessionBanner() {
   }
   banner.style.display = 'flex';
   label.textContent = activeFC_testNo;
-  // Pull session meta from the record
-  const s = allSamples.find(x => x.id === activeFC_sessionId);
-  if (meta && s) {
+
+  const header = fcGetCachedHeaderRecord();
+  const densityRec = fcGetCachedDensityRecord();
+  const linkedSample = fcGetCachedLinkedSample();
+  const intent = _fcIntent || header?._fc_intent || fcIntentFromRecord(linkedSample || densityRec || header);
+
+  if (meta && header) {
     meta.innerHTML = [
-      s.contract   ? `<span>${s.contract}</span>` : '',
-      s.location   ? `<span>${s.location}</span>` : '',
-      s.material_type ? `<span>${s.material_type}</span>` : '',
-      s.sampled_by ? `<span>Tech: ${s.sampled_by}</span>` : '',
+      header.contract   ? `<span>${header.contract}</span>` : '',
+      header.location   ? `<span>${header.location}</span>` : '',
+      header.material_type ? `<span>${header.material_type}</span>` : '',
+      header.sampled_by ? `<span>Tech: ${header.sampled_by}</span>` : '',
     ].filter(Boolean).join('<br>');
   }
-  // Checklist dots — status-based, not sequence-numbered
+
   const chk = document.getElementById('fc_session_checklist');
-  if (chk && s) {
-    const hasDensity = s.density_data && s.density_data.length > 0;
-    const hasNuke    = s.nuclear_data  && Object.keys(s.nuclear_data).length > 0;
-    const hasSample  = s.sample_type !== 'nuclear_placeholder' && s.sample_type !== 'aggregate_placeholder';
-    const intent     = s._fc_intent || 'both'; // stored on session object
-    // Only show checklist items relevant to the intent
+  if (chk) {
+    const hasDensity = !!(densityRec?.density_data && densityRec.density_data.length > 0);
+    const hasNuke    = !!(densityRec?.nuclear_data && Object.keys(densityRec.nuclear_data).length > 0);
+    const hasSample  = fcHasLabSampleSubmitted(linkedSample);
     const items = [];
     if (intent !== 'lab') {
       items.push(`<span title="LB-68 compaction" style="font-family:var(--mono);font-size:9px;padding:2px 7px;border-radius:10px;background:${hasDensity?'rgba(46,204,120,0.15)':'rgba(255,255,255,0.05)'};color:${hasDensity?'var(--green2)':'var(--muted)'};border:1px solid ${hasDensity?'rgba(46,204,120,0.3)':'var(--border)'};">${hasDensity?'✓':' '} LB-68</span>`);
@@ -14049,13 +14235,12 @@ function updateFCSessionBanner() {
     }
     chk.innerHTML = items.join('');
   }
-  // Update intent badge in active session header
+
   const badge = document.getElementById('fc_intent_badge');
-  if (badge && s) {
-    const intent = s._fc_intent || 'both';
+  if (badge) {
     const labels = { density: '⚖️ DENSITY ONLY — no lab queue', lab: '🧪 LAB SAMPLE ONLY — no gauge', both: '⚡ DENSITY + LAB SAMPLE' };
     badge.textContent = labels[intent] || '';
-    badge.style.display = '';
+    badge.style.display = intent ? '' : 'none';
   }
 }
 
@@ -14148,17 +14333,18 @@ let _fcIntent = ''; // 'density' | 'lab' | 'both'
 
 function fcSetIntent(intent, fromRestore = false) {
   _fcIntent = intent;
-  document.getElementById('fc_s_intent').value = intent;
+  const intentInput = document.getElementById('fc_s_intent');
+  if (intentInput) intentInput.value = intent;
   ['density','lab','both'].forEach(k => {
     const btn = document.getElementById('fc_intent_' + k);
     if (!btn) return;
-    const active = k === intent;
+    const active = !!intent && k === intent;
     btn.style.borderColor  = active ? 'var(--accent2)' : 'var(--border)';
     btn.style.background   = active ? 'rgba(196,124,42,0.15)' : 'var(--panel)';
     btn.style.boxShadow    = active ? '0 0 0 1px rgba(196,124,42,0.4)' : 'none';
-    btn.querySelector('div:first-child').style.opacity = active ? '1' : '0.6';
+    const icon = btn.querySelector('div:first-child');
+    if (icon) icon.style.opacity = active ? '1' : '0.6';
   });
-  // If user manually taps a tile (not a restore), hide the "last time" hint
   if (!fromRestore) {
     const hint = document.getElementById('fc_intent_last_hint');
     if (hint) hint.style.display = 'none';
@@ -14169,7 +14355,6 @@ function fcSetIntent(intent, fromRestore = false) {
 async function startFC_Session() {
   if (!db) { showToast('Not connected to database', 'error'); return; }
 
-  // Validate intent selection
   const intent = (document.getElementById('fc_s_intent')?.value || _fcIntent || '').trim();
   if (!intent) { showToast('Select what you are doing (Density / Lab / Both)', 'error'); return; }
 
@@ -14178,7 +14363,6 @@ async function startFC_Session() {
   const requestedTestNo = (_tnEl?.value || _tnEl?.placeholder || '').trim();
   const today    = new Date().toISOString().slice(0,10);
 
-  // Header collected up front (now visible fields, not hidden)
   const headerData = {
     test_category: category,
     contract:      (document.getElementById('fc_s_contract')?.value  || '').trim() || null,
@@ -14189,98 +14373,91 @@ async function startFC_Session() {
     date_sampled:  document.getElementById('fc_s_date')?.value || today,
   };
 
-  // ── Option B routing ─────────────────────────────────────────
-  // density-only  → write to field_tests table only (no samples row)
-  // lab-only      → write directly to samples as 'Field Control' (no placeholder)
-  // both          → write to field_tests, link a samples row via sample_id later
-  //
-  // NOTE: field_tests table must exist in Supabase. Until migration runs,
-  // density-only falls back to samples with record_kind='density_test'
-  // to maintain backward-compat. See migration SQL in release notes.
-
-  // Save this intent + category as the user's default for next time
   fcSavePrefs(intent, category);
 
   const btn = document.querySelector('#fc_start_state .btn-success');
   if (btn) { btn.textContent = 'Creating…'; btn.disabled = true; }
 
-  let inserted = null;
+  let fieldTestRow = null;
+  let sampleRow = null;
   let lastError = null;
-  let targetTable = 'samples';
 
-  if (intent === 'density') {
-    // Pure density test — write to field_tests (migration confirmed ✓)
-    const ftRecord = {
-      ...headerData,
-      field_workflow: 'density_only',
-      test_date: headerData.date_sampled,
-    };
-    targetTable = 'field_tests';
-    for (let attempt = 0; attempt < 3; attempt++) {
-      const rec = { ...ftRecord };
-      if (attempt === 0 && requestedTestNo) rec.test_no = requestedTestNo;
-      else if (attempt > 0) { const n = await getNextTestNumber(category); if (n != null) rec.test_no = String(n); }
-      const { data, error, queued } = await dbWrite('field_tests', 'insert', rec);
-      if (!error) { inserted = data; if (queued) showToast('Offline — session queued locally', 'info'); break; }
-      lastError = error;
-      const msg = (error.message || '').toLowerCase();
-      if (!msg.includes('duplicate') && !msg.includes('unique') && !msg.includes('conflict')) break;
+  try {
+    if (intent === 'density' || intent === 'both') {
+      fieldTestRow = await fcTryInsert('field_tests', {
+        ...headerData,
+        field_workflow: intent === 'both' ? 'linked' : 'density_only',
+        test_date: headerData.date_sampled,
+        status: 'open',
+      }, requestedTestNo, category);
     }
-  }
 
-  if (!inserted) {
-    // lab-only or both: write to samples directly — no placeholders
-    // density-only fallback: write to samples with record_kind='density_test'
-    const sampleRecord = {
-      ...headerData,
-      sample_type: intent === 'density'
-        ? 'density_test'          // density-only — not a lab sample
-        : 'Field Control',        // lab or both — real sample, no placeholder
-      status: 'pending',
-      record_kind: intent === 'density' ? 'density_test' : (intent === 'lab' ? 'lab_sample' : 'linked'),
-      remarks: intent === 'density'
-        ? 'FC density-only field event — not queued for lab.'
-        : intent === 'lab'
+    if (intent === 'lab' || intent === 'both') {
+      sampleRow = await fcTryInsert('samples', {
+        ...headerData,
+        sample_type: 'Field Control',
+        status: 'pending',
+        record_kind: intent === 'lab' ? 'lab_sample' : 'linked',
+        field_test_id: fieldTestRow?.id || null,
+        remarks: intent === 'lab'
           ? 'FC lab-only field event — no gauge data.'
           : 'FC linked field event — density + lab bag.',
-    };
-    targetTable = 'samples';
-    for (let attempt = 0; attempt < 3; attempt++) {
-      const rec = { ...sampleRecord };
-      if (attempt === 0 && requestedTestNo) rec.test_no = requestedTestNo;
-      else if (attempt > 0) { const n = await getNextTestNumber(category); if (n != null) rec.test_no = String(n); }
-      const { data, error, queued } = await dbWrite('samples', 'insert', rec);
-      if (!error) { inserted = data; if (queued) showToast('Offline — session queued locally', 'info'); break; }
-      lastError = error;
-      const msg = (error.message || '').toLowerCase();
-      if (!msg.includes('duplicate') && !msg.includes('unique') && !msg.includes('conflict')) break;
+      }, requestedTestNo, category);
     }
+
+    if (intent === 'density' && !fieldTestRow) {
+      sampleRow = await fcTryInsert('samples', {
+        ...headerData,
+        sample_type: 'density_test',
+        status: 'pending',
+        record_kind: 'density_test',
+        remarks: 'FC density-only field event — not queued for lab.',
+      }, requestedTestNo, category);
+    }
+
+    if (intent === 'both' && fieldTestRow && sampleRow) {
+      const { error } = await dbWrite('field_tests', 'update', { sample_id: sampleRow.id }, fieldTestRow.id);
+      if (!error) {
+        fieldTestRow.sample_id = sampleRow.id;
+        sampleRow.field_test_id = fieldTestRow.id;
+        fcCacheRecord('field_tests', fieldTestRow.id, { sample_id: sampleRow.id });
+        fcCacheRecord('samples', sampleRow.id, { field_test_id: fieldTestRow.id });
+      }
+    }
+  } catch (e) {
+    lastError = e;
   }
 
   if (btn) { btn.textContent = '⚡ START FIELD EVENT'; btn.disabled = false; }
-  if (!inserted) { showToast('Could not start session: ' + (lastError?.message || 'unknown error'), 'error'); return; }
 
-  // Attach intent to in-memory record so checklist/banner can read it
-  inserted._fc_intent = intent;
-  inserted._fc_table  = targetTable;
+  let primary = null;
+  let table = 'samples';
+  if (intent === 'density') {
+    if (fieldTestRow) { primary = fieldTestRow; table = 'field_tests'; }
+    else if (sampleRow) { primary = sampleRow; table = 'samples'; }
+  } else if (intent === 'lab') {
+    primary = sampleRow;
+    table = 'samples';
+  } else {
+    if (fieldTestRow) { primary = fieldTestRow; table = 'field_tests'; }
+    else if (sampleRow) { primary = sampleRow; table = 'samples'; }
+  }
 
-  // field_tests rows live in allFieldTests, not allSamples
-  if (targetTable === 'samples') allSamples.unshift(inserted);
-  else if (targetTable === 'field_tests') { if (!window.allFieldTests) window.allFieldTests = []; allFieldTests.unshift(inserted); }
-  activeFC_sessionId = inserted.id;
-  activeFC_testNo    = inserted.test_no;
+  if (!primary) {
+    showToast('Could not start session: ' + (lastError?.message || 'unknown error'), 'error');
+    return;
+  }
 
-  // Pre-fill sample form with header data
-  fcPrefillSampleForm(inserted);
+  fcActivateSession({
+    intent,
+    category,
+    primary,
+    table,
+    linkedSample: intent === 'both' ? sampleRow : (intent === 'lab' ? primary : null),
+    fieldTest: fieldTestRow,
+  });
 
-  // Tab routing by intent — no forced sequence
-  fcApplyCategoryToTabs(category);
-  fcApplyIntentToTabs(intent, category);
-
-  document.getElementById('fc_start_state').style.display  = 'none';
-  document.getElementById('fc_active_state').style.display = '';
-  updateFCSessionBanner();
-  showToast(`Test No. ${inserted.test_no} started — ${intent === 'density' ? 'Density only' : intent === 'lab' ? 'Lab sample only' : 'Density + lab'} (${category})`, 'success');
+  showToast(`Test No. ${primary.test_no} started — ${intent === 'density' ? 'Density only' : intent === 'lab' ? 'Lab sample only' : 'Density + lab'} (${category})`, 'success');
 }
 
 // ── Apply intent routing to tabs (show/hide + auto-navigate) ─
@@ -14288,27 +14465,25 @@ function fcApplyIntentToTabs(intent, category) {
   const tabLB68   = document.getElementById('fctab-lb68');
   const tabNuke   = document.getElementById('fctab-dmf68c');
   const tabSample = document.getElementById('fctab-sample');
+  const toggleCard = document.getElementById('fc_lab_toggle_card');
 
   if (intent === 'density') {
-    // Show density tabs, hide lab sample tab
     if (tabSample) tabSample.style.display = 'none';
     if (tabLB68)   tabLB68.style.display   = '';
     if (tabNuke)   tabNuke.style.display    = '';
+    if (toggleCard) toggleCard.style.display = 'none';
     switchFCTab('lb68');
-    // Turn lab sample toggle off and hide it
     const tog = document.getElementById('fc_lab_sample_toggle');
     if (tog) { tog.checked = false; fcToggleLabSample(false); }
   } else if (intent === 'lab') {
-    // Show lab sample tab only — hide density tabs
     if (tabLB68)   tabLB68.style.display   = 'none';
     if (tabNuke)   tabNuke.style.display    = 'none';
     if (tabSample) tabSample.style.display  = '';
+    if (toggleCard) toggleCard.style.display = 'none';
     switchFCTab('sample');
-    // Auto-enable lab sample toggle
     const tog = document.getElementById('fc_lab_sample_toggle');
     if (tog) { tog.checked = true; fcToggleLabSample(true); }
   } else {
-    // both — show everything; aggregate skips density tabs
     if (category === 'aggregate') {
       if (tabLB68) tabLB68.style.display = 'none';
       if (tabNuke) tabNuke.style.display  = 'none';
@@ -14317,6 +14492,7 @@ function fcApplyIntentToTabs(intent, category) {
       if (tabNuke) tabNuke.style.display  = '';
     }
     if (tabSample) tabSample.style.display = '';
+    if (toggleCard) toggleCard.style.display = '';
     switchFCTab(category === 'aggregate' ? 'sample' : 'lb68');
     const tog = document.getElementById('fc_lab_sample_toggle');
     if (tog) { tog.checked = false; fcToggleLabSample(false); }
@@ -14347,19 +14523,21 @@ function periodLabel(category) {
 async function getLastTestNumber(category) {
   if (!db) return null;
   const startIso = getPeriodStart(category).toISOString();
-  // Pull recent rows for the category since period start; pick numerically-highest test_no
-  const { data, error } = await db.from('samples')
-    .select('test_no, created_at')
-    .eq('test_category', category)
-    .gte('created_at', startIso)
-    .order('created_at', { ascending: false })
-    .limit(500);
-  if (error || !data || !data.length) return null;
   let max = 0;
-  data.forEach(r => {
-    const n = parseInt(String(r.test_no).replace(/[^\d]/g,''), 10);
-    if (!isNaN(n) && n > max) max = n;
-  });
+  const tables = ['samples', 'field_tests'];
+  for (const table of tables) {
+    const { data, error } = await db.from(table)
+      .select('test_no, created_at')
+      .eq('test_category', category)
+      .gte('created_at', startIso)
+      .order('created_at', { ascending: false })
+      .limit(500);
+    if (error || !data) continue;
+    data.forEach(r => {
+      const n = parseInt(String(r.test_no).replace(/[^\d]/g,''), 10);
+      if (!isNaN(n) && n > max) max = n;
+    });
+  }
   return max || null;
 }
 
@@ -14408,30 +14586,58 @@ async function fcOnCategoryChange() {
 // Resume an FC session directly by sample row id (used by Field Control clicks)
 async function fcResumeSessionById(id) {
   if (!db) { showToast('Not connected to database', 'error'); return; }
-  let sample = allSamples.find(s => s.id === id);
-  if (!sample) {
-    const { data, error } = await db.from('samples').select('*').eq('id', id).single();
-    if (error || !data) { showToast('Could not load sample', 'error'); return; }
-    sample = data;
-    allSamples.unshift(sample);
+
+  let fieldTest = (allFieldTests || []).find(r => r.id === id);
+  if (!fieldTest) {
+    const { data } = await db.from('field_tests').select('*').eq('id', id).maybeSingle();
+    if (data) fieldTest = data;
   }
-  activeFC_sessionId = sample.id;
-  activeFC_testNo    = sample.test_no;
+  if (fieldTest) {
+    if (!(allFieldTests || []).find(r => r.id === fieldTest.id)) allFieldTests.unshift(fieldTest);
+    let linked = null;
+    if (fieldTest.sample_id) linked = await fcFetchRecord(fieldTest.sample_id, 'samples');
+    const intent = linked ? 'both' : 'density';
+    switchView('fieldcontrol');
+    fcActivateSession({
+      intent,
+      category: fieldTest.test_category || 'soil',
+      primary: fieldTest,
+      table: 'field_tests',
+      linkedSample: linked,
+      fieldTest,
+    });
+    const intentLabel = intent === 'density' ? 'Density only' : 'Density + lab';
+    showToast(`Resumed: ${fieldTest.test_no} — ${intentLabel}`, 'success');
+    return;
+  }
 
-  // Derive intent from record_kind so tab visibility is restored correctly
+  const sample = await fcFetchRecord(id, 'samples');
+  if (!sample) { showToast('Could not load record', 'error'); return; }
+
   const resumeIntent = fcIntentFromRecord(sample);
-  _fcIntent = resumeIntent;
-  sample._fc_intent = resumeIntent;
+  let linkedFieldTest = null;
+  if (sample.field_test_id) linkedFieldTest = await fcFetchRecord(sample.field_test_id, 'field_tests');
 
-  fcPrefillSampleForm(sample);
-  fcApplyCategoryToTabs(sample.test_category || 'soil');
   switchView('fieldcontrol');
-  setTimeout(() => {
-    document.getElementById('fc_start_state').style.display  = 'none';
-    document.getElementById('fc_active_state').style.display = '';
-    fcApplyIntentToTabs(resumeIntent, sample.test_category || 'soil');
-    updateFCSessionBanner();
-  }, 100);
+  if (resumeIntent === 'both' && linkedFieldTest) {
+    fcActivateSession({
+      intent: 'both',
+      category: sample.test_category || 'soil',
+      primary: linkedFieldTest,
+      table: 'field_tests',
+      linkedSample: sample,
+      fieldTest: linkedFieldTest,
+    });
+  } else {
+    fcActivateSession({
+      intent: resumeIntent,
+      category: sample.test_category || 'soil',
+      primary: sample,
+      table: 'samples',
+      linkedSample: resumeIntent === 'lab' ? sample : null,
+      fieldTest: linkedFieldTest,
+    });
+  }
   const intentLabel = resumeIntent === 'density' ? 'Density only' : resumeIntent === 'lab' ? 'Lab sample' : 'Density + lab';
   showToast(`Resumed: ${sample.test_no} — ${intentLabel}`, 'success');
 }
@@ -14442,13 +14648,13 @@ function fcIntentFromRecord(s) {
   if (!s) return 'both';
   const kind = s.record_kind || '';
   const type = s.sample_type || '';
+  if (kind === 'linked' || (type === 'Field Control' && s.field_test_id)) return 'both';
   if (kind === 'density_test' || type === 'density_test') return 'density';
-  if (kind === 'lab_sample'   || type === 'Field Control') return 'lab';
-  if (kind === 'linked')                                   return 'both';
-  // Legacy placeholders — treat as density unless lab data present
+  if (kind === 'lab_sample') return 'lab';
   if (type === 'nuclear_placeholder' || type === 'aggregate_placeholder') {
     return (s.lab_data || s.density_data) ? 'both' : 'density';
   }
+  if (type === 'Field Control') return 'lab';
   return 'both';
 }
 
@@ -14456,8 +14662,6 @@ function fcIntentFromRecord(s) {
 // DENSITY RECORDS — field_tests table view
 // Shows closed density-only tests beneath the FC session UI.
 // ══════════════════════════════════════════════════════════════
-
-window.allFieldTests = window.allFieldTests || [];
 
 async function loadDensityRecords() {
   if (!db) return;
@@ -14580,13 +14784,11 @@ function fcApplyCategoryToTabs(category) {
       fcToggleLabSample(true);
     }
     // Also hide the toggle card entirely for aggregate — not relevant
-    const toggleCard = tog?.closest('.card');
+    const toggleCard = document.getElementById('fc_lab_toggle_card');
     if (toggleCard) toggleCard.style.display = 'none';
   } else {
-    // Soil — show the toggle card
-    const tog = document.getElementById('fc_lab_sample_toggle');
-    const toggleCard = tog?.closest('.card');
-    if (toggleCard) toggleCard.style.display = '';
+    const toggleCard = document.getElementById('fc_lab_toggle_card');
+    if (toggleCard && _fcIntent !== 'lab') toggleCard.style.display = '';
   }
 }
 
@@ -14641,32 +14843,45 @@ async function fcResumeSession() {
   if (!db) { showToast('Not connected to database', 'error'); return; }
   const testno = (document.getElementById('fc_resume_testno')?.value || '').trim();
   if (!testno) { showToast('Enter a test number to resume', 'error'); return; }
-  let sample = allSamples.find(s =>
-    (s.test_no||'').toLowerCase() === testno.toLowerCase() || s.id === testno
-  );
+  const q = testno.toLowerCase();
+
+  let sample = (allSamples || []).find(s => (s.test_no || '').toLowerCase() === q || s.id === testno);
   if (!sample) {
     const { data } = await db.from('samples').select('*')
       .or(`test_no.ilike.${testno},id.eq.${testno}`).limit(1);
-    if (!data || !data.length) { showToast(`Test "${testno}" not found`, 'error'); return; }
-    sample = data[0];
-    allSamples.unshift(sample);
+    if (data?.length) { sample = data[0]; allSamples.unshift(sample); }
   }
-  activeFC_sessionId = sample.id;
-  activeFC_testNo    = sample.test_no;
 
-  // Derive intent from record so correct tabs are shown
-  const resumeIntent = fcIntentFromRecord(sample);
-  _fcIntent = resumeIntent;
-  sample._fc_intent = resumeIntent;
+  let fieldTest = (allFieldTests || []).find(ft => (ft.test_no || '').toLowerCase() === q || ft.id === testno);
+  if (!fieldTest) {
+    const { data } = await db.from('field_tests').select('*')
+      .or(`test_no.ilike.${testno},id.eq.${testno}`).limit(1);
+    if (data?.length) { fieldTest = data[0]; allFieldTests.unshift(fieldTest); }
+  }
 
-  fcPrefillSampleForm(sample);
-  fcApplyCategoryToTabs(sample.test_category || 'soil');
-  document.getElementById('fc_start_state').style.display  = 'none';
-  document.getElementById('fc_active_state').style.display = '';
-  fcApplyIntentToTabs(resumeIntent, sample.test_category || 'soil');
-  updateFCSessionBanner();
-  const intentLabel = resumeIntent === 'density' ? 'Density only' : resumeIntent === 'lab' ? 'Lab sample' : 'Density + lab';
-  showToast(`Resumed: ${sample.test_no} — ${intentLabel}`, 'success');
+  if (!sample && !fieldTest) {
+    showToast(`Test "${testno}" not found`, 'error');
+    return;
+  }
+
+  if (fieldTest && (!sample || fieldTest.sample_id === sample.id)) {
+    if (fieldTest.sample_id && !sample) sample = await fcFetchRecord(fieldTest.sample_id, 'samples');
+    const intent = sample ? 'both' : 'density';
+    switchView('fieldcontrol');
+    fcActivateSession({
+      intent,
+      category: fieldTest.test_category || 'soil',
+      primary: fieldTest,
+      table: 'field_tests',
+      linkedSample: sample,
+      fieldTest,
+    });
+    const intentLabel = intent === 'density' ? 'Density only' : 'Density + lab';
+    showToast(`Resumed: ${fieldTest.test_no} — ${intentLabel}`, 'success');
+    return;
+  }
+
+  if (sample) return fcResumeSessionById(sample.id);
 }
 
 // ── Pre-fill sample form fields from session record ───────────
@@ -14725,15 +14940,19 @@ function fcPrefillSampleForm(s) {
 }
 
 // ── Open LB-68 overlay for current session ────────────────────
-function fcOpenLB68() {
+async function fcOpenLB68() {
   if (!activeFC_sessionId) { showToast('No active session', 'error'); return; }
-  openDensity(activeFC_sessionId);
+  const rec = await fcGetDensityRecord();
+  if (!rec) { showToast('No density record for this session', 'error'); return; }
+  openDensity(rec.id, rec._fc_table || 'field_tests');
 }
 
 // ── Open DMF-68C overlay for current session ──────────────────
-function fcOpenNuke() {
+async function fcOpenNuke() {
   if (!activeFC_sessionId) { showToast('No active session', 'error'); return; }
-  openNuclearDensity(activeFC_sessionId);
+  const rec = await fcGetDensityRecord();
+  if (!rec) { showToast('No density record for this session', 'error'); return; }
+  openNuclearDensity(rec.id, rec._fc_table || 'field_tests');
 }
 
 // ── Toggle lab sample form visibility ─────────────────────────
@@ -15343,10 +15562,13 @@ async function offlineSync() {
         // If this was an insert, map temp id → real id for subsequent ops
         if (op.op === 'insert' && op.tempId && result.data?.id) {
           idMap[op.tempId] = result.data.id;
-          // Update in-memory session if this was the active session
-          if (activeFC_sessionId === op.tempId) {
-            activeFC_sessionId = result.data.id;
-            allSamples = allSamples.map(s => s.id === op.tempId ? result.data : s);
+          if (activeFC_sessionId === op.tempId) activeFC_sessionId = result.data.id;
+          if (activeFC_linkedSampleId === op.tempId) activeFC_linkedSampleId = result.data.id;
+          if (activeFC_fieldTestId === op.tempId) activeFC_fieldTestId = result.data.id;
+          if (op.table === 'field_tests') {
+            allFieldTests = (allFieldTests || []).map(r => r.id === op.tempId ? result.data : r);
+          } else if (op.table === 'samples') {
+            allSamples = (allSamples || []).map(s => s.id === op.tempId ? result.data : s);
           }
         }
       }
@@ -15426,7 +15648,10 @@ function switchFCTab(tab) {
 // ── Submit lab sample (upgrades the session record) ───────────
 async function submitFieldSample() {
   if (!activeFC_sessionId) { showToast('No active session', 'error'); return; }
-  const labCollected = document.getElementById('fc_lab_sample_toggle')?.checked;
+  const sampleId = activeFC_linkedSampleId || (activeFC_table === 'samples' ? activeFC_sessionId : null);
+  if (!sampleId) { showToast('No lab sample record for this session', 'error'); return; }
+
+  const labCollected = _fcIntent === 'lab' || _fcIntent === 'both' || document.getElementById('fc_lab_sample_toggle')?.checked;
   if (!labCollected) { showToast('Lab sample toggle is OFF — nothing submitted', 'info'); return; }
   const isAgg = (document.getElementById('f_test_category')?.value || 'soil') === 'aggregate';
   const today = new Date().toISOString().slice(0,10);
@@ -15478,13 +15703,13 @@ async function submitFieldSample() {
   };
   if (!isAgg && !updates.contract) { showToast('Contract number is required', 'error'); return; }
   if (isAgg  && !updates.material_type) { showToast('Material type is required', 'error'); return; }
-  const { data, error, queued } = await dbWrite('samples', 'update', updates, activeFC_sessionId);
+  const { data, error, queued } = await dbWrite('samples', 'update', updates, sampleId);
   if (error) { showToast('Error saving sample: ' + error.message, 'error'); return; }
   const cat = isAgg ? 'aggregate' : 'soil';
   logSampleHistory({ sampleId: data.id, testNo: data.test_no, action: 'field_submitted', details: { test_category: cat } });
-  // Update local cache
-  const idx = allSamples.findIndex(s => s.id === activeFC_sessionId);
+  const idx = allSamples.findIndex(s => s.id === sampleId);
   if (idx >= 0) allSamples[idx] = data; else allSamples.unshift(data);
+  if (activeFC_linkedSampleId === sampleId) activeFC_linkedSampleId = data.id;
   showQR(data);
   updateFCSessionBanner();
   showToast(queued ? `${cat} sample ${data.test_no} saved locally — will sync when online ✓` : `${cat} sample ${data.test_no} queued for lab ✓`, 'success');
@@ -15502,54 +15727,59 @@ function fcClearSampleForm() {
     const el = document.getElementById(id); if (el) el.value = '';
   });
   document.getElementById('qrCard').style.display = 'none';
-  // Re-prefill from session
-  const s = allSamples.find(x => x.id === activeFC_sessionId);
+  const s = fcGetCachedLinkedSample() || allSamples.find(x => x.id === sampleId);
   if (s) fcPrefillSampleForm(s);
   _autoFillTech(); // refill name after clear
 }
 
 // ── End the session and return to start state ─────────────────
 async function clearFC_Session() {
-  // Inspect what's been saved on this session before tearing it down
   if (activeFC_sessionId && db) {
-    const s = allSamples.find(x => x.id === activeFC_sessionId);
-    const intent     = s?._fc_intent || _fcIntent || 'both';
-    const hasNuclear = !!(s && s.nuclear_data);
-    const hasDensity = !!(s && s.lab_data);
-    const hasLab     = !!(s && s.sample_type &&
-                          s.sample_type !== 'nuclear_placeholder' &&
-                          s.sample_type !== 'aggregate_placeholder' &&
-                          s.sample_type !== 'density_test');
+    const densityRec = fcGetCachedDensityRecord();
+    const linkedSample = fcGetCachedLinkedSample();
+    const intent = _fcIntent || fcIntentFromRecord(linkedSample || densityRec);
+    const hasNuclear = !!(densityRec && densityRec.nuclear_data);
+    const hasDensity = !!(densityRec && densityRec.density_data);
+    const hasLab = fcHasLabSampleSubmitted(linkedSample);
 
     if (!hasNuclear && !hasDensity && !hasLab) {
-      // Truly empty — offer to discard
       const ok = confirm(`Test No. ${activeFC_testNo} has no data saved.\n\nDiscard this empty session? (Cancel = keep it as pending)`);
       if (ok) {
-        // If it was written to field_tests, delete from there
-        const tbl = s?._fc_table === 'field_tests' ? 'field_tests' : 'samples';
-        const { error } = await db.from(tbl).delete().eq('id', activeFC_sessionId);
-        if (error) {
-          showToast('Could not discard: ' + error.message, 'error');
-        } else {
-          allSamples = allSamples.filter(x => x.id !== activeFC_sessionId);
-          showToast(`Session ${activeFC_testNo} discarded`, 'info');
+        const toDelete = [];
+        if (activeFC_table === 'field_tests') toDelete.push(['field_tests', activeFC_sessionId]);
+        else toDelete.push(['samples', activeFC_sessionId]);
+        if (activeFC_linkedSampleId && !hasLab) toDelete.push(['samples', activeFC_linkedSampleId]);
+        for (const [tbl, rowId] of toDelete) {
+          const { error } = await db.from(tbl).delete().eq('id', rowId);
+          if (error) showToast('Could not discard: ' + error.message, 'error');
+          else if (tbl === 'field_tests') allFieldTests = (allFieldTests || []).filter(x => x.id !== rowId);
+          else allSamples = (allSamples || []).filter(x => x.id !== rowId);
         }
+        showToast(`Session ${activeFC_testNo} discarded`, 'info');
       }
     } else if (intent === 'density' || ((hasNuclear || hasDensity) && !hasLab)) {
-      // Density-only — close as field_test record; explicitly NOT in lab queue
-      const { error } = await db.from('samples').update({ status: 'density', record_kind: 'density_test' }).eq('id', activeFC_sessionId);
-      if (!error) {
-        const idx = allSamples.findIndex(x => x.id === activeFC_sessionId);
-        if (idx >= 0) { allSamples[idx].status = 'density'; allSamples[idx].record_kind = 'density_test'; }
-        showToast(`Test ${activeFC_testNo} closed as density-only — not queued for lab`, 'success');
+      if (activeFC_table === 'field_tests' && activeFC_sessionId) {
+        const { error } = await db.from('field_tests').update({ status: 'closed' }).eq('id', activeFC_sessionId);
+        if (!error) {
+          fcCacheRecord('field_tests', activeFC_sessionId, { status: 'closed' });
+          showToast(`Test ${activeFC_testNo} closed as density-only — not queued for lab`, 'success');
+        }
+      } else if (densityRec) {
+        const { error } = await db.from('samples').update({ status: 'density', record_kind: 'density_test' }).eq('id', densityRec.id);
+        if (!error) {
+          fcCacheRecord('samples', densityRec.id, { status: 'density', record_kind: 'density_test' });
+          showToast(`Test ${activeFC_testNo} closed as density-only — not queued for lab`, 'success');
+        }
       }
     }
-    // lab-only or both with sample submitted: already has correct status from submitFieldSample
   }
 
-  activeFC_testNo    = null;
+  activeFC_testNo = null;
   activeFC_sessionId = null;
-  _fcIntent          = '';
+  activeFC_table = 'samples';
+  activeFC_linkedSampleId = null;
+  activeFC_fieldTestId = null;
+  _fcIntent = '';
 
   // Reset toggle
   const tog = document.getElementById('fc_lab_sample_toggle');
