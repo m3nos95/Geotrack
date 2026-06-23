@@ -6903,6 +6903,9 @@ async function connectSupabase(silent = false) {
     loadSamples();
     loadProjects();
     if (typeof loadDensityRecords === 'function') loadDensityRecords();
+    if (document.getElementById('setupOverlay')?.style.display !== 'none' && currentUser?.role === 'admin') {
+      showDataMaintenancePanel(true);
+    }
 
     // Restore session or prompt login
     const sess = sessionStorage.getItem('st_current_user');
