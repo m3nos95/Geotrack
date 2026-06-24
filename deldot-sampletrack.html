@@ -272,7 +272,7 @@ body { background: var(--bg); color: var(--text); font-family: var(--sans); font
 .view.active { display: block; overflow-y: auto; position: absolute; inset: 0; }
 
 /* Legacy nav hidden — JS still references .nav-tab for active state */
-nav, .nav-top-row { display: none !important; }
+nav:not(#r18-nav), .nav-top-row { display: none !important; }
 .nav-tabs { display: none !important; }
 .nav-tab  { display: none !important; }
 
@@ -4140,9 +4140,9 @@ table.fc-borrow-tbl tr.fc-borrow-detail-row td{background:var(--surface);border-
     </div>
 
     <!-- R18 tab navigation -->
-    <nav id="r18-nav" style="background:rgba(255,255,255,0.95);border-bottom:1px solid #d9d4c7;position:sticky;top:0;z-index:10;padding:0 24px;overflow-x:auto;backdrop-filter:blur(8px);">
+    <div id="r18-nav" role="navigation" aria-label="R-18 module sections" style="background:rgba(255,255,255,0.95);border-bottom:1px solid #d9d4c7;position:sticky;top:0;z-index:10;padding:0 24px;overflow-x:auto;backdrop-filter:blur(8px);">
       <div id="r18-tab-bar" style="display:flex;gap:4px;min-width:max-content;"></div>
-    </nav>
+    </div>
 
     <!-- R18 content area -->
     <main id="r18-view-root" style="padding:24px;max-width:1280px;margin:0 auto;min-height:calc(100vh - 160px);font-family:Inter,system-ui,sans-serif;color:#0f1d2e;">
@@ -5750,7 +5750,7 @@ table.fc-borrow-tbl tr.fc-borrow-detail-row td{background:var(--surface);border-
 // GLOBALS
 // ══════════════════════════════════════════════
 let db = null;
-const APP_BUILD = '2026.06.30-r18tabs';
+const APP_BUILD = '2026.06.30-r18nav';
 window._dbConnected = false;
 window._syncInProgress = false;
 let currentSample = null;
@@ -18296,43 +18296,58 @@ window.r18_closeModal = () => { document.getElementById('r18-modal-root').innerH
 const closeModal = () => window.r18_closeModal();
 
 /* ---------- INIT ---------- */
+let _r18_seeding = false;
+let _r18_savingLab = false;
+let _r18_programmaticLabSwitch = false;
+
 async function init() {
   let labs = await repo.getAll('labs');
   if (labs.length === 0) {
-    const primary = await createLab({
-      name: 'DelDOT Materials & Research',
-      type: 'primary',
-      address: { street: '800 Bay Road', city: 'Dover', state: 'DE', zip: '19903' },
-    });
-    const secondary = await createLab({
-      name: 'Soil and Aggregate Lab',
-      type: 'secondary',
-      address: { street: '800 Bay Road', city: 'Dover', state: 'DE', zip: '19903' },
-    });
-    // Seed measurement standards on primary
-    for (const eq of SEED_EQUIPMENT_MEASUREMENT) {
-      await repo.put('equipment', { id: uuid(), labId: primary.id, ...eq, status: 'in_service', photo: null, lastCalibration: null, nextCalibration: null, notes: '' });
+    if (_r18_seeding) {
+      while (_r18_seeding) await new Promise(r => setTimeout(r, 80));
+      labs = await repo.getAll('labs');
+    } else {
+      _r18_seeding = true;
+      try {
+        const primary = await createLab({
+          name: 'DelDOT Materials & Research',
+          type: 'primary',
+          address: { street: '800 Bay Road', city: 'Dover', state: 'DE', zip: '19903' },
+        });
+        const secondary = await createLab({
+          name: 'Soil and Aggregate Lab',
+          type: 'secondary',
+          address: { street: '800 Bay Road', city: 'Dover', state: 'DE', zip: '19903' },
+        });
+        // Seed measurement standards on primary
+        for (const eq of SEED_EQUIPMENT_MEASUREMENT) {
+          await repo.put('equipment', { id: uuid(), labId: primary.id, ...eq, status: 'in_service', photo: null, lastCalibration: null, nextCalibration: null, notes: '' });
+        }
+        // Seed lab equipment on secondary
+        for (const eq of SEED_EQUIPMENT_SOIL) {
+          await repo.put('equipment', { id: uuid(), labId: secondary.id, ...eq, status: 'in_service', photo: null, lastCalibration: null, nextCalibration: null, notes: '' });
+        }
+        // Seed users — pulled from your screenshot 3
+        const seedUsers = [
+          { name: 'Jennifer Pinkerton', role: 'primary_lab_manager', active: true,  labId: primary.id },
+          { name: 'James Kwasnieski',   role: 'primary_lab_manager', active: true,  labId: primary.id },
+          { name: 'Aaron Wieczorek',    role: 'lab_manager',         active: true,  labId: secondary.id },
+          { name: 'Michael Street',     role: 'lab_technician',      active: true,  labId: secondary.id },
+          { name: 'Nick Loebe',         role: 'lab_technician',      active: true,  labId: secondary.id },
+          { name: 'Joshua Smith',       role: 'lab_technician',      active: true,  labId: secondary.id },
+        ];
+        for (const u of seedUsers) {
+          await repo.put('users', { id: uuid(), ...u, email: '' });
+        }
+        state.currentLabId = primary.id;
+        labs = await repo.getAll('labs');
+      } finally {
+        _r18_seeding = false;
+      }
     }
-    // Seed lab equipment on secondary
-    for (const eq of SEED_EQUIPMENT_SOIL) {
-      await repo.put('equipment', { id: uuid(), labId: secondary.id, ...eq, status: 'in_service', photo: null, lastCalibration: null, nextCalibration: null, notes: '' });
-    }
-    // Seed users — pulled from your screenshot 3
-    const seedUsers = [
-      { name: 'Jennifer Pinkerton', role: 'primary_lab_manager', active: true,  labId: primary.id },
-      { name: 'James Kwasnieski',   role: 'primary_lab_manager', active: true,  labId: primary.id },
-      { name: 'Aaron Wieczorek',    role: 'lab_manager',         active: true,  labId: secondary.id },
-      { name: 'Michael Street',     role: 'lab_technician',      active: true,  labId: secondary.id },
-      { name: 'Nick Loebe',         role: 'lab_technician',      active: true,  labId: secondary.id },
-      { name: 'Joshua Smith',       role: 'lab_technician',      active: true,  labId: secondary.id },
-    ];
-    for (const u of seedUsers) {
-      await repo.put('users', { id: uuid(), ...u, email: '' });
-    }
-    state.currentLabId = primary.id;
-    labs = await repo.getAll('labs');
-  } else {
-    state.currentLabId = labs.find(l => l.type === 'primary')?.id || labs[0].id;
+  }
+  if (!state.currentLabId) {
+    state.currentLabId = labs.find(l => l.type === 'primary')?.id || labs[0]?.id;
   }
   await refreshAll();
   renderTabs();
@@ -18358,7 +18373,13 @@ async function createLab({ name, type, address }) {
 }
 
 async function refreshAll() {
-  state.labs = await repo.getAll('labs');
+  const rawLabs = await repo.getAll('labs');
+  const seenLabIds = new Set();
+  state.labs = rawLabs.filter(l => {
+    if (!l?.id || seenLabIds.has(l.id)) return false;
+    seenLabIds.add(l.id);
+    return true;
+  });
   state.labs.sort((a, b) => (a.type === 'primary' ? -1 : 1) - (b.type === 'primary' ? -1 : 1));
   state.sections  = (await repo.query('sections', 'labId', state.currentLabId)).sort((a, b) => naturalSectionCompare(a.sectionNumber, b.sectionNumber));
   state.equipment = await repo.query('equipment', 'labId', state.currentLabId);
@@ -18395,13 +18416,25 @@ function naturalSectionCompare(a, b) {
 
 const _r18LabSw = document.getElementById('r18-lab-switcher');
 const _r18LabSwMob = document.getElementById('r18-lab-switcher-mob');
-if (_r18LabSw) _r18LabSw.addEventListener('change', e => switchLab(e.target.value));
-if (_r18LabSwMob) _r18LabSwMob.addEventListener('change', e => switchLab(e.target.value));
+if (_r18LabSw) _r18LabSw.addEventListener('change', e => {
+  if (_r18_programmaticLabSwitch) return;
+  switchLab(e.target.value);
+});
+if (_r18LabSwMob) _r18LabSwMob.addEventListener('change', e => {
+  if (_r18_programmaticLabSwitch) return;
+  switchLab(e.target.value);
+});
 
 async function switchLab(labId) {
+  if (!labId || labId === state.currentLabId) return;
   state.currentLabId = labId;
-  await refreshAll();
-  renderView();
+  _r18_programmaticLabSwitch = true;
+  try {
+    await refreshAll();
+    renderView();
+  } finally {
+    _r18_programmaticLabSwitch = false;
+  }
 }
 window.r18_switchLab = switchLab;
 
@@ -18639,22 +18672,33 @@ window.r18_openAddLabModal = () => {
 };
 
 window.r18_saveNewLab = async () => {
-  const name = document.getElementById('lab-name').value.trim();
-  const type = document.getElementById('lab-type').value;
+  if (_r18_savingLab) return;
+  const name = document.getElementById('lab-name')?.value?.trim();
+  const type = document.getElementById('lab-type')?.value;
   if (!name) return toast('Lab name required');
   if (type === 'primary' && state.labs.some(l => l.type === 'primary')) return toast('A primary lab already exists');
-  const lab = await createLab({
-    name, type,
-    address: {
-      street: document.getElementById('lab-street').value.trim(),
-      city: document.getElementById('lab-city').value.trim(),
-      state: document.getElementById('lab-state').value.trim().toUpperCase(),
-      zip: document.getElementById('lab-zip').value.trim(),
-    }
-  });
-  closeModal();
-  await switchLab(lab.id);
-  toast(`Lab "${name}" created with ${R18_TEMPLATE.length} R18 sections seeded`);
+  _r18_savingLab = true;
+  const saveBtn = document.querySelector('#r18-modal-root .btn-primary');
+  if (saveBtn) { saveBtn.disabled = true; saveBtn.textContent = 'Creating…'; }
+  try {
+    const lab = await createLab({
+      name, type,
+      address: {
+        street: document.getElementById('lab-street').value.trim(),
+        city: document.getElementById('lab-city').value.trim(),
+        state: document.getElementById('lab-state').value.trim().toUpperCase(),
+        zip: document.getElementById('lab-zip').value.trim(),
+      }
+    });
+    closeModal();
+    await switchLab(lab.id);
+    toast(`Lab "${name}" created with ${R18_TEMPLATE.length} R18 sections seeded`);
+  } catch (e) {
+    console.error('R18 create lab error:', e);
+    toast('Failed to create lab — try again');
+  } finally {
+    _r18_savingLab = false;
+  }
 };
 
 window.r18_deleteLabPrompt = async (id) => {
