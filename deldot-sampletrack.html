@@ -2297,6 +2297,46 @@ table.fc-borrow-tbl tr.fc-borrow-detail-row td{background:var(--surface);border-
 .r18-app .rule      { border-top: 2px solid var(--r18-ink); }
 .r18-app .rule-thin { border-top: 1px solid var(--r18-line); }
 .r18-app .print-cover { display: none; }
+/* ── R18LabQMS-style components ── */
+.r18-app .r18-page-title { font-family: 'Source Serif 4', Georgia, serif; font-size: 28px; font-weight: 600; color: var(--r18-ink); letter-spacing: -0.02em; margin: 0; }
+.r18-app .r18-widget { background: white; border: 1px solid var(--r18-line); border-radius: 4px; overflow: hidden; min-height: 200px; display: flex; flex-direction: column; }
+.r18-app .r18-widget-hd { padding: 10px 14px; font-size: 13px; font-weight: 600; color: white; display: flex; align-items: center; justify-content: space-between; }
+.r18-app .r18-widget-hd.danger { background: #c0392b; }
+.r18-app .r18-widget-hd.warn { background: #d97f3f; }
+.r18-app .r18-widget-hd.primary { background: var(--r18-accent); }
+.r18-app .r18-widget-hd.neutral { background: #5a6a82; }
+.r18-app .r18-widget-bd { flex: 1; overflow-y: auto; max-height: 280px; }
+.r18-app .r18-widget-item { padding: 10px 14px; border-bottom: 1px solid var(--r18-line-2); cursor: pointer; transition: background 0.12s; }
+.r18-app .r18-widget-item:hover { background: var(--r18-paper-2); }
+.r18-app .r18-widget-item:last-child { border-bottom: none; }
+.r18-app .r18-widget-empty { padding: 24px 14px; text-align: center; font-size: 12px; color: var(--r18-ink-3); font-style: italic; }
+.r18-app .r18-qm-gauge { width: 120px; height: 120px; border-radius: 50%; background: conic-gradient(var(--r18-accent) var(--pct), var(--r18-paper-2) 0); display: flex; align-items: center; justify-content: center; margin: 0 auto 12px; position: relative; }
+.r18-app .r18-qm-gauge::before { content: ''; position: absolute; inset: 14px; background: white; border-radius: 50%; }
+.r18-app .r18-qm-gauge span { position: relative; font-size: 22px; font-weight: 700; color: var(--r18-accent); font-family: 'Source Serif 4', serif; }
+.r18-app .r18-meas-tag { display: inline-block; background: #d97f3f; color: white; font-size: 9px; font-weight: 700; letter-spacing: 0.04em; padding: 2px 6px; border-radius: 2px; text-transform: uppercase; }
+.r18-app .r18-inv-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+.r18-app .r18-inv-table th { text-align: left; padding: 10px 14px; background: var(--r18-paper-2); border-bottom: 1px solid var(--r18-line); font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; color: var(--r18-ink-2); }
+.r18-app .r18-inv-table td { padding: 10px 14px; border-bottom: 1px solid var(--r18-line-2); vertical-align: middle; }
+.r18-app .r18-inv-table tr:hover td { background: var(--r18-paper-2); cursor: pointer; }
+.r18-app .r18-inv-stat { padding: 8px 16px; background: var(--r18-paper-2); border: 1px solid var(--r18-line); border-radius: 4px; font-size: 12px; }
+.r18-app .r18-inv-stat strong { color: var(--r18-accent); font-size: 16px; margin-right: 4px; }
+.r18-app .r18-admin-card { background: white; border: 1px solid var(--r18-line); border-radius: 4px; padding: 16px; min-height: 120px; display: flex; flex-direction: column; }
+.r18-app .r18-admin-card h3 { font-size: 14px; font-weight: 600; color: var(--r18-ink); margin: 0 0 6px; }
+.r18-app .r18-admin-card p { font-size: 12px; color: var(--r18-ink-2); line-height: 1.5; flex: 1; margin: 0 0 12px; }
+.r18-app .r18-lab-sidebar { background: white; border: 1px solid var(--r18-line); border-radius: 4px; padding: 20px; }
+.r18-app .r18-lab-sidebar h2 { font-family: 'Source Serif 4', serif; font-size: 18px; font-weight: 600; margin: 0 0 8px; color: var(--r18-ink); }
+.r18-app .r18-lab-sidebar .r18-lab-meta { font-size: 12px; color: var(--r18-ink-2); line-height: 1.7; }
+.r18-app .r18-lab-sidebar .r18-lab-meta dt { font-weight: 600; color: var(--r18-ink); margin-top: 12px; font-size: 11px; text-transform: uppercase; letter-spacing: 0.04em; }
+.r18-app .r18-lab-sidebar .r18-lab-meta dd { margin: 2px 0 0; }
+.r18-app .r18-user-pick { border: 2px solid var(--r18-line); border-radius: 4px; padding: 16px; text-align: center; cursor: pointer; transition: all 0.15s; background: white; }
+.r18-app .r18-user-pick:hover { border-color: var(--r18-accent); }
+.r18-app .r18-user-pick.selected { border-color: var(--r18-accent); background: #e8f0fa; }
+.r18-app .r18-user-pick .name { font-size: 14px; font-weight: 600; color: var(--r18-ink); margin-top: 8px; }
+.r18-app .r18-user-pick .sub { font-size: 10px; font-weight: 600; color: var(--r18-ink-3); text-transform: uppercase; letter-spacing: 0.05em; margin-top: 4px; }
+.r18-app .r18-accordion-hd { padding: 12px 16px; background: var(--r18-paper-2); border: 1px solid var(--r18-line); border-radius: 4px; display: flex; align-items: center; justify-content: space-between; cursor: pointer; margin-bottom: 4px; }
+.r18-app .r18-accordion-hd:hover { background: var(--r18-paper-3); }
+.r18-app .r18-accordion-bd { border: 1px solid var(--r18-line); border-top: none; border-radius: 0 0 4px 4px; margin-bottom: 8px; margin-top: -4px; }
+.r18-app .btn-view { background: var(--r18-accent) !important; color: white !important; font-size: 11px !important; padding: 4px 14px !important; border-radius: 3px !important; font-weight: 600 !important; letter-spacing: 0.03em; }
 @media print {
   #r18-header, #r18-nav, .r18-app .no-print, #r18-modal-root, #r18-toast-root { display: none !important; }
   #r18-view-root { padding: 0 !important; max-width: none !important; }
@@ -4085,8 +4125,8 @@ table.fc-borrow-tbl tr.fc-borrow-detail-row td{background:var(--surface);border-
       <div style="display:flex;align-items:center;gap:10px;">
         <img src="data:image/jpeg;base64,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" alt="R-18" style="width:36px;height:36px;border-radius:8px;object-fit:cover;">
         <div>
-          <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.07em;color:#2a3a52;font-family:Inter,sans-serif;">AASHTO R18 Compliance</div>
-          <div style="font-size:14px;font-weight:700;color:#0f1d2e;font-family:'Source Serif 4',Georgia,serif;line-height:1.2;">Quality Management System</div>
+          <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.07em;color:#2a3a52;font-family:Inter,sans-serif;">Delaware Department of Transportation</div>
+          <div id="r18-lab-title" style="font-size:14px;font-weight:700;color:#0f1d2e;font-family:'Source Serif 4',Georgia,serif;line-height:1.2;">Quality Management System</div>
         </div>
       </div>
       <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
@@ -5710,7 +5750,7 @@ table.fc-borrow-tbl tr.fc-borrow-detail-row td{background:var(--surface);border-
 // GLOBALS
 // ══════════════════════════════════════════════
 let db = null;
-const APP_BUILD = '2026.06.30';
+const APP_BUILD = '2026.06.30-r18ui';
 window._dbConnected = false;
 window._syncInProgress = false;
 let currentSample = null;
@@ -18022,6 +18062,35 @@ function bucketedProcedures() {
   return buckets;
 }
 function equipmentById(id) { return state.equipment.find(e => e.id === id); }
+function qmCompletionStats() {
+  const editable = state.sections.filter(s => s.contentType !== 'header');
+  const complete = editable.filter(s => {
+    if (!s.content) return false;
+    if (typeof s.content === 'string') return s.content.trim().length > 0;
+    if (s.contentType === 'address') return !!(s.content.street || s.content.city);
+    return true;
+  });
+  const pct = editable.length ? Math.round((complete.length / editable.length) * 100) : 0;
+  return { complete: complete.length, incomplete: editable.length - complete.length, total: editable.length, pct };
+}
+function approachingProcedures() {
+  return state.procedures.filter(p => p.active !== false && p.nextDueAt).filter(p => {
+    const d = daysFromNow(p.nextDueAt);
+    return d != null && d >= 0 && d <= 28;
+  }).sort((a, b) => new Date(a.nextDueAt) - new Date(b.nextDueAt));
+}
+function dashboardDueItemHtml(proc) {
+  const eq = equipmentById(proc.equipmentId);
+  const days = daysFromNow(proc.nextDueAt);
+  const dateStr = fmtDateShort(proc.nextDueAt);
+  const subType = eq?.modelNumber || eq?.manufacturer || PROCEDURE_TYPE_LABEL[proc.procedureType] || '';
+  return `
+    <div class="r18-widget-item" onclick="r18_openCompleteProcedureModal('${proc.id}')">
+      <div class="text-sm font-medium ink">${escapeHtml(eq?.name || 'Equipment')}${subType ? ` (${escapeHtml(subType)})` : ''}</div>
+      <div class="text-xs ink-2 mt-0.5">Procedure: ${escapeHtml(proc.name)}</div>
+      <div class="text-xs ink-3 mono mt-0.5">${dateStr}${days != null && days < 0 ? ' · <span style="color:#b91c1c">past due</span>' : ''}</div>
+    </div>`;
+}
 function procedureRowHtml(proc, opts = {}) {
   const eq = equipmentById(proc.equipmentId);
   const days = daysFromNow(proc.nextDueAt);
@@ -18185,8 +18254,14 @@ const state = {
   procedureRecords: [],
   editingSectionId: null,
   inventorySearch: '',
-  inventoryCategory: 'all',
+  inventorySubTab: 'lab_equipment',
+  procedureHistoryMode: 'equipment',
+  equipmentStatusFilter: 'in_service',
   procedureHistoryFilter: 'all',
+  expandedSubLabs: {},
+  trainingStep: 1,
+  trainingSelectedUsers: [],
+  reportStatusFilter: 'completed',
   userFilter: 'active',
   reportSubtab: 'external_assessments',
 };
@@ -18302,8 +18377,11 @@ async function refreshAll() {
   ).join('');
   const _sw1 = document.getElementById('r18-lab-switcher');
   const _sw2 = document.getElementById('r18-lab-switcher-mob');
+  const _labTitle = document.getElementById('r18-lab-title');
+  const curLab = state.labs.find(l => l.id === state.currentLabId);
   if (_sw1) _sw1.innerHTML = opts;
   if (_sw2) _sw2.innerHTML = opts;
+  if (_labTitle && curLab) _labTitle.textContent = curLab.name;
 }
 
 function naturalSectionCompare(a, b) {
@@ -18361,117 +18439,58 @@ function renderView() {
    DASHBOARD
    ==================================================================== */
 function renderDashboard(lab, root) {
-  const recent = [
-    ...state.procedureRecords.slice(0, 5).map(r => {
-      const proc = state.procedures.find(p => p.id === r.procedureId);
-      const eq = equipmentById(r.equipmentId);
-      return { when: r.completedAt, what: `${PROCEDURE_TYPE_LABEL[proc?.procedureType] || 'Procedure'} completed — ${eq?.name || 'Equipment'}`, who: r.completedBy || 'Technician' };
-    }),
-    ...state.sections.filter(s => s.lastRevisedAt).map(s => ({ when: s.lastRevisedAt, what: `Section ${s.sectionNumber} "${s.title}" revised`, who: s.lastRevisedBy })),
-    ...state.equipment.map(e => ({ when: e.updatedAt, what: `${e.name} (${e.refId}) ${e.status === 'out_of_service' ? 'placed out of service' : 'updated in inventory'}`, who: 'Equipment log' })),
-  ].filter(r => r.who !== 'System').sort((a, b) => new Date(b.when) - new Date(a.when)).slice(0, 8);
-
-  const equipCount = state.equipment.length;
-  const inService = state.equipment.filter(e => e.status === 'in_service').length;
-  const outService = state.equipment.filter(e => e.status === 'out_of_service').length;
-  const activeUsers = state.users.filter(u => u.active).length;
-  const customSections = state.sections.filter(s => !s.isStandard).length;
-  const activeProcs = state.procedures.filter(p => p.active !== false);
   const buckets = bucketedProcedures();
-  const dueTotal = DUE_BUCKETS.reduce((n, b) => n + buckets[b.id].length, 0);
-  const pastDueCount = buckets.past_due.length;
+  const pastDue = buckets.past_due;
+  const approaching = approachingProcedures();
+  const qm = qmCompletionStats();
+  const recentCompletions = state.procedureRecords.slice(0, 8);
 
   root.innerHTML = `
-    <div class="mb-6 flex items-end justify-between flex-wrap gap-3">
-      <div>
-        <div class="text-xs uppercase tracking-wider ink-2 font-semibold mb-1">Welcome back, ${escapeHtml((state.users.find(u => u.role === 'lab_manager') || state.users.find(u => u.active) || {}).name?.split(' ')[0] || 'Manager')}</div>
-        <h1 class="text-3xl serif font-semibold ink">${escapeHtml(lab.name)}</h1>
-        <div class="text-sm ink-2 mt-1">${lab.address?.street || ''}, ${lab.address?.city || ''}, ${lab.address?.state || ''} ${lab.address?.zip || ''}</div>
-      </div>
-      <span class="badge ${lab.type === 'primary' ? 'badge-primary' : 'badge-secondary'}">${lab.type}</span>
-    </div>
-
-    <div class="grid grid-cols-2 md:grid-cols-5 gap-3 mb-6">
-      <div class="stat">
-        <div class="stat-num">${state.sections.length}</div>
-        <div class="stat-label">Manual sections</div>
-        <div class="text-xs ink-3 mt-1">${customSections} custom</div>
-      </div>
-      <div class="stat">
-        <div class="stat-num">${equipCount}</div>
-        <div class="stat-label">Equipment records</div>
-        <div class="text-xs ink-3 mt-1">${inService} in service · ${outService} out</div>
-      </div>
-      <div class="stat">
-        <div class="stat-num">${activeProcs.length}</div>
-        <div class="stat-label">Active procedures</div>
-        <div class="text-xs ink-3 mt-1">${dueTotal} due ≤4 wks</div>
-      </div>
-      <div class="stat">
-        <div class="stat-num">${activeUsers}</div>
-        <div class="stat-label">Active users</div>
-        <div class="text-xs ink-3 mt-1">${state.users.length - activeUsers} inactive</div>
-      </div>
-      <div class="stat">
-        <div class="stat-num ${pastDueCount > 0 ? 'gold' : ''}">${pastDueCount}</div>
-        <div class="stat-label">Past due</div>
-        <div class="text-xs ink-3 mt-1">${pastDueCount === 0 ? 'on schedule' : 'needs attention'}</div>
-      </div>
-    </div>
-
-    <div class="mb-6">
-      <div class="flex items-center justify-between mb-3">
-        <div>
-          <div class="text-sm font-semibold ink">Equipment Procedures</div>
-          <div class="text-xs ink-2">4-week outlook — matching R18LabQMS weekly snapshot</div>
+    <h1 class="r18-page-title mb-6">Dashboard</h1>
+    <div class="grid md:grid-cols-2 xl:grid-cols-3 gap-4">
+      <div class="r18-widget">
+        <div class="r18-widget-hd danger"><span>Past Due</span><span>${pastDue.length}</span></div>
+        <div class="r18-widget-bd">
+          ${pastDue.length === 0 ? '<div class="r18-widget-empty">No past due procedures</div>' : pastDue.slice(0, 8).map(dashboardDueItemHtml).join('')}
         </div>
-        <button class="btn btn-ghost text-xs" onclick="r18_state.currentTab='inventory'; r18_renderTabs(); r18_renderView();">Manage Inventory →</button>
       </div>
-      <div class="grid md:grid-cols-2 xl:grid-cols-3 gap-3">
-        ${DUE_BUCKETS.map(b => {
-          const items = buckets[b.id];
-          return `
-            <div class="card ${b.danger && items.length ? 'border-red-200' : ''}">
-              <div class="px-4 py-3 border-b border-line-2 flex items-center justify-between ${b.danger && items.length ? 'bg-red-50' : 'bg-paper-2'}">
-                <div class="text-sm font-semibold ink">${b.label}</div>
-                <span class="badge ${items.length && b.danger ? 'badge-danger' : items.length ? 'badge-warn' : 'badge-secondary'}">${items.length}</span>
-              </div>
-              ${items.length === 0 ? `<div class="px-4 py-6 text-sm ink-2 italic text-center">None</div>` : `<div>${items.slice(0, 5).map(p => procedureRowHtml(p, { showComplete: true, clickable: true })).join('')}</div>`}
-              ${items.length > 5 ? `<div class="px-4 py-2 text-xs ink-3 border-t border-line-2">+${items.length - 5} more</div>` : ''}
-            </div>`;
-        }).join('')}
-      </div>
-    </div>
-
-    <div class="grid md:grid-cols-3 gap-4">
-      <div class="card p-5 md:col-span-2">
-        <div class="flex items-center justify-between mb-3">
-          <div class="text-sm font-semibold ink">Recent Activity</div>
-          <div class="text-xs ink-3">last ${recent.length} actions</div>
+      <div class="r18-widget">
+        <div class="r18-widget-hd warn"><span>Approaching Deadlines</span><span>${approaching.length}</span></div>
+        <div class="r18-widget-bd">
+          ${approaching.length === 0 ? '<div class="r18-widget-empty">No approaching deadlines</div>' : approaching.slice(0, 8).map(dashboardDueItemHtml).join('')}
         </div>
-        ${recent.length === 0 ? `<div class="text-sm ink-2 italic py-8 text-center">No activity yet. Complete a procedure or edit the Quality Manual to start building history.</div>` : ''}
-        <div>${recent.map(r => `
-          <div class="recent-item">
-            <div class="recent-dot"></div>
-            <div class="flex-1 min-w-0">
-              <div class="ink truncate">${escapeHtml(r.what)}</div>
-              <div class="text-xs ink-3 mt-0.5">${fmtDate(r.when)} · ${escapeHtml(r.who || 'Unknown')}</div>
-            </div>
+      </div>
+      <div class="r18-widget">
+        <div class="r18-widget-hd primary"><span>QM Completion</span></div>
+        <div class="r18-widget-bd" style="padding:16px;text-align:center;">
+          <div class="r18-qm-gauge" style="--pct:${qm.pct}%"><span>${qm.pct}%</span></div>
+          <div class="text-xs ink-2 uppercase tracking-wider mb-3">Complete</div>
+          <div class="flex justify-center gap-6 text-sm">
+            <div><strong class="ink">${qm.complete}</strong> <span class="ink-2">Complete</span><br><button class="btn btn-view mt-2" onclick="r18_state.currentTab='quality-manual';r18_renderTabs();r18_renderView();">VIEW</button></div>
+            <div><strong class="ink">${qm.incomplete}</strong> <span class="ink-2">Incomplete</span><br><button class="btn btn-view mt-2" onclick="r18_state.currentTab='quality-manual';r18_renderTabs();r18_renderView();">VIEW</button></div>
           </div>
-        `).join('')}</div>
-      </div>
-
-      <div class="card p-5">
-        <div class="text-sm font-semibold ink mb-3">Quick Actions</div>
-        <div class="flex flex-col gap-2">
-          <button class="btn btn-ghost justify-start" onclick="r18_state.currentTab='inventory'; r18_renderTabs(); r18_renderView();">→ Equipment Inventory</button>
-          <button class="btn btn-ghost justify-start" onclick="r18_state.currentTab='procedure-history'; r18_renderTabs(); r18_renderView();">→ Procedure History</button>
-          <button class="btn btn-ghost justify-start" onclick="r18_state.currentTab='quality-manual'; r18_renderTabs(); r18_renderView();">→ Edit Quality Manual</button>
-          <button class="btn btn-ghost justify-start" onclick="r18_state.currentTab='training-evals'; r18_renderTabs(); r18_renderView();">→ Training Records</button>
-          <button class="btn btn-ghost justify-start" onclick="r18_openEditLabModal('${lab.id}')">→ Edit Lab Info</button>
-          <div class="rule-thin my-2"></div>
-          <button class="btn btn-accent justify-start" onclick="r18_exportQualityManualPDF()">⎙ Export Manual to PDF</button>
         </div>
+      </div>
+      <div class="r18-widget">
+        <div class="r18-widget-hd neutral"><span>Completed Procedures</span><span>${recentCompletions.length}</span></div>
+        <div class="r18-widget-bd">
+          ${recentCompletions.length === 0 ? '<div class="r18-widget-empty">No items matched all selected filter criteria.</div>' : recentCompletions.map(r => {
+            const proc = state.procedures.find(p => p.id === r.procedureId);
+            const eq = equipmentById(r.equipmentId);
+            return `<div class="r18-widget-item" onclick="r18_openProcedureRecordDetail('${r.id}')">
+              <div class="text-sm font-medium ink">${escapeHtml(eq?.name || 'Equipment')}</div>
+              <div class="text-xs ink-2">${escapeHtml(proc?.name || 'Procedure')} · ${fmtDateShort(r.completedAt)}</div>
+            </div>`;
+          }).join('')}
+        </div>
+      </div>
+      <div class="r18-widget">
+        <div class="r18-widget-hd neutral"><span>Invoices</span><span>0</span></div>
+        <div class="r18-widget-bd"><div class="r18-widget-empty">No items matched all selected filter criteria.</div></div>
+      </div>
+      <div class="r18-widget">
+        <div class="r18-widget-hd neutral"><span>Lab Processes</span><span>0</span></div>
+        <div class="r18-widget-bd"><div class="r18-widget-empty">No items matched all selected filter criteria.</div></div>
       </div>
     </div>
   `;
@@ -18481,39 +18500,47 @@ function renderDashboard(lab, root) {
    MANAGE LAB
    ==================================================================== */
 function renderManageLab(lab, root) {
-  root.innerHTML = `
-    <div class="mb-6 flex items-center justify-between gap-4 flex-wrap">
-      <div>
-        <h1 class="text-3xl serif font-semibold ink">Manage Lab</h1>
-        <div class="text-sm ink-2 mt-1">${escapeHtml(lab.name)}</div>
-      </div>
-      <div class="flex gap-2">
-        <button class="btn btn-ghost" onclick="r18_openAddLabModal()">+ New Lab</button>
-        <button class="btn btn-primary" onclick="r18_openEditLabModal('${lab.id}')">Edit Lab Info</button>
-        ${lab.type !== 'primary' ? `<button class="btn btn-danger" onclick="r18_deleteLabPrompt('${lab.id}')">Delete</button>` : ''}
-      </div>
-    </div>
+  const plmCount = state.users.filter(u => u.role === 'primary_lab_manager' && u.active).length;
+  const activeCount = state.users.filter(u => u.active).length;
+  const adminCards = [
+    { title: 'Organizational Chart', desc: 'Edit and organize users, roles, and resumes.', action: `r18_state.currentTab='training-evals';r18_renderTabs();r18_renderView();` },
+    { title: 'Equipment Procedures & Lab Processes Admin', desc: 'Create and edit equipment procedures and lab processes.', action: `r18_state.currentTab='inventory';r18_state.inventorySubTab='equipment_procedures';r18_renderTabs();r18_renderView();` },
+    { title: 'Test Methods & Standard Designations Admin', desc: 'Manage standard designations, test methods, and test categories for training.', action: `r18_state.currentTab='training-evals';r18_renderTabs();r18_renderView();` },
+    { title: 'Measurement Standards', desc: 'View measurement standards calibration.', action: `r18_state.currentTab='inventory';r18_state.inventorySubTab='lab_equipment';r18_renderTabs();r18_renderView();` },
+    { title: 'Lab Positions', desc: 'Personnel management including job descriptions and requirements.', action: `r18_state.currentTab='training-evals';r18_renderTabs();r18_renderView();` },
+    { title: 'Outside Evaluators', desc: 'Identify third-party personnel who conduct lab evaluations.', action: `r18_openUserModal()`, add: true },
+  ];
 
-    <div class="grid md:grid-cols-2 gap-4 mb-6">
-      <div class="card p-5">
-        <div class="label">Lab Information</div>
-        <div class="text-lg serif font-semibold ink mb-1">${escapeHtml(lab.name)}</div>
-        <span class="badge ${lab.type === 'primary' ? 'badge-primary' : 'badge-secondary'} mb-3">${lab.type}</span>
-        <div class="text-sm ink mt-2">${escapeHtml(lab.address?.street || '—')}</div>
-        <div class="text-sm ink-2">${escapeHtml(lab.address?.city || '')}, ${escapeHtml(lab.address?.state || '')} ${escapeHtml(lab.address?.zip || '')}</div>
-      </div>
-      <div class="card p-5">
-        <div class="label">Inspection & Subscription</div>
-        <div class="grid grid-cols-2 gap-4 mt-2">
-          <div><div class="text-xs ink-3">Last Inspection</div><div class="text-sm font-medium ink mono">${fmtDateShort(lab.inspection?.last)}</div></div>
-          <div><div class="text-xs ink-3">Next Inspection</div><div class="text-sm font-medium ink mono">${fmtDateShort(lab.inspection?.next)}</div></div>
-          <div><div class="text-xs ink-3">Subscription Start</div><div class="text-sm font-medium ink mono">${fmtDateShort(lab.subscription?.start)}</div></div>
-          <div><div class="text-xs ink-3">Subscription End</div><div class="text-sm font-medium ink mono">${fmtDateShort(lab.subscription?.end)}</div></div>
+  root.innerHTML = `
+    <h1 class="r18-page-title mb-6">Manage Lab</h1>
+    <div class="grid lg:grid-cols-3 gap-6">
+      <div class="r18-lab-sidebar">
+        <h2>${escapeHtml(lab.name)}</h2>
+        <div class="text-sm ink-2 mb-4">${escapeHtml(lab.address?.street || '')}<br>${escapeHtml(lab.address?.city || '')}, ${escapeHtml(lab.address?.state || '')} ${escapeHtml(lab.address?.zip || '')}</div>
+        <dl class="r18-lab-meta">
+          <dt>Quality Standards</dt><dd>AASHTO R18</dd>
+          <dt>Last Inspection</dt><dd>${fmtDateShort(lab.inspection?.last) || '—'}</dd>
+          <dt>Next Inspection</dt><dd>${fmtDateShort(lab.inspection?.next) || '—'}</dd>
+          <dt>Subscription</dt><dd>${fmtDateShort(lab.subscription?.start) || '—'} – ${fmtDateShort(lab.subscription?.end) || '—'}</dd>
+          <dt>Users</dt><dd>${plmCount} Primary Lab Manager${plmCount === 1 ? '' : 's'} · ${activeCount} Active Users</dd>
+          <dt>Assessors</dt><dd>0 Approved · 0 Requests</dd>
+        </dl>
+        <div class="flex gap-2 mt-4 flex-wrap">
+          <button class="btn btn-primary text-xs" onclick="r18_openEditLabModal('${lab.id}')">Edit Lab Info</button>
+          <button class="btn btn-ghost text-xs" onclick="r18_openAddLabModal()">+ New Lab</button>
         </div>
       </div>
+      <div class="lg:col-span-2 grid sm:grid-cols-2 gap-4">
+        ${adminCards.map(c => `
+          <div class="r18-admin-card">
+            <h3>${escapeHtml(c.title)}</h3>
+            <p>${escapeHtml(c.desc)}</p>
+            <button class="btn btn-view" onclick="${c.action}">${c.add ? 'ADD' : 'VIEW'}</button>
+          </div>
+        `).join('')}
+      </div>
     </div>
-
-    <div class="card p-5">
+    <div class="card p-5 mt-6">
       <div class="text-sm font-semibold mb-3 ink">All Labs in System</div>
       <div class="space-y-2">
         ${state.labs.map(l => `
@@ -18651,16 +18678,15 @@ function renderQualityManual(lab, root) {
   root.innerHTML = `
     <div class="mb-6">
       <div class="flex items-center justify-between flex-wrap gap-3">
-        <div>
-          <h1 class="text-3xl serif font-semibold ink">Quality Manual</h1>
-          <div class="text-sm ink-2 mt-1">${escapeHtml(lab.name)} · <span class="badge ${isPrimary ? 'badge-primary' : 'badge-secondary'}">${lab.type}</span></div>
-        </div>
+        <h1 class="r18-page-title">Quality Manual</h1>
         <div class="flex gap-2 flex-wrap">
-          <button class="btn btn-ghost" onclick="r18_openAddSectionModal()">+ Custom Section</button>
-          ${!isPrimary && primaryLab ? `<button class="btn btn-accent" onclick="r18_syncFromPrimary()">↻ Sync from Primary</button>` : ''}
-          <button class="btn btn-primary" onclick="r18_exportQualityManualPDF()">⎙ Export PDF</button>
+          <button class="btn btn-ghost text-xs" onclick="document.getElementById('r18-qm-toc').scrollIntoView({behavior:'smooth'})">Table of Contents</button>
+          <button class="btn btn-ghost" onclick="r18_openAddSectionModal()">Add Custom Section</button>
+          ${!isPrimary && primaryLab ? `<button class="btn btn-accent" onclick="r18_syncFromPrimary()">Sync R18 from Primary Lab</button>` : ''}
+          <button class="btn btn-primary" onclick="r18_exportQualityManualPDF()">Export Standard to PDF</button>
         </div>
       </div>
+      <div class="text-sm ink-2 mt-2">${escapeHtml(lab.name)} · <span class="badge ${isPrimary ? 'badge-primary' : 'badge-secondary'}">${lab.type}</span></div>
     </div>
 
     <div class="print-cover">
@@ -18674,7 +18700,7 @@ function renderQualityManual(lab, root) {
       </div>
     </div>
 
-    <div class="border-b border-line mb-4 flex gap-4 no-print">
+    <div class="border-b border-line mb-4 flex gap-4 no-print" id="r18-qm-toc">
       <button class="px-1 pb-2 text-sm font-semibold border-b-2 border-ink ink">AASHTO R18</button>
     </div>
 
@@ -18707,7 +18733,9 @@ function renderSectionRow(s) {
                 ? `<button class="btn btn-primary text-xs" onclick="r18_saveSection('${s.id}')">Save</button>
                    <button class="btn btn-ghost text-xs" onclick="r18_cancelEdit()">Cancel</button>`
                 : `<button class="btn btn-ghost text-xs" onclick="r18_viewRevisions('${s.id}')">History</button>
-                   <button class="btn btn-ghost text-xs" onclick="r18_editSection('${s.id}')">Edit</button>
+                   <button class="btn btn-ghost text-xs" onclick="r18_editSection('${s.id}')">Edit Section</button>
+                   ${!isPrimary ? `<button class="btn btn-ghost text-xs" onclick="r18_syncFromPrimary()">Sync with Primary Lab</button>` : ''}
+                   <button class="btn btn-ghost text-xs" onclick="r18_exportQualityManualPDF()">PDF Export</button>
                    ${!isStandard ? `<button class="btn btn-danger text-xs" onclick="r18_deleteSectionPrompt('${s.id}')">Del</button>` : ''}`
               }
             </div>
@@ -18921,137 +18949,182 @@ window.r18_exportQualityManualPDF = () => {
    INVENTORY — measurement standards + lab equipment (R18LabQMS style)
    ==================================================================== */
 function renderInventory(lab, root) {
-  const cat = state.inventoryCategory;
-  let list = state.equipment;
-  if (cat === 'measurement_standard') list = list.filter(e => e.category === 'measurement_standard');
-  else if (cat === 'lab_equipment') list = list.filter(e => e.category === 'lab_equipment');
+  const sub = state.inventorySubTab;
   const q = state.inventorySearch.toLowerCase();
-  const filtered = q ? list.filter(e => (e.name + ' ' + (e.refId || '') + ' ' + (e.manufacturer || '') + ' ' + (e.modelNumber || '') + ' ' + (e.subLab || '')).toLowerCase().includes(q)) : list;
-  const counts = {
-    all: state.equipment.length,
-    measurement_standard: state.equipment.filter(e => e.category === 'measurement_standard').length,
-    lab_equipment: state.equipment.filter(e => e.category === 'lab_equipment').length,
-  };
+  const inService = state.equipment.filter(e => e.status === 'in_service');
+  const measStd = state.equipment.filter(e => e.category === 'measurement_standard');
+  const outService = state.equipment.filter(e => e.status === 'out_of_service');
 
-  root.innerHTML = `
-    <div class="mb-6 flex items-center justify-between flex-wrap gap-3">
-      <div>
-        <h1 class="text-3xl serif font-semibold ink">Inventory</h1>
-        <div class="text-sm ink-2 mt-1">Manage equipment, attach procedures, complete calibrations & checks</div>
-      </div>
-      <div class="flex gap-2 flex-wrap">
-        <button class="btn btn-ghost" onclick="r18_openEquipmentModal(null, 'lab_equipment')">+ Lab Equipment</button>
-        <button class="btn btn-primary" onclick="r18_openEquipmentModal(null, 'measurement_standard')">+ Measurement Standard</button>
-      </div>
-    </div>
-
-    <div class="border-b border-line mb-4 flex gap-1 flex-wrap">
-      ${[
-        { id: 'all', label: 'All Equipment' },
-        { id: 'measurement_standard', label: 'Measurement Standards' },
-        { id: 'lab_equipment', label: 'Lab Equipment' },
-      ].map(t => `
-        <button class="px-4 py-2 text-sm font-medium border-b-2 ${cat === t.id ? 'tab-active' : 'border-transparent ink-2'}"
-          onclick="r18_state.inventoryCategory='${t.id}'; r18_renderView();">${t.label} (${counts[t.id]})</button>
-      `).join('')}
-    </div>
-
-    <div class="mb-4">
-      <input class="input max-w-md" placeholder="Search by name, ref ID, manufacturer, model…" value="${escapeHtml(state.inventorySearch)}"
-        oninput="r18_state.inventorySearch=this.value; r18_renderView();" />
-    </div>
-
-    ${filtered.length === 0 ? `
-      <div class="stub-card">
-        <div class="text-base font-medium ink mb-1">No equipment ${q ? 'matches your search' : 'in this category yet'}</div>
-        <div class="text-sm">${q ? 'Try a different query.' : 'Add equipment and attach procedures to track due dates.'}</div>
-      </div>
-    ` : `
-      <div class="grid sm:grid-cols-2 lg:grid-cols-3 gap-3">
-        ${filtered.map(e => {
-          const procs = proceduresForEquipment(e.id);
-          const due = procs.filter(p => p.nextDueAt).map(p => daysFromNow(p.nextDueAt)).filter(d => d != null);
-          const pastDue = due.filter(d => d < 0).length;
-          const dueSoon = due.filter(d => d >= 0 && d <= 7).length;
-          return `
-          <div class="equip-card" onclick="r18_openEquipmentDetail('${e.id}')">
-            <div class="equip-thumb">
-              ${e.photo ? `<img src="${e.photo}" alt="" />` : `<span class="equip-thumb-empty">▭</span>`}
-            </div>
-            <div class="flex-1 min-w-0">
-              <div class="text-sm font-medium ink truncate">${escapeHtml(e.name)}</div>
-              <div class="text-xs ink-2 mono truncate">${escapeHtml(e.refId || e.modelNumber || '—')}</div>
-              <div class="mt-1 flex items-center gap-1.5 flex-wrap">
-                <span class="badge badge-secondary">${e.category === 'measurement_standard' ? 'MEAS STD' : 'LAB EQ'}</span>
-                ${e.status === 'out_of_service' ? '<span class="badge badge-danger">OOS</span>' : ''}
-                ${procs.length ? `<span class="badge badge-active">${procs.length} proc</span>` : ''}
-                ${pastDue ? `<span class="badge badge-danger">${pastDue} overdue</span>` : ''}
-                ${dueSoon && !pastDue ? `<span class="badge badge-warn">${dueSoon} due soon</span>` : ''}
-              </div>
-            </div>
+  if (sub === 'equipment_procedures') {
+    const procs = state.procedures.filter(p => p.active !== false);
+    root.innerHTML = `
+      <h1 class="r18-page-title mb-4">Inventory</h1>
+      ${renderInventorySubTabs(sub)}
+      <div class="card mt-4">
+        <div class="px-4 py-3 border-b border-line-2 flex justify-between items-center">
+          <div class="text-sm font-semibold ink">Equipment Procedures (${procs.length})</div>
+          <button class="btn btn-primary text-xs" onclick="r18_state.currentTab='inventory';r18_state.inventorySubTab='lab_equipment';r18_renderView();">+ Attach to Equipment</button>
+        </div>
+        ${procs.length === 0 ? '<div class="p-8 text-center text-sm ink-2">No procedures defined. Open equipment from Lab Equipment tab to add procedures.</div>' : procs.map(p => {
+          const eq = equipmentById(p.equipmentId);
+          return `<div class="px-4 py-3 border-b border-line-2 last:border-0 flex justify-between items-center hover:bg-paper-2">
+            <div><div class="text-sm font-medium ink">${escapeHtml(eq?.name || 'Equipment')} · ${escapeHtml(p.name)}</div>
+            <div class="text-xs ink-2">${escapeHtml(PROCEDURE_TYPE_LABEL[p.procedureType])} · ${freqLabel(p.frequencyValue, p.frequencyUnit)} · due ${fmtDateShort(p.nextDueAt)}</div></div>
+            <button class="btn btn-view" onclick="r18_openCompleteProcedureModal('${p.id}')">COMPLETE</button>
           </div>`;
         }).join('')}
+      </div>`;
+    return;
+  }
+
+  if (sub === 'lab_processes') {
+    root.innerHTML = `
+      <h1 class="r18-page-title mb-4">Inventory</h1>
+      ${renderInventorySubTabs(sub)}
+      <div class="stub-card mt-4">Lab Processes admin — coming soon. Use Equipment Procedures for calibrations and checks.</div>`;
+    return;
+  }
+
+  let list = inService;
+  const filtered = q ? list.filter(e => (e.name + ' ' + (e.refId || '') + ' ' + (e.manufacturer || '') + ' ' + (e.modelNumber || '')).toLowerCase().includes(q)) : list;
+
+  root.innerHTML = `
+    <h1 class="r18-page-title mb-4">Inventory</h1>
+    ${renderInventorySubTabs(sub)}
+    <div class="flex flex-wrap items-center justify-between gap-3 my-4">
+      <div class="flex gap-2 flex-wrap">
+        <div class="r18-inv-stat"><strong>${inService.length}</strong> Total In-Service</div>
+        <div class="r18-inv-stat"><strong>${measStd.length}</strong> Measurement Standards</div>
+        <div class="r18-inv-stat"><strong>${outService.length}</strong> Out Of Service</div>
+      </div>
+      <div class="flex gap-2 flex-wrap">
+        <button class="btn btn-ghost text-xs" disabled title="Coming soon">Bulk Select</button>
+        <button class="btn btn-ghost text-xs" disabled title="Coming soon">Customize</button>
+        <button class="btn btn-ghost text-xs" disabled title="Coming soon">Import</button>
+        <button class="btn btn-ghost text-xs" disabled title="Coming soon">Export</button>
+        <button class="btn btn-primary text-xs" onclick="r18_openEquipmentModal(null, 'lab_equipment')">+ New Equipment</button>
+      </div>
+    </div>
+    <div class="mb-4">
+      <input class="input max-w-md" placeholder="Search equipment…" value="${escapeHtml(state.inventorySearch)}"
+        oninput="r18_state.inventorySearch=this.value; r18_renderView();" />
+    </div>
+    ${filtered.length === 0 ? `<div class="stub-card">No in-service equipment ${q ? 'matches your search' : 'yet'}.</div>` : `
+      <div class="card overflow-x-auto">
+        <table class="r18-inv-table">
+          <thead><tr><th style="width:56px"></th><th>Equipment Name</th><th>Serial Number</th><th></th><th style="width:80px"></th></tr></thead>
+          <tbody>
+            ${filtered.map(e => `
+              <tr onclick="r18_openEquipmentDetail('${e.id}')">
+                <td><div class="equip-thumb" style="width:40px;height:40px;">${e.photo ? `<img src="${e.photo}" alt="" />` : `<span class="equip-thumb-empty" style="font-size:14px">▭</span>`}</div></td>
+                <td class="font-medium ink">${escapeHtml(e.name)}</td>
+                <td class="mono ink-2">${escapeHtml(e.refId || '—')}</td>
+                <td>${e.category === 'measurement_standard' ? '<span class="r18-meas-tag">Measurement Standard</span>' : ''}</td>
+                <td><button class="btn btn-view" onclick="event.stopPropagation();r18_openEquipmentDetail('${e.id}')">VIEW</button></td>
+              </tr>
+            `).join('')}
+          </tbody>
+        </table>
+        <div class="px-4 py-2 text-xs ink-3 border-t border-line-2">Showing ${Math.min(filtered.length, 50)} of ${filtered.length} records</div>
       </div>
     `}
   `;
+}
+
+function renderInventorySubTabs(active) {
+  const tabs = [
+    { id: 'lab_equipment', label: 'Lab Equipment' },
+    { id: 'equipment_procedures', label: 'Equipment Procedures' },
+    { id: 'lab_processes', label: 'Lab Processes' },
+  ];
+  return `<div class="border-b border-line flex gap-1">${tabs.map(t => `
+    <button class="px-4 py-2 text-sm font-medium border-b-2 ${active === t.id ? 'tab-active' : 'border-transparent ink-2'}"
+      onclick="r18_state.inventorySubTab='${t.id}'; r18_renderView();">${t.label}</button>
+  `).join('')}</div>`;
 }
 
 /* ====================================================================
    PROCEDURE HISTORY — completed procedure log
    ==================================================================== */
 function renderProcedureHistory(lab, root) {
-  const filter = state.procedureHistoryFilter;
-  let records = state.procedureRecords;
-  if (filter !== 'all') records = records.filter(r => {
-    const proc = state.procedures.find(p => p.id === r.procedureId);
-    return proc?.procedureType === filter;
-  });
+  const mode = state.procedureHistoryMode;
+  const status = state.equipmentStatusFilter;
 
-  root.innerHTML = `
-    <div class="mb-6 flex items-center justify-between flex-wrap gap-3">
-      <div>
-        <h1 class="text-3xl serif font-semibold ink">Procedure History</h1>
-        <div class="text-sm ink-2 mt-1">${records.length} completed record${records.length === 1 ? '' : 's'} · audit trail for equipment procedures</div>
-      </div>
-    </div>
-
-    <div class="border-b border-line mb-4 flex gap-1 flex-wrap">
-      <button class="px-4 py-2 text-sm font-medium border-b-2 ${filter === 'all' ? 'tab-active' : 'border-transparent ink-2'}"
-        onclick="r18_state.procedureHistoryFilter='all'; r18_renderView();">All (${state.procedureRecords.length})</button>
-      ${PROCEDURE_TYPES.map(t => {
-        const n = state.procedureRecords.filter(r => state.procedures.find(p => p.id === r.procedureId)?.procedureType === t.id).length;
-        return `<button class="px-4 py-2 text-sm font-medium border-b-2 ${filter === t.id ? 'tab-active' : 'border-transparent ink-2'}"
-          onclick="r18_state.procedureHistoryFilter='${t.id}'; r18_renderView();">${t.label} (${n})</button>`;
-      }).join('')}
-    </div>
-
-    ${records.length === 0 ? `
-      <div class="stub-card">
-        <div class="text-base font-medium ink mb-1">No procedure completions yet</div>
-        <div class="text-sm">Complete a procedure from Inventory or the Dashboard due widgets to build history.</div>
-      </div>
-    ` : `
-      <div class="card">
-        ${records.map(r => {
-          const proc = state.procedures.find(p => p.id === r.procedureId);
-          const eq = equipmentById(r.equipmentId);
-          const resultBadge = r.result === 'fail' ? 'badge-danger' : r.result === 'pass' ? 'badge-active' : 'badge-secondary';
-          return `
-            <div class="px-4 py-3 border-b border-line-2 last:border-0 hover:bg-paper-2 cursor-pointer flex items-center justify-between gap-3"
-              onclick="r18_openProcedureRecordDetail('${r.id}')">
-              <div class="flex-1 min-w-0">
-                <div class="text-sm font-medium ink">${escapeHtml(eq?.name || 'Equipment')} · ${escapeHtml(PROCEDURE_TYPE_LABEL[proc?.procedureType] || 'Procedure')}</div>
-                <div class="text-xs ink-2 mt-0.5 truncate">${escapeHtml(proc?.name || '—')}${r.completedBy ? ' · ' + escapeHtml(r.completedBy) : ''}</div>
-              </div>
-              <div class="text-right shrink-0">
-                <div class="text-xs ink-3 mono">${fmtDateShort(r.completedAt)}</div>
-                ${r.result ? `<span class="badge ${resultBadge} text-xs mt-1">${escapeHtml(r.result)}</span>` : ''}
-              </div>
-            </div>`;
+  if (mode === 'completions') {
+    const filter = state.procedureHistoryFilter;
+    let records = state.procedureRecords;
+    if (filter !== 'all') records = records.filter(r => state.procedures.find(p => p.id === r.procedureId)?.procedureType === filter);
+    root.innerHTML = `
+      <h1 class="r18-page-title mb-4">Procedure History</h1>
+      ${renderProcedureHistoryModeTabs(mode)}
+      <div class="border-b border-line mb-4 flex gap-1 flex-wrap mt-4">
+        <button class="px-4 py-2 text-sm font-medium border-b-2 ${filter === 'all' ? 'tab-active' : 'border-transparent ink-2'}"
+          onclick="r18_state.procedureHistoryFilter='all'; r18_renderView();">All (${state.procedureRecords.length})</button>
+        ${PROCEDURE_TYPES.map(t => {
+          const n = state.procedureRecords.filter(r => state.procedures.find(p => p.id === r.procedureId)?.procedureType === t.id).length;
+          return `<button class="px-4 py-2 text-sm font-medium border-b-2 ${filter === t.id ? 'tab-active' : 'border-transparent ink-2'}"
+            onclick="r18_state.procedureHistoryFilter='${t.id}'; r18_renderView();">${t.label} (${n})</button>`;
         }).join('')}
       </div>
-    `}
+      ${records.length === 0 ? '<div class="stub-card">No procedure completions yet.</div>' : `<div class="card">${records.map(r => {
+        const proc = state.procedures.find(p => p.id === r.procedureId);
+        const eq = equipmentById(r.equipmentId);
+        return `<div class="px-4 py-3 border-b border-line-2 last:border-0 hover:bg-paper-2 cursor-pointer flex justify-between" onclick="r18_openProcedureRecordDetail('${r.id}')">
+          <div><div class="text-sm font-medium ink">${escapeHtml(eq?.name || '')} · ${escapeHtml(PROCEDURE_TYPE_LABEL[proc?.procedureType] || '')}</div>
+          <div class="text-xs ink-2">${escapeHtml(proc?.name || '')} · ${escapeHtml(r.completedBy || '')}</div></div>
+          <div class="text-xs ink-3 mono">${fmtDateShort(r.completedAt)}</div>
+        </div>`;
+      }).join('')}</div>`}
+    `;
+    return;
+  }
+
+  const equipment = state.equipment.filter(e => e.category === 'lab_equipment' && e.status === status);
+  const groups = {};
+  for (const e of equipment) {
+    const k = e.subLab || 'Unassigned';
+    (groups[k] = groups[k] || []).push(e);
+  }
+
+  root.innerHTML = `
+    <h1 class="r18-page-title mb-4">Procedure History</h1>
+    ${renderProcedureHistoryModeTabs(mode)}
+    <div class="border-b border-line mb-4 flex gap-1 mt-4">
+      <button class="px-4 py-2 text-sm font-medium border-b-2 ${status === 'in_service' ? 'tab-active' : 'border-transparent ink-2'}"
+        onclick="r18_state.equipmentStatusFilter='in_service'; r18_renderView();">In Service (${state.equipment.filter(e => e.category === 'lab_equipment' && e.status === 'in_service').length})</button>
+      <button class="px-4 py-2 text-sm font-medium border-b-2 ${status === 'out_of_service' ? 'tab-active' : 'border-transparent ink-2'}"
+        onclick="r18_state.equipmentStatusFilter='out_of_service'; r18_renderView();">Out Of Service (${state.equipment.filter(e => e.category === 'lab_equipment' && e.status === 'out_of_service').length})</button>
+    </div>
+    <div class="text-sm font-semibold ink mb-3">Equipment Records</div>
+    ${Object.keys(groups).length === 0 ? '<div class="stub-card">No equipment in this category.</div>' : Object.entries(groups).map(([subLab, items]) => {
+      const open = state.expandedSubLabs[subLab] !== false;
+      return `
+        <div class="mb-2">
+          <div class="r18-accordion-hd" onclick="r18_state.expandedSubLabs['${subLab.replace(/'/g, "\\'")}']=${!open}; r18_renderView();">
+            <span class="text-sm font-medium ink">${escapeHtml(subLab)}</span>
+            <span class="text-xs ink-2">${items.length} Equipment <span style="font-size:16px;margin-left:8px">${open ? '−' : '+'}</span></span>
+          </div>
+          ${open ? `<div class="r18-accordion-bd">
+            ${items.map(e => `
+              <div class="px-4 py-3 border-b border-line-2 last:border-0 hover:bg-paper-2 cursor-pointer flex justify-between" onclick="r18_openEquipmentDetail('${e.id}')">
+                <div class="text-sm ink">${escapeHtml(e.name)} <span class="ink-2">(Model#: ${escapeHtml(e.modelNumber || '—')}, Ref ID: ${escapeHtml(e.refId || '—')})</span></div>
+                <button class="btn btn-view text-xs" onclick="event.stopPropagation();r18_openEquipmentDetail('${e.id}')">VIEW</button>
+              </div>
+            `).join('')}
+          </div>` : ''}
+        </div>`;
+    }).join('')}
+    <div class="mt-4"><button class="btn btn-primary text-xs" onclick="r18_openEquipmentModal(null, 'lab_equipment')">+ Add Equipment</button></div>
   `;
+}
+
+function renderProcedureHistoryModeTabs(active) {
+  return `<div class="border-b border-line flex gap-1">
+    <button class="px-4 py-2 text-sm font-medium border-b-2 ${active === 'equipment' ? 'tab-active' : 'border-transparent ink-2'}"
+      onclick="r18_state.procedureHistoryMode='equipment'; r18_renderView();">Equipment Records</button>
+    <button class="px-4 py-2 text-sm font-medium border-b-2 ${active === 'completions' ? 'tab-active' : 'border-transparent ink-2'}"
+      onclick="r18_state.procedureHistoryMode='completions'; r18_renderView();">Completion Log</button>
+  </div>`;
 }
 
 /* ---------- EQUIPMENT DETAIL + PROCEDURES ---------- */
@@ -19395,55 +19468,67 @@ window.r18_deleteEquipment = async (id) => {
    ==================================================================== */
 function renderTrainingEvals(lab, root) {
   const active = state.users.filter(u => u.active);
-  const inactive = state.users.filter(u => !u.active);
-  const list = state.userFilter === 'active' ? active : inactive;
-
   const trainingsByUser = {};
-  for (const t of state.trainings) {
-    (trainingsByUser[t.userId] = trainingsByUser[t.userId] || []).push(t);
-  }
+  for (const t of state.trainings) (trainingsByUser[t.userId] = trainingsByUser[t.userId] || []).push(t);
+  const selected = state.trainingSelectedUsers || [];
+  const step = state.trainingStep || 1;
 
-  root.innerHTML = `
-    <div class="mb-6 flex items-center justify-between flex-wrap gap-3">
-      <div>
-        <h1 class="text-3xl serif font-semibold ink">Training & Evaluations</h1>
-        <div class="text-sm ink-2 mt-1">${active.length} active · ${inactive.length} inactive</div>
+  if (step === 1) {
+    root.innerHTML = `
+      <h1 class="r18-page-title mb-4">Training & Evaluations</h1>
+      <div class="border-b border-line mb-6 flex gap-1 flex-wrap">
+        <button class="px-4 py-2 text-sm font-medium border-b-2 tab-active">Assign Tests and Create Report</button>
+        <button class="px-4 py-2 text-sm font-medium border-b-2 border-transparent ink-2" onclick="toast('Report builder — use user Trainings button for now')">Add Records to Report</button>
+        <button class="px-4 py-2 text-sm font-medium border-b-2 border-transparent ink-2" onclick="toast('Report history — coming soon')">Report History</button>
       </div>
-      <div class="flex gap-2">
-        <button class="btn btn-ghost" onclick="r18_openUserModal()">+ New User</button>
-      </div>
-    </div>
-
-    <div class="border-b border-line mb-4 flex gap-1">
-      <button class="px-4 py-2 text-sm font-medium border-b-2 ${state.userFilter === 'active' ? 'tab-active' : 'border-transparent ink-2'}" onclick="r18_state.userFilter='active'; r18_renderView();">Active Users (${active.length})</button>
-      <button class="px-4 py-2 text-sm font-medium border-b-2 ${state.userFilter === 'inactive' ? 'tab-active' : 'border-transparent ink-2'}" onclick="r18_state.userFilter='inactive'; r18_renderView();">Inactive Users (${inactive.length})</button>
-    </div>
-
-    ${list.length === 0 ? `<div class="stub-card">No ${state.userFilter} users.</div>` : `
-      <div class="space-y-2">
-        ${list.map(u => {
-          const userTrainings = trainingsByUser[u.id] || [];
+      <div class="text-sm font-semibold ink mb-1">Step 1: Select Users</div>
+      <div class="text-sm ink-2 mb-4">Select one or more of the users below to add or remove assigned tests.</div>
+      <div class="grid sm:grid-cols-2 lg:grid-cols-3 gap-3 mb-6">
+        ${active.map(u => {
+          const n = (trainingsByUser[u.id] || []).length;
+          const sel = selected.includes(u.id);
           return `
-            <div class="user-row">
-              <div class="user-avatar">${initials(u.name)}</div>
-              <div class="flex-1 min-w-0">
-                <div class="flex items-center gap-2 flex-wrap">
-                  <span class="text-sm font-medium ink">${escapeHtml(u.name)}</span>
-                  <span class="badge ${roleClass(u.role)}">${roleLabel(u.role)}</span>
-                </div>
-                <div class="text-xs ink-2 mt-0.5">${userTrainings.length} training${userTrainings.length === 1 ? '' : 's'}${u.email ? ' · ' + escapeHtml(u.email) : ''}</div>
-              </div>
-              <div class="flex gap-1">
-                <button class="btn btn-ghost text-xs" onclick="r18_openTrainingsModal('${u.id}')">Trainings</button>
-                <button class="btn btn-ghost text-xs" onclick="r18_openUserModal('${u.id}')">Edit</button>
-              </div>
-            </div>
-          `;
+            <div class="r18-user-pick ${sel ? 'selected' : ''}" onclick="r18_toggleTrainingUser('${u.id}')">
+              <input type="checkbox" ${sel ? 'checked' : ''} onclick="event.stopPropagation();r18_toggleTrainingUser('${u.id}')" style="pointer-events:none" />
+              <div class="name">${escapeHtml(u.name)}</div>
+              <div class="sub">${n} assigned test${n === 1 ? '' : 's'}</div>
+            </div>`;
         }).join('')}
       </div>
-    `}
+      <div class="flex justify-between items-center">
+        <button class="btn btn-ghost" onclick="r18_openUserModal()">+ New User</button>
+        <button class="btn btn-primary ${selected.length === 0 ? 'opacity-50' : ''}" ${selected.length === 0 ? 'disabled' : ''}
+          onclick="r18_state.trainingStep=2; r18_renderView();">BEGIN</button>
+      </div>
+    `;
+    return;
+  }
+
+  const picked = active.filter(u => selected.includes(u.id));
+  root.innerHTML = `
+    <h1 class="r18-page-title mb-4">Training & Evaluations</h1>
+    <div class="text-sm font-semibold ink mb-4">Step 2: Manage Trainings for ${picked.length} user${picked.length === 1 ? '' : 's'}</div>
+    <div class="space-y-2 mb-6">
+      ${picked.map(u => `
+        <div class="user-row">
+          <div class="user-avatar">${initials(u.name)}</div>
+          <div class="flex-1"><div class="text-sm font-medium ink">${escapeHtml(u.name)}</div>
+          <div class="text-xs ink-2">${(trainingsByUser[u.id] || []).length} trainings on file</div></div>
+          <button class="btn btn-view" onclick="r18_openTrainingsModal('${u.id}')">TRAININGS</button>
+        </div>
+      `).join('')}
+    </div>
+    <button class="btn btn-ghost" onclick="r18_state.trainingStep=1; r18_renderView();">← Back to user selection</button>
   `;
 }
+
+window.r18_toggleTrainingUser = (userId) => {
+  const sel = state.trainingSelectedUsers || [];
+  const i = sel.indexOf(userId);
+  if (i >= 0) sel.splice(i, 1); else sel.push(userId);
+  state.trainingSelectedUsers = sel;
+  renderView();
+};
 
 const roleClass = (role) => role === 'primary_lab_manager' ? 'badge-primary' : (role === 'lab_manager' ? 'badge-active' : 'badge-secondary');
 const roleLabel = (role) => ({ primary_lab_manager: 'Primary Lab Manager', lab_manager: 'Lab Manager', lab_technician: 'Lab Technician' }[role] || role);
@@ -19596,39 +19681,46 @@ const REPORT_TYPES = [
 
 function renderReports(lab, root) {
   const sub = state.reportSubtab;
-  const filtered = state.reports.filter(r => r.type === sub).sort((a, b) => new Date(b.date || 0) - new Date(a.date || 0));
+  const statusF = state.reportStatusFilter;
+  const allOfType = state.reports.filter(r => r.type === sub);
+  const completed = allOfType.filter(r => (r.status || '').toLowerCase() === 'closed' || (r.status || '').toLowerCase() === 'complete' || (r.status || '').toLowerCase() === 'completed');
+  const incomplete = allOfType.filter(r => !completed.includes(r));
+  const filtered = (statusF === 'completed' ? completed : incomplete).sort((a, b) => new Date(b.date || 0) - new Date(a.date || 0));
+  const subLabel = REPORT_TYPES.find(r => r.id === sub).label;
+
   root.innerHTML = `
-    <div class="mb-6">
-      <h1 class="text-3xl serif font-semibold ink">Reports</h1>
-      <div class="text-sm ink-2 mt-1">Track assessments, audits, complaints, and reviews</div>
+    <div class="mb-6 flex items-center justify-between flex-wrap gap-3">
+      <h1 class="r18-page-title">Reports</h1>
+      <button class="btn btn-primary text-xs" onclick="r18_openReportModal()">+ New ${subLabel.replace(/s$/, '')}</button>
     </div>
 
-    <div class="grid grid-cols-3 md:grid-cols-6 gap-1 mb-4">
-      ${REPORT_TYPES.map(rt => {
-        const count = state.reports.filter(r => r.type === rt.id).length;
-        return `<button class="px-3 py-2 text-xs font-medium rounded border ${sub === rt.id ? 'border-accent bg-accent text-white' : 'border-line bg-white ink-2 hover:bg-paper-2'}" onclick="r18_state.reportSubtab='${rt.id}'; r18_renderView();">${rt.label}<div class="text-base font-semibold mt-1">${count}</div></button>`;
-      }).join('')}
+    <div class="border-b border-line mb-4 flex gap-1 flex-wrap overflow-x-auto">
+      ${REPORT_TYPES.map(rt => `
+        <button class="px-4 py-2 text-sm font-medium border-b-2 whitespace-nowrap ${sub === rt.id ? 'tab-active' : 'border-transparent ink-2'}"
+          onclick="r18_state.reportSubtab='${rt.id}'; r18_renderView();">${rt.label}</button>
+      `).join('')}
     </div>
 
-    <div class="card">
-      <div class="px-4 py-3 border-b border-line-2 flex items-center justify-between">
-        <div class="text-sm font-semibold ink">${REPORT_TYPES.find(r => r.id === sub).label}</div>
-        <button class="btn btn-primary" onclick="r18_openReportModal()">+ New Entry</button>
-      </div>
-      ${filtered.length === 0 ? `<div class="p-8 text-center text-sm ink-2">No ${REPORT_TYPES.find(r => r.id === sub).label.toLowerCase()} on file.</div>` : `
-        <div>
-          ${filtered.map(r => `
-            <div class="px-4 py-3 border-b border-line-2 last:border-0 hover:bg-paper-2 cursor-pointer flex items-center justify-between" onclick="r18_openReportModal('${r.id}')">
-              <div class="flex-1 min-w-0">
-                <div class="text-sm font-medium ink truncate">${escapeHtml(r.title)}</div>
-                <div class="text-xs ink-3 mt-0.5">${fmtDateShort(r.date)}${r.status ? ' · ' + escapeHtml(r.status) : ''}</div>
-              </div>
-              <div class="text-xs ink-3">→</div>
+    <div class="border-b border-line mb-4 flex gap-1">
+      <button class="px-4 py-2 text-sm font-medium border-b-2 ${statusF === 'completed' ? 'tab-active' : 'border-transparent ink-2'}"
+        onclick="r18_state.reportStatusFilter='completed'; r18_renderView();">Completed ${subLabel} (${completed.length})</button>
+      <button class="px-4 py-2 text-sm font-medium border-b-2 ${statusF === 'incomplete' ? 'tab-active' : 'border-transparent ink-2'}"
+        onclick="r18_state.reportStatusFilter='incomplete'; r18_renderView();">Incomplete ${subLabel} (${incomplete.length})</button>
+    </div>
+
+    ${filtered.length === 0 ? `<div class="p-12 text-center text-sm ink-2">None on file.</div>` : `
+      <div class="card">
+        ${filtered.map(r => `
+          <div class="px-4 py-3 border-b border-line-2 last:border-0 hover:bg-paper-2 cursor-pointer flex items-center justify-between" onclick="r18_openReportModal('${r.id}')">
+            <div class="flex-1 min-w-0">
+              <div class="text-sm font-medium ink truncate">${escapeHtml(r.title)}</div>
+              <div class="text-xs ink-3 mt-0.5">${fmtDateShort(r.date)}${r.status ? ' · ' + escapeHtml(r.status) : ''}</div>
             </div>
-          `).join('')}
-        </div>
-      `}
-    </div>
+            <button class="btn btn-view text-xs" onclick="event.stopPropagation();r18_openReportModal('${r.id}')">VIEW</button>
+          </div>
+        `).join('')}
+      </div>
+    `}
   `;
 }
 
