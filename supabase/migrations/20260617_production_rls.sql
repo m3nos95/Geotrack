@@ -66,6 +66,7 @@ CREATE POLICY "profiles admin write" ON public.st_user_profiles
 DROP POLICY IF EXISTS "labtrak_projects_all"         ON public.projects;
 DROP POLICY IF EXISTS "labtrak_samples_all"          ON public.samples;
 DROP POLICY IF EXISTS "labtrak_st_users_all"         ON public.st_users;
+DROP POLICY IF EXISTS "labtrak_profiles_all"         ON public.st_user_profiles;
 DROP POLICY IF EXISTS "labtrak_approved_sources_all" ON public.approved_sources;
 DROP POLICY IF EXISTS "labtrak_st_cal_notes_all"     ON public.st_cal_notes;
 DROP POLICY IF EXISTS "labtrak_st_hub_notes_all"     ON public.st_hub_notes;

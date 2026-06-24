@@ -199,6 +199,30 @@ END $$;
 
 CREATE INDEX IF NOT EXISTS idx_st_users_role ON st_users (role);
 
+-- ── Auth profile bridge (Supabase Auth → LabTrak role) ─────────
+-- Dev: open policy below. Production: run 20260617_production_rls.sql
+CREATE TABLE IF NOT EXISTS st_user_profiles (
+  id                  UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  auth_user_id        UUID NOT NULL UNIQUE,
+  app_user_id         TEXT,
+  display_name        TEXT,
+  role                TEXT NOT NULL DEFAULT 'field' CHECK (role IN (
+    'admin', 'section_admin', 'field', 'lab', 'concrete', 'hotmix', 'precast', 'chemlab'
+  )),
+  can_approve_reports BOOLEAN NOT NULL DEFAULT FALSE,
+  active              BOOLEAN NOT NULL DEFAULT TRUE,
+  created_at          TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at          TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_st_user_profiles_auth ON st_user_profiles (auth_user_id);
+CREATE INDEX IF NOT EXISTS idx_st_user_profiles_app ON st_user_profiles (app_user_id);
+
+DROP TRIGGER IF EXISTS trg_st_user_profiles_updated_at ON st_user_profiles;
+CREATE TRIGGER trg_st_user_profiles_updated_at
+  BEFORE UPDATE ON st_user_profiles
+  FOR EACH ROW EXECUTE FUNCTION set_updated_at();
+
 DROP TRIGGER IF EXISTS trg_st_users_updated_at ON st_users;
 CREATE TRIGGER trg_st_users_updated_at
   BEFORE UPDATE ON st_users
@@ -292,6 +316,7 @@ CREATE INDEX IF NOT EXISTS idx_sample_history_sample ON sample_history (sample_i
 
 ALTER TABLE projects         ENABLE ROW LEVEL SECURITY;
 ALTER TABLE samples          ENABLE ROW LEVEL SECURITY;
+ALTER TABLE st_user_profiles ENABLE ROW LEVEL SECURITY;
 ALTER TABLE st_users         ENABLE ROW LEVEL SECURITY;
 ALTER TABLE approved_sources ENABLE ROW LEVEL SECURITY;
 ALTER TABLE st_cal_notes     ENABLE ROW LEVEL SECURITY;
@@ -302,6 +327,7 @@ ALTER TABLE sample_history   ENABLE ROW LEVEL SECURITY;
 
 DROP POLICY IF EXISTS "labtrak_projects_all"         ON projects;
 DROP POLICY IF EXISTS "labtrak_samples_all"          ON samples;
+DROP POLICY IF EXISTS "labtrak_profiles_all"         ON st_user_profiles;
 DROP POLICY IF EXISTS "labtrak_st_users_all"         ON st_users;
 DROP POLICY IF EXISTS "labtrak_approved_sources_all" ON approved_sources;
 DROP POLICY IF EXISTS "labtrak_st_cal_notes_all"     ON st_cal_notes;
@@ -316,6 +342,7 @@ DROP POLICY IF EXISTS "Allow all"          ON samples;
 
 CREATE POLICY "labtrak_projects_all"         ON projects         FOR ALL USING (true) WITH CHECK (true);
 CREATE POLICY "labtrak_samples_all"          ON samples          FOR ALL USING (true) WITH CHECK (true);
+CREATE POLICY "labtrak_profiles_all"           ON st_user_profiles FOR ALL USING (true) WITH CHECK (true);
 CREATE POLICY "labtrak_st_users_all"         ON st_users         FOR ALL USING (true) WITH CHECK (true);
 CREATE POLICY "labtrak_approved_sources_all" ON approved_sources FOR ALL USING (true) WITH CHECK (true);
 CREATE POLICY "labtrak_st_cal_notes_all"     ON st_cal_notes     FOR ALL USING (true) WITH CHECK (true);
