@@ -5710,7 +5710,7 @@ table.fc-borrow-tbl tr.fc-borrow-detail-row td{background:var(--surface);border-
 // GLOBALS
 // ══════════════════════════════════════════════
 let db = null;
-const APP_BUILD = '2026.06.29';
+const APP_BUILD = '2026.06.30';
 window._dbConnected = false;
 window._syncInProgress = false;
 let currentSample = null;
@@ -17972,11 +17972,81 @@ const fmtDateInput = (iso) => iso ? new Date(iso).toISOString().slice(0, 10) : '
 const initials = (name) => (name || '?').split(/\s+/).map(s => s[0]).filter(Boolean).slice(0, 2).join('').toUpperCase();
 const escapeHtml = (s) => s == null ? '' : String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const daysFromNow = (iso) => { if (!iso) return null; const d = (new Date(iso) - Date.now()) / 86400000; return Math.round(d); };
+const startOfDay = (d = new Date()) => { const x = new Date(d); x.setHours(0, 0, 0, 0); return x; };
+const addFrequency = (fromIso, value, unit) => {
+  const d = new Date(fromIso || Date.now());
+  const v = Number(value) || 1;
+  if (unit === 'days') d.setDate(d.getDate() + v);
+  else if (unit === 'weeks') d.setDate(d.getDate() + v * 7);
+  else if (unit === 'months') d.setMonth(d.getMonth() + v);
+  else if (unit === 'years') d.setFullYear(d.getFullYear() + v);
+  return d.toISOString();
+};
+const freqLabel = (value, unit) => {
+  const v = Number(value) || 1;
+  const u = { days: 'day', weeks: 'week', months: 'month', years: 'year' }[unit] || unit;
+  return v === 1 ? `Every ${u}` : `Every ${v} ${u}s`;
+};
+const PROCEDURE_TYPES = [
+  { id: 'calibration', label: 'Calibration' },
+  { id: 'check', label: 'Check' },
+  { id: 'standardization', label: 'Standardization' },
+  { id: 'maintenance', label: 'Maintenance' },
+];
+const PROCEDURE_TYPE_LABEL = Object.fromEntries(PROCEDURE_TYPES.map(t => [t.id, t.label]));
+const DUE_BUCKETS = [
+  { id: 'past_due', label: 'Past Due', min: -9999, max: -1, danger: true },
+  { id: 'this_week', label: 'Due This Week', min: 0, max: 7 },
+  { id: 'next_week', label: 'Next Week', min: 8, max: 14 },
+  { id: 'week_3', label: '3 Weeks', min: 15, max: 21 },
+  { id: 'week_4', label: 'Due in 4 Weeks', min: 22, max: 28 },
+];
+function proceduresForEquipment(equipmentId) {
+  return state.procedures.filter(p => p.equipmentId === equipmentId && p.active !== false);
+}
+function dueBucketForProcedure(proc) {
+  const days = daysFromNow(proc.nextDueAt);
+  if (days == null) return null;
+  return DUE_BUCKETS.find(b => days >= b.min && days <= b.max) || null;
+}
+function bucketedProcedures() {
+  const active = state.procedures.filter(p => p.active !== false && p.nextDueAt);
+  const buckets = Object.fromEntries(DUE_BUCKETS.map(b => [b.id, []]));
+  for (const p of active) {
+    const b = dueBucketForProcedure(p);
+    if (b) buckets[b.id].push(p);
+  }
+  for (const id of Object.keys(buckets)) {
+    buckets[id].sort((a, b) => new Date(a.nextDueAt) - new Date(b.nextDueAt));
+  }
+  return buckets;
+}
+function equipmentById(id) { return state.equipment.find(e => e.id === id); }
+function procedureRowHtml(proc, opts = {}) {
+  const eq = equipmentById(proc.equipmentId);
+  const days = daysFromNow(proc.nextDueAt);
+  const overdue = days != null && days < 0;
+  const dueSoon = days != null && days >= 0 && days <= 7;
+  const badge = overdue ? '<span class="badge badge-danger">past due</span>'
+    : dueSoon ? `<span class="badge badge-warn">${days}d</span>`
+    : days != null ? `<span class="text-xs ink-3 mono">${fmtDateShort(proc.nextDueAt)}</span>` : '';
+  const completeBtn = opts.showComplete !== false
+    ? `<button class="btn btn-primary text-xs" onclick="event.stopPropagation(); r18_openCompleteProcedureModal('${proc.id}')">Complete</button>` : '';
+  return `
+    <div class="px-4 py-3 border-b border-line-2 last:border-0 flex items-center justify-between gap-3 ${opts.clickable ? 'hover:bg-paper-2 cursor-pointer' : ''}" ${opts.clickable ? `onclick="r18_openEquipmentDetail('${proc.equipmentId}')"` : ''}>
+      <div class="flex-1 min-w-0">
+        <div class="text-sm font-medium ink truncate">${escapeHtml(eq?.name || 'Equipment')} · ${escapeHtml(PROCEDURE_TYPE_LABEL[proc.procedureType] || proc.procedureType)}</div>
+        <div class="text-xs ink-2 mt-0.5 truncate">${escapeHtml(proc.name)}${eq?.refId ? ' · Ref ' + escapeHtml(eq.refId) : ''}</div>
+      </div>
+      <div class="flex items-center gap-2 shrink-0">${badge}${completeBtn}</div>
+    </div>`;
+}
 
 /* ======================================================
    R-18 SUPABASE REPOSITORY
    Tables: r18_labs, r18_sections, r18_revisions,
-           r18_equipment, r18_reports, r18_users, r18_trainings
+           r18_equipment, r18_reports, r18_users, r18_trainings,
+           r18_procedures, r18_procedure_records
    ====================================================== */
 const _r18toSnake = s => s.replace(/[A-Z]/g, c => '_' + c.toLowerCase());
 const _r18toCamel = s => s.replace(/_([a-z])/g, (_, c) => c.toUpperCase());
@@ -18111,9 +18181,12 @@ const state = {
   equipment: [],
   reports: [],
   trainings: [],
+  procedures: [],
+  procedureRecords: [],
   editingSectionId: null,
   inventorySearch: '',
-  procedureFilter: 'in_service',
+  inventoryCategory: 'all',
+  procedureHistoryFilter: 'all',
   userFilter: 'active',
   reportSubtab: 'external_assessments',
 };
@@ -18141,10 +18214,11 @@ const toast = (msg) => {
 const showModal = (html, opts = {}) => {
   const root = document.getElementById('r18-modal-root');
   const wideClass = opts.wide ? 'modal-wide' : '';
-  root.innerHTML = `<div class="modal-backdrop" onclick="if(event.target===this)closeModal()"><div class="modal ${wideClass}">${html}</div></div>`;
+  root.innerHTML = `<div class="modal-backdrop" onclick="if(event.target===this)r18_closeModal()"><div class="modal ${wideClass}">${html}</div></div>`;
   if (opts.onMount) opts.onMount();
 };
 window.r18_closeModal = () => { document.getElementById('r18-modal-root').innerHTML = ''; };
+const closeModal = () => window.r18_closeModal();
 
 /* ---------- INIT ---------- */
 async function init() {
@@ -18215,6 +18289,9 @@ async function refreshAll() {
   state.equipment = await repo.query('equipment', 'labId', state.currentLabId);
   state.reports   = await repo.query('reports', 'labId', state.currentLabId);
   state.users     = await repo.query('users', 'labId', state.currentLabId);
+  state.procedures = await repo.query('procedures', 'labId', state.currentLabId);
+  state.procedureRecords = (await repo.query('procedure_records', 'labId', state.currentLabId))
+    .sort((a, b) => new Date(b.completedAt) - new Date(a.completedAt));
   // trainings cross-cut users
   const allTrainings = await repo.getAll('trainings');
   const userIds = new Set(state.users.map(u => u.id));
@@ -18284,10 +18361,14 @@ function renderView() {
    DASHBOARD
    ==================================================================== */
 function renderDashboard(lab, root) {
-  // Build a recent activity feed from sections, equipment, users
   const recent = [
+    ...state.procedureRecords.slice(0, 5).map(r => {
+      const proc = state.procedures.find(p => p.id === r.procedureId);
+      const eq = equipmentById(r.equipmentId);
+      return { when: r.completedAt, what: `${PROCEDURE_TYPE_LABEL[proc?.procedureType] || 'Procedure'} completed — ${eq?.name || 'Equipment'}`, who: r.completedBy || 'Technician' };
+    }),
     ...state.sections.filter(s => s.lastRevisedAt).map(s => ({ when: s.lastRevisedAt, what: `Section ${s.sectionNumber} "${s.title}" revised`, who: s.lastRevisedBy })),
-    ...state.equipment.map(e => ({ when: e.updatedAt, what: `${e.name} (${e.refId}) ${e.status === 'out_of_service' ? 'placed out of service' : 'added to inventory'}`, who: 'Equipment log' })),
+    ...state.equipment.map(e => ({ when: e.updatedAt, what: `${e.name} (${e.refId}) ${e.status === 'out_of_service' ? 'placed out of service' : 'updated in inventory'}`, who: 'Equipment log' })),
   ].filter(r => r.who !== 'System').sort((a, b) => new Date(b.when) - new Date(a.when)).slice(0, 8);
 
   const equipCount = state.equipment.length;
@@ -18295,15 +18376,15 @@ function renderDashboard(lab, root) {
   const outService = state.equipment.filter(e => e.status === 'out_of_service').length;
   const activeUsers = state.users.filter(u => u.active).length;
   const customSections = state.sections.filter(s => !s.isStandard).length;
-  const dueSoon = state.equipment.filter(e => {
-    const d = daysFromNow(e.nextCalibration);
-    return d != null && d <= 30 && d >= 0;
-  });
+  const activeProcs = state.procedures.filter(p => p.active !== false);
+  const buckets = bucketedProcedures();
+  const dueTotal = DUE_BUCKETS.reduce((n, b) => n + buckets[b.id].length, 0);
+  const pastDueCount = buckets.past_due.length;
 
   root.innerHTML = `
     <div class="mb-6 flex items-end justify-between flex-wrap gap-3">
       <div>
-        <div class="text-xs uppercase tracking-wider ink-2 font-semibold mb-1">Welcome back, ${escapeHtml((state.users.find(u => u.role === 'lab_manager') || {}).name?.split(' ')[0] || 'Manager')}</div>
+        <div class="text-xs uppercase tracking-wider ink-2 font-semibold mb-1">Welcome back, ${escapeHtml((state.users.find(u => u.role === 'lab_manager') || state.users.find(u => u.active) || {}).name?.split(' ')[0] || 'Manager')}</div>
         <h1 class="text-3xl serif font-semibold ink">${escapeHtml(lab.name)}</h1>
         <div class="text-sm ink-2 mt-1">${lab.address?.street || ''}, ${lab.address?.city || ''}, ${lab.address?.state || ''} ${lab.address?.zip || ''}</div>
       </div>
@@ -18322,19 +18403,43 @@ function renderDashboard(lab, root) {
         <div class="text-xs ink-3 mt-1">${inService} in service · ${outService} out</div>
       </div>
       <div class="stat">
+        <div class="stat-num">${activeProcs.length}</div>
+        <div class="stat-label">Active procedures</div>
+        <div class="text-xs ink-3 mt-1">${dueTotal} due ≤4 wks</div>
+      </div>
+      <div class="stat">
         <div class="stat-num">${activeUsers}</div>
         <div class="stat-label">Active users</div>
         <div class="text-xs ink-3 mt-1">${state.users.length - activeUsers} inactive</div>
       </div>
       <div class="stat">
-        <div class="stat-num">${state.trainings.length}</div>
-        <div class="stat-label">Trainings on file</div>
-        <div class="text-xs ink-3 mt-1">across ${new Set(state.trainings.map(t => t.userId)).size} users</div>
+        <div class="stat-num ${pastDueCount > 0 ? 'gold' : ''}">${pastDueCount}</div>
+        <div class="stat-label">Past due</div>
+        <div class="text-xs ink-3 mt-1">${pastDueCount === 0 ? 'on schedule' : 'needs attention'}</div>
       </div>
-      <div class="stat">
-        <div class="stat-num ${dueSoon.length > 0 ? 'gold' : ''}">${dueSoon.length}</div>
-        <div class="stat-label">Calibrations due ≤30d</div>
-        <div class="text-xs ink-3 mt-1">${dueSoon.length === 0 ? 'all current' : 'review inventory'}</div>
+    </div>
+
+    <div class="mb-6">
+      <div class="flex items-center justify-between mb-3">
+        <div>
+          <div class="text-sm font-semibold ink">Equipment Procedures</div>
+          <div class="text-xs ink-2">4-week outlook — matching R18LabQMS weekly snapshot</div>
+        </div>
+        <button class="btn btn-ghost text-xs" onclick="r18_state.currentTab='inventory'; r18_renderTabs(); r18_renderView();">Manage Inventory →</button>
+      </div>
+      <div class="grid md:grid-cols-2 xl:grid-cols-3 gap-3">
+        ${DUE_BUCKETS.map(b => {
+          const items = buckets[b.id];
+          return `
+            <div class="card ${b.danger && items.length ? 'border-red-200' : ''}">
+              <div class="px-4 py-3 border-b border-line-2 flex items-center justify-between ${b.danger && items.length ? 'bg-red-50' : 'bg-paper-2'}">
+                <div class="text-sm font-semibold ink">${b.label}</div>
+                <span class="badge ${items.length && b.danger ? 'badge-danger' : items.length ? 'badge-warn' : 'badge-secondary'}">${items.length}</span>
+              </div>
+              ${items.length === 0 ? `<div class="px-4 py-6 text-sm ink-2 italic text-center">None</div>` : `<div>${items.slice(0, 5).map(p => procedureRowHtml(p, { showComplete: true, clickable: true })).join('')}</div>`}
+              ${items.length > 5 ? `<div class="px-4 py-2 text-xs ink-3 border-t border-line-2">+${items.length - 5} more</div>` : ''}
+            </div>`;
+        }).join('')}
       </div>
     </div>
 
@@ -18344,7 +18449,7 @@ function renderDashboard(lab, root) {
           <div class="text-sm font-semibold ink">Recent Activity</div>
           <div class="text-xs ink-3">last ${recent.length} actions</div>
         </div>
-        ${recent.length === 0 ? `<div class="text-sm ink-2 italic py-8 text-center">No revisions yet. Edit a section or add equipment to start building history.</div>` : ''}
+        ${recent.length === 0 ? `<div class="text-sm ink-2 italic py-8 text-center">No activity yet. Complete a procedure or edit the Quality Manual to start building history.</div>` : ''}
         <div>${recent.map(r => `
           <div class="recent-item">
             <div class="recent-dot"></div>
@@ -18359,8 +18464,9 @@ function renderDashboard(lab, root) {
       <div class="card p-5">
         <div class="text-sm font-semibold ink mb-3">Quick Actions</div>
         <div class="flex flex-col gap-2">
+          <button class="btn btn-ghost justify-start" onclick="r18_state.currentTab='inventory'; r18_renderTabs(); r18_renderView();">→ Equipment Inventory</button>
+          <button class="btn btn-ghost justify-start" onclick="r18_state.currentTab='procedure-history'; r18_renderTabs(); r18_renderView();">→ Procedure History</button>
           <button class="btn btn-ghost justify-start" onclick="r18_state.currentTab='quality-manual'; r18_renderTabs(); r18_renderView();">→ Edit Quality Manual</button>
-          <button class="btn btn-ghost justify-start" onclick="r18_state.currentTab='inventory'; r18_renderTabs(); r18_renderView();">→ Manage Inventory</button>
           <button class="btn btn-ghost justify-start" onclick="r18_state.currentTab='training-evals'; r18_renderTabs(); r18_renderView();">→ Training Records</button>
           <button class="btn btn-ghost justify-start" onclick="r18_openEditLabModal('${lab.id}')">→ Edit Lab Info</button>
           <div class="rule-thin my-2"></div>
@@ -18812,110 +18918,369 @@ window.r18_exportQualityManualPDF = () => {
 };
 
 /* ====================================================================
-   INVENTORY (Measurement Standards)
+   INVENTORY — measurement standards + lab equipment (R18LabQMS style)
    ==================================================================== */
 function renderInventory(lab, root) {
-  const standards = state.equipment.filter(e => e.category === 'measurement_standard');
+  const cat = state.inventoryCategory;
+  let list = state.equipment;
+  if (cat === 'measurement_standard') list = list.filter(e => e.category === 'measurement_standard');
+  else if (cat === 'lab_equipment') list = list.filter(e => e.category === 'lab_equipment');
   const q = state.inventorySearch.toLowerCase();
-  const filtered = q ? standards.filter(e => (e.name + ' ' + e.refId + ' ' + (e.manufacturer || '')).toLowerCase().includes(q)) : standards;
+  const filtered = q ? list.filter(e => (e.name + ' ' + (e.refId || '') + ' ' + (e.manufacturer || '') + ' ' + (e.modelNumber || '') + ' ' + (e.subLab || '')).toLowerCase().includes(q)) : list;
+  const counts = {
+    all: state.equipment.length,
+    measurement_standard: state.equipment.filter(e => e.category === 'measurement_standard').length,
+    lab_equipment: state.equipment.filter(e => e.category === 'lab_equipment').length,
+  };
 
   root.innerHTML = `
     <div class="mb-6 flex items-center justify-between flex-wrap gap-3">
       <div>
         <h1 class="text-3xl serif font-semibold ink">Inventory</h1>
-        <div class="text-sm ink-2 mt-1">Measurement standards · ${standards.length} record${standards.length === 1 ? '' : 's'}</div>
+        <div class="text-sm ink-2 mt-1">Manage equipment, attach procedures, complete calibrations & checks</div>
       </div>
-      <button class="btn btn-primary" onclick="r18_openEquipmentModal(null, 'measurement_standard')">+ Add Standard</button>
+      <div class="flex gap-2 flex-wrap">
+        <button class="btn btn-ghost" onclick="r18_openEquipmentModal(null, 'lab_equipment')">+ Lab Equipment</button>
+        <button class="btn btn-primary" onclick="r18_openEquipmentModal(null, 'measurement_standard')">+ Measurement Standard</button>
+      </div>
+    </div>
+
+    <div class="border-b border-line mb-4 flex gap-1 flex-wrap">
+      ${[
+        { id: 'all', label: 'All Equipment' },
+        { id: 'measurement_standard', label: 'Measurement Standards' },
+        { id: 'lab_equipment', label: 'Lab Equipment' },
+      ].map(t => `
+        <button class="px-4 py-2 text-sm font-medium border-b-2 ${cat === t.id ? 'tab-active' : 'border-transparent ink-2'}"
+          onclick="r18_state.inventoryCategory='${t.id}'; r18_renderView();">${t.label} (${counts[t.id]})</button>
+      `).join('')}
     </div>
 
     <div class="mb-4">
-      <input class="input max-w-md" placeholder="Search by name, ref ID, manufacturer…" value="${escapeHtml(state.inventorySearch)}" oninput="state.inventorySearch=this.value; r18_renderView();" />
+      <input class="input max-w-md" placeholder="Search by name, ref ID, manufacturer, model…" value="${escapeHtml(state.inventorySearch)}"
+        oninput="r18_state.inventorySearch=this.value; r18_renderView();" />
     </div>
 
     ${filtered.length === 0 ? `
       <div class="stub-card">
-        <div class="text-base font-medium ink mb-1">No measurement standards ${q ? 'match your search' : 'yet'}</div>
-        <div class="text-sm">${q ? 'Try a different query.' : 'Add your first one to get started.'}</div>
+        <div class="text-base font-medium ink mb-1">No equipment ${q ? 'matches your search' : 'in this category yet'}</div>
+        <div class="text-sm">${q ? 'Try a different query.' : 'Add equipment and attach procedures to track due dates.'}</div>
       </div>
     ` : `
       <div class="grid sm:grid-cols-2 lg:grid-cols-3 gap-3">
-        ${filtered.map(e => `
-          <div class="equip-card" onclick="r18_openEquipmentModal('${e.id}')">
+        ${filtered.map(e => {
+          const procs = proceduresForEquipment(e.id);
+          const due = procs.filter(p => p.nextDueAt).map(p => daysFromNow(p.nextDueAt)).filter(d => d != null);
+          const pastDue = due.filter(d => d < 0).length;
+          const dueSoon = due.filter(d => d >= 0 && d <= 7).length;
+          return `
+          <div class="equip-card" onclick="r18_openEquipmentDetail('${e.id}')">
             <div class="equip-thumb">
               ${e.photo ? `<img src="${e.photo}" alt="" />` : `<span class="equip-thumb-empty">▭</span>`}
             </div>
             <div class="flex-1 min-w-0">
               <div class="text-sm font-medium ink truncate">${escapeHtml(e.name)}</div>
-              <div class="text-xs ink-2 mono truncate">${escapeHtml(e.refId || '—')}</div>
-              <div class="mt-1 flex items-center gap-1.5">
-                <span class="badge badge-secondary">MEASUREMENT STD</span>
+              <div class="text-xs ink-2 mono truncate">${escapeHtml(e.refId || e.modelNumber || '—')}</div>
+              <div class="mt-1 flex items-center gap-1.5 flex-wrap">
+                <span class="badge badge-secondary">${e.category === 'measurement_standard' ? 'MEAS STD' : 'LAB EQ'}</span>
                 ${e.status === 'out_of_service' ? '<span class="badge badge-danger">OOS</span>' : ''}
+                ${procs.length ? `<span class="badge badge-active">${procs.length} proc</span>` : ''}
+                ${pastDue ? `<span class="badge badge-danger">${pastDue} overdue</span>` : ''}
+                ${dueSoon && !pastDue ? `<span class="badge badge-warn">${dueSoon} due soon</span>` : ''}
               </div>
             </div>
-          </div>
-        `).join('')}
+          </div>`;
+        }).join('')}
       </div>
     `}
   `;
 }
 
 /* ====================================================================
-   PROCEDURE HISTORY (Equipment in/out of service, grouped by sub-lab)
+   PROCEDURE HISTORY — completed procedure log
    ==================================================================== */
 function renderProcedureHistory(lab, root) {
-  const equipment = state.equipment.filter(e => e.category === 'lab_equipment');
-  const inService = equipment.filter(e => e.status === 'in_service');
-  const outService = equipment.filter(e => e.status === 'out_of_service');
-  const active = state.procedureFilter === 'in_service' ? inService : outService;
-
-  // Group by subLab
-  const groups = {};
-  for (const e of active) {
-    const k = e.subLab || 'Unassigned';
-    (groups[k] = groups[k] || []).push(e);
-  }
+  const filter = state.procedureHistoryFilter;
+  let records = state.procedureRecords;
+  if (filter !== 'all') records = records.filter(r => {
+    const proc = state.procedures.find(p => p.id === r.procedureId);
+    return proc?.procedureType === filter;
+  });
 
   root.innerHTML = `
     <div class="mb-6 flex items-center justify-between flex-wrap gap-3">
       <div>
         <h1 class="text-3xl serif font-semibold ink">Procedure History</h1>
-        <div class="text-sm ink-2 mt-1">${inService.length} in service · ${outService.length} out of service</div>
+        <div class="text-sm ink-2 mt-1">${records.length} completed record${records.length === 1 ? '' : 's'} · audit trail for equipment procedures</div>
       </div>
-      <button class="btn btn-primary" onclick="r18_openEquipmentModal(null, 'lab_equipment')">+ Add Equipment</button>
     </div>
 
-    <div class="border-b border-line mb-4 flex gap-1">
-      <button class="px-4 py-2 text-sm font-medium border-b-2 ${state.procedureFilter === 'in_service' ? 'tab-active' : 'border-transparent ink-2'}" onclick="r18_state.procedureFilter='in_service'; r18_renderView();">In Service (${inService.length})</button>
-      <button class="px-4 py-2 text-sm font-medium border-b-2 ${state.procedureFilter === 'out_of_service' ? 'tab-active' : 'border-transparent ink-2'}" onclick="r18_state.procedureFilter='out_of_service'; r18_renderView();">Out of Service (${outService.length})</button>
+    <div class="border-b border-line mb-4 flex gap-1 flex-wrap">
+      <button class="px-4 py-2 text-sm font-medium border-b-2 ${filter === 'all' ? 'tab-active' : 'border-transparent ink-2'}"
+        onclick="r18_state.procedureHistoryFilter='all'; r18_renderView();">All (${state.procedureRecords.length})</button>
+      ${PROCEDURE_TYPES.map(t => {
+        const n = state.procedureRecords.filter(r => state.procedures.find(p => p.id === r.procedureId)?.procedureType === t.id).length;
+        return `<button class="px-4 py-2 text-sm font-medium border-b-2 ${filter === t.id ? 'tab-active' : 'border-transparent ink-2'}"
+          onclick="r18_state.procedureHistoryFilter='${t.id}'; r18_renderView();">${t.label} (${n})</button>`;
+      }).join('')}
     </div>
 
-    <div class="text-sm font-semibold ink mb-3">Equipment Records</div>
-    ${Object.keys(groups).length === 0 ? `
-      <div class="stub-card">No equipment ${state.procedureFilter === 'in_service' ? 'in service' : 'out of service'}.</div>
+    ${records.length === 0 ? `
+      <div class="stub-card">
+        <div class="text-base font-medium ink mb-1">No procedure completions yet</div>
+        <div class="text-sm">Complete a procedure from Inventory or the Dashboard due widgets to build history.</div>
+      </div>
     ` : `
-      <div class="space-y-3">
-        ${Object.entries(groups).map(([subLab, items]) => `
-          <div class="card">
-            <div class="px-4 py-3 bg-paper-2 border-b border-line-2 flex items-center justify-between">
-              <div class="text-sm font-medium ink">${escapeHtml(subLab)}</div>
-              <div class="text-xs ink-2">${items.length} Equipment</div>
-            </div>
-            <div>
-              ${items.map(e => `
-                <div class="px-4 py-3 border-b border-line-2 last:border-0 hover:bg-paper-2 cursor-pointer flex items-center justify-between" onclick="r18_openEquipmentModal('${e.id}')">
-                  <div class="text-sm ink">${escapeHtml(e.name)} <span class="ink-2">(Model#: ${escapeHtml(e.modelNumber || '—')}, Ref ID: ${escapeHtml(e.refId || '—')})</span></div>
-                  <div class="text-xs ink-3 mono">${fmtDateShort(e.updatedAt)}</div>
-                </div>
-              `).join('')}
-            </div>
-          </div>
-        `).join('')}
+      <div class="card">
+        ${records.map(r => {
+          const proc = state.procedures.find(p => p.id === r.procedureId);
+          const eq = equipmentById(r.equipmentId);
+          const resultBadge = r.result === 'fail' ? 'badge-danger' : r.result === 'pass' ? 'badge-active' : 'badge-secondary';
+          return `
+            <div class="px-4 py-3 border-b border-line-2 last:border-0 hover:bg-paper-2 cursor-pointer flex items-center justify-between gap-3"
+              onclick="r18_openProcedureRecordDetail('${r.id}')">
+              <div class="flex-1 min-w-0">
+                <div class="text-sm font-medium ink">${escapeHtml(eq?.name || 'Equipment')} · ${escapeHtml(PROCEDURE_TYPE_LABEL[proc?.procedureType] || 'Procedure')}</div>
+                <div class="text-xs ink-2 mt-0.5 truncate">${escapeHtml(proc?.name || '—')}${r.completedBy ? ' · ' + escapeHtml(r.completedBy) : ''}</div>
+              </div>
+              <div class="text-right shrink-0">
+                <div class="text-xs ink-3 mono">${fmtDateShort(r.completedAt)}</div>
+                ${r.result ? `<span class="badge ${resultBadge} text-xs mt-1">${escapeHtml(r.result)}</span>` : ''}
+              </div>
+            </div>`;
+        }).join('')}
       </div>
     `}
   `;
 }
 
-/* ---------- EQUIPMENT MODAL (shared by Inventory + Procedure History) ---------- */
+/* ---------- EQUIPMENT DETAIL + PROCEDURES ---------- */
+window.r18_openEquipmentDetail = (equipmentId) => {
+  const eq = equipmentById(equipmentId);
+  if (!eq) return;
+  const procs = proceduresForEquipment(equipmentId);
+  showModal(`
+    <div class="p-5">
+      <div class="flex items-start justify-between gap-3 mb-4">
+        <div>
+          <h2 class="text-xl serif font-semibold ink">${escapeHtml(eq.name)}</h2>
+          <div class="text-sm ink-2 mt-1">Ref ${escapeHtml(eq.refId || '—')}${eq.manufacturer ? ' · ' + escapeHtml(eq.manufacturer) : ''}${eq.modelNumber ? ' · Model ' + escapeHtml(eq.modelNumber) : ''}</div>
+          <div class="mt-2 flex gap-1.5 flex-wrap">
+            <span class="badge badge-secondary">${eq.category === 'measurement_standard' ? 'Measurement Standard' : 'Lab Equipment'}</span>
+            <span class="badge ${eq.status === 'in_service' ? 'badge-active' : 'badge-danger'}">${eq.status === 'in_service' ? 'In Service' : 'Out of Service'}</span>
+          </div>
+        </div>
+        <button class="btn btn-ghost text-xs" onclick="r18_openEquipmentModal('${eq.id}')">Edit Details</button>
+      </div>
+
+      <div class="flex items-center justify-between mb-2">
+        <div class="text-sm font-semibold ink">Equipment Procedures</div>
+        <button class="btn btn-primary text-xs" onclick="r18_openProcedureModal(null, '${eq.id}')">+ Add Procedure</button>
+      </div>
+      ${procs.length === 0 ? `<div class="text-sm ink-2 italic py-6 text-center bg-paper-2 rounded mb-4">No procedures attached. Add calibration, check, standardization, or maintenance schedules.</div>` : `
+        <div class="card mb-4">
+          ${procs.map(p => {
+            const days = daysFromNow(p.nextDueAt);
+            const status = days == null ? '' : days < 0 ? '<span class="badge badge-danger">past due</span>'
+              : days <= 7 ? `<span class="badge badge-warn">due ${days}d</span>`
+              : `<span class="text-xs ink-3">due ${fmtDateShort(p.nextDueAt)}</span>`;
+            return `
+              <div class="px-4 py-3 border-b border-line-2 last:border-0 flex items-center justify-between gap-2">
+                <div class="flex-1 min-w-0">
+                  <div class="text-sm font-medium ink">${escapeHtml(PROCEDURE_TYPE_LABEL[p.procedureType] || p.procedureType)} — ${escapeHtml(p.name)}</div>
+                  <div class="text-xs ink-2 mt-0.5">${freqLabel(p.frequencyValue, p.frequencyUnit)}${p.lastCompletedAt ? ' · last ' + fmtDateShort(p.lastCompletedAt) : ''}</div>
+                </div>
+                <div class="flex items-center gap-1 shrink-0">
+                  ${status}
+                  <button class="btn btn-primary text-xs" onclick="r18_openCompleteProcedureModal('${p.id}')">Complete</button>
+                  <button class="btn btn-ghost text-xs" onclick="r18_openProcedureModal('${p.id}', '${eq.id}')">Edit</button>
+                </div>
+              </div>`;
+          }).join('')}
+        </div>
+      `}
+      <div class="flex justify-end">
+        <button class="btn btn-ghost" onclick="r18_closeModal()">Close</button>
+      </div>
+    </div>
+  `, { wide: true });
+};
+
+window.r18_openProcedureModal = (procedureId, equipmentId) => {
+  const proc = procedureId ? state.procedures.find(p => p.id === procedureId) : null;
+  const eq = equipmentById(proc?.equipmentId || equipmentId);
+  if (!eq) return;
+  const isEdit = !!proc;
+  showModal(`
+    <div class="p-5">
+      <h2 class="text-xl serif font-semibold mb-1 ink">${isEdit ? 'Edit' : 'Add'} Procedure</h2>
+      <div class="text-sm ink-2 mb-4">For ${escapeHtml(eq.name)} (${escapeHtml(eq.refId || '—')})</div>
+      <div class="grid gap-3">
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="label">Procedure Type</label>
+            <select class="select" id="proc-type">
+              ${PROCEDURE_TYPES.map(t => `<option value="${t.id}" ${proc?.procedureType === t.id ? 'selected' : ''}>${t.label}</option>`).join('')}
+            </select>
+          </div>
+          <div><label class="label">Procedure Name</label><input class="input" id="proc-name" value="${escapeHtml(proc?.name || '')}" placeholder="e.g. Annual Calibration" /></div>
+        </div>
+        <div class="grid grid-cols-2 gap-3">
+          <div><label class="label">Frequency</label><input type="number" min="1" class="input" id="proc-freq-val" value="${proc?.frequencyValue || 12}" /></div>
+          <div><label class="label">Unit</label>
+            <select class="select" id="proc-freq-unit">
+              ${['days','weeks','months','years'].map(u => `<option value="${u}" ${(proc?.frequencyUnit || 'months') === u ? 'selected' : ''}>${u}</option>`).join('')}
+            </select>
+          </div>
+        </div>
+        <div><label class="label">Next Due Date</label><input type="date" class="input" id="proc-next-due" value="${fmtDateInput(proc?.nextDueAt)}" /></div>
+        <div><label class="label">Instructions / Form Notes</label><textarea class="textarea" id="proc-instructions" rows="3">${escapeHtml(proc?.instructions || '')}</textarea></div>
+        ${isEdit ? `<div><label class="label">Status</label><select class="select" id="proc-active"><option value="true" ${proc.active !== false ? 'selected' : ''}>Active</option><option value="false" ${proc.active === false ? 'selected' : ''}>Inactive</option></select></div>` : ''}
+      </div>
+      <div class="flex justify-between gap-2 mt-5">
+        <div>${isEdit ? `<button class="btn btn-danger" onclick="r18_deleteProcedure('${proc.id}', '${eq.id}')">Delete</button>` : ''}</div>
+        <div class="flex gap-2">
+          <button class="btn btn-ghost" onclick="r18_closeModal()">Cancel</button>
+          <button class="btn btn-primary" onclick="r18_saveProcedure('${proc?.id || ''}', '${eq.id}')">Save</button>
+        </div>
+      </div>
+    </div>
+  `);
+};
+
+window.r18_saveProcedure = async (id, equipmentId) => {
+  const existing = id ? state.procedures.find(p => p.id === id) : null;
+  const name = document.getElementById('proc-name').value.trim();
+  if (!name) return toast('Procedure name required');
+  const freqVal = parseInt(document.getElementById('proc-freq-val').value, 10) || 1;
+  const freqUnit = document.getElementById('proc-freq-unit').value;
+  const nextDueRaw = document.getElementById('proc-next-due').value;
+  const proc = {
+    id: id || uuid(),
+    labId: state.currentLabId,
+    equipmentId,
+    procedureType: document.getElementById('proc-type').value,
+    name,
+    frequencyValue: freqVal,
+    frequencyUnit: freqUnit,
+    nextDueAt: nextDueRaw ? new Date(nextDueRaw).toISOString() : (existing?.nextDueAt || addFrequency(now(), freqVal, freqUnit)),
+    instructions: document.getElementById('proc-instructions').value.trim(),
+    active: existing ? document.getElementById('proc-active').value === 'true' : true,
+    lastCompletedAt: existing?.lastCompletedAt || null,
+    createdAt: existing?.createdAt,
+  };
+  await repo.put('procedures', proc);
+  closeModal();
+  await refreshAll();
+  renderView();
+  toast(id ? 'Procedure updated' : 'Procedure added');
+};
+
+window.r18_deleteProcedure = async (id, equipmentId) => {
+  if (!confirm('Delete this procedure and its schedule?')) return;
+  await repo.delete('procedures', id);
+  closeModal();
+  await refreshAll();
+  window.r18_openEquipmentDetail(equipmentId);
+  toast('Procedure deleted');
+};
+
+window.r18_openCompleteProcedureModal = (procedureId) => {
+  const proc = state.procedures.find(p => p.id === procedureId);
+  if (!proc) return;
+  const eq = equipmentById(proc.equipmentId);
+  const userOpts = state.users.filter(u => u.active).map(u =>
+    `<option value="${escapeHtml(u.name)}">${escapeHtml(u.name)}</option>`
+  ).join('');
+  showModal(`
+    <div class="p-5">
+      <h2 class="text-xl serif font-semibold mb-1 ink">Complete Procedure</h2>
+      <div class="text-sm ink-2 mb-4">${escapeHtml(eq?.name || '')} · ${escapeHtml(PROCEDURE_TYPE_LABEL[proc.procedureType])} — ${escapeHtml(proc.name)}</div>
+      ${proc.instructions ? `<div class="text-sm bg-paper-2 p-3 rounded mb-4 ink-2">${escapeHtml(proc.instructions)}</div>` : ''}
+      <div class="grid gap-3">
+        <div class="grid grid-cols-2 gap-3">
+          <div><label class="label">Completed Date</label><input type="date" class="input" id="comp-date" value="${fmtDateInput(now())}" /></div>
+          <div><label class="label">Completed By</label>
+            <select class="select" id="comp-by"><option value="">— select —</option>${userOpts}</select>
+          </div>
+        </div>
+        <div class="grid grid-cols-2 gap-3">
+          <div><label class="label">Result</label>
+            <select class="select" id="comp-result">
+              <option value="pass">Pass</option>
+              <option value="acceptable">Acceptable</option>
+              <option value="fail">Fail</option>
+              <option value="na">N/A</option>
+            </select>
+          </div>
+          <div><label class="label">Certificate #</label><input class="input" id="comp-cert" placeholder="optional" /></div>
+        </div>
+        <div><label class="label">Notes / Observations</label><textarea class="textarea" id="comp-notes" rows="3" placeholder="As-found / as-left readings, adjustments, etc."></textarea></div>
+      </div>
+      <div class="flex justify-end gap-2 mt-5">
+        <button class="btn btn-ghost" onclick="r18_closeModal()">Cancel</button>
+        <button class="btn btn-primary" onclick="r18_saveProcedureCompletion('${proc.id}')">Save Completion</button>
+      </div>
+    </div>
+  `, { wide: true });
+};
+
+window.r18_saveProcedureCompletion = async (procedureId) => {
+  const proc = state.procedures.find(p => p.id === procedureId);
+  if (!proc) return;
+  const completedRaw = document.getElementById('comp-date').value;
+  if (!completedRaw) return toast('Completed date required');
+  const completedAt = new Date(completedRaw).toISOString();
+  const completedBy = document.getElementById('comp-by').value.trim();
+  const nextDueAt = addFrequency(completedAt, proc.frequencyValue, proc.frequencyUnit);
+  const record = {
+    id: uuid(),
+    labId: state.currentLabId,
+    equipmentId: proc.equipmentId,
+    procedureId: proc.id,
+    completedAt,
+    completedBy,
+    result: document.getElementById('comp-result').value,
+    notes: document.getElementById('comp-notes').value.trim(),
+    certificateNumber: document.getElementById('comp-cert').value.trim(),
+    formData: {},
+    nextDueAt,
+  };
+  await repo.put('procedure_records', record);
+  await repo.put('procedures', {
+    ...proc,
+    lastCompletedAt: completedAt,
+    nextDueAt,
+  });
+  closeModal();
+  await refreshAll();
+  renderView();
+  toast('Procedure completed — next due ' + fmtDateShort(nextDueAt));
+};
+
+window.r18_openProcedureRecordDetail = (recordId) => {
+  const r = state.procedureRecords.find(x => x.id === recordId);
+  if (!r) return;
+  const proc = state.procedures.find(p => p.id === r.procedureId);
+  const eq = equipmentById(r.equipmentId);
+  showModal(`
+    <div class="p-5">
+      <h2 class="text-xl serif font-semibold mb-1 ink">Procedure Record</h2>
+      <div class="text-sm ink-2 mb-4">${escapeHtml(eq?.name || '')} · ${fmtDate(r.completedAt)}</div>
+      <div class="grid grid-cols-2 gap-3 text-sm mb-4">
+        <div><div class="label">Procedure</div><div class="ink">${escapeHtml(PROCEDURE_TYPE_LABEL[proc?.procedureType] || '')} — ${escapeHtml(proc?.name || '')}</div></div>
+        <div><div class="label">Completed By</div><div class="ink">${escapeHtml(r.completedBy || '—')}</div></div>
+        <div><div class="label">Result</div><div class="ink">${escapeHtml(r.result || '—')}</div></div>
+        <div><div class="label">Certificate #</div><div class="ink mono">${escapeHtml(r.certificateNumber || '—')}</div></div>
+        <div><div class="label">Next Due (at completion)</div><div class="ink mono">${fmtDateShort(r.nextDueAt)}</div></div>
+      </div>
+      ${r.notes ? `<div class="label">Notes</div><div class="text-sm ink bg-paper-2 p-3 rounded mb-4 whitespace-pre-wrap">${escapeHtml(r.notes)}</div>` : ''}
+      <div class="flex justify-end"><button class="btn btn-ghost" onclick="r18_closeModal()">Close</button></div>
+    </div>
+  `, { wide: true });
+};
+
+/* ---------- EQUIPMENT MODAL (shared by Inventory) ---------- */
 window.r18_openEquipmentModal = (id, defaultCategory = 'measurement_standard') => {
   const eq = id ? state.equipment.find(e => e.id === id) : null;
   const isEdit = !!eq;
@@ -19206,14 +19571,14 @@ window.r18_saveTraining = async (userId) => {
     notes: '',
   });
   await refreshAll();
-  openTrainingsModal(userId);
+  window.r18_openTrainingsModal(userId);
   toast('Training added');
 };
 
 window.r18_deleteTraining = async (id, userId) => {
   await repo.delete('trainings', id);
   await refreshAll();
-  openTrainingsModal(userId);
+  window.r18_openTrainingsModal(userId);
   toast('Training removed');
 };
 
@@ -19359,7 +19724,7 @@ window.r18Init = async function() {
         (isTableMissing
           ? '<div style="background:#fef3c7;border:1px solid #f59e0b;border-radius:8px;padding:24px;margin-bottom:20px;">' +
             '<div style="font-size:15px;font-weight:700;color:#92400e;margin-bottom:8px;">&#9888; Supabase Tables Not Found</div>' +
-            '<div style="font-size:13px;color:#78350f;line-height:1.6;">The R-18 module requires 7 tables in Supabase.<br>' +
+            '<div style="font-size:13px;color:#78350f;line-height:1.6;">The R-18 module requires 9 tables in Supabase (including r18_procedures and r18_procedure_records).<br>' +
             'Go to your <strong>Supabase SQL Editor</strong> and run the SQL from the setup instructions.<br>' +
             'Then refresh this page and click R-18 again.</div>' +
             '</div>'
