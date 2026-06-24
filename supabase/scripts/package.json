@@ -1,0 +1,9 @@
+{
+  "name": "labtrak-supabase-bootstrap",
+  "private": true,
+  "type": "module",
+  "dependencies": {
+    "@supabase/supabase-js": "^2.49.8",
+    "pg": "^8.16.0"
+  }
+}

@@ -76,6 +76,34 @@ Run `supabase/migrations/20260617_production_rls.sql` in the Supabase SQL editor
 | `admin` | all | projects, st_users, profiles |
 | All | — | no hard DELETE on samples/projects |
 
+## One-command bootstrap (recommended)
+
+If you have the **service_role** key and **database connection string**, the agent or an admin can run:
+
+```bash
+cd supabase/scripts && npm install
+
+export SUPABASE_URL="https://YOUR_PROJECT.supabase.co"
+export SUPABASE_SERVICE_ROLE_KEY="your-service-role-secret"
+export SUPABASE_DB_URL="postgresql://postgres.[ref]:[password]@aws-0-us-east-1.pooler.supabase.com:6543/postgres"
+export LABTRAK_AUTH_EMAIL_DOMAIN="delaware.gov"   # optional
+export APPLY_RLS=1                                 # applies production RLS after profiles
+
+node bootstrap-production.mjs
+```
+
+This will:
+
+1. Create `st_user_profiles` (open dev policy) if missing
+2. Create a Supabase Auth user per `st_users` row (`firstname.lastname@domain`)
+3. Link `st_user_profiles` rows
+4. Print temporary passwords
+5. Apply `20260617_production_rls.sql` when `APPLY_RLS=1`
+
+Dry run (no writes): `DRY_RUN=1 node bootstrap-production.mjs` (still needs service role to list users).
+
+**Credentials location:** Supabase Dashboard → Project Settings → **API** (service_role) and **Database** (connection string, use pooler + password).
+
 ## What the migration enforces
 
 - Anonymous (`anon`) access to core tables is removed.

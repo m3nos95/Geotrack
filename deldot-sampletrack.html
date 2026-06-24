@@ -2563,7 +2563,7 @@ table.fc-borrow-tbl tr.fc-borrow-detail-row td{background:var(--surface);border-
               style="width:100%;background:var(--bg);border:1px solid var(--border);color:var(--text);
                      padding:9px 12px;border-radius:var(--radius-sm);font-family:var(--mono);font-size:11px;">
         <option value="auto">Auto — detect from database policies</option>
-        <option value="required">Required — always use email/password</option>
+        <option value="required" selected>Required — always use email/password</option>
         <option value="legacy">Legacy — PIN tiles only (development)</option>
       </select>
     </div>
@@ -5710,7 +5710,7 @@ table.fc-borrow-tbl tr.fc-borrow-detail-row td{background:var(--surface);border-
 // GLOBALS
 // ══════════════════════════════════════════════
 let db = null;
-const APP_BUILD = '2026.06.28';
+const APP_BUILD = '2026.06.29';
 window._dbConnected = false;
 window._syncInProgress = false;
 let currentSample = null;
@@ -6780,7 +6780,7 @@ let _authProfile = null;
 window._anonBlocked = false;
 
 function getAuthMode() {
-  return localStorage.getItem(AUTH_MODE_KEY) || 'auto';
+  return localStorage.getItem(AUTH_MODE_KEY) || 'required';
 }
 
 function saveAuthModeSetting() {
