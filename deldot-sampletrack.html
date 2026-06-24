@@ -5750,7 +5750,7 @@ table.fc-borrow-tbl tr.fc-borrow-detail-row td{background:var(--surface);border-
 // GLOBALS
 // ══════════════════════════════════════════════
 let db = null;
-const APP_BUILD = '2026.06.30-r18ui';
+const APP_BUILD = '2026.06.30-r18tabs';
 window._dbConnected = false;
 window._syncInProgress = false;
 let currentSample = null;
@@ -12232,7 +12232,7 @@ function applyRoleUI(role) {
     fieldcontrol: 'ri-fieldcontrol', scan: 'ri-scan',
     soillab: 'ri-soillab', concrete: 'ri-concrete', appsources: 'ri-appsources',
     fieldhub: 'ri-fieldhub', labhub: 'ri-labhub', conchub: 'ri-conchub',
-    hotmix: 'ri-hotmix', precast: 'ri-precast', chemlab: 'ri-chemlab',
+    hotmix: 'ri-hotmix', precast: 'ri-precast', chemlab: 'ri-chemlab', r18: 'ri-r18',
   };
 
   // Show/hide rail items based on effective tabs
@@ -18393,8 +18393,10 @@ function naturalSectionCompare(a, b) {
   return 0;
 }
 
-document.getElementById('r18-lab-switcher').addEventListener('change', e => switchLab(e.target.value));
-document.getElementById('r18-lab-switcher-mob').addEventListener('change', e => switchLab(e.target.value));
+const _r18LabSw = document.getElementById('r18-lab-switcher');
+const _r18LabSwMob = document.getElementById('r18-lab-switcher-mob');
+if (_r18LabSw) _r18LabSw.addEventListener('change', e => switchLab(e.target.value));
+if (_r18LabSwMob) _r18LabSwMob.addEventListener('change', e => switchLab(e.target.value));
 
 async function switchLab(labId) {
   state.currentLabId = labId;
@@ -18406,6 +18408,7 @@ window.r18_switchLab = switchLab;
 /* ---------- TABS ---------- */
 function renderTabs() {
   const bar = document.getElementById('r18-tab-bar');
+  if (!bar) return;
   bar.innerHTML = TABS.map(t => {
     const isActive = state.currentTab === t.id;
     return `<button data-tab="${t.id}"
@@ -19783,6 +19786,9 @@ window.r18_deleteReport = async (id) => {
 let _r18_inited = false;
 
 window.r18Init = async function() {
+  // Always paint the tab bar immediately so navigation is visible even while data loads.
+  renderTabs();
+
   const _setContent = (html) => {
     const el = document.getElementById('r18-view-root');
     if (el) el.innerHTML = html;
@@ -19817,8 +19823,7 @@ window.r18Init = async function() {
           ? '<div style="background:#fef3c7;border:1px solid #f59e0b;border-radius:8px;padding:24px;margin-bottom:20px;">' +
             '<div style="font-size:15px;font-weight:700;color:#92400e;margin-bottom:8px;">&#9888; Supabase Tables Not Found</div>' +
             '<div style="font-size:13px;color:#78350f;line-height:1.6;">The R-18 module requires 9 tables in Supabase (including r18_procedures and r18_procedure_records).<br>' +
-            'Go to your <strong>Supabase SQL Editor</strong> and run the SQL from the setup instructions.<br>' +
-            'Then refresh this page and click R-18 again.</div>' +
+            'Run <code>supabase/migrations/20260617_r18_procedures.sql</code> in your <strong>Supabase SQL Editor</strong>, then refresh and open R-18 again.</div>' +
             '</div>'
           : '<div style="background:#fee2e2;border:1px solid #ef4444;border-radius:8px;padding:24px;margin-bottom:20px;">' +
             '<div style="font-size:15px;font-weight:700;color:#b91c1c;margin-bottom:8px;">R-18 Init Error</div>' +
@@ -19828,6 +19833,7 @@ window.r18Init = async function() {
         '<button onclick="location.reload()" style="padding:8px 16px;background:#1e4d8c;color:white;border:none;border-radius:4px;cursor:pointer;font-size:13px;font-family:inherit;">Retry (after running SQL)</button>' +
         '</div>'
       );
+      renderTabs();
       _r18_inited = false; // Allow retry
     }
   } else {
@@ -19837,6 +19843,7 @@ window.r18Init = async function() {
       renderView();
     } catch(e) {
       console.warn('R18 refresh error:', e);
+      renderTabs();
     }
   }
 };
