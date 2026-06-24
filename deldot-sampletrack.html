@@ -18564,6 +18564,7 @@ function renderManageLab(lab, root) {
         <div class="flex gap-2 mt-4 flex-wrap">
           <button class="btn btn-primary text-xs" onclick="r18_openEditLabModal('${lab.id}')">Edit Lab Info</button>
           <button class="btn btn-ghost text-xs" onclick="r18_openAddLabModal()">+ New Lab</button>
+          ${lab.type !== 'primary' ? `<button class="btn btn-danger text-xs" onclick="r18_deleteLabPrompt('${lab.id}')">Delete Lab</button>` : ''}
         </div>
       </div>
       <div class="lg:col-span-2 grid sm:grid-cols-2 gap-4">
@@ -18585,7 +18586,10 @@ function renderManageLab(lab, root) {
               <span class="badge ${l.type === 'primary' ? 'badge-primary' : 'badge-secondary'}">${l.type}</span>
               <span class="text-sm ${l.id === state.currentLabId ? 'font-semibold ink' : 'ink-2'}">${escapeHtml(l.name)}</span>
             </div>
-            ${l.id !== state.currentLabId ? `<button class="btn btn-ghost text-xs" onclick="r18_switchLab('${l.id}')">Switch</button>` : '<span class="text-xs ink-2">Active</span>'}
+            <div class="flex items-center gap-2">
+              ${l.id !== state.currentLabId ? `<button class="btn btn-ghost text-xs" onclick="r18_switchLab('${l.id}')">Switch</button>` : '<span class="text-xs ink-2">Active</span>'}
+              ${l.type !== 'primary' ? `<button class="btn btn-danger text-xs" onclick="r18_deleteLabPrompt('${l.id}')">Delete</button>` : ''}
+            </div>
           </div>
         `).join('')}
       </div>
@@ -18703,16 +18707,27 @@ window.r18_saveNewLab = async () => {
 
 window.r18_deleteLabPrompt = async (id) => {
   const lab = state.labs.find(l => l.id === id);
-  if (!lab || lab.type === 'primary') return toast('Cannot delete primary lab');
-  if (!confirm(`Delete "${lab.name}" and ALL its sections, equipment, users, and reports? This cannot be undone.`)) return;
-  for (const s of await repo.query('sections',  'labId', id)) await repo.delete('sections',  s.id);
+  if (!lab || lab.type === 'primary') return toast('Cannot delete the primary lab');
+  if (!confirm(`Delete "${lab.name}" and ALL its sections, equipment, procedures, users, and reports? This cannot be undone.`)) return;
+  for (const s of await repo.query('sections', 'labId', id)) {
+    for (const rev of await repo.query('revisions', 'sectionId', s.id)) await repo.delete('revisions', rev.id);
+    await repo.delete('sections', s.id);
+  }
+  for (const p of await repo.query('procedures', 'labId', id)) await repo.delete('procedures', p.id);
+  for (const r of await repo.query('procedure_records', 'labId', id)) await repo.delete('procedure_records', r.id);
   for (const e of await repo.query('equipment', 'labId', id)) await repo.delete('equipment', e.id);
-  for (const u of await repo.query('users',     'labId', id)) await repo.delete('users',     u.id);
-  for (const r of await repo.query('reports',   'labId', id)) await repo.delete('reports',   r.id);
+  for (const u of await repo.query('users', 'labId', id)) {
+    for (const t of await repo.query('trainings', 'userId', u.id)) await repo.delete('trainings', t.id);
+    await repo.delete('users', u.id);
+  }
+  for (const r of await repo.query('reports', 'labId', id)) await repo.delete('reports', r.id);
   await repo.delete('labs', id);
-  const primary = state.labs.find(l => l.type === 'primary');
-  await switchLab(primary.id);
-  toast('Lab deleted');
+  const fallback = state.labs.find(l => l.type === 'primary') || state.labs.find(l => l.id !== id);
+  if (fallback) await switchLab(fallback.id);
+  else await refreshAll();
+  renderTabs();
+  renderView();
+  toast(`Lab "${lab.name}" deleted`);
 };
 
 /* ====================================================================
