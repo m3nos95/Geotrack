@@ -1587,12 +1587,8 @@ body { font-family: var(--sans); font-size: 13.5px; line-height: 1.5; letter-spa
   transition: all var(--transition);
 }
 .btn-settings:hover { background: rgba(217,138,56,0.15); border-color: rgba(217,138,56,0.4); color: var(--accent3); }
-.btn-signout-mobile {
-  display: none !important;
-}
-.btn-signout-mobile.is-signed-in {
-  display: none;
-}
+/* Mobile sign-out: hidden on desktop; shown via @media when .is-signed-in */
+.btn-signout-mobile { display: none; }
 
 /* ── Theme / skin picker ── */
 .skin-picker-grid {
@@ -3186,8 +3182,8 @@ table.fc-borrow-tbl tr.fc-borrow-detail-row td{background:var(--surface);border-
         SEARCH
         <span class="cmd-search-shortcut">^K</span>
       </button>
-      <button class="btn-settings" onclick="showSetup()">⚙</button>
-      <button type="button" class="btn-settings btn-signout-mobile" id="btnSignOutMobile" onclick="signOutUser()" title="Sign out">OUT</button>
+      <button type="button" class="btn-settings btn-signout-mobile" id="btnSignOutMobile" onclick="signOutUser()" title="Sign out" aria-label="Sign out">OUT</button>
+      <button class="btn-settings" onclick="showSetup()" aria-label="Settings">⚙</button>
     </div>
   </div>
 
@@ -5844,7 +5840,7 @@ table.fc-borrow-tbl tr.fc-borrow-detail-row td{background:var(--surface);border-
 // GLOBALS
 // ══════════════════════════════════════════════
 let db = null;
-const APP_BUILD = '2026.06.30-skins';
+const APP_BUILD = '2026.06.30-signout';
 window._dbConnected = false;
 window._syncInProgress = false;
 let currentSample = null;
@@ -5948,6 +5944,8 @@ self.addEventListener('fetch', e => {
   document.addEventListener('cdnReady', _doConnect);
   // Safety net: if scripts already loaded (cached) or cdnReady never fires, connect after 4s max
   setTimeout(_doConnect, 4000);
+
+  window.addEventListener('resize', () => refreshSessionActionsUI());
 
   // Set today's date defaults
   const today = new Date().toISOString().split('T')[0];
@@ -6973,7 +6971,10 @@ let _authListenerRegistered = false;
 async function restoreSupabaseAuthSession() {
   if (!db?.auth) return null;
   if (!_authListenerRegistered) {
-    db.auth.onAuthStateChange((_event, sess) => { _supabaseAuthSession = sess; });
+    db.auth.onAuthStateChange((_event, sess) => {
+      _supabaseAuthSession = sess;
+      refreshSessionActionsUI();
+    });
     _authListenerRegistered = true;
   }
   const { data: { session } } = await db.auth.getSession();
@@ -7510,7 +7511,12 @@ function refreshSessionActionsUI() {
     const role = currentUser?.role || _authProfile?.role || '';
     who.textContent = getDisplayFullName() + (role ? ' · ' + role.toUpperCase() : '');
   }
-  if (mobileBtn) mobileBtn.classList.toggle('is-signed-in', !!signedIn);
+  if (mobileBtn) {
+    mobileBtn.classList.toggle('is-signed-in', !!signedIn);
+    mobileBtn.setAttribute('aria-hidden', signedIn ? 'false' : 'true');
+    const onMobile = window.matchMedia('(max-width: 768px)').matches;
+    mobileBtn.style.display = (signedIn && onMobile) ? 'inline-flex' : '';
+  }
 
   const badge = document.getElementById('userBadge');
   if (!badge) return;
@@ -20949,8 +20955,27 @@ body::after {
   .topbar-status { display: none !important; }
   .btn-cmd-search .cmd-search-shortcut { display: none; }
   .btn-cmd-search { display: none !important; }
+  .topbar-logo { width: 52px; }
+  .topbar-logo img { height: 26px; }
+  .topbar-right { padding: 0 8px; gap: 6px; flex-shrink: 0; }
   .user-badge .ubadge-name { display: none; }
-  .btn-signout-mobile.is-signed-in { display: inline-flex !important; align-items: center; justify-content: center; }
+  .topbar-right:has(#btnSignOutMobile.is-signed-in) .user-badge { display: none !important; }
+  .topbar-right:has(#btnSignOutMobile.is-signed-in) .sync-status-chip { display: none !important; }
+  #btnSignOutMobile.is-signed-in,
+  .btn-signout-mobile.is-signed-in {
+    display: inline-flex !important;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    min-width: 38px;
+    min-height: 28px;
+    padding: 5px 9px;
+    font-weight: 600;
+    letter-spacing: 0.7px;
+    color: var(--accent3);
+    border-color: rgba(217, 138, 56, 0.55);
+    background: rgba(217, 138, 56, 0.14);
+  }
   .sync-status-chip { max-width: 72px; padding: 4px 6px; font-size: 7px; }
   .page-wide { padding: 14px 12px 20px; }
   .stats-grid { grid-template-columns: 1fr 1fr !important; }
