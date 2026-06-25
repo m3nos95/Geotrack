@@ -2859,6 +2859,12 @@ table.fc-borrow-tbl tr.fc-borrow-detail-row td{background:var(--surface);border-
                        padding:10px 20px;border-radius:var(--radius-sm);cursor:pointer;">
           SAVE CHANGES
         </button>
+        <button type="button" onclick="signOutUser()"
+                style="margin-top:4px;background:transparent;border:1px solid var(--border);color:var(--muted);
+                       font-family:var(--mono);font-size:10px;letter-spacing:1px;
+                       padding:10px 20px;border-radius:var(--radius-sm);cursor:pointer;width:100%;">
+          SIGN OUT
+        </button>
       </div>
     </div>
 
@@ -3079,7 +3085,7 @@ table.fc-borrow-tbl tr.fc-borrow-detail-row td{background:var(--surface);border-
         <span id="syncStatusLabel">Checking…</span>
       </button>
       <div class="conn-dot off" id="connDot" aria-hidden="true"></div>
-      <div class="user-badge" id="userBadge" style="display:none;" onclick="showUserLogin()" title="Switch user">
+      <div class="user-badge" id="userBadge" style="display:none;" onclick="showUserLogin()" title="Sign out / switch user">
         <div class="ubadge-av" id="ubadgeAv">?</div>
         <div>
           <div class="ubadge-name" id="ubadgeName">—</div>
@@ -5750,7 +5756,7 @@ table.fc-borrow-tbl tr.fc-borrow-detail-row td{background:var(--surface);border-
 // GLOBALS
 // ══════════════════════════════════════════════
 let db = null;
-const APP_BUILD = '2026.06.30-r18nav';
+const APP_BUILD = '2026.06.30-logout';
 window._dbConnected = false;
 window._syncInProgress = false;
 let currentSample = null;
@@ -6929,7 +6935,7 @@ async function resolveUserFromAuth() {
     id: profile.app_user_id || profile.id,
     auth_user_id: profile.auth_user_id,
     profile_id: profile.id,
-    name: profile.display_name || merged?.name || _supabaseAuthSession.user.email?.split('@')[0] || 'User',
+    name: (profile.display_name && profile.display_name.trim()) || merged?.name || _supabaseAuthSession.user.email?.split('@')[0] || 'User',
     role: profile.role,
     can_approve_reports: !!(profile.can_approve_reports || profile.role === 'admin'),
     initials: merged?.initials,
@@ -7359,11 +7365,8 @@ async function connectSupabase(silent = false) {
 
     const authSess = _supabaseAuthSession || await restoreSupabaseAuthSession();
     if (isAuthRequired()) {
-      const sessUser = sessionStorage.getItem('st_current_user');
-      if (sessUser && authSess) {
-        try { loginUser(JSON.parse(sessUser), true); }
-        catch (ex) { await completeAuthLogin(); }
-      } else if (authSess) {
+      if (authSess) {
+        // Always refresh from Supabase profile so name/role stay in sync (stale sessionStorage may lack name).
         await completeAuthLogin();
       } else {
         showUserLogin();
@@ -12003,6 +12006,12 @@ const LAB_PICKER = [
 let _stUsersCache = null;  // single shared user cache (replaces _allUsersCache & _cachedUsers)
 
 // Show the overlay — always start at lab picker
+async function signOutUser() {
+  const setup = document.getElementById('setupOverlay');
+  if (setup) setup.style.display = 'none';
+  await showUserLogin();
+}
+
 function showUserLogin() {
   document.getElementById('userOverlay').classList.add('open');
   _stUsersCache = null;
@@ -12010,9 +12019,9 @@ function showUserLogin() {
   currentUser = null;
   const badge = document.getElementById('userBadge');
   if (badge) badge.style.display = 'none';
+  if (typeof renderDashboard === 'function') renderDashboard();
   if (isAuthRequired()) {
-    authSignOut().then(() => showAuthSignInPanel());
-    return;
+    return authSignOut().then(() => showAuthSignInPanel());
   }
   showLabPicker();
 }
@@ -12200,6 +12209,7 @@ function loginUser(user, silent = false) {
   sessionStorage.setItem('st_current_user', JSON.stringify(safeUser));
   document.getElementById('userOverlay').classList.remove('open');
   applyRoleUI(user.role);
+  if (typeof renderDashboard === 'function') renderDashboard();
   _loadCalNotes().then(function() {
     const g = document.getElementById('dash-cal-grid');
     if (g) _renderDashCal();
