@@ -1593,6 +1593,54 @@ body { font-family: var(--sans); font-size: 13.5px; line-height: 1.5; letter-spa
 .btn-signout-mobile.is-signed-in {
   display: none;
 }
+
+/* ── Theme / skin picker ── */
+.skin-picker-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 8px;
+  margin-top: 8px;
+}
+.skin-swatch {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 6px;
+  padding: 10px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--panel);
+  cursor: pointer;
+  text-align: left;
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+.skin-swatch:hover { border-color: var(--accent2); }
+.skin-swatch.active {
+  border-color: var(--accent2);
+  box-shadow: 0 0 0 1px var(--accent2);
+}
+.skin-swatch-colors {
+  display: flex;
+  gap: 4px;
+  height: 22px;
+}
+.skin-swatch-colors span {
+  flex: 1;
+  border-radius: 4px;
+  border: 1px solid rgba(255,255,255,0.08);
+}
+.skin-swatch-label {
+  font-family: var(--mono);
+  font-size: 9px;
+  letter-spacing: 0.5px;
+  color: var(--text);
+}
+.skin-swatch-desc {
+  font-family: var(--sans);
+  font-size: 9px;
+  color: var(--muted);
+  line-height: 1.35;
+}
 .user-badge {
   background: rgba(255,255,255,0.04);
   border: 1px solid rgba(255,255,255,0.08);
@@ -2824,6 +2872,15 @@ table.fc-borrow-tbl tr.fc-borrow-detail-row td{background:var(--surface);border-
                font-weight:700;border-radius:var(--radius);cursor:pointer;">
         💾 SAVE ASSIGNMENTS
       </button>
+    </div>
+
+    <!-- Appearance / skins — all users -->
+    <div class="user-mgmt-section" id="appearanceSection">
+      <div class="user-mgmt-title">APPEARANCE</div>
+      <div style="font-family:var(--mono);font-size:9px;color:var(--muted);margin-bottom:4px;letter-spacing:0.5px;">
+        Color theme for this device. Saved locally in your browser.
+      </div>
+      <div class="skin-picker-grid" id="skinPickerGrid"></div>
     </div>
 
     <!-- Session bar — sign out / refresh (always at top when signed in) -->
@@ -5787,7 +5844,7 @@ table.fc-borrow-tbl tr.fc-borrow-detail-row td{background:var(--surface);border-
 // GLOBALS
 // ══════════════════════════════════════════════
 let db = null;
-const APP_BUILD = '2026.06.30-signout-btn';
+const APP_BUILD = '2026.06.30-skins';
 window._dbConnected = false;
 window._syncInProgress = false;
 let currentSample = null;
@@ -5800,6 +5857,7 @@ let scannedSample = null;
 // INIT
 // ══════════════════════════════════════════════
 window.addEventListener('DOMContentLoaded', () => {
+  initAppSkin();
   if (checkAppBuildUpdate()) return;
   if (typeof syncMobileNav === 'function') setTimeout(syncMobileNav, 100);
   // Register service worker for offline support
@@ -7298,6 +7356,100 @@ function renderAppBuildStamp() {
   if (el) el.textContent = 'LabTrak build ' + APP_BUILD;
 }
 
+const SKIN_STORAGE_KEY = 'st_app_skin';
+const APP_SKINS = {
+  deldot: {
+    label: 'DelDOT Dark',
+    desc: 'Default gold on navy',
+    preview: ['#080e1a', '#0f1825', '#d98a38'],
+    vars: {
+      '--bg': '#080e1a', '--surface': '#0f1825', '--panel': '#161f2e', '--panel-2': '#1c2840',
+      '--border': '#1e2d45', '--border-2': '#26385a',
+      '--accent': '#b86f22', '--accent2': '#d98a38', '--accent3': '#f0a84e', '--gold': '#d4973a',
+      '--green': '#1a6644', '--green2': '#22d370', '--red': '#8b2020', '--red2': '#e05555',
+      '--blue': '#2560a8', '--blue2': '#4a90e2',
+      '--text': '#dce8f5', '--text-2': '#a8beD4', '--muted': '#4e6280', '--muted-2': '#3a4e65',
+    },
+    bodyBg: 'radial-gradient(ellipse at 20% 50%, rgba(196,124,42,0.04) 0%, transparent 60%), radial-gradient(ellipse at 80% 10%, rgba(74,144,226,0.04) 0%, transparent 50%)',
+  },
+  light: {
+    label: 'Lab Light',
+    desc: 'Bright room / daylight',
+    preview: ['#e8eef5', '#f4f7fb', '#b86f22'],
+    vars: {
+      '--bg': '#e8eef5', '--surface': '#f4f7fb', '--panel': '#ffffff', '--panel-2': '#eef3f9',
+      '--border': '#c5d0de', '--border-2': '#a8b8cc',
+      '--accent': '#9a5a18', '--accent2': '#b86f22', '--accent3': '#d98a38', '--gold': '#9a5a18',
+      '--green': '#1a6644', '--green2': '#16884a', '--red': '#8b2020', '--red2': '#c53030',
+      '--blue': '#2560a8', '--blue2': '#2f6fc4',
+      '--text': '#152033', '--text-2': '#3d5068', '--muted': '#5c7088', '--muted-2': '#7a8fa3',
+    },
+    bodyBg: 'radial-gradient(ellipse at 20% 50%, rgba(184,111,34,0.06) 0%, transparent 60%), radial-gradient(ellipse at 80% 10%, rgba(47,111,196,0.05) 0%, transparent 50%)',
+  },
+  midnight: {
+    label: 'Midnight',
+    desc: 'Cool blue night mode',
+    preview: ['#060a12', '#0c1420', '#5b9fd4'],
+    vars: {
+      '--bg': '#060a12', '--surface': '#0c1420', '--panel': '#101c2c', '--panel-2': '#162438',
+      '--border': '#1a2d48', '--border-2': '#243a58',
+      '--accent': '#3d7ab8', '--accent2': '#5b9fd4', '--accent3': '#7eb8e8', '--gold': '#5b9fd4',
+      '--green': '#1a6644', '--green2': '#2ecc78', '--red': '#8b2020', '--red2': '#e05555',
+      '--blue': '#2560a8', '--blue2': '#4a90e2',
+      '--text': '#d8e8f8', '--text-2': '#9eb8d0', '--muted': '#4a6480', '--muted-2': '#3a5068',
+    },
+    bodyBg: 'radial-gradient(ellipse at 20% 50%, rgba(74,144,226,0.06) 0%, transparent 60%), radial-gradient(ellipse at 80% 10%, rgba(91,159,212,0.04) 0%, transparent 50%)',
+  },
+  slate: {
+    label: 'Slate',
+    desc: 'Neutral gray pro',
+    preview: ['#121418', '#1a1e24', '#8a929c'],
+    vars: {
+      '--bg': '#121418', '--surface': '#1a1e24', '--panel': '#22272e', '--panel-2': '#2a3038',
+      '--border': '#333a44', '--border-2': '#434c58',
+      '--accent': '#6b7580', '--accent2': '#8a929c', '--accent3': '#a8b0b8', '--gold': '#8a929c',
+      '--green': '#1a6644', '--green2': '#2ecc78', '--red': '#8b2020', '--red2': '#e05555',
+      '--blue': '#4a6080', '--blue2': '#6a84a8',
+      '--text': '#e8eaed', '--text-2': '#b8bcc4', '--muted': '#6a7280', '--muted-2': '#525860',
+    },
+    bodyBg: 'none',
+  },
+};
+
+function getActiveSkinId() {
+  const saved = localStorage.getItem(SKIN_STORAGE_KEY);
+  return (saved && APP_SKINS[saved]) ? saved : 'deldot';
+}
+
+function applySkin(skinId) {
+  const skin = APP_SKINS[skinId] || APP_SKINS.deldot;
+  const root = document.documentElement;
+  root.dataset.skin = skinId;
+  Object.entries(skin.vars).forEach(([key, val]) => root.style.setProperty(key, val));
+  document.body.style.backgroundColor = skin.vars['--bg'];
+  document.body.style.backgroundImage = skin.bodyBg || 'none';
+  localStorage.setItem(SKIN_STORAGE_KEY, skinId);
+  renderSkinPicker();
+}
+
+function renderSkinPicker() {
+  const grid = document.getElementById('skinPickerGrid');
+  if (!grid) return;
+  const active = getActiveSkinId();
+  grid.innerHTML = Object.entries(APP_SKINS).map(([id, skin]) => {
+    const colors = (skin.preview || []).map(c => `<span style="background:${c}"></span>`).join('');
+    return `<button type="button" class="skin-swatch${id === active ? ' active' : ''}" onclick="applySkin('${id}')" aria-pressed="${id === active}">
+      <div class="skin-swatch-colors">${colors}</div>
+      <div class="skin-swatch-label">${skin.label}</div>
+      <div class="skin-swatch-desc">${skin.desc}</div>
+    </button>`;
+  }).join('');
+}
+
+function initAppSkin() {
+  applySkin(getActiveSkinId());
+}
+
 function checkAppBuildUpdate() {
   const key = 'st_app_build';
   const prev = localStorage.getItem(key);
@@ -7573,6 +7725,7 @@ function showSetup() {
   updateSupabaseStatus();
   refreshAuthProvisionUI();
   refreshSessionActionsUI();
+  renderSkinPicker();
   _permissionsUnlocked = false; // always start locked
   const isAdmin = currentUser && currentUser.role === 'admin';
 
