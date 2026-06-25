@@ -5897,7 +5897,7 @@ table.fc-borrow-tbl tr.fc-borrow-detail-row td{background:var(--surface);border-
     <div class="fc-curve-hdr">
       <div>
         <h3>Family of Curves — T-99</h3>
-        <p id="fcCurvePickerHint">Plot one-point wet density and moisture, then pick the matching curve (Earthworks Ch. 13 / AASHTO T 272).</p>
+        <p id="fcCurvePickerHint">Each curve shows only the valid one-point range: 80% to 100% of optimum moisture (the chart “spine”). Plot wet density vs moisture, then pick the matching curve.</p>
       </div>
       <button type="button" class="fc-curve-close" onclick="closeFcCurvePicker()" aria-label="Close">✕</button>
     </div>
@@ -5917,7 +5917,7 @@ table.fc-borrow-tbl tr.fc-borrow-detail-row td{background:var(--surface);border-
 // GLOBALS
 // ══════════════════════════════════════════════
 let db = null;
-const APP_BUILD = '2026.06.30-foc';
+const APP_BUILD = '2026.06.30-foc-spine';
 window._dbConnected = false;
 window._syncInProgress = false;
 let currentSample = null;
@@ -15152,6 +15152,17 @@ function fcHilfCorrectedMaxDry(maxDry, pctGravel) {
   return Math.round((maxDry + (pctGravel / 100) * (130 - maxDry)) * 10) / 10;
 }
 
+/** Valid one-point moisture window per AASHTO T 272 / Earthworks Ch. 13 */
+function fcCurveSpineRange(optMoist) {
+  const om = parseFloat(optMoist) || 0;
+  return { min: om * 0.80, max: om };
+}
+
+function fcIsMoistureOnSpine(moisture, optMoist) {
+  const { min, max } = fcCurveSpineRange(optMoist);
+  return moisture >= min && moisture <= max;
+}
+
 function fcWetDensityAtMoisture(maxDry, optMoist, moisture) {
   const peak = maxDry * (1 + optMoist / 100);
   const span = Math.max(5.5, 10 + (21 - optMoist) * 0.2);
@@ -15160,13 +15171,16 @@ function fcWetDensityAtMoisture(maxDry, optMoist, moisture) {
 }
 
 function fcScoreCurveForPoint(curve, wet, moist) {
+  if (!fcIsMoistureOnSpine(moist, curve.optMoist)) return Infinity;
   const predicted = fcWetDensityAtMoisture(curve.maxDry, curve.optMoist, moist);
   return Math.abs(wet - predicted);
 }
 
 function fcPickCurveFromOnePoint(wetDensity, moisture) {
   if (!wetDensity || !moisture) return null;
-  const scored = FC_FAMILY_CURVES_T99
+  const eligible = FC_FAMILY_CURVES_T99.filter(c => fcIsMoistureOnSpine(moisture, c.optMoist));
+  if (!eligible.length) return null;
+  const scored = eligible
     .map(c => ({ ...c, score: fcScoreCurveForPoint(c, wetDensity, moisture) }))
     .sort((a, b) => a.score - b.score);
   const best = scored[0];
@@ -15247,7 +15261,10 @@ function fcAutoPickFromOnePoint() {
     return null;
   }
   const pick = fcPickCurveFromOnePoint(wet, moist);
-  if (!pick) return null;
+  if (!pick) {
+    showToast('One-point moisture must be 80–100% of optimum for a curve on the chart spine — adjust specimen moisture and re-run', 'error');
+    return null;
+  }
   _fcCurvePickerSelected = String(pick.curveNo);
   fcApplyCurveToNuclear(pick.curveNo, pick.blended ? { maxDry: pick.maxDry, optMoist: pick.optMoist } : null);
   const msg = pick.blended
@@ -15321,13 +15338,15 @@ function fcRenderCurveChart() {
 
   let curves = '';
   FC_FAMILY_CURVES_T99.forEach(c => {
+    const spine = fcCurveSpineRange(c.optMoist);
     const pts = [];
-    for (let m = xMin; m <= xMax; m += 0.4) {
+    for (let m = spine.min; m <= spine.max; m += 0.15) {
       const w = fcWetDensityAtMoisture(c.maxDry, c.optMoist, m);
       if (w >= yMin - 2 && w <= yMax + 2) pts.push(`${xScale(m).toFixed(1)},${yScale(w).toFixed(1)}`);
     }
+    if (pts.length < 2) return;
     const sel = String(c.no) === String(_fcCurvePickerSelected);
-    curves += `<path d="M ${pts.join(' L ')}" fill="none" stroke="${sel ? '#c47c2a' : '#94a3b8'}" stroke-width="${sel ? 2.6 : 1.1}" data-curve="${c.no}" style="cursor:pointer" onclick="fcSelectCurveInPicker(${c.no})"/>`;
+    curves += `<path d="M ${pts.join(' L ')}" fill="none" stroke="${sel ? '#c47c2a' : '#94a3b8'}" stroke-width="${sel ? 2.8 : 1.4}" stroke-linecap="round" data-curve="${c.no}" style="cursor:pointer" onclick="fcSelectCurveInPicker(${c.no})"/>`;
     const px = xScale(c.optMoist);
     const py = yScale(c.maxDry * (1 + c.optMoist / 100));
     curves += `<text x="${px}" y="${py - 5}" font-size="8" font-weight="${sel ? 700 : 400}" fill="${sel ? '#c47c2a' : '#64748b'}" text-anchor="middle" style="cursor:pointer" onclick="fcSelectCurveInPicker(${c.no})">${c.no}</text>`;
@@ -15335,9 +15354,16 @@ function fcRenderCurveChart() {
 
   let marker = '';
   if (point) {
-    marker = `<circle cx="${xScale(point.moist)}" cy="${yScale(point.wet)}" r="6" fill="#2563eb" stroke="#fff" stroke-width="2"/>`;
-    if (pointInfo) pointInfo.textContent = `One-point plotted: ${point.wet.toFixed(1)} pcf wet @ ${point.moist.toFixed(1)}% moisture`;
+    const onAnySpine = FC_FAMILY_CURVES_T99.some(c => fcIsMoistureOnSpine(point.moist, c.optMoist));
+    marker = `<circle cx="${xScale(point.moist)}" cy="${yScale(point.wet)}" r="6" fill="${onAnySpine ? '#2563eb' : '#dc2626'}" stroke="#fff" stroke-width="2"/>`;
+    if (pointInfo) {
+      pointInfo.style.color = onAnySpine ? 'var(--accent2)' : 'var(--red2)';
+      pointInfo.textContent = onAnySpine
+        ? `One-point: ${point.wet.toFixed(1)} pcf wet @ ${point.moist.toFixed(1)}% moisture`
+        : `One-point @ ${point.moist.toFixed(1)}% is outside the 80–100% optimum spine — adjust moisture`;
+    }
   } else if (pointInfo) {
+    pointInfo.style.color = 'var(--accent2)';
     pointInfo.textContent = '';
   }
 
