@@ -11206,7 +11206,7 @@ async function openDensity(id, tableHint) {
     sv('den_material_type',  d.material_type);
     sv('den_date_tested',    d.date_tested);
     if (d.method) document.getElementById('den_method').value = d.method;
-    sv('den_family',         d.family);
+    sv('den_family',         fcNormalizeCurveNo(d.family));
     sv('den_hole_depth',     d.hole_depth);
     sv('den_test_type',      d.test_type);
     sv('den_tested_by',      d.tested_by);
