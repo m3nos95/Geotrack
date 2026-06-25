@@ -2665,6 +2665,7 @@ table.fc-borrow-tbl tr.fc-borrow-detail-row td{background:var(--surface);border-
       <p>
         For production, enable <strong>Supabase sign-in</strong> so Row Level Security can enforce roles.
         Set to <em>Auto</em> to switch automatically when the database blocks anonymous access.
+        With email sign-in, users go straight to the app — PIN is only used in <em>Legacy</em> tile mode.
       </p>
     </div>
     <div class="setup-field">
@@ -5857,7 +5858,7 @@ table.fc-borrow-tbl tr.fc-borrow-detail-row td{background:var(--surface);border-
 // GLOBALS
 // ══════════════════════════════════════════════
 let db = null;
-const APP_BUILD = '2026.06.30-signout2';
+const APP_BUILD = '2026.06.30-auth-pin';
 window._dbConnected = false;
 window._syncInProgress = false;
 let currentSample = null;
@@ -7112,26 +7113,8 @@ async function completeAuthLogin() {
       showAuthSignInPanel();
       return;
     }
-    if (userHasPin(user)) {
-      hideAllLoginPanels();
-      document.getElementById('userOverlay').classList.add('open');
-      document.getElementById('userPinPanel').style.display = 'block';
-      pinTarget = user;
-      pinBuffer = '';
-      const rd = ROLE_DEFS[user.role] || ROLE_DEFS.admin;
-      const av = document.getElementById('pinAvatar');
-      av.textContent = user.initials || user.name[0].toUpperCase();
-      av.style.background = user.color || rd.color;
-      document.getElementById('pinUserName').textContent = user.name;
-      document.getElementById('pinUserRole').textContent = rd.label.toUpperCase();
-      document.getElementById('pinErr').textContent = '';
-      const inp = document.getElementById('pinTextInput');
-      if (inp) { inp.value = ''; inp.type = 'password'; }
-      updatePinDots(0);
-      showPinEntry();
-      setTimeout(() => inp && inp.focus(), 150);
-      return;
-    }
+    // Supabase email/password is the trust boundary — go straight in.
+    // PIN remains for legacy lab-tile picker (shared-device quick switch).
     loginUser(user);
   } catch (e) {
     document.getElementById('userOverlay')?.classList.add('open');
