@@ -151,6 +151,41 @@ CREATE TRIGGER trg_field_tests_updated_at
   BEFORE UPDATE ON field_tests
   FOR EACH ROW EXECUTE FUNCTION set_updated_at();
 
+-- ── Core drills (pavement cores — Field Control) ──────────────
+CREATE TABLE IF NOT EXISTS core_drills (
+  id               UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  test_no          TEXT,
+  contract         TEXT,
+  road             TEXT,
+  location         TEXT,
+  station          TEXT,
+  lane             TEXT,
+  core_no          TEXT,
+  gps_coordinates  TEXT,
+  thickness_in     NUMERIC,
+  depth_in         NUMERIC,
+  layer_type       TEXT,
+  remarks          TEXT,
+  photo_data       JSONB,
+  field_test_id    UUID REFERENCES field_tests(id) ON DELETE CASCADE,
+  sampled_by       TEXT,
+  date_drilled     TEXT,
+  status           TEXT DEFAULT 'open',
+  created_at       TIMESTAMPTZ DEFAULT NOW(),
+  updated_at       TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_core_drills_test_no       ON core_drills (test_no);
+CREATE INDEX IF NOT EXISTS idx_core_drills_contract      ON core_drills (contract);
+CREATE INDEX IF NOT EXISTS idx_core_drills_field_test_id ON core_drills (field_test_id);
+CREATE INDEX IF NOT EXISTS idx_core_drills_date_drilled  ON core_drills (date_drilled DESC);
+CREATE INDEX IF NOT EXISTS idx_core_drills_created_at    ON core_drills (created_at DESC);
+
+DROP TRIGGER IF EXISTS trg_core_drills_updated_at ON core_drills;
+CREATE TRIGGER trg_core_drills_updated_at
+  BEFORE UPDATE ON core_drills
+  FOR EACH ROW EXECUTE FUNCTION set_updated_at();
+
 CREATE INDEX IF NOT EXISTS idx_samples_contract   ON samples (contract);
 CREATE INDEX IF NOT EXISTS idx_samples_test_no    ON samples (test_no);
 CREATE INDEX IF NOT EXISTS idx_samples_status     ON samples (status);
@@ -323,6 +358,7 @@ ALTER TABLE st_cal_notes     ENABLE ROW LEVEL SECURITY;
 ALTER TABLE st_hub_notes     ENABLE ROW LEVEL SECURITY;
 ALTER TABLE concrete_sets    ENABLE ROW LEVEL SECURITY;
 ALTER TABLE field_tests      ENABLE ROW LEVEL SECURITY;
+ALTER TABLE core_drills      ENABLE ROW LEVEL SECURITY;
 ALTER TABLE sample_history   ENABLE ROW LEVEL SECURITY;
 
 DROP POLICY IF EXISTS "labtrak_projects_all"         ON projects;
@@ -334,6 +370,7 @@ DROP POLICY IF EXISTS "labtrak_st_cal_notes_all"     ON st_cal_notes;
 DROP POLICY IF EXISTS "labtrak_st_hub_notes_all"     ON st_hub_notes;
 DROP POLICY IF EXISTS "labtrak_concrete_sets_all"    ON concrete_sets;
 DROP POLICY IF EXISTS "labtrak_field_tests_all"      ON field_tests;
+DROP POLICY IF EXISTS "labtrak_core_drills_all"      ON core_drills;
 DROP POLICY IF EXISTS "labtrak_sample_history_all"   ON sample_history;
 
 -- Drop legacy policy names from embedded HTML comment
@@ -349,4 +386,5 @@ CREATE POLICY "labtrak_st_cal_notes_all"     ON st_cal_notes     FOR ALL USING (
 CREATE POLICY "labtrak_st_hub_notes_all"     ON st_hub_notes     FOR ALL USING (true) WITH CHECK (true);
 CREATE POLICY "labtrak_concrete_sets_all"    ON concrete_sets    FOR ALL USING (true) WITH CHECK (true);
 CREATE POLICY "labtrak_field_tests_all"      ON field_tests      FOR ALL USING (true) WITH CHECK (true);
+CREATE POLICY "labtrak_core_drills_all"      ON core_drills      FOR ALL USING (true) WITH CHECK (true);
 CREATE POLICY "labtrak_sample_history_all"   ON sample_history   FOR ALL USING (true) WITH CHECK (true);

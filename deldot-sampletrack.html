@@ -3900,7 +3900,7 @@ table.fc-borrow-tbl tr.fc-borrow-detail-row td{background:var(--surface);border-
           <!-- Last-used hint — hidden until prefs restore runs -->
           <div id="fc_intent_last_hint" style="display:none;font-family:var(--mono);font-size:9px;color:var(--muted);letter-spacing:1px;margin-bottom:8px;padding:4px 10px;background:rgba(255,255,255,0.03);border-radius:6px;border:1px solid var(--border);"></div>
 
-          <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:20px;" id="fc_intent_grid">
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:20px;" id="fc_intent_grid">
             <button id="fc_intent_density" onclick="fcSetIntent('density')"
               style="background:var(--panel);border:2px solid var(--border);border-radius:10px;padding:12px 8px;cursor:pointer;text-align:center;transition:all 0.15s;">
               <div style="font-size:22px;margin-bottom:6px;">⚖️</div>
@@ -3918,6 +3918,12 @@ table.fc-borrow-tbl tr.fc-borrow-detail-row td{background:var(--surface);border-
               <div style="font-size:22px;margin-bottom:6px;">⚡</div>
               <div style="font-family:var(--mono);font-size:9px;font-weight:700;color:var(--text);letter-spacing:1px;">BOTH</div>
               <div style="font-family:var(--mono);font-size:8px;color:var(--muted);margin-top:3px;line-height:1.4;">Nuclear + lab bag</div>
+            </button>
+            <button id="fc_intent_core" onclick="fcSetIntent('core')"
+              style="background:var(--panel);border:2px solid var(--border);border-radius:10px;padding:12px 8px;cursor:pointer;text-align:center;transition:all 0.15s;">
+              <div style="font-size:22px;margin-bottom:6px;">🔩</div>
+              <div style="font-family:var(--mono);font-size:9px;font-weight:700;color:var(--text);letter-spacing:1px;">CORE DRILL</div>
+              <div style="font-family:var(--mono);font-size:8px;color:var(--muted);margin-top:3px;line-height:1.4;">Pavement cores + GPS</div>
             </button>
           </div>
 
@@ -3998,6 +4004,19 @@ table.fc-borrow-tbl tr.fc-borrow-detail-row td{background:var(--surface);border-
           <div id="fc_open_sessions_list" style="font-family:var(--mono);font-size:10px;color:var(--muted);">Loading…</div>
         </div>
 
+        <!-- Core track — recent cores by contract/date -->
+        <div class="card" style="margin-top:14px;" id="fc_core_track_card">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;flex-wrap:wrap;gap:8px;">
+            <div style="font-family:var(--mono);font-size:9px;letter-spacing:1.5px;color:var(--muted);">🔩 CORE TRACK</div>
+            <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+              <input type="text" id="fc_core_filter_contract" class="form-input" placeholder="Contract…" style="font-size:11px;padding:5px 10px;width:140px;" oninput="renderCoreTrack()">
+              <input type="date" id="fc_core_filter_date" class="form-input" style="font-size:11px;padding:5px 10px;width:140px;" onchange="renderCoreTrack()">
+              <button type="button" onclick="loadCoreTrack()" style="background:transparent;border:1px solid var(--border);color:var(--muted);padding:3px 8px;border-radius:4px;font-family:var(--mono);font-size:8px;cursor:pointer;">↻</button>
+            </div>
+          </div>
+          <div id="fc_core_track_list" style="font-family:var(--mono);font-size:10px;color:var(--muted);">Loading…</div>
+        </div>
+
       </div><!-- end fc_start_state -->
 
       <!-- ══ STATE B: ACTIVE SESSION — WORKFLOW TABS ══ -->
@@ -4011,6 +4030,7 @@ table.fc-borrow-tbl tr.fc-borrow-detail-row td{background:var(--surface);border-
           <button class="lab-mode-tab active" id="fctab-lb68"   onclick="switchFCTab('lb68')">⚖️ LB-68</button>
           <button class="lab-mode-tab"        id="fctab-dmf68c" onclick="switchFCTab('dmf68c')">☢️ NUCLEAR</button>
           <button class="lab-mode-tab"        id="fctab-sample" onclick="switchFCTab('sample')">🧪 LAB SAMPLE</button>
+          <button class="lab-mode-tab"        id="fctab-core"   onclick="switchFCTab('core')" style="display:none;">🔩 CORE DRILL</button>
         </div>
 
         <!-- ⚖️ LB-68 COMPACTION ──────────────────────────── -->
@@ -4234,6 +4254,85 @@ table.fc-borrow-tbl tr.fc-borrow-detail-row td{background:var(--surface);border-
           </div><!-- end fc_sample_form -->
 
         </div><!-- end fcsub-sample -->
+
+        <!-- ④ CORE DRILL ─────────────────────────────────── -->
+        <div id="fcsub-core" style="display:none;">
+          <div class="card" style="margin-bottom:14px;">
+            <div style="display:flex;align-items:center;gap:14px;margin-bottom:16px;">
+              <div style="font-size:32px;">🔩</div>
+              <div>
+                <div style="font-family:var(--mono);font-size:11px;font-weight:700;color:var(--text);margin-bottom:3px;">Core Drill Log</div>
+                <div style="font-family:var(--mono);font-size:10px;color:var(--muted);line-height:1.5;">Log pavement cores for this session — thickness, layer, GPS, and photo.</div>
+              </div>
+            </div>
+            <input type="hidden" id="fc_core_edit_id" value="">
+            <div class="form-grid" style="margin-bottom:12px;">
+              <div class="form-group">
+                <label>Core # <span style="color:var(--red2);">*</span></label>
+                <input type="text" id="fc_core_no" class="form-input" placeholder="1" inputmode="numeric" autocomplete="off" oninput="this.dataset.userTouched='1'">
+              </div>
+              <div class="form-group">
+                <label>Station</label>
+                <input type="text" id="fc_core_station" class="form-input" placeholder="12+50" autocomplete="off">
+              </div>
+              <div class="form-group">
+                <label>Offset / Lane</label>
+                <input type="text" id="fc_core_lane" class="form-input" placeholder="CL / EB" autocomplete="off">
+              </div>
+              <div class="form-group">
+                <label>Layer <span style="color:var(--red2);">*</span></label>
+                <select id="fc_core_layer" class="form-input">
+                  <option value="">— select —</option>
+                  <option value="AC">AC (surface)</option>
+                  <option value="Binder">Binder</option>
+                  <option value="Base">Base</option>
+                  <option value="Subbase">Subbase</option>
+                  <option value="Subgrade">Subgrade</option>
+                  <option value="Other">Other</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label>Thickness (in) <span style="color:var(--red2);">*</span></label>
+                <input type="number" id="fc_core_thickness" class="form-input" placeholder="2.0" step="0.1" min="0" inputmode="decimal">
+              </div>
+              <div class="form-group">
+                <label>Hole Depth (in)</label>
+                <input type="number" id="fc_core_depth" class="form-input" placeholder="optional" step="0.1" min="0" inputmode="decimal">
+              </div>
+              <div class="form-group span2">
+                <label>GPS Coordinates</label>
+                <div style="display:flex;gap:6px;align-items:center;">
+                  <input type="text" id="fc_core_gps" class="form-input" placeholder="Tap to capture location" readonly style="flex:1;cursor:pointer;font-size:11px;" onclick="captureCoreGPS()">
+                  <button type="button" onclick="captureCoreGPS()" style="background:var(--accent);border:none;color:#fff;padding:9px 12px;border-radius:var(--radius);cursor:pointer;font-size:14px;flex-shrink:0;">📍</button>
+                </div>
+              </div>
+              <div class="form-group span2">
+                <label>Photo <span style="font-size:9px;color:var(--muted);">(compressed thumb)</span></label>
+                <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
+                  <input type="file" id="fc_core_photo_input" accept="image/*" capture="environment" style="font-size:11px;color:var(--muted);" onchange="fcHandleCorePhoto(this)">
+                  <img id="fc_core_photo_preview" alt="" style="display:none;width:64px;height:64px;object-fit:cover;border-radius:6px;border:1px solid var(--border);">
+                  <button type="button" id="fc_core_photo_clear" onclick="fcClearCorePhoto()" style="display:none;background:transparent;border:1px solid var(--border);color:var(--muted);padding:4px 8px;border-radius:4px;font-family:var(--mono);font-size:9px;cursor:pointer;">✕ CLEAR</button>
+                </div>
+              </div>
+              <div class="form-group span2">
+                <label>Remarks</label>
+                <input type="text" id="fc_core_remarks" class="form-input" placeholder="optional notes" autocomplete="off">
+              </div>
+            </div>
+            <div class="btn-row">
+              <button class="btn btn-primary" style="font-size:12px;padding:10px 20px;" onclick="fcSaveCore()">💾 SAVE CORE</button>
+              <button class="btn btn-ghost" style="font-size:12px;padding:10px 16px;" onclick="fcClearCoreForm()">CLEAR FORM</button>
+            </div>
+          </div>
+
+          <div class="card">
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;flex-wrap:wrap;gap:8px;">
+              <div style="font-family:var(--mono);font-size:9px;letter-spacing:1.5px;color:var(--muted);">CORES THIS SESSION (<span id="fc_core_session_count">0</span>)</div>
+              <button type="button" class="btn btn-ghost" style="font-size:9px;padding:4px 10px;" onclick="fcOpenSessionMap()">🗺 MAP</button>
+            </div>
+            <div id="fc_core_session_list" style="font-family:var(--mono);font-size:10px;color:var(--muted);">No cores logged yet.</div>
+          </div>
+        </div>
 
       </div><!-- end fc_active_state -->
 
@@ -5917,7 +6016,7 @@ table.fc-borrow-tbl tr.fc-borrow-detail-row td{background:var(--surface);border-
 // GLOBALS
 // ══════════════════════════════════════════════
 let db = null;
-const APP_BUILD = '2026.06.30-foc-spine';
+const APP_BUILD = '2026.06.30-core';
 window._dbConnected = false;
 window._syncInProgress = false;
 let currentSample = null;
@@ -6216,6 +6315,45 @@ async function openProjectMap(contract, projectName) {
     pinCount++;
   });
 
+  // ── Core drills (pavement cores)
+  let allCores = [];
+  try {
+    const { data: coreData } = await db.from('core_drills')
+      .select('*')
+      .eq('contract', contract);
+    allCores = coreData || [];
+  } catch(e) { allCores = []; }
+
+  allCores.forEach(c => {
+    if (!c.gps_coordinates) return;
+    const coords = parseGPS(c.gps_coordinates, true);
+    if (!coords) return;
+
+    const thumb = c.photo_data?.thumb || c.photo_data?.dataUrl || '';
+    const thumbHtml = thumb
+      ? `<img src="${thumb}" style="width:100%;max-height:80px;object-fit:cover;border-radius:4px;margin-top:6px;" alt="core photo">`
+      : '';
+
+    const popup = new mapboxgl.Popup({ offset: 25, maxWidth: '240px' }).setHTML(`
+      <div class="map-popup-title">Core ${c.core_no || '—'}</div>
+      <div class="map-popup-row"><span class="map-popup-label">Test:</span><span class="map-popup-val">${c.test_no||'—'}</span></div>
+      <div class="map-popup-row"><span class="map-popup-label">Layer:</span><span class="map-popup-val">${c.layer_type||'—'}</span></div>
+      <div class="map-popup-row"><span class="map-popup-label">Thickness:</span><span class="map-popup-val">${c.thickness_in != null ? c.thickness_in + ' in' : '—'}</span></div>
+      <div class="map-popup-row"><span class="map-popup-label">Station:</span><span class="map-popup-val">${c.station||'—'}</span></div>
+      <div class="map-popup-row"><span class="map-popup-label">Lane:</span><span class="map-popup-val">${c.lane||'—'}</span></div>
+      ${thumbHtml}
+    `);
+
+    const el = createMarkerEl('#a855f7', '◇', false);
+    const marker = new mapboxgl.Marker({ element: el })
+      .setLngLat([coords.lng, coords.lat])
+      .setPopup(popup)
+      .addTo(projectMap);
+    mapMarkers.push(marker);
+    bounds.extend([coords.lng, coords.lat]);
+    pinCount++;
+  });
+
   document.getElementById('mapOverlaySubtitle').textContent = pinCount + ' location' + (pinCount!==1?'s':'') + ' plotted';
 
   // Fit map to pins
@@ -6233,15 +6371,18 @@ function closeProjectMap() {
   document.getElementById('mapOverlay').classList.remove('open');
 }
 
-function parseGPS(str) {
+function parseGPS(str, relaxBounds) {
   if (!str) return null;
   const m = str.match(/(-?\d+\.\d+)[,\s]+(-?\d+\.\d+)/);
   if (!m) return null;
   const lat = parseFloat(m[1]);
   const lng = parseFloat(m[2]);
   if (isNaN(lat)||isNaN(lng)) return null;
-  // Basic sanity check for Delaware area
-  if (lat < 38 || lat > 40 || lng < -76 || lng > -74) return null;
+  if (!relaxBounds) {
+    if (lat < 38 || lat > 40 || lng < -76 || lng > -74) return null;
+  } else if (lat < -90 || lat > 90 || lng < -180 || lng > 180) {
+    return null;
+  }
   return { lat, lng };
 }
 
@@ -9138,6 +9279,18 @@ function captureGPSAgg() {
   navigator.geolocation.getCurrentPosition(
     p => { el.value = p.coords.latitude.toFixed(6)+', '+p.coords.longitude.toFixed(6)+' (±'+Math.round(p.coords.accuracy)+'m)'; showToast('GPS captured ✓','success'); },
     e => { el.readOnly=false; el.style.borderColor='var(--gold)'; el.value=''; el.placeholder='Paste coords: 39.146760, -75.504430'; el.focus(); },
+    { enableHighAccuracy:true, timeout:15000, maximumAge:60000 }
+  );
+}
+
+function captureCoreGPS() {
+  const el = document.getElementById('fc_core_gps');
+  if (!el) return;
+  if (!navigator.geolocation) { el.value = 'GPS not supported'; return; }
+  el.value = '📍 Locating…';
+  navigator.geolocation.getCurrentPosition(
+    p => { el.value = p.coords.latitude.toFixed(6)+', '+p.coords.longitude.toFixed(6)+' (±'+Math.round(p.coords.accuracy)+'m)'; showToast('GPS captured ✓','success'); },
+    e => { el.readOnly=false; el.style.borderColor='var(--gold)'; el.value=''; el.placeholder='Paste coords: 39.146760, -75.504430'; el.focus(); showToast('Enter coordinates manually','error'); },
     { enableHighAccuracy:true, timeout:15000, maximumAge:60000 }
   );
 }
@@ -15388,8 +15541,11 @@ let activeFC_sessionId = null;
 let activeFC_table = 'samples';       // 'field_tests' | 'samples'
 let activeFC_linkedSampleId = null;   // samples row when intent is 'both'
 let activeFC_fieldTestId = null;      // field_tests row for density / both
+let activeFC_sessionCores = [];       // cores for active core-drill session
+let _fcCorePhotoData = null;          // pending photo thumb JSONB
 
 window.allFieldTests = window.allFieldTests || [];
+window.allCoreDrills = window.allCoreDrills || [];
 
 function fcCacheRecord(table, id, patch) {
   if (table === 'field_tests') {
@@ -15544,6 +15700,7 @@ function fcActivateSession({ intent, category, primary, table, linkedSample, fie
   if (fieldTest && fieldTest.id !== primary.id && !(allFieldTests || []).find(r => r.id === fieldTest.id)) {
     allFieldTests.unshift(fieldTest);
   }
+  if (intent === 'core') fcLoadSessionCores(primary.id);
   fcPrefillSampleForm(linkedSample || primary);
   fcApplyCategoryToTabs(category);
   fcApplyIntentToTabs(intent, category);
@@ -15597,19 +15754,24 @@ function updateFCSessionBanner() {
     const hasNuke    = fcHasNuclearData(densityRec);
     const hasSample  = fcHasLabSampleSubmitted(linkedSample);
     const items = [];
-    if (intent !== 'lab') {
-      items.push(`<span title="LB-68 compaction" style="font-family:var(--mono);font-size:9px;padding:2px 7px;border-radius:10px;background:${hasDensity?'rgba(46,204,120,0.15)':'rgba(255,255,255,0.05)'};color:${hasDensity?'var(--green2)':'var(--muted)'};border:1px solid ${hasDensity?'rgba(46,204,120,0.3)':'var(--border)'};">${hasDensity?'✓':' '} LB-68</span>`);
-      items.push(`<span title="DMF-68C nuclear" style="font-family:var(--mono);font-size:9px;padding:2px 7px;border-radius:10px;background:${hasNuke?'rgba(46,204,120,0.15)':'rgba(255,255,255,0.05)'};color:${hasNuke?'var(--green2)':'var(--muted)'};border:1px solid ${hasNuke?'rgba(46,204,120,0.3)':'var(--border)'};">${hasNuke?'✓':' '} NUCLEAR</span>`);
-    }
-    if (intent !== 'density') {
-      items.push(`<span title="Lab sample" style="font-family:var(--mono);font-size:9px;padding:2px 7px;border-radius:10px;background:${hasSample?'rgba(46,204,120,0.15)':'rgba(255,255,255,0.05)'};color:${hasSample?'var(--green2)':'var(--muted)'};border:1px solid ${hasSample?'rgba(46,204,120,0.3)':'var(--border)'};">${hasSample?'✓':' '} SAMPLE</span>`);
+    if (intent === 'core') {
+      const coreCount = (activeFC_sessionCores || []).length;
+      items.push(`<span title="Cores logged" style="font-family:var(--mono);font-size:9px;padding:2px 7px;border-radius:10px;background:${coreCount?'rgba(168,85,247,0.15)':'rgba(255,255,255,0.05)'};color:${coreCount?'#c084fc':'var(--muted)'};border:1px solid ${coreCount?'rgba(168,85,247,0.35)':'var(--border)'};">${coreCount} CORE${coreCount===1?'':'S'}</span>`);
+    } else {
+      if (intent !== 'lab') {
+        items.push(`<span title="LB-68 compaction" style="font-family:var(--mono);font-size:9px;padding:2px 7px;border-radius:10px;background:${hasDensity?'rgba(46,204,120,0.15)':'rgba(255,255,255,0.05)'};color:${hasDensity?'var(--green2)':'var(--muted)'};border:1px solid ${hasDensity?'rgba(46,204,120,0.3)':'var(--border)'};">${hasDensity?'✓':' '} LB-68</span>`);
+        items.push(`<span title="DMF-68C nuclear" style="font-family:var(--mono);font-size:9px;padding:2px 7px;border-radius:10px;background:${hasNuke?'rgba(46,204,120,0.15)':'rgba(255,255,255,0.05)'};color:${hasNuke?'var(--green2)':'var(--muted)'};border:1px solid ${hasNuke?'rgba(46,204,120,0.3)':'var(--border)'};">${hasNuke?'✓':' '} NUCLEAR</span>`);
+      }
+      if (intent !== 'density') {
+        items.push(`<span title="Lab sample" style="font-family:var(--mono);font-size:9px;padding:2px 7px;border-radius:10px;background:${hasSample?'rgba(46,204,120,0.15)':'rgba(255,255,255,0.05)'};color:${hasSample?'var(--green2)':'var(--muted)'};border:1px solid ${hasSample?'rgba(46,204,120,0.3)':'var(--border)'};">${hasSample?'✓':' '} SAMPLE</span>`);
+      }
     }
     chk.innerHTML = items.join('');
   }
 
   const badge = document.getElementById('fc_intent_badge');
   if (badge) {
-    const labels = { density: '⚖️ DENSITY ONLY — no lab queue', lab: '🧪 LAB SAMPLE ONLY — no gauge', both: '⚡ DENSITY + LAB — fill gauge tabs and submit sample below' };
+    const labels = { density: '⚖️ DENSITY ONLY — no lab queue', lab: '🧪 LAB SAMPLE ONLY — no gauge', both: '⚡ DENSITY + LAB — fill gauge tabs and submit sample below', core: '🔩 CORE DRILL — log pavement cores with GPS and thickness' };
     badge.textContent = labels[intent] || '';
     badge.style.display = intent ? '' : 'none';
   }
@@ -15644,6 +15806,9 @@ function initFC_View() {
     const linked = fcGetCachedLinkedSample();
     const densityRec = fcGetCachedDensityRecord();
     const intent = _fcIntent || fcIntentFromRecord(linked || densityRec || header);
+    if (intent === 'core' || densityRec?.field_workflow === 'core_drill') {
+      fcLoadSessionCores(activeFC_sessionId);
+    }
     const cat = (header || linked || densityRec)?.test_category || 'soil';
     fcApplyCategoryToTabs(cat);
     fcApplyIntentToTabs(intent, cat);
@@ -15661,6 +15826,7 @@ function initFC_View() {
     loadFCStartTracker();
     loadDensityRecords();
     loadOpenFieldSessions();
+    loadCoreTrack();
     // Restore last-used intent + category for this user
     fcRestorePrefs();
   }
@@ -15701,7 +15867,7 @@ function fcRestorePrefs() {
       // Show "last time" hint under the intent grid
       const hint = document.getElementById('fc_intent_last_hint');
       if (hint) {
-        const labels = { density: 'Density only', lab: 'Lab sample', both: 'Density + lab' };
+        const labels = { density: 'Density only', lab: 'Lab sample', both: 'Density + lab', core: 'Core drill' };
         hint.textContent = `↩ Last session: ${labels[prefs.intent] || prefs.intent}`;
         hint.style.display = '';
       }
@@ -15710,13 +15876,13 @@ function fcRestorePrefs() {
 }
 
 // ── Intent picker helper ──────────────────────────────────────
-let _fcIntent = ''; // 'density' | 'lab' | 'both'
+let _fcIntent = ''; // 'density' | 'lab' | 'both' | 'core'
 
 function fcSetIntent(intent, fromRestore = false) {
   _fcIntent = intent;
   const intentInput = document.getElementById('fc_s_intent');
   if (intentInput) intentInput.value = intent;
-  ['density','lab','both'].forEach(k => {
+  ['density','lab','both','core'].forEach(k => {
     const btn = document.getElementById('fc_intent_' + k);
     if (!btn) return;
     const active = !!intent && k === intent;
@@ -15737,7 +15903,7 @@ async function startFC_Session() {
   if (!db) { showToast('Not connected to database', 'error'); return; }
 
   const intent = (document.getElementById('fc_s_intent')?.value || _fcIntent || '').trim();
-  if (!intent) { showToast('Select what you are doing (Density / Lab / Both)', 'error'); return; }
+  if (!intent) { showToast('Select what you are doing (Density / Lab / Both / Core)', 'error'); return; }
 
   const category = (document.getElementById('fc_s_category')?.value || 'soil');
   const _tnEl    = document.getElementById('fc_s_testno');
@@ -15768,6 +15934,15 @@ async function startFC_Session() {
       fieldTestRow = await fcTryInsert('field_tests', {
         ...headerData,
         field_workflow: intent === 'both' ? 'linked' : 'density_only',
+        test_date: headerData.date_sampled,
+        status: 'open',
+      }, requestedTestNo, category);
+    }
+
+    if (intent === 'core') {
+      fieldTestRow = await fcTryInsert('field_tests', {
+        ...headerData,
+        field_workflow: 'core_drill',
         test_date: headerData.date_sampled,
         status: 'open',
       }, requestedTestNo, category);
@@ -15813,7 +15988,9 @@ async function startFC_Session() {
 
   let primary = null;
   let table = 'samples';
-  if (intent === 'density') {
+  if (intent === 'core') {
+    if (fieldTestRow) { primary = fieldTestRow; table = 'field_tests'; }
+  } else if (intent === 'density') {
     if (fieldTestRow) { primary = fieldTestRow; table = 'field_tests'; }
     else if (sampleRow) { primary = sampleRow; table = 'samples'; }
   } else if (intent === 'lab') {
@@ -15838,7 +16015,7 @@ async function startFC_Session() {
     fieldTest: fieldTestRow,
   });
 
-  showToast(`Test No. ${primary.test_no} started — ${intent === 'density' ? 'Density only' : intent === 'lab' ? 'Lab sample only' : 'Density + lab'} (${category})`, 'success');
+  showToast(`Test No. ${primary.test_no} started — ${intent === 'density' ? 'Density only' : intent === 'lab' ? 'Lab sample only' : intent === 'core' ? 'Core drill' : 'Density + lab'} (${category})`, 'success');
 }
 
 // ── Apply intent routing to tabs (show/hide + auto-navigate) ─
@@ -15848,7 +16025,18 @@ function fcApplyIntentToTabs(intent, category) {
   const tabSample = document.getElementById('fctab-sample');
   const toggleCard = document.getElementById('fc_lab_toggle_card');
 
-  if (intent === 'density') {
+  if (intent === 'core') {
+    if (tabLB68)   tabLB68.style.display   = 'none';
+    if (tabNuke)   tabNuke.style.display    = 'none';
+    if (tabSample) tabSample.style.display  = 'none';
+    const tabCore = document.getElementById('fctab-core');
+    if (tabCore) tabCore.style.display = '';
+    if (toggleCard) toggleCard.style.display = 'none';
+    switchFCTab('core');
+    fcSuggestNextCoreNo();
+  } else if (intent === 'density') {
+    const tabCore = document.getElementById('fctab-core');
+    if (tabCore) tabCore.style.display = 'none';
     if (tabSample) tabSample.style.display = 'none';
     if (tabLB68)   tabLB68.style.display   = '';
     if (tabNuke)   tabNuke.style.display    = '';
@@ -15857,6 +16045,8 @@ function fcApplyIntentToTabs(intent, category) {
     const tog = document.getElementById('fc_lab_sample_toggle');
     if (tog) { tog.checked = false; fcToggleLabSample(false); }
   } else if (intent === 'lab') {
+    const tabCore = document.getElementById('fctab-core');
+    if (tabCore) tabCore.style.display = 'none';
     if (tabLB68)   tabLB68.style.display   = 'none';
     if (tabNuke)   tabNuke.style.display    = 'none';
     if (tabSample) tabSample.style.display  = '';
@@ -15865,6 +16055,8 @@ function fcApplyIntentToTabs(intent, category) {
     const tog = document.getElementById('fc_lab_sample_toggle');
     if (tog) { tog.checked = true; fcToggleLabSample(true); }
   } else {
+    const tabCore = document.getElementById('fctab-core');
+    if (tabCore) tabCore.style.display = 'none';
     if (category === 'aggregate') {
       if (tabLB68) tabLB68.style.display = 'none';
       if (tabNuke) tabNuke.style.display  = 'none';
@@ -15979,7 +16171,7 @@ async function fcResumeSessionById(id) {
     if (!(allFieldTests || []).find(r => r.id === fieldTest.id)) allFieldTests.unshift(fieldTest);
     let linked = null;
     if (fieldTest.sample_id) linked = await fcFetchRecord(fieldTest.sample_id, 'samples');
-    const intent = linked ? 'both' : 'density';
+    const intent = fieldTest.field_workflow === 'core_drill' ? 'core' : (linked ? 'both' : 'density');
     switchView('fieldcontrol');
     fcActivateSession({
       intent,
@@ -15989,7 +16181,7 @@ async function fcResumeSessionById(id) {
       linkedSample: linked,
       fieldTest,
     });
-    const intentLabel = intent === 'density' ? 'Density only' : 'Density + lab';
+    const intentLabel = intent === 'core' ? 'Core drill' : intent === 'density' ? 'Density only' : 'Density + lab';
     showToast(`Resumed: ${fieldTest.test_no} — ${intentLabel}`, 'success');
     return;
   }
@@ -16039,6 +16231,310 @@ function fcIntentFromRecord(s) {
   }
   if (type === 'Field Control') return 'lab';
   return 'both';
+}
+
+// ══════════════════════════════════════════════════════════════
+// CORE DRILL — pavement core logging
+// ══════════════════════════════════════════════════════════════
+
+function fcGetSessionHeader() {
+  const rec = fcGetCachedHeaderRecord();
+  return {
+    test_no:      activeFC_testNo || rec?.test_no || null,
+    contract:     rec?.contract || null,
+    road:         rec?.road || null,
+    location:     rec?.location || null,
+    sampled_by:   rec?.sampled_by || (currentUser?.name || '').split(' ').pop() || null,
+    date_drilled: rec?.date_sampled || rec?.test_date || new Date().toISOString().slice(0, 10),
+    field_test_id: activeFC_fieldTestId || (activeFC_table === 'field_tests' ? activeFC_sessionId : null),
+  };
+}
+
+function fcSuggestNextCoreNo() {
+  const el = document.getElementById('fc_core_no');
+  if (!el || el.dataset.userTouched) return;
+  const nums = (activeFC_sessionCores || []).map(c => parseInt(c.core_no, 10)).filter(n => !isNaN(n));
+  const next = nums.length ? Math.max(...nums) + 1 : 1;
+  el.value = String(next);
+}
+
+function fcClearCorePhoto() {
+  _fcCorePhotoData = null;
+  const prev = document.getElementById('fc_core_photo_preview');
+  const clr = document.getElementById('fc_core_photo_clear');
+  const inp = document.getElementById('fc_core_photo_input');
+  if (prev) { prev.src = ''; prev.style.display = 'none'; }
+  if (clr) clr.style.display = 'none';
+  if (inp) inp.value = '';
+}
+
+function fcClearCoreForm() {
+  document.getElementById('fc_core_edit_id').value = '';
+  ['fc_core_station','fc_core_lane','fc_core_thickness','fc_core_depth','fc_core_gps','fc_core_remarks'].forEach(id => {
+    const el = document.getElementById(id); if (el) el.value = '';
+  });
+  const layer = document.getElementById('fc_core_layer');
+  if (layer) layer.value = '';
+  const coreNo = document.getElementById('fc_core_no');
+  if (coreNo) { delete coreNo.dataset.userTouched; coreNo.value = ''; }
+  fcClearCorePhoto();
+  fcSuggestNextCoreNo();
+}
+
+async function fcCompressCorePhoto(file) {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    const url = URL.createObjectURL(file);
+    img.onload = () => {
+      const maxW = 480;
+      const scale = img.width > maxW ? maxW / img.width : 1;
+      const w = Math.round(img.width * scale);
+      const h = Math.round(img.height * scale);
+      const canvas = document.createElement('canvas');
+      canvas.width = w;
+      canvas.height = h;
+      const ctx = canvas.getContext('2d');
+      ctx.drawImage(img, 0, 0, w, h);
+      URL.revokeObjectURL(url);
+      const thumb = canvas.toDataURL('image/jpeg', 0.65);
+      resolve({ thumb, captured_at: new Date().toISOString(), name: file.name || 'core.jpg' });
+    };
+    img.onerror = () => { URL.revokeObjectURL(url); reject(new Error('Could not read image')); };
+    img.src = url;
+  });
+}
+
+async function fcHandleCorePhoto(input) {
+  const file = input?.files?.[0];
+  if (!file) return;
+  try {
+    _fcCorePhotoData = await fcCompressCorePhoto(file);
+    const prev = document.getElementById('fc_core_photo_preview');
+    const clr = document.getElementById('fc_core_photo_clear');
+    if (prev) { prev.src = _fcCorePhotoData.thumb; prev.style.display = ''; }
+    if (clr) clr.style.display = '';
+    showToast('Photo attached ✓', 'success');
+  } catch (e) {
+    showToast('Photo error: ' + e.message, 'error');
+  }
+}
+
+async function fcLoadSessionCores(fieldTestId) {
+  const ftId = fieldTestId || activeFC_fieldTestId || (activeFC_table === 'field_tests' ? activeFC_sessionId : null);
+  activeFC_sessionCores = [];
+  if (!ftId || !db) {
+    fcRenderCoreList();
+    return;
+  }
+  try {
+    const { data, error } = await db.from('core_drills')
+      .select('*')
+      .eq('field_test_id', ftId)
+      .order('created_at', { ascending: true });
+    if (error) throw error;
+    activeFC_sessionCores = data || [];
+    (data || []).forEach(c => {
+      const idx = (allCoreDrills || []).findIndex(x => x.id === c.id);
+      if (idx >= 0) allCoreDrills[idx] = c;
+      else allCoreDrills.unshift(c);
+    });
+  } catch (e) {
+    console.warn('fcLoadSessionCores:', e);
+  }
+  fcRenderCoreList();
+  updateFCSessionBanner();
+}
+
+function fcRenderCoreList() {
+  const list = document.getElementById('fc_core_session_list');
+  const countEl = document.getElementById('fc_core_session_count');
+  const cores = activeFC_sessionCores || [];
+  if (countEl) countEl.textContent = String(cores.length);
+  if (!list) return;
+  if (!cores.length) {
+    list.innerHTML = '<div style="padding:8px 0;color:var(--muted);">No cores logged yet — fill the form above and tap Save Core.</div>';
+    return;
+  }
+  list.innerHTML = cores.map(c => {
+    const thumb = c.photo_data?.thumb || '';
+    const thumbHtml = thumb ? `<img src="${thumb}" alt="" style="width:40px;height:40px;object-fit:cover;border-radius:4px;border:1px solid var(--border);flex-shrink:0;">` : '';
+    return `<div style="display:flex;align-items:center;justify-content:space-between;gap:10px;padding:10px 0;border-bottom:1px solid var(--border);">
+      <div style="display:flex;align-items:center;gap:10px;min-width:0;">
+        ${thumbHtml}
+        <div style="min-width:0;">
+          <div style="color:var(--text);font-weight:700;">Core ${c.core_no || '—'} <span style="color:#c084fc;font-size:9px;">${c.layer_type || ''}</span></div>
+          <div style="font-size:9px;color:var(--muted);">${c.station || '—'} · ${c.lane || '—'} · ${c.thickness_in != null ? c.thickness_in + ' in' : '—'}${c.depth_in ? ' / ' + c.depth_in + ' deep' : ''}</div>
+        </div>
+      </div>
+      <div style="display:flex;gap:6px;flex-shrink:0;">
+        <button class="btn btn-ghost" style="font-size:9px;padding:4px 8px;" onclick="fcEditCore('${c.id}')">EDIT</button>
+        <button class="btn btn-ghost" style="font-size:9px;padding:4px 8px;color:var(--red2);" onclick="fcDeleteCore('${c.id}')">✕</button>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function fcEditCore(id) {
+  const c = (activeFC_sessionCores || []).find(x => x.id === id);
+  if (!c) return;
+  document.getElementById('fc_core_edit_id').value = c.id;
+  const set = (id, val) => { const el = document.getElementById(id); if (el) el.value = val ?? ''; };
+  set('fc_core_no', c.core_no);
+  set('fc_core_station', c.station);
+  set('fc_core_lane', c.lane);
+  set('fc_core_layer', c.layer_type);
+  set('fc_core_thickness', c.thickness_in);
+  set('fc_core_depth', c.depth_in);
+  set('fc_core_gps', c.gps_coordinates);
+  set('fc_core_remarks', c.remarks);
+  const coreNo = document.getElementById('fc_core_no');
+  if (coreNo) coreNo.dataset.userTouched = '1';
+  _fcCorePhotoData = c.photo_data || null;
+  const prev = document.getElementById('fc_core_photo_preview');
+  const clr = document.getElementById('fc_core_photo_clear');
+  const thumb = c.photo_data?.thumb;
+  if (thumb && prev) { prev.src = thumb; prev.style.display = ''; if (clr) clr.style.display = ''; }
+  else fcClearCorePhoto();
+  scrollActiveViewTop();
+  showToast('Editing core ' + (c.core_no || ''), 'info');
+}
+
+async function fcDeleteCore(id) {
+  if (!confirm('Delete this core record?')) return;
+  if (!db) { showToast('Not connected', 'error'); return; }
+  const { error } = await db.from('core_drills').delete().eq('id', id);
+  if (error) { showToast('Delete failed: ' + error.message, 'error'); return; }
+  activeFC_sessionCores = (activeFC_sessionCores || []).filter(c => c.id !== id);
+  allCoreDrills = (allCoreDrills || []).filter(c => c.id !== id);
+  fcRenderCoreList();
+  updateFCSessionBanner();
+  showToast('Core deleted', 'info');
+}
+
+async function fcSaveCore() {
+  if (!db) { showToast('Not connected to database', 'error'); return; }
+  const header = fcGetSessionHeader();
+  if (!header.field_test_id) { showToast('No active core drill session', 'error'); return; }
+
+  const coreNo = (document.getElementById('fc_core_no')?.value || '').trim();
+  const layer = (document.getElementById('fc_core_layer')?.value || '').trim();
+  const thickness = parseFloat(document.getElementById('fc_core_thickness')?.value);
+  if (!coreNo) { showToast('Core # is required', 'error'); return; }
+  if (!layer) { showToast('Layer is required', 'error'); return; }
+  if (isNaN(thickness) || thickness <= 0) { showToast('Thickness (in) is required', 'error'); return; }
+
+  const depthVal = document.getElementById('fc_core_depth')?.value;
+  const depth = depthVal ? parseFloat(depthVal) : null;
+
+  const payload = {
+    test_no:         header.test_no,
+    contract:        header.contract,
+    road:            header.road,
+    location:        header.location,
+    station:         (document.getElementById('fc_core_station')?.value || '').trim() || null,
+    lane:            (document.getElementById('fc_core_lane')?.value || '').trim() || null,
+    core_no:         coreNo,
+    gps_coordinates: (document.getElementById('fc_core_gps')?.value || '').trim() || null,
+    thickness_in:    thickness,
+    depth_in:        depth != null && !isNaN(depth) ? depth : null,
+    layer_type:      layer,
+    remarks:         (document.getElementById('fc_core_remarks')?.value || '').trim() || null,
+    photo_data:      _fcCorePhotoData || null,
+    field_test_id:   header.field_test_id,
+    sampled_by:      header.sampled_by,
+    date_drilled:    header.date_drilled,
+    status:          'open',
+  };
+
+  const editId = (document.getElementById('fc_core_edit_id')?.value || '').trim();
+  let saved = null;
+  if (editId) {
+    const { data, error, queued } = await dbWrite('core_drills', 'update', payload, editId);
+    if (error) { showToast('Save failed: ' + error.message, 'error'); return; }
+    saved = data;
+    if (queued) showToast('Offline — core queued locally', 'info');
+    const idx = activeFC_sessionCores.findIndex(c => c.id === editId);
+    if (idx >= 0) activeFC_sessionCores[idx] = { ...activeFC_sessionCores[idx], ...saved };
+  } else {
+    const { data, error, queued } = await dbWrite('core_drills', 'insert', payload);
+    if (error) { showToast('Save failed: ' + error.message, 'error'); return; }
+    saved = data;
+    if (queued) showToast('Offline — core queued locally', 'info');
+    activeFC_sessionCores.push(saved);
+    allCoreDrills.unshift(saved);
+  }
+
+  fcClearCoreForm();
+  fcRenderCoreList();
+  updateFCSessionBanner();
+  showToast(`Core ${coreNo} saved ✓`, 'success');
+}
+
+function fcOpenSessionMap() {
+  const header = fcGetCachedHeaderRecord();
+  const contract = header?.contract;
+  if (!contract) { showToast('No contract on this session', 'error'); return; }
+  openProjectMap(contract, header?.location || header?.road || contract);
+}
+
+async function loadCoreTrack() {
+  const list = document.getElementById('fc_core_track_list');
+  if (!list) return;
+  if (!db) {
+    list.textContent = 'Connect to Supabase to see core track.';
+    return;
+  }
+  list.textContent = 'Loading…';
+  try {
+    const { data, error } = await db.from('core_drills')
+      .select('*')
+      .order('created_at', { ascending: false })
+      .limit(100);
+    if (error) throw error;
+    window.allCoreDrills = data || [];
+    renderCoreTrack();
+  } catch (e) {
+    list.textContent = 'Could not load core track.';
+    console.warn('loadCoreTrack:', e);
+  }
+}
+
+function renderCoreTrack() {
+  const list = document.getElementById('fc_core_track_list');
+  if (!list) return;
+
+  const contractQ = (document.getElementById('fc_core_filter_contract')?.value || '').trim().toLowerCase();
+  const dateQ = (document.getElementById('fc_core_filter_date')?.value || '').trim();
+
+  let rows = [...(window.allCoreDrills || [])];
+  if (contractQ) rows = rows.filter(c =>
+    (c.contract || '').toLowerCase().includes(contractQ) ||
+    (c.location || '').toLowerCase().includes(contractQ)
+  );
+  if (dateQ) rows = rows.filter(c => (c.date_drilled || '').startsWith(dateQ));
+
+  if (!rows.length) {
+    list.innerHTML = '<div style="padding:8px 0;color:var(--muted);">' +
+      (contractQ || dateQ ? 'No cores match your filter.' : 'No cores logged yet — start a Core Drill session above.') +
+      '</div>';
+    return;
+  }
+
+  list.innerHTML = rows.slice(0, 25).map(c => {
+    const dateStr = c.date_drilled
+      ? new Date(c.date_drilled + 'T12:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+      : '—';
+    const mapBtn = c.contract
+      ? `<button class="btn btn-ghost" style="font-size:9px;padding:4px 8px;" onclick="openProjectMap('${(c.contract||'').replace(/'/g,"\\'")}','${(c.location||c.contract||'').replace(/'/g,"\\'")}')">MAP</button>`
+      : '';
+    return `<div style="display:flex;align-items:center;justify-content:space-between;gap:8px;padding:8px 0;border-bottom:1px solid var(--border);">
+      <div style="min-width:0;">
+        <div style="color:var(--text);font-weight:700;">${c.test_no || '—'} · Core ${c.core_no || '—'} <span style="color:#c084fc;font-size:9px;">${c.layer_type || ''}</span></div>
+        <div style="font-size:9px;color:var(--muted);">${c.contract || '—'} · ${c.station || '—'} · ${c.thickness_in != null ? c.thickness_in + ' in' : '—'} · ${dateStr}</div>
+      </div>
+      <div style="display:flex;gap:6px;flex-shrink:0;">${mapBtn}</div>
+    </div>`;
+  }).join('');
 }
 
 // ══════════════════════════════════════════════════════════════
@@ -16096,10 +16592,12 @@ async function loadOpenFieldSessions() {
 
     const rows = [];
     (openTests || []).forEach(ft => {
-      const kind = ft.field_workflow === 'linked' || ft.sample_id ? 'Density + lab' : 'Density only';
+      const kind = ft.field_workflow === 'core_drill' ? 'Core drill'
+        : ft.field_workflow === 'linked' || ft.sample_id ? 'Density + lab' : 'Density only';
+      const kindColor = ft.field_workflow === 'core_drill' ? '#c084fc' : 'var(--accent2)';
       rows.push(`<div style="display:flex;align-items:center;justify-content:space-between;gap:8px;padding:8px 0;border-bottom:1px solid var(--border);">
         <div style="min-width:0;">
-          <div style="color:var(--text);font-weight:700;">${ft.test_no || '—'} <span style="color:var(--accent2);font-size:9px;">${kind}</span></div>
+          <div style="color:var(--text);font-weight:700;">${ft.test_no || '—'} <span style="color:${kindColor};font-size:9px;">${kind}</span></div>
           <div style="font-size:9px;color:var(--muted);">${ft.contract || '—'} · ${ft.location || '—'}</div>
         </div>
         <button class="btn btn-ghost" style="font-size:9px;padding:4px 10px;flex-shrink:0;" onclick="fcResumeSessionById('${ft.id}')">OPEN</button>
@@ -16136,7 +16634,7 @@ function renderDensityRecords() {
   const contractQ = (document.getElementById('fdr_filter_contract')?.value || '').trim().toLowerCase();
   const dateQ     = (document.getElementById('fdr_filter_date')?.value || '').trim();
 
-  let rows = [...(window.allFieldTests || [])].filter(r => r.status === 'closed');
+  let rows = [...(window.allFieldTests || [])].filter(r => r.status === 'closed' && r.field_workflow !== 'core_drill');
 
   if (contractQ) rows = rows.filter(r =>
     (r.contract||'').toLowerCase().includes(contractQ) ||
@@ -17070,7 +17568,7 @@ function fcToggleLabSample(checked) {
 // ── Tab switching ─────────────────────────────────────────────
 function switchFCTab(tab) {
   activeFCTab = tab;
-  ['sample','dmf68c','lb68'].forEach(t => {
+  ['sample','dmf68c','lb68','core'].forEach(t => {
     const el  = document.getElementById('fcsub-' + t);
     const btn = document.getElementById('fctab-' + t);
     if (el)  el.style.display = (t === tab) ? '' : 'none';
@@ -17173,11 +17671,30 @@ async function clearFC_Session() {
     const densityRec = fcGetCachedDensityRecord();
     const linkedSample = fcGetCachedLinkedSample();
     const intent = _fcIntent || fcIntentFromRecord(linkedSample || densityRec);
+    const hasCores = (activeFC_sessionCores || []).length > 0;
     const hasNuclear = !!(densityRec && densityRec.nuclear_data);
     const hasDensity = !!(densityRec && densityRec.density_data);
     const hasLab = fcHasLabSampleSubmitted(linkedSample);
 
-    if (!hasNuclear && !hasDensity && !hasLab) {
+    if (intent === 'core') {
+      if (!hasCores) {
+        const ok = confirm(`Test No. ${activeFC_testNo} has no cores saved.\n\nDiscard this empty session? (Cancel = keep it as pending)`);
+        if (ok) {
+          if (activeFC_table === 'field_tests' && activeFC_sessionId) {
+            const { error } = await db.from('field_tests').delete().eq('id', activeFC_sessionId);
+            if (error) showToast('Could not discard: ' + error.message, 'error');
+            else allFieldTests = (allFieldTests || []).filter(x => x.id !== activeFC_sessionId);
+          }
+          showToast(`Session ${activeFC_testNo} discarded`, 'info');
+        }
+      } else if (activeFC_table === 'field_tests' && activeFC_sessionId) {
+        const { error } = await db.from('field_tests').update({ status: 'closed' }).eq('id', activeFC_sessionId);
+        if (!error) {
+          fcCacheRecord('field_tests', activeFC_sessionId, { status: 'closed' });
+          showToast(`Core drill session ${activeFC_testNo} closed — ${activeFC_sessionCores.length} core(s) saved`, 'success');
+        }
+      }
+    } else if (!hasNuclear && !hasDensity && !hasLab) {
       const ok = confirm(`Test No. ${activeFC_testNo} has no data saved.\n\nDiscard this empty session? (Cancel = keep it as pending)`);
       if (ok) {
         const toDelete = [];
@@ -17234,6 +17751,8 @@ async function clearFC_Session() {
   activeFC_table = 'samples';
   activeFC_linkedSampleId = null;
   activeFC_fieldTestId = null;
+  activeFC_sessionCores = [];
+  _fcCorePhotoData = null;
   _fcIntent = '';
 
   // Reset toggle
@@ -17247,9 +17766,11 @@ async function clearFC_Session() {
   if (badge) badge.style.display = 'none';
 
   // Restore all tabs
-  ['fctab-lb68','fctab-dmf68c','fctab-sample'].forEach(id => {
+  ['fctab-lb68','fctab-dmf68c','fctab-sample','fctab-core'].forEach(id => {
     const el = document.getElementById(id); if (el) el.style.display = '';
   });
+  const tabCore = document.getElementById('fctab-core');
+  if (tabCore) tabCore.style.display = 'none';
 
   // Reset intent picker
   fcSetIntent('');
@@ -17267,6 +17788,7 @@ async function clearFC_Session() {
   loadFCStartTracker();
   loadDensityRecords();
   loadOpenFieldSessions();
+  loadCoreTrack();
   // Refresh table/dashboards
   if (typeof loadSamples === 'function') loadSamples();
   scrollActiveViewTop();
