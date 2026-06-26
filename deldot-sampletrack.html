@@ -3900,7 +3900,7 @@ table.fc-borrow-tbl tr.fc-borrow-detail-row td{background:var(--surface);border-
           <!-- Last-used hint — hidden until prefs restore runs -->
           <div id="fc_intent_last_hint" style="display:none;font-family:var(--mono);font-size:9px;color:var(--muted);letter-spacing:1px;margin-bottom:8px;padding:4px 10px;background:rgba(255,255,255,0.03);border-radius:6px;border:1px solid var(--border);"></div>
 
-          <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:20px;" id="fc_intent_grid">
+          <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:20px;" id="fc_intent_grid">
             <button id="fc_intent_density" onclick="fcSetIntent('density')"
               style="background:var(--panel);border:2px solid var(--border);border-radius:10px;padding:12px 8px;cursor:pointer;text-align:center;transition:all 0.15s;">
               <div style="font-size:22px;margin-bottom:6px;">⚖️</div>
@@ -3918,12 +3918,6 @@ table.fc-borrow-tbl tr.fc-borrow-detail-row td{background:var(--surface);border-
               <div style="font-size:22px;margin-bottom:6px;">⚡</div>
               <div style="font-family:var(--mono);font-size:9px;font-weight:700;color:var(--text);letter-spacing:1px;">BOTH</div>
               <div style="font-family:var(--mono);font-size:8px;color:var(--muted);margin-top:3px;line-height:1.4;">Nuclear + lab bag</div>
-            </button>
-            <button id="fc_intent_core" onclick="fcSetIntent('core')"
-              style="background:var(--panel);border:2px solid var(--border);border-radius:10px;padding:12px 8px;cursor:pointer;text-align:center;transition:all 0.15s;">
-              <div style="font-size:22px;margin-bottom:6px;">🔩</div>
-              <div style="font-family:var(--mono);font-size:9px;font-weight:700;color:var(--text);letter-spacing:1px;">CORE DRILL</div>
-              <div style="font-family:var(--mono);font-size:8px;color:var(--muted);margin-top:3px;line-height:1.4;">Pavement cores + GPS</div>
             </button>
           </div>
 
@@ -3983,6 +3977,72 @@ table.fc-borrow-tbl tr.fc-borrow-detail-row td{background:var(--surface);border-
           </div>
         </div>
 
+        <!-- ── CORE DRILL — separate subgroup (not mixed with density/lab intents) ── -->
+        <div class="card" id="fc_core_start_card" style="margin-top:14px;border:1px solid rgba(168,85,247,0.35);background:linear-gradient(135deg,rgba(168,85,247,0.08),rgba(168,85,247,0.02));">
+          <div class="card-title" style="color:#c084fc;">🔩 Core Drill</div>
+          <p style="font-family:var(--mono);font-size:10px;color:var(--muted);line-height:1.6;margin:-4px 0 14px;max-width:560px;">
+            Pavement core logging — thickness, layer, GPS, and photos. Separate from density / lab field events.
+          </p>
+
+          <div style="font-family:var(--mono);font-size:9px;letter-spacing:1.5px;color:var(--muted);margin-bottom:10px;">TEST NO. &amp; HEADER</div>
+          <div class="form-grid" style="margin-bottom:12px;">
+            <div class="form-group">
+              <label>Test Category</label>
+              <select id="fc_cd_category" class="form-input" onchange="fcOnCoreCategoryChange()">
+                <option value="soil">Soil / Geotechnical</option>
+                <option value="aggregate">Coarse Aggregate</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label>Test No. <span style="color:#c084fc;font-size:9px;" id="fc_cd_testno_hint">(suggested: loading…)</span></label>
+              <input type="text" id="fc_cd_testno" class="form-input" inputmode="numeric" autocomplete="off"
+                      style="border-color:rgba(168,85,247,0.45);"
+                      oninput="this.dataset.userTouched='1'"
+                      placeholder="loading…">
+            </div>
+            <div class="form-group">
+              <label>Contract No.</label>
+              <input type="text" id="fc_cd_contract" class="form-input" placeholder="T201109502" autocomplete="off">
+            </div>
+            <div class="form-group">
+              <label>Road / Location</label>
+              <input type="text" id="fc_cd_location" class="form-input" placeholder="Proposed Willow Grove" autocomplete="off">
+            </div>
+            <div class="form-group">
+              <label>Layer / Material</label>
+              <input type="text" id="fc_cd_material" class="form-input" placeholder="AC surface" autocomplete="off">
+            </div>
+            <div class="form-group">
+              <label>Technician</label>
+              <input type="text" id="fc_cd_tech" class="form-input" placeholder="Mills" autocomplete="off">
+            </div>
+            <div class="form-group">
+              <label>Road / Route</label>
+              <input type="text" id="fc_cd_road" class="form-input" placeholder="SR-1" autocomplete="off">
+            </div>
+            <div class="form-group">
+              <label>Date</label>
+              <input type="date" id="fc_cd_date" class="form-input">
+            </div>
+          </div>
+
+          <div class="btn-row" style="margin-bottom:18px;">
+            <button type="button" class="btn btn-core-start" style="font-size:13px;padding:12px 28px;letter-spacing:1.5px;background:linear-gradient(135deg,#7c3aed,#a855f7);border:none;color:#fff;border-radius:var(--radius);cursor:pointer;font-family:var(--mono);font-weight:700;" onclick="startFC_CoreSession()">🔩 START CORE DRILL SESSION</button>
+          </div>
+
+          <div style="border-top:1px solid rgba(168,85,247,0.2);padding-top:14px;">
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;flex-wrap:wrap;gap:8px;">
+              <div style="font-family:var(--mono);font-size:9px;letter-spacing:1.5px;color:var(--muted);">CORE TRACK</div>
+              <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+                <input type="text" id="fc_core_filter_contract" class="form-input" placeholder="Contract…" style="font-size:11px;padding:5px 10px;width:140px;" oninput="renderCoreTrack()">
+                <input type="date" id="fc_core_filter_date" class="form-input" style="font-size:11px;padding:5px 10px;width:140px;" onchange="renderCoreTrack()">
+                <button type="button" onclick="loadCoreTrack()" style="background:transparent;border:1px solid var(--border);color:var(--muted);padding:3px 8px;border-radius:4px;font-family:var(--mono);font-size:8px;cursor:pointer;">↻</button>
+              </div>
+            </div>
+            <div id="fc_core_track_list" style="font-family:var(--mono);font-size:10px;color:var(--muted);">Loading…</div>
+          </div>
+        </div>
+
         <!-- Resume Existing Test -->
         <div class="card" style="margin-top:14px;">
           <div style="font-family:var(--mono);font-size:9px;letter-spacing:1.5px;color:var(--muted);margin-bottom:12px;">RESUME EXISTING TEST</div>
@@ -4002,19 +4062,6 @@ table.fc-borrow-tbl tr.fc-borrow-detail-row td{background:var(--surface);border-
             <button type="button" onclick="loadOpenFieldSessions()" style="background:transparent;border:1px solid var(--border);color:var(--muted);padding:3px 8px;border-radius:4px;font-family:var(--mono);font-size:8px;cursor:pointer;">↻</button>
           </div>
           <div id="fc_open_sessions_list" style="font-family:var(--mono);font-size:10px;color:var(--muted);">Loading…</div>
-        </div>
-
-        <!-- Core track — recent cores by contract/date -->
-        <div class="card" style="margin-top:14px;" id="fc_core_track_card">
-          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;flex-wrap:wrap;gap:8px;">
-            <div style="font-family:var(--mono);font-size:9px;letter-spacing:1.5px;color:var(--muted);">🔩 CORE TRACK</div>
-            <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
-              <input type="text" id="fc_core_filter_contract" class="form-input" placeholder="Contract…" style="font-size:11px;padding:5px 10px;width:140px;" oninput="renderCoreTrack()">
-              <input type="date" id="fc_core_filter_date" class="form-input" style="font-size:11px;padding:5px 10px;width:140px;" onchange="renderCoreTrack()">
-              <button type="button" onclick="loadCoreTrack()" style="background:transparent;border:1px solid var(--border);color:var(--muted);padding:3px 8px;border-radius:4px;font-family:var(--mono);font-size:8px;cursor:pointer;">↻</button>
-            </div>
-          </div>
-          <div id="fc_core_track_list" style="font-family:var(--mono);font-size:10px;color:var(--muted);">Loading…</div>
         </div>
 
       </div><!-- end fc_start_state -->
@@ -5649,6 +5696,7 @@ table.fc-borrow-tbl tr.fc-borrow-detail-row td{background:var(--surface);border-
 
       <div class="hub-actions">
         <button class="hub-action-btn primary" onclick="switchView('fieldcontrol')">⚡ NEW TEST</button>
+        <button class="hub-action-btn" onclick="fcOpenCoreDrillFromHub()">🔩 CORE DRILL</button>
         <button class="hub-action-btn" onclick="switchView('scan')">📷 SCAN QR</button>
         <button class="hub-action-btn" onclick="switchView('fieldcontrol')">⚖️ LB-68</button>
         <button class="hub-action-btn" onclick="switchView('fieldcontrol')">☢️ NUCLEAR</button>
@@ -6016,7 +6064,7 @@ table.fc-borrow-tbl tr.fc-borrow-detail-row td{background:var(--surface);border-
 // GLOBALS
 // ══════════════════════════════════════════════
 let db = null;
-const APP_BUILD = '2026.06.30-core';
+const APP_BUILD = '2026.06.30-core-ui';
 window._dbConnected = false;
 window._syncInProgress = false;
 let currentSample = null;
@@ -15786,6 +15834,7 @@ function _autoFillTech() {
   fill('f_sampled_by');  // field soil form
   fill('a_sampled_by');  // field agg form
   fill('fc_s_tech');     // field comp start form
+  fill('fc_cd_tech');    // core drill start form
   fill('ci_sampled_by'); // concrete intake
 }
 
@@ -15796,7 +15845,10 @@ function initFC_View() {
   const activeEl = document.getElementById('fc_active_state');
   if (!startEl || !activeEl) return;
   const today = new Date().toISOString().split('T')[0];
-  document.getElementById('fc_s_date').value = today;
+  const dateEl = document.getElementById('fc_s_date');
+  if (dateEl) dateEl.value = today;
+  const cdDateEl = document.getElementById('fc_cd_date');
+  if (cdDateEl) cdDateEl.value = today;
   // Pre-fill tech name from logged-in user
   _autoFillTech();
   if (activeFC_testNo && activeFC_sessionId) {
@@ -15827,6 +15879,7 @@ function initFC_View() {
     loadDensityRecords();
     loadOpenFieldSessions();
     loadCoreTrack();
+    fcOnCoreCategoryChange();
     // Restore last-used intent + category for this user
     fcRestorePrefs();
   }
@@ -15861,13 +15914,13 @@ function fcRestorePrefs() {
         if (typeof fcOnCategoryChange === 'function') fcOnCategoryChange();
       }
     }
-    // Restore intent — pre-select the tile and show a subtle hint
-    if (prefs.intent) {
+    // Restore intent — pre-select the tile and show a subtle hint (density/lab/both only)
+    if (prefs.intent && prefs.intent !== 'core') {
       fcSetIntent(prefs.intent, true);
       // Show "last time" hint under the intent grid
       const hint = document.getElementById('fc_intent_last_hint');
       if (hint) {
-        const labels = { density: 'Density only', lab: 'Lab sample', both: 'Density + lab', core: 'Core drill' };
+        const labels = { density: 'Density only', lab: 'Lab sample', both: 'Density + lab' };
         hint.textContent = `↩ Last session: ${labels[prefs.intent] || prefs.intent}`;
         hint.style.display = '';
       }
@@ -15882,7 +15935,7 @@ function fcSetIntent(intent, fromRestore = false) {
   _fcIntent = intent;
   const intentInput = document.getElementById('fc_s_intent');
   if (intentInput) intentInput.value = intent;
-  ['density','lab','both','core'].forEach(k => {
+  ['density','lab','both'].forEach(k => {
     const btn = document.getElementById('fc_intent_' + k);
     if (!btn) return;
     const active = !!intent && k === intent;
@@ -15903,7 +15956,8 @@ async function startFC_Session() {
   if (!db) { showToast('Not connected to database', 'error'); return; }
 
   const intent = (document.getElementById('fc_s_intent')?.value || _fcIntent || '').trim();
-  if (!intent) { showToast('Select what you are doing (Density / Lab / Both / Core)', 'error'); return; }
+  if (!intent) { showToast('Select what you are doing (Density / Lab / Both)', 'error'); return; }
+  if (intent === 'core') { showToast('Use the Core Drill section below', 'info'); fcShowCoreDrillStart(); return; }
 
   const category = (document.getElementById('fc_s_category')?.value || 'soil');
   const _tnEl    = document.getElementById('fc_s_testno');
@@ -15934,15 +15988,6 @@ async function startFC_Session() {
       fieldTestRow = await fcTryInsert('field_tests', {
         ...headerData,
         field_workflow: intent === 'both' ? 'linked' : 'density_only',
-        test_date: headerData.date_sampled,
-        status: 'open',
-      }, requestedTestNo, category);
-    }
-
-    if (intent === 'core') {
-      fieldTestRow = await fcTryInsert('field_tests', {
-        ...headerData,
-        field_workflow: 'core_drill',
         test_date: headerData.date_sampled,
         status: 'open',
       }, requestedTestNo, category);
@@ -15988,9 +16033,7 @@ async function startFC_Session() {
 
   let primary = null;
   let table = 'samples';
-  if (intent === 'core') {
-    if (fieldTestRow) { primary = fieldTestRow; table = 'field_tests'; }
-  } else if (intent === 'density') {
+  if (intent === 'density') {
     if (fieldTestRow) { primary = fieldTestRow; table = 'field_tests'; }
     else if (sampleRow) { primary = sampleRow; table = 'samples'; }
   } else if (intent === 'lab') {
@@ -16015,7 +16058,86 @@ async function startFC_Session() {
     fieldTest: fieldTestRow,
   });
 
-  showToast(`Test No. ${primary.test_no} started — ${intent === 'density' ? 'Density only' : intent === 'lab' ? 'Lab sample only' : intent === 'core' ? 'Core drill' : 'Density + lab'} (${category})`, 'success');
+  showToast(`Test No. ${primary.test_no} started — ${intent === 'density' ? 'Density only' : intent === 'lab' ? 'Lab sample only' : 'Density + lab'} (${category})`, 'success');
+}
+
+// ── Start a core drill session (separate from density/lab field events) ──
+async function startFC_CoreSession() {
+  if (!db) { showToast('Not connected to database', 'error'); return; }
+
+  const category = (document.getElementById('fc_cd_category')?.value || 'soil');
+  const _tnEl = document.getElementById('fc_cd_testno');
+  const requestedTestNo = (_tnEl?.value || _tnEl?.placeholder || '').trim();
+  const today = new Date().toISOString().slice(0, 10);
+
+  const headerData = {
+    test_category: category,
+    contract:      (document.getElementById('fc_cd_contract')?.value  || '').trim() || null,
+    road:          (document.getElementById('fc_cd_road')?.value      || '').trim() || null,
+    location:      (document.getElementById('fc_cd_location')?.value  || '').trim() || null,
+    material_type: (document.getElementById('fc_cd_material')?.value  || '').trim() || null,
+    sampled_by:    (document.getElementById('fc_cd_tech')?.value      || '').trim() || null,
+    date_sampled:  document.getElementById('fc_cd_date')?.value || today,
+  };
+
+  const btn = document.querySelector('#fc_core_start_card .btn-core-start');
+  if (btn) { btn.textContent = 'Creating…'; btn.disabled = true; }
+
+  let fieldTestRow = null;
+  let lastError = null;
+  try {
+    fieldTestRow = await fcTryInsert('field_tests', {
+      ...headerData,
+      field_workflow: 'core_drill',
+      test_date: headerData.date_sampled,
+      status: 'open',
+    }, requestedTestNo, category);
+  } catch (e) {
+    lastError = e;
+  }
+
+  if (btn) { btn.textContent = '🔩 START CORE DRILL SESSION'; btn.disabled = false; }
+
+  if (!fieldTestRow) {
+    showToast('Could not start core drill: ' + (lastError?.message || 'unknown error'), 'error');
+    return;
+  }
+
+  fcActivateSession({
+    intent: 'core',
+    category,
+    primary: fieldTestRow,
+    table: 'field_tests',
+    linkedSample: null,
+    fieldTest: fieldTestRow,
+  });
+
+  showToast(`Core drill started — Test No. ${fieldTestRow.test_no}`, 'success');
+}
+
+function fcShowCoreDrillStart() {
+  const card = document.getElementById('fc_core_start_card');
+  if (!card) return;
+  card.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  card.style.boxShadow = '0 0 0 2px rgba(168,85,247,0.45)';
+  setTimeout(() => { card.style.boxShadow = ''; }, 1800);
+}
+
+function fcOpenCoreDrillFromHub() {
+  switchView('fieldcontrol');
+  setTimeout(fcShowCoreDrillStart, 200);
+}
+
+async function fcOnCoreCategoryChange() {
+  const cat = document.getElementById('fc_cd_category')?.value || 'soil';
+  const input = document.getElementById('fc_cd_testno');
+  const hint  = document.getElementById('fc_cd_testno_hint');
+  if (!input) return;
+  const next = await getNextTestNumber(cat);
+  const suggested = next != null ? String(next) : '1';
+  input.placeholder = suggested;
+  if (hint) hint.textContent = `(suggested: ${suggested})`;
+  if (!input.dataset.userTouched) input.value = '';
 }
 
 // ── Apply intent routing to tabs (show/hide + auto-navigate) ─
