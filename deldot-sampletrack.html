@@ -17695,7 +17695,9 @@ async function offlineSync() {
     try {
       let payload = op.table === 'core_drills'
         ? fcSanitizeCoreDrillPayload(op.payload)
-        : { ...op.payload };
+        : (op.table === 'field_tests' && op.op === 'insert')
+          ? fcSanitizeFieldTestInsertPayload(op.payload)
+          : { ...op.payload };
       const sel = op.table === 'core_drills' ? FC_CORE_DRILL_SELECT : '*';
       // Resolve any temp IDs in payload
       if (payload.id && idMap[payload.id]) payload.id = idMap[payload.id];
