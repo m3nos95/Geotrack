@@ -1543,6 +1543,38 @@ nav:not(#r18-nav), .nav-top-row { display: none !important; }
 .map-popup-pass { color: #34d399; font-weight: 700; }
 .map-popup-fail { color: #f87171; font-weight: 700; }
 .map-popup-pend { color: #fbbf24; font-weight: 700; }
+
+/* ── LabTrak admin map view ── */
+#labmap-view.active { display: flex; flex-direction: column; overflow: hidden; }
+.labmap-shell { display: flex; flex-direction: column; height: 100%; min-height: 0; }
+.labmap-topbar {
+  display: flex; align-items: center; justify-content: space-between; gap: 12px;
+  padding: 12px 18px; border-bottom: 1px solid var(--border); background: var(--surface); flex-shrink: 0;
+}
+.labmap-title { font-family: var(--display); font-size: 18px; color: var(--text); font-weight: 700; }
+.labmap-subtitle { font-family: var(--mono); font-size: 10px; color: var(--muted); margin-top: 2px; }
+.labmap-body { display: flex; flex: 1; min-height: 0; position: relative; }
+.labmap-layers {
+  width: 210px; flex-shrink: 0; background: rgba(6,9,15,0.96); border-right: 1px solid var(--border);
+  padding: 14px 12px; overflow-y: auto;
+}
+.labmap-layers-title { font-family: var(--mono); font-size: 9px; letter-spacing: 1.5px; color: var(--muted); margin-bottom: 10px; }
+.labmap-layer-btn {
+  display: flex; align-items: center; gap: 10px; width: 100%; text-align: left;
+  background: transparent; border: 1px solid var(--border); border-radius: 8px;
+  padding: 10px 12px; margin-bottom: 8px; cursor: pointer; transition: border-color 0.15s, background 0.15s;
+}
+.labmap-layer-btn.active { background: rgba(255,255,255,0.04); border-color: rgba(255,255,255,0.14); }
+.labmap-layer-btn.off { opacity: 0.45; }
+.labmap-layer-swatch { width: 12px; height: 12px; border-radius: 50%; flex-shrink: 0; }
+.labmap-layer-meta { flex: 1; min-width: 0; }
+.labmap-layer-name { font-family: var(--mono); font-size: 10px; color: var(--text); font-weight: 700; }
+.labmap-layer-count { font-family: var(--mono); font-size: 9px; color: var(--muted); margin-top: 2px; }
+.labmap-container { flex: 1; min-height: 320px; background: #06090f; }
+.labmap-empty {
+  position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
+  font-family: var(--mono); font-size: 11px; color: var(--muted); pointer-events: none;
+}
 .map-popup-borrow { margin-top: 6px; padding-top: 6px; border-top: 1px solid #2d3748; }
 .map-popup-borrow-tags { display: flex; gap: 4px; flex-wrap: wrap; margin-top: 4px; }
 .borrow-tag { padding: 2px 6px; border-radius: 2px; font-size: 9px; font-weight: 700; }
@@ -3294,6 +3326,16 @@ table.fc-borrow-tbl tr.fc-borrow-detail-row td{background:var(--surface);border-
           </svg>
         </div>
         <div class="rail-label">Dashboard</div>
+      </div>
+
+      <div class="rail-item" data-view="labmap" id="ri-labmap" style="display:none;" onclick="switchView('labmap')">
+        <div class="rail-icon-wrap">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="color:#38bdf8;">
+            <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7z"/>
+            <circle cx="12" cy="9" r="2.5"/>
+          </svg>
+        </div>
+        <div class="rail-label">Map</div>
       </div>
 
       <div class="rail-item" data-view="projects" id="ri-projects" onclick="switchView('projects')">
@@ -6036,6 +6078,29 @@ table.fc-borrow-tbl tr.fc-borrow-detail-row td{background:var(--surface);border-
     </div>
   </div>
 
+  <!-- ── LABTRAK MAP (admin) ── -->
+  <div class="view" id="labmap-view">
+    <div class="labmap-shell">
+      <div class="labmap-topbar">
+        <div>
+          <div class="labmap-title">LabTrak Map</div>
+          <div class="labmap-subtitle" id="labMapSubtitle">All stored coordinates across the program</div>
+        </div>
+        <button type="button" class="btn btn-ghost" onclick="labMapReload()" style="font-size:10px;letter-spacing:1px;">↻ REFRESH</button>
+      </div>
+      <div class="labmap-body">
+        <aside class="labmap-layers" id="labMapLayersPanel">
+          <div class="labmap-layers-title">LAYERS</div>
+          <div id="labMapLayerList"></div>
+        </aside>
+        <div style="flex:1;position:relative;min-width:0;">
+          <div id="labMapContainer" class="labmap-container"></div>
+          <div class="labmap-empty" id="labMapEmpty" style="display:none;">Connect to Supabase to load map data.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
   </div><!-- #view-container -->
 
   <nav id="mobileNav" aria-label="Main navigation">
@@ -6105,7 +6170,7 @@ table.fc-borrow-tbl tr.fc-borrow-detail-row td{background:var(--surface);border-
 // GLOBALS
 // ══════════════════════════════════════════════
 let db = null;
-const APP_BUILD = '2026.06.30-core-map';
+const APP_BUILD = '2026.06.30-labmap';
 const FC_CORE_ICON_SRC = 'docs/r18-reference/core-drill-icon-128.png';
 window._dbConnected = false;
 window._syncInProgress = false;
@@ -6663,6 +6728,315 @@ function createMarkerEl(color, symbol, isActive) {
   });
 
   return wrap;
+}
+
+// ══════════════════════════════════════════════
+// LABTRAK ADMIN MAP — all program coordinates
+// ══════════════════════════════════════════════
+let labMap = null;
+let labMapMarkers = [];
+let labMapLayers = { field_sample: true, density: true, core_drill: true, concrete: true };
+let labMapStore = { field_sample: [], density: [], core_drill: [], concrete: [] };
+
+const LAB_MAP_LAYER_DEFS = {
+  field_sample: { label: 'Field Sample', color: '#34d399', symbol: '●' },
+  density:      { label: 'Density',      color: '#fbbf24', symbol: '⊕' },
+  core_drill:   { label: 'Core Drill',   color: '#a855f7', symbol: '◇' },
+  concrete:     { label: 'Concrete',     color: '#60a5fa', symbol: '■' },
+};
+
+function isLabMapAdmin() {
+  return currentUser?.role === 'admin';
+}
+
+function labMapClassifySample(s) {
+  if (!s?.gps_coordinates || s.deleted_at) return null;
+  if (s.record_kind === 'density_test' || s.sample_type === 'density_test' ||
+      s.sample_type === 'nuclear_placeholder' || s.sample_type === 'aggregate_placeholder' ||
+      s.nuclear_data || s.density_data) return 'density';
+  if (typeof isSoilLabSample === 'function' && isSoilLabSample(s)) return 'field_sample';
+  if (s.sample_type === 'Field Control' || s.record_kind === 'lab_sample' || s.record_kind === 'linked') return 'field_sample';
+  return null;
+}
+
+function labMapSampleStatus(s) {
+  let color = '#fbbf24';
+  let statusLabel = 'Pending';
+  let isActive = true;
+  if (s.status === 'complete') {
+    isActive = false;
+    if (s.conforms === 'yes' || s.conforms === 'auto') {
+      color = '#34d399'; statusLabel = 'Approved';
+    } else if (s.conforms === 'no') {
+      color = '#f87171'; statusLabel = 'Rejected';
+    } else {
+      color = '#34d399'; statusLabel = 'Complete';
+    }
+  }
+  return { color, statusLabel, isActive };
+}
+
+function labMapBuildSamplePopup(s, layer) {
+  const { color, statusLabel } = labMapSampleStatus(s);
+  let nucHtml = '';
+  if (layer === 'density' && s.nuclear_data) {
+    try {
+      const nuc = typeof s.nuclear_data === 'string' ? JSON.parse(s.nuclear_data) : s.nuclear_data;
+      const fn = k => parseFloat(nuc[k]) || 0;
+      const ddArr = [fn('dd1'), fn('dd2'), fn('dd3')].filter(v => v > 0);
+      const C = ddArr.length ? ddArr.reduce((a, b) => a + b, 0) / ddArr.length : 0;
+      const U = fn('U');
+      const V = C > 0 && U > 0 ? (C / U * 100).toFixed(1) : null;
+      if (V) {
+        const cls = parseFloat(V) >= 95 ? 'map-popup-pass' : 'map-popup-fail';
+        nucHtml = `<div class="map-popup-row"><span class="map-popup-label">% Compaction:</span><span class="${cls}">${V}%</span></div>`;
+      }
+    } catch (e) { /* skip */ }
+  }
+  const layerLabel = LAB_MAP_LAYER_DEFS[layer]?.label || layer;
+  return `
+    <div class="map-popup-title">${s.test_no || '—'}</div>
+    <div class="map-popup-row"><span class="map-popup-label">Layer:</span><span class="map-popup-val">${layerLabel}</span></div>
+    <div class="map-popup-row"><span class="map-popup-label">Type:</span><span class="map-popup-val">${(s.test_category || 'soil').toUpperCase()}</span></div>
+    <div class="map-popup-row"><span class="map-popup-label">Contract:</span><span class="map-popup-val">${s.contract || '—'}</span></div>
+    <div class="map-popup-row"><span class="map-popup-label">Material:</span><span class="map-popup-val">${s.material_type || '—'}</span></div>
+    <div class="map-popup-row"><span class="map-popup-label">Location:</span><span class="map-popup-val">${s.location || '—'}</span></div>
+    <div class="map-popup-row"><span class="map-popup-label">Date:</span><span class="map-popup-val">${s.date_sampled || '—'}</span></div>
+    <div class="map-popup-row"><span class="map-popup-label">Status:</span><span class="${color === '#34d399' ? 'map-popup-pass' : color === '#f87171' ? 'map-popup-fail' : 'map-popup-pend'}">${statusLabel}</span></div>
+    ${nucHtml}
+  `;
+}
+
+function labMapBuildCorePopup(c) {
+  const thumb = c.photo_data?.thumb || c.photo_data?.dataUrl || '';
+  const thumbHtml = thumb
+    ? `<img src="${thumb}" style="width:100%;max-height:80px;object-fit:cover;border-radius:4px;margin-top:6px;" alt="core photo">`
+    : '';
+  return `
+    <div class="map-popup-title">Core ${c.core_no || '—'}</div>
+    <div class="map-popup-row"><span class="map-popup-label">Layer:</span><span class="map-popup-val">Core Drill</span></div>
+    <div class="map-popup-row"><span class="map-popup-label">Test:</span><span class="map-popup-val">${c.test_no || '—'}</span></div>
+    <div class="map-popup-row"><span class="map-popup-label">Contract:</span><span class="map-popup-val">${c.contract || '—'}</span></div>
+    <div class="map-popup-row"><span class="map-popup-label">Pavement:</span><span class="map-popup-val">${c.layer_type || '—'}</span></div>
+    <div class="map-popup-row"><span class="map-popup-label">Thickness:</span><span class="map-popup-val">${c.thickness_in != null ? c.thickness_in + ' in' : '—'}</span></div>
+    <div class="map-popup-row"><span class="map-popup-label">Station:</span><span class="map-popup-val">${c.station || '—'}</span></div>
+    <div class="map-popup-row"><span class="map-popup-label">Lane:</span><span class="map-popup-val">${c.lane || '—'}</span></div>
+    ${thumbHtml}
+  `;
+}
+
+function labMapBuildConcretePopup(set) {
+  return `
+    <div class="map-popup-title">${set.id || '—'}</div>
+    <div class="map-popup-row"><span class="map-popup-label">Layer:</span><span class="map-popup-val">Concrete</span></div>
+    <div class="map-popup-row"><span class="map-popup-label">Contract:</span><span class="map-popup-val">${set.contract || '—'}</span></div>
+    <div class="map-popup-row"><span class="map-popup-label">Mix Design:</span><span class="map-popup-val">${set.mixDesign || '—'}</span></div>
+    <div class="map-popup-row"><span class="map-popup-label">Location:</span><span class="map-popup-val">${set.pourLocation || '—'}</span></div>
+    <div class="map-popup-row"><span class="map-popup-label">Cast:</span><span class="map-popup-val">${set.castDate || '—'}</span></div>
+    <div class="map-popup-row"><span class="map-popup-label">Req. f'c:</span><span class="map-popup-val">${set.requiredFc || '—'} PSI</span></div>
+  `;
+}
+
+function labMapClearMarkers() {
+  labMapMarkers.forEach(m => m.remove());
+  labMapMarkers = [];
+}
+
+function labMapRenderLayerPanel() {
+  const list = document.getElementById('labMapLayerList');
+  if (!list) return;
+  list.innerHTML = Object.entries(LAB_MAP_LAYER_DEFS).map(([key, def]) => {
+    const on = labMapLayers[key] !== false;
+    const count = (labMapStore[key] || []).length;
+    return `<button type="button" class="labmap-layer-btn ${on ? 'active' : 'off'}" onclick="labMapToggleLayer('${key}')">
+      <span class="labmap-layer-swatch" style="background:${def.color};"></span>
+      <span class="labmap-layer-meta">
+        <div class="labmap-layer-name">${def.symbol} ${def.label}</div>
+        <div class="labmap-layer-count">${count} pin${count === 1 ? '' : 's'}</div>
+      </span>
+    </button>`;
+  }).join('');
+}
+
+function labMapToggleLayer(key) {
+  labMapLayers[key] = !labMapLayers[key];
+  labMapRenderLayerPanel();
+  labMapPlotMarkers(true);
+}
+
+function labMapPlotMarkers(preserveView) {
+  if (!labMap) return;
+  labMapClearMarkers();
+  const bounds = new mapboxgl.LngLatBounds();
+  let pinCount = 0;
+
+  const addMarker = (coords, layer, popupHtml, isActive) => {
+    const def = LAB_MAP_LAYER_DEFS[layer];
+    if (!def || labMapLayers[layer] === false) return;
+    const el = createMarkerEl(def.color, def.symbol, !!isActive);
+    const marker = new mapboxgl.Marker({ element: el })
+      .setLngLat([coords.lng, coords.lat])
+      .setPopup(new mapboxgl.Popup({ offset: 25, maxWidth: '260px' }).setHTML(popupHtml))
+      .addTo(labMap);
+    labMapMarkers.push(marker);
+    bounds.extend([coords.lng, coords.lat]);
+    pinCount++;
+  };
+
+  (labMapStore.field_sample || []).forEach(s => {
+    const coords = parseGPS(s.gps_coordinates, true);
+    if (!coords) return;
+    const st = labMapSampleStatus(s);
+    addMarker(coords, 'field_sample', labMapBuildSamplePopup(s, 'field_sample'), st.isActive);
+  });
+  (labMapStore.density || []).forEach(s => {
+    const coords = parseGPS(s.gps_coordinates, true);
+    if (!coords) return;
+    addMarker(coords, 'density', labMapBuildSamplePopup(s, 'density'), true);
+  });
+  (labMapStore.core_drill || []).forEach(c => {
+    const coords = parseGPS(c.gps_coordinates, true);
+    if (!coords) return;
+    addMarker(coords, 'core_drill', labMapBuildCorePopup(c), false);
+  });
+  (labMapStore.concrete || []).forEach(cs => {
+    const set = typeof concreteRowToSet === 'function' ? concreteRowToSet(cs) : cs;
+    if (!set?.gps_coordinates) return;
+    const coords = parseGPS(set.gps_coordinates, true);
+    if (!coords) return;
+    addMarker(coords, 'concrete', labMapBuildConcretePopup(set), false);
+  });
+
+  const subtitle = document.getElementById('labMapSubtitle');
+  if (subtitle) {
+    const parts = Object.keys(LAB_MAP_LAYER_DEFS).map(k => {
+      const n = (labMapStore[k] || []).length;
+      return n ? `${LAB_MAP_LAYER_DEFS[k].label}: ${n}` : '';
+    }).filter(Boolean);
+    subtitle.textContent = pinCount
+      ? `${pinCount} pin${pinCount === 1 ? '' : 's'} visible` + (parts.length ? ' · ' + parts.join(' · ') : '')
+      : 'No GPS coordinates found in the program';
+  }
+
+  if (!preserveView && pinCount > 0 && !bounds.isEmpty()) {
+    labMap.fitBounds(bounds, { padding: 70, maxZoom: 16, duration: 800 });
+  }
+}
+
+async function labMapFetchData() {
+  const store = { field_sample: [], density: [], core_drill: [], concrete: [] };
+  const sampleSeen = new Set();
+  const coreSeen = new Set();
+  const concSeen = new Set();
+
+  const addSample = (s) => {
+    if (!s?.id || sampleSeen.has(s.id)) return;
+    const layer = labMapClassifySample(s);
+    if (!layer) return;
+    sampleSeen.add(s.id);
+    store[layer].push(s);
+  };
+  const addCore = (c) => {
+    if (!c?.gps_coordinates) return;
+    const key = c.id || mapCoreDedupeKey(c);
+    if (coreSeen.has(key)) return;
+    coreSeen.add(key);
+    store.core_drill.push(c);
+  };
+  const addConcrete = (row) => {
+    if (!row?.id || concSeen.has(row.id)) return;
+    if (!row.gps_coordinates) return;
+    concSeen.add(row.id);
+    store.concrete.push(row);
+  };
+
+  (allSamples || []).forEach(addSample);
+  (window.allCoreDrills || []).forEach(addCore);
+  (activeFC_sessionCores || []).forEach(addCore);
+
+  if (!db) return store;
+
+  try {
+    const { data: samples } = await db.from('samples')
+      .select('id,test_no,contract,location,gps_coordinates,status,conforms,test_category,material_type,date_sampled,record_kind,sample_type,nuclear_data,density_data,deleted_at,archived')
+      .is('deleted_at', null)
+      .or('archived.is.null,archived.eq.false')
+      .not('gps_coordinates', 'is', null)
+      .limit(4000);
+    (samples || []).forEach(addSample);
+  } catch (e) { console.warn('labMapFetchData samples:', e); }
+
+  try {
+    const { data: cores } = await db.from('core_drills')
+      .select(MAP_CORE_DRILL_SELECT)
+      .not('gps_coordinates', 'is', null)
+      .limit(4000);
+    (cores || []).forEach(addCore);
+  } catch (e) {
+    try {
+      const { data: cores } = await db.from('core_drills')
+        .select('id,test_no,contract,core_no,gps_coordinates,layer_type,thickness_in,station,lane,photo_data,field_test_id,date_drilled')
+        .not('gps_coordinates', 'is', null)
+        .limit(4000);
+      (cores || []).forEach(addCore);
+    } catch (e2) { console.warn('labMapFetchData cores:', e2); }
+  }
+
+  try {
+    const { data: conc } = await db.from('concrete_sets')
+      .select('*')
+      .not('gps_coordinates', 'is', null)
+      .limit(2000);
+    (conc || []).forEach(addConcrete);
+  } catch (e) { console.warn('labMapFetchData concrete:', e); }
+
+  return store;
+}
+
+async function labMapReload() {
+  if (!isLabMapAdmin()) {
+    showToast('LabTrak Map is for administrators only', 'error');
+    return;
+  }
+  const empty = document.getElementById('labMapEmpty');
+  const subtitle = document.getElementById('labMapSubtitle');
+  if (!db) {
+    if (empty) empty.style.display = 'flex';
+    if (subtitle) subtitle.textContent = 'Connect to Supabase to load map data.';
+    labMapStore = { field_sample: [], density: [], core_drill: [], concrete: [] };
+    labMapRenderLayerPanel();
+    labMapClearMarkers();
+    return;
+  }
+  if (empty) empty.style.display = 'none';
+  if (subtitle) subtitle.textContent = 'Loading coordinates…';
+  labMapStore = await labMapFetchData();
+  labMapRenderLayerPanel();
+  labMapPlotMarkers(false);
+}
+
+function initLabMapView() {
+  if (!isLabMapAdmin()) {
+    showToast('LabTrak Map is for administrators only', 'error');
+    switchView('home');
+    return;
+  }
+  if (!labMap) {
+    labMap = new mapboxgl.Map({
+      container: 'labMapContainer',
+      style: 'mapbox://styles/mapbox/dark-v11',
+      center: [-75.5, 39.15],
+      zoom: 9,
+    });
+    labMap.addControl(new mapboxgl.NavigationControl(), 'top-right');
+    labMap.addControl(new mapboxgl.FullscreenControl(), 'top-right');
+    labMap.on('load', () => labMapReload());
+  } else {
+    setTimeout(() => {
+      labMap.resize();
+      labMapReload();
+    }, 80);
+  }
 }
 
 // ══════════════════════════════════════════════
@@ -8275,6 +8649,10 @@ function switchView(name) {
     showPlannedModuleNotice(name);
     return;
   }
+  if (name === 'labmap' && !isLabMapAdmin()) {
+    showToast('LabTrak Map is for administrators only', 'error');
+    return;
+  }
   setActiveView(name);
   closeMobileMore();
   if (name === 'scan') initScanner();
@@ -8296,6 +8674,7 @@ function switchView(name) {
   if (name === 'labhub')   { renderLabHub();   _loadHubNotes('lab').then(function(){ renderHubCal('lab'); }); }
   if (name === 'conchub')  { refreshConcreteSetsIfConnected(); renderConcreteHub(); _loadHubNotes('concrete').then(function(){ renderHubCal('concrete'); }); }
   if (name === 'r18')     { if (typeof r18Init === 'function') r18Init(); }
+  if (name === 'labmap')  { initLabMapView(); }
   // Reset scroll after browser has laid out the newly visible view
   window.scrollTo(0, 0);
   requestAnimationFrame(() => {
@@ -12559,7 +12938,7 @@ const VIEW_LABELS = {
   home: 'Home', projects: 'Projects', dashboard: 'Samples', fieldcontrol: 'Field',
   scan: 'Scan', soillab: 'Soil', concrete: 'Concrete', appsources: 'Sources',
   fieldhub: 'Field', labhub: 'Lab', conchub: 'Concrete', hotmix: 'Hot Mix',
-  precast: 'Pre-Cast', chemlab: 'Chem', r18: 'R-18'
+  precast: 'Pre-Cast', chemlab: 'Chem', r18: 'R-18', labmap: 'Map'
 };
 
 const MOBILE_NAV_ICONS = {
@@ -12578,6 +12957,7 @@ const MOBILE_NAV_ICONS = {
   hotmix: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="9"/></svg>',
   precast: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="3" width="18" height="18" rx="2"/></svg>',
   chemlab: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M10 2v6l-4 10h12L14 8V2"/></svg>',
+  labmap: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7z"/><circle cx="12" cy="9" r="2.5"/></svg>',
   more: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="5" cy="12" r="1.5"/><circle cx="12" cy="12" r="1.5"/><circle cx="19" cy="12" r="1.5"/></svg>',
   signout: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4"/><path d="M16 17l5-5-5-5"/><path d="M21 12H9"/></svg>'
 };
@@ -12638,7 +13018,7 @@ function setActiveView(name) {
   currentView = name;
   document.querySelectorAll('.rail-item').forEach(r => r.classList.toggle('active', r.dataset.view === name));
   document.querySelectorAll('.view').forEach(v => v.classList.toggle('active', v.id === name + '-view'));
-  const _sectionMap = {home:'',projects:'PROJECTS',dashboard:'ALL SAMPLES',fieldcontrol:'FIELD CONTROL',scan:'SCAN QR',soillab:'SOIL & AGGREGATE',concrete:'CONCRETE',fieldhub:'FIELD CONTROL',labhub:'SOIL LAB',conchub:'CONCRETE HUB',lab:'LAB ENTRY',report:'REPORT',hotmix:'HOT MIX ASPHALT',precast:'PRE-CAST CONCRETE',chemlab:'CHEMISTRY LAB',r18:'R-18 COMPLIANCE'};
+  const _sectionMap = {home:'',labmap:'MAP',projects:'PROJECTS',dashboard:'ALL SAMPLES',fieldcontrol:'FIELD CONTROL',scan:'SCAN QR',soillab:'SOIL & AGGREGATE',concrete:'CONCRETE',fieldhub:'FIELD CONTROL',labhub:'SOIL LAB',conchub:'CONCRETE HUB',lab:'LAB ENTRY',report:'REPORT',hotmix:'HOT MIX ASPHALT',precast:'PRE-CAST CONCRETE',chemlab:'CHEMISTRY LAB',r18:'R-18 COMPLIANCE'};
   const _sl = document.getElementById('ts-section-label');
   if (_sl) { const _lbl = _sectionMap[name]||''; _sl.textContent=_lbl; _sl.style.display=_lbl?'':'none'; }
   syncMobileNav();
@@ -12649,7 +13029,7 @@ function setActiveView(name) {
 // ══════════════════════════════════════════════════════════════
 
 const ROLE_DEFS = {
-  admin:         { label: 'Administrator',    color: '#e09848', tabs: ['home','projects','dashboard','fieldhub','labhub','conchub','hotmix','precast','chemlab','appsources','r18'] },
+  admin:         { label: 'Administrator',    color: '#e09848', tabs: ['home','labmap','projects','dashboard','fieldhub','labhub','conchub','hotmix','precast','chemlab','appsources','r18'] },
   section_admin: { label: 'Section Admin',    color: '#fb923c', tabs: [] }, // tabs come from restricted_hubs
   field:         { label: 'Field Technician', color: '#60a5fa', tabs: ['projects','fieldhub','scan','r18'] },
   lab:           { label: 'Lab Technician',   color: '#34d399', tabs: ['projects','dashboard','labhub','soillab','r18'] },
@@ -12983,7 +13363,7 @@ function applyRoleUI(role) {
 
   // Map of view → rail item id
   const railMap = {
-    home: 'ri-home', projects: 'ri-projects', dashboard: 'ri-dashboard',
+    home: 'ri-home', labmap: 'ri-labmap', projects: 'ri-projects', dashboard: 'ri-dashboard',
     fieldcontrol: 'ri-fieldcontrol', scan: 'ri-scan',
     soillab: 'ri-soillab', concrete: 'ri-concrete', appsources: 'ri-appsources',
     fieldhub: 'ri-fieldhub', labhub: 'ri-labhub', conchub: 'ri-conchub',
