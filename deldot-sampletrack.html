@@ -3984,25 +3984,25 @@ table.fc-borrow-tbl tr.fc-borrow-detail-row td{background:var(--surface);border-
             Pavement core logging — thickness, layer, GPS, and photos. Separate from density / lab field events.
           </p>
 
-          <div style="font-family:var(--mono);font-size:9px;letter-spacing:1.5px;color:var(--muted);margin-bottom:10px;">TEST NO. &amp; HEADER</div>
+          <div style="font-family:var(--mono);font-size:9px;letter-spacing:1.5px;color:var(--muted);margin-bottom:10px;">CORE # &amp; HEADER</div>
           <div class="form-grid" style="margin-bottom:12px;">
             <div class="form-group">
               <label>Test Category</label>
-              <select id="fc_cd_category" class="form-input" onchange="fcOnCoreCategoryChange()">
+              <select id="fc_cd_category" class="form-input">
                 <option value="soil">Soil / Geotechnical</option>
                 <option value="aggregate">Coarse Aggregate</option>
               </select>
             </div>
             <div class="form-group">
-              <label>Test No. <span style="color:#c084fc;font-size:9px;" id="fc_cd_testno_hint">(suggested: loading…)</span></label>
-              <input type="text" id="fc_cd_testno" class="form-input" inputmode="numeric" autocomplete="off"
+              <label>Core # <span style="color:#c084fc;font-size:9px;" id="fc_cd_coreno_hint">(suggested: 1)</span></label>
+              <input type="text" id="fc_cd_coreno" class="form-input" inputmode="numeric" autocomplete="off"
                       style="border-color:rgba(168,85,247,0.45);"
                       oninput="this.dataset.userTouched='1'"
-                      placeholder="loading…">
+                      placeholder="1">
             </div>
             <div class="form-group">
               <label>Contract No.</label>
-              <input type="text" id="fc_cd_contract" class="form-input" placeholder="T201109502" autocomplete="off">
+              <input type="text" id="fc_cd_contract" class="form-input" placeholder="T201109502" autocomplete="off" oninput="fcRefreshCoreSessionNo()">
             </div>
             <div class="form-group">
               <label>Road / Location</label>
@@ -6064,7 +6064,7 @@ table.fc-borrow-tbl tr.fc-borrow-detail-row td{background:var(--surface);border-
 // GLOBALS
 // ══════════════════════════════════════════════
 let db = null;
-const APP_BUILD = '2026.06.30-core-ui';
+const APP_BUILD = '2026.06.30-core-no';
 window._dbConnected = false;
 window._syncInProgress = false;
 let currentSample = null;
@@ -15780,7 +15780,8 @@ function updateFCSessionBanner() {
     return;
   }
   banner.style.display = 'flex';
-  label.textContent = activeFC_testNo;
+  const intent = _fcIntent || header?._fc_intent || fcIntentFromRecord(linkedSample || densityRec || header);
+  label.textContent = intent === 'core' ? ('Core #' + activeFC_testNo) : activeFC_testNo;
 
   const header = fcGetCachedHeaderRecord();
   const densityRec = fcGetCachedDensityRecord();
@@ -15879,7 +15880,7 @@ function initFC_View() {
     loadDensityRecords();
     loadOpenFieldSessions();
     loadCoreTrack();
-    fcOnCoreCategoryChange();
+    fcRefreshCoreSessionNo();
     // Restore last-used intent + category for this user
     fcRestorePrefs();
   }
@@ -16066,8 +16067,8 @@ async function startFC_CoreSession() {
   if (!db) { showToast('Not connected to database', 'error'); return; }
 
   const category = (document.getElementById('fc_cd_category')?.value || 'soil');
-  const _tnEl = document.getElementById('fc_cd_testno');
-  const requestedTestNo = (_tnEl?.value || _tnEl?.placeholder || '').trim();
+  const _cnEl = document.getElementById('fc_cd_coreno');
+  const requestedCoreNo = (_cnEl?.value || _cnEl?.placeholder || '1').trim();
   const today = new Date().toISOString().slice(0, 10);
 
   const headerData = {
@@ -16086,12 +16087,12 @@ async function startFC_CoreSession() {
   let fieldTestRow = null;
   let lastError = null;
   try {
-    fieldTestRow = await fcTryInsert('field_tests', {
+    fieldTestRow = await fcTryInsertCoreDrill({
       ...headerData,
       field_workflow: 'core_drill',
       test_date: headerData.date_sampled,
       status: 'open',
-    }, requestedTestNo, category);
+    }, requestedCoreNo);
   } catch (e) {
     lastError = e;
   }
@@ -16112,7 +16113,77 @@ async function startFC_CoreSession() {
     fieldTest: fieldTestRow,
   });
 
-  showToast(`Core drill started — Test No. ${fieldTestRow.test_no}`, 'success');
+  showToast(`Core drill started — Core # ${fieldTestRow.test_no}`, 'success');
+}
+
+function fcParseCoreNum(v) {
+  const n = parseInt(String(v || '').trim(), 10);
+  return !isNaN(n) && n > 0 ? n : null;
+}
+
+function fcCollectCoreSessionNums(contract) {
+  const nums = [];
+  const match = (c) => !contract || (c || '').trim().toLowerCase() === contract.trim().toLowerCase();
+  (allCoreDrills || []).forEach(c => {
+    if (!match(c.contract)) return;
+    const n = fcParseCoreNum(c.core_no) ?? fcParseCoreNum(c.test_no);
+    if (n) nums.push(n);
+  });
+  (allFieldTests || []).forEach(ft => {
+    if (ft.field_workflow !== 'core_drill') return;
+    if (!match(ft.contract)) return;
+    const n = fcParseCoreNum(ft.test_no);
+    if (n) nums.push(n);
+  });
+  return nums;
+}
+
+async function fcTryInsertCoreDrill(record, requestedCoreNo) {
+  let base = fcParseCoreNum(requestedCoreNo) || 1;
+  let inserted = null;
+  let lastError = null;
+  for (let attempt = 0; attempt < 5; attempt++) {
+    const rec = { ...record, test_no: String(base + attempt) };
+    const { data, error, queued } = await dbWrite('field_tests', 'insert', rec);
+    if (!error) { inserted = data; if (queued) showToast('Offline — session queued locally', 'info'); break; }
+    lastError = error;
+    const msg = (error.message || '').toLowerCase();
+    if (!msg.includes('duplicate') && !msg.includes('unique') && !msg.includes('conflict')) break;
+  }
+  if (!inserted && lastError) throw lastError;
+  return inserted;
+}
+
+async function fcRefreshCoreSessionNo() {
+  const input = document.getElementById('fc_cd_coreno');
+  const hint  = document.getElementById('fc_cd_coreno_hint');
+  if (!input) return;
+  const contract = (document.getElementById('fc_cd_contract')?.value || '').trim();
+  let suggested = 1;
+  if (contract) {
+    let nums = fcCollectCoreSessionNums(contract);
+    if (!nums.length && db) {
+      try {
+        const [{ data: cores }, { data: fts }] = await Promise.all([
+          db.from('core_drills').select('core_no,test_no,contract').eq('contract', contract),
+          db.from('field_tests').select('test_no,contract').eq('contract', contract).eq('field_workflow', 'core_drill'),
+        ]);
+        (cores || []).forEach(c => {
+          const n = fcParseCoreNum(c.core_no) ?? fcParseCoreNum(c.test_no);
+          if (n) nums.push(n);
+        });
+        (fts || []).forEach(ft => {
+          const n = fcParseCoreNum(ft.test_no);
+          if (n) nums.push(n);
+        });
+      } catch (e) { /* default 1 */ }
+    }
+    if (nums.length) suggested = Math.max(...nums) + 1;
+  }
+  const s = String(suggested);
+  input.placeholder = s;
+  if (hint) hint.textContent = `(suggested: ${s})`;
+  if (!input.dataset.userTouched) input.value = '';
 }
 
 function fcShowCoreDrillStart() {
@@ -16126,18 +16197,6 @@ function fcShowCoreDrillStart() {
 function fcOpenCoreDrillFromHub() {
   switchView('fieldcontrol');
   setTimeout(fcShowCoreDrillStart, 200);
-}
-
-async function fcOnCoreCategoryChange() {
-  const cat = document.getElementById('fc_cd_category')?.value || 'soil';
-  const input = document.getElementById('fc_cd_testno');
-  const hint  = document.getElementById('fc_cd_testno_hint');
-  if (!input) return;
-  const next = await getNextTestNumber(cat);
-  const suggested = next != null ? String(next) : '1';
-  input.placeholder = suggested;
-  if (hint) hint.textContent = `(suggested: ${suggested})`;
-  if (!input.dataset.userTouched) input.value = '';
 }
 
 // ── Apply intent routing to tabs (show/hide + auto-navigate) ─
@@ -16261,7 +16320,7 @@ async function loadFCStartTracker() {
 
   // Prefill the test-no input with the next number for the currently-selected category
   fcOnCategoryChange();
-  fcOnCoreCategoryChange();
+  fcRefreshCoreSessionNo();
 }
 
 // Called when the category dropdown changes — updates the suggested test number
