@@ -6105,7 +6105,7 @@ table.fc-borrow-tbl tr.fc-borrow-detail-row td{background:var(--surface);border-
 // GLOBALS
 // ══════════════════════════════════════════════
 let db = null;
-const APP_BUILD = '2026.06.30-core-display';
+const APP_BUILD = '2026.06.30-core-map';
 const FC_CORE_ICON_SRC = 'docs/r18-reference/core-drill-icon-128.png';
 window._dbConnected = false;
 window._syncInProgress = false;
@@ -6258,11 +6258,111 @@ self.addEventListener('fetch', e => {
 mapboxgl.accessToken = 'pk.eyJ1IjoibTNub3M5NSIsImEiOiJjbXBjb2hoc3kwMm8xMnFvbWpnanhzc3JkIn0.UQZqzs_NjcAN43HFGUMSvQ';
 let projectMap = null;
 let mapMarkers = [];
+const MAP_CORE_DRILL_SELECT = 'id,test_no,contract,core_no,gps_coordinates,layer_type,thickness_in,station,lane,photo_data,date_drilled,field_test_id';
 
-async function openProjectMap(contract, projectName) {
+function mapContractNorm(c) {
+  return (c || '').trim().toLowerCase();
+}
+
+function mapCoreMatchesFilter(core, contract, fieldTestId) {
+  if (fieldTestId && core.field_test_id === fieldTestId) return true;
+  if (!contract) return !fieldTestId;
+  return mapContractNorm(core.contract) === mapContractNorm(contract);
+}
+
+function mapCoreDedupeKey(core) {
+  return core.id || [core.field_test_id, core.core_no, core.gps_coordinates].join('|');
+}
+
+function mapCollectCoreDrills(contract, fieldTestId) {
+  const seen = new Set();
+  const cores = [];
+  const add = (core) => {
+    if (!core?.gps_coordinates) return;
+    if (!mapCoreMatchesFilter(core, contract, fieldTestId)) return;
+    const key = mapCoreDedupeKey(core);
+    if (seen.has(key)) return;
+    seen.add(key);
+    cores.push(core);
+  };
+  (window.allCoreDrills || []).forEach(add);
+  (activeFC_sessionCores || []).forEach(add);
+  return { cores, add, seen };
+}
+
+function plotCoreDrillMarker(core, bounds) {
+  const coords = parseGPS(core.gps_coordinates, true);
+  if (!coords || !projectMap) return false;
+
+  const thumb = core.photo_data?.thumb || core.photo_data?.dataUrl || '';
+  const thumbHtml = thumb
+    ? `<img src="${thumb}" style="width:100%;max-height:80px;object-fit:cover;border-radius:4px;margin-top:6px;" alt="core photo">`
+    : '';
+
+  const popup = new mapboxgl.Popup({ offset: 25, maxWidth: '240px' }).setHTML(`
+    <div class="map-popup-title">Core ${core.core_no || '—'}</div>
+    <div class="map-popup-row"><span class="map-popup-label">Test:</span><span class="map-popup-val">${core.test_no||'—'}</span></div>
+    <div class="map-popup-row"><span class="map-popup-label">Layer:</span><span class="map-popup-val">${core.layer_type||'—'}</span></div>
+    <div class="map-popup-row"><span class="map-popup-label">Thickness:</span><span class="map-popup-val">${core.thickness_in != null ? core.thickness_in + ' in' : '—'}</span></div>
+    <div class="map-popup-row"><span class="map-popup-label">Station:</span><span class="map-popup-val">${core.station||'—'}</span></div>
+    <div class="map-popup-row"><span class="map-popup-label">Lane:</span><span class="map-popup-val">${core.lane||'—'}</span></div>
+    ${thumbHtml}
+  `);
+
+  const el = createMarkerEl('#a855f7', '◇', false);
+  const marker = new mapboxgl.Marker({ element: el })
+    .setLngLat([coords.lng, coords.lat])
+    .setPopup(popup)
+    .addTo(projectMap);
+  mapMarkers.push(marker);
+  bounds.extend([coords.lng, coords.lat]);
+  return true;
+}
+
+async function mapLoadCoreDrills(contract, fieldTestId) {
+  const bucket = mapCollectCoreDrills(contract, fieldTestId);
+  if (!db) return bucket.cores;
+
+  const mergeRows = (rows) => (rows || []).forEach(bucket.add);
+
+  try {
+    let query = db.from('core_drills').select(MAP_CORE_DRILL_SELECT);
+    if (fieldTestId) {
+      query = query.eq('field_test_id', fieldTestId);
+    } else if (contract) {
+      query = query.ilike('contract', contract.trim());
+    }
+    const { data, error } = await query;
+    if (!error) mergeRows(data);
+    else throw error;
+  } catch (e) {
+    try {
+      let query = db.from('core_drills').select('id,test_no,contract,core_no,gps_coordinates,layer_type,thickness_in,station,lane,field_test_id');
+      if (fieldTestId) query = query.eq('field_test_id', fieldTestId);
+      else if (contract) query = query.ilike('contract', contract.trim());
+      const { data } = await query;
+      mergeRows(data);
+    } catch (e2) { console.warn('mapLoadCoreDrills:', e2); }
+  }
+
+  if (contract && fieldTestId) {
+    try {
+      const { data } = await db.from('core_drills')
+        .select(MAP_CORE_DRILL_SELECT)
+        .ilike('contract', contract.trim());
+      mergeRows(data);
+    } catch (e3) { /* optional second pass */ }
+  }
+
+  return bucket.cores;
+}
+
+async function openProjectMap(contract, projectName, opts) {
+  const mapOpts = opts || {};
+  const fieldTestId = mapOpts.fieldTestId || null;
   document.getElementById('mapOverlay').classList.add('open');
-  document.getElementById('mapOverlayTitle').textContent = contract + ' — ' + projectName;
-  document.getElementById('mapOverlaySubtitle').textContent = 'Loading samples...';
+  document.getElementById('mapOverlayTitle').textContent = (contract || 'Core drill') + ' — ' + (projectName || 'Map');
+  document.getElementById('mapOverlaySubtitle').textContent = 'Loading locations...';
 
   // Initialize map if not already done
   if (!projectMap) {
@@ -6280,23 +6380,28 @@ async function openProjectMap(contract, projectName) {
   mapMarkers.forEach(m => m.remove());
   mapMarkers = [];
 
-  // Load samples for this contract
-  const { data: samples } = await db.from('samples')
-    .select('*')
-    .eq('contract', contract)
-    .or('archived.is.null,archived.eq.false');
-
-  // Load concrete sets for this contract
-  let allConc = [];
-  try {
-    const { data: concData } = await db.from('concrete_sets')
-      .select('*')
-      .eq('contract', contract);
-    allConc = concData || [];
-  } catch(e) { allConc = []; }
-  const mapSamples = samples || [];
   const bounds = new mapboxgl.LngLatBounds();
   let pinCount = 0;
+
+  // Load samples / concrete when we have a contract
+  let mapSamples = [];
+  let allConc = [];
+  if (db && contract) {
+    try {
+      const { data: samples } = await db.from('samples')
+        .select('*')
+        .eq('contract', contract)
+        .or('archived.is.null,archived.eq.false');
+      mapSamples = samples || [];
+    } catch (e) { mapSamples = []; }
+
+    try {
+      const { data: concData } = await db.from('concrete_sets')
+        .select('*')
+        .eq('contract', contract);
+      allConc = concData || [];
+    } catch (e) { allConc = []; }
+  }
 
   // ── Soil / Aggregate samples
   mapSamples.forEach(s => {
@@ -6406,45 +6511,15 @@ async function openProjectMap(contract, projectName) {
   });
 
   // ── Core drills (pavement cores)
-  let allCores = [];
-  try {
-    const { data: coreData } = await db.from('core_drills')
-      .select(FC_CORE_DRILL_SELECT)
-      .eq('contract', contract);
-    allCores = coreData || [];
-  } catch(e) { allCores = []; }
-
+  const allCores = await mapLoadCoreDrills(contract, fieldTestId);
   allCores.forEach(c => {
-    if (!c.gps_coordinates) return;
-    const coords = parseGPS(c.gps_coordinates, true);
-    if (!coords) return;
-
-    const thumb = c.photo_data?.thumb || c.photo_data?.dataUrl || '';
-    const thumbHtml = thumb
-      ? `<img src="${thumb}" style="width:100%;max-height:80px;object-fit:cover;border-radius:4px;margin-top:6px;" alt="core photo">`
-      : '';
-
-    const popup = new mapboxgl.Popup({ offset: 25, maxWidth: '240px' }).setHTML(`
-      <div class="map-popup-title">Core ${c.core_no || '—'}</div>
-      <div class="map-popup-row"><span class="map-popup-label">Test:</span><span class="map-popup-val">${c.test_no||'—'}</span></div>
-      <div class="map-popup-row"><span class="map-popup-label">Layer:</span><span class="map-popup-val">${c.layer_type||'—'}</span></div>
-      <div class="map-popup-row"><span class="map-popup-label">Thickness:</span><span class="map-popup-val">${c.thickness_in != null ? c.thickness_in + ' in' : '—'}</span></div>
-      <div class="map-popup-row"><span class="map-popup-label">Station:</span><span class="map-popup-val">${c.station||'—'}</span></div>
-      <div class="map-popup-row"><span class="map-popup-label">Lane:</span><span class="map-popup-val">${c.lane||'—'}</span></div>
-      ${thumbHtml}
-    `);
-
-    const el = createMarkerEl('#a855f7', '◇', false);
-    const marker = new mapboxgl.Marker({ element: el })
-      .setLngLat([coords.lng, coords.lat])
-      .setPopup(popup)
-      .addTo(projectMap);
-    mapMarkers.push(marker);
-    bounds.extend([coords.lng, coords.lat]);
-    pinCount++;
+    if (plotCoreDrillMarker(c, bounds)) pinCount++;
   });
 
-  document.getElementById('mapOverlaySubtitle').textContent = pinCount + ' location' + (pinCount!==1?'s':'') + ' plotted';
+  const corePinCount = allCores.filter(c => parseGPS(c.gps_coordinates, true)).length;
+  let subtitle = pinCount + ' location' + (pinCount !== 1 ? 's' : '') + ' plotted';
+  if (corePinCount) subtitle += ' · ' + corePinCount + ' core' + (corePinCount !== 1 ? 's' : '');
+  document.getElementById('mapOverlaySubtitle').textContent = subtitle;
 
   // Fit map to pins
   if (pinCount > 0 && !bounds.isEmpty()) {
@@ -6463,17 +6538,42 @@ function closeProjectMap() {
 
 function parseGPS(str, relaxBounds) {
   if (!str) return null;
-  const m = str.match(/(-?\d+\.\d+)[,\s]+(-?\d+\.\d+)/);
+  const cleaned = String(str).replace(/\(.*?\)/g, '').trim();
+  const m = cleaned.match(/(-?\d+(?:\.\d+)?)[,\s]+(-?\d+(?:\.\d+)?)/);
   if (!m) return null;
-  const lat = parseFloat(m[1]);
-  const lng = parseFloat(m[2]);
-  if (isNaN(lat)||isNaN(lng)) return null;
+  let a = parseFloat(m[1]);
+  let b = parseFloat(m[2]);
+  if (isNaN(a) || isNaN(b)) return null;
+
+  let lat = a;
+  let lng = b;
+  if (a > 0 && b < 0) {
+    lat = a;
+    lng = b;
+  } else if (a < 0 && b > 0) {
+    lng = a;
+    lat = b;
+  } else if (Math.abs(a) > 90 && Math.abs(b) <= 90) {
+    lng = a;
+    lat = b;
+  } else if (Math.abs(b) > 90 && Math.abs(a) <= 90) {
+    lat = a;
+    lng = b;
+  }
+
   if (!relaxBounds) {
     if (lat < 38 || lat > 40 || lng < -76 || lng > -74) return null;
   } else if (lat < -90 || lat > 90 || lng < -180 || lng > 180) {
     return null;
   }
   return { lat, lng };
+}
+
+function formatCoreGPS(lat, lng, accuracyM) {
+  const base = lat.toFixed(6) + ', ' + lng.toFixed(6);
+  return accuracyM != null && !isNaN(accuracyM)
+    ? base + ' (±' + Math.round(accuracyM) + 'm)'
+    : base;
 }
 
 function createMarkerEl(color, symbol, isActive) {
@@ -9379,7 +9479,10 @@ function captureCoreGPS() {
   if (!navigator.geolocation) { el.value = 'GPS not supported'; return; }
   el.value = '📍 Locating…';
   navigator.geolocation.getCurrentPosition(
-    p => { el.value = p.coords.latitude.toFixed(6)+', '+p.coords.longitude.toFixed(6)+' (±'+Math.round(p.coords.accuracy)+'m)'; showToast('GPS captured ✓','success'); },
+    p => {
+      el.value = formatCoreGPS(p.coords.latitude, p.coords.longitude, p.coords.accuracy);
+      showToast('GPS captured ✓','success');
+    },
     e => { el.readOnly=false; el.style.borderColor='var(--gold)'; el.value=''; el.placeholder='Paste coords: 39.146760, -75.504430'; el.focus(); showToast('Enter coordinates manually','error'); },
     { enableHighAccuracy:true, timeout:15000, maximumAge:60000 }
   );
@@ -16836,6 +16939,12 @@ async function fcSaveCore() {
   const depthVal = document.getElementById('fc_core_depth')?.value;
   const depth = depthVal ? parseFloat(depthVal) : null;
 
+  const gpsRaw = (document.getElementById('fc_core_gps')?.value || '').trim();
+  const gpsCoords = gpsRaw ? (() => {
+    const parsed = parseGPS(gpsRaw, true);
+    return parsed ? formatCoreGPS(parsed.lat, parsed.lng) : gpsRaw;
+  })() : null;
+
   const payload = fcSanitizeCoreDrillPayload({
     test_no:         header.test_no,
     contract:        header.contract,
@@ -16844,7 +16953,7 @@ async function fcSaveCore() {
     station:         (document.getElementById('fc_core_station')?.value || '').trim() || null,
     lane:            (document.getElementById('fc_core_lane')?.value || '').trim() || null,
     core_no:         coreNo,
-    gps_coordinates: (document.getElementById('fc_core_gps')?.value || '').trim() || null,
+    gps_coordinates: gpsCoords,
     thickness_in:    thickness,
     depth_in:        depth != null && !isNaN(depth) ? depth : null,
     layer_type:      layer,
@@ -16877,13 +16986,25 @@ async function fcSaveCore() {
   fcRenderCoreList();
   updateFCSessionBanner();
   showToast(`Core ${coreNo} saved ✓`, 'success');
+  if (document.getElementById('mapOverlay')?.classList.contains('open')) {
+    openProjectMap(
+      header.contract,
+      header.location || header.road || header.contract || 'Core drill',
+      { fieldTestId: header.field_test_id }
+    );
+  }
 }
 
 function fcOpenSessionMap() {
   const header = fcGetCachedHeaderRecord();
   const contract = header?.contract;
-  if (!contract) { showToast('No contract on this session', 'error'); return; }
-  openProjectMap(contract, header?.location || header?.road || contract);
+  const fieldTestId = activeFC_fieldTestId || (activeFC_table === 'field_tests' ? activeFC_sessionId : null);
+  const hasSessionGps = (activeFC_sessionCores || []).some(c => c.gps_coordinates);
+  if (!contract && !fieldTestId && !hasSessionGps) {
+    showToast('No contract or GPS on this session', 'error');
+    return;
+  }
+  openProjectMap(contract, header?.location || header?.road || contract || 'Core drill', { fieldTestId });
 }
 
 async function loadCoreTrack() {
@@ -16933,8 +17054,8 @@ function renderCoreTrack() {
     const dateStr = c.date_drilled
       ? new Date(c.date_drilled + 'T12:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
       : '—';
-    const mapBtn = c.contract
-      ? `<button class="btn btn-ghost" style="font-size:9px;padding:4px 8px;" onclick="openProjectMap('${(c.contract||'').replace(/'/g,"\\'")}','${(c.location||c.contract||'').replace(/'/g,"\\'")}')">MAP</button>`
+    const mapBtn = c.gps_coordinates
+      ? `<button class="btn btn-ghost" style="font-size:9px;padding:4px 8px;" onclick="openProjectMap('${(c.contract||'').replace(/'/g,"\\'")}','${(c.location||c.contract||'Core drill').replace(/'/g,"\\'")}', { fieldTestId: ${c.field_test_id ? `'${c.field_test_id}'` : 'null'} })">MAP</button>`
       : '';
     return `<div style="display:flex;align-items:center;justify-content:space-between;gap:8px;padding:8px 0;border-bottom:1px solid var(--border);">
       <div style="min-width:0;">
