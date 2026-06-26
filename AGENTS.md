@@ -52,6 +52,15 @@ paste the local `ANON_KEY` from `supabase start`, set Sign-in mode to
 app auto-seeds a `default-admin` user with an empty PIN, so you can enter
 straight away. Credentials are stored in browser localStorage only.
 
+### Known schema drift (gotcha)
+The app's New Project form (`saveProject`) writes columns `project_manager`,
+`email_distribution`, and `track_sources` that are NOT in the committed
+`supabase/schema.sql` or any committed migration. So creating a project via the
+UI fails against a DB built from `schema.sql` ("Could not find the ... column").
+Creating a **Sample** (Soil & Agg lab -> "+ NEW SAMPLE") works cleanly with the
+committed schema and is a good smoke-test of the full stack. Do not "fix" this
+by editing committed SQL unless that is the actual task.
+
 ### Optional services (not needed to run/test the core app)
 - `labtrak-ai` Edge Function (AI form reading) needs `ANTHROPIC_API_KEY`.
 - Report emailing needs a separately-deployed `send-report-email` function with
