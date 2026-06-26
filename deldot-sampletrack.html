@@ -1545,18 +1545,29 @@ nav:not(#r18-nav), .nav-top-row { display: none !important; }
 .map-popup-pend { color: #fbbf24; font-weight: 700; }
 
 /* ── LabTrak admin map view ── */
+#labmap-view { overflow: hidden; }
 #labmap-view.active { display: flex; flex-direction: column; overflow: hidden; }
-.labmap-shell { display: flex; flex-direction: column; height: 100%; min-height: 0; }
-.labmap-topbar {
-  display: flex; align-items: center; justify-content: space-between; gap: 12px;
-  padding: 12px 18px; border-bottom: 1px solid var(--border); background: var(--surface); flex-shrink: 0;
+.labmap-shell { position: relative; flex: 1; width: 100%; height: 100%; min-height: 0; }
+.labmap-container { position: absolute; inset: 0; width: 100%; height: 100%; background: #06090f; }
+.labmap-ui {
+  position: absolute; inset: 0; z-index: 2; pointer-events: none;
+  display: flex; flex-direction: column; padding: 10px; gap: 8px;
 }
-.labmap-title { font-family: var(--display); font-size: 18px; color: var(--text); font-weight: 700; }
-.labmap-subtitle { font-family: var(--mono); font-size: 10px; color: var(--muted); margin-top: 2px; }
-.labmap-body { display: flex; flex: 1; min-height: 0; position: relative; }
+.labmap-float-header {
+  pointer-events: auto; flex-shrink: 0;
+  display: flex; align-items: center; justify-content: space-between; gap: 12px;
+  padding: 10px 14px; border-radius: 10px;
+  background: rgba(6, 9, 15, 0.9); border: 1px solid rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(10px); box-shadow: 0 8px 28px rgba(0, 0, 0, 0.45);
+}
+.labmap-title { font-family: var(--display); font-size: 16px; color: var(--text); font-weight: 700; line-height: 1.2; }
+.labmap-subtitle { font-family: var(--mono); font-size: 9px; color: var(--muted); margin-top: 2px; line-height: 1.4; }
+.labmap-layers-wrap { pointer-events: none; flex: 1; min-height: 0; display: flex; align-items: stretch; }
 .labmap-layers {
-  width: 210px; flex-shrink: 0; background: rgba(6,9,15,0.96); border-right: 1px solid var(--border);
-  padding: 14px 12px; overflow-y: auto;
+  pointer-events: auto; width: 210px; max-height: 100%; flex-shrink: 0;
+  background: rgba(6, 9, 15, 0.92); border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 10px; padding: 12px 10px; overflow-y: auto;
+  backdrop-filter: blur(10px); box-shadow: 0 8px 28px rgba(0, 0, 0, 0.45);
 }
 .labmap-layers-title { font-family: var(--mono); font-size: 9px; letter-spacing: 1.5px; color: var(--muted); margin-bottom: 10px; }
 .labmap-layer-btn {
@@ -1570,10 +1581,19 @@ nav:not(#r18-nav), .nav-top-row { display: none !important; }
 .labmap-layer-meta { flex: 1; min-width: 0; }
 .labmap-layer-name { font-family: var(--mono); font-size: 10px; color: var(--text); font-weight: 700; }
 .labmap-layer-count { font-family: var(--mono); font-size: 9px; color: var(--muted); margin-top: 2px; }
-.labmap-container { flex: 1; min-height: 320px; background: #06090f; }
 .labmap-empty {
-  position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
+  position: absolute; inset: 0; z-index: 1; display: flex; align-items: center; justify-content: center;
   font-family: var(--mono); font-size: 11px; color: var(--muted); pointer-events: none;
+  background: rgba(6, 9, 15, 0.55);
+}
+#app.labmap-mode #view-container { background: #06090f; background-image: none; }
+#labmap-view .mapboxgl-ctrl-top-right { top: 62px; right: 10px; }
+@media (max-width: 768px) {
+  .labmap-ui { padding: 8px; }
+  .labmap-layers { width: min(210px, calc(100vw - 24px)); max-height: 42vh; }
+  .labmap-float-header { padding: 8px 12px; }
+  .labmap-title { font-size: 14px; }
+  #labmap-view .mapboxgl-ctrl-top-right { top: 54px; }
 }
 .map-popup-borrow { margin-top: 6px; padding-top: 6px; border-top: 1px solid #2d3748; }
 .map-popup-borrow-tags { display: flex; gap: 4px; flex-wrap: wrap; margin-top: 4px; }
@@ -6081,21 +6101,21 @@ table.fc-borrow-tbl tr.fc-borrow-detail-row td{background:var(--surface);border-
   <!-- ── LABTRAK MAP (admin) ── -->
   <div class="view" id="labmap-view">
     <div class="labmap-shell">
-      <div class="labmap-topbar">
-        <div>
-          <div class="labmap-title">LabTrak Map</div>
-          <div class="labmap-subtitle" id="labMapSubtitle">All stored coordinates across the program</div>
+      <div id="labMapContainer" class="labmap-container"></div>
+      <div class="labmap-empty" id="labMapEmpty" style="display:none;">Connect to Supabase to load map data.</div>
+      <div class="labmap-ui">
+        <div class="labmap-float-header">
+          <div>
+            <div class="labmap-title">LabTrak Map</div>
+            <div class="labmap-subtitle" id="labMapSubtitle">All stored coordinates across the program</div>
+          </div>
+          <button type="button" class="btn btn-ghost" onclick="labMapReload()" style="font-size:10px;letter-spacing:1px;">↻ REFRESH</button>
         </div>
-        <button type="button" class="btn btn-ghost" onclick="labMapReload()" style="font-size:10px;letter-spacing:1px;">↻ REFRESH</button>
-      </div>
-      <div class="labmap-body">
-        <aside class="labmap-layers" id="labMapLayersPanel">
-          <div class="labmap-layers-title">LAYERS</div>
-          <div id="labMapLayerList"></div>
-        </aside>
-        <div style="flex:1;position:relative;min-width:0;">
-          <div id="labMapContainer" class="labmap-container"></div>
-          <div class="labmap-empty" id="labMapEmpty" style="display:none;">Connect to Supabase to load map data.</div>
+        <div class="labmap-layers-wrap">
+          <aside class="labmap-layers" id="labMapLayersPanel">
+            <div class="labmap-layers-title">LAYERS</div>
+            <div id="labMapLayerList"></div>
+          </aside>
         </div>
       </div>
     </div>
@@ -6170,7 +6190,7 @@ table.fc-borrow-tbl tr.fc-borrow-detail-row td{background:var(--surface);border-
 // GLOBALS
 // ══════════════════════════════════════════════
 let db = null;
-const APP_BUILD = '2026.06.30-labmap';
+const APP_BUILD = '2026.06.30-labmap-full';
 const FC_CORE_ICON_SRC = 'docs/r18-reference/core-drill-icon-128.png';
 window._dbConnected = false;
 window._syncInProgress = false;
@@ -7015,6 +7035,14 @@ async function labMapReload() {
   labMapPlotMarkers(false);
 }
 
+function labMapResizeSoon() {
+  if (!labMap) return;
+  requestAnimationFrame(() => {
+    labMap.resize();
+    requestAnimationFrame(() => labMap.resize());
+  });
+}
+
 function initLabMapView() {
   if (!isLabMapAdmin()) {
     showToast('LabTrak Map is for administrators only', 'error');
@@ -7030,12 +7058,13 @@ function initLabMapView() {
     });
     labMap.addControl(new mapboxgl.NavigationControl(), 'top-right');
     labMap.addControl(new mapboxgl.FullscreenControl(), 'top-right');
-    labMap.on('load', () => labMapReload());
-  } else {
-    setTimeout(() => {
-      labMap.resize();
+    labMap.on('load', () => {
+      labMapResizeSoon();
       labMapReload();
-    }, 80);
+    });
+  } else {
+    labMapResizeSoon();
+    labMapReload();
   }
 }
 
@@ -13016,12 +13045,14 @@ function closeMobileMore() {
 
 function setActiveView(name) {
   currentView = name;
+  document.getElementById('app')?.classList.toggle('labmap-mode', name === 'labmap');
   document.querySelectorAll('.rail-item').forEach(r => r.classList.toggle('active', r.dataset.view === name));
   document.querySelectorAll('.view').forEach(v => v.classList.toggle('active', v.id === name + '-view'));
   const _sectionMap = {home:'',labmap:'MAP',projects:'PROJECTS',dashboard:'ALL SAMPLES',fieldcontrol:'FIELD CONTROL',scan:'SCAN QR',soillab:'SOIL & AGGREGATE',concrete:'CONCRETE',fieldhub:'FIELD CONTROL',labhub:'SOIL LAB',conchub:'CONCRETE HUB',lab:'LAB ENTRY',report:'REPORT',hotmix:'HOT MIX ASPHALT',precast:'PRE-CAST CONCRETE',chemlab:'CHEMISTRY LAB',r18:'R-18 COMPLIANCE'};
   const _sl = document.getElementById('ts-section-label');
   if (_sl) { const _lbl = _sectionMap[name]||''; _sl.textContent=_lbl; _sl.style.display=_lbl?'':'none'; }
   syncMobileNav();
+  if (name === 'labmap') labMapResizeSoon();
 }
 
 // ══════════════════════════════════════════════════════════════
