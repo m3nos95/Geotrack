@@ -6064,7 +6064,7 @@ table.fc-borrow-tbl tr.fc-borrow-detail-row td{background:var(--surface);border-
 // GLOBALS
 // ══════════════════════════════════════════════
 let db = null;
-const APP_BUILD = '2026.06.30-core-schema';
+const APP_BUILD = '2026.06.30-ft-status';
 window._dbConnected = false;
 window._syncInProgress = false;
 let currentSample = null;
@@ -15988,7 +15988,6 @@ async function startFC_Session() {
         ...headerData,
         field_workflow: intent === 'both' ? 'linked' : 'density_only',
         test_date: headerData.date_sampled,
-        status: 'open',
       }, requestedTestNo, category);
     }
 
@@ -16089,7 +16088,6 @@ async function startFC_CoreSession() {
       ...headerData,
       field_workflow: 'core_drill',
       test_date: headerData.date_sampled,
-      status: 'open',
     }, requestedCoreNo);
   } catch (e) {
     lastError = e;
@@ -16501,12 +16499,26 @@ function offlineQueueSanitizeCoreDrills() {
   const q = offlineQueueGet();
   let changed = false;
   const cleaned = q.map(op => {
-    if (op.table !== 'core_drills') return op;
-    const payload = fcSanitizeCoreDrillPayload(op.payload);
-    if (JSON.stringify(payload) !== JSON.stringify(op.payload)) changed = true;
-    return { ...op, payload };
+    if (op.table === 'core_drills') {
+      const payload = fcSanitizeCoreDrillPayload(op.payload);
+      if (JSON.stringify(payload) !== JSON.stringify(op.payload)) changed = true;
+      return { ...op, payload };
+    }
+    if (op.table === 'field_tests' && op.op === 'insert') {
+      const payload = fcSanitizeFieldTestInsertPayload(op.payload);
+      if (JSON.stringify(payload) !== JSON.stringify(op.payload)) changed = true;
+      return { ...op, payload };
+    }
+    return op;
   });
   if (changed) offlineQueueSave(cleaned);
+}
+
+function fcSanitizeFieldTestInsertPayload(payload) {
+  if (!payload || typeof payload !== 'object') return payload;
+  const out = { ...payload };
+  delete out.status;
+  return out;
 }
 
 async function fcHandleCorePhoto(input) {
@@ -16770,12 +16782,24 @@ async function loadOpenFieldSessions() {
   }
   list.textContent = 'Loading…';
   try {
-    const { data: openTests, error: ftErr } = await db.from('field_tests')
-      .select('id,test_no,contract,location,sampled_by,field_workflow,sample_id,test_category,created_at')
-      .eq('status', 'open')
+    let openTests = null;
+    const ftQuery = db.from('field_tests')
+      .select('id,test_no,contract,location,sampled_by,field_workflow,sample_id,test_category,created_at,status')
       .order('created_at', { ascending: false })
       .limit(15);
-    if (ftErr) throw ftErr;
+    const { data: openByStatus, error: ftErr } = await ftQuery.eq('status', 'open');
+    if (ftErr && (ftErr.message || '').toLowerCase().includes('status')) {
+      const { data, error } = await db.from('field_tests')
+        .select('id,test_no,contract,location,sampled_by,field_workflow,sample_id,test_category,created_at')
+        .order('created_at', { ascending: false })
+        .limit(15);
+      if (error) throw error;
+      openTests = (data || []).filter(r => (r.status || 'open') !== 'closed');
+    } else if (ftErr) {
+      throw ftErr;
+    } else {
+      openTests = openByStatus || [];
+    }
 
     const { data: openLab, error: labErr } = await db.from('samples')
       .select('id,test_no,contract,location,sampled_by,record_kind,field_test_id,test_category,created_at')
@@ -17602,7 +17626,9 @@ function offlineUpdateBanner() {
 // ── Offline-aware DB wrapper ────────────────────────────────────
 // Returns { data, error, queued } — queued=true means saved locally
 async function dbWrite(table, op, payload, matchId) {
-  const body = table === 'core_drills' ? fcSanitizeCoreDrillPayload(payload) : payload;
+  let body = payload;
+  if (table === 'core_drills') body = fcSanitizeCoreDrillPayload(payload);
+  else if (table === 'field_tests' && op === 'insert') body = fcSanitizeFieldTestInsertPayload(payload);
   const sel = table === 'core_drills' ? FC_CORE_DRILL_SELECT : '*';
   if (navigator.onLine && db) {
     try {
