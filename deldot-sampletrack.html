@@ -7068,6 +7068,10 @@ function initLabMapView() {
   }
 }
 
+window.addEventListener('resize', () => {
+  if (currentView === 'labmap') labMapResizeSoon();
+});
+
 // ══════════════════════════════════════════════
 // DROPDOWN MENU
 // ══════════════════════════════════════════════
