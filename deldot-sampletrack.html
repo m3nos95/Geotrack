@@ -15780,13 +15780,11 @@ function updateFCSessionBanner() {
     return;
   }
   banner.style.display = 'flex';
-  const intent = _fcIntent || header?._fc_intent || fcIntentFromRecord(linkedSample || densityRec || header);
-  label.textContent = intent === 'core' ? ('Core #' + activeFC_testNo) : activeFC_testNo;
-
   const header = fcGetCachedHeaderRecord();
   const densityRec = fcGetCachedDensityRecord();
   const linkedSample = fcGetCachedLinkedSample();
   const intent = _fcIntent || header?._fc_intent || fcIntentFromRecord(linkedSample || densityRec || header);
+  label.textContent = intent === 'core' ? ('Core #' + activeFC_testNo) : activeFC_testNo;
 
   if (meta && header) {
     meta.innerHTML = [
