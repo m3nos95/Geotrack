@@ -16,6 +16,7 @@ CREATE TABLE IF NOT EXISTS public.field_tests (
   date_sampled     TEXT,
   test_date        TEXT,
   field_workflow   TEXT,
+  core_no          TEXT,
   sample_id        UUID,
   nuclear_data     JSONB,
   density_data     JSONB,
@@ -36,6 +37,7 @@ ALTER TABLE public.field_tests ADD COLUMN IF NOT EXISTS sampled_by       TEXT;
 ALTER TABLE public.field_tests ADD COLUMN IF NOT EXISTS date_sampled     TEXT;
 ALTER TABLE public.field_tests ADD COLUMN IF NOT EXISTS test_date        TEXT;
 ALTER TABLE public.field_tests ADD COLUMN IF NOT EXISTS field_workflow   TEXT;
+ALTER TABLE public.field_tests ADD COLUMN IF NOT EXISTS core_no          TEXT;
 ALTER TABLE public.field_tests ADD COLUMN IF NOT EXISTS sample_id        UUID;
 ALTER TABLE public.field_tests ADD COLUMN IF NOT EXISTS nuclear_data     JSONB;
 ALTER TABLE public.field_tests ADD COLUMN IF NOT EXISTS density_data     JSONB;
@@ -49,6 +51,7 @@ CREATE INDEX IF NOT EXISTS idx_field_tests_category   ON public.field_tests (tes
 CREATE INDEX IF NOT EXISTS idx_field_tests_created_at ON public.field_tests (created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_field_tests_sample_id  ON public.field_tests (sample_id);
 CREATE INDEX IF NOT EXISTS idx_field_tests_status     ON public.field_tests (status);
+CREATE INDEX IF NOT EXISTS idx_field_tests_core_no    ON public.field_tests (core_no);
 
 DROP TRIGGER IF EXISTS trg_field_tests_updated_at ON public.field_tests;
 CREATE TRIGGER trg_field_tests_updated_at
