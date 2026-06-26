@@ -17623,7 +17623,7 @@ async function dbWrite(table, op, payload, matchId) {
   const tempId = matchId || ('OFFLINE_' + Date.now() + '_' + Math.random().toString(36).slice(2,7));
   offlineQueueAdd({ table, op, payload: body, matchId: matchId || tempId, tempId });
   // Return a fake success with a temp object so the UI can continue
-  const fakeData = { ...payload, id: tempId, _offline: true };
+  const fakeData = { ...body, id: tempId, _offline: true };
   offlineUpdateBanner();
   return { data: fakeData, error: null, queued: true };
 }
