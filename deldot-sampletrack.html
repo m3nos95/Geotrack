@@ -1305,13 +1305,12 @@ nav:not(#r18-nav), .nav-top-row { display: none !important; }
 .lab-mode-tab { flex:1; padding:11px; text-align:center; font-family:var(--mono); font-size:11px; letter-spacing:1px; cursor:pointer; background:var(--panel); color:var(--muted); border:none; transition:all 0.2s; }
 .lab-mode-tab.active { background: var(--metal-gold); background-size:200% auto; color:#1a0f00; font-weight:700; text-shadow: 0 1px 2px rgba(255,255,255,0.3); box-shadow: var(--metal-glow-sm); letter-spacing:1.5px; }
 .lab-mode-tab:hover:not(.active) { background:var(--border); color:var(--text); }
-.fc-core-icon { display:inline-flex; align-items:center; justify-content:center; color:#c084fc; vertical-align:-0.12em; line-height:0; }
-.fc-core-icon svg { display:block; }
-.fc-core-icon--sm svg { width:1em; height:1.33em; }
-.fc-core-icon--md svg { width:1.15em; height:1.5em; }
-.fc-core-icon--lg svg { width:32px; height:42px; }
+.fc-core-icon { display:inline-flex; align-items:center; justify-content:center; vertical-align:-0.12em; line-height:0; flex-shrink:0; }
+.fc-core-icon img { display:block; object-fit:contain; border-radius:5px; }
+.fc-core-icon--sm img { width:1.25em; height:1.25em; }
+.fc-core-icon--md img { width:1.5em; height:1.5em; }
+.fc-core-icon--lg img { width:48px; height:48px; }
 .btn-core-start { display:inline-flex; align-items:center; justify-content:center; gap:8px; }
-.btn-core-start .fc-core-icon { color:#fff; }
 .hub-action-btn .fc-core-icon { margin-right:5px; vertical-align:middle; }
 .lab-mode-tab .fc-core-icon { margin-right:4px; vertical-align:-0.2em; }
 .fc-core-photo-wrap { display:flex; flex-direction:column; gap:10px; }
@@ -4018,7 +4017,7 @@ table.fc-borrow-tbl tr.fc-borrow-detail-row td{background:var(--surface);border-
 
         <!-- ── CORE DRILL — separate subgroup (not mixed with density/lab intents) ── -->
         <div class="card" id="fc_core_start_card" style="margin-top:14px;border:1px solid rgba(168,85,247,0.35);background:linear-gradient(135deg,rgba(168,85,247,0.08),rgba(168,85,247,0.02));">
-          <div class="card-title" style="color:#c084fc;"><span class="fc-core-icon fc-core-icon--md" aria-hidden="true"><svg viewBox="0 0 24 32" xmlns="http://www.w3.org/2000/svg"><ellipse cx="12" cy="5" rx="8" ry="3" fill="currentColor"/><rect x="4" y="5" width="16" height="20" fill="currentColor" opacity="0.88"/><ellipse cx="12" cy="25" rx="8" ry="3" fill="currentColor" opacity="0.6"/><ellipse cx="12" cy="5" rx="5.5" ry="1.8" fill="#fff" opacity="0.28"/></svg></span> Core Drill</div>
+          <div class="card-title" style="color:#c084fc;"><span class="fc-core-icon fc-core-icon--md" aria-hidden="true"><img src="docs/r18-reference/core-drill-icon-128.png" alt=""></span> Core Drill</div>
           <p style="font-family:var(--mono);font-size:10px;color:var(--muted);line-height:1.6;margin:-4px 0 14px;max-width:560px;">
             Pavement core logging — thickness, layer, GPS, and photos. Separate from density / lab field events.
           </p>
@@ -4066,7 +4065,7 @@ table.fc-borrow-tbl tr.fc-borrow-detail-row td{background:var(--surface);border-
           </div>
 
           <div class="btn-row" style="margin-bottom:18px;">
-            <button type="button" class="btn btn-core-start" style="font-size:13px;padding:12px 28px;letter-spacing:1.5px;background:linear-gradient(135deg,#7c3aed,#a855f7);border:none;color:#fff;border-radius:var(--radius);cursor:pointer;font-family:var(--mono);font-weight:700;" onclick="startFC_CoreSession()"><span class="fc-core-icon fc-core-icon--sm" aria-hidden="true"><svg viewBox="0 0 24 32" xmlns="http://www.w3.org/2000/svg"><ellipse cx="12" cy="5" rx="8" ry="3" fill="currentColor"/><rect x="4" y="5" width="16" height="20" fill="currentColor" opacity="0.88"/><ellipse cx="12" cy="25" rx="8" ry="3" fill="currentColor" opacity="0.6"/><ellipse cx="12" cy="5" rx="5.5" ry="1.8" fill="#fff" opacity="0.28"/></svg></span> START CORE DRILL SESSION</button>
+            <button type="button" class="btn btn-core-start" style="font-size:13px;padding:12px 28px;letter-spacing:1.5px;background:linear-gradient(135deg,#7c3aed,#a855f7);border:none;color:#fff;border-radius:var(--radius);cursor:pointer;font-family:var(--mono);font-weight:700;" onclick="startFC_CoreSession()"><span class="fc-core-icon fc-core-icon--sm" aria-hidden="true"><img src="docs/r18-reference/core-drill-icon-128.png" alt=""></span> START CORE DRILL SESSION</button>
           </div>
 
           <div style="border-top:1px solid rgba(168,85,247,0.2);padding-top:14px;">
@@ -4116,7 +4115,7 @@ table.fc-borrow-tbl tr.fc-borrow-detail-row td{background:var(--surface);border-
           <button class="lab-mode-tab active" id="fctab-lb68"   onclick="switchFCTab('lb68')">⚖️ LB-68</button>
           <button class="lab-mode-tab"        id="fctab-dmf68c" onclick="switchFCTab('dmf68c')">☢️ NUCLEAR</button>
           <button class="lab-mode-tab"        id="fctab-sample" onclick="switchFCTab('sample')">🧪 LAB SAMPLE</button>
-          <button class="lab-mode-tab"        id="fctab-core"   onclick="switchFCTab('core')" style="display:none;"><span class="fc-core-icon fc-core-icon--sm" aria-hidden="true"><svg viewBox="0 0 24 32" xmlns="http://www.w3.org/2000/svg"><ellipse cx="12" cy="5" rx="8" ry="3" fill="currentColor"/><rect x="4" y="5" width="16" height="20" fill="currentColor" opacity="0.88"/><ellipse cx="12" cy="25" rx="8" ry="3" fill="currentColor" opacity="0.6"/><ellipse cx="12" cy="5" rx="5.5" ry="1.8" fill="#fff" opacity="0.28"/></svg></span> CORE DRILL</button>
+          <button class="lab-mode-tab"        id="fctab-core"   onclick="switchFCTab('core')" style="display:none;"><span class="fc-core-icon fc-core-icon--sm" aria-hidden="true"><img src="docs/r18-reference/core-drill-icon-128.png" alt=""></span> CORE DRILL</button>
         </div>
 
         <!-- ⚖️ LB-68 COMPACTION ──────────────────────────── -->
@@ -4345,7 +4344,7 @@ table.fc-borrow-tbl tr.fc-borrow-detail-row td{background:var(--surface);border-
         <div id="fcsub-core" style="display:none;">
           <div class="card" style="margin-bottom:14px;">
             <div style="display:flex;align-items:center;gap:14px;margin-bottom:16px;">
-              <div class="fc-core-icon fc-core-icon--lg" aria-hidden="true"><svg viewBox="0 0 24 32" xmlns="http://www.w3.org/2000/svg"><ellipse cx="12" cy="5" rx="8" ry="3" fill="currentColor"/><rect x="4" y="5" width="16" height="20" fill="currentColor" opacity="0.88"/><ellipse cx="12" cy="25" rx="8" ry="3" fill="currentColor" opacity="0.6"/><ellipse cx="12" cy="5" rx="5.5" ry="1.8" fill="#fff" opacity="0.28"/></svg></div>
+              <div class="fc-core-icon fc-core-icon--lg" aria-hidden="true"><img src="docs/r18-reference/core-drill-icon-128.png" alt=""></div>
               <div>
                 <div style="font-family:var(--mono);font-size:11px;font-weight:700;color:var(--text);margin-bottom:3px;">Core Drill Log</div>
                 <div style="font-family:var(--mono);font-size:10px;color:var(--muted);line-height:1.5;">Log pavement cores for this session — thickness, layer, GPS, and photo.</div>
@@ -5738,7 +5737,7 @@ table.fc-borrow-tbl tr.fc-borrow-detail-row td{background:var(--surface);border-
 
       <div class="hub-actions">
         <button class="hub-action-btn primary" onclick="switchView('fieldcontrol')">⚡ NEW TEST</button>
-        <button class="hub-action-btn" onclick="fcOpenCoreDrillFromHub()"><span class="fc-core-icon fc-core-icon--sm" aria-hidden="true"><svg viewBox="0 0 24 32" xmlns="http://www.w3.org/2000/svg"><ellipse cx="12" cy="5" rx="8" ry="3" fill="currentColor"/><rect x="4" y="5" width="16" height="20" fill="currentColor" opacity="0.88"/><ellipse cx="12" cy="25" rx="8" ry="3" fill="currentColor" opacity="0.6"/><ellipse cx="12" cy="5" rx="5.5" ry="1.8" fill="#fff" opacity="0.28"/></svg></span> CORE DRILL</button>
+        <button class="hub-action-btn" onclick="fcOpenCoreDrillFromHub()"><span class="fc-core-icon fc-core-icon--sm" aria-hidden="true"><img src="docs/r18-reference/core-drill-icon-128.png" alt=""></span> CORE DRILL</button>
         <button class="hub-action-btn" onclick="switchView('scan')">📷 SCAN QR</button>
         <button class="hub-action-btn" onclick="switchView('fieldcontrol')">⚖️ LB-68</button>
         <button class="hub-action-btn" onclick="switchView('fieldcontrol')">☢️ NUCLEAR</button>
@@ -6106,7 +6105,8 @@ table.fc-borrow-tbl tr.fc-borrow-detail-row td{background:var(--surface);border-
 // GLOBALS
 // ══════════════════════════════════════════════
 let db = null;
-const APP_BUILD = '2026.06.30-core-camera';
+const APP_BUILD = '2026.06.30-core-graphic';
+const FC_CORE_ICON_SRC = 'docs/r18-reference/core-drill-icon-128.png';
 window._dbConnected = false;
 window._syncInProgress = false;
 let currentSample = null;
@@ -16171,7 +16171,7 @@ function fcParseCoreNum(v) {
 
 function fcCoreIconHtml(size) {
   const cls = size === 'lg' ? 'fc-core-icon--lg' : (size === 'sm' ? 'fc-core-icon--sm' : 'fc-core-icon--md');
-  return `<span class="fc-core-icon ${cls}" aria-hidden="true"><svg viewBox="0 0 24 32" xmlns="http://www.w3.org/2000/svg"><ellipse cx="12" cy="5" rx="8" ry="3" fill="currentColor"/><rect x="4" y="5" width="16" height="20" fill="currentColor" opacity="0.88"/><ellipse cx="12" cy="25" rx="8" ry="3" fill="currentColor" opacity="0.6"/><ellipse cx="12" cy="5" rx="5.5" ry="1.8" fill="#fff" opacity="0.28"/></svg></span>`;
+  return `<span class="fc-core-icon ${cls}" aria-hidden="true"><img src="${FC_CORE_ICON_SRC}" alt=""></span>`;
 }
 
 function fcCoreStartBtnHtml() {
