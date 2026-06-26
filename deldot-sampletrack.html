@@ -1314,6 +1314,36 @@ nav:not(#r18-nav), .nav-top-row { display: none !important; }
 .btn-core-start .fc-core-icon { color:#fff; }
 .hub-action-btn .fc-core-icon { margin-right:5px; vertical-align:middle; }
 .lab-mode-tab .fc-core-icon { margin-right:4px; vertical-align:-0.2em; }
+.fc-core-photo-wrap { display:flex; flex-direction:column; gap:10px; }
+.fc-core-photo-actions { display:flex; gap:10px; align-items:center; flex-wrap:wrap; }
+.fc-core-photo-btn {
+  display:inline-flex; align-items:center; gap:8px;
+  background:linear-gradient(135deg,#7c3aed,#a855f7); border:none; color:#fff;
+  padding:10px 16px; border-radius:var(--radius); cursor:pointer;
+  font-family:var(--mono); font-size:11px; font-weight:700; letter-spacing:0.5px;
+}
+.fc-core-photo-btn:active { transform:scale(0.98); }
+#fc_core_photo_preview { width:72px; height:72px; object-fit:cover; border-radius:8px; border:1px solid rgba(168,85,247,0.45); }
+#fc_core_camera_overlay {
+  display:none; position:fixed; inset:0; z-index:10050;
+  background:#000; flex-direction:column;
+}
+#fc_core_camera_overlay.open { display:flex; }
+#fc_core_camera_video { flex:1; width:100%; object-fit:cover; background:#111; }
+.fc-core-camera-bar {
+  display:flex; align-items:center; justify-content:space-between; gap:12px;
+  padding:16px 18px calc(16px + env(safe-area-inset-bottom));
+  background:linear-gradient(180deg, transparent, rgba(0,0,0,0.85));
+}
+.fc-core-camera-shutter {
+  width:68px; height:68px; border-radius:50%; border:4px solid #fff;
+  background:rgba(255,255,255,0.15); color:#fff; font-size:24px; cursor:pointer;
+  display:flex; align-items:center; justify-content:center;
+}
+.fc-core-camera-cancel {
+  background:transparent; border:1px solid rgba(255,255,255,0.45); color:#fff;
+  padding:10px 14px; border-radius:999px; font-family:var(--mono); font-size:11px; cursor:pointer;
+}
 
 .manual-section { margin-bottom:14px; }
 .manual-section-title { font-family:var(--mono); font-size:9px; letter-spacing:2px; color:var(--gold); text-transform:uppercase; margin-bottom:10px; padding-bottom:5px; border-bottom:1px solid var(--border); }
@@ -4364,10 +4394,13 @@ table.fc-borrow-tbl tr.fc-borrow-detail-row td{background:var(--surface);border-
               </div>
               <div class="form-group span2">
                 <label>Photo <span style="font-size:9px;color:var(--muted);">(compressed thumb)</span></label>
-                <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
-                  <input type="file" id="fc_core_photo_input" accept="image/*" capture="environment" style="font-size:11px;color:var(--muted);" onchange="fcHandleCorePhoto(this)">
-                  <img id="fc_core_photo_preview" alt="" style="display:none;width:64px;height:64px;object-fit:cover;border-radius:6px;border:1px solid var(--border);">
-                  <button type="button" id="fc_core_photo_clear" onclick="fcClearCorePhoto()" style="display:none;background:transparent;border:1px solid var(--border);color:var(--muted);padding:4px 8px;border-radius:4px;font-family:var(--mono);font-size:9px;cursor:pointer;">✕ CLEAR</button>
+                <div class="fc-core-photo-wrap">
+                  <input type="file" id="fc_core_photo_input" accept="image/*" capture="environment" style="display:none;" onchange="fcHandleCorePhoto(this)">
+                  <div class="fc-core-photo-actions">
+                    <button type="button" id="fc_core_photo_btn" class="fc-core-photo-btn" onclick="fcOpenCoreCamera()">📷 TAKE PHOTO</button>
+                    <img id="fc_core_photo_preview" alt="Core photo preview" style="display:none;">
+                    <button type="button" id="fc_core_photo_clear" onclick="fcClearCorePhoto()" style="display:none;background:transparent;border:1px solid var(--border);color:var(--muted);padding:6px 10px;border-radius:4px;font-family:var(--mono);font-size:9px;cursor:pointer;">✕ CLEAR</button>
+                  </div>
                 </div>
               </div>
               <div class="form-group span2">
@@ -6073,7 +6106,7 @@ table.fc-borrow-tbl tr.fc-borrow-detail-row td{background:var(--surface);border-
 // GLOBALS
 // ══════════════════════════════════════════════
 let db = null;
-const APP_BUILD = '2026.06.30-core-alnum';
+const APP_BUILD = '2026.06.30-core-camera';
 window._dbConnected = false;
 window._syncInProgress = false;
 let currentSample = null;
@@ -16480,10 +16513,119 @@ function fcClearCorePhoto() {
   _fcCorePhotoData = null;
   const prev = document.getElementById('fc_core_photo_preview');
   const clr = document.getElementById('fc_core_photo_clear');
+  const btn = document.getElementById('fc_core_photo_btn');
   const inp = document.getElementById('fc_core_photo_input');
   if (prev) { prev.src = ''; prev.style.display = 'none'; }
   if (clr) clr.style.display = 'none';
+  if (btn) btn.style.display = '';
   if (inp) inp.value = '';
+}
+
+function fcApplyCorePhotoThumb(thumbData) {
+  _fcCorePhotoData = thumbData;
+  const prev = document.getElementById('fc_core_photo_preview');
+  const clr = document.getElementById('fc_core_photo_clear');
+  const btn = document.getElementById('fc_core_photo_btn');
+  if (prev) { prev.src = thumbData.thumb; prev.style.display = ''; }
+  if (clr) clr.style.display = '';
+  if (btn) btn.style.display = 'none';
+  showToast('Photo attached ✓', 'success');
+}
+
+function fcTriggerCorePhotoInput() {
+  const inp = document.getElementById('fc_core_photo_input');
+  if (inp) inp.click();
+}
+
+let _fcCoreCameraStream = null;
+
+async function fcOpenCoreCamera() {
+  const overlay = document.getElementById('fc_core_camera_overlay');
+  const video = document.getElementById('fc_core_camera_video');
+  if (!navigator.mediaDevices?.getUserMedia || !overlay || !video) {
+    fcTriggerCorePhotoInput();
+    return;
+  }
+  try {
+    fcCloseCoreCamera();
+    const stream = await navigator.mediaDevices.getUserMedia({
+      video: { facingMode: { ideal: 'environment' } },
+      audio: false,
+    });
+    _fcCoreCameraStream = stream;
+    video.srcObject = stream;
+    overlay.classList.add('open');
+    overlay.setAttribute('aria-hidden', 'false');
+  } catch (e) {
+    console.warn('fcOpenCoreCamera:', e);
+    showToast('Opening camera picker…', 'info');
+    fcTriggerCorePhotoInput();
+  }
+}
+
+function fcCloseCoreCamera() {
+  const overlay = document.getElementById('fc_core_camera_overlay');
+  const video = document.getElementById('fc_core_camera_video');
+  if (_fcCoreCameraStream) {
+    _fcCoreCameraStream.getTracks().forEach(t => t.stop());
+    _fcCoreCameraStream = null;
+  }
+  if (video) video.srcObject = null;
+  if (overlay) {
+    overlay.classList.remove('open');
+    overlay.setAttribute('aria-hidden', 'true');
+  }
+}
+
+async function fcSnapCorePhoto() {
+  const video = document.getElementById('fc_core_camera_video');
+  if (!video || !video.videoWidth) {
+    showToast('Camera not ready yet', 'error');
+    return;
+  }
+  try {
+    const canvas = document.createElement('canvas');
+    canvas.width = video.videoWidth;
+    canvas.height = video.videoHeight;
+    canvas.getContext('2d').drawImage(video, 0, 0);
+    fcApplyCorePhotoThumb(fcCompressCoreSource(canvas, 'core.jpg'));
+    fcCloseCoreCamera();
+  } catch (e) {
+    showToast('Photo error: ' + e.message, 'error');
+  }
+}
+
+function fcCompressCoreSource(source, name) {
+  const sw = source.videoWidth || source.naturalWidth || source.width;
+  const sh = source.videoHeight || source.naturalHeight || source.height;
+  const maxW = 480;
+  const scale = sw > maxW ? maxW / sw : 1;
+  const w = Math.round(sw * scale);
+  const h = Math.round(sh * scale);
+  const canvas = document.createElement('canvas');
+  canvas.width = w;
+  canvas.height = h;
+  canvas.getContext('2d').drawImage(source, 0, 0, w, h);
+  return {
+    thumb: canvas.toDataURL('image/jpeg', 0.65),
+    captured_at: new Date().toISOString(),
+    name: name || 'core.jpg',
+  };
+}
+
+async function fcCompressCorePhoto(file) {
+  const url = URL.createObjectURL(file);
+  try {
+    const img = await new Promise((resolve, reject) => {
+      const el = new Image();
+      el.onload = () => resolve(el);
+      el.onerror = () => reject(new Error('Could not read image'));
+      el.src = url;
+    });
+    return fcCompressCoreSource(img, file.name || 'core.jpg');
+  } finally {
+    URL.revokeObjectURL(url);
+  }
 }
 
 function fcClearCoreForm() {
@@ -16497,29 +16639,6 @@ function fcClearCoreForm() {
   if (coreNo) { delete coreNo.dataset.userTouched; coreNo.value = ''; }
   fcClearCorePhoto();
   fcSuggestNextCoreNo();
-}
-
-async function fcCompressCorePhoto(file) {
-  return new Promise((resolve, reject) => {
-    const img = new Image();
-    const url = URL.createObjectURL(file);
-    img.onload = () => {
-      const maxW = 480;
-      const scale = img.width > maxW ? maxW / img.width : 1;
-      const w = Math.round(img.width * scale);
-      const h = Math.round(img.height * scale);
-      const canvas = document.createElement('canvas');
-      canvas.width = w;
-      canvas.height = h;
-      const ctx = canvas.getContext('2d');
-      ctx.drawImage(img, 0, 0, w, h);
-      URL.revokeObjectURL(url);
-      const thumb = canvas.toDataURL('image/jpeg', 0.65);
-      resolve({ thumb, captured_at: new Date().toISOString(), name: file.name || 'core.jpg' });
-    };
-    img.onerror = () => { URL.revokeObjectURL(url); reject(new Error('Could not read image')); };
-    img.src = url;
-  });
 }
 
 // core_drills — explicit column list (never reference status; column may be absent)
@@ -16565,12 +16684,7 @@ async function fcHandleCorePhoto(input) {
   const file = input?.files?.[0];
   if (!file) return;
   try {
-    _fcCorePhotoData = await fcCompressCorePhoto(file);
-    const prev = document.getElementById('fc_core_photo_preview');
-    const clr = document.getElementById('fc_core_photo_clear');
-    if (prev) { prev.src = _fcCorePhotoData.thumb; prev.style.display = ''; }
-    if (clr) clr.style.display = '';
-    showToast('Photo attached ✓', 'success');
+    fcApplyCorePhotoThumb(await fcCompressCorePhoto(file));
   } catch (e) {
     showToast('Photo error: ' + e.message, 'error');
   }
@@ -22573,6 +22687,15 @@ body::after {
 
 })();
 </script>
+  <!-- Core Drill camera capture -->
+  <div id="fc_core_camera_overlay" aria-hidden="true">
+    <video id="fc_core_camera_video" autoplay playsinline muted></video>
+    <div class="fc-core-camera-bar">
+      <button type="button" class="fc-core-camera-cancel" onclick="fcCloseCoreCamera()">Cancel</button>
+      <button type="button" class="fc-core-camera-shutter" onclick="fcSnapCorePhoto()" aria-label="Capture photo">📷</button>
+      <span style="width:64px;"></span>
+    </div>
+  </div>
   <!-- Offline Sync Banner -->
   <div id="offlineBanner">
     <div class="offline-dot"></div>
