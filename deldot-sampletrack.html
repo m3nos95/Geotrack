@@ -6105,7 +6105,7 @@ table.fc-borrow-tbl tr.fc-borrow-detail-row td{background:var(--surface);border-
 // GLOBALS
 // ══════════════════════════════════════════════
 let db = null;
-const APP_BUILD = '2026.06.30-core-graphic';
+const APP_BUILD = '2026.06.30-core-display';
 const FC_CORE_ICON_SRC = 'docs/r18-reference/core-drill-icon-128.png';
 window._dbConnected = false;
 window._syncInProgress = false;
@@ -15627,6 +15627,7 @@ function fcRenderCurveChart() {
 // ══════════════════════════════════════════════════════════════
 let activeFCTab      = 'lb68';
 let activeFC_testNo  = null;
+let activeFC_coreNo  = null;          // user-facing core # for core drill sessions
 let activeFC_sessionId = null;
 let activeFC_table = 'samples';       // 'field_tests' | 'samples'
 let activeFC_linkedSampleId = null;   // samples row when intent is 'both'
@@ -15770,11 +15771,25 @@ async function fcTryInsert(table, record, requestedTestNo, category) {
   return inserted;
 }
 
-function fcActivateSession({ intent, category, primary, table, linkedSample, fieldTest }) {
+function fcGetCoreStartNoFromInput(el) {
+  if (!el) return '1';
+  const val = (el.value || '').trim();
+  if (val) return val;
+  return (el.placeholder || '1').trim() || '1';
+}
+
+function fcGetCoreSessionDisplayNo() {
+  return activeFC_coreNo || activeFC_testNo || '—';
+}
+
+function fcActivateSession({ intent, category, primary, table, linkedSample, fieldTest, coreNo }) {
   primary._fc_intent = intent;
   primary._fc_table = table;
   activeFC_sessionId = primary.id;
   activeFC_testNo = primary.test_no;
+  activeFC_coreNo = intent === 'core'
+    ? (coreNo || primary.core_no || primary.test_no || null)
+    : null;
   activeFC_table = table;
   activeFC_linkedSampleId = linkedSample?.id || null;
   activeFC_fieldTestId = fieldTest?.id || (table === 'field_tests' ? primary.id : null);
@@ -15826,7 +15841,7 @@ function updateFCSessionBanner() {
   const densityRec = fcGetCachedDensityRecord();
   const linkedSample = fcGetCachedLinkedSample();
   const intent = _fcIntent || header?._fc_intent || fcIntentFromRecord(linkedSample || densityRec || header);
-  label.textContent = intent === 'core' ? ('Core #' + activeFC_testNo) : activeFC_testNo;
+  label.textContent = intent === 'core' ? ('Core #' + fcGetCoreSessionDisplayNo()) : activeFC_testNo;
 
   if (meta && header) {
     meta.innerHTML = [
@@ -16107,7 +16122,7 @@ async function startFC_CoreSession() {
 
   const category = (document.getElementById('fc_cd_category')?.value || 'soil');
   const _cnEl = document.getElementById('fc_cd_coreno');
-  const requestedCoreNo = (_cnEl?.value || _cnEl?.placeholder || '1').trim();
+  const requestedCoreNo = fcGetCoreStartNoFromInput(_cnEl);
   const today = new Date().toISOString().slice(0, 10);
 
   const headerData = {
@@ -16149,9 +16164,10 @@ async function startFC_CoreSession() {
     table: 'field_tests',
     linkedSample: null,
     fieldTest: fieldTestRow,
+    coreNo: requestedCoreNo,
   });
 
-  showToast(`Core drill started — Core # ${fieldTestRow.test_no}`, 'success');
+  showToast(`Core drill started — Core # ${requestedCoreNo}`, 'success');
 }
 
 function fcNormalizeCoreNo(v) {
@@ -16195,26 +16211,46 @@ function fcCollectCoreSessionNums(contract) {
   return nums;
 }
 
+function fcSchemaMissingColumn(error, column) {
+  const msg = (error?.message || '').toLowerCase();
+  return msg.includes("'" + column + "'") || msg.includes(column);
+}
+
+async function fcInsertCoreDrillSession(rec) {
+  let result = await dbWrite('field_tests', 'insert', rec);
+  if (result.error && fcSchemaMissingColumn(result.error, 'core_no')) {
+    const fallback = { ...rec };
+    delete fallback.core_no;
+    result = await dbWrite('field_tests', 'insert', fallback);
+  }
+  return result;
+}
+
 async function fcTryInsertCoreDrill(record, requestedCoreNo) {
   const trimmed = fcNormalizeCoreNo(requestedCoreNo);
+  const withCoreNo = { ...record, core_no: trimmed || null };
   let inserted = null;
   let lastError = null;
 
   if (trimmed && !fcIsNumericCoreNo(trimmed)) {
-    const rec = { ...record, test_no: trimmed };
-    const { data, error, queued } = await dbWrite('field_tests', 'insert', rec);
+    const rec = { ...withCoreNo, test_no: trimmed };
+    const { data, error, queued } = await fcInsertCoreDrillSession(rec);
     if (!error) {
       if (queued) showToast('Offline — session queued locally', 'info');
-      return data;
+      return data ? { ...data, core_no: data.core_no || trimmed } : data;
     }
     throw error;
   }
 
   let base = fcParseCoreNum(trimmed) || 1;
   for (let attempt = 0; attempt < 5; attempt++) {
-    const rec = { ...record, test_no: String(base + attempt) };
-    const { data, error, queued } = await dbWrite('field_tests', 'insert', rec);
-    if (!error) { inserted = data; if (queued) showToast('Offline — session queued locally', 'info'); break; }
+    const rec = { ...withCoreNo, test_no: String(base + attempt) };
+    const { data, error, queued } = await fcInsertCoreDrillSession(rec);
+    if (!error) {
+      inserted = data ? { ...data, core_no: data.core_no || trimmed } : data;
+      if (queued) showToast('Offline — session queued locally', 'info');
+      break;
+    }
     lastError = error;
     const msg = (error.message || '').toLowerCase();
     if (!msg.includes('duplicate') && !msg.includes('unique') && !msg.includes('conflict')) break;
@@ -16433,7 +16469,10 @@ async function fcResumeSessionById(id) {
       fieldTest,
     });
     const intentLabel = intent === 'core' ? 'Core drill' : intent === 'density' ? 'Density only' : 'Density + lab';
-    showToast(`Resumed: ${fieldTest.test_no} — ${intentLabel}`, 'success');
+    const resumeLabel = intent === 'core'
+      ? ('Core #' + (fieldTest.core_no || fieldTest.test_no || '—'))
+      : (fieldTest.test_no || '—');
+    showToast(`Resumed: ${resumeLabel} — ${intentLabel}`, 'success');
     return;
   }
 
@@ -16938,11 +16977,11 @@ async function loadOpenFieldSessions() {
   try {
     let openTests = null;
     const ftQuery = db.from('field_tests')
-      .select('id,test_no,contract,location,sampled_by,field_workflow,sample_id,test_category,created_at,status')
+      .select('id,test_no,core_no,contract,location,sampled_by,field_workflow,sample_id,test_category,created_at,status')
       .order('created_at', { ascending: false })
       .limit(15);
     const { data: openByStatus, error: ftErr } = await ftQuery.eq('status', 'open');
-    if (ftErr && (ftErr.message || '').toLowerCase().includes('status')) {
+    if (ftErr && (fcSchemaMissingColumn(ftErr, 'status') || fcSchemaMissingColumn(ftErr, 'core_no'))) {
       const { data, error } = await db.from('field_tests')
         .select('id,test_no,contract,location,sampled_by,field_workflow,sample_id,test_category,created_at')
         .order('created_at', { ascending: false })
@@ -16977,9 +17016,12 @@ async function loadOpenFieldSessions() {
       const kind = ft.field_workflow === 'core_drill' ? 'Core drill'
         : ft.field_workflow === 'linked' || ft.sample_id ? 'Density + lab' : 'Density only';
       const kindColor = ft.field_workflow === 'core_drill' ? '#c084fc' : 'var(--accent2)';
+      const displayNo = ft.field_workflow === 'core_drill'
+        ? ('Core #' + (ft.core_no || ft.test_no || '—'))
+        : (ft.test_no || '—');
       rows.push(`<div style="display:flex;align-items:center;justify-content:space-between;gap:8px;padding:8px 0;border-bottom:1px solid var(--border);">
         <div style="min-width:0;">
-          <div style="color:var(--text);font-weight:700;">${ft.test_no || '—'} <span style="color:${kindColor};font-size:9px;">${kind}</span></div>
+          <div style="color:var(--text);font-weight:700;">${displayNo} <span style="color:${kindColor};font-size:9px;">${kind}</span></div>
           <div style="font-size:9px;color:var(--muted);">${ft.contract || '—'} · ${ft.location || '—'}</div>
         </div>
         <button class="btn btn-ghost" style="font-size:9px;padding:4px 10px;flex-shrink:0;" onclick="fcResumeSessionById('${ft.id}')">OPEN</button>
@@ -18069,21 +18111,22 @@ async function clearFC_Session() {
     const hasLab = fcHasLabSampleSubmitted(linkedSample);
 
     if (intent === 'core') {
+      const coreLabel = fcGetCoreSessionDisplayNo();
       if (!hasCores) {
-        const ok = confirm(`Test No. ${activeFC_testNo} has no cores saved.\n\nDiscard this empty session? (Cancel = keep it as pending)`);
+        const ok = confirm(`Core # ${coreLabel} has no cores saved.\n\nDiscard this empty session? (Cancel = keep it as pending)`);
         if (ok) {
           if (activeFC_table === 'field_tests' && activeFC_sessionId) {
             const { error } = await db.from('field_tests').delete().eq('id', activeFC_sessionId);
             if (error) showToast('Could not discard: ' + error.message, 'error');
             else allFieldTests = (allFieldTests || []).filter(x => x.id !== activeFC_sessionId);
           }
-          showToast(`Session ${activeFC_testNo} discarded`, 'info');
+          showToast(`Core # ${coreLabel} discarded`, 'info');
         }
       } else if (activeFC_table === 'field_tests' && activeFC_sessionId) {
         const { error } = await db.from('field_tests').update({ status: 'closed' }).eq('id', activeFC_sessionId);
         if (!error) {
           fcCacheRecord('field_tests', activeFC_sessionId, { status: 'closed' });
-          showToast(`Core drill session ${activeFC_testNo} closed — ${activeFC_sessionCores.length} core(s) saved`, 'success');
+          showToast(`Core # ${coreLabel} closed — ${activeFC_sessionCores.length} core(s) saved`, 'success');
         }
       }
     } else if (!hasNuclear && !hasDensity && !hasLab) {
@@ -18139,6 +18182,7 @@ async function clearFC_Session() {
   }
 
   activeFC_testNo = null;
+  activeFC_coreNo = null;
   activeFC_sessionId = null;
   activeFC_table = 'samples';
   activeFC_linkedSampleId = null;

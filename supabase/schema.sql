@@ -126,6 +126,7 @@ CREATE TABLE IF NOT EXISTS field_tests (
   date_sampled     TEXT,
   test_date        TEXT,
   field_workflow   TEXT,
+  core_no          TEXT,
   sample_id        UUID REFERENCES samples(id) ON DELETE SET NULL,
   nuclear_data     JSONB,
   density_data     JSONB,
@@ -140,6 +141,7 @@ ALTER TABLE samples
   FOREIGN KEY (field_test_id) REFERENCES field_tests(id) ON DELETE SET NULL;
 
 CREATE INDEX IF NOT EXISTS idx_field_tests_test_no    ON field_tests (test_no);
+CREATE INDEX IF NOT EXISTS idx_field_tests_core_no    ON field_tests (core_no);
 CREATE INDEX IF NOT EXISTS idx_field_tests_contract   ON field_tests (contract);
 CREATE INDEX IF NOT EXISTS idx_field_tests_category   ON field_tests (test_category);
 CREATE INDEX IF NOT EXISTS idx_field_tests_created_at ON field_tests (created_at DESC);
