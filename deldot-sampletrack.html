@@ -6064,7 +6064,7 @@ table.fc-borrow-tbl tr.fc-borrow-detail-row td{background:var(--surface);border-
 // GLOBALS
 // ══════════════════════════════════════════════
 let db = null;
-const APP_BUILD = '2026.06.30-core-fix';
+const APP_BUILD = '2026.06.30-core-schema';
 window._dbConnected = false;
 window._syncInProgress = false;
 let currentSample = null;
@@ -6367,7 +6367,7 @@ async function openProjectMap(contract, projectName) {
   let allCores = [];
   try {
     const { data: coreData } = await db.from('core_drills')
-      .select('*')
+      .select(FC_CORE_DRILL_SELECT)
       .eq('contract', contract);
     allCores = coreData || [];
   } catch(e) { allCores = []; }
@@ -16484,6 +16484,31 @@ async function fcCompressCorePhoto(file) {
   });
 }
 
+// core_drills — explicit column list (never reference status; column may be absent)
+const FC_CORE_DRILL_SELECT = 'id,test_no,contract,road,location,station,lane,core_no,gps_coordinates,thickness_in,depth_in,layer_type,remarks,photo_data,field_test_id,sampled_by,date_drilled,created_at,updated_at';
+const FC_CORE_DRILL_WRITE_KEYS = ['test_no','contract','road','location','station','lane','core_no','gps_coordinates','thickness_in','depth_in','layer_type','remarks','photo_data','field_test_id','sampled_by','date_drilled'];
+
+function fcSanitizeCoreDrillPayload(payload) {
+  if (!payload || typeof payload !== 'object') return payload;
+  const out = {};
+  FC_CORE_DRILL_WRITE_KEYS.forEach(k => {
+    if (Object.prototype.hasOwnProperty.call(payload, k)) out[k] = payload[k];
+  });
+  return out;
+}
+
+function offlineQueueSanitizeCoreDrills() {
+  const q = offlineQueueGet();
+  let changed = false;
+  const cleaned = q.map(op => {
+    if (op.table !== 'core_drills') return op;
+    const payload = fcSanitizeCoreDrillPayload(op.payload);
+    if (JSON.stringify(payload) !== JSON.stringify(op.payload)) changed = true;
+    return { ...op, payload };
+  });
+  if (changed) offlineQueueSave(cleaned);
+}
+
 async function fcHandleCorePhoto(input) {
   const file = input?.files?.[0];
   if (!file) return;
@@ -16508,7 +16533,7 @@ async function fcLoadSessionCores(fieldTestId) {
   }
   try {
     const { data, error } = await db.from('core_drills')
-      .select('*')
+      .select(FC_CORE_DRILL_SELECT)
       .eq('field_test_id', ftId)
       .order('created_at', { ascending: true });
     if (error) throw error;
@@ -16606,7 +16631,7 @@ async function fcSaveCore() {
   const depthVal = document.getElementById('fc_core_depth')?.value;
   const depth = depthVal ? parseFloat(depthVal) : null;
 
-  const payload = {
+  const payload = fcSanitizeCoreDrillPayload({
     test_no:         header.test_no,
     contract:        header.contract,
     road:            header.road,
@@ -16623,7 +16648,7 @@ async function fcSaveCore() {
     field_test_id:   header.field_test_id,
     sampled_by:      header.sampled_by,
     date_drilled:    header.date_drilled,
-  };
+  });
 
   const editId = (document.getElementById('fc_core_edit_id')?.value || '').trim();
   let saved = null;
@@ -16666,7 +16691,7 @@ async function loadCoreTrack() {
   list.textContent = 'Loading…';
   try {
     const { data, error } = await db.from('core_drills')
-      .select('*')
+      .select(FC_CORE_DRILL_SELECT)
       .order('created_at', { ascending: false })
       .limit(100);
     if (error) throw error;
@@ -17577,13 +17602,15 @@ function offlineUpdateBanner() {
 // ── Offline-aware DB wrapper ────────────────────────────────────
 // Returns { data, error, queued } — queued=true means saved locally
 async function dbWrite(table, op, payload, matchId) {
+  const body = table === 'core_drills' ? fcSanitizeCoreDrillPayload(payload) : payload;
+  const sel = table === 'core_drills' ? FC_CORE_DRILL_SELECT : '*';
   if (navigator.onLine && db) {
     try {
       let result;
       if (op === 'insert') {
-        result = await db.from(table).insert(payload).select().single();
+        result = await db.from(table).insert(body).select(sel).single();
       } else {
-        result = await db.from(table).update(payload).eq('id', matchId).select().single();
+        result = await db.from(table).update(body).eq('id', matchId).select(sel).single();
       }
       if (!result.error) return { data: result.data, error: null, queued: false };
       // If it's a network error, fall through to queue
@@ -17594,7 +17621,7 @@ async function dbWrite(table, op, payload, matchId) {
   }
   // Offline or network error — queue it
   const tempId = matchId || ('OFFLINE_' + Date.now() + '_' + Math.random().toString(36).slice(2,7));
-  offlineQueueAdd({ table, op, payload, matchId: matchId || tempId, tempId });
+  offlineQueueAdd({ table, op, payload: body, matchId: matchId || tempId, tempId });
   // Return a fake success with a temp object so the UI can continue
   const fakeData = { ...payload, id: tempId, _offline: true };
   offlineUpdateBanner();
@@ -17640,7 +17667,10 @@ async function offlineSync() {
 
   for (const op of [...inserts, ...updates]) {
     try {
-      let payload = { ...op.payload };
+      let payload = op.table === 'core_drills'
+        ? fcSanitizeCoreDrillPayload(op.payload)
+        : { ...op.payload };
+      const sel = op.table === 'core_drills' ? FC_CORE_DRILL_SELECT : '*';
       // Resolve any temp IDs in payload
       if (payload.id && idMap[payload.id]) payload.id = idMap[payload.id];
 
@@ -17653,7 +17683,7 @@ async function offlineSync() {
         // Remove temp id from payload — Supabase generates real one
         delete payload.id;
         delete payload._offline;
-        result = await db.from(op.table).insert(payload).select().single();
+        result = await db.from(op.table).insert(payload).select(sel).single();
       } else {
         if (!realMatchId || (typeof realMatchId === 'string' && realMatchId.startsWith('OFFLINE_'))) {
           // Can't update without a real ID — skip for now
@@ -17661,7 +17691,7 @@ async function offlineSync() {
           continue;
         }
         delete payload._offline;
-        result = await db.from(op.table).update(payload).eq('id', realMatchId).select().single();
+        result = await db.from(op.table).update(payload).eq('id', realMatchId).select(sel).single();
       }
 
       if (result.error) {
@@ -17708,6 +17738,7 @@ async function offlineSync() {
 
 // Initialise banner on load
 document.addEventListener('DOMContentLoaded', () => {
+  offlineQueueSanitizeCoreDrills();
   offlineUpdateBanner();
   renderAppBuildStamp();
   updateSyncStatusChip();
