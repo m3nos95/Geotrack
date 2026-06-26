@@ -1305,6 +1305,15 @@ nav:not(#r18-nav), .nav-top-row { display: none !important; }
 .lab-mode-tab { flex:1; padding:11px; text-align:center; font-family:var(--mono); font-size:11px; letter-spacing:1px; cursor:pointer; background:var(--panel); color:var(--muted); border:none; transition:all 0.2s; }
 .lab-mode-tab.active { background: var(--metal-gold); background-size:200% auto; color:#1a0f00; font-weight:700; text-shadow: 0 1px 2px rgba(255,255,255,0.3); box-shadow: var(--metal-glow-sm); letter-spacing:1.5px; }
 .lab-mode-tab:hover:not(.active) { background:var(--border); color:var(--text); }
+.fc-core-icon { display:inline-flex; align-items:center; justify-content:center; color:#c084fc; vertical-align:-0.12em; line-height:0; }
+.fc-core-icon svg { display:block; }
+.fc-core-icon--sm svg { width:1em; height:1.33em; }
+.fc-core-icon--md svg { width:1.15em; height:1.5em; }
+.fc-core-icon--lg svg { width:32px; height:42px; }
+.btn-core-start { display:inline-flex; align-items:center; justify-content:center; gap:8px; }
+.btn-core-start .fc-core-icon { color:#fff; }
+.hub-action-btn .fc-core-icon { margin-right:5px; vertical-align:middle; }
+.lab-mode-tab .fc-core-icon { margin-right:4px; vertical-align:-0.2em; }
 
 .manual-section { margin-bottom:14px; }
 .manual-section-title { font-family:var(--mono); font-size:9px; letter-spacing:2px; color:var(--gold); text-transform:uppercase; margin-bottom:10px; padding-bottom:5px; border-bottom:1px solid var(--border); }
@@ -3979,7 +3988,7 @@ table.fc-borrow-tbl tr.fc-borrow-detail-row td{background:var(--surface);border-
 
         <!-- ── CORE DRILL — separate subgroup (not mixed with density/lab intents) ── -->
         <div class="card" id="fc_core_start_card" style="margin-top:14px;border:1px solid rgba(168,85,247,0.35);background:linear-gradient(135deg,rgba(168,85,247,0.08),rgba(168,85,247,0.02));">
-          <div class="card-title" style="color:#c084fc;">🔩 Core Drill</div>
+          <div class="card-title" style="color:#c084fc;"><span class="fc-core-icon fc-core-icon--md" aria-hidden="true"><svg viewBox="0 0 24 32" xmlns="http://www.w3.org/2000/svg"><ellipse cx="12" cy="5" rx="8" ry="3" fill="currentColor"/><rect x="4" y="5" width="16" height="20" fill="currentColor" opacity="0.88"/><ellipse cx="12" cy="25" rx="8" ry="3" fill="currentColor" opacity="0.6"/><ellipse cx="12" cy="5" rx="5.5" ry="1.8" fill="#fff" opacity="0.28"/></svg></span> Core Drill</div>
           <p style="font-family:var(--mono);font-size:10px;color:var(--muted);line-height:1.6;margin:-4px 0 14px;max-width:560px;">
             Pavement core logging — thickness, layer, GPS, and photos. Separate from density / lab field events.
           </p>
@@ -3995,10 +4004,10 @@ table.fc-borrow-tbl tr.fc-borrow-detail-row td{background:var(--surface);border-
             </div>
             <div class="form-group">
               <label>Core # <span style="color:#c084fc;font-size:9px;" id="fc_cd_coreno_hint">(suggested: 1)</span></label>
-              <input type="text" id="fc_cd_coreno" class="form-input" inputmode="numeric" autocomplete="off"
+              <input type="text" id="fc_cd_coreno" class="form-input" autocomplete="off"
                       style="border-color:rgba(168,85,247,0.45);"
                       oninput="this.dataset.userTouched='1'"
-                      placeholder="1">
+                      placeholder="1 or A1">
             </div>
             <div class="form-group">
               <label>Contract No.</label>
@@ -4027,7 +4036,7 @@ table.fc-borrow-tbl tr.fc-borrow-detail-row td{background:var(--surface);border-
           </div>
 
           <div class="btn-row" style="margin-bottom:18px;">
-            <button type="button" class="btn btn-core-start" style="font-size:13px;padding:12px 28px;letter-spacing:1.5px;background:linear-gradient(135deg,#7c3aed,#a855f7);border:none;color:#fff;border-radius:var(--radius);cursor:pointer;font-family:var(--mono);font-weight:700;" onclick="startFC_CoreSession()">🔩 START CORE DRILL SESSION</button>
+            <button type="button" class="btn btn-core-start" style="font-size:13px;padding:12px 28px;letter-spacing:1.5px;background:linear-gradient(135deg,#7c3aed,#a855f7);border:none;color:#fff;border-radius:var(--radius);cursor:pointer;font-family:var(--mono);font-weight:700;" onclick="startFC_CoreSession()"><span class="fc-core-icon fc-core-icon--sm" aria-hidden="true"><svg viewBox="0 0 24 32" xmlns="http://www.w3.org/2000/svg"><ellipse cx="12" cy="5" rx="8" ry="3" fill="currentColor"/><rect x="4" y="5" width="16" height="20" fill="currentColor" opacity="0.88"/><ellipse cx="12" cy="25" rx="8" ry="3" fill="currentColor" opacity="0.6"/><ellipse cx="12" cy="5" rx="5.5" ry="1.8" fill="#fff" opacity="0.28"/></svg></span> START CORE DRILL SESSION</button>
           </div>
 
           <div style="border-top:1px solid rgba(168,85,247,0.2);padding-top:14px;">
@@ -4077,7 +4086,7 @@ table.fc-borrow-tbl tr.fc-borrow-detail-row td{background:var(--surface);border-
           <button class="lab-mode-tab active" id="fctab-lb68"   onclick="switchFCTab('lb68')">⚖️ LB-68</button>
           <button class="lab-mode-tab"        id="fctab-dmf68c" onclick="switchFCTab('dmf68c')">☢️ NUCLEAR</button>
           <button class="lab-mode-tab"        id="fctab-sample" onclick="switchFCTab('sample')">🧪 LAB SAMPLE</button>
-          <button class="lab-mode-tab"        id="fctab-core"   onclick="switchFCTab('core')" style="display:none;">🔩 CORE DRILL</button>
+          <button class="lab-mode-tab"        id="fctab-core"   onclick="switchFCTab('core')" style="display:none;"><span class="fc-core-icon fc-core-icon--sm" aria-hidden="true"><svg viewBox="0 0 24 32" xmlns="http://www.w3.org/2000/svg"><ellipse cx="12" cy="5" rx="8" ry="3" fill="currentColor"/><rect x="4" y="5" width="16" height="20" fill="currentColor" opacity="0.88"/><ellipse cx="12" cy="25" rx="8" ry="3" fill="currentColor" opacity="0.6"/><ellipse cx="12" cy="5" rx="5.5" ry="1.8" fill="#fff" opacity="0.28"/></svg></span> CORE DRILL</button>
         </div>
 
         <!-- ⚖️ LB-68 COMPACTION ──────────────────────────── -->
@@ -4306,7 +4315,7 @@ table.fc-borrow-tbl tr.fc-borrow-detail-row td{background:var(--surface);border-
         <div id="fcsub-core" style="display:none;">
           <div class="card" style="margin-bottom:14px;">
             <div style="display:flex;align-items:center;gap:14px;margin-bottom:16px;">
-              <div style="font-size:32px;">🔩</div>
+              <div class="fc-core-icon fc-core-icon--lg" aria-hidden="true"><svg viewBox="0 0 24 32" xmlns="http://www.w3.org/2000/svg"><ellipse cx="12" cy="5" rx="8" ry="3" fill="currentColor"/><rect x="4" y="5" width="16" height="20" fill="currentColor" opacity="0.88"/><ellipse cx="12" cy="25" rx="8" ry="3" fill="currentColor" opacity="0.6"/><ellipse cx="12" cy="5" rx="5.5" ry="1.8" fill="#fff" opacity="0.28"/></svg></div>
               <div>
                 <div style="font-family:var(--mono);font-size:11px;font-weight:700;color:var(--text);margin-bottom:3px;">Core Drill Log</div>
                 <div style="font-family:var(--mono);font-size:10px;color:var(--muted);line-height:1.5;">Log pavement cores for this session — thickness, layer, GPS, and photo.</div>
@@ -4316,7 +4325,7 @@ table.fc-borrow-tbl tr.fc-borrow-detail-row td{background:var(--surface);border-
             <div class="form-grid" style="margin-bottom:12px;">
               <div class="form-group">
                 <label>Core # <span style="color:var(--red2);">*</span></label>
-                <input type="text" id="fc_core_no" class="form-input" placeholder="1" inputmode="numeric" autocomplete="off" oninput="this.dataset.userTouched='1'">
+                <input type="text" id="fc_core_no" class="form-input" placeholder="1 or A1" autocomplete="off" oninput="this.dataset.userTouched='1'">
               </div>
               <div class="form-group">
                 <label>Station</label>
@@ -5696,7 +5705,7 @@ table.fc-borrow-tbl tr.fc-borrow-detail-row td{background:var(--surface);border-
 
       <div class="hub-actions">
         <button class="hub-action-btn primary" onclick="switchView('fieldcontrol')">⚡ NEW TEST</button>
-        <button class="hub-action-btn" onclick="fcOpenCoreDrillFromHub()">🔩 CORE DRILL</button>
+        <button class="hub-action-btn" onclick="fcOpenCoreDrillFromHub()"><span class="fc-core-icon fc-core-icon--sm" aria-hidden="true"><svg viewBox="0 0 24 32" xmlns="http://www.w3.org/2000/svg"><ellipse cx="12" cy="5" rx="8" ry="3" fill="currentColor"/><rect x="4" y="5" width="16" height="20" fill="currentColor" opacity="0.88"/><ellipse cx="12" cy="25" rx="8" ry="3" fill="currentColor" opacity="0.6"/><ellipse cx="12" cy="5" rx="5.5" ry="1.8" fill="#fff" opacity="0.28"/></svg></span> CORE DRILL</button>
         <button class="hub-action-btn" onclick="switchView('scan')">📷 SCAN QR</button>
         <button class="hub-action-btn" onclick="switchView('fieldcontrol')">⚖️ LB-68</button>
         <button class="hub-action-btn" onclick="switchView('fieldcontrol')">☢️ NUCLEAR</button>
@@ -6064,7 +6073,7 @@ table.fc-borrow-tbl tr.fc-borrow-detail-row td{background:var(--surface);border-
 // GLOBALS
 // ══════════════════════════════════════════════
 let db = null;
-const APP_BUILD = '2026.06.30-ft-status';
+const APP_BUILD = '2026.06.30-core-alnum';
 window._dbConnected = false;
 window._syncInProgress = false;
 let currentSample = null;
@@ -15818,7 +15827,7 @@ function updateFCSessionBanner() {
 
   const badge = document.getElementById('fc_intent_badge');
   if (badge) {
-    const labels = { density: '⚖️ DENSITY ONLY — no lab queue', lab: '🧪 LAB SAMPLE ONLY — no gauge', both: '⚡ DENSITY + LAB — fill gauge tabs and submit sample below', core: '🔩 CORE DRILL — log pavement cores with GPS and thickness' };
+    const labels = { density: '⚖️ DENSITY ONLY — no lab queue', lab: '🧪 LAB SAMPLE ONLY — no gauge', both: '⚡ DENSITY + LAB — fill gauge tabs and submit sample below', core: '◇ CORE DRILL — log pavement cores with GPS and thickness' };
     badge.textContent = labels[intent] || '';
     badge.style.display = intent ? '' : 'none';
   }
@@ -16093,7 +16102,7 @@ async function startFC_CoreSession() {
     lastError = e;
   }
 
-  if (btn) { btn.textContent = '🔩 START CORE DRILL SESSION'; btn.disabled = false; }
+  if (btn) { btn.innerHTML = fcCoreStartBtnHtml(); btn.disabled = false; }
 
   if (!fieldTestRow) {
     showToast('Could not start core drill: ' + (lastError?.message || 'unknown error'), 'error');
@@ -16112,9 +16121,28 @@ async function startFC_CoreSession() {
   showToast(`Core drill started — Core # ${fieldTestRow.test_no}`, 'success');
 }
 
+function fcNormalizeCoreNo(v) {
+  return String(v || '').trim();
+}
+
+function fcIsNumericCoreNo(v) {
+  return /^\d+$/.test(fcNormalizeCoreNo(v));
+}
+
 function fcParseCoreNum(v) {
-  const n = parseInt(String(v || '').trim(), 10);
-  return !isNaN(n) && n > 0 ? n : null;
+  const s = fcNormalizeCoreNo(v);
+  if (!fcIsNumericCoreNo(s)) return null;
+  const n = parseInt(s, 10);
+  return n > 0 ? n : null;
+}
+
+function fcCoreIconHtml(size) {
+  const cls = size === 'lg' ? 'fc-core-icon--lg' : (size === 'sm' ? 'fc-core-icon--sm' : 'fc-core-icon--md');
+  return `<span class="fc-core-icon ${cls}" aria-hidden="true"><svg viewBox="0 0 24 32" xmlns="http://www.w3.org/2000/svg"><ellipse cx="12" cy="5" rx="8" ry="3" fill="currentColor"/><rect x="4" y="5" width="16" height="20" fill="currentColor" opacity="0.88"/><ellipse cx="12" cy="25" rx="8" ry="3" fill="currentColor" opacity="0.6"/><ellipse cx="12" cy="5" rx="5.5" ry="1.8" fill="#fff" opacity="0.28"/></svg></span>`;
+}
+
+function fcCoreStartBtnHtml() {
+  return fcCoreIconHtml('sm') + ' START CORE DRILL SESSION';
 }
 
 function fcCollectCoreSessionNums(contract) {
@@ -16135,9 +16163,21 @@ function fcCollectCoreSessionNums(contract) {
 }
 
 async function fcTryInsertCoreDrill(record, requestedCoreNo) {
-  let base = fcParseCoreNum(requestedCoreNo) || 1;
+  const trimmed = fcNormalizeCoreNo(requestedCoreNo);
   let inserted = null;
   let lastError = null;
+
+  if (trimmed && !fcIsNumericCoreNo(trimmed)) {
+    const rec = { ...record, test_no: trimmed };
+    const { data, error, queued } = await dbWrite('field_tests', 'insert', rec);
+    if (!error) {
+      if (queued) showToast('Offline — session queued locally', 'info');
+      return data;
+    }
+    throw error;
+  }
+
+  let base = fcParseCoreNum(trimmed) || 1;
   for (let attempt = 0; attempt < 5; attempt++) {
     const rec = { ...record, test_no: String(base + attempt) };
     const { data, error, queued } = await dbWrite('field_tests', 'insert', rec);
@@ -16178,7 +16218,7 @@ async function fcRefreshCoreSessionNo() {
   }
   const s = String(suggested);
   input.placeholder = s;
-  if (hint) hint.textContent = `(suggested: ${s})`;
+  if (hint) hint.textContent = `(suggested: ${s} — numbers or letters OK)`;
   if (!input.dataset.userTouched) input.value = '';
 }
 
@@ -16431,7 +16471,7 @@ function fcGetSessionHeader() {
 function fcSuggestNextCoreNo() {
   const el = document.getElementById('fc_core_no');
   if (!el || el.dataset.userTouched) return;
-  const nums = (activeFC_sessionCores || []).map(c => parseInt(c.core_no, 10)).filter(n => !isNaN(n));
+  const nums = (activeFC_sessionCores || []).map(c => fcParseCoreNum(c.core_no)).filter(n => n != null);
   const next = nums.length ? Math.max(...nums) + 1 : 1;
   el.value = String(next);
 }
