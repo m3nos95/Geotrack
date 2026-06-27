@@ -2783,6 +2783,7 @@ table.fc-borrow-tbl tr.fc-borrow-detail-row td{background:var(--surface);border-
 </style>
   <link href='https://api.mapbox.com/mapbox-gl-js/v3.3.0/mapbox-gl.css' rel='stylesheet'>
   <script src='https://api.mapbox.com/mapbox-gl-js/v3.3.0/mapbox-gl.js'></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/proj4js/2.11.0/proj4.min.js"></script>
 </head>
 <body>
 
@@ -6214,12 +6215,14 @@ table.fc-borrow-tbl tr.fc-borrow-detail-row td{background:var(--surface);border-
 // GLOBALS
 // ══════════════════════════════════════════════
 let db = null;
-const APP_BUILD = '2026.06.17-borelog-hub-only';
+const APP_BUILD = '2026.06.17-borelog-map-gps';
 const FC_CORE_ICON_SRC = 'docs/r18-reference/core-drill-icon-128.png';
 const BORELOG_ICON_SRC = 'docs/r18-reference/borelog-icon.webp';
 const BORELOG_PATH = 'docs/r18-reference/deldot-borelog.html';
 const BORELOG_WIN_NAME = 'deldot-borelog';
 const BORELOG_CTX_KEY = 'labtrak_borelog_context';
+const BORELOG_STORE_KEY = 'deldot_borelog_v2';
+const DE_STATE_PLANE = '+proj=lcc +lat_1=38.93333333333333 +lat_2=39.83333333333333 +lat_0=38 +lon_0=-75.41666666666667 +x_0=2000000 +y_0=0 +datum=NAD83 +units=us-ft +no_defs';
 window._dbConnected = false;
 window._syncInProgress = false;
 let currentSample = null;
@@ -6667,9 +6670,28 @@ async function openProjectMap(contract, projectName, opts) {
     if (plotCoreDrillMarker(c, bounds)) pinCount++;
   });
 
+  // ── BoreLog borings
+  let borelogPinCount = 0;
+  if (contract) {
+    const borelogBorings = await fetchBorelogBoringsForContract(contract);
+    borelogBorings.forEach(b => {
+      const popup = createMapPopup(buildBorelogMapPopup(b));
+      const el = createMarkerEl('#22d3ee', '▲', false);
+      const marker = new mapboxgl.Marker({ element: el })
+        .setLngLat([b.coords.lng, b.coords.lat])
+        .setPopup(popup)
+        .addTo(projectMap);
+      mapMarkers.push(marker);
+      bounds.extend([b.coords.lng, b.coords.lat]);
+      pinCount++;
+      borelogPinCount++;
+    });
+  }
+
   const corePinCount = allCores.filter(c => parseGPS(c.gps_coordinates, true)).length;
   let subtitle = pinCount + ' location' + (pinCount !== 1 ? 's' : '') + ' plotted';
   if (corePinCount) subtitle += ' · ' + corePinCount + ' core' + (corePinCount !== 1 ? 's' : '');
+  if (borelogPinCount) subtitle += ' · ' + borelogPinCount + ' boring' + (borelogPinCount !== 1 ? 's' : '');
   document.getElementById('mapOverlaySubtitle').textContent = subtitle;
 
   // Fit map to pins
@@ -6718,6 +6740,116 @@ function parseGPS(str, relaxBounds) {
     return null;
   }
   return { lat, lng };
+}
+
+function delawareNEToLatLng(northing, easting) {
+  const n = parseFloat(String(northing).replace(/,/g, ''));
+  const e = parseFloat(String(easting).replace(/,/g, ''));
+  if (!isFinite(n) || !isFinite(e)) return null;
+  if (typeof proj4 === 'undefined') return null;
+  try {
+    const [lng, lat] = proj4(DE_STATE_PLANE, 'WGS84', [e, n]);
+    if (!isFinite(lat) || !isFinite(lng)) return null;
+    if (lat < 36 || lat > 41 || lng < -77 || lng > -73) return null;
+    return { lat, lng };
+  } catch (err) { return null; }
+}
+
+function resolveBorelogBoringCoords(b) {
+  if (!b) return null;
+  const gps = b.gps_coordinates || b.gps;
+  if (gps) {
+    const parsed = parseGPS(gps, true);
+    if (parsed) return parsed;
+  }
+  return delawareNEToLatLng(b.northing, b.easting);
+}
+
+function normalizeBorelogMapBoring(row, projectMeta) {
+  const header = row.header_data || {};
+  const boring = {
+    id: row.id,
+    boring_no: row.boring_no || header.boring_no || '',
+    location: header.location || '',
+    station_offset: header.station_offset || '',
+    northing: header.northing || '',
+    easting: header.easting || '',
+    gps_coordinates: header.gps_coordinates || '',
+    date_started: header.date_started || '',
+    date_completed: header.date_completed || '',
+    contract: projectMeta?.contract || row.contract || '',
+    projectName: projectMeta?.name || row.projectName || '',
+  };
+  const coords = resolveBorelogBoringCoords(boring);
+  return coords ? { ...boring, coords } : null;
+}
+
+function collectBorelogBoringsFromLocal(contract) {
+  const out = [];
+  try {
+    const raw = JSON.parse(localStorage.getItem(BORELOG_STORE_KEY) || '{}');
+    const projects = raw.projects || {};
+    const borings = raw.borings || {};
+    const contractLower = (contract || '').trim().toLowerCase();
+    Object.values(projects).forEach(p => {
+      const pContract = (p.contract_no || p.contract || '').trim().toLowerCase();
+      if (contractLower && pContract && pContract !== contractLower) return;
+      Object.values(borings).forEach(b => {
+        if (b.project_id !== p.id) return;
+        const item = normalizeBorelogMapBoring(
+          { id: b.id, boring_no: b.boring_no, header_data: b },
+          { contract: p.contract_no || p.contract || '', name: p.name || '' }
+        );
+        if (item) out.push(item);
+      });
+    });
+  } catch (e) { console.warn('borelog local cache:', e); }
+  return out;
+}
+
+async function fetchBorelogBoringsForContract(contract) {
+  const seen = new Set();
+  const out = [];
+  const add = (item) => {
+    if (!item?.id || seen.has(item.id)) return;
+    seen.add(item.id);
+    out.push(item);
+  };
+  collectBorelogBoringsFromLocal(contract).forEach(add);
+  if (!db) return out;
+  try {
+    let projQuery = db.from('borelog_projects').select('id,contract,name').is('deleted_at', null);
+    if (contract) projQuery = projQuery.ilike('contract', contract);
+    const { data: projects } = await projQuery;
+    const projs = projects || [];
+    if (!projs.length) return out;
+    const projById = Object.fromEntries(projs.map(p => [p.id, p]));
+    const { data: rows } = await db.from('borelog_borings')
+      .select('id,boring_no,project_id,header_data')
+      .in('project_id', projs.map(p => p.id))
+      .is('deleted_at', null);
+    (rows || []).forEach(row => {
+      const item = normalizeBorelogMapBoring(row, projById[row.project_id]);
+      if (item) add(item);
+    });
+  } catch (e) { console.warn('fetchBorelogBoringsForContract:', e); }
+  return out;
+}
+
+async function fetchAllBorelogMapBorings() {
+  return fetchBorelogBoringsForContract(null);
+}
+
+function buildBorelogMapPopup(b) {
+  return `
+    <div class="map-popup-title">Boring ${b.boring_no || '—'}</div>
+    <div class="map-popup-row"><span class="map-popup-label">Layer:</span><span class="map-popup-val">BoreLog</span></div>
+    <div class="map-popup-row"><span class="map-popup-label">Contract:</span><span class="map-popup-val">${b.contract || '—'}</span></div>
+    <div class="map-popup-row"><span class="map-popup-label">Project:</span><span class="map-popup-val">${b.projectName || '—'}</span></div>
+    <div class="map-popup-row"><span class="map-popup-label">Location:</span><span class="map-popup-val">${b.location || '—'}</span></div>
+    <div class="map-popup-row"><span class="map-popup-label">Station:</span><span class="map-popup-val">${b.station_offset || '—'}</span></div>
+    <div class="map-popup-row"><span class="map-popup-label">Started:</span><span class="map-popup-val">${b.date_started || '—'}</span></div>
+  `;
 }
 
 function formatCoreGPS(lat, lng, accuracyM) {
@@ -6832,14 +6964,15 @@ function createMarkerEl(color, symbol, isActive) {
 // ══════════════════════════════════════════════
 let labMap = null;
 let labMapMarkers = [];
-let labMapLayers = { field_sample: true, density: true, core_drill: true, concrete: true };
-let labMapStore = { field_sample: [], density: [], core_drill: [], concrete: [] };
+let labMapLayers = { field_sample: true, density: true, core_drill: true, concrete: true, borelog: true };
+let labMapStore = { field_sample: [], density: [], core_drill: [], concrete: [], borelog: [] };
 
 const LAB_MAP_LAYER_DEFS = {
   field_sample: { label: 'Field Sample', color: '#34d399', symbol: '●' },
   density:      { label: 'Density',      color: '#fbbf24', symbol: '⊕' },
   core_drill:   { label: 'Core Drill',   color: '#a855f7', symbol: '◇' },
   concrete:     { label: 'Concrete',     color: '#60a5fa', symbol: '■' },
+  borelog:      { label: 'BoreLog',      color: '#22d3ee', symbol: '▲' },
 };
 
 function isLabMapAdmin() {
@@ -7003,6 +7136,10 @@ function labMapPlotMarkers(preserveView) {
     if (!coords) return;
     addMarker(coords, 'concrete', labMapBuildConcretePopup(set), false);
   });
+  (labMapStore.borelog || []).forEach(b => {
+    if (!b?.coords) return;
+    addMarker(b.coords, 'borelog', buildBorelogMapPopup(b), false);
+  });
 
   const subtitle = document.getElementById('labMapSubtitle');
   if (subtitle) {
@@ -7021,10 +7158,11 @@ function labMapPlotMarkers(preserveView) {
 }
 
 async function labMapFetchData() {
-  const store = { field_sample: [], density: [], core_drill: [], concrete: [] };
+  const store = { field_sample: [], density: [], core_drill: [], concrete: [], borelog: [] };
   const sampleSeen = new Set();
   const coreSeen = new Set();
   const concSeen = new Set();
+  const borelogSeen = new Set();
 
   const addSample = (s) => {
     if (!s?.id || sampleSeen.has(s.id)) return;
@@ -7045,6 +7183,11 @@ async function labMapFetchData() {
     if (!row.gps_coordinates) return;
     concSeen.add(row.id);
     store.concrete.push(row);
+  };
+  const addBoring = (item) => {
+    if (!item?.id || borelogSeen.has(item.id)) return;
+    borelogSeen.add(item.id);
+    store.borelog.push(item);
   };
 
   (allSamples || []).forEach(addSample);
@@ -7087,6 +7230,11 @@ async function labMapFetchData() {
     (conc || []).forEach(addConcrete);
   } catch (e) { console.warn('labMapFetchData concrete:', e); }
 
+  try {
+    const borings = await fetchAllBorelogMapBorings();
+    borings.forEach(addBoring);
+  } catch (e) { console.warn('labMapFetchData borelog:', e); }
+
   return store;
 }
 
@@ -7100,7 +7248,7 @@ async function labMapReload() {
   if (!db) {
     if (empty) empty.style.display = 'flex';
     if (subtitle) subtitle.textContent = 'Connect to Supabase to load map data.';
-    labMapStore = { field_sample: [], density: [], core_drill: [], concrete: [] };
+    labMapStore = { field_sample: [], density: [], core_drill: [], concrete: [], borelog: [] };
     labMapRenderLayerPanel();
     labMapClearMarkers();
     return;

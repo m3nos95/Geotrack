@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>DelDOT Borelog v5 — Materials &amp; Research Lab</title>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/proj4js/2.11.0/proj4.min.js"></script>
 <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Roboto+Condensed:wght@400;700&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
 <style>
 :root {
@@ -522,7 +523,13 @@ nav{background:var(--surface);border-bottom:1px solid var(--border);box-shadow:0
           <div class="form-group"><label>Northing</label><input type="text" id="bh_northing"></div>
           <div class="form-group"><label>Easting</label><input type="text" id="bh_easting"></div>
           <div class="form-group"><label>Surface Elevation (ft)</label><input type="text" id="bh_elev"></div>
-          <div class="form-group"><label></label><span></span></div>
+          <div class="form-group" style="grid-column:1 / -1;">
+            <label>GPS Coordinates</label>
+            <div style="display:flex;gap:8px;align-items:center;">
+              <input type="text" id="bh_gps" placeholder="39.146760, -75.504430" style="flex:1;">
+              <button type="button" class="btn btn-ghost btn-sm" onclick="captureBoringGPS()">📍 GPS</button>
+            </div>
+          </div>
           <div class="form-group"><label>Date Started</label><input type="date" id="bh_date_start"></div>
           <div class="form-group"><label>Date Completed</label><input type="date" id="bh_date_end"></div>
         </div>
@@ -810,6 +817,7 @@ const DELDOT_LOGO = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAPAAAADwCAYAA
    - Storage wrapper abstracted for future Supabase port
    ========================================================================= */
 const STORE_KEY = 'deldot_borelog_v2';
+const DE_STATE_PLANE = '+proj=lcc +lat_1=38.93333333333333 +lat_2=39.83333333333333 +lat_0=38 +lon_0=-75.41666666666667 +x_0=2000000 +y_0=0 +datum=NAD83 +units=us-ft +no_defs';
 const SB_URL_KEY = 'labtrak_sb_url';
 const SB_KEY_KEY = 'labtrak_sb_anon_key';
 const BORELOG_SYNC_QUEUE_KEY = 'deldot_borelog_sync_queue';
@@ -1826,6 +1834,80 @@ function fmtDate(d){ if(!d)return''; const p=d.split('-'); return p.length===3?`
 function fmtNum(v, dec){ dec=dec==null?1:dec; if(v==null||v===''||isNaN(v)) return ''; return parseFloat(v).toFixed(dec); }
 function toast(msg,err){ const t=$('toast'); t.textContent=msg; t.classList.toggle('err',!!err); t.classList.add('show'); setTimeout(()=>t.classList.remove('show'),2400); }
 
+function parseBorelogGps(str) {
+  if (!str) return null;
+  const cleaned = String(str).replace(/\(.*?\)/g, '').trim();
+  const m = cleaned.match(/(-?\d+(?:\.\d+)?)[,\s]+(-?\d+(?:\.\d+)?)/);
+  if (!m) return null;
+  const a = parseFloat(m[1]);
+  const b = parseFloat(m[2]);
+  if (!isFinite(a) || !isFinite(b)) return null;
+  let lat = a;
+  let lng = b;
+  if (a > 0 && b < 0) { lat = a; lng = b; }
+  else if (a < 0 && b > 0) { lng = a; lat = b; }
+  else if (Math.abs(a) > 90 && Math.abs(b) <= 90) { lng = a; lat = b; }
+  if (lat < 36 || lat > 41 || lng < -77 || lng > -73) return null;
+  return { lat, lng };
+}
+
+function delawareNEToLatLng(northing, easting) {
+  const n = parseFloat(String(northing).replace(/,/g, ''));
+  const e = parseFloat(String(easting).replace(/,/g, ''));
+  if (!isFinite(n) || !isFinite(e)) return null;
+  if (typeof proj4 === 'undefined') return null;
+  try {
+    const [lng, lat] = proj4(DE_STATE_PLANE, 'WGS84', [e, n]);
+    if (!isFinite(lat) || !isFinite(lng)) return null;
+    if (lat < 36 || lat > 41 || lng < -77 || lng > -73) return null;
+    return { lat, lng };
+  } catch (e) { return null; }
+}
+
+function formatBoringGps(lat, lng, suffix) {
+  const base = lat.toFixed(6) + ', ' + lng.toFixed(6);
+  return suffix ? base + suffix : base;
+}
+
+function syncBoringGpsFields(b) {
+  const gpsEl = $('bh_gps');
+  const manual = (gpsEl ? gpsEl.value : b.gps_coordinates || '').trim();
+  const parsed = parseBorelogGps(manual);
+  if (parsed) {
+    const suffix = manual.match(/\(.*\)/) ? manual.slice(manual.indexOf('(')) : '';
+    b.gps_coordinates = formatBoringGps(parsed.lat, parsed.lng, suffix);
+    if (gpsEl) gpsEl.value = b.gps_coordinates;
+    return b.gps_coordinates;
+  }
+  const fromPlane = delawareNEToLatLng(b.northing, b.easting);
+  if (fromPlane) {
+    b.gps_coordinates = formatBoringGps(fromPlane.lat, fromPlane.lng, ' (state plane)');
+    if (gpsEl && !manual) gpsEl.value = b.gps_coordinates;
+    return b.gps_coordinates;
+  }
+  b.gps_coordinates = manual;
+  return b.gps_coordinates;
+}
+
+function captureBoringGPS() {
+  const el = $('bh_gps');
+  if (!el) return;
+  if (!navigator.geolocation) { toast('GPS not supported', true); return; }
+  el.value = '📍 Locating…';
+  navigator.geolocation.getCurrentPosition(
+    p => {
+      el.value = formatBoringGps(p.coords.latitude, p.coords.longitude, ' (±' + Math.round(p.coords.accuracy) + 'm)');
+      toast('GPS captured');
+    },
+    () => {
+      el.value = '';
+      el.placeholder = 'Paste coords or save Northing/Easting';
+      toast('Enter coordinates manually', true);
+    },
+    { enableHighAccuracy: true, timeout: 15000, maximumAge: 60000 }
+  );
+}
+
 const LABTRAK_CTX_KEY = 'labtrak_borelog_context';
 
 function _normProjectKey(s) {
@@ -2200,6 +2282,7 @@ function confirmGenSamples(){
     const b = {
       id: uid(), project_id: currentProjectId, boring_no,
       location: proj.location || '', station_offset:'', northing:'', easting:'', surface_elev:'', reference:'',
+      gps_coordinates:'',
       date_started:'', date_completed:'',
       state_contract: proj.contract_no || '', federal_contract: proj.federal_no || '',
       hammer_wt:140, hammer_fall:30, d_sampler:'Split Barrel', d_od:2,
@@ -2286,7 +2369,7 @@ function renderBoringEdit(){
   f('bh_state_contract', b.state_contract || p.contract_no);
   f('bh_federal_contract', b.federal_contract || p.federal_no); f('bh_station', b.station_offset);
   f('bh_reference', b.reference); f('bh_northing', b.northing); f('bh_easting', b.easting);
-  f('bh_elev', b.surface_elev); f('bh_date_start', b.date_started); f('bh_date_end', b.date_completed);
+  f('bh_elev', b.surface_elev); f('bh_gps', b.gps_coordinates); f('bh_date_start', b.date_started); f('bh_date_end', b.date_completed);
   f('bh_hammer_wt', b.hammer_wt||140); f('bh_hammer_fall', b.hammer_fall||30);
   f('bh_d_sampler', b.d_sampler||'Split Barrel'); f('bh_d_od', b.d_od||2);
   f('bh_u_sampler', b.u_sampler); f('bh_u_od', b.u_od);
@@ -2304,6 +2387,7 @@ function saveBoringHeader(){
   b.state_contract=get('bh_state_contract'); b.federal_contract=get('bh_federal_contract');
   b.station_offset=get('bh_station'); b.reference=get('bh_reference');
   b.northing=get('bh_northing'); b.easting=get('bh_easting'); b.surface_elev=get('bh_elev');
+  syncBoringGpsFields(b);
   b.date_started=$('bh_date_start').value; b.date_completed=$('bh_date_end').value;
   b.hammer_wt=$('bh_hammer_wt').value; b.hammer_fall=$('bh_hammer_fall').value;
   b.d_sampler=get('bh_d_sampler'); b.d_od=$('bh_d_od').value;
