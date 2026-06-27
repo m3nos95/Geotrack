@@ -6267,7 +6267,7 @@ table.fc-borrow-tbl tr.fc-borrow-detail-row td{background:var(--surface);border-
 // GLOBALS
 // ══════════════════════════════════════════════
 let db = null;
-const APP_BUILD = '2026.06.17-core-drill-nav';
+const APP_BUILD = '2026.06.17-core-drill-test-no';
 const FC_CORE_ICON_SRC = 'docs/r18-reference/core-drill-icon-128.png';
 const BORELOG_ICON_SRC = 'docs/r18-reference/borelog-icon.webp';
 const BORELOG_PATH = 'docs/r18-reference/deldot-borelog.html';
@@ -17583,7 +17583,7 @@ function fcCollectCoreSessionNums(contract) {
   (allFieldTests || []).forEach(ft => {
     if (ft.field_workflow !== 'core_drill') return;
     if (!match(ft.contract)) return;
-    const n = fcParseCoreNum(ft.test_no);
+    const n = fcParseCoreNum(ft.core_no) ?? fcParseCoreNum(ft.test_no);
     if (n) nums.push(n);
   });
   return nums;
@@ -17604,34 +17604,51 @@ async function fcInsertCoreDrillSession(rec) {
   return result;
 }
 
+function fcIsDuplicateKeyError(error) {
+  const msg = (error?.message || '').toLowerCase();
+  return msg.includes('duplicate') || msg.includes('unique') || msg.includes('conflict');
+}
+
 async function fcTryInsertCoreDrill(record, requestedCoreNo) {
   const trimmed = fcNormalizeCoreNo(requestedCoreNo);
+  const category = record.test_category || 'soil';
   const withCoreNo = { ...record, core_no: trimmed || null };
   let inserted = null;
   let lastError = null;
 
   if (trimmed && !fcIsNumericCoreNo(trimmed)) {
-    const rec = { ...withCoreNo, test_no: trimmed };
-    const { data, error, queued } = await fcInsertCoreDrillSession(rec);
-    if (!error) {
-      if (queued) showToast('Offline — session queued locally', 'info');
-      return data ? { ...data, core_no: data.core_no || trimmed } : data;
+    for (let attempt = 0; attempt < 5; attempt++) {
+      const testNo = attempt === 0
+        ? trimmed
+        : String((await getNextTestNumber(category) || Date.now()) + attempt);
+      const rec = { ...withCoreNo, test_no: testNo };
+      const { data, error, queued } = await fcInsertCoreDrillSession(rec);
+      if (!error) {
+        if (queued) showToast('Offline — session queued locally', 'info');
+        return data ? { ...data, core_no: data.core_no || trimmed } : data;
+      }
+      lastError = error;
+      if (!fcIsDuplicateKeyError(error)) break;
     }
-    throw error;
+    if (lastError) throw lastError;
+    return null;
   }
 
-  let base = fcParseCoreNum(trimmed) || 1;
-  for (let attempt = 0; attempt < 5; attempt++) {
-    const rec = { ...withCoreNo, test_no: String(base + attempt) };
+  // Numeric core # — store in core_no; use the shared FY/CY test_no sequence for field_tests.test_no
+  const coreNo = trimmed || '1';
+  const recBase = { ...withCoreNo, core_no: coreNo };
+  let nextTestNo = await getNextTestNumber(category);
+  for (let attempt = 0; attempt < 8; attempt++) {
+    const testNo = nextTestNo != null ? String(nextTestNo + attempt) : String(Date.now() + attempt);
+    const rec = { ...recBase, test_no: testNo };
     const { data, error, queued } = await fcInsertCoreDrillSession(rec);
     if (!error) {
-      inserted = data ? { ...data, core_no: data.core_no || trimmed } : data;
+      inserted = data ? { ...data, core_no: data.core_no || coreNo } : data;
       if (queued) showToast('Offline — session queued locally', 'info');
       break;
     }
     lastError = error;
-    const msg = (error.message || '').toLowerCase();
-    if (!msg.includes('duplicate') && !msg.includes('unique') && !msg.includes('conflict')) break;
+    if (!fcIsDuplicateKeyError(error)) break;
   }
   if (!inserted && lastError) throw lastError;
   return inserted;
@@ -17649,14 +17666,14 @@ async function fcRefreshCoreSessionNo() {
       try {
         const [{ data: cores }, { data: fts }] = await Promise.all([
           db.from('core_drills').select('core_no,test_no,contract').eq('contract', contract),
-          db.from('field_tests').select('test_no,contract').eq('contract', contract).eq('field_workflow', 'core_drill'),
+          db.from('field_tests').select('core_no,test_no,contract').eq('contract', contract).eq('field_workflow', 'core_drill'),
         ]);
         (cores || []).forEach(c => {
           const n = fcParseCoreNum(c.core_no) ?? fcParseCoreNum(c.test_no);
           if (n) nums.push(n);
         });
         (fts || []).forEach(ft => {
-          const n = fcParseCoreNum(ft.test_no);
+          const n = fcParseCoreNum(ft.core_no) ?? fcParseCoreNum(ft.test_no);
           if (n) nums.push(n);
         });
       } catch (e) { /* default 1 */ }
