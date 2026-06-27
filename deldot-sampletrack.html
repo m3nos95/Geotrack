@@ -6701,6 +6701,8 @@ async function openProjectMap(contract, projectName, opts) {
   document.getElementById('mapOverlay').classList.add('open');
   document.getElementById('mapOverlayTitle').textContent = (contract || 'Core drill') + ' — ' + (projectName || 'Map');
   document.getElementById('mapOverlaySubtitle').textContent = 'Loading locations...';
+  syncMapStyleButtons();
+  labMapRenderProjectRefPanel();
 
   // Initialize map if not already done
   if (!projectMap) {
