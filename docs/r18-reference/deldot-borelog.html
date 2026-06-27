@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
+<script>try{if(localStorage.getItem('labtrak_comfort_mode')==='1')document.documentElement.classList.add('comfort-mode');}catch(e){}</script>
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -423,6 +424,40 @@ nav{background:var(--surface);border-bottom:1px solid var(--border);box-shadow:0
   cursor:pointer;transition:all .12s;}
 .list-card .lc-btn:hover{border-color:var(--accent2);color:var(--text);}
 .list-card .lc-btn.danger:hover{border-color:var(--red2);color:var(--red2);}
+
+/* ── Comfort mode (shared with LabTrak) ── */
+.btn-comfort-mode{background:rgba(255,255,255,0.06);border:1px solid var(--border);color:var(--muted);
+  padding:5px 9px;font-family:var(--sans);font-size:14px;line-height:1;cursor:pointer;border-radius:var(--radius-sm);transition:all .15s;}
+.btn-comfort-mode:hover{color:var(--text);border-color:var(--accent2);background:rgba(196,124,42,0.1);}
+.btn-comfort-mode.active{color:var(--green2);border-color:rgba(46,204,120,0.4);background:rgba(46,204,120,0.1);}
+html.comfort-mode{--display:var(--sans);font-size:15px;
+  --bg:#131a24;--surface:#1a2330;--panel:#212c3c;--border:#2d3a4d;
+  --text:#d4e0ec;--muted:#708498;--accent:#b07832;--accent2:#cc9450;--gold:#c89848;}
+html.comfort-mode body{background-image:none !important;}
+html.comfort-mode .nav-logo{text-transform:none;letter-spacing:0.02em;font-family:var(--sans);font-size:14px;font-weight:600;}
+html.comfort-mode .nav-logo .app-sub{letter-spacing:0.04em;font-family:var(--sans);font-size:10px;}
+html.comfort-mode .nav-tab{text-transform:none;letter-spacing:0.02em;font-family:var(--sans);font-size:13px;}
+html.comfort-mode .card-title,
+html.comfort-mode .form-group label,
+html.comfort-mode .page-head h2,
+html.comfort-mode .gs-row label,
+html.comfort-mode .gs-computed .gc-lbl,
+html.comfort-mode .gs-tab,
+html.comfort-mode .gs-panel .gp-title,
+html.comfort-mode .sub-section .ss-title,
+html.comfort-mode .sample-editor .se-desc-label,
+html.comfort-mode .sieve-tbl th,
+html.comfort-mode .cv-box .cv-lbl,
+html.comfort-mode .htb-label,
+html.comfort-mode .htb-next-label,
+html.comfort-mode .hab-text{text-transform:none !important;letter-spacing:0.02em !important;font-family:var(--sans) !important;}
+html.comfort-mode .page-head h2{font-size:22px;letter-spacing:0.01em;}
+html.comfort-mode .btn{font-family:var(--sans);letter-spacing:0.02em;text-transform:none;}
+html.comfort-mode .bl-sync-chip{font-family:var(--sans);font-size:10px;letter-spacing:0.02em;}
+html.comfort-mode .htb-status-dot.running,
+html.comfort-mode .htb-status-dot.warning,
+html.comfort-mode .htb-next-val.due,
+html.comfort-mode .hab-pulse{animation:none !important;box-shadow:none !important;text-shadow:none !important;}
 </style>
 </head>
 <body>
@@ -463,6 +498,8 @@ nav{background:var(--surface);border-bottom:1px solid var(--border);box-shadow:0
       <div class="nav-tab" data-view="psd-print">📊 PSD REPORT</div>
     </div>
     <div id="blSyncWrap" style="margin-left:auto;display:flex;align-items:center;gap:8px;padding-right:4px;flex-shrink:0;">
+      <button type="button" class="btn-comfort-mode" id="btnComfortMode" onclick="toggleComfortMode()"
+              title="Comfort mode — softer visuals for long sessions" aria-pressed="false" aria-label="Comfort mode">☾</button>
       <span id="blSyncChip" class="bl-sync-chip off" title="Uses LabTrak Supabase settings">LOCAL</span>
       <button type="button" class="btn btn-ghost btn-sm" onclick="syncBorelogNow()" id="blSyncBtn">☁ SYNC</button>
     </div>
@@ -1973,6 +2010,41 @@ function applyLabTrakContext() {
   toast('LabTrak project details loaded — review and save');
 }
 
+const COMFORT_STORAGE_KEY = 'labtrak_comfort_mode';
+
+function isComfortMode() {
+  try { return localStorage.getItem(COMFORT_STORAGE_KEY) === '1'; } catch { return false; }
+}
+
+function updateComfortModeUI() {
+  const on = isComfortMode();
+  const btn = document.getElementById('btnComfortMode');
+  if (btn) {
+    btn.classList.toggle('active', on);
+    btn.setAttribute('aria-pressed', on ? 'true' : 'false');
+    btn.title = on ? 'Comfort mode on — click to turn off' : 'Comfort mode — softer visuals for long sessions';
+  }
+}
+
+function applyComfortVisuals() {
+  document.documentElement.classList.toggle('comfort-mode', isComfortMode());
+  updateComfortModeUI();
+}
+
+function setComfortMode(on) {
+  try { localStorage.setItem(COMFORT_STORAGE_KEY, on ? '1' : '0'); } catch {}
+  applyComfortVisuals();
+  toast(on ? 'Comfort mode on' : 'Comfort mode off');
+}
+
+function toggleComfortMode() {
+  setComfortMode(!isComfortMode());
+}
+
+function initComfortMode() {
+  applyComfortVisuals();
+}
+
 function startApp(){
   const ol = $('setupOverlay');
   ol.style.transition='opacity .4s';
@@ -1987,6 +2059,7 @@ function startApp(){
 }
 // Wire logo into splash as soon as script runs
 (function(){ const el = document.getElementById('splashLogo'); if(el) el.src = DELDOT_LOGO; })();
+initComfortMode();
 
 document.querySelectorAll('.nav-tab').forEach(t=>{
   t.addEventListener('click',()=>{
