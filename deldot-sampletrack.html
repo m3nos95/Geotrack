@@ -3071,6 +3071,16 @@ table.fc-borrow-tbl tr.fc-borrow-detail-row td{background:var(--surface);border-
       </button>
     </div>
 
+    <!-- Help — all users -->
+    <div class="user-mgmt-section" id="helpSection">
+      <div class="user-mgmt-title">HELP</div>
+      <p style="font-family:var(--sans);font-size:12px;color:var(--muted);margin:0 0 12px;line-height:1.55;">
+        Walk through every major area of LabTrak — navigation, modules, maps, sync, and settings.
+        Available anytime for all roles.
+      </p>
+      <button type="button" class="tour-help-launch" onclick="startLabTrakTour()">Start guided tour</button>
+    </div>
+
     <!-- Appearance / skins — all users -->
     <div class="user-mgmt-section" id="appearanceSection">
       <div class="user-mgmt-title">APPEARANCE</div>
@@ -3372,6 +3382,8 @@ table.fc-borrow-tbl tr.fc-borrow-detail-row td{background:var(--surface);border-
     </div>
 
     <div class="topbar-right">
+      <button type="button" class="btn-settings" id="btnTourHelp" onclick="startLabTrakTour()"
+              title="Guided tour — walk through LabTrak" aria-label="Start guided tour">?</button>
       <button type="button" class="btn-comfort-mode" id="btnComfortMode" onclick="toggleComfortMode()"
               title="Comfort mode — softer visuals for long sessions" aria-pressed="false" aria-label="Comfort mode">☾</button>
       <button type="button" class="sync-status-chip offline" id="syncStatusChip" onclick="onSyncChipClick()" title="Database status">
@@ -3394,7 +3406,7 @@ table.fc-borrow-tbl tr.fc-borrow-detail-row td{background:var(--surface);border-
         <span class="cmd-search-shortcut">^K</span>
       </button>
       <button type="button" class="btn-settings btn-signout-mobile" id="btnSignOutMobile" onclick="signOutUser()" title="Sign out" aria-label="Sign out">OUT</button>
-      <button class="btn-settings" onclick="showSetup()" aria-label="Settings">⚙</button>
+      <button class="btn-settings" id="btnAppSettings" onclick="showSetup()" aria-label="Settings">⚙</button>
     </div>
   </div>
 
@@ -5993,7 +6005,7 @@ table.fc-borrow-tbl tr.fc-borrow-detail-row td{background:var(--surface);border-
       </div>
 
       <!-- BoreLog prominent card -->
-      <div onclick="openBoreLog()"
+      <div id="tour-borelog-card" onclick="openBoreLog()"
            style="cursor:pointer;background:linear-gradient(135deg,rgba(15,29,48,0.95),rgba(10,20,36,0.98));border:1px solid rgba(96,165,250,0.25);border-radius:14px;padding:16px 20px;margin-bottom:18px;display:flex;align-items:center;gap:18px;transition:border-color 0.2s,box-shadow 0.2s;"
            onmouseover="this.style.borderColor='rgba(96,165,250,0.6)';this.style.boxShadow='0 4px 24px rgba(96,165,250,0.15)'"
            onmouseout="this.style.borderColor='rgba(96,165,250,0.25)';this.style.boxShadow=''">
@@ -6255,7 +6267,7 @@ table.fc-borrow-tbl tr.fc-borrow-detail-row td{background:var(--surface);border-
 // GLOBALS
 // ══════════════════════════════════════════════
 let db = null;
-const APP_BUILD = '2026.06.17-comfort-mode-typography';
+const APP_BUILD = '2026.06.17-guided-tour';
 const FC_CORE_ICON_SRC = 'docs/r18-reference/core-drill-icon-128.png';
 const BORELOG_ICON_SRC = 'docs/r18-reference/borelog-icon.webp';
 const BORELOG_PATH = 'docs/r18-reference/deldot-borelog.html';
@@ -9028,6 +9040,470 @@ function switchView(name) {
     if (v) v.scrollTop = 0;
   });
 }
+
+// ══════════════════════════════════════════════
+// GUIDED TOUR — spotlight walkthrough (all roles)
+// ══════════════════════════════════════════════
+let _tourActive = false;
+let _tourIndex = 0;
+let _tourReturnView = 'home';
+
+const LABTRAK_TOUR_STEPS = [
+  {
+    center: true,
+    title: 'Welcome to LabTrak',
+    body: 'This tour covers the whole DelDOT Materials & Research program — top bar, navigation, every major module, maps, BoreLog, and settings. Press Next to continue, or Escape to exit anytime.'
+  },
+  {
+    target: '#topbar',
+    title: 'Top bar',
+    body: 'Status, weather, sync health, search, and your session stay visible on every screen.',
+    placement: 'bottom',
+    pad: 2
+  },
+  {
+    target: '#syncStatusChip',
+    title: 'Cloud sync',
+    body: 'Shows whether LabTrak is connected to Supabase and if uploads are pending. Click for details when something fails to sync.',
+    placement: 'bottom'
+  },
+  {
+    target: '.btn-cmd-search',
+    title: 'Universal search',
+    body: 'Jump to any project, sample, contract, or concrete set. Shortcut: Ctrl+K (⌘K on Mac).',
+    placement: 'bottom'
+  },
+  {
+    target: '#btnComfortMode',
+    title: 'Comfort mode',
+    body: 'Softer colors and easier-to-read labels for long shifts. The same preference applies in BoreLog on this device.',
+    placement: 'bottom'
+  },
+  {
+    target: '#btnTourHelp',
+    title: 'Help — replay this tour',
+    body: 'The ? button reopens this guided tour anytime. You can also start it from Settings → Help.',
+    placement: 'bottom'
+  },
+  {
+    target: '#btnAppSettings',
+    title: 'Settings',
+    body: 'Themes, comfort mode, your account, sign-out, and admin tools (users, email, data maintenance) when you have permission.',
+    placement: 'bottom'
+  },
+  {
+    target: '#navRail',
+    title: 'Left navigation rail',
+    body: 'Quick jumps between modules. Which icons appear depends on your role — lab tech, field tech, concrete, or admin.',
+    placement: 'right',
+    pad: 4
+  },
+  {
+    view: 'home',
+    target: '.dash-module-grid',
+    title: 'Dashboard — module launcher',
+    body: 'The home screen opens each major hub: Soil Lab, Concrete, Field Control, and planned modules (Hot Mix, Pre-Cast, Chem Lab).',
+    placement: 'top',
+    pad: 8
+  },
+  {
+    view: 'home',
+    target: '#ri-projects',
+    title: 'Projects',
+    body: 'Manage contracts, routes, contractors, and FA numbers. Filter all work by the active project.',
+    placement: 'right',
+    fallbackCenter: true,
+    fallbackBody: 'Open Projects from the left rail to manage contracts and filter all work by project.'
+  },
+  {
+    view: 'projects',
+    target: '#projectsGrid',
+    title: 'Project list & map',
+    body: 'Each project card opens details and a map showing field samples, pavement cores, concrete sets, and BoreLog boring pins (when GPS is entered).',
+    placement: 'top',
+    pad: 6,
+    fallbackCenter: true,
+    fallbackBody: 'Project cards list your contracts. Use the Map button on a card to plot samples, cores, concrete, and BoreLog borings.'
+  },
+  {
+    view: 'home',
+    target: '#ri-dashboard',
+    title: 'All Samples',
+    body: 'Search and review every lab sample across projects — status, approvals, and history in one table.',
+    placement: 'right',
+    fallbackCenter: true,
+    fallbackBody: 'All Samples lists every lab sample across projects for search, review, and approvals.'
+  },
+  {
+    view: 'dashboard',
+    target: '#dashboard-view .card-title',
+    title: 'Sample registry',
+    body: 'Filter by project, open a sample for lab entry or approval, and track pending vs. complete work.',
+    placement: 'bottom',
+    fallbackCenter: true,
+    fallbackBody: 'The sample registry shows all lab samples. Filter by project and open rows for entry or approval.'
+  },
+  {
+    view: 'home',
+    target: '#ri-fieldcontrol',
+    title: 'Field Control',
+    body: 'Field density (nuclear gauge), pavement cores, borrow counts, and open field sessions — separate from lab sample intake.',
+    placement: 'right',
+    fallbackCenter: true,
+    fallbackBody: 'Field Control handles density tests, pavement cores, and borrow counts in the field.'
+  },
+  {
+    view: 'fieldcontrol',
+    target: '#fieldcontrol-view .card-title',
+    title: 'Field events & cores',
+    body: 'Start a field event, log nuclear readings, capture pavement cores with GPS and photos, and resume open sessions.',
+    placement: 'bottom',
+    fallbackCenter: true,
+    fallbackBody: 'Start field events, log nuclear density, capture pavement cores with GPS, and manage open sessions here.'
+  },
+  {
+    view: 'home',
+    target: '#ri-scan',
+    title: 'Scan QR',
+    body: 'Scan a sample QR label to pull up field intake or lab status on a phone or tablet camera.',
+    placement: 'right',
+    fallbackCenter: true,
+    fallbackBody: 'Scan QR opens the camera to read sample labels and jump straight to that record.'
+  },
+  {
+    view: 'scan',
+    target: '#scan-view',
+    title: 'QR scanner',
+    body: 'Point the camera at a DelDOT sample QR code. Works best on mobile devices with a rear camera.',
+    placement: 'top',
+    pad: 10,
+    fallbackCenter: true,
+    fallbackBody: 'The QR scanner reads sample labels and opens the matching record.'
+  },
+  {
+    view: 'labhub',
+    target: '#labhub-view .hub-greet',
+    title: 'Soil Lab hub',
+    body: 'Your soil lab home — pending queue, calendar, weather, KPIs, and quick actions for the materials lab team.',
+    placement: 'bottom',
+    pad: 6,
+    fallbackCenter: true,
+    fallbackBody: 'The Soil Lab hub shows pending queue, calendar, KPIs, and quick lab actions.'
+  },
+  {
+    view: 'labhub',
+    target: '#tour-borelog-card',
+    title: 'BoreLog — lab entry only',
+    body: 'Opens DelDOT BoreLog in a new tab. Lab staff enter data from received boring logs or GeoSystem import — not consultant field intake.',
+    placement: 'top',
+    pad: 6
+  },
+  {
+    view: 'home',
+    target: '#ri-soillab',
+    title: 'Soil & Aggregate lab module',
+    body: 'Full lab workflow: Atterberg, sieve, moisture, approvals, and aggregate testing tied to field samples.',
+    placement: 'right',
+    fallbackCenter: true,
+    fallbackBody: 'Soil & Aggregate is the full lab module for Atterberg, sieve, moisture, and approvals.'
+  },
+  {
+    view: 'soillab',
+    target: '#soillab-view',
+    title: 'Lab test workspace',
+    body: 'Enter and approve soil and aggregate test data. Queue ties to field-submitted samples — separate from BoreLog boring logs.',
+    placement: 'top',
+    pad: 8,
+    fallbackCenter: true,
+    fallbackBody: 'Enter and approve soil and aggregate tests here. This queue is for field samples, not BoreLog boring logs.'
+  },
+  {
+    view: 'conchub',
+    target: '#conchub-view .hub-greet',
+    title: 'Concrete hub',
+    body: 'Active cylinder sets, breaks due today, pending approvals, and the concrete team calendar.',
+    placement: 'bottom',
+    pad: 6,
+    fallbackCenter: true,
+    fallbackBody: 'The Concrete hub tracks active sets, breaks due today, and pending approvals.'
+  },
+  {
+    view: 'home',
+    target: '#ri-concrete',
+    title: 'Concrete module',
+    body: 'Cast intake, cylinder setup, break scheduling, DMP-15 / DMF-13 reports, and fresh concrete properties.',
+    placement: 'right',
+    fallbackCenter: true,
+    fallbackBody: 'The Concrete module handles cast intake, cylinder breaks, and DMP-15 / DMF-13 reports.'
+  },
+  {
+    view: 'fieldhub',
+    target: '#fieldhub-view .hub-greet',
+    title: 'Field Control hub',
+    body: 'Field technician home — open sessions, LB-68 borrow summary, calendar, and weather for outdoor testing.',
+    placement: 'bottom',
+    pad: 6,
+    fallbackCenter: true,
+    fallbackBody: 'The Field Control hub is the field technician home for sessions, borrow counts, and calendar.'
+  },
+  {
+    view: 'home',
+    target: '#ri-appsources',
+    title: 'Aggregate sources',
+    body: 'Approved aggregate source registry used when sampling and reporting supplied-by information.',
+    placement: 'right',
+    fallbackCenter: true,
+    fallbackBody: 'Aggregate Sources is the approved supplier registry for sampling and reports.'
+  },
+  {
+    view: 'appsources',
+    target: '#appsources-view',
+    title: 'Source registry',
+    body: 'Browse and maintain approved aggregate suppliers linked to projects and lab samples.',
+    placement: 'top',
+    pad: 8,
+    fallbackCenter: true,
+    fallbackBody: 'Browse and maintain approved aggregate suppliers here.'
+  },
+  {
+    view: 'home',
+    target: '#ri-r18',
+    title: 'R-18 compliance',
+    body: 'DelDOT R-18 procedure library — browse sections, fill forms, and print compliance documentation.',
+    placement: 'right',
+    fallbackCenter: true,
+    fallbackBody: 'R-18 is the DelDOT procedure library for forms and compliance documentation.'
+  },
+  {
+    view: 'r18',
+    target: '#r18-view',
+    title: 'R-18 workspace',
+    body: 'Navigate R-18 sections, complete procedure forms, and export/print when inspections require documented compliance.',
+    placement: 'top',
+    pad: 8,
+    fallbackCenter: true,
+    fallbackBody: 'Browse R-18 sections, complete forms, and print compliance documentation.'
+  },
+  {
+    view: 'home',
+    target: '.dash-mod-card.planned',
+    title: 'Planned modules',
+    body: 'Hot Mix Asphalt, Pre-Cast Concrete, and Chemistry Lab appear on the dashboard but are not live yet — you will see a notice if you open them.',
+    placement: 'top',
+    pad: 6,
+    fallbackCenter: true,
+    fallbackBody: 'Hot Mix, Pre-Cast, and Chem Lab modules are planned — opening them shows a coming-soon notice.'
+  },
+  {
+    view: 'home',
+    target: '#ri-labmap',
+    skipIf: () => typeof isLabMapAdmin !== 'function' || !isLabMapAdmin(),
+    title: 'Admin map (administrators)',
+    body: 'Full-screen GIS map of all project activity — samples, cores, concrete, and BoreLog borings with layer toggles.',
+    placement: 'right',
+    fallbackCenter: true,
+    fallbackBody: 'Administrators get a full GIS map with all samples, cores, concrete, and BoreLog layers.'
+  },
+  {
+    view: 'labmap',
+    skipIf: () => typeof isLabMapAdmin !== 'function' || !isLabMapAdmin(),
+    target: '#labmap-view',
+    title: 'LabTrak map layers',
+    body: 'Pan and zoom statewide, switch basemap styles, and toggle field samples, cores, concrete, and borelog pins.',
+    placement: 'top',
+    pad: 8,
+    fallbackCenter: true,
+    fallbackBody: 'The admin map supports basemap styles and toggles for samples, cores, concrete, and borings.'
+  },
+  {
+    center: true,
+    title: 'You are ready',
+    body: 'Replay this tour anytime from the ? button in the top bar or Settings → Help. Sign in with your role to see the modules relevant to your team.'
+  }
+];
+
+function tourResolveTarget(selector) {
+  if (!selector) return null;
+  const el = document.querySelector(selector);
+  if (!el) return null;
+  const st = getComputedStyle(el);
+  if (st.display === 'none' || st.visibility === 'hidden' || st.opacity === '0') return null;
+  const r = el.getBoundingClientRect();
+  if (r.width < 2 || r.height < 2) return null;
+  return el;
+}
+
+function tourPositionCard(card, rect, placement) {
+  card.classList.remove('centered');
+  const margin = 14;
+  const cw = card.offsetWidth || 380;
+  const ch = card.offsetHeight || 220;
+  let top;
+  let left;
+  const p = placement || 'bottom';
+  if (p === 'top') {
+    top = rect.top - ch - margin;
+    left = rect.left + (rect.width / 2) - (cw / 2);
+  } else if (p === 'left') {
+    top = rect.top + (rect.height / 2) - (ch / 2);
+    left = rect.left - cw - margin;
+  } else if (p === 'right') {
+    top = rect.top + (rect.height / 2) - (ch / 2);
+    left = rect.right + margin;
+  } else {
+    top = rect.bottom + margin;
+    left = rect.left + (rect.width / 2) - (cw / 2);
+  }
+  left = Math.max(12, Math.min(left, window.innerWidth - cw - 12));
+  top = Math.max(12, Math.min(top, window.innerHeight - ch - 12));
+  card.style.top = top + 'px';
+  card.style.left = left + 'px';
+  card.style.transform = 'none';
+}
+
+function tourRenderStep() {
+  const overlay = document.getElementById('tourOverlay');
+  const spotlight = document.getElementById('tourSpotlight');
+  const card = document.getElementById('tourCard');
+  const titleEl = document.getElementById('tourTitle');
+  const bodyEl = document.getElementById('tourBody');
+  const badgeEl = document.getElementById('tourStepBadge');
+  const backBtn = document.getElementById('tourBackBtn');
+  const nextBtn = document.getElementById('tourNextBtn');
+  if (!overlay || !spotlight || !card) return;
+
+  let i = _tourIndex;
+  while (i < LABTRAK_TOUR_STEPS.length && LABTRAK_TOUR_STEPS[i].skipIf && LABTRAK_TOUR_STEPS[i].skipIf()) i++;
+  if (i >= LABTRAK_TOUR_STEPS.length) {
+    endLabTrakTour();
+    return;
+  }
+  _tourIndex = i;
+  const step = LABTRAK_TOUR_STEPS[i];
+  const total = LABTRAK_TOUR_STEPS.filter(s => !(s.skipIf && s.skipIf())).length;
+  const seen = LABTRAK_TOUR_STEPS.slice(0, i + 1).filter(s => !(s.skipIf && s.skipIf())).length;
+
+  if (titleEl) titleEl.textContent = step.title || '';
+  if (bodyEl) bodyEl.textContent = step.body || '';
+  if (badgeEl) badgeEl.textContent = seen + ' / ' + total;
+  if (backBtn) backBtn.disabled = i === 0;
+  if (nextBtn) nextBtn.textContent = i >= LABTRAK_TOUR_STEPS.length - 1 ? 'Done' : 'Next';
+
+  const useCenter = !!(step.center);
+  overlay.classList.toggle('center-step', useCenter);
+
+  if (useCenter) {
+    spotlight.classList.add('hidden');
+    card.classList.add('centered');
+    card.style.top = '';
+    card.style.left = '';
+    card.style.transform = '';
+    return;
+  }
+
+  let el = tourResolveTarget(step.target);
+  if (!el && step.fallbackCenter) {
+    overlay.classList.add('center-step');
+    spotlight.classList.add('hidden');
+    card.classList.add('centered');
+    card.style.top = '';
+    card.style.left = '';
+    card.style.transform = '';
+    if (bodyEl && step.fallbackBody) bodyEl.textContent = step.fallbackBody;
+    return;
+  }
+
+  if (!el) {
+    tourGoTo(_tourIndex + 1);
+    return;
+  }
+
+  overlay.classList.remove('center-step');
+  el.scrollIntoView({ block: 'nearest', inline: 'nearest', behavior: 'smooth' });
+  requestAnimationFrame(() => {
+    const rect = el.getBoundingClientRect();
+    const pad = step.pad != null ? step.pad : 8;
+    spotlight.classList.remove('hidden');
+    spotlight.style.top = (rect.top - pad) + 'px';
+    spotlight.style.left = (rect.left - pad) + 'px';
+    spotlight.style.width = (rect.width + pad * 2) + 'px';
+    spotlight.style.height = (rect.height + pad * 2) + 'px';
+    tourPositionCard(card, rect, step.placement);
+  });
+}
+
+function tourGoTo(index) {
+  if (!_tourActive) return;
+  if (index < 0) index = 0;
+  if (index >= LABTRAK_TOUR_STEPS.length) {
+    endLabTrakTour();
+    return;
+  }
+  _tourIndex = index;
+  const step = LABTRAK_TOUR_STEPS[_tourIndex];
+  if (step.view && typeof switchView === 'function') {
+    switchView(step.view);
+    setTimeout(tourRenderStep, step.view === 'r18' ? 320 : 200);
+  } else {
+    tourRenderStep();
+  }
+}
+
+function startLabTrakTour() {
+  if (_tourActive) return;
+  if (typeof closePalette === 'function') closePalette();
+  const setup = document.getElementById('setupOverlay');
+  if (setup) setup.style.display = 'none';
+  _tourReturnView = currentView || 'home';
+  _tourActive = true;
+  _tourIndex = 0;
+  const overlay = document.getElementById('tourOverlay');
+  if (overlay) {
+    overlay.classList.add('active');
+    overlay.setAttribute('aria-hidden', 'false');
+  }
+  document.body.classList.add('tour-active');
+  if (typeof switchView === 'function') switchView('home');
+  setTimeout(tourRenderStep, 120);
+}
+
+function endLabTrakTour() {
+  if (!_tourActive) return;
+  _tourActive = false;
+  const overlay = document.getElementById('tourOverlay');
+  if (overlay) {
+    overlay.classList.remove('active', 'center-step');
+    overlay.setAttribute('aria-hidden', 'true');
+  }
+  document.body.classList.remove('tour-active');
+  const spotlight = document.getElementById('tourSpotlight');
+  if (spotlight) spotlight.classList.add('hidden');
+  const card = document.getElementById('tourCard');
+  if (card) card.classList.add('centered');
+  if (_tourReturnView && typeof switchView === 'function') switchView(_tourReturnView);
+}
+
+function tourNext() {
+  tourGoTo(_tourIndex + 1);
+}
+
+function tourPrev() {
+  tourGoTo(_tourIndex - 1);
+}
+
+function _tourOnKeydown(e) {
+  if (!_tourActive) return;
+  if (e.key === 'Escape') { e.preventDefault(); endLabTrakTour(); return; }
+  if (e.key === 'ArrowRight' || e.key === 'Enter') { e.preventDefault(); tourNext(); return; }
+  if (e.key === 'ArrowLeft') { e.preventDefault(); tourPrev(); }
+}
+
+function _tourOnResize() {
+  if (_tourActive) tourRenderStep();
+}
+
+document.addEventListener('keydown', _tourOnKeydown);
+window.addEventListener('resize', _tourOnResize);
 
 // ══════════════════════════════════════════════
 // DASHBOARD
@@ -22472,6 +22948,25 @@ window.r18_renderTabs = renderTabs;
 <!-- ══════════════════════════════════════════════════════════════
      COMMAND PALETTE  —  HTML
      ══════════════════════════════════════════════════════════════ -->
+<!-- ══════════════════════════════════════════════════════════════
+     GUIDED TOUR — spotlight walkthrough (always available)
+     ══════════════════════════════════════════════════════════════ -->
+<div id="tourOverlay" aria-hidden="true">
+  <div id="tourBackdrop"></div>
+  <div id="tourSpotlight" class="hidden"></div>
+  <div id="tourCard" class="centered" role="dialog" aria-modal="true" aria-labelledby="tourTitle">
+    <div class="tour-step-badge" id="tourStepBadge">1 / 1</div>
+    <div class="tour-title" id="tourTitle"></div>
+    <div class="tour-body" id="tourBody"></div>
+    <div class="tour-actions">
+      <button type="button" class="tour-btn ghost" onclick="endLabTrakTour()">Exit tour</button>
+      <div style="flex:1"></div>
+      <button type="button" class="tour-btn ghost" id="tourBackBtn" onclick="tourPrev()">Back</button>
+      <button type="button" class="tour-btn primary" id="tourNextBtn" onclick="tourNext()">Next</button>
+    </div>
+  </div>
+</div>
+
 <div id="cmdOverlay" onclick="if(event.target===this)closePalette()">
   <div id="cmdPalette" role="dialog" aria-modal="true" aria-label="Universal Search">
 
@@ -23611,6 +24106,102 @@ html.comfort-mode .conn-dot { box-shadow: none !important; }
 html.comfort-mode .topbar-stat-dot.red,
 html.comfort-mode .offline-dot,
 html.comfort-mode .sync-status-chip.syncing .sync-status-dot { animation: none !important; }
+
+/* ══ Guided tour (spotlight) — above modals except critical alerts ══ */
+#tourOverlay {
+  display: none;
+  position: fixed;
+  inset: 0;
+  z-index: 10050;
+}
+#tourOverlay.active { display: block; }
+#tourOverlay.center-step #tourBackdrop { background: rgba(5, 10, 20, 0.82); }
+#tourBackdrop {
+  position: fixed;
+  inset: 0;
+  background: transparent;
+}
+#tourSpotlight {
+  position: fixed;
+  border-radius: 10px;
+  box-shadow: 0 0 0 9999px rgba(5, 10, 20, 0.78);
+  border: 2px solid rgba(224, 152, 72, 0.9);
+  transition: top 0.22s ease, left 0.22s ease, width 0.22s ease, height 0.22s ease, opacity 0.18s;
+  pointer-events: none;
+  z-index: 10051;
+}
+#tourSpotlight.hidden { opacity: 0; visibility: hidden; }
+#tourCard {
+  position: fixed;
+  z-index: 10052;
+  width: min(400px, calc(100vw - 24px));
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 18px 20px 16px;
+  box-shadow: 0 24px 64px rgba(0, 0, 0, 0.65);
+}
+#tourCard.centered { top: 50%; left: 50%; transform: translate(-50%, -50%); }
+.tour-step-badge {
+  font-family: var(--sans);
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--accent2);
+  margin-bottom: 8px;
+}
+.tour-title {
+  font-family: var(--sans);
+  font-size: 17px;
+  font-weight: 700;
+  color: var(--text);
+  margin-bottom: 8px;
+  line-height: 1.25;
+}
+.tour-body {
+  font-family: var(--sans);
+  font-size: 13px;
+  color: var(--text-2, var(--muted));
+  line-height: 1.55;
+  margin-bottom: 16px;
+}
+.tour-actions { display: flex; align-items: center; gap: 8px; }
+.tour-btn {
+  font-family: var(--sans);
+  font-size: 12px;
+  font-weight: 600;
+  padding: 8px 14px;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  border: 1px solid var(--border);
+  background: rgba(255, 255, 255, 0.04);
+  color: var(--text);
+  transition: all 0.15s;
+}
+.tour-btn:hover { border-color: var(--accent2); color: var(--accent2); }
+.tour-btn.primary {
+  background: linear-gradient(135deg, var(--accent), var(--accent2));
+  border-color: var(--accent2);
+  color: #fff;
+}
+.tour-btn.primary:hover { filter: brightness(1.08); color: #fff; }
+.tour-btn:disabled { opacity: 0.35; cursor: not-allowed; }
+.tour-help-launch {
+  width: 100%;
+  padding: 11px 16px;
+  border: 1px solid var(--accent2);
+  border-radius: var(--radius-sm);
+  background: rgba(196, 124, 42, 0.12);
+  color: var(--accent2);
+  font-family: var(--sans);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.tour-help-launch:hover { background: rgba(196, 124, 42, 0.22); }
+html.comfort-mode .tour-title,
+html.comfort-mode .tour-body,
+html.comfort-mode .tour-step-badge { font-family: var(--sans) !important; }
 
 </style>
 
