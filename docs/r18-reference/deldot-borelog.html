@@ -79,6 +79,12 @@ nav{background:var(--surface);border-bottom:1px solid var(--border);box-shadow:0
 .bl-sync-chip.ok{color:var(--green2);border-color:rgba(46,204,120,0.35);}
 .bl-sync-chip.pending{color:var(--gold);border-color:rgba(219,160,64,0.35);}
 .bl-sync-chip.off{color:var(--muted);opacity:0.7;}
+.bl-sync-chip.err{color:var(--red2);border-color:rgba(224,85,85,0.35);}
+.bl-lab-status{font-family:var(--mono);font-size:9px;letter-spacing:0.5px;padding:3px 8px;border-radius:99px;border:1px solid var(--border);color:var(--muted);background:rgba(255,255,255,0.03);}
+.bl-lab-status.pending{color:#fbbf24;border-color:rgba(251,191,36,0.35);}
+.bl-lab-status.received{color:#60a5fa;border-color:rgba(96,165,250,0.35);}
+.bl-lab-status.in_lab{color:#a855f7;border-color:rgba(168,85,247,0.35);}
+.bl-lab-status.complete{color:var(--green2);border-color:rgba(46,204,120,0.35);}
 .list-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);
   padding:18px 22px;margin-bottom:10px;cursor:pointer;transition:all .15s;display:flex;justify-content:space-between;align-items:center;}
 .list-card:hover{border-color:var(--accent2);background:var(--panel);}
@@ -463,7 +469,8 @@ nav{background:var(--surface);border-bottom:1px solid var(--border);box-shadow:0
       <div class="nav-tab" data-view="psd-print">📊 PSD REPORT</div>
     </div>
     <div id="blSyncWrap" style="margin-left:auto;display:flex;align-items:center;gap:8px;padding-right:4px;flex-shrink:0;">
-      <span id="blSyncChip" class="bl-sync-chip off" title="Uses LabTrak Supabase settings">LOCAL</span>
+      <span id="blSyncChip" class="bl-sync-chip off" title="Cloud sync status">LOCAL</span>
+      <span id="blSyncDetail" style="font-family:var(--mono);font-size:9px;color:var(--muted);white-space:nowrap;max-width:140px;overflow:hidden;text-overflow:ellipsis;" title="Sync details"></span>
       <button type="button" class="btn btn-ghost btn-sm" onclick="syncBorelogNow()" id="blSyncBtn">☁ SYNC</button>
     </div>
   </nav>
@@ -475,6 +482,7 @@ nav{background:var(--surface);border-bottom:1px solid var(--border);box-shadow:0
         <div><h2>Projects</h2><div class="ph-sub">Top-level container for borings</div></div>
         <div style="display:flex;gap:10px;flex-wrap:wrap;">
           <button class="btn btn-ghost" onclick="openGeoImport()" title="Import a GeoSystem LOGDRAFT .GEO project folder">⬆ IMPORT .GEO</button>
+          <a class="btn btn-ghost" href="borelog-consultant-guide.html" target="_blank" rel="noopener" style="text-decoration:none;display:inline-flex;align-items:center;">📋 CONSULTANT GUIDE</a>
           <button class="btn btn-ghost" onclick="syncBorelogNow()" title="Pull from LabTrak cloud and push local changes">☁ SYNC NOW</button>
           <button class="btn btn-primary" onclick="openProjectModal()">+ NEW PROJECT</button>
         </div>
@@ -503,6 +511,7 @@ nav{background:var(--surface);border-bottom:1px solid var(--border);box-shadow:0
       <div class="page-head">
         <div><h2 id="editBoringTitle">Boring</h2><div class="ph-sub">Header + samples + full lab data</div></div>
         <div style="display:flex;gap:8px;">
+          <button class="btn btn-ghost btn-sm" onclick="printBoringDropoff()">🖨 DROP-OFF</button>
           <button class="btn btn-ghost btn-sm" onclick="showView('log-print')">📄 VIEW LOG</button>
           <button class="btn btn-ghost btn-sm" onclick="showView('psd-print')">📊 PSD REPORT</button>
           <button class="btn btn-ghost btn-sm" onclick="openPoleBase()">📐 POLE BASE</button>
@@ -821,6 +830,13 @@ const DE_STATE_PLANE = '+proj=lcc +lat_1=38.93333333333333 +lat_2=39.83333333333
 const SB_URL_KEY = 'labtrak_sb_url';
 const SB_KEY_KEY = 'labtrak_sb_anon_key';
 const BORELOG_SYNC_QUEUE_KEY = 'deldot_borelog_sync_queue';
+const BORELOG_LAST_SYNC_KEY = 'deldot_borelog_last_sync';
+const BORELOG_LAB_STATUSES = {
+  pending:  { label: 'Awaiting drop-off', short: 'Pending' },
+  received: { label: 'Received at lab', short: 'Received' },
+  in_lab:   { label: 'In lab', short: 'In lab' },
+  complete: { label: 'Complete', short: 'Complete' }
+};
 
 /* ---------- STORAGE (local + cloud queue) ---------- */
 const _storeCore = {
@@ -897,9 +913,43 @@ function _blTs(v) { return v ? new Date(v).getTime() : 0; }
 
 function updateBlSyncChip(state, label) {
   const el = $('blSyncChip');
+  const detail = $('blSyncDetail');
   if (!el) return;
+  const qLen = _readBorelogSyncQueue().length;
+  const last = localStorage.getItem(BORELOG_LAST_SYNC_KEY);
+  const lastTxt = last ? new Date(last).toLocaleString() : 'never';
   el.className = 'bl-sync-chip ' + (state || 'off');
   el.textContent = label || state || 'LOCAL';
+  el.title = `Queue: ${qLen} · Last sync: ${lastTxt}`;
+  if (detail) {
+    if (state === 'pending' && /SYNC/i.test(label || '')) detail.textContent = 'Syncing…';
+    else if (qLen) detail.textContent = `${qLen} queued`;
+    else if (last) detail.textContent = new Date(last).toLocaleDateString();
+    else detail.textContent = '';
+  }
+}
+
+function getBorelogSampleLabStatus(s) {
+  const st = (s?.lab_status || 'pending').toLowerCase();
+  return BORELOG_LAB_STATUSES[st] ? st : 'pending';
+}
+
+function borelogLabStatusLabel(status) {
+  return BORELOG_LAB_STATUSES[getBorelogSampleLabStatus({ lab_status: status })]?.label || status;
+}
+
+function setSampleLabStatus(id, status) {
+  const s = store.getSample(id);
+  if (!s) return;
+  const st = BORELOG_LAB_STATUSES[status] ? status : 'pending';
+  s.lab_status = st;
+  if (st === 'received' && !s.received_at) s.received_at = new Date().toISOString().split('T')[0];
+  if (st === 'in_lab' && !s.in_lab_at) s.in_lab_at = new Date().toISOString().split('T')[0];
+  if (st === 'complete' && !s.lab_complete_at) s.lab_complete_at = new Date().toISOString().split('T')[0];
+  s.updated_at = new Date().toISOString();
+  store.saveSample(s);
+  renderSamples();
+  toast(`Sample #${s.sample_no}: ${borelogLabStatusLabel(st)}`);
 }
 
 function getBorelogSupabaseClient() {
@@ -1154,6 +1204,7 @@ async function initBorelogSync() {
     }
     await pullAndMergeBorelog();
     await flushBorelogSyncQueue();
+    localStorage.setItem(BORELOG_LAST_SYNC_KEY, new Date().toISOString());
     updateBlSyncChip('ok', 'CLOUD');
   } catch (e) {
     console.warn('initBorelogSync:', e);
@@ -1173,6 +1224,7 @@ async function syncBorelogNow() {
     updateBlSyncChip('pending', 'SYNCING…');
     await pullAndMergeBorelog();
     await flushBorelogSyncQueue();
+    localStorage.setItem(BORELOG_LAST_SYNC_KEY, new Date().toISOString());
     updateBlSyncChip('ok', 'CLOUD');
     if (document.querySelector('#view-projects.active')) renderProjects();
     if (document.querySelector('#view-borings.active') && currentProjectId) renderBorings();
@@ -2423,7 +2475,8 @@ function addSample(){
       hygro_inputs:{ container:'', tare:'', wet:'', dry:'' },
       readings:[{time:'',actual:'',temp_c:''},{time:'',actual:'',temp_c:''},{time:'',actual:'',temp_c:''},
                 {time:'',actual:'',temp_c:''},{time:'',actual:'',temp_c:''},{time:'',actual:'',temp_c:''}] },
-    description_override:'', remarks:''
+    description_override:'', remarks:'',
+    lab_status:'pending', received_at:'', in_lab_at:'', lab_complete_at:''
   };
   store.saveSample(s); renderSamples();
 }
@@ -2481,11 +2534,18 @@ function renderSamples(){
     const hasNotes = s.description_override || s.remarks || s.soft_drive || s.aashto_override || s.uscs;
     const hasHydrometer = !!(s.hyd_inputs && (s.hyd_inputs.sample_mass || (s.hyd_inputs.readings && s.hyd_inputs.readings.some(r => r && (r.time || r.actual)))));
 
+    const labSt = getBorelogSampleLabStatus(s);
+
     return `<div class="gs-sample" id="se-${s.id}">
       <!-- HEADER -->
       <div class="gs-head">
-        <div class="gs-num">SAMPLE #${s.sample_no} ${s.sample_type==='U'?'<span class="tag">SHELBY</span>':''}</div>
-        <div class="gs-actions">
+        <div class="gs-num">SAMPLE #${s.sample_no} ${s.sample_type==='U'?'<span class="tag">SHELBY</span>':''}
+          <span class="bl-lab-status ${labSt}">${escape(BORELOG_LAB_STATUSES[labSt].short)}</span>
+        </div>
+        <div class="gs-actions" style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
+          <select class="btn btn-ghost btn-sm" style="font-size:10px;padding:4px 8px;" id="s_labst_${s.id}" onchange="setSampleLabStatus('${s.id}', this.value)" title="Lab handoff status">
+            ${Object.entries(BORELOG_LAB_STATUSES).map(([k,v]) => `<option value="${k}" ${labSt===k?'selected':''}>${v.label}</option>`).join('')}
+          </select>
           <button class="btn btn-ghost btn-sm" onclick="saveSample('${s.id}')">💾 SAVE</button>
           <button class="btn btn-danger btn-sm" onclick="delSample('${s.id}')">DEL</button>
         </div>
@@ -2932,9 +2992,52 @@ function saveSample(id){
   s.uscs = $(`s_uscs_${id}`).value.trim();
   s.description_override = $(`s_descov_${id}`).value;
   s.remarks = $(`s_rem_${id}`).value.trim();
+  const labSel = $(`s_labst_${id}`);
+  if (labSel) {
+    const st = labSel.value;
+    if (BORELOG_LAB_STATUSES[st]) {
+      s.lab_status = st;
+      if (st === 'received' && !s.received_at) s.received_at = new Date().toISOString().split('T')[0];
+      if (st === 'in_lab' && !s.in_lab_at) s.in_lab_at = new Date().toISOString().split('T')[0];
+      if (st === 'complete' && !s.lab_complete_at) s.lab_complete_at = new Date().toISOString().split('T')[0];
+    }
+  }
+  s.updated_at = new Date().toISOString();
   store.saveSample(s);
   renderSamples();
   toast(`Sample #${s.sample_no} saved`);
+}
+
+function printBoringDropoff() {
+  const b = store.getBoring(currentBoringId);
+  const p = store.getProject(currentProjectId);
+  if (!b) { toast('Open a boring first', true); return; }
+  const samples = store.getSamples(currentBoringId);
+  const rows = samples.map(s => {
+    const st = getBorelogSampleLabStatus(s);
+    return `<tr>
+      <td>${escape(String(s.sample_no))}</td>
+      <td>${escape(s.sample_type || 'D')}</td>
+      <td>${s.depth_from ?? ''}–${s.depth_to ?? ''}</td>
+      <td>${escape(BORELOG_LAB_STATUSES[st].short)}</td>
+      <td style="width:120px;border-bottom:1px solid #ccc;">&nbsp;</td>
+    </tr>`;
+  }).join('');
+  const html = `<!DOCTYPE html><html><head><title>Drop-off ${escape(b.boring_no || '')}</title>
+    <style>body{font-family:Arial,sans-serif;padding:24px;color:#111;}h1{font-size:18px;margin:0 0 4px;}
+    .sub{font-size:12px;color:#444;margin-bottom:16px;}table{border-collapse:collapse;width:100%;font-size:12px;}
+    th,td{border:1px solid #999;padding:6px 8px;text-align:left;}th{background:#eee;}</style></head><body>
+    <h1>BoreLog Sample Drop-off</h1>
+    <div class="sub">${escape(p?.name || '')} · Contract ${escape(p?.contract_no || b.state_contract || '—')} · Boring ${escape(b.boring_no || '—')}</div>
+    <div class="sub">Printed ${new Date().toLocaleString()} · Bring physical samples to M&amp;R Lab</div>
+    <table><thead><tr><th>#</th><th>Type</th><th>Depth (ft)</th><th>Status</th><th>Lab initials</th></tr></thead><tbody>
+    ${rows || '<tr><td colspan="5">No samples</td></tr>'}
+    </tbody></table>
+    <script>window.onload=function(){window.print();};</script></body></html>`;
+  const w = window.open('', '_blank', 'width=720,height=900');
+  if (!w) { toast('Allow pop-ups to print drop-off sheet', true); return; }
+  w.document.write(html);
+  w.document.close();
 }
 
 /* Enter on the 4th blow count: save the sample and advance focus

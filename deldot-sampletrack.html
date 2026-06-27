@@ -5961,9 +5961,21 @@ table.fc-borrow-tbl tr.fc-borrow-detail-row td{background:var(--surface);border-
         <div>
           <div style="font-family:var(--display);font-size:15px;font-weight:700;color:var(--text);letter-spacing:0.5px;">DelDOT BoreLog</div>
           <div style="font-family:var(--mono);font-size:9px;color:var(--accent2);letter-spacing:2px;margin-top:3px;">LOG. ANALYZE. BUILD.</div>
-          <div style="font-family:var(--mono);font-size:9px;color:var(--muted);margin-top:6px;">Open the soil boring log tool in a new tab</div>
+          <div style="font-family:var(--mono);font-size:9px;color:var(--muted);margin-top:6px;">Open the soil boring log tool in a new tab · <a href="docs/r18-reference/borelog-consultant-guide.html" target="_blank" rel="noopener" onclick="event.stopPropagation()" style="color:var(--accent2);">Consultant guide</a></div>
         </div>
         <div style="margin-left:auto;font-size:18px;color:var(--muted);opacity:0.5;">&#8599;</div>
+      </div>
+
+      <div class="hub-panel" style="margin-bottom:18px;">
+        <div class="hub-panel-hdr">
+          <span class="hub-panel-title">Incoming BoreLog Samples</span>
+          <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+            <span id="lhub_borelog_sync" style="font-family:var(--mono);font-size:9px;color:var(--muted);"></span>
+            <button type="button" class="hub-panel-link" onclick="event.stopPropagation();renderLabHubIncomingBorings(true)">↻ Refresh</button>
+            <button type="button" class="hub-panel-link" onclick="event.stopPropagation();openBoreLog()">Open BoreLog →</button>
+          </div>
+        </div>
+        <div id="lhub_borelog_incoming"><div class="hub-empty">Loading…</div></div>
       </div>
 
       <div class="hub-actions">
@@ -6215,13 +6227,19 @@ table.fc-borrow-tbl tr.fc-borrow-detail-row td{background:var(--surface);border-
 // GLOBALS
 // ══════════════════════════════════════════════
 let db = null;
-const APP_BUILD = '2026.06.17-borelog-map-gps';
+const APP_BUILD = '2026.06.17-grade-a-phase1-2';
 const FC_CORE_ICON_SRC = 'docs/r18-reference/core-drill-icon-128.png';
 const BORELOG_ICON_SRC = 'docs/r18-reference/borelog-icon.webp';
 const BORELOG_PATH = 'docs/r18-reference/deldot-borelog.html';
 const BORELOG_WIN_NAME = 'deldot-borelog';
 const BORELOG_CTX_KEY = 'labtrak_borelog_context';
 const BORELOG_STORE_KEY = 'deldot_borelog_v2';
+const BORELOG_LAB_STATUS_LABELS = {
+  pending: 'Awaiting drop-off',
+  received: 'Received',
+  in_lab: 'In lab',
+  complete: 'Complete'
+};
 const DE_STATE_PLANE = '+proj=lcc +lat_1=38.93333333333333 +lat_2=39.83333333333333 +lat_0=38 +lon_0=-75.41666666666667 +x_0=2000000 +y_0=0 +datum=NAD83 +units=us-ft +no_defs';
 window._dbConnected = false;
 window._syncInProgress = false;
@@ -6838,6 +6856,87 @@ async function fetchBorelogBoringsForContract(contract) {
 
 async function fetchAllBorelogMapBorings() {
   return fetchBorelogBoringsForContract(null);
+}
+
+function _borelogSampleLabStatus(s) {
+  const st = (s?.lab_status || 'pending').toLowerCase();
+  return BORELOG_LAB_STATUS_LABELS[st] ? st : 'pending';
+}
+
+function _collectIncomingBorelogFromLocal() {
+  const items = [];
+  try {
+    const raw = JSON.parse(localStorage.getItem(BORELOG_STORE_KEY) || '{}');
+    const projects = raw.projects || {};
+    const borings = raw.borings || {};
+    const samples = raw.samples || {};
+    Object.values(samples).forEach(s => {
+      const status = _borelogSampleLabStatus(s);
+      if (status === 'complete') return;
+      const boring = borings[s.boring_id] || {};
+      const project = projects[s.project_id] || projects[boring.project_id] || {};
+      items.push({
+        id: s.id,
+        sample_no: s.sample_no,
+        sample_type: s.sample_type || 'D',
+        depth_from: s.depth_from,
+        depth_to: s.depth_to,
+        lab_status: status,
+        boring_no: boring.boring_no || '—',
+        contract: project.contract_no || project.contract || boring.state_contract || '—',
+        projectName: project.name || '—',
+        updated_at: s.updated_at || s.created_at || ''
+      });
+    });
+  } catch (e) { console.warn('incoming borelog local:', e); }
+  return items;
+}
+
+async function fetchIncomingBorelogSamples() {
+  const seen = new Set();
+  const out = [];
+  let migrationNeeded = false;
+  const add = (item) => {
+    if (!item?.id || seen.has(item.id)) return;
+    seen.add(item.id);
+    out.push(item);
+  };
+  _collectIncomingBorelogFromLocal().forEach(add);
+  if (db) {
+    try {
+      const [{ data: projects }, { data: borings }, { data: samples }] = await Promise.all([
+        db.from('borelog_projects').select('id,contract,name,labtrak_project_id').is('deleted_at', null),
+        db.from('borelog_borings').select('id,project_id,boring_no,header_data').is('deleted_at', null),
+        db.from('borelog_samples').select('id,boring_id,project_id,sample_no,lab_data,updated_at').is('deleted_at', null),
+      ]);
+      const projById = Object.fromEntries((projects || []).map(p => [p.id, p]));
+      const borById = Object.fromEntries((borings || []).map(b => [b.id, b]));
+      (samples || []).forEach(row => {
+        const s = { ...(row.lab_data || {}), id: row.id, boring_id: row.boring_id, project_id: row.project_id, sample_no: row.sample_no, updated_at: row.updated_at };
+        const status = _borelogSampleLabStatus(s);
+        if (status === 'complete') return;
+        const boring = borById[row.boring_id] || {};
+        const project = projById[row.project_id] || projById[boring.project_id] || {};
+        add({
+          id: row.id,
+          sample_no: row.sample_no,
+          sample_type: s.sample_type || 'D',
+          depth_from: s.depth_from,
+          depth_to: s.depth_to,
+          lab_status: status,
+          boring_no: boring.boring_no || '—',
+          contract: project.contract || '—',
+          projectName: project.name || '—',
+          updated_at: row.updated_at || ''
+        });
+      });
+    } catch (e) {
+      console.warn('fetchIncomingBorelogSamples:', e);
+      if (/relation|does not exist|42P01/i.test(e.message || '')) migrationNeeded = true;
+    }
+  }
+  const items = out.sort((a, b) => (a.contract || '').localeCompare(b.contract || '') || String(a.boring_no).localeCompare(String(b.boring_no)) || (a.sample_no || 0) - (b.sample_no || 0));
+  return { items, migrationNeeded };
 }
 
 function buildBorelogMapPopup(b) {
@@ -14297,6 +14396,58 @@ function renderLabHub() {
   }).join('');
   if (sorted.length > 10) {
     queueEl.innerHTML += `<div style="text-align:center;font-family:var(--mono);font-size:10px;color:var(--muted);padding:8px;">+${sorted.length-10} more → Open Lab Module</div>`;
+  }
+
+  renderLabHubIncomingBorings();
+}
+
+async function renderLabHubIncomingBorings(force) {
+  const el = document.getElementById('lhub_borelog_incoming');
+  const syncEl = document.getElementById('lhub_borelog_sync');
+  if (!el) return;
+  if (!force && el.dataset.loaded === '1') return;
+  el.innerHTML = '<div class="hub-empty">Loading incoming borings…</div>';
+  const { items, migrationNeeded } = await fetchIncomingBorelogSamples();
+  el.dataset.loaded = '1';
+  if (syncEl) {
+    if (migrationNeeded) {
+      syncEl.textContent = 'Run borelog migration in Supabase';
+      syncEl.style.color = 'var(--red2)';
+    } else if (!window._dbConnected) {
+      syncEl.textContent = 'Local cache only';
+      syncEl.style.color = 'var(--muted)';
+    } else {
+      const last = localStorage.getItem('deldot_borelog_last_sync');
+      syncEl.textContent = last ? `Cloud · consultant sync ${new Date(last).toLocaleDateString()}` : 'Cloud connected';
+      syncEl.style.color = 'var(--green2)';
+    }
+  }
+  const contractFilter = (currentProjectFilter || '').trim().toLowerCase();
+  const filtered = contractFilter
+    ? items.filter(i => (i.contract || '').toLowerCase() === contractFilter)
+    : items;
+  if (!filtered.length) {
+    el.innerHTML = contractFilter
+      ? '<div class="hub-empty">No incoming BoreLog samples for this contract</div>'
+      : '<div class="hub-empty">No incoming BoreLog samples — consultant syncs from BoreLog ☁</div>';
+    return;
+  }
+  const statusColor = { pending: 'var(--gold)', received: '#60a5fa', in_lab: '#a855f7', complete: 'var(--green2)' };
+  el.innerHTML = filtered.slice(0, 12).map(item => {
+    const st = item.lab_status || 'pending';
+    const depth = (item.depth_from != null && item.depth_to != null) ? `${item.depth_from}–${item.depth_to} ft` : '—';
+    return `<div class="hub-sample-row pending" onclick="openBoreLog()" title="Open BoreLog to update sample status">
+      <div>
+        <div class="hub-sr-id">${item.boring_no} · #${item.sample_no} <span style="font-family:var(--mono);font-size:9px;color:${statusColor[st] || 'var(--muted)'};margin-left:6px;">${BORELOG_LAB_STATUS_LABELS[st] || st}</span></div>
+        <div class="hub-sr-info">${item.contract || '—'} · ${item.projectName || '—'} · ${item.sample_type || 'D'} · ${depth}</div>
+      </div>
+      <div class="hub-sr-right">
+        <div class="hub-sr-date" style="color:var(--muted);">BoreLog →</div>
+      </div>
+    </div>`;
+  }).join('');
+  if (filtered.length > 12) {
+    el.innerHTML += `<div style="text-align:center;font-family:var(--mono);font-size:10px;color:var(--muted);padding:8px;">+${filtered.length - 12} more in BoreLog</div>`;
   }
 }
 

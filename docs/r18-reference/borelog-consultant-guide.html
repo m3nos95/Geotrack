@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>DelDOT BoreLog — Consultant Quick Guide</title>
+<style>
+  body { font-family: system-ui, sans-serif; max-width: 720px; margin: 0 auto; padding: 24px 20px 48px; line-height: 1.55; color: #1a1a1a; background: #f8fafc; }
+  h1 { font-size: 1.5rem; margin-bottom: 0.25rem; }
+  .sub { color: #555; font-size: 0.95rem; margin-bottom: 1.5rem; }
+  h2 { font-size: 1.1rem; margin-top: 1.75rem; border-bottom: 1px solid #cbd5e1; padding-bottom: 4px; }
+  ol, ul { padding-left: 1.25rem; }
+  li { margin-bottom: 0.5rem; }
+  code { background: #e2e8f0; padding: 2px 6px; border-radius: 4px; font-size: 0.9em; }
+  .note { background: #fffbeb; border: 1px solid #fcd34d; border-radius: 8px; padding: 12px 14px; margin: 1rem 0; font-size: 0.95rem; }
+  a { color: #2563eb; }
+</style>
+</head>
+<body>
+  <h1>DelDOT BoreLog — Consultant Quick Guide</h1>
+  <p class="sub">For geotechnical consultants performing borings for DelDOT Materials &amp; Research Lab</p>
+
+  <h2>1. Open BoreLog</h2>
+  <ul>
+    <li>DelDOT staff open BoreLog from <strong>LabTrak → Soil Lab hub → DelDOT BoreLog</strong>.</li>
+    <li>Direct link (same site): <code>docs/r18-reference/deldot-borelog.html</code></li>
+    <li>Use the same Supabase URL and anon key as LabTrak (Settings in LabTrak if not already configured).</li>
+  </ul>
+
+  <h2>2. Create project &amp; borings</h2>
+  <ol>
+    <li><strong>+ NEW PROJECT</strong> — enter contract #, project name, location.</li>
+    <li>Open the project → <strong>+ NEW BORING</strong> or import a GeoSystem <code>.GEO</code> folder.</li>
+    <li>On each boring header, enter <strong>Northing/Easting</strong> or capture <strong>GPS</strong> so locations appear on LabTrak maps.</li>
+  </ol>
+
+  <h2>3. Log samples</h2>
+  <ul>
+    <li>Add samples with depths, blows, and lab data in BoreLog.</li>
+    <li>Set each sample <strong>lab status</strong>: Awaiting drop-off → Received → In lab → Complete.</li>
+    <li>Print <strong>DROP-OFF</strong> sheet from the boring screen when delivering physical samples to the lab.</li>
+  </ul>
+
+  <h2>4. Sync to DelDOT cloud</h2>
+  <ol>
+    <li>Click <strong>☁ SYNC</strong> after saving work.</li>
+    <li>Chip should show <strong>CLOUD</strong> when connected. If it says <strong>NO TABLE</strong>, ask DelDOT to run the borelog Supabase migration.</li>
+    <li>DelDOT lab sees incoming samples on the <strong>Soil Lab hub → Incoming BoreLog Samples</strong> panel after sync.</li>
+  </ol>
+
+  <div class="note">
+    <strong>Important:</strong> BoreLog samples are <em>not</em> field-control samples. They exist only after you create the boring in BoreLog. Physical drop-off at the lab should match the printed drop-off sheet.
+  </div>
+
+  <h2>5. Support</h2>
+  <p>Contact DelDOT Materials &amp; Research Lab for contract assignment, LabTrak access, or sync issues.</p>
+</body>
+</html>
