@@ -1603,7 +1603,14 @@ nav:not(#r18-nav), .nav-top-row { display: none !important; }
   font-family: var(--mono); font-size: 11px; color: var(--muted); pointer-events: none;
   background: rgba(6, 9, 15, 0.55);
 }
-#app.labmap-mode #view-container { background: #06090f; background-image: none; }
+.map-style-toggle { display: flex; gap: 4px; flex-shrink: 0; flex-wrap: wrap; }
+.map-style-btn {
+  font-family: var(--mono); font-size: 9px; letter-spacing: 0.5px; padding: 5px 10px;
+  border-radius: 6px; cursor: pointer; background: rgba(255,255,255,0.04);
+  border: 1px solid var(--border); color: var(--muted); transition: border-color 0.15s, background 0.15s, color 0.15s;
+}
+.map-style-btn.active { color: var(--accent2); border-color: rgba(217,138,56,0.5); background: rgba(217,138,56,0.12); }
+.map-style-btn:hover:not(.active) { border-color: rgba(255,255,255,0.18); color: var(--text); }
 #labmap-view .mapboxgl-ctrl-top-right { top: 62px; right: 10px; }
 @media (max-width: 768px) {
   .labmap-ui { padding: 8px; }
@@ -6126,7 +6133,14 @@ table.fc-borrow-tbl tr.fc-borrow-detail-row td{background:var(--surface);border-
             <div class="labmap-title">LabTrak Map</div>
             <div class="labmap-subtitle" id="labMapSubtitle">All stored coordinates across the program</div>
           </div>
-          <button type="button" class="btn btn-ghost" onclick="labMapReload()" style="font-size:10px;letter-spacing:1px;">↻ REFRESH</button>
+          <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+            <div class="map-style-toggle" id="labMapStyleToggle">
+              <button type="button" class="map-style-btn" data-map-style="streets" onclick="labMapSetStyle('streets')">Streets</button>
+              <button type="button" class="map-style-btn" data-map-style="satellite" onclick="labMapSetStyle('satellite')">Satellite</button>
+              <button type="button" class="map-style-btn" data-map-style="dark" onclick="labMapSetStyle('dark')">Dark</button>
+            </div>
+            <button type="button" class="btn btn-ghost" onclick="labMapReload()" style="font-size:10px;letter-spacing:1px;">↻ REFRESH</button>
+          </div>
         </div>
         <div class="labmap-layers-wrap">
           <aside class="labmap-layers" id="labMapLayersPanel">
@@ -6207,7 +6221,7 @@ table.fc-borrow-tbl tr.fc-borrow-detail-row td{background:var(--surface);border-
 // GLOBALS
 // ══════════════════════════════════════════════
 let db = null;
-const APP_BUILD = '2026.06.30-map-popup';
+const APP_BUILD = '2026.06.30-map-detail';
 const FC_CORE_ICON_SRC = 'docs/r18-reference/core-drill-icon-128.png';
 window._dbConnected = false;
 window._syncInProgress = false;
@@ -6360,6 +6374,52 @@ self.addEventListener('fetch', e => {
 mapboxgl.accessToken = 'pk.eyJ1IjoibTNub3M5NSIsImEiOiJjbXBjb2hoc3kwMm8xMnFvbWpnanhzc3JkIn0.UQZqzs_NjcAN43HFGUMSvQ';
 let projectMap = null;
 let mapMarkers = [];
+const LABTRAK_MAP_STYLES = {
+  streets:   { label: 'Streets',   url: 'mapbox://styles/mapbox/streets-v12' },
+  satellite: { label: 'Satellite', url: 'mapbox://styles/mapbox/satellite-streets-v12' },
+  dark:      { label: 'Dark',      url: 'mapbox://styles/mapbox/dark-v11' },
+};
+const LABTRAK_MAP_VIEW_OPTS = { center: [-75.5, 39.15], zoom: 10, minZoom: 3, maxZoom: 20 };
+let labTrakMapStyle = localStorage.getItem('labtrak_map_style') || 'streets';
+
+function getLabTrakMapStyleKey() {
+  return LABTRAK_MAP_STYLES[labTrakMapStyle] ? labTrakMapStyle : 'streets';
+}
+
+function syncMapStyleButtons() {
+  const active = getLabTrakMapStyleKey();
+  document.querySelectorAll('.map-style-btn[data-map-style]').forEach(btn => {
+    btn.classList.toggle('active', btn.dataset.mapStyle === active);
+  });
+}
+
+function createLabTrakMapboxMap(containerId) {
+  return new mapboxgl.Map({
+    container: containerId,
+    style: LABTRAK_MAP_STYLES[getLabTrakMapStyleKey()].url,
+    ...LABTRAK_MAP_VIEW_OPTS,
+  });
+}
+
+function setLabTrakMapStyle(map, styleKey) {
+  if (!map || !LABTRAK_MAP_STYLES[styleKey]) return;
+  if (getLabTrakMapStyleKey() === styleKey && map.isStyleLoaded && map.isStyleLoaded()) return;
+  labTrakMapStyle = styleKey;
+  localStorage.setItem('labtrak_map_style', styleKey);
+  syncMapStyleButtons();
+  map.setStyle(LABTRAK_MAP_STYLES[styleKey].url);
+}
+
+function labMapSetStyle(styleKey) {
+  if (!LABTRAK_MAP_STYLES[styleKey]) return;
+  if (labMap) setLabTrakMapStyle(labMap, styleKey);
+  else if (projectMap) setLabTrakMapStyle(projectMap, styleKey);
+  else {
+    labTrakMapStyle = styleKey;
+    localStorage.setItem('labtrak_map_style', styleKey);
+    syncMapStyleButtons();
+  }
+}
 const MAP_CORE_DRILL_SELECT = 'id,test_no,contract,core_no,gps_coordinates,layer_type,thickness_in,station,lane,photo_data,date_drilled,field_test_id';
 
 function mapContractNorm(c) {
@@ -6468,12 +6528,8 @@ async function openProjectMap(contract, projectName, opts) {
 
   // Initialize map if not already done
   if (!projectMap) {
-    projectMap = new mapboxgl.Map({
-      container: 'mapContainer',
-      style: 'mapbox://styles/mapbox/dark-v11',
-      center: [-75.5, 39.15],  // Delaware center
-      zoom: 10
-    });
+    projectMap = createLabTrakMapboxMap('mapContainer');
+    syncMapStyleButtons();
     projectMap.addControl(new mapboxgl.NavigationControl(), 'top-right');
     projectMap.addControl(new mapboxgl.FullscreenControl(), 'top-right');
   }
@@ -6625,7 +6681,7 @@ async function openProjectMap(contract, projectName, opts) {
 
   // Fit map to pins
   if (pinCount > 0 && !bounds.isEmpty()) {
-    projectMap.fitBounds(bounds, { padding: 80, maxZoom: 17, duration: 1000 });
+    projectMap.fitBounds(bounds, { padding: 80, maxZoom: 19, duration: 1000 });
   } else {
     document.getElementById('mapOverlaySubtitle').textContent = 'No GPS coordinates found for this project';
   }
@@ -6967,7 +7023,7 @@ function labMapPlotMarkers(preserveView) {
   }
 
   if (!preserveView && pinCount > 0 && !bounds.isEmpty()) {
-    labMap.fitBounds(bounds, { padding: 70, maxZoom: 16, duration: 800 });
+    labMap.fitBounds(bounds, { padding: 70, maxZoom: 19, duration: 800 });
   }
 }
 
@@ -7078,12 +7134,8 @@ function initLabMapView() {
     return;
   }
   if (!labMap) {
-    labMap = new mapboxgl.Map({
-      container: 'labMapContainer',
-      style: 'mapbox://styles/mapbox/dark-v11',
-      center: [-75.5, 39.15],
-      zoom: 9,
-    });
+    labMap = createLabTrakMapboxMap('labMapContainer');
+    syncMapStyleButtons();
     labMap.addControl(new mapboxgl.NavigationControl(), 'top-right');
     labMap.addControl(new mapboxgl.FullscreenControl(), 'top-right');
     labMap.on('load', () => {
@@ -20172,6 +20224,11 @@ function openR18() {
           <svg width="14" height="14" viewBox="0 0 14 14"><circle cx="7" cy="7" r="3" fill="none" stroke="#60a5fa" stroke-width="1" opacity="0.6"/><line x1="7" y1="1" x2="7" y2="4.5" stroke="#60a5fa" stroke-width="1.2" stroke-linecap="square"/><line x1="7" y1="9.5" x2="7" y2="13" stroke="#60a5fa" stroke-width="1.2" stroke-linecap="square"/><line x1="1" y1="7" x2="4.5" y2="7" stroke="#60a5fa" stroke-width="1.2" stroke-linecap="square"/><line x1="9.5" y1="7" x2="13" y2="7" stroke="#60a5fa" stroke-width="1.2" stroke-linecap="square"/><circle cx="7" cy="7" r="1.3" fill="#60a5fa"/></svg>
           Concrete
         </div>
+      </div>
+      <div class="map-style-toggle" id="projectMapStyleToggle">
+        <button type="button" class="map-style-btn" data-map-style="streets" onclick="labMapSetStyle('streets')">Streets</button>
+        <button type="button" class="map-style-btn" data-map-style="satellite" onclick="labMapSetStyle('satellite')">Satellite</button>
+        <button type="button" class="map-style-btn" data-map-style="dark" onclick="labMapSetStyle('dark')">Dark</button>
       </div>
       <button class="btn btn-ghost" onclick="closeProjectMap()" style="flex-shrink:0;">✕ CLOSE</button>
     </div>
