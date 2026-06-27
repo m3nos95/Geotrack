@@ -6038,8 +6038,8 @@ table.fc-borrow-tbl tr.fc-borrow-detail-row td{background:var(--surface);border-
         <img src="docs/r18-reference/borelog-icon.webp" alt="BoreLog" style="width:80px;height:80px;border-radius:14px;object-fit:contain;flex-shrink:0;display:block;">
         <div>
           <div style="font-family:var(--display);font-size:15px;font-weight:700;color:var(--text);letter-spacing:0.5px;">DelDOT BoreLog</div>
-          <div style="font-family:var(--mono);font-size:9px;color:var(--accent2);letter-spacing:2px;margin-top:3px;">LOG. ANALYZE. BUILD.</div>
-          <div style="font-family:var(--mono);font-size:9px;color:var(--muted);margin-top:6px;">Open the soil boring log tool in a new tab</div>
+          <div style="font-family:var(--mono);font-size:9px;color:var(--accent2);letter-spacing:2px;margin-top:3px;">LAB ENTRY · GEOSYSTEM IMPORT</div>
+          <div style="font-family:var(--mono);font-size:9px;color:var(--muted);margin-top:6px;">Enter data from received boring logs — lab use only</div>
         </div>
         <div style="margin-left:auto;font-size:18px;color:var(--muted);opacity:0.5;">&#8599;</div>
       </div>
@@ -6293,7 +6293,7 @@ table.fc-borrow-tbl tr.fc-borrow-detail-row td{background:var(--surface);border-
 // GLOBALS
 // ══════════════════════════════════════════════
 let db = null;
-const APP_BUILD = '2026.06.17-comfort-mode';
+const APP_BUILD = '2026.06.17-comfort-mode-lab-borelog';
 const FC_CORE_ICON_SRC = 'docs/r18-reference/core-drill-icon-128.png';
 const BORELOG_ICON_SRC = 'docs/r18-reference/borelog-icon.webp';
 const BORELOG_PATH = 'docs/r18-reference/deldot-borelog.html';
@@ -20472,7 +20472,6 @@ function getBoreLogContext() {
     const proj = allProjects.find(p => p.contract && p.contract.toLowerCase() === currentProjectFilter.toLowerCase());
     if (proj) {
       ctx.faProject = proj.fa_project || '';
-      ctx.contractor = proj.contractor || '';
       ctx.location = proj.road || proj.description || '';
       ctx.labtrakProjectId = proj.id || '';
     }

@@ -480,7 +480,7 @@ html.comfort-mode .hab-pulse{animation:none !important;box-shadow:none !importan
     <div class="splash-enter">
       <button onclick="startApp()">⊙ &nbsp;ENTER</button>
     </div>
-    <div class="splash-tagline">Standalone · LabTrak cloud sync · localStorage cache · LOGDRAFT import</div>
+    <div class="splash-tagline">DelDOT lab entry · GeoSystem import · cloud sync with LabTrak</div>
   </div>
 </div>
 
@@ -562,10 +562,7 @@ html.comfort-mode .hab-pulse{animation:none !important;box-shadow:none !importan
           <div class="form-group"><label>Surface Elevation (ft)</label><input type="text" id="bh_elev"></div>
           <div class="form-group" style="grid-column:1 / -1;">
             <label>GPS Coordinates</label>
-            <div style="display:flex;gap:8px;align-items:center;">
-              <input type="text" id="bh_gps" placeholder="39.146760, -75.504430" style="flex:1;">
-              <button type="button" class="btn btn-ghost btn-sm" onclick="captureBoringGPS()">📍 GPS</button>
-            </div>
+            <input type="text" id="bh_gps" placeholder="From boring log, or auto-computed from N/E on save">
           </div>
           <div class="form-group"><label>Date Started</label><input type="date" id="bh_date_start"></div>
           <div class="form-group"><label>Date Completed</label><input type="date" id="bh_date_end"></div>
@@ -590,7 +587,7 @@ html.comfort-mode .hab-pulse{animation:none !important;box-shadow:none !importan
       </div>
 
       <div class="card">
-        <div class="card-title">▣ Contractor / Reviewer</div>
+        <div class="card-title">▣ Drilling / Review</div>
         <div class="form-grid">
           <div class="form-group"><label>Boring Contractor</label><input type="text" id="bh_contractor" placeholder="CGC Geoservices"></div>
           <div class="form-group"><label>Equipment / Rig</label><input type="text" id="bh_rig" placeholder="CME 55 Barge"></div>
@@ -683,7 +680,7 @@ html.comfort-mode .hab-pulse{animation:none !important;box-shadow:none !importan
 
     <div class="pm-section">▣ Drilling Contractor</div>
     <div class="pm-section inherit-note" style="margin-top:-10px;font-family:var(--mono);font-size:9px;color:var(--muted);letter-spacing:0.5px;font-style:italic;">
-      These values will auto-populate into new borings. You can override per-boring in the Boring Header.
+      Drilling contractor info comes from the received boring log or GeoSystem import — not LabTrak project contractor.
     </div>
     <div class="form-grid two">
       <div class="form-group">
@@ -1926,25 +1923,6 @@ function syncBoringGpsFields(b) {
   return b.gps_coordinates;
 }
 
-function captureBoringGPS() {
-  const el = $('bh_gps');
-  if (!el) return;
-  if (!navigator.geolocation) { toast('GPS not supported', true); return; }
-  el.value = '📍 Locating…';
-  navigator.geolocation.getCurrentPosition(
-    p => {
-      el.value = formatBoringGps(p.coords.latitude, p.coords.longitude, ' (±' + Math.round(p.coords.accuracy) + 'm)');
-      toast('GPS captured');
-    },
-    () => {
-      el.value = '';
-      el.placeholder = 'Paste coords or save Northing/Easting';
-      toast('Enter coordinates manually', true);
-    },
-    { enableHighAccuracy: true, timeout: 15000, maximumAge: 60000 }
-  );
-}
-
 const LABTRAK_CTX_KEY = 'labtrak_borelog_context';
 
 function _normProjectKey(s) {
@@ -2005,7 +1983,6 @@ function applyLabTrakContext() {
   set('pm_federal_no', federal);
   set('pm_location', location);
   set('pm_route', ctx.location || '');
-  set('pm_contractor', ctx.contractor || '');
   set('pm_logged_by', loggedBy);
   toast('LabTrak project details loaded — review and save');
 }
