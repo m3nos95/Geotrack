@@ -6238,6 +6238,7 @@ window.addEventListener('DOMContentLoaded', () => {
   initAppSkin();
   if (checkAppBuildUpdate()) return;
   if (typeof syncMobileNav === 'function') setTimeout(syncMobileNav, 100);
+  if (typeof syncMapStyleButtons === 'function') syncMapStyleButtons();
   // Register service worker for offline support
   if ('serviceWorker' in navigator) {
     navigator.serviceWorker.register('#', { scope: './' }).catch(() => {});
@@ -6403,22 +6404,17 @@ function createLabTrakMapboxMap(containerId) {
 
 function setLabTrakMapStyle(map, styleKey) {
   if (!map || !LABTRAK_MAP_STYLES[styleKey]) return;
-  if (getLabTrakMapStyleKey() === styleKey && map.isStyleLoaded && map.isStyleLoaded()) return;
-  labTrakMapStyle = styleKey;
-  localStorage.setItem('labtrak_map_style', styleKey);
-  syncMapStyleButtons();
   map.setStyle(LABTRAK_MAP_STYLES[styleKey].url);
 }
 
 function labMapSetStyle(styleKey) {
   if (!LABTRAK_MAP_STYLES[styleKey]) return;
+  if (getLabTrakMapStyleKey() === styleKey) return;
+  labTrakMapStyle = styleKey;
+  localStorage.setItem('labtrak_map_style', styleKey);
+  syncMapStyleButtons();
   if (labMap) setLabTrakMapStyle(labMap, styleKey);
-  else if (projectMap) setLabTrakMapStyle(projectMap, styleKey);
-  else {
-    labTrakMapStyle = styleKey;
-    localStorage.setItem('labtrak_map_style', styleKey);
-    syncMapStyleButtons();
-  }
+  if (projectMap) setLabTrakMapStyle(projectMap, styleKey);
 }
 const MAP_CORE_DRILL_SELECT = 'id,test_no,contract,core_no,gps_coordinates,layer_type,thickness_in,station,lane,photo_data,date_drilled,field_test_id';
 
