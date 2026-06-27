@@ -3526,13 +3526,6 @@ table.fc-borrow-tbl tr.fc-borrow-detail-row td{background:var(--surface);border-
         <div class="rail-label">Chem Lab</div>
       </div>
 
-      <div class="rail-item" id="ri-borelog" style="display:none" title="DelDOT BoreLog" onclick="openBoreLog()">
-        <div class="rail-icon-wrap" style="padding:2px;">
-          <img src="docs/r18-reference/borelog-icon.webp" alt="BoreLog">
-        </div>
-        <div class="rail-label">BoreLog</div>
-      </div>
-
       <div class="rail-spacer"></div>
 
       <!-- Admin at bottom -->
@@ -6221,7 +6214,7 @@ table.fc-borrow-tbl tr.fc-borrow-detail-row td{background:var(--surface);border-
 // GLOBALS
 // ══════════════════════════════════════════════
 let db = null;
-const APP_BUILD = '2026.06.17-borelog-icon-clean';
+const APP_BUILD = '2026.06.17-borelog-hub-only';
 const FC_CORE_ICON_SRC = 'docs/r18-reference/core-drill-icon-128.png';
 const BORELOG_ICON_SRC = 'docs/r18-reference/borelog-icon.webp';
 const BORELOG_PATH = 'docs/r18-reference/deldot-borelog.html';
@@ -13490,12 +13483,6 @@ function applyRoleUI(role) {
     const el = document.getElementById(id);
     if (el) el.style.display = effectiveTabs.includes(view) ? '' : 'none';
   });
-
-  const borelogEl = document.getElementById('ri-borelog');
-  if (borelogEl) {
-    const borelogTabs = ['r18', 'soillab', 'labhub', 'lab', 'projects', 'dashboard'];
-    borelogEl.style.display = effectiveTabs.some(t => borelogTabs.includes(t)) ? '' : 'none';
-  }
 
   syncMobileNav();
 
