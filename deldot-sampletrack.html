@@ -1625,6 +1625,27 @@ nav:not(#r18-nav), .nav-top-row { display: none !important; }
 .borrow-pass { background: rgba(52,211,153,0.2); color: #34d399; border: 1px solid #34d399; }
 .borrow-fail { background: rgba(248,113,113,0.2); color: #f87171; border: 1px solid #f87171; }
 
+.ci-weather-alert {
+  display: none;
+  margin-bottom: 14px;
+  padding: 12px 14px;
+  border-radius: var(--radius);
+  border: 1px solid rgba(251, 191, 36, 0.45);
+  background: rgba(251, 191, 36, 0.08);
+  font-family: var(--mono);
+  font-size: 11px;
+  color: #fde68a;
+  line-height: 1.45;
+}
+.ci-weather-alert strong { display: block; color: #fbbf24; margin-bottom: 4px; letter-spacing: 0.5px; }
+.ci-weather-alert-sub { margin-top: 6px; font-size: 9px; color: var(--muted); line-height: 1.4; }
+.ci-weather-alert.ok {
+  border-color: rgba(52, 211, 153, 0.35);
+  background: rgba(52, 211, 153, 0.08);
+  color: #a7f3d0;
+}
+.ci-weather-alert.ok strong { color: #34d399; }
+
 /* ═══════════════════════════════════════════════════════════════════════════
    ENTERPRISE UI POLISH — v2
    Overrides applied on top of base styles for maximum compatibility
@@ -4967,7 +4988,7 @@ table.fc-borrow-tbl tr.fc-borrow-detail-row td{background:var(--surface);border-
           <div class="form-group">
             <label>GPS Coordinates <span style="color:var(--muted);font-size:9px;">(auto-capture)</span></label>
             <div style="display:flex;gap:6px;align-items:center;">
-              <input type="text" id="ci_gps" placeholder="Tap to capture location" readonly style="flex:1;cursor:pointer;font-size:11px;" onclick="captureConcreteGPS()">
+              <input type="text" id="ci_gps" placeholder="Tap to capture location" readonly style="flex:1;cursor:pointer;font-size:11px;" onclick="captureConcreteGPS()" oninput="concreteWeatherCache=null; refreshConcreteWeatherAlert()">
               <button type="button" onclick="captureConcreteGPS()" style="background:var(--accent);border:none;color:#fff;padding:9px 12px;border-radius:var(--radius);cursor:pointer;font-size:14px;flex-shrink:0;" title="Capture GPS">📍</button>
             </div>
           </div>
@@ -5000,9 +5021,11 @@ table.fc-borrow-tbl tr.fc-borrow-detail-row td{background:var(--surface);border-
           </div>
           <div class="form-group">
             <label>Ambient Temp (°F)</label>
-            <input type="number" id="ci_amb_temp" step="1" min="-20" max="120" placeholder="68">
+            <input type="number" id="ci_amb_temp" step="1" min="-20" max="120" placeholder="68" oninput="refreshConcreteWeatherAlert()">
           </div>
         </div>
+
+        <div id="ci_weather_alert" class="ci-weather-alert" style="display:none;" aria-live="polite"></div>
 
         <!-- Cylinder Setup -->
         <div class="manual-section-title">Cylinder Setup (AASHTO T 22)</div>
@@ -6195,6 +6218,22 @@ table.fc-borrow-tbl tr.fc-borrow-detail-row td{background:var(--surface);border-
   </div>
 </div>
 
+<!-- ── CONCRETE COLD WEATHER WARNING ── -->
+<div class="sl-delete-modal" id="ciColdWeatherModal" onclick="if(event.target===this)closeConcreteColdWeatherModal()">
+  <div class="sl-delete-modal-box" style="max-width:480px;">
+    <div class="sl-delete-modal-title">Cold Weather Check — Review Before Batching</div>
+    <div class="sl-delete-modal-body" id="ciColdWeatherModalBody"></div>
+    <div class="form-group" style="margin:12px 0 14px;">
+      <label style="font-size:10px;">Override note (optional)</label>
+      <input type="text" id="ciColdWeatherOverrideNote" placeholder="e.g. Verified 36°F and rising with field thermometer">
+    </div>
+    <div style="display:flex;gap:10px;justify-content:flex-end;">
+      <button class="btn btn-ghost" onclick="closeConcreteColdWeatherModal()" style="font-size:11px;">Go Back</button>
+      <button class="btn" onclick="confirmConcreteColdWeatherOverride()" style="background:var(--gold);border:1px solid #d97706;color:#111;font-size:11px;letter-spacing:0.5px;">Continue Anyway</button>
+    </div>
+  </div>
+</div>
+
 <!-- ── FAMILY OF CURVES PICKER (Field Control) ── -->
 <div id="fcCurvePickerModal" class="fc-curve-modal" onclick="if(event.target===this)closeFcCurvePicker()">
   <div class="fc-curve-panel" role="dialog" aria-label="Family of Curves">
@@ -6221,7 +6260,7 @@ table.fc-borrow-tbl tr.fc-borrow-detail-row td{background:var(--surface);border-
 // GLOBALS
 // ══════════════════════════════════════════════
 let db = null;
-const APP_BUILD = '2026.06.30-map-detail';
+const APP_BUILD = '2026.06.30-concrete-weather';
 const FC_CORE_ICON_SRC = 'docs/r18-reference/core-drill-icon-128.png';
 window._dbConnected = false;
 window._syncInProgress = false;
@@ -9981,10 +10020,188 @@ function captureConcreteGPS() {
   if (!navigator.geolocation) { el.value = 'GPS not supported'; return; }
   el.value = '📍 Locating…';
   navigator.geolocation.getCurrentPosition(
-    p => { el.value = p.coords.latitude.toFixed(6)+', '+p.coords.longitude.toFixed(6)+' (±'+Math.round(p.coords.accuracy)+'m)'; showToast('GPS captured ✓','success'); },
+    async p => {
+      el.value = formatCoreGPS(p.coords.latitude, p.coords.longitude, p.coords.accuracy);
+      showToast('GPS captured ✓', 'success');
+      concreteWeatherCache = null;
+      try {
+        const wx = await getConcreteWeatherContext(true);
+        const ambEl = document.getElementById('ci_amb_temp');
+        if (ambEl && ambEl.value.trim() === '' && wx?.currentTemp != null) {
+          ambEl.value = wx.currentTemp;
+        }
+      } catch (e) { /* banner will note unavailable weather */ }
+      refreshConcreteWeatherAlert();
+    },
     e => { el.readOnly=false; el.style.borderColor='var(--gold)'; el.value=''; el.placeholder='Paste coords: 39.146760, -75.504430'; el.focus(); },
     { enableHighAccuracy:true, timeout:15000, maximumAge:60000 }
   );
+}
+
+const CONCRETE_COLD_MIN_F = 35;
+const CONCRETE_WEATHER_DEFAULT = { lat: 39.1582, lng: -75.5244 };
+let concreteWeatherCache = null;
+let pendingConcreteIntakeSet = null;
+let pendingConcreteWeatherCheck = null;
+
+async function fetchWeatherAtCoords(lat, lng) {
+  const url = 'https://api.open-meteo.com/v1/forecast?latitude=' + lat + '&longitude=' + lng +
+    '&current=temperature_2m&hourly=temperature_2m' +
+    '&temperature_unit=fahrenheit&timezone=America%2FNew_York&forecast_days=1';
+  const r = await fetch(url);
+  if (!r.ok) throw new Error('Weather unavailable');
+  const d = await r.json();
+  const etNow = new Date().toLocaleString('sv-SE', { timeZone: 'America/New_York' }).slice(0, 13).replace(' ', 'T');
+  let si = (d.hourly?.time || []).findIndex(t => t.slice(0, 13) === etNow);
+  if (si < 0) si = 0;
+  const tempNow = d.hourly?.temperature_2m?.[si];
+  const currentTemp = Math.round(tempNow ?? d.current?.temperature_2m ?? NaN);
+  if (isNaN(currentTemp)) throw new Error('No temperature data');
+  const tempPrev1 = si > 0 ? d.hourly.temperature_2m[si - 1] : null;
+  return {
+    lat, lng,
+    currentTemp,
+    tempPrev1: tempPrev1 != null ? Math.round(tempPrev1) : null,
+    source: 'open-meteo',
+  };
+}
+
+async function getConcreteWeatherContext(forceRefresh) {
+  const coords = parseGPS(document.getElementById('ci_gps')?.value, true);
+  const lat = coords?.lat ?? CONCRETE_WEATHER_DEFAULT.lat;
+  const lng = coords?.lng ?? CONCRETE_WEATHER_DEFAULT.lng;
+  const cacheKey = lat.toFixed(3) + ',' + lng.toFixed(3);
+  const now = Date.now();
+  if (!forceRefresh && concreteWeatherCache?.key === cacheKey && now - concreteWeatherCache.at < 600000) {
+    return concreteWeatherCache.data;
+  }
+  const data = await fetchWeatherAtCoords(lat, lng);
+  data.coordsFromGps = !!coords;
+  concreteWeatherCache = { key: cacheKey, at: now, data };
+  return data;
+}
+
+function evaluateConcreteColdWeather(manualAmbTemp, weather) {
+  const ambTemp = manualAmbTemp != null ? manualAmbTemp : weather?.currentTemp ?? null;
+  const reasons = [];
+  let pass = true;
+
+  if (ambTemp == null) {
+    return {
+      pass: true,
+      skipped: true,
+      reasons: [],
+      audit: { skipped: true, checkedAt: new Date().toISOString() },
+      ambTemp: null,
+    };
+  }
+
+  if (ambTemp < CONCRETE_COLD_MIN_F) {
+    pass = false;
+    reasons.push('Ambient ' + ambTemp + '°F is below the ' + CONCRETE_COLD_MIN_F + '°F minimum');
+  }
+
+  if (weather?.tempPrev1 != null && weather.currentTemp <= weather.tempPrev1) {
+    pass = false;
+    reasons.push('Temperature not rising (' + weather.tempPrev1 + '°F → ' + weather.currentTemp + '°F over the last hour)');
+  }
+
+  const audit = {
+    checkedAt: new Date().toISOString(),
+    minRequiredF: CONCRETE_COLD_MIN_F,
+    ambTempUsed: ambTemp,
+    manualAmbTemp: manualAmbTemp,
+    apiTemp: weather?.currentTemp ?? null,
+    tempPrev1: weather?.tempPrev1 ?? null,
+    coords: weather ? { lat: weather.lat, lng: weather.lng, fromGps: !!weather.coordsFromGps } : null,
+    pass,
+    reasons: reasons.slice(),
+  };
+
+  return { pass, skipped: false, reasons, audit, ambTemp, weather };
+}
+
+async function evaluateConcreteColdWeatherForIntake() {
+  const gn = id => { const v = parseFloat(document.getElementById(id)?.value); return isNaN(v) ? null : v; };
+  const manualAmb = gn('ci_amb_temp');
+  let weather = null;
+  try {
+    weather = await getConcreteWeatherContext(false);
+  } catch (e) { /* offline or API error */ }
+  return evaluateConcreteColdWeather(manualAmb, weather);
+}
+
+function renderConcreteWeatherAlertHtml(check) {
+  if (!check || check.pass || check.skipped) return '';
+  const locNote = check.audit?.coords?.fromGps ? 'GPS location' : 'Default location (Dover)';
+  return '<strong>⚠ Cold weather check</strong>' +
+    '<div>' + check.reasons.join('. ') + '.</div>' +
+    '<div class="ci-weather-alert-sub">DelDOT placement typically requires ≥ ' + CONCRETE_COLD_MIN_F +
+    '°F and rising. Source: ' + locNote + ' · Open-Meteo. Confirm with a field thermometer before batching cylinders.</div>';
+}
+
+async function refreshConcreteWeatherAlert() {
+  const el = document.getElementById('ci_weather_alert');
+  if (!el) return;
+  try {
+    const check = await evaluateConcreteColdWeatherForIntake();
+    if (check.pass || check.skipped) {
+      el.style.display = 'none';
+      el.innerHTML = '';
+      el.className = 'ci-weather-alert';
+      return;
+    }
+    el.style.display = 'block';
+    el.className = 'ci-weather-alert warn';
+    el.innerHTML = renderConcreteWeatherAlertHtml(check);
+  } catch (e) {
+    el.style.display = 'none';
+    el.innerHTML = '';
+  }
+}
+
+function showConcreteColdWeatherModal(check) {
+  const modal = document.getElementById('ciColdWeatherModal');
+  const body = document.getElementById('ciColdWeatherModalBody');
+  const note = document.getElementById('ciColdWeatherOverrideNote');
+  if (!modal || !body) return;
+  const locNote = check.audit?.coords?.fromGps ? 'GPS location' : 'Default location (Dover)';
+  const ambLine = check.ambTemp != null ? check.ambTemp + '°F' : '—';
+  const trendLine = check.weather?.tempPrev1 != null
+    ? check.weather.tempPrev1 + '°F → ' + check.weather.currentTemp + '°F (last hour)'
+    : 'Trend unavailable';
+  body.innerHTML =
+    '<p style="margin:0 0 10px;">Cylinder batching may not meet the cold-weather placement check:</p>' +
+    '<ul style="margin:0 0 10px 18px;padding:0;line-height:1.5;">' +
+    check.reasons.map(r => '<li>' + r + '</li>').join('') +
+    '</ul>' +
+    '<div style="font-family:var(--mono);font-size:10px;color:var(--muted);line-height:1.5;">' +
+    'Ambient used: <strong style="color:var(--text);">' + ambLine + '</strong><br>' +
+    'Hourly trend: ' + trendLine + '<br>' +
+    'Weather source: ' + locNote + ' · Open-Meteo</div>' +
+    '<p style="margin:10px 0 0;font-size:10px;color:var(--muted);">Verify with a field thermometer. Continue only if placement conditions are acceptable.</p>';
+  if (note) note.value = '';
+  modal.classList.add('open');
+}
+
+function closeConcreteColdWeatherModal() {
+  document.getElementById('ciColdWeatherModal')?.classList.remove('open');
+  pendingConcreteIntakeSet = null;
+  pendingConcreteWeatherCheck = null;
+}
+
+function confirmConcreteColdWeatherOverride() {
+  if (!pendingConcreteIntakeSet || !pendingConcreteWeatherCheck) return;
+  const note = document.getElementById('ciColdWeatherOverrideNote')?.value?.trim() || '';
+  pendingConcreteIntakeSet.weatherCheck = {
+    ...pendingConcreteWeatherCheck.audit,
+    overridden: true,
+    overrideNote: note,
+    overriddenAt: new Date().toISOString(),
+    overriddenBy: currentUser?.name || currentUser?.email || '',
+  };
+  finalizeConcreteIntake(pendingConcreteIntakeSet);
+  closeConcreteColdWeatherModal();
 }
 
 function doGPSCapture() {} // legacy stub
@@ -19121,6 +19338,7 @@ function initConcreteIntakeForm() {
   if (!castDate.value) castDate.value = today;
   _autoFillTech(); // fill Sampled By with user's last name
   if (!castTime.value) castTime.value = now;
+  refreshConcreteWeatherAlert();
 }
 
 function clearConcreteIntakeForm() {
@@ -19140,25 +19358,28 @@ function clearConcreteIntakeForm() {
   document.getElementById('ci_age_56').value = '0';
   document.getElementById('custom-age-rows').innerHTML = '';
   document.getElementById('ci_set_id').value = '';  // reset so next open gets fresh auto-id
+  concreteWeatherCache = null;
+  const alertEl = document.getElementById('ci_weather_alert');
+  if (alertEl) { alertEl.style.display = 'none'; alertEl.innerHTML = ''; }
   initConcreteIntakeForm();
 }
 
-function submitConcreteIntake() {
+  if (!castTime.value) castTime.value = now;
+  refreshConcreteWeatherAlert();
+}
+
+function buildConcreteIntakeSet() {
   const gv = id => { const el = document.getElementById(id); return el ? el.value.trim() : ''; };
   const gn = id => { const v = parseFloat(document.getElementById(id)?.value); return isNaN(v) ? null : v; };
 
-  // If user left Set ID blank, auto-assign now
   const setIdField = document.getElementById('ci_set_id');
   if (!setIdField.value.trim()) {
     setIdField.value = nextConcreteId(loadConcreteSets());
   }
   const castDate = gv('ci_cast_date');
-  if (!castDate) { showToast('Cast date is required', 'error'); return; }
   const requiredFc = gn('ci_required_fc');
-  if (!requiredFc) { showToast("Required f'c is required", 'error'); return; }
   const diam = parseFloat(gv('ci_cyl_diam'));
 
-  // Build age → count map from standard selects + custom rows
   const ageCounts = {};
   [7,14,28,56].forEach(age => {
     const el = document.getElementById('ci_age_' + age);
@@ -19172,7 +19393,6 @@ function submitConcreteIntake() {
     const n     = parseInt(cntIn?.value)||0;
     if (age > 0 && n > 0) ageCounts[age] = (ageCounts[age]||0) + n;
   });
-  // Sort ages ascending
   const sortedAges = Object.keys(ageCounts).map(Number).sort((a,b)=>a-b);
   const cylinders = [];
   const letters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
@@ -19188,66 +19408,109 @@ function submitConcreteIntake() {
       });
     }
   });
-  if (cylinders.length === 0) { showToast('Add at least one cylinder', 'error'); return; }
 
-  const newSet = {
-    id: gv('ci_set_id'),
-    testNo: gv('ci_test_no'),
-    gps_coordinates: gv('ci_gps'),
-    contract: gv('ci_contract'),
-    faProject: gv('ci_fa_project'),
-    contractor: gv('ci_contractor'),
-    subcontractor: gv('ci_subcontractor'),
-    supplier: gv('ci_supplier'),
-    mixDesign: gv('ci_mix_design'),
-    pourLocation: gv('ci_pour_location'),
-    castDate,
-    castTime: gv('ci_cast_time'),
-    dateReceived: gv('ci_date_received'),
-    truckNo: gv('ci_truck_no'),
-    ticketNo: gv('ci_ticket_no'),
-    sampledBy: gv('ci_sampled_by'),
-    techNo: gv('ci_tech_no'),
-    sectionNo: gv('ci_section_no'),
-    concreteClass: gv('ci_class'),
-    county: gv('ci_county'),
-    cementSks: gv('ci_cement_sks'),
-    station: gv('ci_station'),
-    precast: gv('ci_precast'),
-    plant: gv('ci_plant'),
-    corrFactor: gv('ci_corr_factor'),
-    materials: {
-      cement1: gv('ci_cement1'), cement1Pct: gn('ci_cement1_pct'),
-      cement2: gv('ci_cement2'), cement2Pct: gn('ci_cement2_pct'),
-      cement3: gv('ci_cement3'), cement3Pct: gn('ci_cement3_pct'),
-      admix1: gv('ci_admix1'), admix1Oz: gn('ci_admix1_oz'),
-      admix2: gv('ci_admix2'), admix2Oz: gn('ci_admix2_oz'),
-      admix3: gv('ci_admix3'), admix3Oz: gn('ci_admix3_oz'),
-      admix4: gv('ci_admix4'), admix4Oz: gn('ci_admix4_oz'),
-      aea: gv('ci_aea'), aeaOz: gn('ci_aea_oz'),
-      water: gv('ci_water'),
-      fineAgg: gv('ci_fine_agg'),
-      coarseAgg: gv('ci_coarse_agg'),
-      fibers: gv('ci_fibers'),
+  return {
+    set: {
+      id: gv('ci_set_id'),
+      testNo: gv('ci_test_no'),
+      gps_coordinates: gv('ci_gps'),
+      contract: gv('ci_contract'),
+      faProject: gv('ci_fa_project'),
+      contractor: gv('ci_contractor'),
+      subcontractor: gv('ci_subcontractor'),
+      supplier: gv('ci_supplier'),
+      mixDesign: gv('ci_mix_design'),
+      pourLocation: gv('ci_pour_location'),
+      castDate,
+      castTime: gv('ci_cast_time'),
+      dateReceived: gv('ci_date_received'),
+      truckNo: gv('ci_truck_no'),
+      ticketNo: gv('ci_ticket_no'),
+      sampledBy: gv('ci_sampled_by'),
+      techNo: gv('ci_tech_no'),
+      sectionNo: gv('ci_section_no'),
+      concreteClass: gv('ci_class'),
+      county: gv('ci_county'),
+      cementSks: gv('ci_cement_sks'),
+      station: gv('ci_station'),
+      precast: gv('ci_precast'),
+      plant: gv('ci_plant'),
+      corrFactor: gv('ci_corr_factor'),
+      materials: {
+        cement1: gv('ci_cement1'), cement1Pct: gn('ci_cement1_pct'),
+        cement2: gv('ci_cement2'), cement2Pct: gn('ci_cement2_pct'),
+        cement3: gv('ci_cement3'), cement3Pct: gn('ci_cement3_pct'),
+        admix1: gv('ci_admix1'), admix1Oz: gn('ci_admix1_oz'),
+        admix2: gv('ci_admix2'), admix2Oz: gn('ci_admix2_oz'),
+        admix3: gv('ci_admix3'), admix3Oz: gn('ci_admix3_oz'),
+        admix4: gv('ci_admix4'), admix4Oz: gn('ci_admix4_oz'),
+        aea: gv('ci_aea'), aeaOz: gn('ci_aea_oz'),
+        water: gv('ci_water'),
+        fineAgg: gv('ci_fine_agg'),
+        coarseAgg: gv('ci_coarse_agg'),
+        fibers: gv('ci_fibers'),
+      },
+      fresh: {
+        slump: gn('ci_slump'), air: gn('ci_air'),
+        unitWeight: gn('ci_unit_wt'), concTemp: gn('ci_conc_temp'), ambTemp: gn('ci_amb_temp')
+      },
+      cylDiam: diam, requiredFc,
+      remarks: gv('ci_remarks'),
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+      cylinders
     },
-    fresh: {
-      slump: gn('ci_slump'), air: gn('ci_air'),
-      unitWeight: gn('ci_unit_wt'), concTemp: gn('ci_conc_temp'), ambTemp: gn('ci_amb_temp')
-    },
-    cylDiam: diam, requiredFc,
-    remarks: gv('ci_remarks'),
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
     cylinders
   };
+}
 
+function finalizeConcreteIntake(newSet) {
   const sets = loadConcreteSets();
   sets.unshift(newSet);
   saveConcreteSets(sets);
   syncConcreteSetToCloud(newSet);
-  showToast(`Set ${newSet.id} created — ${cylinders.length} cylinders logged ✓`, 'success');
+  showToast(`Set ${newSet.id} created — ${newSet.cylinders.length} cylinders logged ✓`, 'success');
   clearConcreteIntakeForm();
   switchConcreteTab('log');
+  pendingConcreteIntakeSet = null;
+  pendingConcreteWeatherCheck = null;
+}
+
+async function submitConcreteIntake() {
+  const setIdField = document.getElementById('ci_set_id');
+  if (!setIdField.value.trim()) {
+    setIdField.value = nextConcreteId(loadConcreteSets());
+  }
+  const castDate = document.getElementById('ci_cast_date')?.value?.trim();
+  if (!castDate) { showToast('Cast date is required', 'error'); return; }
+  const requiredFc = parseFloat(document.getElementById('ci_required_fc')?.value);
+  if (isNaN(requiredFc)) { showToast("Required f'c is required", 'error'); return; }
+
+  let built;
+  try {
+    built = buildConcreteIntakeSet();
+  } catch (e) {
+    showToast('Could not build concrete set', 'error');
+    return;
+  }
+  if (built.cylinders.length === 0) { showToast('Add at least one cylinder', 'error'); return; }
+
+  let check;
+  try {
+    check = await evaluateConcreteColdWeatherForIntake();
+  } catch (e) {
+    check = { pass: true, skipped: true, audit: { skipped: true, error: String(e) } };
+  }
+
+  if (!check.pass && !check.skipped) {
+    pendingConcreteIntakeSet = built.set;
+    pendingConcreteWeatherCheck = check;
+    showConcreteColdWeatherModal(check);
+    return;
+  }
+
+  built.set.weatherCheck = check.audit || { pass: true, checkedAt: new Date().toISOString() };
+  finalizeConcreteIntake(built.set);
 }
 
 // ══════════════════════════════════════════════════════════════
