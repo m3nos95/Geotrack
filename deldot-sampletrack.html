@@ -6267,7 +6267,7 @@ table.fc-borrow-tbl tr.fc-borrow-detail-row td{background:var(--surface);border-
 // GLOBALS
 // ══════════════════════════════════════════════
 let db = null;
-const APP_BUILD = '2026.06.17-tour-spotlight-fix';
+const APP_BUILD = '2026.06.17-samples-field-test-id';
 const FC_CORE_ICON_SRC = 'docs/r18-reference/core-drill-icon-128.png';
 const BORELOG_ICON_SRC = 'docs/r18-reference/borelog-icon.webp';
 const BORELOG_PATH = 'docs/r18-reference/deldot-borelog.html';
@@ -17093,8 +17093,9 @@ function fcUpdateTabStatusIndicators() {
 async function fcTryInsert(table, record, requestedTestNo, category) {
   let inserted = null;
   let lastError = null;
-  for (let attempt = 0; attempt < 3; attempt++) {
-    const rec = { ...record };
+  let workingRecord = { ...record };
+  for (let attempt = 0; attempt < 5; attempt++) {
+    const rec = { ...workingRecord };
     if (attempt === 0 && requestedTestNo) rec.test_no = requestedTestNo;
     else if (attempt > 0) {
       const next = await getNextTestNumber(category);
@@ -17104,6 +17105,17 @@ async function fcTryInsert(table, record, requestedTestNo, category) {
     if (!error) { inserted = data; if (queued) showToast('Offline — session queued locally', 'info'); break; }
     lastError = error;
     const msg = (error.message || '').toLowerCase();
+    if (fcIsSchemaCacheColumnError(error.message)) {
+      const col = fcParseSchemaCacheColumn(error.message);
+      if (col && Object.prototype.hasOwnProperty.call(workingRecord, col)) {
+        delete workingRecord[col];
+        continue;
+      }
+      if (table === 'samples') {
+        FC_SAMPLE_OPTIONAL_KEYS.forEach(k => delete workingRecord[k]);
+        continue;
+      }
+    }
     if (!msg.includes('duplicate') && !msg.includes('unique') && !msg.includes('conflict')) break;
   }
   if (!inserted && lastError) throw lastError;
@@ -17388,16 +17400,17 @@ async function startFC_Session() {
     }
 
     if (intent === 'lab' || intent === 'both') {
-      sampleRow = await fcTryInsert('samples', {
+      const samplePayload = {
         ...headerData,
         sample_type: 'Field Control',
         status: 'pending',
         record_kind: intent === 'lab' ? 'lab_sample' : 'linked',
-        field_test_id: fieldTestRow?.id || null,
         remarks: intent === 'lab'
           ? 'FC lab-only field event — no gauge data.'
           : 'FC linked field event — density + lab bag.',
-      }, requestedTestNo, category);
+      };
+      if (fieldTestRow?.id) samplePayload.field_test_id = fieldTestRow.id;
+      sampleRow = await fcTryInsert('samples', samplePayload, requestedTestNo, category);
     }
 
     if (intent === 'density' && !fieldTestRow) {
@@ -18019,6 +18032,28 @@ function fcClearCoreForm() {
   fcSuggestNextCoreNo();
 }
 
+// samples — optional Field Control columns (may be absent on older Supabase schemas)
+const FC_SAMPLE_OPTIONAL_KEYS = ['field_test_id', 'record_kind', 'nuclear_data', 'density_data'];
+
+function fcParseSchemaCacheColumn(msg) {
+  const m = (msg || '').match(/could not find the '([^']+)' column/i);
+  return m ? m[1] : null;
+}
+
+function fcIsSchemaCacheColumnError(msg) {
+  const lower = (msg || '').toLowerCase();
+  return lower.includes('schema cache') || lower.includes('could not find the');
+}
+
+function fcSanitizeSampleInsertPayload(payload) {
+  if (!payload || typeof payload !== 'object') return payload;
+  const out = { ...payload };
+  FC_SAMPLE_OPTIONAL_KEYS.forEach(k => {
+    if (out[k] == null) delete out[k];
+  });
+  return out;
+}
+
 // core_drills — explicit column list (never reference status; column may be absent)
 const FC_CORE_DRILL_SELECT = 'id,test_no,contract,road,location,station,lane,core_no,gps_coordinates,thickness_in,depth_in,layer_type,remarks,photo_data,field_test_id,sampled_by,date_drilled,created_at,updated_at';
 const FC_CORE_DRILL_WRITE_KEYS = ['test_no','contract','road','location','station','lane','core_no','gps_coordinates','thickness_in','depth_in','layer_type','remarks','photo_data','field_test_id','sampled_by','date_drilled'];
@@ -18043,6 +18078,11 @@ function offlineQueueSanitizeCoreDrills() {
     }
     if (op.table === 'field_tests' && op.op === 'insert') {
       const payload = fcSanitizeFieldTestInsertPayload(op.payload);
+      if (JSON.stringify(payload) !== JSON.stringify(op.payload)) changed = true;
+      return { ...op, payload };
+    }
+    if (op.table === 'samples') {
+      const payload = fcSanitizeSampleInsertPayload(op.payload);
       if (JSON.stringify(payload) !== JSON.stringify(op.payload)) changed = true;
       return { ...op, payload };
     }
@@ -19182,6 +19222,7 @@ async function dbWrite(table, op, payload, matchId) {
   let body = payload;
   if (table === 'core_drills') body = fcSanitizeCoreDrillPayload(payload);
   else if (table === 'field_tests' && op === 'insert') body = fcSanitizeFieldTestInsertPayload(payload);
+  else if (table === 'samples') body = fcSanitizeSampleInsertPayload(payload);
   const sel = table === 'core_drills' ? FC_CORE_DRILL_SELECT : '*';
   if (navigator.onLine && db) {
     try {
