@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
+<script>try{if(localStorage.getItem('labtrak_comfort_mode')==='1')document.documentElement.classList.add('comfort-mode');}catch(e){}</script>
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -423,6 +424,40 @@ nav{background:var(--surface);border-bottom:1px solid var(--border);box-shadow:0
   cursor:pointer;transition:all .12s;}
 .list-card .lc-btn:hover{border-color:var(--accent2);color:var(--text);}
 .list-card .lc-btn.danger:hover{border-color:var(--red2);color:var(--red2);}
+
+/* ── Comfort mode (shared with LabTrak) ── */
+.btn-comfort-mode{background:rgba(255,255,255,0.06);border:1px solid var(--border);color:var(--muted);
+  padding:5px 9px;font-family:var(--sans);font-size:14px;line-height:1;cursor:pointer;border-radius:var(--radius-sm);transition:all .15s;}
+.btn-comfort-mode:hover{color:var(--text);border-color:var(--accent2);background:rgba(196,124,42,0.1);}
+.btn-comfort-mode.active{color:var(--green2);border-color:rgba(46,204,120,0.4);background:rgba(46,204,120,0.1);}
+html.comfort-mode{--display:var(--sans);font-size:15px;
+  --bg:#131a24;--surface:#1a2330;--panel:#212c3c;--border:#2d3a4d;
+  --text:#d4e0ec;--muted:#708498;--accent:#b07832;--accent2:#cc9450;--gold:#c89848;}
+html.comfort-mode body{background-image:none !important;}
+html.comfort-mode .nav-logo{text-transform:none;letter-spacing:0.02em;font-family:var(--sans);font-size:14px;font-weight:600;}
+html.comfort-mode .nav-logo .app-sub{letter-spacing:0.04em;font-family:var(--sans);font-size:10px;}
+html.comfort-mode .nav-tab{text-transform:none;letter-spacing:0.02em;font-family:var(--sans);font-size:13px;}
+html.comfort-mode .card-title,
+html.comfort-mode .form-group label,
+html.comfort-mode .page-head h2,
+html.comfort-mode .gs-row label,
+html.comfort-mode .gs-computed .gc-lbl,
+html.comfort-mode .gs-tab,
+html.comfort-mode .gs-panel .gp-title,
+html.comfort-mode .sub-section .ss-title,
+html.comfort-mode .sample-editor .se-desc-label,
+html.comfort-mode .sieve-tbl th,
+html.comfort-mode .cv-box .cv-lbl,
+html.comfort-mode .htb-label,
+html.comfort-mode .htb-next-label,
+html.comfort-mode .hab-text{text-transform:none !important;letter-spacing:0.02em !important;font-family:var(--sans) !important;}
+html.comfort-mode .page-head h2{font-size:22px;letter-spacing:0.01em;}
+html.comfort-mode .btn{font-family:var(--sans);letter-spacing:0.02em;text-transform:none;}
+html.comfort-mode .bl-sync-chip{font-family:var(--sans);font-size:10px;letter-spacing:0.02em;}
+html.comfort-mode .htb-status-dot.running,
+html.comfort-mode .htb-status-dot.warning,
+html.comfort-mode .htb-next-val.due,
+html.comfort-mode .hab-pulse{animation:none !important;box-shadow:none !important;text-shadow:none !important;}
 </style>
 </head>
 <body>
@@ -445,7 +480,7 @@ nav{background:var(--surface);border-bottom:1px solid var(--border);box-shadow:0
     <div class="splash-enter">
       <button onclick="startApp()">⊙ &nbsp;ENTER</button>
     </div>
-    <div class="splash-tagline">Standalone · LabTrak cloud sync · localStorage cache · LOGDRAFT import</div>
+    <div class="splash-tagline">DelDOT lab entry · GeoSystem import · cloud sync with LabTrak</div>
   </div>
 </div>
 
@@ -463,6 +498,8 @@ nav{background:var(--surface);border-bottom:1px solid var(--border);box-shadow:0
       <div class="nav-tab" data-view="psd-print">📊 PSD REPORT</div>
     </div>
     <div id="blSyncWrap" style="margin-left:auto;display:flex;align-items:center;gap:8px;padding-right:4px;flex-shrink:0;">
+      <button type="button" class="btn-comfort-mode" id="btnComfortMode" onclick="toggleComfortMode()"
+              title="Comfort mode — softer visuals for long sessions" aria-pressed="false" aria-label="Comfort mode">☾</button>
       <span id="blSyncChip" class="bl-sync-chip off" title="Uses LabTrak Supabase settings">LOCAL</span>
       <button type="button" class="btn btn-ghost btn-sm" onclick="syncBorelogNow()" id="blSyncBtn">☁ SYNC</button>
     </div>
@@ -525,10 +562,7 @@ nav{background:var(--surface);border-bottom:1px solid var(--border);box-shadow:0
           <div class="form-group"><label>Surface Elevation (ft)</label><input type="text" id="bh_elev"></div>
           <div class="form-group" style="grid-column:1 / -1;">
             <label>GPS Coordinates</label>
-            <div style="display:flex;gap:8px;align-items:center;">
-              <input type="text" id="bh_gps" placeholder="39.146760, -75.504430" style="flex:1;">
-              <button type="button" class="btn btn-ghost btn-sm" onclick="captureBoringGPS()">📍 GPS</button>
-            </div>
+            <input type="text" id="bh_gps" placeholder="From boring log, or auto-computed from N/E on save">
           </div>
           <div class="form-group"><label>Date Started</label><input type="date" id="bh_date_start"></div>
           <div class="form-group"><label>Date Completed</label><input type="date" id="bh_date_end"></div>
@@ -553,7 +587,7 @@ nav{background:var(--surface);border-bottom:1px solid var(--border);box-shadow:0
       </div>
 
       <div class="card">
-        <div class="card-title">▣ Contractor / Reviewer</div>
+        <div class="card-title">▣ Drilling / Review</div>
         <div class="form-grid">
           <div class="form-group"><label>Boring Contractor</label><input type="text" id="bh_contractor" placeholder="CGC Geoservices"></div>
           <div class="form-group"><label>Equipment / Rig</label><input type="text" id="bh_rig" placeholder="CME 55 Barge"></div>
@@ -646,7 +680,7 @@ nav{background:var(--surface);border-bottom:1px solid var(--border);box-shadow:0
 
     <div class="pm-section">▣ Drilling Contractor</div>
     <div class="pm-section inherit-note" style="margin-top:-10px;font-family:var(--mono);font-size:9px;color:var(--muted);letter-spacing:0.5px;font-style:italic;">
-      These values will auto-populate into new borings. You can override per-boring in the Boring Header.
+      Drilling contractor info comes from the received boring log or GeoSystem import — not LabTrak project contractor.
     </div>
     <div class="form-grid two">
       <div class="form-group">
@@ -1889,25 +1923,6 @@ function syncBoringGpsFields(b) {
   return b.gps_coordinates;
 }
 
-function captureBoringGPS() {
-  const el = $('bh_gps');
-  if (!el) return;
-  if (!navigator.geolocation) { toast('GPS not supported', true); return; }
-  el.value = '📍 Locating…';
-  navigator.geolocation.getCurrentPosition(
-    p => {
-      el.value = formatBoringGps(p.coords.latitude, p.coords.longitude, ' (±' + Math.round(p.coords.accuracy) + 'm)');
-      toast('GPS captured');
-    },
-    () => {
-      el.value = '';
-      el.placeholder = 'Paste coords or save Northing/Easting';
-      toast('Enter coordinates manually', true);
-    },
-    { enableHighAccuracy: true, timeout: 15000, maximumAge: 60000 }
-  );
-}
-
 const LABTRAK_CTX_KEY = 'labtrak_borelog_context';
 
 function _normProjectKey(s) {
@@ -1968,9 +1983,43 @@ function applyLabTrakContext() {
   set('pm_federal_no', federal);
   set('pm_location', location);
   set('pm_route', ctx.location || '');
-  set('pm_contractor', ctx.contractor || '');
   set('pm_logged_by', loggedBy);
   toast('LabTrak project details loaded — review and save');
+}
+
+const COMFORT_STORAGE_KEY = 'labtrak_comfort_mode';
+
+function isComfortMode() {
+  try { return localStorage.getItem(COMFORT_STORAGE_KEY) === '1'; } catch { return false; }
+}
+
+function updateComfortModeUI() {
+  const on = isComfortMode();
+  const btn = document.getElementById('btnComfortMode');
+  if (btn) {
+    btn.classList.toggle('active', on);
+    btn.setAttribute('aria-pressed', on ? 'true' : 'false');
+    btn.title = on ? 'Comfort mode on — click to turn off' : 'Comfort mode — softer visuals for long sessions';
+  }
+}
+
+function applyComfortVisuals() {
+  document.documentElement.classList.toggle('comfort-mode', isComfortMode());
+  updateComfortModeUI();
+}
+
+function setComfortMode(on) {
+  try { localStorage.setItem(COMFORT_STORAGE_KEY, on ? '1' : '0'); } catch {}
+  applyComfortVisuals();
+  toast(on ? 'Comfort mode on' : 'Comfort mode off');
+}
+
+function toggleComfortMode() {
+  setComfortMode(!isComfortMode());
+}
+
+function initComfortMode() {
+  applyComfortVisuals();
 }
 
 function startApp(){
@@ -1987,6 +2036,7 @@ function startApp(){
 }
 // Wire logo into splash as soon as script runs
 (function(){ const el = document.getElementById('splashLogo'); if(el) el.src = DELDOT_LOGO; })();
+initComfortMode();
 
 document.querySelectorAll('.nav-tab').forEach(t=>{
   t.addEventListener('click',()=>{

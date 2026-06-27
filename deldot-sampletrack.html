@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
+<script>try{if(localStorage.getItem('labtrak_comfort_mode')==='1')document.documentElement.classList.add('comfort-mode');}catch(e){}</script>
 <head>
   <link rel="icon" type="image/png" href="data:image/png;base64,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">
 <meta charset="UTF-8">
@@ -1768,6 +1769,73 @@ body { font-family: var(--sans); font-size: 13.5px; line-height: 1.5; letter-spa
   color: var(--muted);
   line-height: 1.35;
 }
+
+/* ── Comfort mode (long-shift readability) ── */
+.comfort-mode-control {
+  display: flex; align-items: center; justify-content: space-between; gap: 12px;
+  margin-top: 14px; padding: 12px 14px; border: 1px solid var(--border);
+  border-radius: var(--radius-sm); background: var(--panel);
+}
+.comfort-mode-copy { flex: 1; min-width: 0; }
+.comfort-mode-title { font-family: var(--sans); font-size: 13px; font-weight: 600; color: var(--text); }
+.comfort-mode-desc { font-family: var(--sans); font-size: 11px; color: var(--muted); margin-top: 3px; line-height: 1.4; }
+.comfort-switch {
+  position: relative; width: 44px; height: 24px; border-radius: 12px; flex-shrink: 0;
+  border: 1px solid var(--border); background: var(--bg); cursor: pointer;
+  transition: background 0.2s, border-color 0.2s;
+}
+.comfort-switch.on { background: rgba(46,204,120,0.18); border-color: rgba(46,204,120,0.45); }
+.comfort-switch::after {
+  content: ''; position: absolute; top: 2px; left: 2px; width: 18px; height: 18px;
+  border-radius: 50%; background: var(--muted); transition: transform 0.2s, background 0.2s;
+}
+.comfort-switch.on::after { transform: translateX(20px); background: var(--green2); }
+.btn-comfort-mode {
+  background: rgba(255,255,255,0.06); border: 1px solid var(--border); color: var(--muted);
+  padding: 5px 9px; font-family: var(--sans); font-size: 14px; line-height: 1;
+  cursor: pointer; border-radius: var(--radius-sm); transition: all 0.15s;
+}
+.btn-comfort-mode:hover { color: var(--text); border-color: var(--accent2); background: rgba(196,124,42,0.1); }
+.btn-comfort-mode.active { color: var(--green2); border-color: rgba(46,204,120,0.4); background: rgba(46,204,120,0.1); }
+
+html.comfort-mode { --display: var(--sans); font-size: 15px; }
+html.comfort-mode:not([data-skin="light"]) {
+  --bg: #131a24 !important; --surface: #1a2330 !important; --panel: #212c3c !important;
+  --border: #2d3a4d !important; --text: #d4e0ec !important; --muted: #708498 !important;
+  --accent: #b07832 !important; --accent2: #cc9450 !important; --gold: #c89848 !important;
+}
+html.comfort-mode body { background-image: none !important; }
+html.comfort-mode .hub-greet { font-family: var(--sans); font-size: 24px; font-weight: 600; letter-spacing: -0.01em; }
+html.comfort-mode .topbar-stat-lbl,
+html.comfort-mode .topbar-section,
+html.comfort-mode .topbar-wx-meta,
+html.comfort-mode .user-mgmt-title,
+html.comfort-mode .dash-mod-label,
+html.comfort-mode .dkpi-lbl,
+html.comfort-mode .dash-panel-title,
+html.comfort-mode .dash-mini-table th,
+html.comfort-mode .dash-cal-dow > div,
+html.comfort-mode .stat-card .s-lbl,
+html.comfort-mode .manual-section-title,
+html.comfort-mode .rail-label {
+  text-transform: none !important; letter-spacing: 0.02em !important;
+  font-family: var(--sans) !important;
+}
+html.comfort-mode .topbar-stat-lbl { font-size: 10px !important; }
+html.comfort-mode .topbar-stat-val { font-family: var(--sans); font-size: 18px; font-weight: 600; }
+html.comfort-mode .topbar-section { font-size: 10px !important; letter-spacing: 0.04em !important; }
+html.comfort-mode .user-mgmt-title { font-size: 11px !important; letter-spacing: 0.06em !important; }
+html.comfort-mode .btn-cmd-search { font-family: var(--sans); font-size: 10px; letter-spacing: 0.02em; text-transform: none; }
+html.comfort-mode .sync-status-chip { font-family: var(--sans); font-size: 10px; letter-spacing: 0.02em; }
+html.comfort-mode .topbar-stat-dot,
+html.comfort-mode .sync-status-chip .sync-status-dot,
+html.comfort-mode .conn-dot { box-shadow: none !important; }
+html.comfort-mode .topbar-stat-dot.red,
+html.comfort-mode .offline-dot,
+html.comfort-mode .sync-status-chip.syncing .sync-status-dot { animation: none !important; }
+html.comfort-mode #navRail { background: var(--surface); border-right-color: var(--border); }
+html.comfort-mode .setup-card .setup-logo { font-family: var(--sans); letter-spacing: 0.04em; }
+
 .user-badge {
   background: rgba(255,255,255,0.04);
   border: 1px solid rgba(255,255,255,0.08);
@@ -3048,6 +3116,14 @@ table.fc-borrow-tbl tr.fc-borrow-detail-row td{background:var(--surface);border-
         Color theme for this device. Saved locally in your browser.
       </div>
       <div class="skin-picker-grid" id="skinPickerGrid"></div>
+      <div class="comfort-mode-control" id="comfortModeControl">
+        <div class="comfort-mode-copy">
+          <div class="comfort-mode-title">Comfort mode</div>
+          <div class="comfort-mode-desc">Softer colors, sentence-case labels, and calmer motion for long lab shifts.</div>
+        </div>
+        <button type="button" class="comfort-switch" id="comfortModeSwitch" onclick="toggleComfortMode()"
+                role="switch" aria-label="Comfort mode" aria-pressed="false"></button>
+      </div>
     </div>
 
     <!-- Session bar — sign out / refresh (always at top when signed in) -->
@@ -3334,6 +3410,8 @@ table.fc-borrow-tbl tr.fc-borrow-detail-row td{background:var(--surface);border-
     </div>
 
     <div class="topbar-right">
+      <button type="button" class="btn-comfort-mode" id="btnComfortMode" onclick="toggleComfortMode()"
+              title="Comfort mode — softer visuals for long sessions" aria-pressed="false" aria-label="Comfort mode">☾</button>
       <button type="button" class="sync-status-chip offline" id="syncStatusChip" onclick="onSyncChipClick()" title="Database status">
         <span class="sync-status-dot" aria-hidden="true"></span>
         <span id="syncStatusLabel">Checking…</span>
@@ -5960,8 +6038,8 @@ table.fc-borrow-tbl tr.fc-borrow-detail-row td{background:var(--surface);border-
         <img src="docs/r18-reference/borelog-icon.webp" alt="BoreLog" style="width:80px;height:80px;border-radius:14px;object-fit:contain;flex-shrink:0;display:block;">
         <div>
           <div style="font-family:var(--display);font-size:15px;font-weight:700;color:var(--text);letter-spacing:0.5px;">DelDOT BoreLog</div>
-          <div style="font-family:var(--mono);font-size:9px;color:var(--accent2);letter-spacing:2px;margin-top:3px;">LOG. ANALYZE. BUILD.</div>
-          <div style="font-family:var(--mono);font-size:9px;color:var(--muted);margin-top:6px;">Open the soil boring log tool in a new tab</div>
+          <div style="font-family:var(--mono);font-size:9px;color:var(--accent2);letter-spacing:2px;margin-top:3px;">LAB ENTRY · GEOSYSTEM IMPORT</div>
+          <div style="font-family:var(--mono);font-size:9px;color:var(--muted);margin-top:6px;">Enter data from received boring logs — lab use only</div>
         </div>
         <div style="margin-left:auto;font-size:18px;color:var(--muted);opacity:0.5;">&#8599;</div>
       </div>
@@ -6215,7 +6293,7 @@ table.fc-borrow-tbl tr.fc-borrow-detail-row td{background:var(--surface);border-
 // GLOBALS
 // ══════════════════════════════════════════════
 let db = null;
-const APP_BUILD = '2026.06.17-borelog-map-gps';
+const APP_BUILD = '2026.06.17-comfort-mode-lab-borelog';
 const FC_CORE_ICON_SRC = 'docs/r18-reference/core-drill-icon-128.png';
 const BORELOG_ICON_SRC = 'docs/r18-reference/borelog-icon.webp';
 const BORELOG_PATH = 'docs/r18-reference/deldot-borelog.html';
@@ -6236,6 +6314,7 @@ let scannedSample = null;
 // ══════════════════════════════════════════════
 window.addEventListener('DOMContentLoaded', () => {
   initAppSkin();
+  initComfortMode();
   if (checkAppBuildUpdate()) return;
   if (typeof syncMobileNav === 'function') setTimeout(syncMobileNav, 100);
   if (typeof syncMapStyleButtons === 'function') syncMapStyleButtons();
@@ -8451,6 +8530,56 @@ function applySkin(skinId) {
   document.body.style.backgroundImage = skin.bodyBg || 'none';
   localStorage.setItem(SKIN_STORAGE_KEY, skinId);
   renderSkinPicker();
+  if (isComfortMode()) applyComfortColors();
+}
+
+const COMFORT_STORAGE_KEY = 'labtrak_comfort_mode';
+
+function isComfortMode() {
+  try { return localStorage.getItem(COMFORT_STORAGE_KEY) === '1'; } catch { return false; }
+}
+
+function applyComfortColors() {
+  if (getActiveSkinId() === 'light') return;
+  const soft = {
+    '--bg': '#131a24', '--surface': '#1a2330', '--panel': '#212c3c', '--border': '#2d3a4d',
+    '--text': '#d4e0ec', '--muted': '#708498', '--accent': '#b07832', '--accent2': '#cc9450', '--gold': '#c89848',
+  };
+  Object.entries(soft).forEach(([k, v]) => document.documentElement.style.setProperty(k, v));
+}
+
+function applyComfortVisuals() {
+  const on = isComfortMode();
+  document.documentElement.classList.toggle('comfort-mode', on);
+  if (on) applyComfortColors();
+  updateComfortModeUI();
+}
+
+function setComfortMode(on) {
+  try { localStorage.setItem(COMFORT_STORAGE_KEY, on ? '1' : '0'); } catch {}
+  applyComfortVisuals();
+  if (!on) applySkin(getActiveSkinId());
+  if (typeof showToast === 'function') showToast(on ? 'Comfort mode on' : 'Comfort mode off', 'success');
+}
+
+function toggleComfortMode() {
+  setComfortMode(!isComfortMode());
+}
+
+function updateComfortModeUI() {
+  const on = isComfortMode();
+  const sw = document.getElementById('comfortModeSwitch');
+  if (sw) { sw.classList.toggle('on', on); sw.setAttribute('aria-pressed', on ? 'true' : 'false'); }
+  const btn = document.getElementById('btnComfortMode');
+  if (btn) {
+    btn.classList.toggle('active', on);
+    btn.setAttribute('aria-pressed', on ? 'true' : 'false');
+    btn.title = on ? 'Comfort mode on — click to turn off' : 'Comfort mode — softer visuals for long sessions';
+  }
+}
+
+function initComfortMode() {
+  applyComfortVisuals();
 }
 
 function renderSkinPicker() {
@@ -8767,6 +8896,7 @@ function showSetup() {
   refreshAuthProvisionUI();
   refreshSessionActionsUI();
   renderSkinPicker();
+  updateComfortModeUI();
   _permissionsUnlocked = false; // always start locked
   const isAdmin = currentUser && currentUser.role === 'admin';
 
@@ -20342,7 +20472,6 @@ function getBoreLogContext() {
     const proj = allProjects.find(p => p.contract && p.contract.toLowerCase() === currentProjectFilter.toLowerCase());
     if (proj) {
       ctx.faProject = proj.fa_project || '';
-      ctx.contractor = proj.contractor || '';
       ctx.location = proj.road || proj.description || '';
       ctx.labtrakProjectId = proj.id || '';
     }
