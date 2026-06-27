@@ -1798,44 +1798,6 @@ body { font-family: var(--sans); font-size: 13.5px; line-height: 1.5; letter-spa
 .btn-comfort-mode:hover { color: var(--text); border-color: var(--accent2); background: rgba(196,124,42,0.1); }
 .btn-comfort-mode.active { color: var(--green2); border-color: rgba(46,204,120,0.4); background: rgba(46,204,120,0.1); }
 
-html.comfort-mode { --display: var(--sans); font-size: 15px; }
-html.comfort-mode:not([data-skin="light"]) {
-  --bg: #131a24 !important; --surface: #1a2330 !important; --panel: #212c3c !important;
-  --border: #2d3a4d !important; --text: #d4e0ec !important; --muted: #708498 !important;
-  --accent: #b07832 !important; --accent2: #cc9450 !important; --gold: #c89848 !important;
-}
-html.comfort-mode body { background-image: none !important; }
-html.comfort-mode .hub-greet { font-family: var(--sans); font-size: 24px; font-weight: 600; letter-spacing: -0.01em; }
-html.comfort-mode .topbar-stat-lbl,
-html.comfort-mode .topbar-section,
-html.comfort-mode .topbar-wx-meta,
-html.comfort-mode .user-mgmt-title,
-html.comfort-mode .dash-mod-label,
-html.comfort-mode .dkpi-lbl,
-html.comfort-mode .dash-panel-title,
-html.comfort-mode .dash-mini-table th,
-html.comfort-mode .dash-cal-dow > div,
-html.comfort-mode .stat-card .s-lbl,
-html.comfort-mode .manual-section-title,
-html.comfort-mode .rail-label {
-  text-transform: none !important; letter-spacing: 0.02em !important;
-  font-family: var(--sans) !important;
-}
-html.comfort-mode .topbar-stat-lbl { font-size: 10px !important; }
-html.comfort-mode .topbar-stat-val { font-family: var(--sans); font-size: 18px; font-weight: 600; }
-html.comfort-mode .topbar-section { font-size: 10px !important; letter-spacing: 0.04em !important; }
-html.comfort-mode .user-mgmt-title { font-size: 11px !important; letter-spacing: 0.06em !important; }
-html.comfort-mode .btn-cmd-search { font-family: var(--sans); font-size: 10px; letter-spacing: 0.02em; text-transform: none; }
-html.comfort-mode .sync-status-chip { font-family: var(--sans); font-size: 10px; letter-spacing: 0.02em; }
-html.comfort-mode .topbar-stat-dot,
-html.comfort-mode .sync-status-chip .sync-status-dot,
-html.comfort-mode .conn-dot { box-shadow: none !important; }
-html.comfort-mode .topbar-stat-dot.red,
-html.comfort-mode .offline-dot,
-html.comfort-mode .sync-status-chip.syncing .sync-status-dot { animation: none !important; }
-html.comfort-mode #navRail { background: var(--surface); border-right-color: var(--border); }
-html.comfort-mode .setup-card .setup-logo { font-family: var(--sans); letter-spacing: 0.04em; }
-
 .user-badge {
   background: rgba(255,255,255,0.04);
   border: 1px solid rgba(255,255,255,0.08);
@@ -3119,7 +3081,7 @@ table.fc-borrow-tbl tr.fc-borrow-detail-row td{background:var(--surface);border-
       <div class="comfort-mode-control" id="comfortModeControl">
         <div class="comfort-mode-copy">
           <div class="comfort-mode-title">Comfort mode</div>
-          <div class="comfort-mode-desc">Softer colors, sentence-case labels, and calmer motion for long lab shifts.</div>
+          <div class="comfort-mode-desc">Inter labels instead of condensed caps, larger type, softer colors, and calmer motion.</div>
         </div>
         <button type="button" class="comfort-switch" id="comfortModeSwitch" onclick="toggleComfortMode()"
                 role="switch" aria-label="Comfort mode" aria-pressed="false"></button>
@@ -6293,7 +6255,7 @@ table.fc-borrow-tbl tr.fc-borrow-detail-row td{background:var(--surface);border-
 // GLOBALS
 // ══════════════════════════════════════════════
 let db = null;
-const APP_BUILD = '2026.06.17-comfort-mode-lab-borelog';
+const APP_BUILD = '2026.06.17-comfort-mode-typography';
 const FC_CORE_ICON_SRC = 'docs/r18-reference/core-drill-icon-128.png';
 const BORELOG_ICON_SRC = 'docs/r18-reference/borelog-icon.webp';
 const BORELOG_PATH = 'docs/r18-reference/deldot-borelog.html';
@@ -23582,6 +23544,73 @@ body::after {
 }
 .dash-contract-row:last-child { border-bottom: none !important; }
 .dash-contract-row:hover { background: transparent !important; border-color: transparent !important; border-left-color: var(--accent2) !important; border-bottom-color: var(--border) !important; }
+
+/* ══ Comfort mode — must be last to override theme refresh + motion layers ══ */
+html.comfort-mode {
+  --display: var(--sans);
+  --mono: var(--sans);
+  font-size: 15px;
+}
+html.comfort-mode:not([data-skin="light"]) {
+  --bg: #131a24 !important; --surface: #1a2330 !important; --panel: #212c3c !important;
+  --border: #2d3a4d !important; --text: #d4e0ec !important; --muted: #708498 !important;
+  --accent: #b07832 !important; --accent2: #cc9450 !important; --gold: #c89848 !important;
+}
+html.comfort-mode body {
+  background-image: none !important;
+  font-size: 15px;
+  line-height: 1.55;
+}
+html.comfort-mode #navRail {
+  background: var(--surface) !important;
+  border-right-color: var(--border) !important;
+}
+html.comfort-mode :where(
+  h1, h2, h3, h4, h5, h6,
+  label,
+  .card-title, .hub-greet, .hub-kpi-lbl, .hub-panel-title, .hub-panel-hdr,
+  .hub-cal-title, .hub-action-btn, .hub-role-badge, .hub-kpi-sub,
+  .dash-greet-main, .dash-mod-label, .dkpi-lbl, .dash-panel-title,
+  .stat-card .s-lbl, .topbar-stat-lbl, .topbar-section, .topbar-wx-meta,
+  .topbar-wx-clock, .topbar-wx-temp, .topbar-wx-desc,
+  .rail-label, .user-mgmt-title, .btn-cmd-search, .sync-status-chip,
+  .btn-settings, .mf label, .manual-section-title, .dash-mini-table th,
+  .dash-cal-dow > div, .setup-card .setup-logo, .setup-field label,
+  .mobile-more-title, .skin-swatch-label, .ubadge-role,
+  .edit-panel h2, .pc-name, .pc-meta, .toast
+) {
+  font-family: var(--sans) !important;
+  text-transform: none !important;
+  letter-spacing: 0.02em !important;
+}
+html.comfort-mode :where(
+  .topbar-stat-val, .hub-kpi-val, .dkpi-val, .stat-card .s-num,
+  .dash-greet-main, .hub-wx-temp, .hub-greet
+) {
+  font-family: var(--sans) !important;
+  letter-spacing: 0 !important;
+}
+html.comfort-mode .card-title { font-size: 11px !important; font-weight: 600 !important; }
+html.comfort-mode .hub-kpi-lbl { font-size: 10px !important; }
+html.comfort-mode .hub-panel-title { font-size: 11px !important; }
+html.comfort-mode .mf label { font-size: 11px !important; }
+html.comfort-mode .topbar-stat-lbl { font-size: 10px !important; }
+html.comfort-mode .topbar-section { font-size: 10px !important; }
+html.comfort-mode .rail-label { font-size: 8px !important; }
+html.comfort-mode .user-mgmt-title { font-size: 11px !important; }
+html.comfort-mode .hub-greet { font-size: 24px !important; font-weight: 600 !important; }
+html.comfort-mode .btn-cmd-search { font-size: 10px !important; }
+html.comfort-mode .sync-status-chip { font-size: 10px !important; }
+html.comfort-mode [style*="text-transform:uppercase"],
+html.comfort-mode [style*="text-transform: uppercase"] {
+  text-transform: none !important;
+}
+html.comfort-mode .topbar-stat-dot,
+html.comfort-mode .sync-status-chip .sync-status-dot,
+html.comfort-mode .conn-dot { box-shadow: none !important; }
+html.comfort-mode .topbar-stat-dot.red,
+html.comfort-mode .offline-dot,
+html.comfort-mode .sync-status-chip.syncing .sync-status-dot { animation: none !important; }
 
 </style>
 

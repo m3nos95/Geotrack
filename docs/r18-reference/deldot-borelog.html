@@ -430,30 +430,32 @@ nav{background:var(--surface);border-bottom:1px solid var(--border);box-shadow:0
   padding:5px 9px;font-family:var(--sans);font-size:14px;line-height:1;cursor:pointer;border-radius:var(--radius-sm);transition:all .15s;}
 .btn-comfort-mode:hover{color:var(--text);border-color:var(--accent2);background:rgba(196,124,42,0.1);}
 .btn-comfort-mode.active{color:var(--green2);border-color:rgba(46,204,120,0.4);background:rgba(46,204,120,0.1);}
-html.comfort-mode{--display:var(--sans);font-size:15px;
+html.comfort-mode{--display:var(--sans);--mono:var(--sans);font-size:15px;
   --bg:#131a24;--surface:#1a2330;--panel:#212c3c;--border:#2d3a4d;
   --text:#d4e0ec;--muted:#708498;--accent:#b07832;--accent2:#cc9450;--gold:#c89848;}
-html.comfort-mode body{background-image:none !important;}
-html.comfort-mode .nav-logo{text-transform:none;letter-spacing:0.02em;font-family:var(--sans);font-size:14px;font-weight:600;}
-html.comfort-mode .nav-logo .app-sub{letter-spacing:0.04em;font-family:var(--sans);font-size:10px;}
-html.comfort-mode .nav-tab{text-transform:none;letter-spacing:0.02em;font-family:var(--sans);font-size:13px;}
-html.comfort-mode .card-title,
-html.comfort-mode .form-group label,
-html.comfort-mode .page-head h2,
-html.comfort-mode .gs-row label,
-html.comfort-mode .gs-computed .gc-lbl,
-html.comfort-mode .gs-tab,
-html.comfort-mode .gs-panel .gp-title,
-html.comfort-mode .sub-section .ss-title,
-html.comfort-mode .sample-editor .se-desc-label,
-html.comfort-mode .sieve-tbl th,
-html.comfort-mode .cv-box .cv-lbl,
-html.comfort-mode .htb-label,
-html.comfort-mode .htb-next-label,
-html.comfort-mode .hab-text{text-transform:none !important;letter-spacing:0.02em !important;font-family:var(--sans) !important;}
+html.comfort-mode body{background-image:none !important;font-size:15px;line-height:1.55;}
+html.comfort-mode :where(
+  .nav-logo,.nav-tab,.card-title,.form-group label,.page-head h2,.page-head .ph-sub,
+  .breadcrumb,.list-card .lc-title,.list-card .lc-sub,.pm-section,.splash-wordmark,
+  .gs-row label,.gs-computed .gc-lbl,.gs-tab,.gs-panel .gp-title,.sub-section .ss-title,
+  .sample-editor .se-desc-label,.sieve-tbl th,.cv-box .cv-lbl,.htb-label,.htb-next-label,
+  .hab-text,.bl-sync-chip,.btn,.toast
+){
+  font-family:var(--sans) !important;
+  text-transform:none !important;
+  letter-spacing:0.02em !important;
+}
+html.comfort-mode .card-title{font-size:11px !important;font-weight:600 !important;}
+html.comfort-mode .form-group label{font-size:11px !important;}
+html.comfort-mode .gs-row label{font-size:9px !important;}
 html.comfort-mode .page-head h2{font-size:22px;letter-spacing:0.01em;}
-html.comfort-mode .btn{font-family:var(--sans);letter-spacing:0.02em;text-transform:none;}
-html.comfort-mode .bl-sync-chip{font-family:var(--sans);font-size:10px;letter-spacing:0.02em;}
+html.comfort-mode .list-card .lc-title{font-family:var(--sans) !important;letter-spacing:0.01em !important;}
+html.comfort-mode .form-group input,
+html.comfort-mode .form-group select,
+html.comfort-mode .form-group textarea,
+html.comfort-mode .gs-row input,
+html.comfort-mode .gs-row select,
+html.comfort-mode .sieve-tbl input{font-family:var(--sans) !important;font-size:13px !important;}
 html.comfort-mode .htb-status-dot.running,
 html.comfort-mode .htb-status-dot.warning,
 html.comfort-mode .htb-next-val.due,
