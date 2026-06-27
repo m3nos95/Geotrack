@@ -1473,11 +1473,81 @@ function fmtDate(d){ if(!d)return''; const p=d.split('-'); return p.length===3?`
 function fmtNum(v, dec){ dec=dec==null?1:dec; if(v==null||v===''||isNaN(v)) return ''; return parseFloat(v).toFixed(dec); }
 function toast(msg,err){ const t=$('toast'); t.textContent=msg; t.classList.toggle('err',!!err); t.classList.add('show'); setTimeout(()=>t.classList.remove('show'),2400); }
 
+const LABTRAK_CTX_KEY = 'labtrak_borelog_context';
+
+function _normProjectKey(s) {
+  return (s || '').trim().toLowerCase().replace(/[^a-z0-9]/g, '');
+}
+
+function _readLabTrakContext() {
+  try {
+    const raw = sessionStorage.getItem(LABTRAK_CTX_KEY);
+    if (raw) return JSON.parse(raw);
+  } catch (e) {}
+  const q = new URLSearchParams(location.search);
+  if (!q.get('contract') && q.get('from') !== 'labtrak') return null;
+  return {
+    source: 'labtrak',
+    contract: q.get('contract') || '',
+    faProject: q.get('fa') || '',
+    projectName: q.get('name') || '',
+    contractor: q.get('contractor') || '',
+    location: q.get('location') || '',
+    loggedBy: q.get('logged_by') || '',
+    gps: q.get('gps') || '',
+  };
+}
+
+function applyLabTrakContext() {
+  const ctx = _readLabTrakContext();
+  if (!ctx) return;
+
+  const contract = (ctx.contract || '').trim();
+  const federal = (ctx.faProject || ctx.fa_project || '').trim();
+  const loggedBy = (ctx.loggedBy || ctx.logged_by || '').trim();
+  const location = (ctx.location || ctx.gps || '').trim();
+  const projects = Object.values(store.getProjects());
+  const match = projects.find(p => {
+    if (contract && _normProjectKey(p.contract_no) === _normProjectKey(contract)) return true;
+    if (federal && _normProjectKey(p.federal_no) === _normProjectKey(federal)) return true;
+    return false;
+  });
+
+  if (match) {
+    if (loggedBy && !match.logged_by) {
+      match.logged_by = loggedBy;
+      match.updated_at = new Date().toISOString();
+      store.saveProject(match);
+    }
+    openProject(match.id);
+    toast('Opened LabTrak project');
+    return;
+  }
+
+  if (!contract && !federal && !ctx.projectName) return;
+
+  openProjectModal();
+  const set = (id, val) => { const el = $(id); if (el && val) el.value = val; };
+  set('pm_name', (ctx.projectName || contract || federal).trim());
+  set('pm_contract_no', contract);
+  set('pm_federal_no', federal);
+  set('pm_location', location);
+  set('pm_route', ctx.location || '');
+  set('pm_contractor', ctx.contractor || '');
+  set('pm_logged_by', loggedBy);
+  toast('LabTrak project details loaded — review and save');
+}
+
 function startApp(){
   const ol = $('setupOverlay');
   ol.style.transition='opacity .4s';
   ol.style.opacity='0';
-  setTimeout(()=>{ ol.style.display='none'; $('app').style.display='grid'; renderProjects(); }, 380);
+  setTimeout(()=>{
+    ol.style.display='none';
+    $('app').style.display='grid';
+    renderProjects();
+    applyLabTrakContext();
+  }, 380);
 }
 // Wire logo into splash as soon as script runs
 (function(){ const el = document.getElementById('splashLogo'); if(el) el.src = DELDOT_LOGO; })();
