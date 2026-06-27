@@ -332,6 +332,71 @@ CREATE TRIGGER trg_concrete_sets_updated_at
   BEFORE UPDATE ON concrete_sets
   FOR EACH ROW EXECUTE FUNCTION set_updated_at();
 
+-- ── BoreLog (geotech borings — syncs with docs/r18-reference/deldot-borelog.html) ──
+CREATE TABLE IF NOT EXISTS borelog_projects (
+  id                  TEXT PRIMARY KEY,
+  labtrak_project_id  UUID REFERENCES projects(id) ON DELETE SET NULL,
+  contract            TEXT,
+  name                TEXT NOT NULL,
+  federal_no          TEXT,
+  county              TEXT,
+  route               TEXT,
+  structure           TEXT,
+  location            TEXT,
+  contractor          TEXT,
+  rig                 TEXT,
+  driller             TEXT,
+  logged_by           TEXT,
+  supervisor          TEXT,
+  reviewed_by         TEXT,
+  date_start          TEXT,
+  date_end            TEXT,
+  remarks             TEXT,
+  created_at          TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at          TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  deleted_at          TIMESTAMPTZ
+);
+
+CREATE TABLE IF NOT EXISTS borelog_borings (
+  id           TEXT PRIMARY KEY,
+  project_id   TEXT NOT NULL REFERENCES borelog_projects(id) ON DELETE CASCADE,
+  boring_no    TEXT,
+  header_data  JSONB NOT NULL DEFAULT '{}',
+  created_at   TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at   TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  deleted_at   TIMESTAMPTZ
+);
+
+CREATE TABLE IF NOT EXISTS borelog_samples (
+  id           TEXT PRIMARY KEY,
+  boring_id    TEXT NOT NULL REFERENCES borelog_borings(id) ON DELETE CASCADE,
+  project_id   TEXT NOT NULL REFERENCES borelog_projects(id) ON DELETE CASCADE,
+  sample_no    INTEGER NOT NULL DEFAULT 0,
+  lab_data     JSONB NOT NULL DEFAULT '{}',
+  created_at   TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at   TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  deleted_at   TIMESTAMPTZ
+);
+
+CREATE INDEX IF NOT EXISTS idx_borelog_projects_contract ON borelog_projects (contract) WHERE deleted_at IS NULL;
+CREATE INDEX IF NOT EXISTS idx_borelog_borings_project  ON borelog_borings (project_id) WHERE deleted_at IS NULL;
+CREATE INDEX IF NOT EXISTS idx_borelog_samples_boring   ON borelog_samples (boring_id, sample_no) WHERE deleted_at IS NULL;
+
+DROP TRIGGER IF EXISTS trg_borelog_projects_updated_at ON borelog_projects;
+CREATE TRIGGER trg_borelog_projects_updated_at
+  BEFORE UPDATE ON borelog_projects
+  FOR EACH ROW EXECUTE FUNCTION set_updated_at();
+
+DROP TRIGGER IF EXISTS trg_borelog_borings_updated_at ON borelog_borings;
+CREATE TRIGGER trg_borelog_borings_updated_at
+  BEFORE UPDATE ON borelog_borings
+  FOR EACH ROW EXECUTE FUNCTION set_updated_at();
+
+DROP TRIGGER IF EXISTS trg_borelog_samples_updated_at ON borelog_samples;
+CREATE TRIGGER trg_borelog_samples_updated_at
+  BEFORE UPDATE ON borelog_samples
+  FOR EACH ROW EXECUTE FUNCTION set_updated_at();
+
 -- ── Audit log (sample status / approval changes) ───────────────
 CREATE TABLE IF NOT EXISTS sample_history (
   id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -362,6 +427,9 @@ ALTER TABLE concrete_sets    ENABLE ROW LEVEL SECURITY;
 ALTER TABLE field_tests      ENABLE ROW LEVEL SECURITY;
 ALTER TABLE core_drills      ENABLE ROW LEVEL SECURITY;
 ALTER TABLE sample_history   ENABLE ROW LEVEL SECURITY;
+ALTER TABLE borelog_projects ENABLE ROW LEVEL SECURITY;
+ALTER TABLE borelog_borings  ENABLE ROW LEVEL SECURITY;
+ALTER TABLE borelog_samples  ENABLE ROW LEVEL SECURITY;
 
 DROP POLICY IF EXISTS "labtrak_projects_all"         ON projects;
 DROP POLICY IF EXISTS "labtrak_samples_all"          ON samples;
@@ -374,6 +442,9 @@ DROP POLICY IF EXISTS "labtrak_concrete_sets_all"    ON concrete_sets;
 DROP POLICY IF EXISTS "labtrak_field_tests_all"      ON field_tests;
 DROP POLICY IF EXISTS "labtrak_core_drills_all"      ON core_drills;
 DROP POLICY IF EXISTS "labtrak_sample_history_all"   ON sample_history;
+DROP POLICY IF EXISTS "labtrak_borelog_projects_all"  ON borelog_projects;
+DROP POLICY IF EXISTS "labtrak_borelog_borings_all" ON borelog_borings;
+DROP POLICY IF EXISTS "labtrak_borelog_samples_all"  ON borelog_samples;
 
 -- Drop legacy policy names from embedded HTML comment
 DROP POLICY IF EXISTS "Allow all projects" ON projects;
@@ -390,3 +461,6 @@ CREATE POLICY "labtrak_concrete_sets_all"    ON concrete_sets    FOR ALL USING (
 CREATE POLICY "labtrak_field_tests_all"      ON field_tests      FOR ALL USING (true) WITH CHECK (true);
 CREATE POLICY "labtrak_core_drills_all"      ON core_drills      FOR ALL USING (true) WITH CHECK (true);
 CREATE POLICY "labtrak_sample_history_all"   ON sample_history   FOR ALL USING (true) WITH CHECK (true);
+CREATE POLICY "labtrak_borelog_projects_all" ON borelog_projects FOR ALL USING (true) WITH CHECK (true);
+CREATE POLICY "labtrak_borelog_borings_all"  ON borelog_borings  FOR ALL USING (true) WITH CHECK (true);
+CREATE POLICY "labtrak_borelog_samples_all"  ON borelog_samples  FOR ALL USING (true) WITH CHECK (true);

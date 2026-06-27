@@ -4,6 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>DelDOT Borelog v5 — Materials &amp; Research Lab</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
 <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Roboto+Condensed:wght@400;700&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
 <style>
 :root {
@@ -73,6 +74,10 @@ nav{background:var(--surface);border-bottom:1px solid var(--border);box-shadow:0
   transform:translateY(-100px);opacity:0;transition:all .25s;z-index:1000;box-shadow:var(--shadow);}
 .toast.show{transform:translateY(0);opacity:1;}
 .toast.err{background:var(--red);}
+.bl-sync-chip{font-family:var(--mono);font-size:9px;letter-spacing:1px;padding:4px 10px;border-radius:99px;border:1px solid var(--border);color:var(--muted);white-space:nowrap;}
+.bl-sync-chip.ok{color:var(--green2);border-color:rgba(46,204,120,0.35);}
+.bl-sync-chip.pending{color:var(--gold);border-color:rgba(219,160,64,0.35);}
+.bl-sync-chip.off{color:var(--muted);opacity:0.7;}
 .list-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);
   padding:18px 22px;margin-bottom:10px;cursor:pointer;transition:all .15s;display:flex;justify-content:space-between;align-items:center;}
 .list-card:hover{border-color:var(--accent2);background:var(--panel);}
@@ -439,7 +444,7 @@ nav{background:var(--surface);border-bottom:1px solid var(--border);box-shadow:0
     <div class="splash-enter">
       <button onclick="startApp()">⊙ &nbsp;ENTER</button>
     </div>
-    <div class="splash-tagline">Standalone · No install · localStorage · Free replacement for LOGDRAFT + LabSuite</div>
+    <div class="splash-tagline">Standalone · LabTrak cloud sync · localStorage cache · LOGDRAFT import</div>
   </div>
 </div>
 
@@ -456,6 +461,10 @@ nav{background:var(--surface);border-bottom:1px solid var(--border);box-shadow:0
       <div class="nav-tab" data-view="log-print">📄 LOG</div>
       <div class="nav-tab" data-view="psd-print">📊 PSD REPORT</div>
     </div>
+    <div id="blSyncWrap" style="margin-left:auto;display:flex;align-items:center;gap:8px;padding-right:4px;flex-shrink:0;">
+      <span id="blSyncChip" class="bl-sync-chip off" title="Uses LabTrak Supabase settings">LOCAL</span>
+      <button type="button" class="btn btn-ghost btn-sm" onclick="syncBorelogNow()" id="blSyncBtn">☁ SYNC</button>
+    </div>
   </nav>
 
   <div class="main">
@@ -465,6 +474,7 @@ nav{background:var(--surface);border-bottom:1px solid var(--border);box-shadow:0
         <div><h2>Projects</h2><div class="ph-sub">Top-level container for borings</div></div>
         <div style="display:flex;gap:10px;flex-wrap:wrap;">
           <button class="btn btn-ghost" onclick="openGeoImport()" title="Import a GeoSystem LOGDRAFT .GEO project folder">⬆ IMPORT .GEO</button>
+          <button class="btn btn-ghost" onclick="syncBorelogNow()" title="Pull from LabTrak cloud and push local changes">☁ SYNC NOW</button>
           <button class="btn btn-primary" onclick="openProjectModal()">+ NEW PROJECT</button>
         </div>
       </div>
@@ -800,31 +810,374 @@ const DELDOT_LOGO = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAPAAAADwCAYAA
    - Storage wrapper abstracted for future Supabase port
    ========================================================================= */
 const STORE_KEY = 'deldot_borelog_v2';
+const SB_URL_KEY = 'labtrak_sb_url';
+const SB_KEY_KEY = 'labtrak_sb_anon_key';
+const BORELOG_SYNC_QUEUE_KEY = 'deldot_borelog_sync_queue';
 
-/* ---------- STORAGE ---------- */
-const store = {
+/* ---------- STORAGE (local + cloud queue) ---------- */
+const _storeCore = {
   _all:()=>{ try { return JSON.parse(localStorage.getItem(STORE_KEY)||'{}'); } catch(e){ return {}; } },
   _save:(o)=>localStorage.setItem(STORE_KEY, JSON.stringify(o)),
-  getProjects:()=>store._all().projects||{},
-  getProject:(id)=>(store._all().projects||{})[id],
-  saveProject:(p)=>{const all=store._all();all.projects=all.projects||{};all.projects[p.id]=p;store._save(all);},
-  delProject:(id)=>{const all=store._all();
+  getProjects:()=>_storeCore._all().projects||{},
+  getProject:(id)=>(_storeCore._all().projects||{})[id],
+  saveProject:(p)=>{const all=_storeCore._all();all.projects=all.projects||{};all.projects[p.id]=p;_storeCore._save(all);},
+  delProject:(id)=>{const all=_storeCore._all();
     if(all.projects) delete all.projects[id];
     if(all.borings) Object.keys(all.borings).forEach(bid=>{if(all.borings[bid].project_id===id) delete all.borings[bid];});
     if(all.samples) Object.keys(all.samples).forEach(sid=>{if(all.samples[sid].project_id===id) delete all.samples[sid];});
-    store._save(all);},
-  getBorings:(projId)=>{const b=store._all().borings||{};return Object.values(b).filter(x=>x.project_id===projId);},
-  getBoring:(id)=>(store._all().borings||{})[id],
-  saveBoring:(b)=>{const all=store._all();all.borings=all.borings||{};all.borings[b.id]=b;store._save(all);},
-  delBoring:(id)=>{const all=store._all();
+    _storeCore._save(all);},
+  getBorings:(projId)=>{const b=_storeCore._all().borings||{};return Object.values(b).filter(x=>x.project_id===projId);},
+  getBoring:(id)=>(_storeCore._all().borings||{})[id],
+  saveBoring:(b)=>{const all=_storeCore._all();all.borings=all.borings||{};all.borings[b.id]=b;_storeCore._save(all);},
+  delBoring:(id)=>{const all=_storeCore._all();
     if(all.borings) delete all.borings[id];
     if(all.samples) Object.keys(all.samples).forEach(sid=>{if(all.samples[sid].boring_id===id) delete all.samples[sid];});
-    store._save(all);},
-  getSamples:(boringId)=>{const s=store._all().samples||{};return Object.values(s).filter(x=>x.boring_id===boringId).sort((a,b)=>(a.sample_no||0)-(b.sample_no||0));},
-  getSample:(id)=>(store._all().samples||{})[id],
-  saveSample:(s)=>{const all=store._all();all.samples=all.samples||{};all.samples[s.id]=s;store._save(all);},
-  delSample:(id)=>{const all=store._all();if(all.samples) delete all.samples[id];store._save(all);}
+    _storeCore._save(all);},
+  getSamples:(boringId)=>{const s=_storeCore._all().samples||{};return Object.values(s).filter(x=>x.boring_id===boringId).sort((a,b)=>(a.sample_no||0)-(b.sample_no||0));},
+  getSample:(id)=>(_storeCore._all().samples||{})[id],
+  saveSample:(s)=>{const all=_storeCore._all();all.samples=all.samples||{};all.samples[s.id]=s;_storeCore._save(all);},
+  delSample:(id)=>{const all=_storeCore._all();if(all.samples) delete all.samples[id];_storeCore._save(all);}
 };
+
+function _touchUpdatedAt(obj) {
+  obj.updated_at = new Date().toISOString();
+  return obj;
+}
+
+const store = {
+  _all: () => _storeCore._all(),
+  _save: (o) => _storeCore._save(o),
+  getProjects: () => _storeCore.getProjects(),
+  getProject: (id) => _storeCore.getProject(id),
+  saveProject(p) {
+    _touchUpdatedAt(p);
+    _storeCore.saveProject(p);
+    borelogQueueUpsert('borelog_projects', p);
+  },
+  delProject(id) {
+    _storeCore.delProject(id);
+    borelogQueueDelete('borelog_projects', id);
+  },
+  getBorings: (projId) => _storeCore.getBorings(projId),
+  getBoring: (id) => _storeCore.getBoring(id),
+  saveBoring(b) {
+    _touchUpdatedAt(b);
+    _storeCore.saveBoring(b);
+    borelogQueueUpsert('borelog_borings', b);
+  },
+  delBoring(id) {
+    _storeCore.delBoring(id);
+    borelogQueueDelete('borelog_borings', id);
+  },
+  getSamples: (boringId) => _storeCore.getSamples(boringId),
+  getSample: (id) => _storeCore.getSample(id),
+  saveSample(s) {
+    _touchUpdatedAt(s);
+    _storeCore.saveSample(s);
+    borelogQueueUpsert('borelog_samples', s);
+  },
+  delSample(id) {
+    _storeCore.delSample(id);
+    borelogQueueDelete('borelog_samples', id);
+  }
+};
+
+/* ---------- SUPABASE SYNC ---------- */
+let _blDb = null;
+
+function _blTs(v) { return v ? new Date(v).getTime() : 0; }
+
+function updateBlSyncChip(state, label) {
+  const el = $('blSyncChip');
+  if (!el) return;
+  el.className = 'bl-sync-chip ' + (state || 'off');
+  el.textContent = label || state || 'LOCAL';
+}
+
+function getBorelogSupabaseClient() {
+  if (_blDb) return _blDb;
+  if (typeof supabase === 'undefined') return null;
+  const url = localStorage.getItem(SB_URL_KEY);
+  const key = localStorage.getItem(SB_KEY_KEY);
+  if (!url || !key) return null;
+  _blDb = supabase.createClient(url, key, {
+    auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true, storage: localStorage }
+  });
+  return _blDb;
+}
+
+function _labtrakProjectLink(p) {
+  if (p.labtrak_project_id) return p.labtrak_project_id;
+  try {
+    const ctx = _readLabTrakContext();
+    if (ctx?.labtrakProjectId) return ctx.labtrakProjectId;
+  } catch (e) {}
+  return null;
+}
+
+function projectToRow(p) {
+  return {
+    id: p.id,
+    labtrak_project_id: _labtrakProjectLink(p),
+    contract: p.contract_no || '',
+    name: p.name,
+    federal_no: p.federal_no || '',
+    county: p.county || '',
+    route: p.route || '',
+    structure: p.structure || '',
+    location: p.location || '',
+    contractor: p.contractor || '',
+    rig: p.rig || '',
+    driller: p.driller || '',
+    logged_by: p.logged_by || '',
+    supervisor: p.supervisor || '',
+    reviewed_by: p.reviewed_by || '',
+    date_start: p.date_start || '',
+    date_end: p.date_end || '',
+    remarks: p.remarks || '',
+    updated_at: p.updated_at || new Date().toISOString(),
+    deleted_at: null
+  };
+}
+
+function rowToProject(r) {
+  return {
+    id: r.id,
+    labtrak_project_id: r.labtrak_project_id || null,
+    name: r.name,
+    contract_no: r.contract || '',
+    federal_no: r.federal_no || '',
+    county: r.county || '',
+    route: r.route || '',
+    structure: r.structure || '',
+    location: r.location || '',
+    contractor: r.contractor || '',
+    rig: r.rig || '',
+    driller: r.driller || '',
+    logged_by: r.logged_by || '',
+    supervisor: r.supervisor || '',
+    reviewed_by: r.reviewed_by || '',
+    date_start: r.date_start || '',
+    date_end: r.date_end || '',
+    remarks: r.remarks || '',
+    created_at: r.created_at,
+    updated_at: r.updated_at
+  };
+}
+
+function boringToRow(b) {
+  const { id, project_id, boring_no, updated_at, created_at, ...header } = b;
+  return {
+    id,
+    project_id,
+    boring_no: boring_no || '',
+    header_data: header,
+    updated_at: updated_at || new Date().toISOString(),
+    deleted_at: null
+  };
+}
+
+function rowToBoring(r) {
+  return {
+    id: r.id,
+    project_id: r.project_id,
+    boring_no: r.boring_no || '',
+    ...(r.header_data || {}),
+    created_at: r.created_at,
+    updated_at: r.updated_at
+  };
+}
+
+function sampleToRow(s) {
+  const { id, boring_id, project_id, sample_no, updated_at, created_at, ...lab } = s;
+  return {
+    id,
+    boring_id,
+    project_id,
+    sample_no: sample_no || 0,
+    lab_data: lab,
+    updated_at: updated_at || new Date().toISOString(),
+    deleted_at: null
+  };
+}
+
+function rowToSample(r) {
+  return {
+    id: r.id,
+    boring_id: r.boring_id,
+    project_id: r.project_id,
+    sample_no: r.sample_no || 0,
+    ...(r.lab_data || {}),
+    created_at: r.created_at,
+    updated_at: r.updated_at
+  };
+}
+
+function _readBorelogSyncQueue() {
+  try { return JSON.parse(localStorage.getItem(BORELOG_SYNC_QUEUE_KEY) || '[]'); } catch { return []; }
+}
+
+function _writeBorelogSyncQueue(q) {
+  try { localStorage.setItem(BORELOG_SYNC_QUEUE_KEY, JSON.stringify(q)); } catch (e) {}
+  updateBlSyncChip(q.length ? 'pending' : (_blDb ? 'ok' : 'off'), q.length ? `PENDING ${q.length}` : (_blDb ? 'CLOUD' : 'LOCAL'));
+}
+
+function borelogQueueUpsert(table, entity) {
+  let q = _readBorelogSyncQueue().filter(e => !(e.table === table && e.op === 'upsert' && e.id === entity.id));
+  q.push({ table, op: 'upsert', id: entity.id, entity });
+  _writeBorelogSyncQueue(q);
+  if (_blDb) flushBorelogSyncQueue();
+}
+
+function borelogQueueDelete(table, id) {
+  let q = _readBorelogSyncQueue().filter(e => !(e.table === table && e.id === id));
+  q.push({ table, op: 'delete', id });
+  _writeBorelogSyncQueue(q);
+  if (_blDb) flushBorelogSyncQueue();
+}
+
+async function flushBorelogSyncQueue() {
+  const db = getBorelogSupabaseClient();
+  if (!db) return;
+  let q = _readBorelogSyncQueue();
+  if (!q.length) return;
+  const remaining = [];
+  for (const entry of q) {
+    try {
+      if (entry.op === 'delete') {
+        const now = new Date().toISOString();
+        const { error } = await db.from(entry.table).update({ deleted_at: now, updated_at: now }).eq('id', entry.id);
+        if (error) throw error;
+      } else if (entry.op === 'upsert' && entry.entity) {
+        let row;
+        if (entry.table === 'borelog_projects') row = projectToRow(entry.entity);
+        else if (entry.table === 'borelog_borings') row = boringToRow(entry.entity);
+        else if (entry.table === 'borelog_samples') row = sampleToRow(entry.entity);
+        else continue;
+        const { error } = await db.from(entry.table).upsert(row, { onConflict: 'id' });
+        if (error) throw error;
+      }
+    } catch (e) {
+      console.warn('borelog sync queue:', entry, e);
+      remaining.push(entry);
+    }
+  }
+  _writeBorelogSyncQueue(remaining);
+}
+
+async function pullAndMergeBorelog() {
+  const db = getBorelogSupabaseClient();
+  if (!db) return false;
+  const [pRes, bRes, sRes] = await Promise.all([
+    db.from('borelog_projects').select('*').is('deleted_at', null),
+    db.from('borelog_borings').select('*').is('deleted_at', null),
+    db.from('borelog_samples').select('*').is('deleted_at', null),
+  ]);
+  if (pRes.error) throw pRes.error;
+  if (bRes.error) throw bRes.error;
+  if (sRes.error) throw sRes.error;
+
+  const local = store._all();
+  const merged = {
+    projects: { ...(local.projects || {}) },
+    borings: { ...(local.borings || {}) },
+    samples: { ...(local.samples || {}) }
+  };
+
+  (pRes.data || []).forEach(r => {
+    const p = rowToProject(r);
+    const cur = merged.projects[p.id];
+    if (!cur || _blTs(p.updated_at) >= _blTs(cur.updated_at)) merged.projects[p.id] = p;
+  });
+  (bRes.data || []).forEach(r => {
+    const b = rowToBoring(r);
+    const cur = merged.borings[b.id];
+    if (!cur || _blTs(b.updated_at) >= _blTs(cur.updated_at)) merged.borings[b.id] = b;
+  });
+  (sRes.data || []).forEach(r => {
+    const s = rowToSample(r);
+    const cur = merged.samples[s.id];
+    if (!cur || _blTs(s.updated_at) >= _blTs(cur.updated_at)) merged.samples[s.id] = s;
+  });
+
+  store._save(merged);
+
+  const cloudProjIds = new Set((pRes.data || []).map(r => r.id));
+  const cloudBorIds = new Set((bRes.data || []).map(r => r.id));
+  const cloudSampIds = new Set((sRes.data || []).map(r => r.id));
+  const cloudProjMap = Object.fromEntries((pRes.data || []).map(r => [r.id, r]));
+  const cloudBorMap = Object.fromEntries((bRes.data || []).map(r => [r.id, r]));
+  const cloudSampMap = Object.fromEntries((sRes.data || []).map(r => [r.id, r]));
+
+  Object.values(merged.projects).forEach(p => {
+    if (!cloudProjIds.has(p.id) || _blTs(p.updated_at) > _blTs(cloudProjMap[p.id]?.updated_at)) {
+      borelogQueueUpsert('borelog_projects', p);
+    }
+  });
+  Object.values(merged.borings).forEach(b => {
+    if (!cloudBorIds.has(b.id) || _blTs(b.updated_at) > _blTs(cloudBorMap[b.id]?.updated_at)) {
+      borelogQueueUpsert('borelog_borings', b);
+    }
+  });
+  Object.values(merged.samples).forEach(s => {
+    if (!cloudSampIds.has(s.id) || _blTs(s.updated_at) > _blTs(cloudSampMap[s.id]?.updated_at)) {
+      borelogQueueUpsert('borelog_samples', s);
+    }
+  });
+
+  return true;
+}
+
+async function initBorelogSync() {
+  const db = getBorelogSupabaseClient();
+  if (!db) {
+    updateBlSyncChip('off', 'LOCAL');
+    return;
+  }
+  try {
+    const probe = await db.from('borelog_projects').select('id').limit(1);
+    if (probe.error) {
+      if (/relation|does not exist|42P01/i.test(probe.error.message || '')) {
+        updateBlSyncChip('off', 'NO TABLE');
+        toast('Run supabase migration 20260701_borelog_sync.sql', true);
+        return;
+      }
+      throw probe.error;
+    }
+    await pullAndMergeBorelog();
+    await flushBorelogSyncQueue();
+    updateBlSyncChip('ok', 'CLOUD');
+  } catch (e) {
+    console.warn('initBorelogSync:', e);
+    updateBlSyncChip('pending', 'OFFLINE');
+  }
+}
+
+async function syncBorelogNow() {
+  const btn = $('blSyncBtn');
+  if (btn) btn.disabled = true;
+  try {
+    if (!getBorelogSupabaseClient()) {
+      toast('Connect LabTrak to Supabase first (Settings)', true);
+      updateBlSyncChip('off', 'NO CONFIG');
+      return;
+    }
+    updateBlSyncChip('pending', 'SYNCING…');
+    await pullAndMergeBorelog();
+    await flushBorelogSyncQueue();
+    updateBlSyncChip('ok', 'CLOUD');
+    if (document.querySelector('#view-projects.active')) renderProjects();
+    if (document.querySelector('#view-borings.active') && currentProjectId) renderBorings();
+    if (document.querySelector('#view-boring-edit.active') && currentBoringId) renderBoringEdit();
+    toast('Cloud sync complete');
+  } catch (e) {
+    console.warn('syncBorelogNow:', e);
+    updateBlSyncChip('pending', 'ERROR');
+    toast('Sync failed: ' + (e.message || e), true);
+  } finally {
+    if (btn) btn.disabled = false;
+  }
+}
 const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2,8);
 
 /* =========================================================================
@@ -1547,6 +1900,7 @@ function startApp(){
     $('app').style.display='grid';
     renderProjects();
     applyLabTrakContext();
+    initBorelogSync();
   }, 380);
 }
 // Wire logo into splash as soon as script runs
@@ -3319,6 +3673,7 @@ async function runGeoImport(){
     $('geoGoBtn').textContent = '✔ OPEN PROJECT →';
     $('geoGoBtn').onclick = ()=>{ closeGeoImport(); openProject(projId); };
     $('geoGoBtn').disabled = false;
+    syncBorelogNow().catch(() => {});
 
   } catch(err){
     geoLog('err', `❌ Import failed: ${err.message}`);
