@@ -6267,7 +6267,11 @@ table.fc-borrow-tbl tr.fc-borrow-detail-row td{background:var(--surface);border-
 // GLOBALS
 // ══════════════════════════════════════════════
 let db = null;
+<<<<<<< HEAD
 const APP_BUILD = '2026.06.17-samples-field-test-id';
+=======
+const APP_BUILD = '2026.06.17-core-drill-nav';
+>>>>>>> c8f68b6 (Fix Core Drill navigation landing on field event form)
 const FC_CORE_ICON_SRC = 'docs/r18-reference/core-drill-icon-128.png';
 const BORELOG_ICON_SRC = 'docs/r18-reference/borelog-icon.webp';
 const BORELOG_PATH = 'docs/r18-reference/deldot-borelog.html';
@@ -8991,6 +8995,23 @@ function scrollActiveViewTop() {
     });
     window.scrollTo(0,0);
   });
+}
+
+function fcScrollViewToElement(el, viewId) {
+  if (!el) return;
+  const viewEl = document.getElementById(viewId || 'fieldcontrol-view') || el.closest('.view');
+  if (!viewEl) {
+    el.scrollIntoView({ block: 'nearest', inline: 'nearest', behavior: 'instant' });
+    return;
+  }
+  const margin = 24;
+  const viewRect = viewEl.getBoundingClientRect();
+  const elRect = el.getBoundingClientRect();
+  if (elRect.top < viewRect.top + margin) {
+    viewEl.scrollTop += elRect.top - viewRect.top - margin;
+  } else if (elRect.bottom > viewRect.bottom - margin) {
+    viewEl.scrollTop += elRect.bottom - viewRect.bottom + margin;
+  }
 }
 const PLANNED_MODULE_VIEWS = { hotmix: 'Hot Mix', precast: 'Pre-Cast', chemlab: 'Chem Lab' };
 
@@ -17272,6 +17293,10 @@ function initFC_View() {
     fcApplyCategoryToTabs(cat);
     fcApplyIntentToTabs(intent, cat);
     updateFCSessionBanner();
+    if (_fcPendingCoreDrillNav) {
+      _fcPendingCoreDrillNav = false;
+      setTimeout(() => fcShowCoreDrillStart(), 360);
+    }
   } else {
     startEl.style.display  = '';
     activeEl.style.display = 'none';
@@ -17289,6 +17314,10 @@ function initFC_View() {
     fcRefreshCoreSessionNo();
     // Restore last-used intent + category for this user
     fcRestorePrefs();
+    if (_fcPendingCoreDrillNav) {
+      _fcPendingCoreDrillNav = false;
+      setTimeout(() => fcShowCoreDrillStart(), 360);
+    }
   }
 }
 
@@ -17337,6 +17366,7 @@ function fcRestorePrefs() {
 
 // ── Intent picker helper ──────────────────────────────────────
 let _fcIntent = ''; // 'density' | 'lab' | 'both' | 'core'
+let _fcPendingCoreDrillNav = false;
 
 function fcSetIntent(intent, fromRestore = false) {
   _fcIntent = intent;
@@ -17643,17 +17673,57 @@ async function fcRefreshCoreSessionNo() {
   if (!input.dataset.userTouched) input.value = '';
 }
 
+function fcClearFieldEventIntentUi() {
+  _fcIntent = '';
+  const intentInput = document.getElementById('fc_s_intent');
+  if (intentInput) intentInput.value = '';
+  ['density', 'lab', 'both'].forEach(k => {
+    const btn = document.getElementById('fc_intent_' + k);
+    if (!btn) return;
+    btn.style.borderColor = 'var(--border)';
+    btn.style.background = 'var(--panel)';
+    btn.style.boxShadow = 'none';
+    const icon = btn.querySelector('div:first-child');
+    if (icon) icon.style.opacity = '0.6';
+  });
+  const hint = document.getElementById('fc_intent_last_hint');
+  if (hint) hint.style.display = 'none';
+}
+
 function fcShowCoreDrillStart() {
+  if (activeFC_testNo && activeFC_sessionId) {
+    if (_fcIntent === 'core') {
+      switchFCTab('core');
+      return;
+    }
+    showToast('End your current field session first, then start Core Drill.', 'info');
+    const banner = document.getElementById('fc_session_banner');
+    if (banner) {
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => fcScrollViewToElement(banner, 'fieldcontrol-view'));
+      });
+    }
+    return;
+  }
+
+  fcClearFieldEventIntentUi();
   const card = document.getElementById('fc_core_start_card');
   if (!card) return;
-  card.scrollIntoView({ behavior: 'smooth', block: 'start' });
-  card.style.boxShadow = '0 0 0 2px rgba(168,85,247,0.45)';
-  setTimeout(() => { card.style.boxShadow = ''; }, 1800);
+
+  requestAnimationFrame(() => {
+    requestAnimationFrame(() => {
+      fcScrollViewToElement(card, 'fieldcontrol-view');
+      card.style.boxShadow = '0 0 0 2px rgba(168,85,247,0.45)';
+      setTimeout(() => { card.style.boxShadow = ''; }, 1800);
+      const coreNo = document.getElementById('fc_cd_coreno');
+      if (coreNo) coreNo.focus({ preventScroll: true });
+    });
+  });
 }
 
 function fcOpenCoreDrillFromHub() {
+  _fcPendingCoreDrillNav = true;
   switchView('fieldcontrol');
-  setTimeout(fcShowCoreDrillStart, 200);
 }
 
 // ── Apply intent routing to tabs (show/hide + auto-navigate) ─
@@ -19406,7 +19476,7 @@ function switchFCTab(tab) {
     if (el)  el.style.display = (t === tab) ? '' : 'none';
     if (btn) btn.classList.toggle('active', t === tab);
   });
-  scrollActiveViewTop();
+  if (tab !== 'core') scrollActiveViewTop();
 }
 
 // ── Submit lab sample (upgrades the session record) ───────────
