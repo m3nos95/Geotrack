@@ -1523,7 +1523,14 @@ nav:not(#r18-nav), .nav-top-row { display: none !important; }
   100% { transform: scale(2.6); opacity: 0; }
 }
 
-#mapContainer { flex: 1; width: 100%; }
+.map-overlay-body { position: relative; flex: 1; min-height: 0; display: flex; width: 100%; }
+#mapContainer { flex: 1; width: 100%; min-height: 0; }
+.map-project-ref-panel {
+  position: absolute; left: 10px; bottom: 10px; z-index: 3; pointer-events: auto;
+  max-height: min(42vh, 320px); width: 210px;
+}
+.labmap-layer-btn.disabled, .labmap-layer-btn:disabled { opacity: 0.35; cursor: not-allowed; }
+.labmap-ref-desc { font-family: var(--mono); font-size: 8px; color: var(--muted); margin-top: 2px; line-height: 1.3; }
 .mapboxgl-popup.labtrak-map-popup { max-width: none !important; z-index: 30; }
 .mapboxgl-popup.labtrak-map-popup .mapboxgl-popup-content {
   background: #06090f !important;
@@ -6137,6 +6144,8 @@ table.fc-borrow-tbl tr.fc-borrow-detail-row td{background:var(--surface);border-
             <div class="map-style-toggle" id="labMapStyleToggle">
               <button type="button" class="map-style-btn" data-map-style="streets" onclick="labMapSetStyle('streets')">Streets</button>
               <button type="button" class="map-style-btn" data-map-style="satellite" onclick="labMapSetStyle('satellite')">Satellite</button>
+              <button type="button" class="map-style-btn" data-map-style="outdoors" onclick="labMapSetStyle('outdoors')">Outdoors</button>
+              <button type="button" class="map-style-btn" data-map-style="usgs_topo" onclick="labMapSetStyle('usgs_topo')">USGS</button>
               <button type="button" class="map-style-btn" data-map-style="dark" onclick="labMapSetStyle('dark')">Dark</button>
             </div>
             <button type="button" class="btn btn-ghost" onclick="labMapReload()" style="font-size:10px;letter-spacing:1px;">↻ REFRESH</button>
@@ -6144,7 +6153,6 @@ table.fc-borrow-tbl tr.fc-borrow-detail-row td{background:var(--surface);border-
         </div>
         <div class="labmap-layers-wrap">
           <aside class="labmap-layers" id="labMapLayersPanel">
-            <div class="labmap-layers-title">LAYERS</div>
             <div id="labMapLayerList"></div>
           </aside>
         </div>
@@ -6221,7 +6229,7 @@ table.fc-borrow-tbl tr.fc-borrow-detail-row td{background:var(--surface);border-
 // GLOBALS
 // ══════════════════════════════════════════════
 let db = null;
-const APP_BUILD = '2026.06.30-map-detail';
+const APP_BUILD = '2026.06.30-map-gis';
 const FC_CORE_ICON_SRC = 'docs/r18-reference/core-drill-icon-128.png';
 window._dbConnected = false;
 window._syncInProgress = false;
@@ -6378,10 +6386,48 @@ let mapMarkers = [];
 const LABTRAK_MAP_STYLES = {
   streets:   { label: 'Streets',   url: 'mapbox://styles/mapbox/streets-v12' },
   satellite: { label: 'Satellite', url: 'mapbox://styles/mapbox/satellite-streets-v12' },
+  outdoors:  { label: 'Outdoors',  url: 'mapbox://styles/mapbox/outdoors-v12' },
+  usgs_topo: {
+    label: 'USGS Topo',
+    url: {
+      version: 8,
+      name: 'USGS Topo',
+      sources: {
+        'labtrak-usgs-base': {
+          type: 'raster',
+          tiles: ['https://basemap.nationalmap.gov/arcgis/rest/services/USGSTopo/MapServer/tile/{z}/{y}/{x}'],
+          tileSize: 256,
+          attribution: '© USGS',
+          maxzoom: 16,
+        },
+      },
+      layers: [{ id: 'labtrak-usgs-base', type: 'raster', source: 'labtrak-usgs-base' }],
+    },
+  },
   dark:      { label: 'Dark',      url: 'mapbox://styles/mapbox/dark-v11' },
+};
+const LABTRAK_USGS_TILES = ['https://basemap.nationalmap.gov/arcgis/rest/services/USGSTopo/MapServer/tile/{z}/{y}/{x}'];
+const LABTRAK_DE_PARCEL_TILES = ['https://enterprise.firstmap.delaware.gov/arcgis/rest/services/PlanningCadastre/DE_StateParcels/MapServer/export?bbox={bbox-epsg-3857}&size=256,256&format=png32&transparent=true&f=image'];
+const LABTRAK_DE_ROADS_TILES = ['https://enterprise.firstmap.delaware.gov/arcgis/rest/services/Transportation/DE_Roadways_Main/MapServer/export?bbox={bbox-epsg-3857}&size=256,256&format=png32&transparent=true&f=image'];
+const LABTRAK_MAP_REF_DEFS = {
+  usgs_overlay: { label: 'USGS Topo', color: '#a8c686', desc: 'Contours & topo detail' },
+  hillshade:    { label: 'Hillshade', color: '#94a3b8', desc: 'Terrain relief shading' },
+  de_parcels:   { label: 'DE Parcels', color: '#f472b6', desc: 'FirstMap property lines' },
+  de_roads:     { label: 'DE Roads', color: '#fb923c', desc: 'State road network' },
 };
 const LABTRAK_MAP_VIEW_OPTS = { center: [-75.5, 39.15], zoom: 10, minZoom: 3, maxZoom: 20 };
 let labTrakMapStyle = localStorage.getItem('labtrak_map_style') || 'streets';
+let labTrakMapRefLayers = (() => {
+  const defaults = { usgs_overlay: false, hillshade: false, de_parcels: false, de_roads: false };
+  try {
+    return { ...defaults, ...JSON.parse(localStorage.getItem('labtrak_map_ref_layers') || '{}') };
+  } catch (e) { return defaults; }
+})();
+const labTrakMapStyleLoadBound = new WeakSet();
+
+function saveLabTrakMapRefLayers() {
+  localStorage.setItem('labtrak_map_ref_layers', JSON.stringify(labTrakMapRefLayers));
+}
 
 function getLabTrakMapStyleKey() {
   return LABTRAK_MAP_STYLES[labTrakMapStyle] ? labTrakMapStyle : 'streets';
@@ -6394,12 +6440,110 @@ function syncMapStyleButtons() {
   });
 }
 
+function labTrakMapFindInsertBefore(map) {
+  const layers = map.getStyle()?.layers;
+  if (!layers) return undefined;
+  for (const layer of layers) {
+    if (layer.type === 'symbol') return layer.id;
+  }
+  return undefined;
+}
+
+function labTrakMapRemoveLayerSource(map, layerId, sourceId) {
+  if (!map) return;
+  const srcId = sourceId || layerId;
+  try {
+    if (map.getLayer(layerId)) map.removeLayer(layerId);
+    if (map.getSource(srcId)) map.removeSource(srcId);
+  } catch (e) { /* style may be reloading */ }
+}
+
+function labTrakMapEnsureRaster(map, sourceId, layerId, tileUrls, opacity, beforeId) {
+  if (!map.getSource(sourceId)) {
+    map.addSource(sourceId, {
+      type: 'raster',
+      tiles: tileUrls,
+      tileSize: 256,
+    });
+  }
+  if (!map.getLayer(layerId)) {
+    map.addLayer({
+      id: layerId,
+      type: 'raster',
+      source: sourceId,
+      paint: { 'raster-opacity': opacity },
+    }, beforeId);
+  } else {
+    map.setPaintProperty(layerId, 'raster-opacity', opacity);
+  }
+}
+
+function labTrakMapApplyOverlays(map) {
+  if (!map || !map.isStyleLoaded()) return;
+  const beforeId = labTrakMapFindInsertBefore(map);
+  const styleKey = getLabTrakMapStyleKey();
+  const on = (key) => labTrakMapRefLayers[key] === true;
+
+  if (on('usgs_overlay') && styleKey !== 'usgs_topo') {
+    labTrakMapEnsureRaster(map, 'labtrak-ref-usgs-src', 'labtrak-ref-usgs', LABTRAK_USGS_TILES, 0.55, beforeId);
+  } else {
+    labTrakMapRemoveLayerSource(map, 'labtrak-ref-usgs', 'labtrak-ref-usgs-src');
+  }
+
+  if (on('hillshade')) {
+    if (!map.getSource('labtrak-ref-dem')) {
+      map.addSource('labtrak-ref-dem', {
+        type: 'raster-dem',
+        url: 'mapbox://mapbox.mapbox-terrain-dem-v1',
+        tileSize: 512,
+        maxzoom: 14,
+      });
+    }
+    if (!map.getLayer('labtrak-ref-hillshade')) {
+      map.addLayer({
+        id: 'labtrak-ref-hillshade',
+        type: 'hillshade',
+        source: 'labtrak-ref-dem',
+        paint: {
+          'hillshade-exaggeration': 0.45,
+          'hillshade-shadow-color': '#473B24',
+          'hillshade-highlight-color': '#ffffff',
+          'hillshade-accent-color': '#000000',
+        },
+      }, beforeId);
+    }
+  } else {
+    labTrakMapRemoveLayerSource(map, 'labtrak-ref-hillshade', 'labtrak-ref-dem');
+  }
+
+  if (on('de_parcels')) {
+    labTrakMapEnsureRaster(map, 'labtrak-ref-de-parcels-src', 'labtrak-ref-de-parcels', LABTRAK_DE_PARCEL_TILES, 0.72, beforeId);
+  } else {
+    labTrakMapRemoveLayerSource(map, 'labtrak-ref-de-parcels', 'labtrak-ref-de-parcels-src');
+  }
+
+  if (on('de_roads')) {
+    labTrakMapEnsureRaster(map, 'labtrak-ref-de-roads-src', 'labtrak-ref-de-roads', LABTRAK_DE_ROADS_TILES, 0.85, beforeId);
+  } else {
+    labTrakMapRemoveLayerSource(map, 'labtrak-ref-de-roads', 'labtrak-ref-de-roads-src');
+  }
+}
+
+function labTrakMapBindStyleLoad(map) {
+  if (!map || labTrakMapStyleLoadBound.has(map)) return;
+  labTrakMapStyleLoadBound.add(map);
+  map.on('style.load', () => labTrakMapApplyOverlays(map));
+  map.on('load', () => labTrakMapApplyOverlays(map));
+}
+
 function createLabTrakMapboxMap(containerId) {
-  return new mapboxgl.Map({
+  const map = new mapboxgl.Map({
     container: containerId,
     style: LABTRAK_MAP_STYLES[getLabTrakMapStyleKey()].url,
     ...LABTRAK_MAP_VIEW_OPTS,
   });
+  labTrakMapBindStyleLoad(map);
+  return map;
 }
 
 function setLabTrakMapStyle(map, styleKey) {
@@ -6412,9 +6556,45 @@ function labMapSetStyle(styleKey) {
   if (getLabTrakMapStyleKey() === styleKey) return;
   labTrakMapStyle = styleKey;
   localStorage.setItem('labtrak_map_style', styleKey);
+  if (styleKey === 'usgs_topo') labTrakMapRefLayers.usgs_overlay = false;
+  saveLabTrakMapRefLayers();
   syncMapStyleButtons();
+  labMapRenderLayerPanel();
+  labMapRenderProjectRefPanel();
   if (labMap) setLabTrakMapStyle(labMap, styleKey);
   if (projectMap) setLabTrakMapStyle(projectMap, styleKey);
+}
+
+function labMapRenderRefLayerButtons() {
+  const styleKey = getLabTrakMapStyleKey();
+  return Object.entries(LABTRAK_MAP_REF_DEFS).map(([key, def]) => {
+    const disabled = key === 'usgs_overlay' && styleKey === 'usgs_topo';
+    const on = !disabled && labTrakMapRefLayers[key] === true;
+    return `<button type="button" class="labmap-layer-btn ${on ? 'active' : 'off'}${disabled ? ' disabled' : ''}"${disabled ? ' disabled' : ''} onclick="labMapToggleRefLayer('${key}')">
+      <span class="labmap-layer-swatch" style="background:${def.color};"></span>
+      <span class="labmap-layer-meta">
+        <div class="labmap-layer-name">${def.label}</div>
+        <div class="labmap-ref-desc">${disabled ? 'Already the basemap' : def.desc}</div>
+      </span>
+    </button>`;
+  }).join('');
+}
+
+function labMapToggleRefLayer(key) {
+  if (!LABTRAK_MAP_REF_DEFS[key]) return;
+  if (key === 'usgs_overlay' && getLabTrakMapStyleKey() === 'usgs_topo') return;
+  labTrakMapRefLayers[key] = !labTrakMapRefLayers[key];
+  saveLabTrakMapRefLayers();
+  labMapRenderLayerPanel();
+  labMapRenderProjectRefPanel();
+  if (labMap) labTrakMapApplyOverlays(labMap);
+  if (projectMap) labTrakMapApplyOverlays(projectMap);
+}
+
+function labMapRenderProjectRefPanel() {
+  const list = document.getElementById('projectMapRefList');
+  if (!list) return;
+  list.innerHTML = labMapRenderRefLayerButtons();
 }
 const MAP_CORE_DRILL_SELECT = 'id,test_no,contract,core_no,gps_coordinates,layer_type,thickness_in,station,lane,photo_data,date_drilled,field_test_id';
 
@@ -6521,11 +6701,14 @@ async function openProjectMap(contract, projectName, opts) {
   document.getElementById('mapOverlay').classList.add('open');
   document.getElementById('mapOverlayTitle').textContent = (contract || 'Core drill') + ' — ' + (projectName || 'Map');
   document.getElementById('mapOverlaySubtitle').textContent = 'Loading locations...';
+  syncMapStyleButtons();
+  labMapRenderProjectRefPanel();
 
   // Initialize map if not already done
   if (!projectMap) {
     projectMap = createLabTrakMapboxMap('mapContainer');
     syncMapStyleButtons();
+    labMapRenderProjectRefPanel();
     projectMap.addControl(new mapboxgl.NavigationControl(), 'top-right');
     projectMap.addControl(new mapboxgl.FullscreenControl(), 'top-right');
   }
@@ -6945,7 +7128,7 @@ function labMapClearMarkers() {
 function labMapRenderLayerPanel() {
   const list = document.getElementById('labMapLayerList');
   if (!list) return;
-  list.innerHTML = Object.entries(LAB_MAP_LAYER_DEFS).map(([key, def]) => {
+  const dataPins = Object.entries(LAB_MAP_LAYER_DEFS).map(([key, def]) => {
     const on = labMapLayers[key] !== false;
     const count = (labMapStore[key] || []).length;
     return `<button type="button" class="labmap-layer-btn ${on ? 'active' : 'off'}" onclick="labMapToggleLayer('${key}')">
@@ -6956,6 +7139,12 @@ function labMapRenderLayerPanel() {
       </span>
     </button>`;
   }).join('');
+  list.innerHTML = `
+    <div class="labmap-layers-title">DATA PINS</div>
+    ${dataPins}
+    <div class="labmap-layers-title" style="margin-top:6px;">REFERENCE MAPS</div>
+    ${labMapRenderRefLayerButtons()}
+  `;
 }
 
 function labMapToggleLayer(key) {
@@ -7132,6 +7321,7 @@ function initLabMapView() {
   if (!labMap) {
     labMap = createLabTrakMapboxMap('labMapContainer');
     syncMapStyleButtons();
+    labMapRenderLayerPanel();
     labMap.addControl(new mapboxgl.NavigationControl(), 'top-right');
     labMap.addControl(new mapboxgl.FullscreenControl(), 'top-right');
     labMap.on('load', () => {
@@ -20224,11 +20414,19 @@ function openR18() {
       <div class="map-style-toggle" id="projectMapStyleToggle">
         <button type="button" class="map-style-btn" data-map-style="streets" onclick="labMapSetStyle('streets')">Streets</button>
         <button type="button" class="map-style-btn" data-map-style="satellite" onclick="labMapSetStyle('satellite')">Satellite</button>
+        <button type="button" class="map-style-btn" data-map-style="outdoors" onclick="labMapSetStyle('outdoors')">Outdoors</button>
+        <button type="button" class="map-style-btn" data-map-style="usgs_topo" onclick="labMapSetStyle('usgs_topo')">USGS</button>
         <button type="button" class="map-style-btn" data-map-style="dark" onclick="labMapSetStyle('dark')">Dark</button>
       </div>
       <button class="btn btn-ghost" onclick="closeProjectMap()" style="flex-shrink:0;">✕ CLOSE</button>
     </div>
-    <div id="mapContainer"></div>
+    <div class="map-overlay-body">
+      <div id="mapContainer"></div>
+      <aside class="labmap-layers map-project-ref-panel" id="projectMapRefPanel">
+        <div class="labmap-layers-title">REFERENCE MAPS</div>
+        <div id="projectMapRefList"></div>
+      </aside>
+    </div>
   </div>
 
   <!-- ── Hub Calendar Note Modal ── -->
