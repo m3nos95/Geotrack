@@ -9,7 +9,7 @@
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
 <title>DelDOT LabTrak — Materials &amp; Research Lab</title>
-<link href="https://fonts.googleapis.com/css2?family=DM+Mono:ital,wght@0,400;0,500;1,400&family=Roboto+Condensed:wght@400;600;700&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:ital,wght@0,400;0,500;1,400&family=Roboto+Condensed:wght@400;600;700&family=Inter:wght@300;400;500;600;700&family=Press+Start+2P&display=swap" rel="stylesheet">
 
 <!-- ── Offline-safe script loader ───────────────────────────── -->
 <script>
@@ -6267,7 +6267,7 @@ table.fc-borrow-tbl tr.fc-borrow-detail-row td{background:var(--surface);border-
 // GLOBALS
 // ══════════════════════════════════════════════
 let db = null;
-const APP_BUILD = '2026.06.17-core-drill-test-no';
+const APP_BUILD = '2026.06.17-nes-full';
 const FC_CORE_ICON_SRC = 'docs/r18-reference/core-drill-icon-128.png';
 const BORELOG_ICON_SRC = 'docs/r18-reference/borelog-icon.webp';
 const BORELOG_PATH = 'docs/r18-reference/deldot-borelog.html';
@@ -6289,6 +6289,7 @@ let scannedSample = null;
 window.addEventListener('DOMContentLoaded', () => {
   initAppSkin();
   initComfortMode();
+  initKonamiCode();
   if (checkAppBuildUpdate()) return;
   if (typeof syncMobileNav === 'function') setTimeout(syncMobileNav, 100);
   if (typeof syncMapStyleButtons === 'function') syncMapStyleButtons();
@@ -8488,7 +8489,38 @@ const APP_SKINS = {
     },
     bodyBg: 'none',
   },
+  retro: {
+    label: '8-Bit NES',
+    desc: 'Konami unlock — press start',
+    hidden: true,
+    preview: ['#101050', '#0058F8', '#F8D878'],
+    vars: {
+      '--bg': '#101050', '--surface': '#0000BC', '--panel': '#0058F8', '--panel-2': '#2038EC',
+      '--border': '#FCFCFC', '--border-2': '#BCBCBC',
+      '--accent': '#D82800', '--accent2': '#F83800', '--accent3': '#F8B800', '--gold': '#F8D878',
+      '--green': '#007800', '--green2': '#44D800', '--red': '#A80000', '--red2': '#FC7460',
+      '--blue': '#0044CC', '--blue2': '#3CBCFC',
+      '--text': '#FCFCFC', '--text-2': '#BCBCBC', '--muted': '#7474FC', '--muted-2': '#5858D8',
+    },
+    bodyBg: 'linear-gradient(180deg, #000088 0%, #101050 48%, #000044 100%)',
+  },
 };
+
+const KONAMI_UNLOCK_KEY = 'labtrak_konami_unlocked';
+const KONAMI_PREV_SKIN_KEY = 'labtrak_konami_prev_skin';
+const KONAMI_SEQUENCE = ['ArrowUp', 'ArrowUp', 'ArrowDown', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'ArrowLeft', 'ArrowRight', 'b', 'a'];
+
+function isKonamiUnlocked() {
+  try { return localStorage.getItem(KONAMI_UNLOCK_KEY) === '1'; } catch { return false; }
+}
+
+function unlockKonamiEgg() {
+  try { localStorage.setItem(KONAMI_UNLOCK_KEY, '1'); } catch {}
+}
+
+function isSkinVisibleInPicker(id, skin) {
+  return !skin.hidden || isKonamiUnlocked();
+}
 
 function getActiveSkinId() {
   const saved = localStorage.getItem(SKIN_STORAGE_KEY);
@@ -8514,7 +8546,8 @@ function isComfortMode() {
 }
 
 function applyComfortColors() {
-  if (getActiveSkinId() === 'light') return;
+  const skinId = getActiveSkinId();
+  if (skinId === 'light' || skinId === 'retro') return;
   const soft = {
     '--bg': '#131a24', '--surface': '#1a2330', '--panel': '#212c3c', '--border': '#2d3a4d',
     '--text': '#d4e0ec', '--muted': '#708498', '--accent': '#b07832', '--accent2': '#cc9450', '--gold': '#c89848',
@@ -8560,7 +8593,7 @@ function renderSkinPicker() {
   const grid = document.getElementById('skinPickerGrid');
   if (!grid) return;
   const active = getActiveSkinId();
-  grid.innerHTML = Object.entries(APP_SKINS).map(([id, skin]) => {
+  grid.innerHTML = Object.entries(APP_SKINS).filter(([id, skin]) => isSkinVisibleInPicker(id, skin)).map(([id, skin]) => {
     const colors = (skin.preview || []).map(c => `<span style="background:${c}"></span>`).join('');
     return `<button type="button" class="skin-swatch${id === active ? ' active' : ''}" onclick="applySkin('${id}')" aria-pressed="${id === active}">
       <div class="skin-swatch-colors">${colors}</div>
@@ -8572,6 +8605,63 @@ function renderSkinPicker() {
 
 function initAppSkin() {
   applySkin(getActiveSkinId());
+}
+
+function _konamiKeyFromEvent(e) {
+  if (e.key === 'ArrowUp' || e.key === 'ArrowDown' || e.key === 'ArrowLeft' || e.key === 'ArrowRight') return e.key;
+  if (e.key && e.key.length === 1) return e.key.toLowerCase();
+  return '';
+}
+
+function _konamiTypingTarget() {
+  const el = document.activeElement;
+  if (!el) return false;
+  const tag = el.tagName;
+  if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return true;
+  return el.isContentEditable;
+}
+
+function activateKonamiEgg() {
+  const active = getActiveSkinId();
+  if (!isKonamiUnlocked()) {
+    unlockKonamiEgg();
+    try { localStorage.setItem(KONAMI_PREV_SKIN_KEY, active === 'retro' ? 'deldot' : active); } catch {}
+    applySkin('retro');
+    document.documentElement.classList.add('konami-flash');
+    setTimeout(() => document.documentElement.classList.remove('konami-flash'), 1200);
+    showToast('8-Bit NES unlocked — PRESS START', 'success');
+    return;
+  }
+  if (active === 'retro') {
+    const prev = localStorage.getItem(KONAMI_PREV_SKIN_KEY);
+    applySkin((prev && APP_SKINS[prev]) ? prev : 'deldot');
+    showToast('8-Bit NES off', 'info');
+    return;
+  }
+  try { localStorage.setItem(KONAMI_PREV_SKIN_KEY, active); } catch {}
+  applySkin('retro');
+  document.documentElement.classList.add('konami-flash');
+  setTimeout(() => document.documentElement.classList.remove('konami-flash'), 1200);
+  showToast('8-Bit NES on — PRESS START', 'success');
+}
+
+function initKonamiCode() {
+  let step = 0;
+  document.addEventListener('keydown', (e) => {
+    if (e.repeat || e.ctrlKey || e.metaKey || e.altKey) return;
+    if (_konamiTypingTarget()) { step = 0; return; }
+    const key = _konamiKeyFromEvent(e);
+    if (!key) { step = 0; return; }
+    if (key === KONAMI_SEQUENCE[step]) {
+      step += 1;
+      if (step >= KONAMI_SEQUENCE.length) {
+        step = 0;
+        activateKonamiEgg();
+      }
+      return;
+    }
+    step = key === KONAMI_SEQUENCE[0] ? 1 : 0;
+  });
 }
 
 function checkAppBuildUpdate() {
@@ -24202,12 +24292,12 @@ html.comfort-mode {
   --mono: var(--sans);
   font-size: 15px;
 }
-html.comfort-mode:not([data-skin="light"]) {
+html.comfort-mode:not([data-skin="light"]):not([data-skin="retro"]) {
   --bg: #131a24 !important; --surface: #1a2330 !important; --panel: #212c3c !important;
   --border: #2d3a4d !important; --text: #d4e0ec !important; --muted: #708498 !important;
   --accent: #b07832 !important; --accent2: #cc9450 !important; --gold: #c89848 !important;
 }
-html.comfort-mode body {
+html.comfort-mode:not([data-skin="retro"]) body {
   background-image: none !important;
   font-size: 15px;
   line-height: 1.55;
@@ -24262,6 +24352,153 @@ html.comfort-mode .conn-dot { box-shadow: none !important; }
 html.comfort-mode .topbar-stat-dot.red,
 html.comfort-mode .offline-dot,
 html.comfort-mode .sync-status-chip.syncing .sync-status-dot { animation: none !important; }
+
+/* ══ Konami unlock — 8-bit NES skin (full pixel pass) ══ */
+html[data-skin="retro"] {
+  --display: 'Press Start 2P', monospace;
+  --sans: 'Press Start 2P', monospace;
+  --mono: 'Press Start 2P', monospace;
+  --radius: 0;
+  --radius-sm: 0;
+  --radius-lg: 0;
+  --shadow: 4px 4px 0 #000000;
+  --shadow-sm: 2px 2px 0 #000000;
+  --transition: 0s;
+  image-rendering: pixelated;
+  font-size: 8px;
+}
+html[data-skin="retro"] *,
+html[data-skin="retro"] *::before,
+html[data-skin="retro"] *::after {
+  font-family: 'Press Start 2P', monospace !important;
+  font-weight: 400 !important;
+  font-style: normal !important;
+  font-synthesis: none !important;
+  -webkit-font-smoothing: none !important;
+  -moz-osx-font-smoothing: unset !important;
+  text-rendering: geometricPrecision;
+  border-radius: 0 !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+  letter-spacing: 0 !important;
+}
+html[data-skin="retro"] body {
+  font-size: 8px;
+  line-height: 1.75;
+}
+html.comfort-mode[data-skin="retro"],
+html.comfort-mode[data-skin="retro"] body {
+  font-size: 8px !important;
+  line-height: 1.75 !important;
+}
+html[data-skin="retro"] body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 9997;
+  opacity: 0.1;
+  width: auto;
+  height: auto;
+  left: 0;
+  top: 0;
+  filter: none;
+  animation: none !important;
+  border-radius: 0;
+  background: transparent;
+  background-image:
+    linear-gradient(90deg, #FCFCFC 1px, transparent 1px),
+    linear-gradient(0deg, #FCFCFC 1px, transparent 1px);
+  background-size: 8px 8px;
+  mask-image: none;
+}
+html[data-skin="retro"] body::after {
+  display: none !important;
+  animation: none !important;
+}
+html[data-skin="retro"] :where(
+  .card, .panel, .hub-panel, .stat-card, .setup-card, .modal-card, .modal-box, .modal,
+  .btn, button, .btn-primary, .btn-secondary, .btn-settings, .btn-comfort-mode,
+  input, select, textarea, .form-group input, .form-group select, .form-group textarea,
+  #navRail, .topbar, .sync-status-chip, #tourCard, .skin-swatch, .toast,
+  .user-btn, .lab-tile, .pin-key, .sl-qc-card, .dash-contract-row, .mapboxgl-ctrl,
+  .r18-app .r18-card, .r18-app .r18-panel, .r18-app .r18-btn, .edit-panel, .mf input, .mf select
+) {
+  box-shadow: 4px 4px 0 #000000 !important;
+  border-width: 4px !important;
+  border-style: solid !important;
+}
+html[data-skin="retro"] :where(.btn, button, .btn-primary, .btn-secondary, .hub-action-btn):hover {
+  transform: translate(-2px, -2px);
+  box-shadow: 6px 6px 0 #000000 !important;
+}
+html[data-skin="retro"] :where(.btn, button, .btn-primary, .btn-secondary, .hub-action-btn):active {
+  transform: translate(2px, 2px);
+  box-shadow: 2px 2px 0 #000000 !important;
+}
+html[data-skin="retro"] #navRail .rail-item.active,
+html[data-skin="retro"] .skin-swatch.active,
+html[data-skin="retro"] .sl-filter-btn.active {
+  background: var(--accent) !important;
+  color: #FCFCFC !important;
+  border-color: #FCFCFC !important;
+}
+html[data-skin="retro"] :where(
+  .topbar-stat-val, .hub-greet, .card-title, .hub-kpi-val, .dkpi-val,
+  .stat-card .s-num, .s-num, h1, h2, h3, .dash-greet-main, .setup-card .setup-logo
+) {
+  text-shadow: 2px 2px 0 #000000;
+}
+html[data-skin="retro"] .hub-greet,
+html.comfort-mode[data-skin="retro"] .hub-greet { font-size: 14px !important; }
+html[data-skin="retro"] .hub-kpi-val { font-size: 16px !important; }
+html[data-skin="retro"] .topbar-stat-val { font-size: 11px !important; }
+html[data-skin="retro"] .dkpi-val { font-size: 18px !important; }
+html[data-skin="retro"] .stat-card .s-num,
+html[data-skin="retro"] .s-num { font-size: 14px !important; }
+html[data-skin="retro"] h2,
+html[data-skin="retro"] .dash-greet-main { font-size: 12px !important; }
+html[data-skin="retro"] .setup-card .setup-logo { font-size: 12px !important; }
+html[data-skin="retro"] .card-title,
+html[data-skin="retro"] .hub-panel-title { font-size: 8px !important; }
+html[data-skin="retro"] .topbar-stat-lbl,
+html[data-skin="retro"] .hub-kpi-lbl,
+html[data-skin="retro"] .rail-label,
+html[data-skin="retro"] .ubadge-role,
+html[data-skin="retro"] label,
+html[data-skin="retro"] .mf label { font-size: 7px !important; text-transform: none !important; }
+html[data-skin="retro"] input,
+html[data-skin="retro"] select,
+html[data-skin="retro"] textarea,
+html[data-skin="retro"] .btn,
+html[data-skin="retro"] button { font-size: 8px !important; }
+html[data-skin="retro"] .r18-app,
+html[data-skin="retro"] .r18-app * {
+  font-family: 'Press Start 2P', monospace !important;
+  letter-spacing: 0 !important;
+}
+html[data-skin="retro"] .r18-app .r18-page-title { font-size: 12px !important; }
+html[data-skin="retro"] .r18-app .stat-num,
+html[data-skin="retro"] .r18-app .r18-qm-gauge span { font-size: 14px !important; }
+html[data-skin="retro"] img,
+html[data-skin="retro"] svg,
+html[data-skin="retro"] canvas {
+  image-rendering: pixelated;
+}
+html[data-skin="retro"] .user-avatar,
+html[data-skin="retro"] .ubadge-av,
+html[data-skin="retro"] #ubadgeAv {
+  border-radius: 0 !important;
+}
+@keyframes konami-flash {
+  0%, 100% { filter: none; }
+  20% { filter: contrast(1.4) saturate(1.6) hue-rotate(-8deg); }
+  40% { filter: contrast(1.2) brightness(1.15); }
+  60% { filter: contrast(1.35) saturate(1.4); }
+}
+html.konami-flash body {
+  animation: konami-flash 0.9s steps(4, end);
+}
 
 /* ══ Guided tour (spotlight) — above modals except critical alerts ══ */
 #tourOverlay {
