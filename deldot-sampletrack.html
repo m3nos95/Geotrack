@@ -6267,7 +6267,7 @@ table.fc-borrow-tbl tr.fc-borrow-detail-row td{background:var(--surface);border-
 // GLOBALS
 // ══════════════════════════════════════════════
 let db = null;
-const APP_BUILD = '2026.06.17-nes-konami';
+const APP_BUILD = '2026.06.17-nes-full';
 const FC_CORE_ICON_SRC = 'docs/r18-reference/core-drill-icon-128.png';
 const BORELOG_ICON_SRC = 'docs/r18-reference/borelog-icon.webp';
 const BORELOG_PATH = 'docs/r18-reference/deldot-borelog.html';
@@ -24353,7 +24353,7 @@ html.comfort-mode .topbar-stat-dot.red,
 html.comfort-mode .offline-dot,
 html.comfort-mode .sync-status-chip.syncing .sync-status-dot { animation: none !important; }
 
-/* ══ Konami unlock — 8-bit NES skin + brief flash ══ */
+/* ══ Konami unlock — 8-bit NES skin (full pixel pass) ══ */
 html[data-skin="retro"] {
   --display: 'Press Start 2P', monospace;
   --sans: 'Press Start 2P', monospace;
@@ -24365,11 +24365,31 @@ html[data-skin="retro"] {
   --shadow-sm: 2px 2px 0 #000000;
   --transition: 0s;
   image-rendering: pixelated;
+  font-size: 8px;
+}
+html[data-skin="retro"] *,
+html[data-skin="retro"] *::before,
+html[data-skin="retro"] *::after {
+  font-family: 'Press Start 2P', monospace !important;
+  font-weight: 400 !important;
+  font-style: normal !important;
+  font-synthesis: none !important;
+  -webkit-font-smoothing: none !important;
+  -moz-osx-font-smoothing: unset !important;
+  text-rendering: geometricPrecision;
+  border-radius: 0 !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+  letter-spacing: 0 !important;
 }
 html[data-skin="retro"] body {
-  font-size: 10px;
-  line-height: 1.65;
-  letter-spacing: 0;
+  font-size: 8px;
+  line-height: 1.75;
+}
+html.comfort-mode[data-skin="retro"],
+html.comfort-mode[data-skin="retro"] body {
+  font-size: 8px !important;
+  line-height: 1.75 !important;
 }
 html[data-skin="retro"] body::before {
   content: '';
@@ -24377,7 +24397,7 @@ html[data-skin="retro"] body::before {
   inset: 0;
   pointer-events: none;
   z-index: 9997;
-  opacity: 0.08;
+  opacity: 0.1;
   width: auto;
   height: auto;
   left: 0;
@@ -24397,39 +24417,78 @@ html[data-skin="retro"] body::after {
   animation: none !important;
 }
 html[data-skin="retro"] :where(
-  .card, .panel, .hub-panel, .setup-card, .modal-card, .modal-box,
+  .card, .panel, .hub-panel, .stat-card, .setup-card, .modal-card, .modal-box, .modal,
   .btn, button, .btn-primary, .btn-secondary, .btn-settings, .btn-comfort-mode,
   input, select, textarea, .form-group input, .form-group select, .form-group textarea,
-  #navRail, .topbar, .sync-status-chip, #tourCard, .skin-swatch, .toast
+  #navRail, .topbar, .sync-status-chip, #tourCard, .skin-swatch, .toast,
+  .user-btn, .lab-tile, .pin-key, .sl-qc-card, .dash-contract-row, .mapboxgl-ctrl,
+  .r18-app .r18-card, .r18-app .r18-panel, .r18-app .r18-btn, .edit-panel, .mf input, .mf select
 ) {
-  border-radius: 0 !important;
   box-shadow: 4px 4px 0 #000000 !important;
   border-width: 4px !important;
   border-style: solid !important;
 }
-html[data-skin="retro"] :where(.btn, button, .btn-primary, .btn-secondary):hover {
+html[data-skin="retro"] :where(.btn, button, .btn-primary, .btn-secondary, .hub-action-btn):hover {
   transform: translate(-2px, -2px);
   box-shadow: 6px 6px 0 #000000 !important;
 }
-html[data-skin="retro"] :where(.btn, button, .btn-primary, .btn-secondary):active {
+html[data-skin="retro"] :where(.btn, button, .btn-primary, .btn-secondary, .hub-action-btn):active {
   transform: translate(2px, 2px);
   box-shadow: 2px 2px 0 #000000 !important;
 }
 html[data-skin="retro"] #navRail .rail-item.active,
-html[data-skin="retro"] .skin-swatch.active {
+html[data-skin="retro"] .skin-swatch.active,
+html[data-skin="retro"] .sl-filter-btn.active {
   background: var(--accent) !important;
   color: #FCFCFC !important;
   border-color: #FCFCFC !important;
 }
-html[data-skin="retro"] .topbar-stat-val,
-html[data-skin="retro"] .hub-greet,
-html[data-skin="retro"] .card-title {
+html[data-skin="retro"] :where(
+  .topbar-stat-val, .hub-greet, .card-title, .hub-kpi-val, .dkpi-val,
+  .stat-card .s-num, .s-num, h1, h2, h3, .dash-greet-main, .setup-card .setup-logo
+) {
   text-shadow: 2px 2px 0 #000000;
-  letter-spacing: 0;
 }
+html[data-skin="retro"] .hub-greet,
+html.comfort-mode[data-skin="retro"] .hub-greet { font-size: 14px !important; }
+html[data-skin="retro"] .hub-kpi-val { font-size: 16px !important; }
+html[data-skin="retro"] .topbar-stat-val { font-size: 11px !important; }
+html[data-skin="retro"] .dkpi-val { font-size: 18px !important; }
+html[data-skin="retro"] .stat-card .s-num,
+html[data-skin="retro"] .s-num { font-size: 14px !important; }
+html[data-skin="retro"] h2,
+html[data-skin="retro"] .dash-greet-main { font-size: 12px !important; }
+html[data-skin="retro"] .setup-card .setup-logo { font-size: 12px !important; }
+html[data-skin="retro"] .card-title,
+html[data-skin="retro"] .hub-panel-title { font-size: 8px !important; }
+html[data-skin="retro"] .topbar-stat-lbl,
+html[data-skin="retro"] .hub-kpi-lbl,
+html[data-skin="retro"] .rail-label,
+html[data-skin="retro"] .ubadge-role,
+html[data-skin="retro"] label,
+html[data-skin="retro"] .mf label { font-size: 7px !important; text-transform: none !important; }
+html[data-skin="retro"] input,
+html[data-skin="retro"] select,
+html[data-skin="retro"] textarea,
+html[data-skin="retro"] .btn,
+html[data-skin="retro"] button { font-size: 8px !important; }
+html[data-skin="retro"] .r18-app,
+html[data-skin="retro"] .r18-app * {
+  font-family: 'Press Start 2P', monospace !important;
+  letter-spacing: 0 !important;
+}
+html[data-skin="retro"] .r18-app .r18-page-title { font-size: 12px !important; }
+html[data-skin="retro"] .r18-app .stat-num,
+html[data-skin="retro"] .r18-app .r18-qm-gauge span { font-size: 14px !important; }
 html[data-skin="retro"] img,
-html[data-skin="retro"] svg {
+html[data-skin="retro"] svg,
+html[data-skin="retro"] canvas {
   image-rendering: pixelated;
+}
+html[data-skin="retro"] .user-avatar,
+html[data-skin="retro"] .ubadge-av,
+html[data-skin="retro"] #ubadgeAv {
+  border-radius: 0 !important;
 }
 @keyframes konami-flash {
   0%, 100% { filter: none; }
