@@ -2887,7 +2887,7 @@ table.fc-borrow-tbl tr.fc-borrow-detail-row td{background:var(--surface);border-
       <p>
         For production, enable <strong>Supabase sign-in</strong> so Row Level Security can enforce roles.
         Set to <em>Auto</em> to switch automatically when the database blocks anonymous access.
-        With email sign-in, users go straight to the app — PIN is only used in <em>Legacy</em> tile mode.
+        With email sign-in, users go straight to the app after authentication.
       </p>
     </div>
     <div class="setup-field">
@@ -2897,7 +2897,6 @@ table.fc-borrow-tbl tr.fc-borrow-detail-row td{background:var(--surface);border-
                      padding:9px 12px;border-radius:var(--radius-sm);font-family:var(--mono);font-size:11px;">
         <option value="auto">Auto — detect from database policies</option>
         <option value="required" selected>Required — always use email/password</option>
-        <option value="legacy">Legacy — PIN tiles only (development)</option>
       </select>
     </div>
     <div id="authStatusLine" style="font-family:var(--mono);font-size:10px;color:var(--muted);margin-bottom:14px;min-height:14px;line-height:1.6;"></div>
@@ -2942,36 +2941,7 @@ table.fc-borrow-tbl tr.fc-borrow-detail-row td{background:var(--surface);border-
     <div class="setup-err" id="setupErr"></div>
     <p style="color:var(--muted);font-size:10px;font-family:var(--mono);margin-top:14px;">Key saved to this browser — you only need to enter it once per device.</p>
 
-    <!-- ── PERMISSION LOCK ── -->
-    <div class="user-mgmt-section" id="permLockSection" style="display:none;">
-      <div style="background:linear-gradient(135deg,#0a0a1a,#12122a);border:1px solid rgba(245,158,11,0.3);
-                  border-radius:10px;padding:20px 22px;text-align:center;">
-        <div style="font-size:32px;margin-bottom:10px;">🔒</div>
-        <div style="font-family:var(--mono);font-size:12px;font-weight:800;color:var(--gold);letter-spacing:2px;margin-bottom:8px;">
-          PERMISSION SETTINGS LOCKED
-        </div>
-        <div style="font-family:var(--mono);font-size:10px;color:var(--muted);margin-bottom:16px;line-height:1.6;">
-          Enter your <strong style="color:var(--gold);">admin PIN</strong> to unlock user management,<br>hub restrictions, and team assignments.
-          <br><span style="color:var(--accent2);">Data Maintenance</span> is available below without unlocking.
-        </div>
-        <div style="display:flex;gap:8px;max-width:340px;margin:0 auto;">
-          <input type="password" id="permKeyInput" placeholder="Enter your admin PIN…"
-            style="flex:1;background:var(--bg);border:1px solid var(--border);color:var(--text);
-                   padding:9px 12px;border-radius:var(--radius-sm);font-family:var(--mono);
-                   font-size:12px;letter-spacing:2px;"
-            onkeydown="if(event.key==='Enter') unlockPermissions()">
-          <button onclick="unlockPermissions()"
-            style="background:var(--gold);color:#0a1628;border:none;padding:9px 18px;
-                   font-family:var(--mono);font-size:10px;font-weight:800;letter-spacing:1px;
-                   border-radius:var(--radius-sm);cursor:pointer;white-space:nowrap;">
-            UNLOCK
-          </button>
-        </div>
-        <div id="permLockErr" style="color:var(--red2);font-family:var(--mono);font-size:10px;margin-top:8px;"></div>
-      </div>
-    </div>
-
-    <!-- Data maintenance — admin only (no PIN unlock required) -->
+    <!-- User management (admin) -->
     <div class="user-mgmt-section" id="dataMaintenanceSection" style="display:none;">
       <div class="user-mgmt-title">DATA MAINTENANCE</div>
       <p style="font-family:var(--mono);font-size:10px;color:var(--muted);margin:0 0 12px;line-height:1.6;">
@@ -3041,8 +3011,6 @@ table.fc-borrow-tbl tr.fc-borrow-detail-row td{background:var(--surface);border-
           <option value="concrete">Concrete Tech</option>
           <optgroup id="um_custom_role_options" label="Custom Teams"></optgroup>
         </select>
-        <input type="text" id="um_pin" placeholder="PIN (optional, up to 8 chars)" maxlength="8" autocomplete="off">
-        <input type="text" id="um_recovery" placeholder="Recovery phrase (for PIN reset)" maxlength="64" autocomplete="off">
         <button class="btn-um-add" onclick="umAddUser()" style="grid-column:span 2;">+ ADD USER</button>
       </div>
     </div>
@@ -3163,45 +3131,8 @@ table.fc-borrow-tbl tr.fc-borrow-detail-row td{background:var(--surface);border-
       <div class="user-mgmt-title">MY ACCOUNT</div>
       <div id="myAccountName" style="font-family:var(--mono);font-size:11px;color:var(--accent2);margin-bottom:14px;letter-spacing:0.5px;"></div>
       <div style="display:flex;flex-direction:column;gap:10px;">
-        <div>
-          <label style="font-family:var(--mono);font-size:9px;letter-spacing:1px;color:var(--muted);display:block;margin-bottom:4px;">CURRENT PIN (to confirm identity)</label>
-          <input type="password" id="ma_current_pin" maxlength="8" autocomplete="off" placeholder="Your current PIN"
-                 style="width:100%;background:var(--bg);border:1px solid var(--border);color:var(--text);
-                        padding:9px 12px;border-radius:var(--radius-sm);font-size:14px;
-                        font-family:var(--mono);box-sizing:border-box;letter-spacing:3px;">
-        </div>
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
-          <div>
-            <label style="font-family:var(--mono);font-size:9px;letter-spacing:1px;color:var(--muted);display:block;margin-bottom:4px;">NEW PIN</label>
-            <input type="password" id="ma_new_pin" maxlength="8" autocomplete="new-password" placeholder="Leave blank to keep"
-                   style="width:100%;background:var(--bg);border:1px solid var(--border);color:var(--text);
-                          padding:9px 12px;border-radius:var(--radius-sm);font-size:14px;
-                          font-family:var(--mono);box-sizing:border-box;letter-spacing:3px;">
-          </div>
-          <div>
-            <label style="font-family:var(--mono);font-size:9px;letter-spacing:1px;color:var(--muted);display:block;margin-bottom:4px;">CONFIRM NEW PIN</label>
-            <input type="password" id="ma_confirm_pin" maxlength="8" autocomplete="new-password" placeholder="Repeat new PIN"
-                   style="width:100%;background:var(--bg);border:1px solid var(--border);color:var(--text);
-                          padding:9px 12px;border-radius:var(--radius-sm);font-size:14px;
-                          font-family:var(--mono);box-sizing:border-box;letter-spacing:3px;">
-          </div>
-        </div>
-        <div>
-          <label style="font-family:var(--mono);font-size:9px;letter-spacing:1px;color:var(--muted);display:block;margin-bottom:4px;">RECOVERY PHRASE</label>
-          <input type="text" id="ma_recovery" maxlength="64" autocomplete="off" placeholder="Leave blank to keep current phrase"
-                 style="width:100%;background:var(--bg);border:1px solid var(--border);color:var(--text);
-                        padding:9px 12px;border-radius:var(--radius-sm);font-size:13px;
-                        font-family:var(--mono);box-sizing:border-box;">
-        </div>
-        <div id="maErr" style="font-family:var(--mono);font-size:10px;color:var(--red2);min-height:14px;"></div>
-        <button onclick="saveMyCredentials()"
-                style="background:var(--blue2);border:1px solid var(--blue);color:#fff;
-                       font-family:var(--mono);font-size:10px;letter-spacing:1px;
-                       padding:10px 20px;border-radius:var(--radius-sm);cursor:pointer;">
-          SAVE CHANGES
-        </button>
         <button type="button" onclick="signOutUser()"
-                style="margin-top:4px;background:transparent;border:1px solid var(--border);color:var(--muted);
+                style="background:transparent;border:1px solid var(--border);color:var(--muted);
                        font-family:var(--mono);font-size:10px;letter-spacing:1px;
                        padding:10px 20px;border-radius:var(--radius-sm);cursor:pointer;width:100%;">
           SIGN OUT
@@ -3258,9 +3189,6 @@ table.fc-borrow-tbl tr.fc-borrow-detail-row td{background:var(--surface);border-
                     padding:12px 14px;border-radius:var(--radius-sm);font-size:14px;outline:none;font-family:var(--mono);">
     </div>
     <button class="pin-key ok" style="width:100%;padding:14px;font-size:13px;border-radius:var(--radius-sm);border:none;cursor:pointer;" onclick="submitAuthSignIn()">SIGN IN ↵</button>
-    <div id="authLegacyLinkWrap" style="margin-top:14px;text-align:center;display:none;">
-      <button onclick="useLegacyPinLogin()" style="background:none;border:none;color:var(--muted);font-family:var(--mono);font-size:9px;cursor:pointer;text-decoration:underline;">Use PIN tiles instead (dev only)</button>
-    </div>
   </div>
 
   <!-- User list panel -->
@@ -3268,9 +3196,6 @@ table.fc-borrow-tbl tr.fc-borrow-detail-row td{background:var(--surface);border-
   <div class="user-select-wrap" id="labPickerPanel" style="max-width:420px;">
     <div class="user-select-title" style="text-align:center;margin-bottom:18px;">Which lab are you signing into?</div>
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;" id="labPickerGrid"></div>
-    <div style="margin-top:16px;text-align:center;">
-      <button onclick="emergencyClearPins()" style="background:none;border:none;color:var(--muted);font-family:var(--mono);font-size:9px;cursor:pointer;text-decoration:underline;opacity:0.5;">🔓 Locked out? Clear all PINs</button>
-    </div>
   </div>
 
   <!-- Step 2: Users for selected lab -->
@@ -3285,79 +3210,6 @@ table.fc-borrow-tbl tr.fc-borrow-detail-row td{background:var(--surface);border-
     <div class="user-list" id="userListEl"></div>
     <div style="margin-top:12px;text-align:center;">
       <button onclick="showLabPicker()" style="background:none;border:none;color:var(--muted);font-family:var(--mono);font-size:9px;cursor:pointer;text-decoration:underline;">← Back to lab selection</button>
-    </div>
-  </div>
-
-  <!-- PIN entry panel (shown after user selected) -->
-  <div class="pin-wrap" id="userPinPanel" style="display:none;">
-    <div class="user-avatar" id="pinAvatar" style="width:52px;height:52px;font-size:20px;margin:0 auto 10px;"></div>
-    <div class="pin-user-name" id="pinUserName">—</div>
-    <div class="pin-user-role" id="pinUserRole">—</div>
-
-    <!-- ── Normal PIN entry ── -->
-    <div id="pinEntrySection">
-      <div class="pin-err" id="pinErr"></div>
-      <div class="pin-dots" id="pinDots" style="justify-content:center;gap:7px;margin-bottom:14px;">
-        <div class="pin-dot" id="pd0"></div><div class="pin-dot" id="pd1"></div>
-        <div class="pin-dot" id="pd2"></div><div class="pin-dot" id="pd3"></div>
-        <div class="pin-dot" id="pd4"></div><div class="pin-dot" id="pd5"></div>
-        <div class="pin-dot" id="pd6"></div><div class="pin-dot" id="pd7"></div>
-      </div>
-      <div style="position:relative;margin-bottom:14px;">
-        <input type="password" id="pinTextInput" maxlength="8" autocomplete="off"
-               placeholder="Enter PIN"
-               oninput="pinTextChanged()"
-               onkeydown="if(event.key==='Enter')checkPin()"
-               style="width:100%;background:var(--panel);border:2px solid var(--border);color:var(--text);
-                      padding:14px 46px 14px 16px;border-radius:var(--radius-sm);font-size:18px;
-                      letter-spacing:4px;text-align:center;outline:none;box-sizing:border-box;
-                      font-family:var(--mono);transition:border-color 0.15s;">
-        <button onclick="togglePinVis()" id="pinVisBtn"
-                style="position:absolute;right:12px;top:50%;transform:translateY(-50%);
-                       background:none;border:none;color:var(--muted);cursor:pointer;font-size:16px;padding:4px;">👁</button>
-      </div>
-      <button class="pin-key ok" style="width:100%;padding:14px;font-size:13px;border-radius:var(--radius-sm);border:none;cursor:pointer;" onclick="checkPin()">ENTER ↵</button>
-      <div style="margin-top:12px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;">
-        <button class="pin-back" onclick="showUserSelectPanel()">← Back</button>
-        <button class="pin-back" onclick="showForgotPin()" style="color:var(--accent2);">Forgot PIN?</button>
-        <button class="pin-back" onclick="signOutUser()" style="color:var(--muted);margin-left:auto;">Sign out</button>
-      </div>
-    </div>
-
-    <!-- ── Forgot PIN / Recovery ── -->
-    <div id="pinRecoverySection" style="display:none;">
-      <div style="font-family:var(--mono);font-size:10px;color:var(--muted);margin-bottom:12px;line-height:1.5;">
-        Enter your recovery phrase to reset your PIN.
-      </div>
-      <div class="pin-err" id="recoveryErr"></div>
-      <input type="text" id="recoveryInput" maxlength="64" autocomplete="off"
-             placeholder="Your recovery phrase"
-             onkeydown="if(event.key==='Enter')checkRecovery()"
-             style="width:100%;background:var(--panel);border:2px solid var(--border);color:var(--text);
-                    padding:12px 14px;border-radius:var(--radius-sm);font-size:14px;
-                    outline:none;box-sizing:border-box;font-family:var(--sans);margin-bottom:10px;transition:border-color 0.15s;">
-      <button class="pin-key ok" style="width:100%;padding:12px;font-size:13px;border-radius:var(--radius-sm);border:none;cursor:pointer;margin-bottom:8px;" onclick="checkRecovery()">VERIFY →</button>
-      <div id="pinRecoveryMsg" style="font-family:var(--mono);font-size:10px;color:var(--muted);margin-bottom:8px;"></div>
-      <button class="pin-back" onclick="showPinEntry()">← Back to PIN</button>
-    </div>
-
-    <!-- ── Set new PIN (shown after recovery verified) ── -->
-    <div id="pinSetNewSection" style="display:none;">
-      <div style="font-family:var(--mono);font-size:10px;color:var(--green2);margin-bottom:12px;">✓ Identity verified. Set your new PIN.</div>
-      <input type="password" id="newPinInput" maxlength="8" autocomplete="new-password"
-             placeholder="New PIN (up to 8 chars)"
-             onkeydown="if(event.key==='Enter')document.getElementById('newPinConfirm').focus()"
-             style="width:100%;background:var(--panel);border:2px solid var(--border);color:var(--text);
-                    padding:12px 14px;border-radius:var(--radius-sm);font-size:16px;letter-spacing:3px;text-align:center;
-                    outline:none;box-sizing:border-box;font-family:var(--mono);margin-bottom:8px;transition:border-color 0.15s;">
-      <input type="password" id="newPinConfirm" maxlength="8" autocomplete="new-password"
-             placeholder="Confirm new PIN"
-             onkeydown="if(event.key==='Enter')saveNewPin()"
-             style="width:100%;background:var(--panel);border:2px solid var(--border);color:var(--text);
-                    padding:12px 14px;border-radius:var(--radius-sm);font-size:16px;letter-spacing:3px;text-align:center;
-                    outline:none;box-sizing:border-box;font-family:var(--mono);margin-bottom:10px;transition:border-color 0.15s;">
-      <div class="pin-err" id="newPinErr"></div>
-      <button class="pin-key ok" style="width:100%;padding:12px;font-size:13px;border-radius:var(--radius-sm);border:none;cursor:pointer;" onclick="saveNewPin()">SAVE NEW PIN ✓</button>
     </div>
   </div>
 
@@ -6312,7 +6164,7 @@ table.fc-borrow-tbl tr.fc-borrow-detail-row td{background:var(--surface);border-
 // GLOBALS
 // ══════════════════════════════════════════════
 let db = null;
-const APP_BUILD = '2026.06.29-map-search-fix';
+const APP_BUILD = '2026.06.29-no-pin-login';
 const FC_CORE_ICON_SRC = 'docs/r18-reference/core-drill-icon-128.png';
 const BORELOG_ICON_SRC = 'docs/r18-reference/borelog-icon.webp';
 const BORELOG_PATH = 'docs/r18-reference/deldot-borelog.html';
@@ -8277,14 +8129,19 @@ function wireConcreteProjectAutofill() { return; // no-op
 // ══════════════════════════════════════════════
 const SB_URL_STORAGE_KEY = 'labtrak_sb_url';
 const SB_KEY_STORAGE_KEY = 'labtrak_sb_anon_key';
-const AUTH_MODE_KEY = 'labtrak_auth_mode'; // auto | required | legacy
+const AUTH_MODE_KEY = 'labtrak_auth_mode'; // auto | required
 
 let _supabaseAuthSession = null;
 let _authProfile = null;
 window._anonBlocked = false;
 
 function getAuthMode() {
-  return localStorage.getItem(AUTH_MODE_KEY) || 'required';
+  const mode = localStorage.getItem(AUTH_MODE_KEY) || 'required';
+  if (mode === 'legacy') {
+    localStorage.setItem(AUTH_MODE_KEY, 'required');
+    return 'required';
+  }
+  return mode;
 }
 
 function saveAuthModeSetting() {
@@ -8296,7 +8153,6 @@ function saveAuthModeSetting() {
 }
 
 function isAuthRequired() {
-  if (getAuthMode() === 'legacy') return false;
   if (getAuthMode() === 'required') return true;
   return !!window._anonBlocked;
 }
@@ -8313,7 +8169,7 @@ function createSupabaseClient(url, key) {
 }
 
 async function probeAnonAccess() {
-  if (!db || getAuthMode() === 'legacy') {
+  if (!db) {
     window._anonBlocked = false;
     return true;
   }
@@ -8402,7 +8258,6 @@ async function resolveUserFromAuth() {
     initials: merged?.initials,
     color: merged?.color || rd.color,
     pin_hash: merged?.pin_hash,
-    pin: merged?.pin,
     recovery: merged?.recovery,
     restricted_hubs: merged?.restricted_hubs,
     assigned_tech_ids: merged?.assigned_tech_ids,
@@ -8411,7 +8266,7 @@ async function resolveUserFromAuth() {
 }
 
 function hideAllLoginPanels() {
-  ['authSignInPanel', 'labPickerPanel', 'userSelectPanel', 'userPinPanel'].forEach(id => {
+  ['authSignInPanel', 'labPickerPanel', 'userSelectPanel'].forEach(id => {
     const el = document.getElementById(id);
     if (el) el.style.display = 'none';
   });
@@ -8423,8 +8278,6 @@ function showAuthSignInPanel() {
   if (panel) panel.style.display = 'block';
   const err = document.getElementById('authSignInErr');
   if (err) err.textContent = '';
-  const legacy = document.getElementById('authLegacyLinkWrap');
-  if (legacy) legacy.style.display = (getAuthMode() === 'auto' && !window._anonBlocked) ? 'block' : 'none';
   setTimeout(() => document.getElementById('authEmail')?.focus(), 150);
 }
 
@@ -8445,12 +8298,6 @@ async function submitAuthSignIn() {
   }
 }
 
-function useLegacyPinLogin() {
-  hideAllLoginPanels();
-  document.getElementById('labPickerPanel').style.display = 'block';
-  showLabPicker();
-}
-
 async function completeAuthLogin() {
   try {
     const user = await resolveUserFromAuth();
@@ -8463,8 +8310,6 @@ async function completeAuthLogin() {
       showAuthSignInPanel();
       return;
     }
-    // Supabase email/password is the trust boundary — go straight in.
-    // PIN remains for legacy lab-tile picker (shared-device quick switch).
     loginUser(user);
   } catch (e) {
     document.getElementById('userOverlay')?.classList.add('open');
@@ -8478,7 +8323,7 @@ function updateAuthStatusLine() {
   const el = document.getElementById('authStatusLine');
   if (!el) return;
   const mode = getAuthMode();
-  const modeLabel = { auto: 'Auto', required: 'Required', legacy: 'Legacy PIN' }[mode] || mode;
+  const modeLabel = { auto: 'Auto', required: 'Required' }[mode] || mode;
   let line = 'Mode: ' + modeLabel;
   if (mode === 'auto' && window._anonBlocked) line += ' · database requires sign-in';
   if (_supabaseAuthSession?.user?.email) line += ' · signed in as ' + _supabaseAuthSession.user.email;
@@ -9228,8 +9073,6 @@ async function saveAiKey() {
   showToast('AI features enabled ✓', 'success');
 }
 
-let _permissionsUnlocked = false; // reset each time settings opens
-
 function showSetup() {
   document.getElementById('setupOverlay').style.display = 'flex';
   loadSupabaseSettings();
@@ -9239,30 +9082,15 @@ function showSetup() {
   refreshSessionActionsUI();
   renderSkinPicker();
   updateComfortModeUI();
-  _permissionsUnlocked = false; // always start locked
   const isAdmin = currentUser && currentUser.role === 'admin';
 
-  // Permission lock — shown for admins until key is entered
-  const lockSect = document.getElementById('permLockSection');
-  if (lockSect) {
-    lockSect.style.display = isAdmin ? 'block' : 'none';
-    const inp = document.getElementById('permKeyInput');
-    if (inp) inp.value = '';
-    const err = document.getElementById('permLockErr');
-    if (err) err.textContent = '';
-  }
-
-  // PIN-locked admin sections
   ['userMgmtSection','emailSettingsSection','manageTeamsSection','hubRestrictSection','teamAssignSection']
     .forEach(id => { const el = document.getElementById(id); if (el) el.style.display = 'none'; });
 
   showDataMaintenancePanel(isAdmin);
 
-  if (isAdmin && currentUser?._fromAuth && isAuthRequired()) {
-    applyPermissionUnlockUI();
-  }
+  if (isAdmin) applyPermissionUnlockUI();
 
-  // My Account — show for any logged-in user, clear fields each open
   const acct = document.getElementById('myAccountSection');
   if (acct) {
     acct.style.display = isAppSignedIn() ? 'block' : 'none';
@@ -9271,59 +9099,15 @@ function showSetup() {
       const role = currentUser?.role || _authProfile?.role || '';
       nameEl.textContent = getDisplayFullName() + (role ? ' · ' + role.toUpperCase() : '');
     }
-    ['ma_current_pin','ma_new_pin','ma_confirm_pin','ma_recovery'].forEach(id => {
-      const el = document.getElementById(id); if (el) el.value = '';
-    });
-    const errEl = document.getElementById('maErr'); if (errEl) errEl.textContent = '';
   }
 }
 
-async function unlockPermissions() {
-  if (currentUser?._fromAuth && currentUser?.role === 'admin' && isAuthRequired()) {
-    applyPermissionUnlockUI();
-    return;
-  }
-  const entered = (document.getElementById('permKeyInput')?.value || '').trim();
-  const errEl   = document.getElementById('permLockErr');
-  const inp     = document.getElementById('permKeyInput');
-
-  if (!entered) {
-    if (errEl) errEl.textContent = 'Enter your admin PIN.';
-    return;
-  }
-
-  const users = await getUsers();
-  const adminUser = users.find(u => u.id === currentUser?.id);
-  let pinOk = false;
-  if (adminUser) {
-    pinOk = userHasPin(adminUser) ? await verifyUserPin(entered, adminUser) : true;
-  }
-
-  if (!pinOk) {
-    if (errEl) errEl.textContent = 'Incorrect PIN. Try again.';
-    if (inp) { inp.style.borderColor = 'var(--red2)'; setTimeout(() => { inp.style.borderColor = ''; }, 800); inp.value = ''; }
-    return;
-  }
-
-  // Key matches — unlock all permission sections
-  applyPermissionUnlockUI();
+function unlockPermissions() {
+  if (currentUser?.role === 'admin') applyPermissionUnlockUI();
 }
 
 function applyPermissionUnlockUI() {
-  _permissionsUnlocked = true;
   const isAdmin = currentUser && currentUser.role === 'admin';
-
-  // Swap lock panel for a green unlocked badge
-  const lockSect = document.getElementById('permLockSection');
-  if (lockSect) {
-    lockSect.style.display = isAdmin ? 'block' : 'none';
-    lockSect.innerHTML = `<div style="background:rgba(22,163,74,0.1);border:1px solid #16a34a;border-radius:8px;
-      padding:10px 16px;display:flex;align-items:center;gap:10px;font-family:var(--mono);font-size:10px;color:#4ade80;">
-      🔓 &nbsp;Permission settings unlocked for this session.
-    </div>`;
-  }
-
-  // Now show and populate all admin sections
   const mgmt = document.getElementById('userMgmtSection');
   if (mgmt && isAdmin) { mgmt.style.display = 'block'; umRenderUsers(); }
 
@@ -9599,10 +9383,7 @@ const HELP_FIELD_REGISTRY = {
   ci_pour_location: { title: 'Pour location', body: 'Structure, span, or station limits for the placement.' },
   ci_gps: { title: 'Pour GPS', body: 'Tap to capture GPS at the pour for map display.' },
   sbUrl: { title: 'Supabase URL', body: 'Your project API URL from Supabase → Settings → API. Required for cloud sync.' },
-  sbKey: { title: 'Supabase anon key', body: 'Public anon key for browser access. Never paste the service_role key here.' },
-  ma_current_pin: { title: 'Current PIN', body: 'Confirm your identity before changing PIN or display name.' },
-  ma_new_pin: { title: 'New PIN', body: 'Four-digit PIN for quick sign-in on shared lab machines. Leave blank to keep current PIN.' },
-  ma_confirm_pin: { title: 'Confirm new PIN', body: 'Re-enter the new PIN to prevent typos.' }
+  sbKey: { title: 'Supabase anon key', body: 'Public anon key for browser access. Never paste the service_role key here.' }
 };
 
 const CONTEXT_HELP_VIEWS = {
@@ -9742,7 +9523,7 @@ const CONTEXT_HELP_VIEWS = {
   setup: {
     title: 'Settings',
     intro: 'Connection, appearance, account, and administration.',
-    fieldOrder: ['sbUrl', 'sbKey', 'ma_current_pin', 'ma_new_pin', 'ma_confirm_pin']
+    fieldOrder: ['sbUrl', 'sbKey']
   },
   _default: {
     title: 'This screen',
@@ -14607,82 +14388,14 @@ window.addEventListener('load', async () => {
 
 
 // ══════════════════════════════════════════════════════════════
-// PIN SECURITY (PBKDF2 via Web Crypto — no plaintext in DB/cache)
+// LOADING SKELETONS
 // ══════════════════════════════════════════════════════════════
-const _PIN_PREFIX = 'pbkdf2';
-const _PIN_ITERATIONS = 120000;
-
-function _bufToB64(buf) {
-  return btoa(String.fromCharCode(...new Uint8Array(buf)));
-}
-function _b64ToBuf(b64) {
-  const bin = atob(b64);
-  const buf = new Uint8Array(bin.length);
-  for (let i = 0; i < bin.length; i++) buf[i] = bin.charCodeAt(i);
-  return buf;
-}
-
-async function hashPin(pin) {
-  if (!pin) return '';
-  const salt = crypto.getRandomValues(new Uint8Array(16));
-  const enc = new TextEncoder();
-  const key = await crypto.subtle.importKey('raw', enc.encode(pin), 'PBKDF2', false, ['deriveBits']);
-  const bits = await crypto.subtle.deriveBits(
-    { name: 'PBKDF2', salt, iterations: _PIN_ITERATIONS, hash: 'SHA-256' },
-    key, 256
-  );
-  return `${_PIN_PREFIX}:${_PIN_ITERATIONS}:${_bufToB64(salt)}:${_bufToB64(bits)}`;
-}
-
-async function verifyPinHash(pin, stored) {
-  if (!stored) return !pin;
-  if (!stored.startsWith(_PIN_PREFIX + ':')) {
-    return pin === stored; // legacy plaintext in DB
-  }
-  const parts = stored.split(':');
-  if (parts.length !== 4) return false;
-  const iterations = parseInt(parts[1], 10);
-  const salt = _b64ToBuf(parts[2]);
-  const expected = parts[3];
-  const enc = new TextEncoder();
-  const key = await crypto.subtle.importKey('raw', enc.encode(pin), 'PBKDF2', false, ['deriveBits']);
-  const bits = await crypto.subtle.deriveBits(
-    { name: 'PBKDF2', salt, iterations, hash: 'SHA-256' },
-    key, 256
-  );
-  return _bufToB64(bits) === expected;
-}
-
-function userHasPin(user) {
-  if (!user) return false;
-  return !!((user.pin_hash && user.pin_hash.length > 0) || (user.pin && user.pin.length > 0));
-}
-
 function sanitizeUserForStorage(user) {
   const u = { ...user };
   delete u.pin;
   return u;
 }
 
-async function verifyUserPin(entered, user) {
-  if (!userHasPin(user)) return true;
-  if (user.pin_hash) return verifyPinHash(entered, user.pin_hash);
-  if (user.pin) return entered === user.pin;
-  return false;
-}
-
-async function upgradeUserPinHash(userId, plainPin) {
-  if (!plainPin) return;
-  const hash = await hashPin(plainPin);
-  const users = (await getUsers()).map(u => u.id === userId ? { ...u, pin_hash: hash, pin: '' } : u);
-  await saveUsers(users);
-  _stUsersCache = null;
-  return hash;
-}
-
-// ══════════════════════════════════════════════════════════════
-// LOADING SKELETONS
-// ══════════════════════════════════════════════════════════════
 function showTableSkeleton(tbodyId, cols, rows) {
   const tbody = document.getElementById(tbodyId);
   if (!tbody) return;
@@ -14832,8 +14545,6 @@ function loadCustomTeams() {
 loadCustomTeams();
 
 let currentUser = null;
-let pinBuffer   = '';
-let pinTarget   = null; // user being PIN-entered
 
 // ── Default users ──────────────────────────────────────────────
 async function getUsers() {
@@ -14874,14 +14585,11 @@ async function getUsers() {
 
 async function saveUsers(users) {
   const now = new Date().toISOString();
-  const rows = await Promise.all(users.map(async u => {
+  const rows = users.map(u => {
     const row = { ...u, updated_at: now, created_at: u.created_at || now };
-    if (row.pin && row.pin.length > 0 && !String(row.pin).startsWith(_PIN_PREFIX + ':')) {
-      row.pin_hash = await hashPin(row.pin);
-    }
     delete row.pin;
     return row;
-  }));
+  });
   _stUsersCache = rows;
   if (db) {
     try {
@@ -14930,14 +14638,10 @@ function showUserLogin() {
 }
 
 async function showLabPicker() {
-  // Hide all other panels
   document.getElementById('authSignInPanel').style.display  = 'none';
   document.getElementById('labPickerPanel').style.display   = 'block';
   document.getElementById('userSelectPanel').style.display  = 'none';
-  document.getElementById('userPinPanel').style.display     = 'none';
-  pinBuffer = ''; pinTarget = null;
 
-  // Load users once and cache
   if (!_stUsersCache) { _stUsersCache = await getUsers(); }
   const users = _stUsersCache;
 
@@ -14985,7 +14689,6 @@ async function showUsersForLab(role) {
 
   document.getElementById('labPickerPanel').style.display  = 'none';
   document.getElementById('userSelectPanel').style.display = 'block';
-  document.getElementById('userPinPanel').style.display    = 'none';
 
   const label = document.getElementById('userSelectLabLabel');
   if (label) { label.textContent = lab.icon + ' ' + lab.label; label.style.color = lab.color; }
@@ -15005,98 +14708,18 @@ async function showUsersForLab(role) {
         <div class="user-btn-name">${u.name}</div>
         <div class="user-btn-role">${rd.label.toUpperCase()}</div>
       </div>
-      <div class="user-btn-arrow">${userHasPin(u) ? '🔒' : '→'}</div>
+      <div class="user-btn-arrow">→</div>
     </div>`;
   }).join('');
 }
 
-// Legacy alias — called from PIN panel back button
 function showUserSelectPanel() { showLabPicker(); }
-
-// Called from recovery panel back button
-function renderUserList() { /* no-op, handled by showUsersForLab */ }
 
 async function selectUserForLogin(id) {
   const users = _stUsersCache || await getUsers();
   const user = users.find(u => u.id === id);
   if (!user) return;
-  if (!userHasPin(user)) { loginUser(user); return; }
-  pinTarget = user;
-  pinBuffer = '';
-  document.getElementById('userSelectPanel').style.display = 'none';
-  document.getElementById('userPinPanel').style.display    = 'block';
-  const rd = ROLE_DEFS[user.role] || ROLE_DEFS.admin;
-  const av = document.getElementById('pinAvatar');
-  av.textContent = user.initials || user.name[0].toUpperCase();
-  av.style.background = user.color || rd.color;
-  document.getElementById('pinUserName').textContent = user.name;
-  document.getElementById('pinUserRole').textContent = rd.label.toUpperCase();
-  document.getElementById('pinErr').textContent = '';
-  const inp = document.getElementById('pinTextInput');
-  if (inp) { inp.value = ''; inp.type = 'password'; }
-  updatePinDots(0);
-  setTimeout(() => inp && inp.focus(), 150);
-  // Show pin entry, hide recovery
-  showPinEntry();
-}
-
-function pinTextChanged() {
-  const inp = document.getElementById('pinTextInput');
-  if (!inp) return;
-  pinBuffer = inp.value;
-  updatePinDots(pinBuffer.length);
-  document.getElementById('pinErr').textContent = '';
-}
-
-function updatePinDots(len) {
-  for (let i = 0; i < 8; i++) {
-    const dot = document.getElementById('pd' + i);
-    if (!dot) continue;
-    dot.style.display = ''; // always show all 8
-    dot.classList.toggle('filled', i < len);
-  }
-}
-
-function togglePinVis() {
-  const inp = document.getElementById('pinTextInput');
-  const btn = document.getElementById('pinVisBtn');
-  if (!inp) return;
-  if (inp.type === 'password') {
-    inp.type = 'text';
-    if (btn) btn.textContent = '🙈';
-  } else {
-    inp.type = 'password';
-    if (btn) btn.textContent = '👁';
-  }
-}
-
-// Legacy numpad handler kept as no-op so nothing breaks
-function pinKey(k) {
-  const inp = document.getElementById('pinTextInput');
-  if (!inp || !pinTarget) return;
-  if (k === 'del') { inp.value = inp.value.slice(0,-1); pinTextChanged(); return; }
-  if (k === 'ok')  { checkPin(); return; }
-  if (inp.value.length < 8) { inp.value += k; pinTextChanged(); }
-}
-
-async function checkPin() {
-  if (!pinTarget) return;
-  const inp = document.getElementById('pinTextInput');
-  const entered = inp ? inp.value : pinBuffer;
-  const ok = await verifyUserPin(entered, pinTarget);
-  if (ok) {
-    if (pinTarget.pin && !pinTarget.pin_hash && entered) {
-      const hash = await upgradeUserPinHash(pinTarget.id, entered);
-      if (hash) pinTarget = { ...pinTarget, pin_hash: hash, pin: '' };
-    }
-    loginUser(pinTarget);
-  } else {
-    document.getElementById('pinErr').textContent = 'Incorrect PIN. Try again.';
-    if (inp) { inp.value = ''; inp.style.borderColor = 'var(--red2)'; setTimeout(()=>{ inp.style.borderColor=''; }, 800); }
-    pinBuffer = '';
-    updatePinDots(0);
-    setTimeout(() => inp && inp.focus(), 50);
-  }
+  loginUser(user);
 }
 
 // ── Log in a user ──────────────────────────────────────────────
@@ -15176,7 +14799,7 @@ async function umRenderUsers() {
       <div class="um-av" style="background:${u.color || rd.color};">${u.initials || u.name[0]}</div>
       <div class="um-info" style="flex:1;min-width:120px;">
         <div class="um-name">${u.name}</div>
-        <div class="um-role">${rd.label} · ${userHasPin(u) ? '●●●● set' : 'No PIN'}</div>
+        <div class="um-role">${rd.label}</div>
       </div>
       <label style="display:flex;align-items:center;gap:5px;font-family:var(--mono);font-size:10px;color:var(--muted);cursor:pointer;white-space:nowrap;" title="Allow this user to approve reports before email distribution">
         <input type="checkbox" ${isApprover ? 'checked' : ''} ${u.role === 'admin' ? 'disabled' : ''}
@@ -15184,7 +14807,6 @@ async function umRenderUsers() {
           style="accent-color:var(--gold);width:13px;height:13px;">
         Can Approve Reports
       </label>
-      ${userHasPin(u) ? `<button class="um-del" onclick="umClearPin('${u.id}')" title="Clear PIN" style="color:var(--gold);font-size:11px;padding:2px 7px;">🔓</button>` : ''}
       <button class="um-del" onclick="umDeleteUser('${u.id}')" title="Delete">✕</button>
     </div>`;
   }).join('');
@@ -15193,18 +14815,17 @@ async function umRenderUsers() {
 async function umAddUser() {
   const name     = document.getElementById('um_name')?.value.trim();
   const role     = document.getElementById('um_role')?.value || 'field';
-  const pin      = document.getElementById('um_pin')?.value || '';
-  const recovery = document.getElementById('um_recovery')?.value.trim() || '';
   if (!name) { showToast('Enter a name', 'error'); return; }
   const rd = ROLE_DEFS[role] || ROLE_DEFS.field;
   const words = name.split(' ');
   const initials = words.length >= 2 ? (words[0][0] + words[words.length-1][0]).toUpperCase() : name.slice(0,2).toUpperCase();
-  const newUser = { id: 'u_' + Date.now(), name, role, pin, recovery, initials, color: rd.color, can_approve_reports: false };
+  const newUser = { id: 'u_' + Date.now(), name, role, initials, color: rd.color, can_approve_reports: false };
   const users = await getUsers();
   users.push(newUser);
   await saveUsers(users);
   await umRenderUsers();
-  ['um_name','um_pin','um_recovery'].forEach(id => { const el = document.getElementById(id); if(el) el.value=''; });
+  const nameEl = document.getElementById('um_name');
+  if (nameEl) nameEl.value = '';
   showToast(name + ' added ✓', 'success');
 }
 
@@ -15505,117 +15126,6 @@ async function umToggleApprover(userId, checked) {
   showToast(checked ? 'Report approval access granted ✓' : 'Report approval access removed', 'info');
 }
 
-// ── Forgot PIN flow ────────────────────────────────────────────
-function showForgotPin() {
-  document.getElementById('pinEntrySection').style.display    = 'none';
-  document.getElementById('pinRecoverySection').style.display = 'block';
-  document.getElementById('pinSetNewSection').style.display   = 'none';
-  document.getElementById('recoveryErr').textContent = '';
-  document.getElementById('recoveryInput').value = '';
-  setTimeout(() => document.getElementById('recoveryInput')?.focus(), 100);
-}
-
-function showPinEntry() {
-  document.getElementById('pinEntrySection').style.display    = 'block';
-  document.getElementById('pinRecoverySection').style.display = 'none';
-  document.getElementById('pinSetNewSection').style.display   = 'none';
-  const inp = document.getElementById('pinTextInput');
-  if (inp) inp.value = '';
-  updatePinDots(0);
-}
-
-async function checkRecovery() {
-  if (!pinTarget) return;
-  const entered = (document.getElementById('recoveryInput')?.value || '').trim();
-  const errEl   = document.getElementById('recoveryErr');
-
-  if (!pinTarget.recovery) {
-    errEl.textContent = 'No recovery phrase set for this account. Ask an administrator to reset your PIN in ⚙ Config.';
-    return;
-  }
-  if (!entered) { errEl.textContent = 'Enter your recovery phrase.'; return; }
-
-  if (entered.toLowerCase() === pinTarget.recovery.toLowerCase()) {
-    errEl.textContent = '';
-    document.getElementById('pinRecoverySection').style.display = 'none';
-    document.getElementById('pinSetNewSection').style.display   = 'block';
-    document.getElementById('newPinInput').value   = '';
-    document.getElementById('newPinConfirm').value = '';
-    document.getElementById('newPinErr').textContent = '';
-    setTimeout(() => document.getElementById('newPinInput')?.focus(), 100);
-  } else {
-    errEl.textContent = 'Recovery phrase does not match. Try again.';
-    const inp = document.getElementById('recoveryInput');
-    if (inp) { inp.style.borderColor = 'var(--red2)'; setTimeout(()=>{ inp.style.borderColor=''; }, 800); }
-  }
-}
-
-async function saveNewPin() {
-  if (!pinTarget) return;
-  const newPin  = document.getElementById('newPinInput')?.value || '';
-  const confirm = document.getElementById('newPinConfirm')?.value || '';
-  const errEl   = document.getElementById('newPinErr');
-
-  if (!newPin)            { errEl.textContent = 'Enter a new PIN.'; return; }
-  if (newPin !== confirm) { errEl.textContent = 'PINs do not match.'; return; }
-
-  const users = (await getUsers()).map(u => u.id === pinTarget.id ? { ...u, pin: newPin, pin_hash: '' } : u);
-  await saveUsers(users);
-  _stUsersCache = null;
-  const refreshed = (await getUsers()).find(u => u.id === pinTarget.id) || pinTarget;
-  loginUser(refreshed);
-  showToast('PIN updated – logged in ✓', 'success');
-}
-
-async function saveMyCredentials() {
-  if (!currentUser) return;
-  const errEl   = document.getElementById('maErr');
-  const curPin  = document.getElementById('ma_current_pin')?.value || '';
-  const newPin  = document.getElementById('ma_new_pin')?.value || '';
-  const confPin = document.getElementById('ma_confirm_pin')?.value || '';
-  const newRec  = document.getElementById('ma_recovery')?.value.trim() || '';
-
-  // Require current PIN to confirm identity
-  const freshUsers = await getUsers();
-  const freshSelf = freshUsers.find(u => u.id === currentUser.id) || currentUser;
-  if (userHasPin(freshSelf) && !(await verifyUserPin(curPin, freshSelf))) {
-    errEl.textContent = 'Current PIN is incorrect.';
-    document.getElementById('ma_current_pin').style.borderColor = 'var(--red2)';
-    setTimeout(() => { document.getElementById('ma_current_pin').style.borderColor = ''; }, 1200);
-    return;
-  }
-  errEl.textContent = '';
-
-  if (newPin && newPin !== confPin) {
-    errEl.textContent = 'New PINs do not match.';
-    return;
-  }
-
-  const updated = {
-    ...freshSelf,
-    pin: newPin || '',
-    pin_hash: newPin ? '' : (freshSelf.pin_hash || ''),
-    recovery: newRec || freshSelf.recovery,
-    updated_at: new Date().toISOString(),
-  };
-
-  // Persist to Supabase
-  const users = (await getUsers()).map(u => u.id === currentUser.id ? updated : u);
-  await saveUsers(users);
-  _stUsersCache = null;
-
-  // Update in-memory currentUser
-  currentUser = updated;
-
-  // Clear fields
-  ['ma_current_pin','ma_new_pin','ma_confirm_pin','ma_recovery'].forEach(id => {
-    const el = document.getElementById(id); if (el) el.value = '';
-  });
-
-  showToast('Account updated ✓', 'success');
-  document.getElementById('setupOverlay').style.display = 'none';
-}
-
 async function umDeleteUser(id) {
   _stUsersCache = null;
   if (db) {
@@ -15633,29 +15143,6 @@ async function umDeleteUser(id) {
     localStorage.setItem('st_users', JSON.stringify(users));
   }
   await umRenderUsers();
-}
-
-async function emergencyClearPins() {
-  const key = prompt('Admin verification required.\n\nEnter the product key to clear all PINs:');
-  if (!key) return;
-  const stored = localStorage.getItem('ai_key') || '';
-  if (key.trim() !== stored.trim()) {
-    alert('Incorrect key. PINs were not changed.');
-    return;
-  }
-  const users = (await getUsers()).map(u => ({ ...u, pin: '', pin_hash: '' }));
-  await saveUsers(users);
-  _stUsersCache = null;
-  showLabPicker();
-  showToast('All PINs cleared — tap your name to log in', 'success');
-}
-
-async function umClearPin(id) {
-  const users = (await getUsers()).map(u => u.id === id ? { ...u, pin: '', pin_hash: '' } : u);
-  await saveUsers(users);
-  _stUsersCache = null;
-  await umRenderUsers();
-  showToast('PIN cleared', 'success');
 }
 
 // ── HUB RENDERERS ──────────────────────────────────────────────
