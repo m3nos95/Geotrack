@@ -2863,6 +2863,7 @@ table.fc-borrow-tbl tr.fc-borrow-detail-row td{background:var(--surface);border-
     <div class="setup-sub">Materials &amp; Research Laboratory — Sample Management System</div>
 
     <h3>DATABASE CONNECTION</h3>
+    <div data-tour="settings-auth">
     <div class="setup-steps">
       <p>
         Connect to your Supabase project. Find these in <strong>Supabase Dashboard → Project Settings → API</strong>.
@@ -2925,6 +2926,7 @@ table.fc-borrow-tbl tr.fc-borrow-detail-row td{background:var(--surface);border-
         <button class="btn-um-add" onclick="adminProvisionAuthUser()" style="grid-column:span 2;">+ CREATE OR LINK AUTH ACCOUNT</button>
       </div>
       <div id="apProvisionMsg" style="font-family:var(--mono);font-size:10px;color:var(--muted);margin-top:10px;line-height:1.5;"></div>
+    </div>
     </div>
 
     <h3>AI FEATURES</h3>
@@ -3079,10 +3081,10 @@ table.fc-borrow-tbl tr.fc-borrow-detail-row td{background:var(--surface);border-
     </div>
 
     <!-- Help — all users -->
-    <div class="user-mgmt-section" id="helpSection">
+    <div class="user-mgmt-section" id="helpSection" data-tour="settings-help">
       <div class="user-mgmt-title">HELP</div>
       <p style="font-family:var(--sans);font-size:12px;color:var(--muted);margin:0 0 12px;line-height:1.55;">
-        Press <strong>?</strong> on any screen for in-depth help on that page — every button and input.
+        <em>Learn from the past, build for the future.</em> Press <strong>?</strong> on any screen for in-depth help on that page — every button and input.
         Or run the full app tour below to jump across all modules.
       </p>
       <button type="button" class="tour-help-launch" onclick="startLabTrakTour()">Full app tour (all modules)</button>
@@ -3090,7 +3092,7 @@ table.fc-borrow-tbl tr.fc-borrow-detail-row td{background:var(--surface);border-
     </div>
 
     <!-- Appearance / skins — all users -->
-    <div class="user-mgmt-section" id="appearanceSection">
+    <div class="user-mgmt-section" id="appearanceSection" data-tour="settings-appearance">
       <div class="user-mgmt-title">APPEARANCE</div>
       <div style="font-family:var(--mono);font-size:9px;color:var(--muted);margin-bottom:4px;letter-spacing:0.5px;">
         Color theme for this device. Saved locally in your browser.
@@ -3610,7 +3612,7 @@ table.fc-borrow-tbl tr.fc-borrow-detail-row td{background:var(--surface);border-
       </div><!-- /dash-module-grid -->
 
       <!-- Interactive Calendar (replaces old panel grids) -->
-      <div class="dash-cal-wrap">
+      <div class="dash-cal-wrap" data-tour="dash-calendar">
         <div class="dash-cal-header">
           <button class="dash-cal-nav" onclick="dashCalPrev()">&#8249;</button>
           <button class="dash-cal-nav" onclick="dashCalNext()">&#8250;</button>
@@ -3706,7 +3708,7 @@ table.fc-borrow-tbl tr.fc-borrow-detail-row td{background:var(--surface);border-
           <h2 style="font-family:var(--display);font-size:22px;color:var(--text);letter-spacing:1px;">PROJECTS</h2>
           <p style="color:var(--muted);font-size:12px;font-family:var(--mono);margin-top:3px;">Select a project to view its samples, or add a new one below.</p>
         </div>
-        <button class="btn btn-primary" onclick="openNewProject()" style="font-size:13px;padding:10px 18px;">+ NEW PROJECT</button>
+        <button class="btn btn-primary" data-tour="projects-new" onclick="openNewProject()" style="font-size:13px;padding:10px 18px;">+ NEW PROJECT</button>
       </div>
 
       <div class="projects-grid" id="projectsGrid" data-tour="projects-grid">
@@ -3724,7 +3726,7 @@ table.fc-borrow-tbl tr.fc-borrow-detail-row td{background:var(--surface);border-
         <span>/</span>
         <span id="breadcrumbProjectName" style="color:var(--text);font-weight:600;"></span>
       </div>
-      <div class="stats-grid">
+      <div class="stats-grid" data-tour="dashboard-stats">
         <div class="stat-card"><div class="stat-icon">🗂️</div><div class="stat-body"><div class="s-num" id="statTotal">—</div><div class="s-lbl">Total Samples</div></div></div>
         <div class="stat-card"><div class="stat-icon">⏳</div><div class="stat-body"><div class="s-num" id="statPending">—</div><div class="s-lbl">Awaiting Lab</div></div></div>
         <div class="stat-card"><div class="stat-icon">✅</div><div class="stat-body"><div class="s-num" id="statComplete">—</div><div class="s-lbl">Complete</div></div></div>
@@ -5365,7 +5367,7 @@ table.fc-borrow-tbl tr.fc-borrow-detail-row td{background:var(--surface);border-
       </div>
 
       <!-- ── RIGHT: LAB ENTRY PANEL ── -->
-      <div class="sl-entry-panel" id="sl_entry_panel">
+      <div class="sl-entry-panel" id="sl_entry_panel" data-tour="soillab-entry">
 
         <!-- Empty state -->
         <div class="sl-empty-state" id="sl_empty_state">
@@ -5730,7 +5732,7 @@ table.fc-borrow-tbl tr.fc-borrow-detail-row td{background:var(--surface);border-
         <span class="hub-role-badge" style="background:rgba(96,165,250,0.15);color:#60a5fa;border:1px solid rgba(96,165,250,0.3);">📍 FIELD TECHNICIAN</span>
       </div>
 
-      <div class="hub-kpi-row" id="fhub_kpis">
+      <div class="hub-kpi-row" id="fhub_kpis" data-tour="fieldhub-kpis">
         <div class="hub-kpi-card" style="--kpi-color:#60a5fa">
           <div class="hub-kpi-card" style="position:absolute;inset:0;border-radius:inherit;">
             <div style="position:absolute;top:0;left:0;right:0;height:3px;background:linear-gradient(90deg,#3b82f6,#60a5fa);border-radius:inherit;"></div>
@@ -5759,7 +5761,7 @@ table.fc-borrow-tbl tr.fc-borrow-detail-row td{background:var(--surface);border-
         </div>
       </div>
 
-      <div class="hub-actions">
+      <div class="hub-actions" data-tour="fieldhub-actions">
         <button class="hub-action-btn primary" onclick="switchView('fieldcontrol')">⚡ NEW TEST</button>
         <button class="hub-action-btn" onclick="fcOpenCoreDrillFromHub()"><span class="fc-core-icon fc-core-icon--sm" aria-hidden="true"><img src="docs/r18-reference/core-drill-icon-128.png" alt=""></span> CORE DRILL</button>
         <button class="hub-action-btn" onclick="switchView('scan')">📷 SCAN QR</button>
@@ -5767,7 +5769,7 @@ table.fc-borrow-tbl tr.fc-borrow-detail-row td{background:var(--surface);border-
         <button class="hub-action-btn" onclick="switchView('fieldcontrol')">☢️ NUCLEAR</button>
       </div>
 
-      <div class="hub-panel">
+      <div class="hub-panel" data-tour="fieldhub-samples">
         <div class="hub-panel-hdr">
           <span class="hub-panel-title">My Recent Samples</span>
           <button class="hub-panel-link" onclick="switchView('fieldcontrol')">Field Entry →</button>
@@ -5868,7 +5870,7 @@ table.fc-borrow-tbl tr.fc-borrow-detail-row td{background:var(--surface);border-
         <span class="hub-role-badge" style="background:rgba(52,211,153,0.12);color:#34d399;border:1px solid rgba(52,211,153,0.3);">🔬 LAB TECHNICIAN</span>
       </div>
 
-      <div class="hub-kpi-row">
+      <div class="hub-kpi-row" data-tour="labhub-kpis">
         <div class="hub-kpi-card">
           <div style="position:absolute;top:0;left:0;right:0;height:3px;background:linear-gradient(90deg,var(--accent),var(--accent2));border-radius:inherit;"></div>
           <div class="hub-kpi-icon">⏳</div>
@@ -5924,7 +5926,7 @@ table.fc-borrow-tbl tr.fc-borrow-detail-row td{background:var(--surface);border-
       </div>
 
       <!-- Lab Hub Calendar -->
-      <div class="hub-panel" style="margin-top:18px;">
+      <div class="hub-panel" data-tour="labhub-calendar" style="margin-top:18px;">
         <div class="hub-cal-hdr">
           <div style="display:flex;align-items:center;gap:8px;">
             <button class="hub-cal-nav" onclick="hubCalPrev('lab')">‹</button>
@@ -6072,7 +6074,7 @@ table.fc-borrow-tbl tr.fc-borrow-detail-row td{background:var(--surface);border-
             <div class="labmap-subtitle" id="labMapSubtitle">All stored coordinates across the program</div>
           </div>
           <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
-            <div class="map-road-search" id="labMapRoadSearchWrap">
+            <div class="map-road-search" id="labMapRoadSearchWrap" data-tour="labmap-search">
               <input type="search" id="labMapRoadSearch" placeholder="Search road or address…" autocomplete="off" aria-label="Search road or address" />
               <button type="button" class="btn btn-ghost map-road-search-go" onclick="runMapRoadSearch('lab')">GO</button>
               <div class="map-road-search-results" id="labMapRoadSearchResults" style="display:none;" role="listbox"></div>
@@ -6086,7 +6088,7 @@ table.fc-borrow-tbl tr.fc-borrow-detail-row td{background:var(--surface);border-
           </div>
         </div>
         <div class="labmap-layers-wrap">
-          <aside class="labmap-layers" id="labMapLayersPanel">
+          <aside class="labmap-layers" id="labMapLayersPanel" data-tour="labmap-layers">
             <div class="labmap-layers-title">LAYERS</div>
             <div id="labMapLayerList"></div>
           </aside>
@@ -6164,7 +6166,7 @@ table.fc-borrow-tbl tr.fc-borrow-detail-row td{background:var(--surface);border-
 // GLOBALS
 // ══════════════════════════════════════════════
 let db = null;
-const APP_BUILD = '2026.06.29-no-pin-login';
+const APP_BUILD = '2026.06.29-help-tutorials';
 const FC_CORE_ICON_SRC = 'docs/r18-reference/core-drill-icon-128.png';
 const BORELOG_ICON_SRC = 'docs/r18-reference/borelog-icon.webp';
 const BORELOG_PATH = 'docs/r18-reference/deldot-borelog.html';
@@ -9232,6 +9234,31 @@ let _tourReturnView = 'home';
 let _tourScrollRoot = null;
 let _tourRenderToken = 0;
 let _tourMode = 'full';
+const LABTRAK_TAGLINE = 'Learn from the past, build for the future.';
+
+const HELP_WORKFLOW_TIPS = {
+  home: 'The dashboard calendar shows cylinder breaks, pending lab samples, and notes program-wide. Use completed events as context when planning upcoming work.',
+  projects: 'Each project links field tests, lab samples, pavement cores, and maps to one contract. Historical results on a route inform specs on future lettings.',
+  dashboard: 'The sample registry is your audit trail — search past work on a contract before approving repeat materials or borrow sources.',
+  fieldcontrol: 'Field events create test numbers and GPS that lab entry and maps rely on. Accurate field logs today become tomorrow\'s reference data.',
+  fieldhub: 'Your field hub summarizes open sessions and recent samples. Close out density and bag work in the field so lab staff can finish without callbacks.',
+  soillab: 'Lab entry turns field samples into LB-44 reports. Prior Atterberg and sieve results on the same material guide acceptance decisions.',
+  labhub: 'Work oldest pending samples first — reducing backlog keeps future lettings from stalling on approvals.',
+  conchub: 'Track cylinder breaks before they go overdue. Historical break load helps schedule lab capacity for the next pour season.',
+  concrete: 'Cylinder sets tie pours to DMP/DMF reports. Past mix performance informs future mix design approvals.',
+  labmap: 'The statewide map shows where testing happened — revisit problem corridors before the next construction phase.',
+  appsources: 'Stockpile approvals expire on a schedule. Use prior test history to renew sources before material hits grade.',
+  scan: 'QR codes link the physical sample bag to the electronic record — scan at lab intake to avoid misfiles.',
+  r18: 'R-18 keeps equipment calibration current so today\'s readings stay defensible years later.',
+  setup: 'Connection, sign-in, and appearance settings keep your team\'s shared history secure and readable on every device.',
+  _default: 'LabTrak connects field collection, lab analysis, and reporting so DelDOT builds on documented materials history.'
+};
+
+function helpIntroWithTagline(intro) {
+  const base = intro || 'Press Next to walk through each control on this screen.';
+  return base + ' ' + LABTRAK_TAGLINE;
+}
+
 let _tourSteps = null;
 
 function getTourSteps() {
@@ -9383,7 +9410,17 @@ const HELP_FIELD_REGISTRY = {
   ci_pour_location: { title: 'Pour location', body: 'Structure, span, or station limits for the placement.' },
   ci_gps: { title: 'Pour GPS', body: 'Tap to capture GPS at the pour for map display.' },
   sbUrl: { title: 'Supabase URL', body: 'Your project API URL from Supabase → Settings → API. Required for cloud sync.' },
-  sbKey: { title: 'Supabase anon key', body: 'Public anon key for browser access. Never paste the service_role key here.' }
+  sbKey: { title: 'Supabase anon key', body: 'Public anon key for browser access. Never paste the service_role key here.' },
+  authModeSelect: { title: 'Sign-in mode', body: 'Required = always email/password. Auto = sign-in only when the database blocks anonymous access (RLS).' },
+  authEmail: { title: 'Sign-in email', body: 'Your Supabase Auth account email. An administrator links this login to your LabTrak role.' },
+  authPassword: { title: 'Password', body: 'Your Supabase Auth password. Contact an administrator if you need access provisioned.' },
+  labMapRoadSearch: { title: 'Map search', body: 'Search a Delaware road or address, then press GO or Enter. The map flies to matches — project roads from your database appear first.' },
+  projectMapRoadSearch: { title: 'Project map search', body: 'Same road search while viewing a project map — jump to a station area without losing sample pins.' },
+  dash-cal-filter: { title: 'Calendar filter', body: 'Show all events, cylinder breaks only, pending lab samples, or personal notes on the dashboard calendar.' },
+  ap_email: { title: 'Provision email', body: 'Email for a new Supabase Auth account (admin only).' },
+  ap_password: { title: 'Temporary password', body: 'Initial password for the new account — user should change after first sign-in.' },
+  ap_role: { title: 'LabTrak role', body: 'Role assigned to the linked profile — controls which hubs and modules appear.' },
+  ap_app_user: { title: 'Link to LabTrak user', body: 'Optional tie to an existing user tile for display name, initials, and hub restrictions.' }
 };
 
 const CONTEXT_HELP_VIEWS = {
@@ -9402,25 +9439,29 @@ const CONTEXT_HELP_VIEWS = {
   },
   home: {
     title: 'Dashboard / Home',
-    intro: 'Launch pad for each major DelDOT materials module and quick KPIs.',
+    intro: 'Launch pad for each major DelDOT materials module, program calendar, and quick KPIs.',
     sections: [
       { tour: 'dash-modules', title: 'Module cards', body: 'Open Soil Lab hub, Concrete hub, Field Control hub, or planned modules (Hot Mix, Pre-Cast, Chem).' },
-      { tour: 'planned-module', title: 'Planned modules', body: 'Grayed modules are on the roadmap — opening them shows a coming-soon notice.' }
-    ]
+      { tour: 'planned-module', title: 'Planned modules', body: 'Grayed modules are on the roadmap — opening them shows a coming-soon notice.' },
+      { tour: 'dash-calendar', title: 'Program calendar', body: 'Month view of cylinder breaks due, pending lab samples, overdue items, and notes. Filter by event type or jump to Today.' }
+    ],
+    fieldOrder: ['dash-cal-filter']
   },
   projects: {
     title: 'Projects',
     intro: 'Manage contracts and open project-specific sample views and maps.',
     sections: [
-      { tour: 'projects-header', title: 'Projects header', body: 'Overview of the project list. Use + NEW PROJECT to add a contract record.' },
-      { tour: 'projects-grid', title: 'Project cards', body: 'Each card opens project details and a map of samples, cores, concrete sets, and BoreLog pins.' }
+      { tour: 'projects-header', title: 'Projects header', body: 'Overview of the project list.' },
+      { tour: 'projects-new', title: 'New project', body: 'Add a contract record with route, contractor, FA number, and email distribution for reports.' },
+      { tour: 'projects-grid', title: 'Project cards', body: 'Each card filters samples to that contract. Use Map to see field samples, cores, concrete, and borings with GPS.' }
     ]
   },
   dashboard: {
     title: 'All Samples registry',
     intro: 'Search and audit every lab sample across all projects.',
     sections: [
-      { tour: 'sample-registry', title: 'Sample table', body: 'Sortable registry — open a row for lab entry, approval, or history.' }
+      { tour: 'dashboard-stats', title: 'Sample KPIs', body: 'Totals, pending lab work, completed samples, and today\'s intake at a glance.' },
+      { tour: 'sample-registry', title: 'Sample table', body: 'Sortable registry — open a row for lab entry, approval, or history. Search and archive toggle above the table.' }
     ],
     fieldOrder: ['searchInput', 'archiveToggleBtn']
   },
@@ -9457,7 +9498,8 @@ const CONTEXT_HELP_VIEWS = {
     title: 'Soil & Aggregate Lab',
     intro: 'Queue on the left, lab entry and LB-44 generation on the right.',
     sections: [
-      { tour: 'soillab-queue', title: 'Sample queue', body: 'Pending samples from field intake. Select a row to open lab data entry.' }
+      { tour: 'soillab-queue', title: 'Sample queue', body: 'Pending samples from field intake. Filter by status, soil vs. aggregate, or search. Select a row to open lab data entry.' },
+      { tour: 'soillab-entry', title: 'Lab entry panel', body: 'Atterberg limits, sieves, moisture, organic, signatures, and Generate Report. AI photo upload can read bench sheet values.' }
     ],
     fieldOrder: [
       'sl_search', 'sl_image_input',
@@ -9483,16 +9525,21 @@ const CONTEXT_HELP_VIEWS = {
     title: 'Soil Lab Hub',
     intro: 'Lab team dashboard — queue, calendar, KPIs, and BoreLog launcher.',
     sections: [
-      { tour: 'labhub-header', title: 'Lab hub header', body: 'Greeting, weather, and quick stats for the materials lab.' },
-      { tour: 'borelog', title: 'BoreLog', body: 'Opens BoreLog in a new tab for boring log data entry (lab workflow only).' },
-      { tour: 'labhub-queue', title: 'Pending queue', body: 'Oldest pending soil/aggregate samples — click through to the full lab module.' }
+      { tour: 'labhub-header', title: 'Lab hub header', body: 'Greeting, date, and role badge for the materials lab team.' },
+      { tour: 'labhub-kpis', title: 'Lab KPIs', body: 'Pending count, completed today/this week, and age of the oldest pending sample — prioritize backlog first.' },
+      { tour: 'borelog', title: 'BoreLog', body: 'Opens BoreLog in a new tab for lab data entry from received boring logs or GeoSystem import — separate from field soil sample bags.' },
+      { tour: 'labhub-queue', title: 'Pending queue', body: 'Oldest pending soil/aggregate samples — click through to the full lab module.' },
+      { tour: 'labhub-calendar', title: 'Lab calendar', body: 'Tests due and hub notes by day — click a day to add or review calendar notes.' }
     ]
   },
   fieldhub: {
     title: 'Field Control Hub',
     intro: 'Field technician home — sessions, calendar, and quick actions.',
     sections: [
-      { tour: 'fieldhub-header', title: 'Field hub header', body: 'Open sessions, weather, and shortcuts to Field Control and QR scan.' }
+      { tour: 'fieldhub-header', title: 'Field hub header', body: 'Greeting, date, and weather context for outdoor testing.' },
+      { tour: 'fieldhub-kpis', title: 'Field KPIs', body: 'Today\'s samples, awaiting lab, this week, and your total — tracks what still needs closure.' },
+      { tour: 'fieldhub-actions', title: 'Quick actions', body: 'New test, core drill, QR scan, LB-68 sand cone, and nuclear gauge — shortcuts into Field Control.' },
+      { tour: 'fieldhub-samples', title: 'Recent samples', body: 'Your latest field submissions — open Field Entry to resume or start new work.' }
     ]
   },
   conchub: {
@@ -9507,8 +9554,11 @@ const CONTEXT_HELP_VIEWS = {
     title: 'Admin Map',
     intro: 'Statewide map of field samples, cores, concrete, and BoreLog borings.',
     sections: [
-      { tour: 'labmap-ui', title: 'Map controls', body: 'Basemap style, layer toggles, refresh, and pan/zoom. Admin role required.' }
-    ]
+      { tour: 'labmap-ui', title: 'Map header', body: 'Basemap style (streets/satellite/dark), refresh, and subtitle showing loaded pin counts.' },
+      { tour: 'labmap-search', title: 'Road search', body: 'Type a Delaware road or address and press GO. Matches project roads in your database plus Mapbox geocoding.' },
+      { tour: 'labmap-layers', title: 'Layer panel', body: 'Toggle field samples, density, pavement cores, concrete pours, and BoreLog borings. Click a pin for test details.' }
+    ],
+    fieldOrder: ['labMapRoadSearch']
   },
   r18: {
     title: 'R-18 Compliance',
@@ -9523,7 +9573,12 @@ const CONTEXT_HELP_VIEWS = {
   setup: {
     title: 'Settings',
     intro: 'Connection, appearance, account, and administration.',
-    fieldOrder: ['sbUrl', 'sbKey']
+    sections: [
+      { tour: 'settings-auth', title: 'Database & sign-in', body: 'Connect Supabase, choose sign-in mode, and (for admins) provision email accounts linked to LabTrak roles.' },
+      { tour: 'settings-appearance', title: 'Appearance', body: 'Color themes and comfort mode — larger type and calmer colors for long shifts.' },
+      { tour: 'settings-help', title: 'Help & tours', body: 'Run the full app tour or contextual help for the current screen. Press ? anytime.' }
+    ],
+    fieldOrder: ['sbUrl', 'sbKey', 'authModeSelect', 'ap_email', 'ap_password', 'ap_role', 'ap_app_user']
   },
   _default: {
     title: 'This screen',
@@ -9572,8 +9627,18 @@ function buildContextHelpSteps(viewName) {
   steps.push({
     center: true,
     title: def.title || helpViewTitle(effectiveView),
-    body: def.intro || 'Press Next to walk through each control on this screen.'
+    body: helpIntroWithTagline(def.intro)
   });
+
+  const workflow = HELP_WORKFLOW_TIPS[effectiveView] || HELP_WORKFLOW_TIPS._default;
+  const plannedOnly = ['hotmix', 'precast', 'chemlab'].includes(effectiveView);
+  if (workflow && !plannedOnly) {
+    steps.push({
+      center: true,
+      title: 'How this fits the program',
+      body: workflow
+    });
+  }
 
   (def.sections || []).forEach(s => {
     steps.push({
@@ -9604,7 +9669,7 @@ function buildContextHelpSteps(viewName) {
   steps.push({
     center: true,
     title: 'End of screen help',
-    body: 'Press ? on any screen for help there. Settings → Help runs the full tour across all modules.'
+    body: 'Press ? on any screen for help there. Settings → Help runs the full tour across all modules. ' + LABTRAK_TAGLINE
   });
 
   return steps;
@@ -9630,7 +9695,7 @@ const LABTRAK_TOUR_STEPS = [
   {
     center: true,
     title: 'Welcome to LabTrak',
-    body: 'This tour walks through the DelDOT Materials & Research program — top bar, navigation, every major module, maps, BoreLog, and settings. Press Next to continue, or Escape to exit anytime.'
+    body: helpIntroWithTagline('This tour walks through the DelDOT Materials & Research program — top bar, navigation, every major module, maps, BoreLog, and settings. Press Next to continue, or Escape to exit anytime.')
   },
   {
     tour: 'topbar',
@@ -9660,7 +9725,7 @@ const LABTRAK_TOUR_STEPS = [
   {
     tour: 'help',
     title: 'Screen help (? )',
-    body: 'Tap ? on any screen for in-depth help on that page — every field and button. Settings → Help runs the full app tour across modules.',
+    body: 'Tap ? on any screen for in-depth help on that page — every field and button, framed around learning from past test data to plan future work. Settings → Help runs the full app tour.',
     placement: 'bottom'
   },
   {
@@ -9677,10 +9742,23 @@ const LABTRAK_TOUR_STEPS = [
     pad: 6
   },
   {
+    center: true,
+    title: 'How LabTrak fits together',
+    body: HELP_WORKFLOW_TIPS._default + ' ' + LABTRAK_TAGLINE
+  },
+  {
     view: 'home',
     tour: 'dash-modules',
     title: 'Dashboard — module launcher',
     body: 'The home screen opens each major hub: Soil Lab, Concrete, Field Control, and planned modules (Hot Mix, Pre-Cast, Chem Lab).',
+    placement: 'top',
+    pad: 8
+  },
+  {
+    view: 'home',
+    tour: 'dash-calendar',
+    title: 'Program calendar',
+    body: 'Cylinder breaks, pending lab samples, overdue work, and notes across the program — use past due dates to plan upcoming lab and field capacity.',
     placement: 'top',
     pad: 8
   },
@@ -9694,10 +9772,26 @@ const LABTRAK_TOUR_STEPS = [
   },
   {
     view: 'projects',
+    tour: 'projects-new',
+    title: 'New project',
+    body: 'Add a contract with route, contractor, and report distribution. Each project becomes the anchor for future field tests and lab history on that letting.',
+    placement: 'left',
+    pad: 6
+  },
+  {
+    view: 'projects',
     tour: 'projects-grid',
     title: 'Project list & map',
     body: 'Each project card opens details and a map showing field samples, pavement cores, concrete sets, and BoreLog boring pins (when GPS is entered).',
     placement: 'top',
+    pad: 8
+  },
+  {
+    view: 'dashboard',
+    tour: 'dashboard-stats',
+    title: 'Sample KPIs',
+    body: 'Totals, pending lab work, completed samples, and today\'s intake — spot backlog trends before they stall future lettings.',
+    placement: 'bottom',
     pad: 8
   },
   {
@@ -9734,6 +9828,14 @@ const LABTRAK_TOUR_STEPS = [
   },
   {
     view: 'labhub',
+    tour: 'labhub-kpis',
+    title: 'Lab KPIs',
+    body: 'Pending count, completed today/this week, and age of the oldest pending sample — work oldest first to keep future approvals on schedule.',
+    placement: 'bottom',
+    pad: 6
+  },
+  {
+    view: 'labhub',
     tour: 'borelog',
     title: 'BoreLog — lab entry only',
     body: 'Opens DelDOT BoreLog in a new tab. Lab staff enter data from received boring logs or GeoSystem import — not consultant field intake.',
@@ -9749,12 +9851,32 @@ const LABTRAK_TOUR_STEPS = [
     pad: 6
   },
   {
+    view: 'labhub',
+    tour: 'labhub-calendar',
+    title: 'Lab calendar',
+    body: 'Tests due and hub notes by day — plan bench time around upcoming breaks and field sample intake.',
+    placement: 'top',
+    pad: 6
+  },
+  {
     view: 'soillab',
     tour: 'soillab-queue',
     title: 'Soil & Aggregate lab module',
     body: 'Enter and approve soil and aggregate test data. This queue ties to field-submitted samples — separate from BoreLog boring logs.',
     placement: 'top',
     pad: 8
+  },
+  {
+    view: 'soillab',
+    tour: 'soillab-entry',
+    title: 'Lab entry panel',
+    body: 'Atterberg limits, sieves, moisture, organic content, signatures, and Generate Report. Prior results on the same material guide acceptance.',
+    placement: 'left',
+    pad: 8,
+    skipIf: () => {
+      const panel = document.getElementById('sl_lab_content');
+      return !panel || panel.style.display === 'none';
+    }
   },
   {
     view: 'conchub',
@@ -9786,6 +9908,30 @@ const LABTRAK_TOUR_STEPS = [
     title: 'Field Control hub',
     body: 'Field technician home — open sessions, LB-68 borrow summary, calendar, and weather for outdoor testing.',
     placement: 'bottom',
+    pad: 6
+  },
+  {
+    view: 'fieldhub',
+    tour: 'fieldhub-kpis',
+    title: 'Field KPIs',
+    body: 'Today\'s samples, awaiting lab, this week, and your total — close out field work so lab staff can finish without callbacks.',
+    placement: 'bottom',
+    pad: 6
+  },
+  {
+    view: 'fieldhub',
+    tour: 'fieldhub-actions',
+    title: 'Quick actions',
+    body: 'Shortcuts into new tests, core drill, QR scan, LB-68 sand cone, and nuclear gauge sessions.',
+    placement: 'bottom',
+    pad: 6
+  },
+  {
+    view: 'fieldhub',
+    tour: 'fieldhub-samples',
+    title: 'Recent samples',
+    body: 'Your latest field submissions — accurate logs here become tomorrow\'s reference data for the project team.',
+    placement: 'top',
     pad: 6
   },
   {
@@ -9822,9 +9968,27 @@ const LABTRAK_TOUR_STEPS = [
     pad: 8
   },
   {
+    view: 'labmap',
+    tour: 'labmap-search',
+    skipIf: () => typeof isLabMapAdmin !== 'function' || !isLabMapAdmin(),
+    title: 'Map road search',
+    body: 'Search a Delaware road or address and press GO. Revisit corridors with past test failures before the next construction phase.',
+    placement: 'bottom',
+    pad: 6
+  },
+  {
+    view: 'labmap',
+    tour: 'labmap-layers',
+    skipIf: () => typeof isLabMapAdmin !== 'function' || !isLabMapAdmin(),
+    title: 'Map layers',
+    body: 'Toggle field samples, density readings, pavement cores, concrete pours, and BoreLog borings. Click a pin for test details.',
+    placement: 'left',
+    pad: 6
+  },
+  {
     center: true,
     title: 'You are ready',
-    body: 'Replay this tour anytime from the ? button in the top bar or Settings → Help. Sign in with your role to see the modules relevant to your team.'
+    body: 'Replay this tour anytime from the ? button in the top bar or Settings → Help. Sign in with your role to see the modules relevant to your team. ' + LABTRAK_TAGLINE
   }
 ];
 
