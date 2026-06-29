@@ -6574,20 +6574,37 @@ function getLocalRoadSuggestions(q) {
 async function geocodeRoadQuery(query) {
   const q = query.trim();
   if (!q) return [];
-  const params = new URLSearchParams({
-    access_token: mapboxgl.accessToken,
-    country: 'US',
-    bbox: DE_GEO_BBOX,
-    proximity: DE_GEO_PROXIMITY,
-    limit: '6',
-    types: 'address,street,place,locality,neighborhood',
-    autocomplete: 'false',
-  });
-  const url = `https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(q)}.json?${params}`;
-  const res = await fetch(url);
-  if (!res.ok) throw new Error('Geocoding request failed');
-  const data = await res.json();
-  return (data.features || []).map(f => ({
+
+  const searchQ = /\bdelaware\b|\bde\b/i.test(q) ? q : (q + ', Delaware');
+
+  async function fetchFeatures(text, types) {
+    const params = new URLSearchParams({
+      access_token: mapboxgl.accessToken,
+      country: 'US',
+      bbox: DE_GEO_BBOX,
+      proximity: DE_GEO_PROXIMITY,
+      limit: '6',
+      autocomplete: 'false',
+    });
+    if (types) params.set('types', types);
+    const url = `https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(text)}.json?${params}`;
+    const res = await fetch(url);
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(data.message || 'Geocoding request failed');
+    return data.features || [];
+  }
+
+  let features = [];
+  try {
+    features = await fetchFeatures(searchQ, 'address,place,locality,neighborhood');
+    if (!features.length) features = await fetchFeatures(searchQ, null);
+    if (!features.length && searchQ !== q) features = await fetchFeatures(q, null);
+  } catch (e) {
+    console.warn('Geocode error', e);
+    throw e;
+  }
+
+  return features.map(f => ({
     kind: 'geocode',
     label: f.text || f.place_name,
     sub: f.place_name,
