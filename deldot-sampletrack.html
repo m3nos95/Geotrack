@@ -220,14 +220,14 @@ body { background: var(--bg); color: var(--text); font-family: var(--sans); font
 /* ── LEFT RAIL ── */
 #navRail {
   grid-column: 1; grid-row: 2;
-  background: linear-gradient(180deg, #0d1520 0%, #0a1018 100%);
+  background: linear-gradient(180deg, var(--surface) 0%, var(--bg) 100%);
   border-right: 1px solid var(--border);
   display: flex; flex-direction: column;
   overflow: hidden; z-index: 150;
 }
 .rail-items { display: flex; flex-direction: column; flex: 1; padding: 4px 0; overflow-y: auto; scrollbar-width: none; }
 .rail-items::-webkit-scrollbar { display: none; }
-.rail-divider { height: 1px; background: rgba(255,255,255,0.07); margin: 3px 10px; flex-shrink: 0; }
+.rail-divider { height: 1px; background: color-mix(in srgb, var(--border) 85%, transparent); margin: 3px 10px; flex-shrink: 0; }
 .rail-spacer  { flex: 1; min-height: 8px; }
 .rail-item {
   position: relative; display: flex; flex-direction: column;
@@ -249,8 +249,8 @@ body { background: var(--bg); color: var(--text); font-family: var(--sans); font
   transition: all 0.18s;
   border: 1px solid transparent;
 }
-.rail-item:hover  .rail-icon-wrap { background: rgba(196,124,42,0.12); border-color: rgba(196,124,42,0.2); box-shadow: 0 0 16px rgba(196,124,42,0.1); }
-.rail-item.active .rail-icon-wrap { background: var(--metal-subtle); background-size: 200% auto; border-color: rgba(232,168,74,0.6); box-shadow: var(--metal-glow); }
+.rail-item:hover  .rail-icon-wrap { background: color-mix(in srgb, var(--accent2) 12%, transparent); border-color: color-mix(in srgb, var(--accent2) 22%, transparent); box-shadow: 0 0 16px color-mix(in srgb, var(--accent2) 10%, transparent); }
+.rail-item.active .rail-icon-wrap { background: var(--metal-subtle); background-size: 200% auto; border-color: color-mix(in srgb, var(--accent2) 55%, transparent); box-shadow: var(--metal-glow); }
 .rail-icon-wrap img { width: 26px; height: 26px; object-fit: contain; filter: drop-shadow(0 1px 2px rgba(0,0,0,0.5)); }
 .rail-icon-wrap svg { width: 22px; height: 22px; }
 .rail-label {
@@ -258,7 +258,7 @@ body { background: var(--bg); color: var(--text); font-family: var(--sans); font
   color: var(--muted); text-transform: uppercase; text-align: center;
   line-height: 1.2; max-width: 60px; transition: color 0.18s; padding: 0 2px;
 }
-.rail-item:hover  .rail-label { color: rgba(196,124,42,0.8); }
+.rail-item:hover  .rail-label { color: color-mix(in srgb, var(--accent2) 85%, var(--muted)); }
 .rail-item.active .rail-label { color: var(--accent2); }
 .rail-badge {
   position: absolute; top: 5px; right: 7px;
@@ -1671,16 +1671,16 @@ body { font-family: var(--sans); font-size: 13.5px; line-height: 1.5; letter-spa
 
 /* ── Topbar ── */
 #topbar {
-  background: linear-gradient(180deg, #0e1826 0%, #0b1520 100%);
-  border-bottom: 1px solid rgba(255,255,255,0.06);
-  box-shadow: 0 1px 0 rgba(255,255,255,0.04), 0 4px 24px rgba(0,0,0,0.5);
+  background: linear-gradient(180deg, var(--surface) 0%, var(--bg) 100%);
+  border-bottom: 1px solid var(--border);
+  box-shadow: 0 1px 0 color-mix(in srgb, var(--text) 4%, transparent), 0 4px 24px rgba(0,0,0,0.35);
   height: 52px;
 }
 #app { grid-template-rows: 52px 1fr; }
 .topbar-logo {
   width: 72px; height: 52px;
   background: transparent;
-  border-right: 1px solid rgba(255,255,255,0.05);
+  border-right: 1px solid var(--border);
 }
 .topbar-stat { padding: 0 16px; gap: 8px; }
 .topbar-stat-val { font-size: 20px; font-weight: 700; }
@@ -1689,19 +1689,19 @@ body { font-family: var(--sans); font-size: 13.5px; line-height: 1.5; letter-spa
   font-size: 8px; letter-spacing: 3px;
   color: var(--accent3);
   padding: 0 16px;
-  border-color: rgba(255,255,255,0.05);
+  border-color: var(--border);
 }
-.topbar-wx { border-color: rgba(255,255,255,0.05); padding: 0 18px; gap: 16px; }
+.topbar-wx { border-color: var(--border); padding: 0 18px; gap: 16px; }
 .topbar-wx-clock { font-size: 18px; letter-spacing: 0.5px; }
 .topbar-right { gap: 10px; padding: 0 14px; }
 .btn-settings {
-  background: rgba(255,255,255,0.04);
-  border: 1px solid rgba(255,255,255,0.08);
+  background: color-mix(in srgb, var(--text) 4%, transparent);
+  border: 1px solid color-mix(in srgb, var(--border) 85%, transparent);
   border-radius: 6px;
   font-size: 8.5px; letter-spacing: 0.8px;
   transition: all var(--transition);
 }
-.btn-settings:hover { background: rgba(217,138,56,0.15); border-color: rgba(217,138,56,0.4); color: var(--accent3); }
+.btn-settings:hover { background: color-mix(in srgb, var(--accent2) 15%, transparent); border-color: color-mix(in srgb, var(--accent2) 40%, transparent); color: var(--accent3); }
 /* Sign-out in top bar: mobile-first (desktop hides via min-width below) */
 #btnSignOutMobile { display: none; }
 #btnSignOutMobile.is-signed-in {
@@ -1811,8 +1811,8 @@ body { font-family: var(--sans); font-size: 13.5px; line-height: 1.5; letter-spa
 
 /* ── Rail ── */
 #navRail {
-  background: linear-gradient(180deg, #0b1320 0%, #080f1a 100%);
-  border-right: 1px solid rgba(255,255,255,0.05);
+  background: linear-gradient(180deg, var(--surface) 0%, var(--bg) 100%);
+  border-right: 1px solid var(--border);
   width: 72px;
 }
 #app { grid-template-columns: 72px 1fr; }
@@ -1821,22 +1821,22 @@ body { font-family: var(--sans); font-size: 13.5px; line-height: 1.5; letter-spa
 .rail-item.active::before { height: 36px; }
 .rail-icon-wrap {
   width: 44px; height: 44px; border-radius: 12px;
-  background: rgba(255,255,255,0.03);
-  border: 1px solid rgba(255,255,255,0.05);
+  background: color-mix(in srgb, var(--text) 4%, transparent);
+  border: 1px solid color-mix(in srgb, var(--border) 90%, transparent);
   transition: all var(--transition);
 }
 .rail-item:hover .rail-icon-wrap {
-  background: rgba(217,138,56,0.1);
-  border-color: rgba(217,138,56,0.25);
-  box-shadow: 0 0 20px rgba(217,138,56,0.08);
+  background: color-mix(in srgb, var(--accent2) 10%, transparent);
+  border-color: color-mix(in srgb, var(--accent2) 25%, transparent);
+  box-shadow: 0 0 20px color-mix(in srgb, var(--accent2) 8%, transparent);
   transform: translateY(-1px);
 }
 .rail-item.active .rail-icon-wrap {
-  border-color: rgba(240,168,78,0.5);
-  box-shadow: 0 0 20px rgba(240,168,78,0.15);
+  border-color: color-mix(in srgb, var(--accent3) 50%, transparent);
+  box-shadow: 0 0 20px color-mix(in srgb, var(--accent2) 15%, transparent);
 }
 .rail-label { font-size: 6.5px; letter-spacing: 0.5px; }
-.rail-divider { background: rgba(255,255,255,0.05); margin: 4px 12px; }
+.rail-divider { background: color-mix(in srgb, var(--border) 80%, transparent); margin: 4px 12px; }
 
 /* ── View container ── */
 #view-container {
@@ -6268,7 +6268,7 @@ table.fc-borrow-tbl tr.fc-borrow-detail-row td{background:var(--surface);border-
 // GLOBALS
 // ══════════════════════════════════════════════
 let db = null;
-const APP_BUILD = '2026.06.28-tour-spotlight';
+const APP_BUILD = '2026.06.29-rail-theme';
 const FC_CORE_ICON_SRC = 'docs/r18-reference/core-drill-icon-128.png';
 const BORELOG_ICON_SRC = 'docs/r18-reference/borelog-icon.webp';
 const BORELOG_PATH = 'docs/r18-reference/deldot-borelog.html';
