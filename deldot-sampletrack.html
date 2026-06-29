@@ -6268,7 +6268,7 @@ table.fc-borrow-tbl tr.fc-borrow-detail-row td{background:var(--surface);border-
 // GLOBALS
 // ══════════════════════════════════════════════
 let db = null;
-const APP_BUILD = '2026.06.28-context-help';
+const APP_BUILD = '2026.06.28-tour-spotlight';
 const FC_CORE_ICON_SRC = 'docs/r18-reference/core-drill-icon-128.png';
 const BORELOG_ICON_SRC = 'docs/r18-reference/borelog-icon.webp';
 const BORELOG_PATH = 'docs/r18-reference/deldot-borelog.html';
@@ -9868,6 +9868,52 @@ function tourPositionCard(card, rect, placement) {
   card.style.transform = 'none';
 }
 
+let _tourHighlightEl = null;
+
+function tourClearHighlight() {
+  if (_tourHighlightEl) {
+    _tourHighlightEl.classList.remove('tour-highlight-target');
+    _tourHighlightEl = null;
+  }
+}
+
+function tourResizeMaskSvg() {
+  const svg = document.getElementById('tourMaskSvg');
+  const fill = document.getElementById('tourMaskFill');
+  const dim = document.getElementById('tourMaskDim');
+  if (!svg) return;
+  const w = window.innerWidth;
+  const h = window.innerHeight;
+  svg.setAttribute('viewBox', '0 0 ' + w + ' ' + h);
+  svg.setAttribute('width', String(w));
+  svg.setAttribute('height', String(h));
+  if (fill) { fill.setAttribute('width', String(w)); fill.setAttribute('height', String(h)); }
+  if (dim) { dim.setAttribute('width', String(w)); dim.setAttribute('height', String(h)); }
+}
+
+function tourPositionMaskHole(rect, pad) {
+  const hole = document.getElementById('tourMaskHole');
+  const dim = document.getElementById('tourMaskDim');
+  if (!hole) return;
+  tourResizeMaskSvg();
+  const p = pad != null ? pad : 8;
+  hole.setAttribute('x', String(Math.max(0, rect.left - p)));
+  hole.setAttribute('y', String(Math.max(0, rect.top - p)));
+  hole.setAttribute('width', String(rect.width + p * 2));
+  hole.setAttribute('height', String(rect.height + p * 2));
+  if (dim) dim.setAttribute('mask', 'url(#tourSpotMask)');
+}
+
+function tourHideMaskHole() {
+  const hole = document.getElementById('tourMaskHole');
+  const dim = document.getElementById('tourMaskDim');
+  if (hole) {
+    hole.setAttribute('width', '0');
+    hole.setAttribute('height', '0');
+  }
+  if (dim) dim.removeAttribute('mask');
+}
+
 function tourShowSpotlight(el, step) {
   const overlay = document.getElementById('tourOverlay');
   const spotlight = document.getElementById('tourSpotlight');
@@ -9878,12 +9924,16 @@ function tourShowSpotlight(el, step) {
   tourScrollTarget(el);
   overlay.classList.remove('center-step');
   spotlight.classList.remove('hidden');
+  tourClearHighlight();
+  el.classList.add('tour-highlight-target');
+  _tourHighlightEl = el;
 
   requestAnimationFrame(() => {
     requestAnimationFrame(() => {
       if (!_tourActive) return;
       const rect = el.getBoundingClientRect();
       const pad = step.pad != null ? step.pad : 8;
+      tourPositionMaskHole(rect, pad);
       spotlight.style.top = (rect.top - pad) + 'px';
       spotlight.style.left = (rect.left - pad) + 'px';
       spotlight.style.width = (rect.width + pad * 2) + 'px';
@@ -9944,6 +9994,8 @@ function tourRenderStep(retryCount) {
       _tourScrollRoot.removeEventListener('scroll', tourRepositionSpotlight);
       _tourScrollRoot = null;
     }
+    tourClearHighlight();
+    tourHideMaskHole();
     overlay.classList.add('center-step');
     spotlight.classList.add('hidden');
     card.classList.add('centered');
@@ -10012,6 +10064,7 @@ function startContextHelp() {
     overlay.setAttribute('aria-hidden', 'false');
   }
   document.body.classList.add('tour-active');
+  tourResizeMaskSvg();
   setTimeout(() => tourRenderStep(0), 120);
 }
 
@@ -10042,6 +10095,8 @@ function endLabTrakTour() {
   _tourRenderToken++;
   _tourMode = 'full';
   _tourSteps = null;
+  tourClearHighlight();
+  tourHideMaskHole();
   if (_tourScrollRoot) {
     _tourScrollRoot.removeEventListener('scroll', tourRepositionSpotlight);
     _tourScrollRoot = null;
@@ -10075,7 +10130,9 @@ function _tourOnKeydown(e) {
 }
 
 function _tourOnResize() {
-  if (_tourActive) tourRepositionSpotlight();
+  if (!_tourActive) return;
+  tourResizeMaskSvg();
+  tourRepositionSpotlight();
 }
 
 document.addEventListener('keydown', _tourOnKeydown);
@@ -23635,6 +23692,15 @@ window.r18_renderTabs = renderTabs;
      GUIDED TOUR — spotlight walkthrough (always available)
      ══════════════════════════════════════════════════════════════ -->
 <div id="tourOverlay" aria-hidden="true">
+  <svg id="tourMaskSvg" class="tour-mask-svg" aria-hidden="true">
+    <defs>
+      <mask id="tourSpotMask">
+        <rect id="tourMaskFill" x="0" y="0" width="100%" height="100%" fill="white"></rect>
+        <rect id="tourMaskHole" x="0" y="0" width="0" height="0" rx="10" ry="10" fill="black"></rect>
+      </mask>
+    </defs>
+    <rect id="tourMaskDim" x="0" y="0" width="100%" height="100%" fill="rgba(6, 10, 18, 0.42)" mask="url(#tourSpotMask)"></rect>
+  </svg>
   <div id="tourBackdrop"></div>
   <div id="tourSpotlight" class="hidden"></div>
   <div id="tourCard" class="centered" role="dialog" aria-modal="true" aria-labelledby="tourTitle">
@@ -24937,33 +25003,59 @@ html.konami-flash body {
   animation: konami-flash 0.9s steps(4, end);
 }
 
-/* ══ Guided tour (spotlight) — above modals except critical alerts ══ */
+/* ══ Guided tour (spotlight) — crisp cutout, no blur on target ══ */
 #tourOverlay {
   display: none;
   position: fixed;
   inset: 0;
   z-index: 10050;
+  pointer-events: none;
 }
 #tourOverlay.active { display: block; }
-#tourOverlay.center-step #tourBackdrop { background: rgba(5, 10, 20, 0.82); }
+.tour-mask-svg {
+  position: fixed;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 10050;
+  pointer-events: none;
+}
+#tourOverlay.center-step #tourMaskDim {
+  fill: rgba(6, 10, 18, 0.58);
+  mask: none;
+}
+#tourOverlay.center-step #tourBackdrop { background: transparent; }
 #tourBackdrop {
   position: fixed;
   inset: 0;
   background: transparent;
+  z-index: 10050;
+  pointer-events: none;
 }
 #tourSpotlight {
   position: fixed;
   border-radius: 10px;
-  box-shadow: 0 0 0 9999px rgba(5, 10, 20, 0.78);
-  border: 2px solid rgba(224, 152, 72, 0.9);
+  box-shadow:
+    0 0 0 3px #f0a84e,
+    0 0 0 6px rgba(240, 168, 78, 0.45),
+    0 0 28px rgba(240, 168, 78, 0.35);
+  border: none;
+  background: transparent;
   transition: top 0.22s ease, left 0.22s ease, width 0.22s ease, height 0.22s ease, opacity 0.18s;
   pointer-events: none;
-  z-index: 10051;
+  z-index: 10052;
 }
 #tourSpotlight.hidden { opacity: 0; visibility: hidden; }
+body.tour-active .tour-highlight-target {
+  position: relative;
+  z-index: 10051 !important;
+  filter: none !important;
+  opacity: 1 !important;
+}
 #tourCard {
   position: fixed;
-  z-index: 10052;
+  z-index: 10053;
+  pointer-events: auto;
   width: min(400px, calc(100vw - 24px));
   background: var(--surface);
   border: 1px solid var(--border);
