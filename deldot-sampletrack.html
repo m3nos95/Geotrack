@@ -1612,7 +1612,46 @@ nav:not(#r18-nav), .nav-top-row { display: none !important; }
 }
 .map-style-btn.active { color: var(--accent2); border-color: rgba(217,138,56,0.5); background: rgba(217,138,56,0.12); }
 .map-style-btn:hover:not(.active) { border-color: rgba(255,255,255,0.18); color: var(--text); }
+.map-road-search {
+  position: relative; display: flex; align-items: center; gap: 6px;
+  flex: 1 1 220px; min-width: 180px; max-width: 380px;
+}
+.map-road-search input[type="search"] {
+  flex: 1; min-width: 0; padding: 6px 10px; border-radius: 6px;
+  border: 1px solid var(--border); background: rgba(255,255,255,0.04);
+  color: var(--text); font-family: var(--mono); font-size: 10px;
+}
+.map-road-search input[type="search"]::placeholder { color: var(--muted); opacity: 0.85; }
+.map-road-search input[type="search"]:focus {
+  outline: none; border-color: rgba(217,138,56,0.45); background: rgba(255,255,255,0.06);
+}
+.map-road-search-go { font-size: 9px !important; padding: 5px 10px !important; letter-spacing: 0.5px; flex-shrink: 0; }
+.map-road-search-results {
+  position: absolute; top: calc(100% + 4px); left: 0; right: 0; z-index: 40;
+  background: #06090f; border: 1px solid rgba(255,255,255,0.12); border-radius: 8px;
+  box-shadow: 0 10px 28px rgba(0,0,0,0.55); max-height: 220px; overflow-y: auto;
+}
+.map-road-search-item {
+  display: flex; flex-direction: column; align-items: flex-start; gap: 2px;
+  width: 100%; text-align: left; padding: 8px 10px; border: none; background: transparent;
+  cursor: pointer; font-family: var(--mono); color: var(--text);
+  border-bottom: 1px solid rgba(255,255,255,0.05);
+}
+.map-road-search-item:last-child { border-bottom: none; }
+.map-road-search-item:hover { background: rgba(255,255,255,0.05); }
+.map-road-search-item-label { font-size: 10px; font-weight: 700; line-height: 1.3; }
+.map-road-search-item-sub { font-size: 9px; color: var(--muted); line-height: 1.3; }
+.map-road-search-item-tag {
+  font-size: 8px; letter-spacing: 0.5px; color: var(--accent2);
+  border: 1px solid rgba(217,138,56,0.35); border-radius: 4px; padding: 1px 5px; margin-top: 2px;
+}
+.map-road-search-pin {
+  width: 28px; height: 28px; font-size: 22px; line-height: 28px; text-align: center;
+  filter: drop-shadow(0 2px 4px rgba(0,0,0,0.65)); cursor: default;
+}
+.labmap-float-header { flex-wrap: wrap; }
 #labmap-view .mapboxgl-ctrl-top-right { top: 62px; right: 10px; }
+#mapOverlay .map-road-search { max-width: 300px; }
 @media (max-width: 768px) {
   .labmap-ui { padding: 8px; }
   .labmap-layers { width: min(210px, calc(100vw - 24px)); max-height: 42vh; }
@@ -6181,6 +6220,11 @@ table.fc-borrow-tbl tr.fc-borrow-detail-row td{background:var(--surface);border-
             <div class="labmap-subtitle" id="labMapSubtitle">All stored coordinates across the program</div>
           </div>
           <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+            <div class="map-road-search" id="labMapRoadSearchWrap">
+              <input type="search" id="labMapRoadSearch" placeholder="Search road or address…" autocomplete="off" aria-label="Search road or address" />
+              <button type="button" class="btn btn-ghost map-road-search-go" onclick="runMapRoadSearch('lab')">GO</button>
+              <div class="map-road-search-results" id="labMapRoadSearchResults" style="display:none;" role="listbox"></div>
+            </div>
             <div class="map-style-toggle" id="labMapStyleToggle">
               <button type="button" class="map-style-btn" data-map-style="streets" onclick="labMapSetStyle('streets')">Streets</button>
               <button type="button" class="map-style-btn" data-map-style="satellite" onclick="labMapSetStyle('satellite')">Satellite</button>
@@ -6268,7 +6312,7 @@ table.fc-borrow-tbl tr.fc-borrow-detail-row td{background:var(--surface);border-
 // GLOBALS
 // ══════════════════════════════════════════════
 let db = null;
-const APP_BUILD = '2026.06.29-soillab-load';
+const APP_BUILD = '2026.06.29-map-search';
 const FC_CORE_ICON_SRC = 'docs/r18-reference/core-drill-icon-128.png';
 const BORELOG_ICON_SRC = 'docs/r18-reference/borelog-icon.webp';
 const BORELOG_PATH = 'docs/r18-reference/deldot-borelog.html';
@@ -6294,6 +6338,7 @@ window.addEventListener('DOMContentLoaded', () => {
   if (checkAppBuildUpdate()) return;
   if (typeof syncMobileNav === 'function') setTimeout(syncMobileNav, 100);
   if (typeof syncMapStyleButtons === 'function') syncMapStyleButtons();
+  if (typeof initMapRoadSearch === 'function') initMapRoadSearch();
   // Register service worker for offline support
   if ('serviceWorker' in navigator) {
     navigator.serviceWorker.register('#', { scope: './' }).catch(() => {});
@@ -6471,6 +6516,221 @@ function labMapSetStyle(styleKey) {
   if (labMap) setLabTrakMapStyle(labMap, styleKey);
   if (projectMap) setLabTrakMapStyle(projectMap, styleKey);
 }
+
+const DE_GEO_BBOX = '-75.95,38.25,-74.55,39.95';
+const DE_GEO_PROXIMITY = '-75.5277,39.1582';
+const mapRoadSearchMarker = { lab: null, project: null };
+
+function mapRoadEscape(s) {
+  return String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+}
+
+function getMapForRoadSearch(which) {
+  return which === 'lab' ? labMap : projectMap;
+}
+
+function mapRoadSearchEls(which) {
+  const prefix = which === 'lab' ? 'labMap' : 'projectMap';
+  return {
+    input: document.getElementById(prefix + 'RoadSearch'),
+    results: document.getElementById(prefix + 'RoadSearchResults'),
+  };
+}
+
+function hideMapRoadSearchResults(which) {
+  const { results } = mapRoadSearchEls(which);
+  if (!results) return;
+  results.style.display = 'none';
+  results.innerHTML = '';
+  delete results._items;
+}
+
+function getLocalRoadSuggestions(q) {
+  const needle = q.trim().toLowerCase();
+  if (!needle || needle.length < 2) return [];
+  const seen = new Set();
+  const out = [];
+  for (const p of (allProjects || [])) {
+    const road = (p.road || '').trim();
+    const desc = (p.description || '').trim();
+    const label = road || desc;
+    if (!label) continue;
+    const key = label.toLowerCase();
+    if (seen.has(key)) continue;
+    const hay = [label, p.contract, p.contractor, desc].filter(Boolean).join(' ').toLowerCase();
+    if (hay.includes(needle)) {
+      seen.add(key);
+      out.push({
+        kind: 'project',
+        label,
+        sub: [p.contract, p.contractor].filter(Boolean).join(' · '),
+        query: (road || desc) + ', Delaware',
+      });
+    }
+  }
+  return out.slice(0, 5);
+}
+
+async function geocodeRoadQuery(query) {
+  const q = query.trim();
+  if (!q) return [];
+  const params = new URLSearchParams({
+    access_token: mapboxgl.accessToken,
+    country: 'US',
+    bbox: DE_GEO_BBOX,
+    proximity: DE_GEO_PROXIMITY,
+    limit: '6',
+    types: 'address,street,place,locality,neighborhood',
+    autocomplete: 'false',
+  });
+  const url = `https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(q)}.json?${params}`;
+  const res = await fetch(url);
+  if (!res.ok) throw new Error('Geocoding request failed');
+  const data = await res.json();
+  return (data.features || []).map(f => ({
+    kind: 'geocode',
+    label: f.text || f.place_name,
+    sub: f.place_name,
+    feature: f,
+  }));
+}
+
+function flyMapToGeocode(map, feature, which) {
+  if (!map || !feature) return;
+  if (mapRoadSearchMarker[which]) {
+    mapRoadSearchMarker[which].remove();
+    mapRoadSearchMarker[which] = null;
+  }
+  const pin = document.createElement('div');
+  pin.className = 'map-road-search-pin';
+  pin.textContent = '📍';
+  const bbox = feature.bbox;
+  const center = feature.center;
+  if (bbox && bbox.length === 4) {
+    map.fitBounds([[bbox[0], bbox[1]], [bbox[2], bbox[3]]], { padding: 60, maxZoom: 16, duration: 1200 });
+    const lng = (bbox[0] + bbox[2]) / 2;
+    const lat = (bbox[1] + bbox[3]) / 2;
+    mapRoadSearchMarker[which] = new mapboxgl.Marker(pin).setLngLat([lng, lat]).addTo(map);
+  } else if (center && center.length === 2) {
+    map.flyTo({ center, zoom: 15, duration: 1200 });
+    mapRoadSearchMarker[which] = new mapboxgl.Marker(pin).setLngLat(center).addTo(map);
+  }
+}
+
+function renderMapRoadSearchResults(which, items) {
+  const { results } = mapRoadSearchEls(which);
+  if (!results || !items.length) return;
+  results.innerHTML = items.map((item, i) => `
+    <button type="button" class="map-road-search-item" data-idx="${i}">
+      <span class="map-road-search-item-label">${mapRoadEscape(item.label)}</span>
+      ${item.sub ? `<span class="map-road-search-item-sub">${mapRoadEscape(item.sub)}</span>` : ''}
+      ${item.kind === 'project' ? '<span class="map-road-search-item-tag">PROJECT ROAD</span>' : ''}
+    </button>
+  `).join('');
+  results._items = items;
+  results.style.display = 'block';
+  results.querySelectorAll('.map-road-search-item').forEach(btn => {
+    btn.addEventListener('click', () => selectMapRoadResult(which, items[parseInt(btn.dataset.idx, 10)]));
+  });
+}
+
+async function selectMapRoadResult(which, item) {
+  const map = getMapForRoadSearch(which);
+  if (!map) {
+    showToast('Map is still loading…', 'error');
+    return;
+  }
+  hideMapRoadSearchResults(which);
+  const { input } = mapRoadSearchEls(which);
+  if (input && item.label) input.value = item.label;
+
+  if (item.feature) {
+    flyMapToGeocode(map, item.feature, which);
+    return;
+  }
+
+  try {
+    const results = await geocodeRoadQuery(item.query || item.label);
+    if (results.length && results[0].feature) {
+      flyMapToGeocode(map, results[0].feature, which);
+    } else {
+      showToast('Could not locate "' + item.label + '"', 'error');
+    }
+  } catch (e) {
+    showToast('Could not locate road', 'error');
+  }
+}
+
+async function searchMapRoads(which, query) {
+  const { input } = mapRoadSearchEls(which);
+  const q = (query != null ? query : input?.value || '').trim();
+  if (!q) return;
+
+  const map = getMapForRoadSearch(which);
+  if (!map) {
+    showToast('Map is still loading…', 'error');
+    return;
+  }
+
+  const local = getLocalRoadSuggestions(q).map(item => ({ ...item, kind: 'project' }));
+  let geocoded = [];
+  try {
+    geocoded = await geocodeRoadQuery(q);
+  } catch (e) {
+    console.warn('Geocode error', e);
+  }
+
+  const combined = [...local, ...geocoded];
+  if (!combined.length) {
+    showToast('No matches found for "' + q + '"', 'error');
+    hideMapRoadSearchResults(which);
+    return;
+  }
+  if (combined.length === 1) {
+    await selectMapRoadResult(which, combined[0]);
+    return;
+  }
+  renderMapRoadSearchResults(which, combined);
+}
+
+function runMapRoadSearch(which) {
+  searchMapRoads(which);
+}
+
+function initMapRoadSearch() {
+  ['lab', 'project'].forEach(which => {
+    const { input } = mapRoadSearchEls(which);
+    if (!input || input._mapSearchBound) return;
+    input._mapSearchBound = true;
+    let debounce = null;
+    input.addEventListener('input', () => {
+      clearTimeout(debounce);
+      const val = input.value.trim();
+      if (val.length < 2) {
+        hideMapRoadSearchResults(which);
+        return;
+      }
+      debounce = setTimeout(() => {
+        const local = getLocalRoadSuggestions(val);
+        if (local.length) renderMapRoadSearchResults(which, local);
+        else hideMapRoadSearchResults(which);
+      }, 200);
+    });
+    input.addEventListener('keydown', e => {
+      if (e.key === 'Enter') { e.preventDefault(); runMapRoadSearch(which); }
+      if (e.key === 'Escape') hideMapRoadSearchResults(which);
+    });
+  });
+  if (initMapRoadSearch._docBound) return;
+  initMapRoadSearch._docBound = true;
+  document.addEventListener('click', e => {
+    if (!e.target.closest('.map-road-search')) {
+      hideMapRoadSearchResults('lab');
+      hideMapRoadSearchResults('project');
+    }
+  });
+}
+
 const MAP_CORE_DRILL_SELECT = 'id,test_no,contract,core_no,gps_coordinates,layer_type,thickness_in,station,lane,photo_data,date_drilled,field_test_id';
 
 function mapContractNorm(c) {
@@ -21737,6 +21997,11 @@ function openR18() {
       <div>
         <h3 id="mapOverlayTitle">Project Map</h3>
         <div style="font-family:var(--mono);font-size:10px;color:var(--muted);margin-top:2px;" id="mapOverlaySubtitle"></div>
+      </div>
+      <div class="map-road-search" id="projectMapRoadSearchWrap">
+        <input type="search" id="projectMapRoadSearch" placeholder="Search road or address…" autocomplete="off" aria-label="Search road or address" />
+        <button type="button" class="btn btn-ghost map-road-search-go" onclick="runMapRoadSearch('project')">GO</button>
+        <div class="map-road-search-results" id="projectMapRoadSearchResults" style="display:none;" role="listbox"></div>
       </div>
       <div class="map-legend">
         <div class="map-legend-item">
