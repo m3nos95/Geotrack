@@ -3075,10 +3075,11 @@ table.fc-borrow-tbl tr.fc-borrow-detail-row td{background:var(--surface);border-
     <div class="user-mgmt-section" id="helpSection">
       <div class="user-mgmt-title">HELP</div>
       <p style="font-family:var(--sans);font-size:12px;color:var(--muted);margin:0 0 12px;line-height:1.55;">
-        Walk through every major area of LabTrak — navigation, modules, maps, sync, and settings.
-        Available anytime for all roles.
+        Press <strong>?</strong> on any screen for in-depth help on that page — every button and input.
+        Or run the full app tour below to jump across all modules.
       </p>
-      <button type="button" class="tour-help-launch" onclick="startLabTrakTour()">Start guided tour</button>
+      <button type="button" class="tour-help-launch" onclick="startLabTrakTour()">Full app tour (all modules)</button>
+      <button type="button" class="tour-help-launch" style="margin-top:8px;background:transparent;border-color:var(--border);color:var(--muted);" onclick="startContextHelp()">Help for this screen (?)</button>
     </div>
 
     <!-- Appearance / skins — all users -->
@@ -3382,8 +3383,8 @@ table.fc-borrow-tbl tr.fc-borrow-detail-row td{background:var(--surface);border-
     </div>
 
     <div class="topbar-right">
-      <button type="button" class="btn-settings" id="btnTourHelp" data-tour="help" onclick="startLabTrakTour()"
-              title="Guided tour — walk through LabTrak" aria-label="Start guided tour">?</button>
+      <button type="button" class="btn-settings" id="btnTourHelp" data-tour="help" onclick="startContextHelp()"
+              title="Screen help — explains this page and every field" aria-label="Help for this screen">?</button>
       <button type="button" class="btn-comfort-mode" id="btnComfortMode" data-tour="comfort" onclick="toggleComfortMode()"
               title="Comfort mode — softer visuals for long sessions" aria-pressed="false" aria-label="Comfort mode">☾</button>
       <button type="button" class="sync-status-chip offline" id="syncStatusChip" data-tour="sync" onclick="onSyncChipClick()" title="Database status">
@@ -6267,7 +6268,7 @@ table.fc-borrow-tbl tr.fc-borrow-detail-row td{background:var(--surface);border-
 // GLOBALS
 // ══════════════════════════════════════════════
 let db = null;
-const APP_BUILD = '2026.06.17-nes-full';
+const APP_BUILD = '2026.06.28-context-help';
 const FC_CORE_ICON_SRC = 'docs/r18-reference/core-drill-icon-128.png';
 const BORELOG_ICON_SRC = 'docs/r18-reference/borelog-icon.webp';
 const BORELOG_PATH = 'docs/r18-reference/deldot-borelog.html';
@@ -9156,6 +9157,387 @@ let _tourIndex = 0;
 let _tourReturnView = 'home';
 let _tourScrollRoot = null;
 let _tourRenderToken = 0;
+let _tourMode = 'full';
+let _tourSteps = null;
+
+function getTourSteps() {
+  return _tourSteps || LABTRAK_TOUR_STEPS;
+}
+
+function getActiveViewName() {
+  if (typeof currentView === 'string' && currentView) return currentView;
+  const v = document.querySelector('.view.active');
+  if (v && v.id) return v.id.replace(/-view$/, '');
+  return 'home';
+}
+
+function helpViewTitle(viewName) {
+  const titles = {
+    home: 'Dashboard / Home',
+    projects: 'Projects',
+    dashboard: 'All Samples',
+    appsources: 'Approved Sources',
+    fieldcontrol: 'Field Control',
+    scan: 'QR Scanner',
+    soillab: 'Soil & Aggregate Lab',
+    concrete: 'Concrete Module',
+    labhub: 'Soil Lab Hub',
+    fieldhub: 'Field Control Hub',
+    conchub: 'Concrete Hub',
+    labmap: 'Admin Map',
+    r18: 'R-18 Compliance',
+    hotmix: 'Hot Mix Asphalt',
+    precast: 'Pre-Cast Concrete',
+    chemlab: 'Chemistry Lab',
+    setup: 'Settings'
+  };
+  return titles[viewName] || viewName;
+}
+
+function helpLabelForField(el) {
+  if (!el) return 'Field';
+  if (el.dataset.helpTitle) return el.dataset.helpTitle;
+  const id = el.id;
+  if (id) {
+    const forLbl = document.querySelector('label[for="' + id + '"]');
+    if (forLbl) return forLbl.textContent.replace(/\*/g, '').trim();
+  }
+  const fg = el.closest('.form-group, .mf, .setup-field');
+  if (fg) {
+    const lbl = fg.querySelector('label');
+    if (lbl) return lbl.textContent.replace(/\*/g, '').trim();
+  }
+  return el.getAttribute('aria-label') || el.placeholder || el.name || id || 'Field';
+}
+
+function helpDefaultBody(el, meta) {
+  if (meta && meta.body) return meta.body;
+  const label = helpLabelForField(el);
+  const ph = el.placeholder ? ' Example: ' + el.placeholder + '.' : '';
+  const req = el.required || (el.labels && el.labels[0] && el.labels[0].textContent.includes('*')) ? ' Required before save.' : '';
+  return 'Enter ' + label + '.' + ph + req;
+}
+
+/** In-depth field help — keyed by element id or data-help value. */
+const HELP_FIELD_REGISTRY = {
+  searchInput: { title: 'Search samples', body: 'Filter the sample registry by contract number, test number, location, material, or technician name. Results update as you type.' },
+  archiveToggleBtn: { title: 'Show archived', body: 'Toggle between active samples and soft-deleted (archived) records. Admins can recover archived rows from the database.' },
+  'src-search': { title: 'Search sources', body: 'Filter the approval chart by stockpile name, source name, or location text.' },
+  'src-filter-mat': { title: 'Material filter', body: 'Limit the grid to one approved material type (e.g. 57M, R-4, borrow).' },
+  'src-filter-status': { title: 'Status filter', body: 'Show only sources that are approved, expiring within 30 days, expired, failed, none on site, or untested.' },
+  'src-modal-sample-date': { title: 'Sample date', body: 'Date the approval sample was taken. Used to calculate expiration from the material shelf-life.' },
+  'src-modal-expire-date': { title: 'Expiration date', body: 'When this source approval expires for the selected material. Auto-filled from sample date + material days unless overridden.' },
+  'src-modal-status': { title: 'Approval status', body: 'Current approval state for this stockpile/material cell — approved, failed, expired, etc.' },
+  'src-modal-sample-no': { title: 'Sample number', body: 'Lab sample or field test number tied to the approval test for this source.' },
+  'src-modal-notes': { title: 'Source notes', body: 'Optional comments about this approval — restrictions, partial approval, or retest instructions.' },
+  'src-new-loc': { title: 'Stockpile / location', body: 'Contractor yard or on-site stockpile name shown on the approval chart rows.' },
+  'src-new-source': { title: 'Source name', body: 'Pit, quarry, or borrow source identifier linked to the stockpile.' },
+  'src-new-mat-name': { title: 'New material name', body: 'Add a material column to the chart (e.g. 57M, 8M, R-4).' },
+  'src-new-mat-days': { title: 'Shelf life (days)', body: 'Number of days after sample date before approval expires for this material type.' },
+  fc_intent_density: { title: 'Density only', body: 'Start a field session for LB-68 sand cone and/or nuclear gauge readings only — no lab sample bag.' },
+  fc_intent_lab: { title: 'Lab sample only', body: 'Collect a soil or aggregate bag for the lab without density testing in the field.' },
+  fc_intent_both: { title: 'Density + lab', body: 'Full field event — nuclear/LB-68 density plus a lab sample tied to the same test number.' },
+  fc_s_category: { title: 'Test category', body: 'Soil/geotechnical (FY test numbers) or coarse aggregate (CY test numbers). Drives the suggested test number sequence.' },
+  fc_s_testno: { title: 'Test number', body: 'DelDOT field test number for this event. Auto-suggested from the shared FY/CY counter; edit only if you need a specific number.' },
+  fc_s_contract: { title: 'Contract number', body: 'Active DelDOT contract (e.g. T201109502). Links the session to Projects and downstream lab samples.' },
+  fc_s_location: { title: 'Road / location', body: 'Plain-language work location — road name, structure, or project descriptor shown on reports.' },
+  fc_s_material: { title: 'Material type', body: 'Specification item or material code being tested (e.g. 209C, 57M).' },
+  fc_s_tech: { title: 'Technician', body: 'Field technician name recorded on the field sheet and lab chain of custody.' },
+  fc_s_road: { title: 'Road / route', body: 'Route ID or road number (e.g. SR-1, US-13) for mapping and reports.' },
+  fc_s_date: { title: 'Field date', body: 'Date of field testing. Defaults to today; change for back-entered work.' },
+  fc_cd_category: { title: 'Core test category', body: 'FY soil or CY aggregate category for pavement core logging (separate from density intents).' },
+  fc_cd_coreno: { title: 'Core number', body: 'Pavement core ID for this drill location (e.g. 1, A1). Distinct from the global field test number.' },
+  fc_cd_contract: { title: 'Core contract', body: 'Contract under which the core was drilled. Used for core track list and map pins.' },
+  fc_cd_location: { title: 'Core location', body: 'Where the core was taken — station, structure, or description.' },
+  fc_cd_material: { title: 'Core material', body: 'Layer or mix type (e.g. AC surface, base, subgrade).' },
+  fc_cd_tech: { title: 'Core technician', body: 'Technician who logged the core.' },
+  fc_cd_road: { title: 'Core route', body: 'Route number for GIS and reports.' },
+  fc_cd_date: { title: 'Core date', body: 'Date the core was drilled or logged.' },
+  fc_core_filter_contract: { title: 'Filter cores by contract', body: 'Narrows the core track list to one contract.' },
+  fc_core_filter_date: { title: 'Filter cores by date', body: 'Show cores logged on a specific date.' },
+  fc_resume_testno: { title: 'Resume test number', body: 'Reopen an in-progress field session by entering its test number.' },
+  fc_core_no: { title: 'Core # (active session)', body: 'Core identifier within the open core drill session.' },
+  fc_core_station: { title: 'Station / offset', body: 'Station equation or offset from centerline where the core was taken.' },
+  fc_core_lane: { title: 'Lane / direction', body: 'Travel lane or direction (CL, EB, WB, etc.).' },
+  fc_core_layer: { title: 'Pavement layer', body: 'Which layer this core represents — surface, binder, base, or subgrade.' },
+  fc_core_thickness: { title: 'Core thickness', body: 'Measured thickness of the core in inches.' },
+  fc_core_depth: { title: 'Depth', body: 'Optional depth below surface if recorded.' },
+  fc_core_gps: { title: 'GPS coordinates', body: 'Tap to capture device GPS. Coordinates appear on the admin map when synced.' },
+  fc_core_remarks: { title: 'Core remarks', body: 'Optional notes — damage, water, unusual conditions.' },
+  sl_search: { title: 'Queue search', body: 'Filter the lab queue by test number, contract, location, or material without leaving the module.' },
+  sl_image_input: { title: 'AI photo upload', body: 'Photograph the field sample card. AI reads Atterberg and sieve values into the form.' },
+  sl_ll_bottle: { title: 'Liquid limit bottle', body: 'Bottle ID used for the LL moisture test (cup/bottle label on bench sheet).' },
+  sl_ll_wet: { title: 'LL — wet soil + bottle', body: 'Mass of wet soil and bottle before oven drying (grams).' },
+  sl_ll_dry: { title: 'LL — dry soil + bottle', body: 'Mass after drying to constant weight (grams).' },
+  sl_ll_tare: { title: 'LL — bottle tare', body: 'Empty bottle mass (grams).' },
+  sl_ll_blows: { title: 'LL blows', body: 'Number of blows for groove closure on the liquid limit device.' },
+  sl_pl_bottle: { title: 'Plastic limit bottle', body: 'Bottle ID for the PL moisture sample.' },
+  sl_pl_wet: { title: 'PL — wet soil + bottle', body: 'Wet mass for plastic limit moisture content.' },
+  sl_pl_dry: { title: 'PL — dry soil + bottle', body: 'Dry mass for plastic limit moisture content.' },
+  sl_pl_tare: { title: 'PL — bottle tare', body: 'Empty bottle tare weight (grams).' },
+  sl_org_bottle: { title: 'Organic dish number', body: 'Dish ID for ignition loss / organic content.' },
+  sl_org_pre: { title: 'Pre-ignition mass', body: 'Mass of dish plus dry soil before furnace ignition.' },
+  sl_org_post: { title: 'Post-ignition mass', body: 'Mass of dish plus soil after ignition to constant weight.' },
+  sl_org_tare: { title: 'Dish tare', body: 'Empty dish mass (grams).' },
+  sl_total_wt: { title: 'Total sample weight', body: 'Total received sample mass before wash or split (grams).' },
+  sl_wash_wt: { title: 'Wash sample weight', body: 'Mass of material washed for gradation (#200 wash).' },
+  sl_reported_by: { title: 'Reported by', body: 'Lab technician signing the LB-44 report.' },
+  sl_reviewed_by: { title: 'Reviewed by', body: 'Peer reviewer for QA on this sample.' },
+  sl_qa_sup: { title: 'QA supervisor', body: 'QA supervisor signature line on the report.' },
+  sl_ia_sup: { title: 'IA supervisor', body: 'Independent assurance supervisor when required.' },
+  sl_geo_eng: { title: 'Geotechnical engineer', body: 'PE or engineer approval line when required.' },
+  sl_date_received: { title: 'Date received', body: 'Date the sample arrived at the lab.' },
+  sl_date_tested: { title: 'Date tested', body: 'Date lab testing was performed.' },
+  sl_date_reported: { title: 'Date reported', body: 'Date results were issued to the project.' },
+  sl_remarks: { title: 'Lab remarks', body: 'Free-text notes on the report — comparisons, exceptions, or field conditions.' },
+  sl_ns_testno: { title: 'New sample test no.', body: 'Test number for a manually created lab sample (auto-assigned when possible).' },
+  sl_ns_date_sampled: { title: 'Date sampled', body: 'Date the field sample was taken.' },
+  sl_s_in2: { title: 'Sieve — 2 inch retained', body: 'Dry mass retained on the 2" sieve (grams).' },
+  sl_s_in1: { title: 'Sieve — 1 inch retained', body: 'Dry mass retained on the 1" sieve (grams).' },
+  sl_s_in38: { title: 'Sieve — 3/8 inch retained', body: 'Dry mass retained on the 3/8" sieve (grams).' },
+  sl_s_no4: { title: 'Sieve — #4 retained', body: 'Dry mass retained on the #4 sieve (grams).' },
+  sl_s_no10: { title: 'Sieve — #10 retained', body: 'Dry mass retained on the #10 sieve (grams).' },
+  sl_s_no40: { title: 'Sieve — #40 retained', body: 'Dry mass retained on the #40 sieve (grams).' },
+  sl_s_no200: { title: 'Sieve — #200 retained', body: 'Dry mass retained on the #200 sieve (grams).' },
+  sl_agg_pan: { title: 'Aggregate pan weight', body: 'Mass in the pan after sieving coarse aggregate (grams).' },
+  ci_set_id: { title: 'Cylinder set ID', body: 'Unique identifier for this concrete pour set (e.g. CON-26-001).' },
+  ci_contract: { title: 'Contract number', body: 'DelDOT contract for the pour. Entering it can auto-fill project fields.' },
+  ci_fa_project: { title: 'F.A. project', body: 'Federal-aid project number when applicable.' },
+  ci_contractor: { title: 'Contractor', body: 'General contractor on the pour.' },
+  ci_supplier: { title: 'Concrete supplier', body: 'Ready-mix plant or supplier name.' },
+  ci_mix_design: { title: 'Mix design / class', body: 'Approved mix ID or strength class (e.g. Class A 4000 psi).' },
+  ci_pour_location: { title: 'Pour location', body: 'Structure, span, or station limits for the placement.' },
+  ci_gps: { title: 'Pour GPS', body: 'Tap to capture GPS at the pour for map display.' },
+  sbUrl: { title: 'Supabase URL', body: 'Your project API URL from Supabase → Settings → API. Required for cloud sync.' },
+  sbKey: { title: 'Supabase anon key', body: 'Public anon key for browser access. Never paste the service_role key here.' },
+  ma_current_pin: { title: 'Current PIN', body: 'Confirm your identity before changing PIN or display name.' },
+  ma_new_pin: { title: 'New PIN', body: 'Four-digit PIN for quick sign-in on shared lab machines. Leave blank to keep current PIN.' },
+  ma_confirm_pin: { title: 'Confirm new PIN', body: 'Re-enter the new PIN to prevent typos.' }
+};
+
+const CONTEXT_HELP_VIEWS = {
+  _chrome: {
+    title: 'Top bar & navigation',
+    intro: 'These controls are available on every screen.',
+    sections: [
+      { tour: 'topbar', title: 'Top bar', body: 'Connection status, weather, sync health, search, comfort mode, help, and settings.' },
+      { tour: 'sync', title: 'Sync chip', body: 'Connected / offline / pending uploads. Click to sync queued changes or open Settings when disconnected.' },
+      { tour: 'search', title: 'Universal search', body: 'Jump to samples, contracts, projects, or modules. Shortcut: Ctrl+K (⌘K on Mac).' },
+      { tour: 'comfort', title: 'Comfort mode', body: 'Softer colors and easier-to-read labels for long shifts.' },
+      { tour: 'help', title: 'Screen help (? )', body: 'Opens this contextual walkthrough for whatever screen you are on — every field and button.' },
+      { tour: 'settings', title: 'Settings', body: 'Supabase connection, themes, account, users (admin), and the full app tour.' },
+      { tour: 'nav-rail', title: 'Navigation rail', body: 'Switch modules. Visible items depend on your role — lab, field, concrete, or admin.' }
+    ]
+  },
+  home: {
+    title: 'Dashboard / Home',
+    intro: 'Launch pad for each major DelDOT materials module and quick KPIs.',
+    sections: [
+      { tour: 'dash-modules', title: 'Module cards', body: 'Open Soil Lab hub, Concrete hub, Field Control hub, or planned modules (Hot Mix, Pre-Cast, Chem).' },
+      { tour: 'planned-module', title: 'Planned modules', body: 'Grayed modules are on the roadmap — opening them shows a coming-soon notice.' }
+    ]
+  },
+  projects: {
+    title: 'Projects',
+    intro: 'Manage contracts and open project-specific sample views and maps.',
+    sections: [
+      { tour: 'projects-header', title: 'Projects header', body: 'Overview of the project list. Use + NEW PROJECT to add a contract record.' },
+      { tour: 'projects-grid', title: 'Project cards', body: 'Each card opens project details and a map of samples, cores, concrete sets, and BoreLog pins.' }
+    ]
+  },
+  dashboard: {
+    title: 'All Samples registry',
+    intro: 'Search and audit every lab sample across all projects.',
+    sections: [
+      { tour: 'sample-registry', title: 'Sample table', body: 'Sortable registry — open a row for lab entry, approval, or history.' }
+    ],
+    fieldOrder: ['searchInput', 'archiveToggleBtn']
+  },
+  appsources: {
+    title: 'Approved Sources',
+    intro: 'Aggregate and borrow approval chart — stockpiles vs. material types with expiration tracking.',
+    sections: [
+      { tour: 'sources-header', title: 'Sources toolbar', body: 'Search, filter, add stockpiles, and manage material columns.' }
+    ],
+    fieldOrder: ['src-search', 'src-filter-mat', 'src-filter-status', 'src-new-loc', 'src-new-source', 'src-modal-sample-date', 'src-modal-expire-date', 'src-modal-status', 'src-modal-sample-no', 'src-modal-notes', 'src-new-mat-name', 'src-new-mat-days']
+  },
+  fieldcontrol: {
+    title: 'Field Control',
+    intro: 'Start field events, log density and lab samples, drill pavement cores, and resume open sessions.',
+    sections: [
+      { tour: 'field-start', title: 'Field Control home', body: 'Test number tracker, new event wizard, core drill, resume, and open sessions.' }
+    ],
+    fieldOrder: [
+      'fc_intent_density', 'fc_intent_lab', 'fc_intent_both',
+      'fc_s_category', 'fc_s_testno', 'fc_s_contract', 'fc_s_location', 'fc_s_material', 'fc_s_tech', 'fc_s_road', 'fc_s_date',
+      'fc_cd_category', 'fc_cd_coreno', 'fc_cd_contract', 'fc_cd_location', 'fc_cd_material', 'fc_cd_tech', 'fc_cd_road', 'fc_cd_date',
+      'fc_core_filter_contract', 'fc_core_filter_date', 'fc_resume_testno',
+      'fc_core_no', 'fc_core_station', 'fc_core_lane', 'fc_core_layer', 'fc_core_thickness', 'fc_core_depth', 'fc_core_gps', 'fc_core_remarks'
+    ]
+  },
+  scan: {
+    title: 'QR Scanner',
+    intro: 'Scan DelDOT sample QR codes to jump directly to lab entry.',
+    sections: [
+      { tour: 'scan-box', title: 'Camera scanner', body: 'Allow camera access, then point at the QR on the sample bag or field card. Works best on mobile.' }
+    ]
+  },
+  soillab: {
+    title: 'Soil & Aggregate Lab',
+    intro: 'Queue on the left, lab entry and LB-44 generation on the right.',
+    sections: [
+      { tour: 'soillab-queue', title: 'Sample queue', body: 'Pending samples from field intake. Select a row to open lab data entry.' }
+    ],
+    fieldOrder: [
+      'sl_search', 'sl_image_input',
+      'sl_ll_bottle', 'sl_ll_wet', 'sl_ll_dry', 'sl_ll_tare', 'sl_ll_blows',
+      'sl_pl_bottle', 'sl_pl_wet', 'sl_pl_dry', 'sl_pl_tare',
+      'sl_org_bottle', 'sl_org_pre', 'sl_org_post', 'sl_org_tare',
+      'sl_total_wt', 'sl_wash_wt',
+      'sl_s_in2', 'sl_s_in1', 'sl_s_in38', 'sl_s_no4', 'sl_s_no10', 'sl_s_no40', 'sl_s_no200', 'sl_agg_pan',
+      'sl_reported_by', 'sl_reviewed_by', 'sl_qa_sup', 'sl_ia_sup', 'sl_geo_eng',
+      'sl_date_received', 'sl_date_tested', 'sl_date_reported', 'sl_remarks',
+      'sl_ns_testno', 'sl_ns_date_sampled'
+    ]
+  },
+  concrete: {
+    title: 'Concrete Module',
+    intro: 'Cylinder intake, fresh properties, break scheduling, and DMP/DMF reports.',
+    sections: [
+      { tour: 'concrete-tabs', title: 'Concrete tabs', body: 'Switch between cast intake, cylinder log, breaks, and report views.' }
+    ],
+    fieldOrder: ['ci_set_id', 'ci_contract', 'ci_fa_project', 'ci_contractor', 'ci_supplier', 'ci_mix_design', 'ci_pour_location', 'ci_gps']
+  },
+  labhub: {
+    title: 'Soil Lab Hub',
+    intro: 'Lab team dashboard — queue, calendar, KPIs, and BoreLog launcher.',
+    sections: [
+      { tour: 'labhub-header', title: 'Lab hub header', body: 'Greeting, weather, and quick stats for the materials lab.' },
+      { tour: 'borelog', title: 'BoreLog', body: 'Opens BoreLog in a new tab for boring log data entry (lab workflow only).' },
+      { tour: 'labhub-queue', title: 'Pending queue', body: 'Oldest pending soil/aggregate samples — click through to the full lab module.' }
+    ]
+  },
+  fieldhub: {
+    title: 'Field Control Hub',
+    intro: 'Field technician home — sessions, calendar, and quick actions.',
+    sections: [
+      { tour: 'fieldhub-header', title: 'Field hub header', body: 'Open sessions, weather, and shortcuts to Field Control and QR scan.' }
+    ]
+  },
+  conchub: {
+    title: 'Concrete Hub',
+    intro: 'Concrete team dashboard — active sets, breaks due, and calendar.',
+    sections: [
+      { tour: 'conchub-header', title: 'Concrete hub header', body: 'Team overview and navigation into the concrete module.' },
+      { tour: 'conchub-kpis', title: 'Concrete KPIs', body: 'Active cylinder sets, breaks due today, weekly load, and overdue breaks.' }
+    ]
+  },
+  labmap: {
+    title: 'Admin Map',
+    intro: 'Statewide map of field samples, cores, concrete, and BoreLog borings.',
+    sections: [
+      { tour: 'labmap-ui', title: 'Map controls', body: 'Basemap style, layer toggles, refresh, and pan/zoom. Admin role required.' }
+    ]
+  },
+  r18: {
+    title: 'R-18 Compliance',
+    intro: 'Equipment calibration and procedure compliance tracker.',
+    sections: [
+      { tour: 'r18-nav', title: 'R-18 sections', body: 'Navigate calibration sections, complete procedure forms, and export records.' }
+    ]
+  },
+  hotmix: { title: 'Hot Mix Asphalt', intro: 'Planned module — not yet live. Use the dashboard notice for updates.', sections: [] },
+  precast: { title: 'Pre-Cast Concrete', intro: 'Planned module — not yet live.', sections: [] },
+  chemlab: { title: 'Chemistry Lab', intro: 'Planned module — not yet live.', sections: [] },
+  setup: {
+    title: 'Settings',
+    intro: 'Connection, appearance, account, and administration.',
+    fieldOrder: ['sbUrl', 'sbKey', 'ma_current_pin', 'ma_new_pin', 'ma_confirm_pin']
+  },
+  _default: {
+    title: 'This screen',
+    intro: 'Contextual help for the current view. Use Next to highlight each control.',
+    sections: []
+  }
+};
+
+function helpScanViewFields(viewEl, seen) {
+  const steps = [];
+  if (!viewEl) return steps;
+  const skip = seen || new Set();
+  viewEl.querySelectorAll('input, select, textarea, button[id]').forEach(el => {
+    if (el.type === 'hidden') return;
+    if (!el.id) return;
+    if (skip.has(el.id)) return;
+    if (!tourIsVisible(el)) return;
+    skip.add(el.id);
+    const meta = HELP_FIELD_REGISTRY[el.id] || {};
+    if (meta.skip) return;
+    steps.push({
+      id: el.id,
+      title: meta.title || helpLabelForField(el),
+      body: meta.body || helpDefaultBody(el, meta),
+      placement: meta.placement || 'bottom',
+      pad: meta.pad ?? 4,
+      skipIf: () => { const n = document.getElementById(el.id); return !n || !tourIsVisible(n); }
+    });
+  });
+  return steps;
+}
+
+function buildContextHelpSteps(viewName) {
+  const steps = [];
+  const setupOpen = document.getElementById('setupOverlay')?.style.display !== 'none';
+  const effectiveView = setupOpen ? 'setup' : viewName;
+  const def = CONTEXT_HELP_VIEWS[effectiveView] || CONTEXT_HELP_VIEWS._default;
+  const viewEl = setupOpen ? document.getElementById('setupOverlay') : document.getElementById(effectiveView + '-view');
+
+  if (!setupOpen) {
+    CONTEXT_HELP_VIEWS._chrome.sections.forEach(s => {
+      steps.push({ tour: s.tour, title: s.title, body: s.body, placement: s.placement || 'bottom', pad: s.pad ?? 4, skipIf: s.skipIf });
+    });
+  }
+
+  steps.push({
+    center: true,
+    title: def.title || helpViewTitle(effectiveView),
+    body: def.intro || 'Press Next to walk through each control on this screen.'
+  });
+
+  (def.sections || []).forEach(s => {
+    steps.push({
+      tour: s.tour, help: s.help, id: s.id, selector: s.selector,
+      title: s.title, body: s.body,
+      placement: s.placement || 'bottom', pad: s.pad ?? 6, skipIf: s.skipIf
+    });
+  });
+
+  const seen = new Set();
+  (def.fieldOrder || []).forEach(fid => {
+    const el = document.getElementById(fid);
+    if (!el) return;
+    seen.add(fid);
+    const meta = HELP_FIELD_REGISTRY[fid] || {};
+    steps.push({
+      id: fid,
+      title: meta.title || helpLabelForField(el),
+      body: meta.body || helpDefaultBody(el, meta),
+      placement: meta.placement || 'bottom',
+      pad: meta.pad ?? 4,
+      skipIf: () => { const n = document.getElementById(fid); return !n || !tourIsVisible(n); }
+    });
+  });
+
+  helpScanViewFields(viewEl, seen).forEach(s => steps.push(s));
+
+  steps.push({
+    center: true,
+    title: 'End of screen help',
+    body: 'Press ? on any screen for help there. Settings → Help runs the full tour across all modules.'
+  });
+
+  return steps;
+}
 
 const TOUR_VIEW_DELAY = {
   home: 180,
@@ -9206,8 +9588,8 @@ const LABTRAK_TOUR_STEPS = [
   },
   {
     tour: 'help',
-    title: 'Help — replay this tour',
-    body: 'The ? button reopens this guided tour anytime. You can also start it from Settings → Help.',
+    title: 'Screen help (? )',
+    body: 'Tap ? on any screen for in-depth help on that page — every field and button. Settings → Help runs the full app tour across modules.',
     placement: 'bottom'
   },
   {
@@ -9392,6 +9774,26 @@ function tourIsVisible(el) {
 }
 
 function tourFindTarget(step) {
+  if (step.selector) {
+    const viewRoot = tourActiveViewEl();
+    const scopes = viewRoot ? [viewRoot, document] : [document];
+    for (let s = 0; s < scopes.length; s++) {
+      const el = scopes[s].querySelector(step.selector);
+      if (el && tourIsVisible(el)) return el;
+    }
+  }
+  if (step.id) {
+    const el = document.getElementById(step.id);
+    if (el && tourIsVisible(el)) return el;
+  }
+  if (step.help) {
+    const viewRoot = tourActiveViewEl();
+    const scopes = viewRoot ? [viewRoot, document] : [document];
+    for (let s = 0; s < scopes.length; s++) {
+      const el = scopes[s].querySelector('[data-help="' + step.help + '"]');
+      if (el && tourIsVisible(el)) return el;
+    }
+  }
   if (!step.tour) return null;
   const key = step.tour;
   const viewRoot = step.view ? document.getElementById(step.view + '-view') : null;
@@ -9493,7 +9895,7 @@ function tourShowSpotlight(el, step) {
 
 function tourRepositionSpotlight() {
   if (!_tourActive) return;
-  const step = LABTRAK_TOUR_STEPS[_tourIndex];
+  const step = getTourSteps()[_tourIndex];
   if (!step || step.center) return;
   const el = tourFindTarget(step);
   if (!el) return;
@@ -9509,27 +9911,33 @@ function tourRenderStep(retryCount) {
   const badgeEl = document.getElementById('tourStepBadge');
   const backBtn = document.getElementById('tourBackBtn');
   const nextBtn = document.getElementById('tourNextBtn');
+  const exitBtn = document.getElementById('tourExitBtn');
   if (!overlay || !spotlight || !card) return;
 
+  const steps = getTourSteps();
   const token = ++_tourRenderToken;
   const retries = retryCount || 0;
 
   let i = _tourIndex;
-  while (i < LABTRAK_TOUR_STEPS.length && LABTRAK_TOUR_STEPS[i].skipIf && LABTRAK_TOUR_STEPS[i].skipIf()) i++;
-  if (i >= LABTRAK_TOUR_STEPS.length) {
+  while (i < steps.length && steps[i].skipIf && steps[i].skipIf()) i++;
+  if (i >= steps.length) {
     endLabTrakTour();
     return;
   }
   _tourIndex = i;
-  const step = LABTRAK_TOUR_STEPS[i];
-  const total = LABTRAK_TOUR_STEPS.filter(s => !(s.skipIf && s.skipIf())).length;
-  const seen = LABTRAK_TOUR_STEPS.slice(0, i + 1).filter(s => !(s.skipIf && s.skipIf())).length;
+  const step = steps[i];
+  const total = steps.filter(s => !(s.skipIf && s.skipIf())).length;
+  const seen = steps.slice(0, i + 1).filter(s => !(s.skipIf && s.skipIf())).length;
 
   if (titleEl) titleEl.textContent = step.title || '';
   if (bodyEl) bodyEl.textContent = step.body || '';
-  if (badgeEl) badgeEl.textContent = seen + ' / ' + total;
+  if (badgeEl) {
+    const prefix = _tourMode === 'context' ? 'This screen · ' : '';
+    badgeEl.textContent = prefix + seen + ' / ' + total;
+  }
+  if (exitBtn) exitBtn.textContent = _tourMode === 'context' ? 'Exit help' : 'Exit tour';
   if (backBtn) backBtn.disabled = i === 0;
-  if (nextBtn) nextBtn.textContent = i >= LABTRAK_TOUR_STEPS.length - 1 ? 'Done' : 'Next';
+  if (nextBtn) nextBtn.textContent = i >= steps.length - 1 ? 'Done' : 'Next';
 
   if (step.center) {
     if (_tourScrollRoot) {
@@ -9567,14 +9975,15 @@ function tourViewDelay(viewName) {
 
 function tourGoTo(index) {
   if (!_tourActive) return;
+  const steps = getTourSteps();
   if (index < 0) index = 0;
-  if (index >= LABTRAK_TOUR_STEPS.length) {
+  if (index >= steps.length) {
     endLabTrakTour();
     return;
   }
   _tourIndex = index;
-  const step = LABTRAK_TOUR_STEPS[_tourIndex];
-  if (step.view && typeof switchView === 'function') {
+  const step = steps[_tourIndex];
+  if (_tourMode === 'full' && step.view && typeof switchView === 'function') {
     switchView(step.view);
     setTimeout(() => tourRenderStep(0), tourViewDelay(step.view));
   } else {
@@ -9582,11 +9991,37 @@ function tourGoTo(index) {
   }
 }
 
+function startContextHelp() {
+  if (_tourActive) return;
+  if (typeof closePalette === 'function') closePalette();
+  const viewName = getActiveViewName();
+  const steps = buildContextHelpSteps(viewName);
+  if (!steps.length) {
+    showToast('No help available for this screen', 'info');
+    return;
+  }
+  _tourMode = 'context';
+  _tourSteps = steps;
+  _tourReturnView = viewName;
+  _tourActive = true;
+  _tourIndex = 0;
+  _tourRenderToken = 0;
+  const overlay = document.getElementById('tourOverlay');
+  if (overlay) {
+    overlay.classList.add('active');
+    overlay.setAttribute('aria-hidden', 'false');
+  }
+  document.body.classList.add('tour-active');
+  setTimeout(() => tourRenderStep(0), 120);
+}
+
 function startLabTrakTour() {
   if (_tourActive) return;
   if (typeof closePalette === 'function') closePalette();
   const setup = document.getElementById('setupOverlay');
   if (setup) setup.style.display = 'none';
+  _tourMode = 'full';
+  _tourSteps = LABTRAK_TOUR_STEPS;
   _tourReturnView = currentView || 'home';
   _tourActive = true;
   _tourIndex = 0;
@@ -9605,6 +10040,8 @@ function endLabTrakTour() {
   if (!_tourActive) return;
   _tourActive = false;
   _tourRenderToken++;
+  _tourMode = 'full';
+  _tourSteps = null;
   if (_tourScrollRoot) {
     _tourScrollRoot.removeEventListener('scroll', tourRepositionSpotlight);
     _tourScrollRoot = null;
@@ -23205,7 +23642,7 @@ window.r18_renderTabs = renderTabs;
     <div class="tour-title" id="tourTitle"></div>
     <div class="tour-body" id="tourBody"></div>
     <div class="tour-actions">
-      <button type="button" class="tour-btn ghost" onclick="endLabTrakTour()">Exit tour</button>
+      <button type="button" class="tour-btn ghost" id="tourExitBtn" onclick="endLabTrakTour()">Exit tour</button>
       <div style="flex:1"></div>
       <button type="button" class="tour-btn ghost" id="tourBackBtn" onclick="tourPrev()">Back</button>
       <button type="button" class="tour-btn primary" id="tourNextBtn" onclick="tourNext()">Next</button>
