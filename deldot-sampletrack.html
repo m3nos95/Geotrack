@@ -6268,7 +6268,7 @@ table.fc-borrow-tbl tr.fc-borrow-detail-row td{background:var(--surface);border-
 // GLOBALS
 // ══════════════════════════════════════════════
 let db = null;
-const APP_BUILD = '2026.06.29-rail-theme';
+const APP_BUILD = '2026.06.29-soillab-load';
 const FC_CORE_ICON_SRC = 'docs/r18-reference/core-drill-icon-128.png';
 const BORELOG_ICON_SRC = 'docs/r18-reference/borelog-icon.webp';
 const BORELOG_PATH = 'docs/r18-reference/deldot-borelog.html';
@@ -9134,10 +9134,23 @@ function switchView(name) {
       if (el && !el.value) { el.value = currentProjectFilter; autoFillFromProject(currentProjectFilter); }
     }
   }
-  if (name === 'soillab') { loadSoilLab(); }
+  if (name === 'soillab') { void loadSoilLab(); }
   if (name === 'appsources') { srcLoad(); }
-  if (name === 'fieldhub') { renderFieldHub(); renderBorrowCountReport(); _loadHubNotes('field').then(function(){ renderHubCal('field'); }); }
-  if (name === 'labhub')   { renderLabHub();   _loadHubNotes('lab').then(function(){ renderHubCal('lab'); }); }
+  if (name === 'fieldhub') {
+    void (async () => {
+      await ensureSamplesLoaded();
+      renderFieldHub();
+      renderBorrowCountReport();
+      _loadHubNotes('field').then(function(){ renderHubCal('field'); });
+    })();
+  }
+  if (name === 'labhub') {
+    void (async () => {
+      await ensureSamplesLoaded();
+      renderLabHub();
+      _loadHubNotes('lab').then(function(){ renderHubCal('lab'); });
+    })();
+  }
   if (name === 'conchub')  { refreshConcreteSetsIfConnected(); renderConcreteHub(); _loadHubNotes('concrete').then(function(){ renderHubCal('concrete'); }); }
   if (name === 'r18')     { if (typeof r18Init === 'function') r18Init(); }
   if (name === 'labmap')  { initLabMapView(); }
@@ -10142,6 +10155,30 @@ window.addEventListener('resize', _tourOnResize);
 // DASHBOARD
 // ══════════════════════════════════════════════
 let allSamples = [];
+let _samplesLoadPromise = null;
+
+function refreshSampleDependentViews() {
+  if (document.getElementById('soillab-view')?.classList.contains('active')) {
+    if (typeof slRenderQueue === 'function') slRenderQueue();
+    if (typeof slSyncMobileLayout === 'function') slSyncMobileLayout();
+  }
+  if (document.getElementById('labhub-view')?.classList.contains('active')) {
+    if (typeof renderLabHub === 'function') renderLabHub();
+  }
+  if (document.getElementById('fieldhub-view')?.classList.contains('active')) {
+    if (typeof renderFieldHub === 'function') renderFieldHub();
+  }
+}
+
+async function ensureSamplesLoaded() {
+  if (_samplesLoadPromise) return _samplesLoadPromise;
+  if ((allSamples || []).length > 0) return allSamples;
+  if (!db) {
+    offlineLoadCached();
+    return allSamples;
+  }
+  return loadSamples();
+}
 
 /** True when a row belongs in Soil Lab queue / lab pending counts (excludes FC density stubs). */
 function isSoilLabSample(s) {
@@ -10246,6 +10283,12 @@ async function dmPurgeOrphanStubs() {
 let showingArchived = false;
 
 async function loadSamples() {
+  if (_samplesLoadPromise) return _samplesLoadPromise;
+  _samplesLoadPromise = _loadSamplesImpl().finally(() => { _samplesLoadPromise = null; });
+  return _samplesLoadPromise;
+}
+
+async function _loadSamplesImpl() {
   showTableSkeleton('sampleTableBody', 9, 6);
   if (!db) {
     offlineLoadCached();
@@ -10254,6 +10297,7 @@ async function loadSamples() {
       : allSamples;
     renderTable(filtered);
     updateStats(filtered);
+    refreshSampleDependentViews();
     return;
   }
   let query = db.from('samples').select('*').is('deleted_at', null).order('created_at', { ascending: false }).limit(500);
@@ -10289,6 +10333,7 @@ async function loadSamples() {
   updateTopbarStatus();
   // Refresh approval badge on rail
   refreshApprovalBadge();
+  refreshSampleDependentViews();
 }
 
 function updateTopbarStatus() {
@@ -15630,7 +15675,10 @@ window.addEventListener('resize', () => {
 });
 
 // ── Init when tab is activated ─────────────────────────────────
-function loadSoilLab() {
+async function loadSoilLab() {
+  const sub = document.getElementById('sl_queue_sub');
+  if (sub && !(allSamples || []).length) sub.textContent = 'Loading samples…';
+  await ensureSamplesLoaded();
   slRenderQueue();
   slSyncMobileLayout();
 }
