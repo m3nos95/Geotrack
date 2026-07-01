@@ -1580,7 +1580,7 @@ nav:not(#r18-nav), .nav-top-row { display: none !important; }
 }
 .labmap-title { font-family: var(--display); font-size: 16px; color: var(--text); font-weight: 700; line-height: 1.2; }
 .labmap-subtitle { font-family: var(--mono); font-size: 9px; color: var(--muted); margin-top: 2px; line-height: 1.4; }
-.labmap-layers-wrap { pointer-events: none; flex: 1; min-height: 0; display: flex; align-items: stretch; }
+.labmap-layers-wrap { pointer-events: none; flex: 1; min-height: 0; display: flex; align-items: flex-start; gap: 10px; flex-wrap: wrap; }
 .labmap-layers {
   pointer-events: auto; width: 210px; max-height: 100%; flex-shrink: 0;
   background: rgba(6, 9, 15, 0.92); border: 1px solid rgba(255, 255, 255, 0.1);
@@ -1599,6 +1599,49 @@ nav:not(#r18-nav), .nav-top-row { display: none !important; }
 .labmap-layer-meta { flex: 1; min-width: 0; }
 .labmap-layer-name { font-family: var(--mono); font-size: 10px; color: var(--text); font-weight: 700; }
 .labmap-layer-count { font-family: var(--mono); font-size: 9px; color: var(--muted); margin-top: 2px; }
+.labmap-area-tools { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
+.labmap-area-btn {
+  font-family: var(--mono); font-size: 9px; letter-spacing: 1px;
+  padding: 7px 10px; border-radius: var(--radius-sm); cursor: pointer;
+  border: 1px solid rgba(96,165,250,0.35); background: rgba(96,165,250,0.12); color: #93c5fd;
+}
+.labmap-area-btn:hover { background: rgba(96,165,250,0.22); }
+.labmap-area-btn.active { background: rgba(96,165,250,0.28); border-color: #60a5fa; color: #fff; }
+.labmap-area-panel {
+  pointer-events: auto;
+  width: min(340px, calc(100vw - 24px));
+  max-height: min(52vh, 520px);
+  margin-top: 10px;
+  margin-left: auto;
+  background: rgba(8,12,20,0.94);
+  border: 1px solid rgba(255,255,255,0.12);
+  border-radius: var(--radius);
+  padding: 12px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  backdrop-filter: blur(10px);
+  box-shadow: 0 8px 32px rgba(0,0,0,0.45);
+}
+.labmap-area-hdr {
+  display: flex; align-items: center; justify-content: space-between; gap: 8px;
+  font-family: var(--mono); font-size: 9px; letter-spacing: 1.5px; color: var(--muted);
+}
+.labmap-area-summary { font-family: var(--mono); font-size: 10px; color: var(--text); line-height: 1.5; }
+.labmap-area-list {
+  overflow-y: auto; flex: 1; min-height: 80px; max-height: 280px;
+  border: 1px solid rgba(255,255,255,0.08); border-radius: var(--radius-sm);
+  background: rgba(0,0,0,0.25);
+}
+.labmap-area-row {
+  padding: 8px 10px; border-bottom: 1px solid rgba(255,255,255,0.06);
+  cursor: pointer; font-family: var(--mono); font-size: 9px; line-height: 1.45;
+}
+.labmap-area-row:hover { background: rgba(255,255,255,0.04); }
+.labmap-area-row-title { color: var(--text); font-weight: 700; font-size: 10px; }
+.labmap-area-row-sub { color: var(--muted); margin-top: 2px; }
+.labmap-area-export { display: flex; gap: 6px; flex-wrap: wrap; }
+.labmap-area-export .btn { font-size: 9px; letter-spacing: 1px; padding: 7px 10px; flex: 1; min-width: 120px; }
 .labmap-empty {
   position: absolute; inset: 0; z-index: 1; display: flex; align-items: center; justify-content: center;
   font-family: var(--mono); font-size: 11px; color: var(--muted); pointer-events: none;
@@ -2851,7 +2894,9 @@ table.fc-borrow-tbl tr.fc-borrow-detail-row td{background:var(--surface);border-
 
 </style>
   <link href='https://api.mapbox.com/mapbox-gl-js/v3.3.0/mapbox-gl.css' rel='stylesheet'>
+  <link href='https://api.mapbox.com/mapbox-gl-js/plugins/mapbox-gl-draw/v1.4.3/mapbox-gl-draw.css' rel='stylesheet'>
   <script src='https://api.mapbox.com/mapbox-gl-js/v3.3.0/mapbox-gl.js'></script>
+  <script src='https://api.mapbox.com/mapbox-gl-js/plugins/mapbox-gl-draw/v1.4.3/mapbox-gl-draw.js'></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/proj4js/2.11.0/proj4.min.js"></script>
 </head>
 <body>
@@ -6083,12 +6128,28 @@ table.fc-borrow-tbl tr.fc-borrow-detail-row td{background:var(--surface);border-
               <button type="button" class="map-style-btn" data-map-style="dark" onclick="labMapSetStyle('dark')">Dark</button>
             </div>
             <button type="button" class="btn btn-ghost" onclick="labMapReload()" style="font-size:10px;letter-spacing:1px;">↻ REFRESH</button>
+            <div class="labmap-area-tools" id="labMapAreaTools" data-tour="labmap-area">
+              <button type="button" class="labmap-area-btn" id="labMapDrawBtn" onclick="labMapStartAreaDraw()" title="Draw a boundary — admin only">✏ DRAW AREA</button>
+              <button type="button" class="labmap-area-btn" id="labMapClearAreaBtn" onclick="labMapClearArea()" style="display:none;">✕ CLEAR</button>
+            </div>
           </div>
         </div>
         <div class="labmap-layers-wrap">
           <aside class="labmap-layers" id="labMapLayersPanel">
             <div class="labmap-layers-title">LAYERS</div>
             <div id="labMapLayerList"></div>
+          </aside>
+          <aside class="labmap-area-panel" id="labMapAreaPanel" style="display:none;" aria-label="Area selection results">
+            <div class="labmap-area-hdr">
+              <span>AREA SELECTION</span>
+              <button type="button" class="labmap-area-btn" onclick="labMapClearArea()" style="padding:4px 8px;">CLEAR</button>
+            </div>
+            <div class="labmap-area-summary" id="labMapAreaSummary">Draw a boundary to list tests inside.</div>
+            <div class="labmap-area-list" id="labMapAreaList"></div>
+            <div class="labmap-area-export">
+              <button type="button" class="btn btn-primary" onclick="labMapExportAreaCSV()">⬇ EXPORT CSV</button>
+              <button type="button" class="btn btn-ghost" onclick="labMapExportAreaJSON()">⬇ EXPORT JSON</button>
+            </div>
           </aside>
         </div>
       </div>
@@ -6164,7 +6225,7 @@ table.fc-borrow-tbl tr.fc-borrow-detail-row td{background:var(--surface);border-
 // GLOBALS
 // ══════════════════════════════════════════════
 let db = null;
-const APP_BUILD = '2026.06.29-no-pin-login';
+const APP_BUILD = '2026.06.29-map-area-select';
 const FC_CORE_ICON_SRC = 'docs/r18-reference/core-drill-icon-128.png';
 const BORELOG_ICON_SRC = 'docs/r18-reference/borelog-icon.webp';
 const BORELOG_PATH = 'docs/r18-reference/deldot-borelog.html';
@@ -6965,7 +7026,8 @@ function normalizeBorelogMapBoring(row, projectMeta) {
     projectName: projectMeta?.name || row.projectName || '',
   };
   const coords = resolveBorelogBoringCoords(boring);
-  return coords ? { ...boring, coords } : null;
+  if (!coords) return null;
+  return { ...boring, coords, _sourceRow: row };
 }
 
 function collectBorelogBoringsFromLocal(contract) {
@@ -7009,7 +7071,7 @@ async function fetchBorelogBoringsForContract(contract) {
     if (!projs.length) return out;
     const projById = Object.fromEntries(projs.map(p => [p.id, p]));
     const { data: rows } = await db.from('borelog_borings')
-      .select('id,boring_no,project_id,header_data')
+      .select('*')
       .in('project_id', projs.map(p => p.id))
       .is('deleted_at', null);
     (rows || []).forEach(row => {
@@ -7054,13 +7116,14 @@ function createMapPopup(html, opts) {
   }).setHTML(html);
 }
 
-function createMarkerEl(color, symbol, isActive) {
+function createMarkerEl(color, symbol, isActive, dimmed) {
   const wrap = document.createElement('div');
   wrap.style.cssText = `
     position: relative;
     width: 36px; height: 36px;
     display: flex; align-items: center; justify-content: center;
     cursor: pointer;
+    ${dimmed ? 'opacity:0.18;pointer-events:none;' : ''}
   `;
 
   // Pulse rings (shown for active/pending markers or when isActive flag set)
@@ -7150,6 +7213,10 @@ let labMap = null;
 let labMapMarkers = [];
 let labMapLayers = { field_sample: true, density: true, core_drill: true, concrete: true, borelog: true };
 let labMapStore = { field_sample: [], density: [], core_drill: [], concrete: [], borelog: [] };
+let labMapDraw = null;
+let labMapAreaRing = null;
+let labMapAreaMatchKeys = null;
+let labMapAreaMatches = [];
 
 const LAB_MAP_LAYER_DEFS = {
   field_sample: { label: 'Field Sample', color: '#34d399', symbol: '●' },
@@ -7272,6 +7339,355 @@ function labMapRenderLayerPanel() {
   }).join('');
 }
 
+function labMapItemKey(layer, record) {
+  const id = record?.id || record?.test_no || record?.boring_no || record?.core_no || record?.set_id;
+  return layer + ':' + (id || JSON.stringify(record).slice(0, 40));
+}
+
+function labMapPointInRing(lng, lat, ring) {
+  if (!ring || ring.length < 4) return false;
+  let inside = false;
+  for (let i = 0, j = ring.length - 1; i < ring.length; j = i++) {
+    const xi = ring[i][0], yi = ring[i][1];
+    const xj = ring[j][0], yj = ring[j][1];
+    if (((yi > lat) !== (yj > lat)) && (lng < (xj - xi) * (lat - yi) / (yj - yi) + xi)) inside = !inside;
+  }
+  return inside;
+}
+
+function labMapEnumerateItems() {
+  const items = [];
+  const addSample = (s, layer) => {
+    const coords = parseGPS(s.gps_coordinates, true);
+    if (!coords) return;
+    items.push({ layer, record: s, coords });
+  };
+  (labMapStore.field_sample || []).forEach(s => addSample(s, 'field_sample'));
+  (labMapStore.density || []).forEach(s => addSample(s, 'density'));
+  (labMapStore.core_drill || []).forEach(c => {
+    const coords = parseGPS(c.gps_coordinates, true);
+    if (!coords) return;
+    items.push({ layer: 'core_drill', record: c, coords });
+  });
+  (labMapStore.concrete || []).forEach(row => {
+    const set = typeof concreteRowToSet === 'function' ? concreteRowToSet(row) : row;
+    if (!set?.gps_coordinates) return;
+    const coords = parseGPS(set.gps_coordinates, true);
+    if (!coords) return;
+    items.push({ layer: 'concrete', record: { ...row, _set: set }, coords });
+  });
+  (labMapStore.borelog || []).forEach(b => {
+    if (!b?.coords) return;
+    items.push({ layer: 'borelog', record: b, coords: b.coords });
+  });
+  return items;
+}
+
+function labMapAreaRecordLabel(layer, record) {
+  if (layer === 'borelog') return 'Boring ' + (record.boring_no || record.id || '—');
+  if (layer === 'core_drill') return 'Core ' + (record.core_no || record.test_no || '—');
+  if (layer === 'concrete') {
+    const set = record._set || record;
+    return set.id || set.pourLocation || 'Concrete set';
+  }
+  return record.test_no || record.id || '—';
+}
+
+function labMapAreaRecordSub(layer, record) {
+  const parts = [];
+  const contract = record.contract || record._set?.contract;
+  if (contract) parts.push(contract);
+  if (layer === 'borelog') {
+    if (record.location) parts.push(record.location);
+    if (record.station_offset) parts.push(record.station_offset);
+  } else if (layer === 'core_drill') {
+    if (record.layer_type) parts.push(record.layer_type);
+    if (record.station) parts.push(record.station);
+  } else if (layer === 'concrete') {
+    const set = record._set || record;
+    if (set.pourLocation) parts.push(set.pourLocation);
+    if (set.mixDesign) parts.push(set.mixDesign);
+  } else {
+    if (record.material_type) parts.push(record.material_type);
+    if (record.location) parts.push(record.location);
+    if (record.status) parts.push(record.status);
+  }
+  return parts.join(' · ') || LAB_MAP_LAYER_DEFS[layer]?.label || layer;
+}
+
+function labMapAreaExportPayload(record, layer) {
+  if (layer === 'borelog') {
+    const src = record._sourceRow || record;
+    return {
+      layer: 'borelog',
+      boring_no: record.boring_no,
+      contract: record.contract,
+      project_name: record.projectName,
+      location: record.location,
+      station_offset: record.station_offset,
+      northing: record.northing,
+      easting: record.easting,
+      gps_coordinates: record.gps_coordinates,
+      date_started: record.date_started,
+      date_completed: record.date_completed,
+      header_data: src.header_data || record.header_data || null,
+      strata_data: src.strata_data || record.strata_data || null,
+      lab_data: src.lab_data || record.lab_data || null,
+      full_record: src,
+    };
+  }
+  if (layer === 'concrete') {
+    const row = record;
+    const set = record._set || (typeof concreteRowToSet === 'function' ? concreteRowToSet(row) : row);
+    return { layer: 'concrete', full_record: row, parsed_set: set };
+  }
+  return { layer, full_record: record };
+}
+
+function labMapRunAreaFilter() {
+  if (!isLabMapAdmin()) return;
+  if (!labMapAreaRing || labMapAreaRing.length < 4) return;
+  const matches = [];
+  const keys = new Set();
+  labMapEnumerateItems().forEach(item => {
+    if (labMapPointInRing(item.coords.lng, item.coords.lat, labMapAreaRing)) {
+      matches.push(item);
+      keys.add(labMapItemKey(item.layer, item.record));
+    }
+  });
+  labMapAreaMatchKeys = keys;
+  labMapAreaMatches = matches;
+  labMapRenderAreaPanel();
+  labMapPlotMarkers(true);
+}
+
+function labMapRenderAreaPanel() {
+  const panel = document.getElementById('labMapAreaPanel');
+  const summary = document.getElementById('labMapAreaSummary');
+  const list = document.getElementById('labMapAreaList');
+  const clearBtn = document.getElementById('labMapClearAreaBtn');
+  const drawBtn = document.getElementById('labMapDrawBtn');
+  if (!panel || !summary || !list) return;
+
+  const active = !!labMapAreaRing;
+  panel.style.display = active ? 'flex' : 'none';
+  if (clearBtn) clearBtn.style.display = labMapAreaRing ? 'inline-block' : 'none';
+  if (drawBtn) drawBtn.classList.toggle('active', !!labMapAreaRing);
+
+  if (!labMapAreaMatchKeys || !labMapAreaMatchKeys.size) {
+    summary.textContent = labMapAreaRing ? 'No tests with GPS inside this boundary.' : 'Draw a boundary to list tests inside.';
+    list.innerHTML = '';
+    return;
+  }
+
+  const byLayer = {};
+  labMapAreaMatches.forEach(m => {
+    byLayer[m.layer] = (byLayer[m.layer] || 0) + 1;
+  });
+  const parts = Object.keys(LAB_MAP_LAYER_DEFS).map(k => {
+    const n = byLayer[k] || 0;
+    return n ? `${LAB_MAP_LAYER_DEFS[k].label}: ${n}` : '';
+  }).filter(Boolean);
+  summary.textContent = `${labMapAreaMatches.length} record${labMapAreaMatches.length === 1 ? '' : 's'} inside area` +
+    (parts.length ? ' · ' + parts.join(' · ') : '');
+
+  list.innerHTML = labMapAreaMatches.map((m, idx) => {
+    const title = labMapAreaRecordLabel(m.layer, m.record);
+    const sub = labMapAreaRecordSub(m.layer, m.record);
+    const swatch = LAB_MAP_LAYER_DEFS[m.layer]?.color || '#fff';
+    return `<button type="button" class="labmap-area-row" onclick="labMapFlyToAreaMatch(${idx})">
+      <div class="labmap-area-row-title"><span style="color:${swatch};margin-right:4px;">●</span>${title}</div>
+      <div class="labmap-area-row-sub">${sub}</div>
+    </button>`;
+  }).join('');
+}
+
+function labMapFlyToAreaMatch(index) {
+  const m = labMapAreaMatches[index];
+  if (!m || !labMap) return;
+  labMap.flyTo({ center: [m.coords.lng, m.coords.lat], zoom: Math.max(labMap.getZoom(), 15), duration: 700 });
+}
+
+function labMapClearArea(opts) {
+  if (!isLabMapAdmin()) return;
+  labMapAreaRing = null;
+  labMapAreaMatchKeys = null;
+  labMapAreaMatches = [];
+  if (labMapDraw && !opts?.keepDrawMode) {
+    try { labMapDraw.deleteAll(); } catch (e) { /* ignore */ }
+    labMapDraw.changeMode('simple_select');
+  }
+  const drawBtn = document.getElementById('labMapDrawBtn');
+  if (drawBtn) drawBtn.classList.remove('active');
+  const clearBtn = document.getElementById('labMapClearAreaBtn');
+  if (clearBtn) clearBtn.style.display = 'none';
+  labMapRenderAreaPanel();
+  labMapPlotMarkers(true);
+}
+
+function labMapOnAreaDrawChange() {
+  if (!isLabMapAdmin() || !labMapDraw) return;
+  const data = labMapDraw.getAll();
+  const poly = (data.features || []).find(f => f.geometry && f.geometry.type === 'Polygon');
+  if (!poly) {
+    labMapClearArea({ keepDrawMode: true });
+    return;
+  }
+  labMapAreaRing = poly.geometry.coordinates[0];
+  const clearBtn = document.getElementById('labMapClearAreaBtn');
+  if (clearBtn) clearBtn.style.display = 'inline-block';
+  labMapRunAreaFilter();
+}
+
+function labMapStartAreaDraw() {
+  if (!isLabMapAdmin()) {
+    showToast('Area selection is for administrators only', 'error');
+    return;
+  }
+  if (!labMap || !labMapDraw) {
+    showToast('Map is still loading — try again in a moment', 'error');
+    return;
+  }
+  labMapAreaRing = null;
+  labMapAreaMatchKeys = null;
+  labMapAreaMatches = [];
+  try { labMapDraw.deleteAll(); } catch (e) { /* ignore */ }
+  labMapDraw.changeMode('draw_polygon');
+  labMapRenderAreaPanel();
+  labMapPlotMarkers(true);
+  showToast('Click corners on the map — double-click to close the boundary', 'success');
+}
+
+function labMapInitDraw() {
+  if (!labMap || labMapDraw || !isLabMapAdmin() || typeof MapboxDraw === 'undefined') return;
+  labMapDraw = new MapboxDraw({
+    displayControlsDefault: false,
+    controls: {},
+    defaultMode: 'simple_select',
+  });
+  labMap.addControl(labMapDraw);
+  labMap.on('draw.create', labMapOnAreaDrawChange);
+  labMap.on('draw.update', labMapOnAreaDrawChange);
+  labMap.on('draw.delete', () => labMapClearArea());
+}
+
+function labMapCsvEscape(val) {
+  const s = val == null ? '' : String(val);
+  if (/[",\n\r]/.test(s)) return '"' + s.replace(/"/g, '""') + '"';
+  return s;
+}
+
+function labMapBuildAreaExportRows() {
+  if (!labMapAreaMatches.length) return [];
+  return labMapAreaMatches.map(m => {
+    const payload = labMapAreaExportPayload(m.record, m.layer);
+    const flat = {
+      layer: LAB_MAP_LAYER_DEFS[m.layer]?.label || m.layer,
+      record_type: m.layer,
+      record_id: m.record.id || m.record.test_no || m.record.boring_no || m.record.core_no || '',
+      latitude: m.coords.lat,
+      longitude: m.coords.lng,
+      label: labMapAreaRecordLabel(m.layer, m.record),
+      summary: labMapAreaRecordSub(m.layer, m.record),
+      full_data_json: JSON.stringify(payload),
+    };
+    if (m.layer === 'field_sample' || m.layer === 'density') {
+      flat.test_no = m.record.test_no || '';
+      flat.contract = m.record.contract || '';
+      flat.location = m.record.location || '';
+      flat.material_type = m.record.material_type || '';
+      flat.date_sampled = m.record.date_sampled || '';
+      flat.status = m.record.status || '';
+      flat.conforms = m.record.conforms || '';
+      flat.test_category = m.record.test_category || '';
+      flat.sample_type = m.record.sample_type || '';
+      flat.record_kind = m.record.record_kind || '';
+      flat.gps_coordinates = m.record.gps_coordinates || '';
+    } else if (m.layer === 'core_drill') {
+      flat.core_no = m.record.core_no || '';
+      flat.test_no = m.record.test_no || '';
+      flat.contract = m.record.contract || '';
+      flat.layer_type = m.record.layer_type || '';
+      flat.station = m.record.station || '';
+      flat.lane = m.record.lane || '';
+      flat.thickness_in = m.record.thickness_in != null ? m.record.thickness_in : '';
+      flat.gps_coordinates = m.record.gps_coordinates || '';
+    } else if (m.layer === 'concrete') {
+      const set = m.record._set || m.record;
+      flat.set_id = set.id || '';
+      flat.contract = set.contract || '';
+      flat.pour_location = set.pourLocation || '';
+      flat.mix_design = set.mixDesign || '';
+      flat.cast_date = set.castDate || '';
+      flat.gps_coordinates = set.gps_coordinates || '';
+    } else if (m.layer === 'borelog') {
+      flat.boring_no = m.record.boring_no || '';
+      flat.contract = m.record.contract || '';
+      flat.project_name = m.record.projectName || '';
+      flat.location = m.record.location || '';
+      flat.station_offset = m.record.station_offset || '';
+      flat.northing = m.record.northing || '';
+      flat.easting = m.record.easting || '';
+      flat.gps_coordinates = m.record.gps_coordinates || '';
+      flat.date_started = m.record.date_started || '';
+      flat.date_completed = m.record.date_completed || '';
+    }
+    return flat;
+  });
+}
+
+function labMapExportAreaCSV() {
+  if (!isLabMapAdmin()) return;
+  const rows = labMapBuildAreaExportRows();
+  if (!rows.length) {
+    showToast('Draw an area with tests inside first', 'error');
+    return;
+  }
+  const headers = [];
+  rows.forEach(r => Object.keys(r).forEach(k => { if (!headers.includes(k)) headers.push(k); }));
+  const preferred = ['layer', 'record_type', 'record_id', 'label', 'test_no', 'boring_no', 'core_no', 'set_id',
+    'contract', 'location', 'material_type', 'date_sampled', 'status', 'latitude', 'longitude', 'full_data_json'];
+  const ordered = preferred.filter(h => headers.includes(h)).concat(headers.filter(h => !preferred.includes(h)));
+  const lines = [ordered.join(',')];
+  rows.forEach(r => {
+    lines.push(ordered.map(h => labMapCsvEscape(r[h])).join(','));
+  });
+  const blob = new Blob([lines.join('\n')], { type: 'text/csv;charset=utf-8' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'labtrak-map-area-' + new Date().toISOString().slice(0, 10) + '.csv';
+  a.click();
+  URL.revokeObjectURL(a.href);
+  showToast('Exported ' + rows.length + ' records to CSV', 'success');
+}
+
+function labMapExportAreaJSON() {
+  if (!isLabMapAdmin()) return;
+  if (!labMapAreaMatches.length) {
+    showToast('Draw an area with tests inside first', 'error');
+    return;
+  }
+  const payload = {
+    exported_at: new Date().toISOString(),
+    boundary: labMapAreaRing ? { type: 'Polygon', coordinates: [labMapAreaRing] } : null,
+    count: labMapAreaMatches.length,
+    records: labMapAreaMatches.map(m => ({
+      layer: m.layer,
+      latitude: m.coords.lat,
+      longitude: m.coords.lng,
+      label: labMapAreaRecordLabel(m.layer, m.record),
+      data: labMapAreaExportPayload(m.record, m.layer),
+    })),
+  };
+  const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'labtrak-map-area-' + new Date().toISOString().slice(0, 10) + '.json';
+  a.click();
+  URL.revokeObjectURL(a.href);
+  showToast('Exported ' + labMapAreaMatches.length + ' records to JSON', 'success');
+}
+
 function labMapToggleLayer(key) {
   labMapLayers[key] = !labMapLayers[key];
   labMapRenderLayerPanel();
@@ -7283,46 +7699,54 @@ function labMapPlotMarkers(preserveView) {
   labMapClearMarkers();
   const bounds = new mapboxgl.LngLatBounds();
   let pinCount = 0;
+  const areaActive = labMapAreaMatchKeys !== null;
 
-  const addMarker = (coords, layer, popupHtml, isActive) => {
+  const plotItem = (coords, layer, popupHtml, isActive, record) => {
     const def = LAB_MAP_LAYER_DEFS[layer];
-    if (!def || labMapLayers[layer] === false) return;
-    const el = createMarkerEl(def.color, def.symbol, !!isActive);
+    if (!def) return;
+    const key = labMapItemKey(layer, record);
+    const inArea = areaActive && labMapAreaMatchKeys.has(key);
+    const layerOn = labMapLayers[layer] !== false;
+    if (!inArea && !layerOn) return;
+    const dimmed = areaActive && !inArea;
+    const el = createMarkerEl(def.color, def.symbol, !!isActive && !dimmed, dimmed);
     const marker = new mapboxgl.Marker({ element: el })
       .setLngLat([coords.lng, coords.lat])
       .setPopup(createMapPopup(popupHtml))
       .addTo(labMap);
     labMapMarkers.push(marker);
-    bounds.extend([coords.lng, coords.lat]);
-    pinCount++;
+    if (!dimmed) {
+      bounds.extend([coords.lng, coords.lat]);
+      pinCount++;
+    }
   };
 
   (labMapStore.field_sample || []).forEach(s => {
     const coords = parseGPS(s.gps_coordinates, true);
     if (!coords) return;
     const st = labMapSampleStatus(s);
-    addMarker(coords, 'field_sample', labMapBuildSamplePopup(s, 'field_sample'), st.isActive);
+    plotItem(coords, 'field_sample', labMapBuildSamplePopup(s, 'field_sample'), st.isActive, s);
   });
   (labMapStore.density || []).forEach(s => {
     const coords = parseGPS(s.gps_coordinates, true);
     if (!coords) return;
-    addMarker(coords, 'density', labMapBuildSamplePopup(s, 'density'), true);
+    plotItem(coords, 'density', labMapBuildSamplePopup(s, 'density'), true, s);
   });
   (labMapStore.core_drill || []).forEach(c => {
     const coords = parseGPS(c.gps_coordinates, true);
     if (!coords) return;
-    addMarker(coords, 'core_drill', labMapBuildCorePopup(c), false);
+    plotItem(coords, 'core_drill', labMapBuildCorePopup(c), false, c);
   });
   (labMapStore.concrete || []).forEach(cs => {
     const set = typeof concreteRowToSet === 'function' ? concreteRowToSet(cs) : cs;
     if (!set?.gps_coordinates) return;
     const coords = parseGPS(set.gps_coordinates, true);
     if (!coords) return;
-    addMarker(coords, 'concrete', labMapBuildConcretePopup(set), false);
+    plotItem(coords, 'concrete', labMapBuildConcretePopup(set), false, { ...cs, _set: set });
   });
   (labMapStore.borelog || []).forEach(b => {
     if (!b?.coords) return;
-    addMarker(b.coords, 'borelog', buildBorelogMapPopup(b), false);
+    plotItem(b.coords, 'borelog', buildBorelogMapPopup(b), false, b);
   });
 
   const subtitle = document.getElementById('labMapSubtitle');
@@ -7331,9 +7755,13 @@ function labMapPlotMarkers(preserveView) {
       const n = (labMapStore[k] || []).length;
       return n ? `${LAB_MAP_LAYER_DEFS[k].label}: ${n}` : '';
     }).filter(Boolean);
-    subtitle.textContent = pinCount
+    let text = pinCount
       ? `${pinCount} pin${pinCount === 1 ? '' : 's'} visible` + (parts.length ? ' · ' + parts.join(' · ') : '')
       : 'No GPS coordinates found in the program';
+    if (areaActive && labMapAreaMatchKeys.size) {
+      text += ` · ${labMapAreaMatchKeys.size} in selected area`;
+    }
+    subtitle.textContent = text;
   }
 
   if (!preserveView && pinCount > 0 && !bounds.isEmpty()) {
@@ -7382,7 +7810,7 @@ async function labMapFetchData() {
 
   try {
     const { data: samples } = await db.from('samples')
-      .select('id,test_no,contract,location,gps_coordinates,status,conforms,test_category,material_type,date_sampled,record_kind,sample_type,nuclear_data,density_data,deleted_at,archived')
+      .select('*')
       .is('deleted_at', null)
       .or('archived.is.null,archived.eq.false')
       .not('gps_coordinates', 'is', null)
@@ -7392,14 +7820,14 @@ async function labMapFetchData() {
 
   try {
     const { data: cores } = await db.from('core_drills')
-      .select(MAP_CORE_DRILL_SELECT)
+      .select('*')
       .not('gps_coordinates', 'is', null)
       .limit(4000);
     (cores || []).forEach(addCore);
   } catch (e) {
     try {
       const { data: cores } = await db.from('core_drills')
-        .select('id,test_no,contract,core_no,gps_coordinates,layer_type,thickness_in,station,lane,photo_data,field_test_id,date_drilled')
+        .select(MAP_CORE_DRILL_SELECT)
         .not('gps_coordinates', 'is', null)
         .limit(4000);
       (cores || []).forEach(addCore);
@@ -7464,8 +7892,13 @@ function initLabMapView() {
     labMap.addControl(new mapboxgl.NavigationControl(), 'top-right');
     labMap.addControl(new mapboxgl.FullscreenControl(), 'top-right');
     labMap.on('load', () => {
+      labMapInitDraw();
       labMapResizeSoon();
       labMapReload();
+    });
+    labMap.on('style.load', () => {
+      if (labMapAreaRing) labMapRunAreaFilter();
+      else labMapPlotMarkers(true);
     });
   } else {
     labMapResizeSoon();
@@ -9507,7 +9940,8 @@ const CONTEXT_HELP_VIEWS = {
     title: 'Admin Map',
     intro: 'Statewide map of field samples, cores, concrete, and BoreLog borings.',
     sections: [
-      { tour: 'labmap-ui', title: 'Map controls', body: 'Basemap style, layer toggles, refresh, and pan/zoom. Admin role required.' }
+      { tour: 'labmap-ui', title: 'Map controls', body: 'Basemap style, layer toggles, refresh, and pan/zoom. Admin role required.' },
+      { tour: 'labmap-area', title: 'Draw area (admin)', body: 'Draw a hand-drawn boundary to list every test inside — field samples, density, cores, concrete, and BoreLog borings. Export CSV or JSON with full record data.' }
     ]
   },
   r18: {
