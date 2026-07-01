@@ -1367,6 +1367,22 @@ nav:not(#r18-nav), .nav-top-row { display: none !important; }
 /* ── EDIT OVERLAY ── */
 .edit-overlay { display:none; position:fixed; inset:0; background:rgba(0,0,0,0.85); z-index:500; overflow-y:auto; padding:20px; }
 .edit-overlay.open { display:flex; align-items:flex-start; justify-content:center; }
+.sl-spec-mgmt-panel {
+  background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg);
+  width: min(920px, 96vw); max-height: 92vh; overflow: hidden; display: flex; flex-direction: column;
+  margin: 20px auto; padding: 20px 22px; box-shadow: var(--shadow-lg);
+}
+.sl-spec-mgmt-header { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 8px; }
+.sl-spec-mgmt-tabs { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 14px; }
+.sl-spec-tab {
+  font-family: var(--mono); font-size: 10px; letter-spacing: 0.5px; padding: 8px 12px;
+  border: 1px solid var(--border); border-radius: var(--radius-sm); background: var(--panel);
+  color: var(--muted); cursor: pointer;
+}
+.sl-spec-tab.active { color: var(--text); border-color: var(--accent2); background: rgba(52,211,153,0.08); }
+.sl-spec-mgmt-body { overflow-y: auto; flex: 1; min-height: 200px; padding-right: 4px; }
+.sl-spec-mgmt-footer { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 16px; padding-top: 14px; border-top: 1px solid var(--border); }
+.sl-spec-form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
 .edit-panel { background:var(--surface); border:1px solid var(--border); border-radius:var(--radius); width:100%; max-width:700px; margin:auto; padding:24px; }
 .edit-panel h2 { font-family:var(--display); font-size:20px; color:var(--accent2); letter-spacing:2px; margin-bottom:4px; }
 .edit-panel p { color:var(--muted); font-size:11px; font-family:var(--mono); margin-bottom:20px; }
@@ -5378,6 +5394,7 @@ table.fc-borrow-tbl tr.fc-borrow-detail-row td{background:var(--surface);border-
 
         <div style="padding:0 12px 8px;">
           <button class="btn btn-success" style="width:100%;font-size:10px;letter-spacing:1px;margin-bottom:6px;" onclick="slOpenNewSample()">＋ NEW SAMPLE</button>
+          <button class="btn btn-ghost" style="width:100%;font-size:10px;letter-spacing:1px;margin-bottom:6px;" onclick="openSlSpecMgmt()">⚙ SPECS &amp; SIEVES</button>
           <button class="btn btn-ghost" style="width:100%;font-size:10px;letter-spacing:1px;" onclick="slToggleScanner()">📷 SCAN QR CODE</button>
           <div id="sl-scanner-wrap" style="display:none;margin-top:8px;">
             <div id="sl-reader" style="width:100%;border-radius:6px;overflow:hidden;"></div>
@@ -5545,18 +5562,13 @@ table.fc-borrow-tbl tr.fc-borrow-detail-row td{background:var(--surface);border-
                     <div class="mf"><label>Wt. of Total Sample (g)</label><input type="number" step="0.1" id="sl_total_wt" placeholder="1026.7"></div>
                     <div class="mf"><label>Wt. of Wash Sample (g)</label><input type="number" step="0.1" id="sl_wash_wt" placeholder="114.3"></div>
                   </div>
+                  <div class="mf" style="margin-bottom:12px;max-width:320px;">
+                    <label>Sieve nest arrangement</label>
+                    <select id="sl_soil_nest_select" onchange="slOnSoilNestChange()"></select>
+                  </div>
                   <table class="sieve-manual-table">
                     <thead><tr><th>SIEVE</th><th>CUM. WT. RETAINED (g)</th></tr></thead>
-                    <tbody>
-                      <tr><td>2" (50.8mm)</td><td><input type="number" step="0.1" id="sl_s_in2" placeholder="0.0"></td></tr>
-                      <tr><td>1" (25.4mm)</td><td><input type="number" step="0.1" id="sl_s_in1" placeholder="0.0"></td></tr>
-                      <tr><td>3/8" (9.52mm)</td><td><input type="number" step="0.1" id="sl_s_in38" placeholder="117.1"></td></tr>
-                      <tr><td>#4 (4.76mm)</td><td><input type="number" step="0.1" id="sl_s_no4" placeholder="178.3"></td></tr>
-                      <tr><td>#10 (2.00mm)</td><td><input type="number" step="0.1" id="sl_s_no10" placeholder="276.7"></td></tr>
-                      <tr class="wash-row"><td>↓ WASH SPLIT ↓</td><td style="text-align:center;color:var(--gold);font-family:var(--mono);font-size:11px;">Wash Wt entered above</td></tr>
-                      <tr><td>#40 (0.42mm)</td><td><input type="number" step="0.1" id="sl_s_no40" placeholder="39.4"></td></tr>
-                      <tr><td>#200 (0.074mm)</td><td><input type="number" step="0.1" id="sl_s_no200" placeholder="81.1"></td></tr>
-                    </tbody>
+                    <tbody id="sl_soil_sieve_tbody"></tbody>
                   </table>
                 </div>
               </div>
@@ -5760,6 +5772,32 @@ table.fc-borrow-tbl tr.fc-borrow-detail-row td{background:var(--surface);border-
       <div class="btn-row" style="margin-top:16px;">
         <button class="btn btn-success" id="sl_ns_submit_btn" onclick="slCreateNewSample()">＋ CREATE SAMPLE</button>
         <button class="btn btn-ghost" onclick="document.getElementById('slNewSampleOverlay').classList.remove('open')">CANCEL</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── SOIL LAB: SPECS & SIEVE NEST MANAGEMENT ── -->
+  <div class="edit-overlay" id="slSpecMgmtOverlay" onclick="if(event.target===this)closeSlSpecMgmt()">
+    <div class="sl-spec-mgmt-panel" role="dialog" aria-label="Specifications and sieve nests">
+      <div class="sl-spec-mgmt-header">
+        <h2 style="margin:0;font-size:18px;">Specs &amp; Sieve Nests</h2>
+        <button type="button" class="btn btn-ghost" onclick="closeSlSpecMgmt()" style="font-size:11px;">✕ CLOSE</button>
+      </div>
+      <p style="font-size:12px;color:var(--muted);margin:0 0 14px;line-height:1.5;">
+        Edit aggregate gradation specs, Section 1001 soil borrow criteria, and soil sieve nest arrangements.
+        Save locally for this browser, or push to the database so all lab stations share the same definitions.
+      </p>
+      <div class="sl-spec-mgmt-tabs">
+        <button type="button" class="sl-spec-tab active" data-tab="agg" onclick="specMgmtSwitchTab('agg')">Aggregate specs</button>
+        <button type="button" class="sl-spec-tab" data-tab="soil" onclick="specMgmtSwitchTab('soil')">Soil borrow (1001)</button>
+        <button type="button" class="sl-spec-tab" data-tab="nest" onclick="specMgmtSwitchTab('nest')">Soil sieve nests</button>
+      </div>
+      <div id="slSpecMgmtBody" class="sl-spec-mgmt-body"></div>
+      <div class="sl-spec-mgmt-footer">
+        <button type="button" class="btn btn-ghost" onclick="specMgmtResetDefaults()">Reset defaults</button>
+        <button type="button" class="btn btn-ghost" onclick="pullLabSpecConfigFromDb().then(ok => { if (ok) { specMgmtRender(); showToast('Loaded from database ✓','success'); } else showToast('No cloud config yet','info'); })">Load from database</button>
+        <button type="button" class="btn btn-primary" onclick="specMgmtSave()">Save on device</button>
+        <button type="button" class="btn btn-success" onclick="specMgmtSave(); saveLabSpecConfigToDb()">Save to database</button>
       </div>
     </div>
   </div>
@@ -6225,7 +6263,7 @@ table.fc-borrow-tbl tr.fc-borrow-detail-row td{background:var(--surface);border-
 // GLOBALS
 // ══════════════════════════════════════════════
 let db = null;
-const APP_BUILD = '2026.06.29-map-area-select';
+const APP_BUILD = '2026.07.01-lab-spec-mgmt';
 const FC_CORE_ICON_SRC = 'docs/r18-reference/core-drill-icon-128.png';
 const BORELOG_ICON_SRC = 'docs/r18-reference/borelog-icon.webp';
 const BORELOG_PATH = 'docs/r18-reference/deldot-borelog.html';
@@ -6252,6 +6290,7 @@ window.addEventListener('DOMContentLoaded', () => {
   if (typeof syncMobileNav === 'function') setTimeout(syncMobileNav, 100);
   if (typeof syncMapStyleButtons === 'function') syncMapStyleButtons();
   if (typeof initMapRoadSearch === 'function') initMapRoadSearch();
+  loadLabSpecConfig();
   // Register service worker for offline support
   if ('serviceWorker' in navigator) {
     navigator.serviceWorker.register('#', { scope: './' }).catch(() => {});
@@ -9423,6 +9462,7 @@ async function connectSupabase(silent = false) {
     setDbConnected(true);
     persistSupabaseSettings();
     updateSupabaseStatus();
+    pullLabSpecConfigFromDb().catch(() => {});
     refreshAuthProvisionUI();
     flushSampleHistoryQueue();
     await pullAndMergeConcreteSets();
@@ -12854,83 +12894,35 @@ function aashto(p200, p10, p40, ll, pi) {
 // SECTION 1001 BORROW SCORING
 // ══════════════════════════════════════════════
 function scoreBorrow(calc, llVal, piVal) {
-  // Values from calc
-  const pctPass200 = calc.results.no200?.pctPass != null ? parseFloat(calc.results.no200.pctPass) : null;
-  const pctPass2in = calc.results.in2?.pctPass  != null ? parseFloat(calc.results.in2.pctPass)   : 100; // assume 100 if not in stack
-  const pctPass1in = calc.results.in1?.pctPass  != null ? parseFloat(calc.results.in1.pctPass)   : 100;
-
-  // 3" and 2.5" not in stack — assume 100% passing
-  const pctPass3in  = 100;
-  const pctPass25in = 100;
-
-  const ll = llVal != null ? parseFloat(llVal) : null;
-  const pi = piVal != null ? parseFloat(piVal) : null;
-  const llOK = ll == null || ll <= 40; // NV = no plasticity = passes
+  const metrics = buildBorrowMetrics(calc, llVal, piVal);
 
   function check(val, min, max) {
-    if (val == null) return 'NT'; // not tested
+    if (val == null) return 'NT';
     if (min != null && val < min) return 'FAIL';
     if (max != null && val > max) return 'FAIL';
     return 'PASS';
   }
 
-  const types = {
-    A: {
-      label: 'Type A',
-      criteria: [
-        { name: '% Pass #200',   spec: '≤ 35%',       result: pctPass200, chk: check(pctPass200, null, 35) },
-        { name: '% Pass 2.5"',   spec: '95–100%',      result: pctPass25in,chk: check(pctPass25in, 95, 100) },
-        { name: 'Liquid Limit',  spec: '≤ 40',         result: ll,         chk: ll == null ? 'PASS' : check(ll, null, 40) },
-        { name: 'Plast. Index',  spec: '≤ 8',          result: pi,         chk: pi == null ? 'PASS' : check(pi, null, 8) },
-      ]
-    },
-    B: {
-      label: 'Type B',
-      sublabel: 'Special Fill',
-      criteria: [
-        { name: '% Pass #200',   spec: '0–4%',         result: pctPass200, chk: check(pctPass200, 0, 4) },
-        { name: '% Pass 3"',     spec: '100%',         result: pctPass3in, chk: 'PASS' }, // assumed
-        { name: 'Liquid Limit',  spec: '≤ 40',         result: ll,         chk: ll == null ? 'PASS' : check(ll, null, 40) },
-        { name: 'Plast. Index',  spec: '≤ 8',          result: pi,         chk: pi == null ? 'PASS' : check(pi, null, 8) },
-      ]
-    },
-    C: {
-      label: 'Type C',
-      sublabel: 'Backfill',
-      criteria: [
-        { name: '% Pass #200',   spec: '≤ 25%',        result: pctPass200, chk: check(pctPass200, null, 25) },
-        { name: '% Pass 1"',     spec: '85–100%',      result: pctPass1in, chk: check(pctPass1in, 85, 100) },
-        { name: 'Liquid Limit',  spec: '≤ 40',         result: ll,         chk: ll == null ? 'PASS' : check(ll, null, 40) },
-        { name: 'Plast. Index',  spec: '≤ 8',          result: pi,         chk: pi == null ? 'PASS' : check(pi, null, 8) },
-      ]
-    },
-    D: {
-      label: 'Type D',
-      sublabel: 'Cement Stab.',
-      criteria: [
-        { name: '% Pass #200',   spec: '8–30%',        result: pctPass200, chk: check(pctPass200, 8, 30) },
-        { name: '% Pass 3"',     spec: '100%',         result: pctPass3in, chk: 'PASS' }, // assumed
-        { name: 'Liquid Limit',  spec: '≤ 40',         result: ll,         chk: ll == null ? 'PASS' : check(ll, null, 40) },
-        { name: 'Plast. Index',  spec: 'N/A',          result: null,       chk: 'NA' },
-      ]
-    },
-    F: {
-      label: 'Type F',
-      sublabel: 'Common Borrow',
-      criteria: [
-        { name: 'Liquid Limit',  spec: '≤ 40',         result: ll,         chk: ll == null ? 'PASS' : check(ll, null, 40) },
-        { name: 'Plast. Index',  spec: '≤ 15',         result: pi,         chk: pi == null ? 'PASS' : check(pi, null, 15) },
-        { name: 'No Organics',   spec: 'NV',           result: null,       chk: 'PASS' }, // from organic test, assume pass if not tested
-        { name: 'Gradation',     spec: 'None',         result: null,       chk: 'PASS' }, // no gradation requirement
-      ]
-    },
-  };
-
-  // Determine overall pass/fail per type
-  for (const [key, t] of Object.entries(types)) {
-    t.passes = t.criteria.every(c => c.chk === 'PASS' || c.chk === 'NA' || c.chk === 'NT');
+  const types = {};
+  for (const [key, def] of Object.entries(SOIL_BORROW_SPECS)) {
+    const criteria = (def.criteria || []).map(c => {
+      const chk = evalBorrowCriterion(c, metrics);
+      let result = null;
+      if (c.metric === 'll') result = llVal != null ? parseFloat(llVal) : null;
+      else if (c.metric === 'pi') result = piVal != null ? parseFloat(piVal) : null;
+      else if (c.metric === 'pass200') result = metrics.pass200;
+      else if (c.metric === 'pass1in') result = metrics.pass1in;
+      else if (c.metric === 'pass25in') result = 100;
+      else if (c.metric === 'pass3in') result = 100;
+      return { name: c.name, spec: formatBorrowSpecDisplay(c), result, chk };
+    });
+    types[key] = {
+      label: def.label || ('Type ' + key),
+      sublabel: def.sublabel || '',
+      criteria,
+      passes: criteria.every(c => c.chk === 'PASS' || c.chk === 'NA' || c.chk === 'NT'),
+    };
   }
-
   return types;
 }
 
@@ -14149,7 +14141,7 @@ function renderLB68(sample, d) {
 // Sieve stacks and % passing ranges per aggregate type
 // spec: { sieve_key: [min, max] } — null = no requirement
 // ══════════════════════════════════════════════
-const AGG_TYPES = {
+const DEFAULT_AGG_TYPES = {
   '1': {
     label: 'Size #1',
     source_chart_material: '#3',
@@ -14256,6 +14248,488 @@ const SIEVE_LABELS = {
   '1.5in':'1½"','1in':'1"','0.75in':'¾"','0.5in':'½"','0.375in':'⅜"',
   'no4':'#4','no8':'#8','no10':'#10','no16':'#16','no100':'#100','no200':'#200'
 };
+
+const SOIL_SIEVE_FIELD_IDS = {
+  '2in': 'sl_s_in2', '1in': 'sl_s_in1', '0.375in': 'sl_s_in38',
+  'no4': 'sl_s_no4', 'no10': 'sl_s_no10', 'no40': 'sl_s_no40', 'no200': 'sl_s_no200'
+};
+
+const DEFAULT_SOIL_BORROW_SPECS = {
+  A: {
+    label: 'Type A', sublabel: '',
+    criteria: [
+      { name: '% Pass #200', metric: 'pass200', min: null, max: 35 },
+      { name: '% Pass 2.5"', metric: 'pass25in', min: 95, max: 100 },
+      { name: 'Liquid Limit', metric: 'll', min: null, max: 40 },
+      { name: 'Plast. Index', metric: 'pi', min: null, max: 8 },
+    ]
+  },
+  B: {
+    label: 'Type B', sublabel: 'Special Fill',
+    criteria: [
+      { name: '% Pass #200', metric: 'pass200', min: 0, max: 4 },
+      { name: '% Pass 3"', metric: 'pass3in', min: null, max: null, fixed: 'PASS' },
+      { name: 'Liquid Limit', metric: 'll', min: null, max: 40 },
+      { name: 'Plast. Index', metric: 'pi', min: null, max: 8 },
+    ]
+  },
+  C: {
+    label: 'Type C', sublabel: 'Backfill',
+    criteria: [
+      { name: '% Pass #200', metric: 'pass200', min: null, max: 25 },
+      { name: '% Pass 1"', metric: 'pass1in', min: 85, max: 100 },
+      { name: 'Liquid Limit', metric: 'll', min: null, max: 40 },
+      { name: 'Plast. Index', metric: 'pi', min: null, max: 8 },
+    ]
+  },
+  D: {
+    label: 'Type D', sublabel: 'Cement Stab.',
+    criteria: [
+      { name: '% Pass #200', metric: 'pass200', min: 8, max: 30 },
+      { name: '% Pass 3"', metric: 'pass3in', min: null, max: null, fixed: 'PASS' },
+      { name: 'Liquid Limit', metric: 'll', min: null, max: 40 },
+      { name: 'Plast. Index', metric: 'pi', min: null, max: null, fixed: 'NA' },
+    ]
+  },
+  F: {
+    label: 'Type F', sublabel: 'Common Borrow',
+    criteria: [
+      { name: 'Liquid Limit', metric: 'll', min: null, max: 40 },
+      { name: 'Plast. Index', metric: 'pi', min: null, max: 15 },
+      { name: 'No Organics', metric: 'organics', min: null, max: null, fixed: 'PASS' },
+      { name: 'Gradation', metric: 'gradation', min: null, max: null, fixed: 'PASS' },
+    ]
+  },
+};
+
+const DEFAULT_SOIL_SIEVE_NESTS = {
+  deldot_two_split: {
+    label: 'DelDOT Two-Split (GeoSystem)',
+    split1: ['2in', '1in', '0.375in', 'no4', 'no10'],
+    split2: ['no40', 'no200'],
+  }
+};
+
+const LAB_SPEC_STORAGE_KEY = 'labtrak_lab_specs';
+let AGG_TYPES = {};
+let SOIL_BORROW_SPECS = {};
+let SOIL_SIEVE_NESTS = {};
+let _specMgmtTab = 'agg';
+let _specMgmtAggKey = '57';
+let _specMgmtSoilKey = 'A';
+let _specMgmtNestKey = 'deldot_two_split';
+
+function labSpecClone(obj) { return JSON.parse(JSON.stringify(obj)); }
+
+function getDefaultLabSpecBundle() {
+  return {
+    aggTypes: labSpecClone(DEFAULT_AGG_TYPES),
+    soilBorrowSpecs: labSpecClone(DEFAULT_SOIL_BORROW_SPECS),
+    soilSieveNests: labSpecClone(DEFAULT_SOIL_SIEVE_NESTS),
+  };
+}
+
+function applyLabSpecBundle(bundle) {
+  const base = getDefaultLabSpecBundle();
+  AGG_TYPES = bundle?.aggTypes || base.aggTypes;
+  SOIL_BORROW_SPECS = bundle?.soilBorrowSpecs || base.soilBorrowSpecs;
+  SOIL_SIEVE_NESTS = bundle?.soilSieveNests || base.soilSieveNests;
+  refreshAggTypeDropdowns();
+  if (typeof slRenderSoilSieveTable === 'function') slRenderSoilSieveTable(getActiveSoilSieveNestId());
+}
+
+function loadLabSpecConfig() {
+  try {
+    const raw = localStorage.getItem(LAB_SPEC_STORAGE_KEY);
+    if (raw) {
+      applyLabSpecBundle(JSON.parse(raw));
+      return;
+    }
+  } catch (e) { console.warn('loadLabSpecConfig:', e); }
+  applyLabSpecBundle(getDefaultLabSpecBundle());
+}
+
+function saveLabSpecConfigLocal() {
+  const bundle = {
+    aggTypes: AGG_TYPES,
+    soilBorrowSpecs: SOIL_BORROW_SPECS,
+    soilSieveNests: SOIL_SIEVE_NESTS,
+  };
+  localStorage.setItem(LAB_SPEC_STORAGE_KEY, JSON.stringify(bundle));
+  return bundle;
+}
+
+async function pullLabSpecConfigFromDb() {
+  if (!db) return false;
+  try {
+    const { data, error } = await db.from('lab_spec_config').select('config').eq('id', 'default').maybeSingle();
+    if (error) throw error;
+    if (data?.config && Object.keys(data.config).length) {
+      applyLabSpecBundle(data.config);
+      localStorage.setItem(LAB_SPEC_STORAGE_KEY, JSON.stringify(data.config));
+      return true;
+    }
+  } catch (e) { console.warn('pullLabSpecConfigFromDb:', e); }
+  return false;
+}
+
+async function saveLabSpecConfigToDb() {
+  if (!db) { showToast('Connect to database to sync specs', 'error'); return false; }
+  const bundle = saveLabSpecConfigLocal();
+  try {
+    const { error } = await db.from('lab_spec_config').upsert({
+      id: 'default',
+      config: bundle,
+      updated_at: new Date().toISOString(),
+      updated_by: currentUser?.name || currentUser?.id || '',
+    });
+    if (error) throw error;
+    showToast('Specs saved to database ✓', 'success');
+    return true;
+  } catch (e) {
+    showToast('Spec save failed: ' + (e.message || e), 'error');
+    return false;
+  }
+}
+
+function refreshAggTypeDropdowns() {
+  const html = Object.entries(AGG_TYPES).map(([k, v]) => {
+    const sec = v.section ? ' (' + v.section + ')' : '';
+    return `<option value="${k}">${v.label || k}${sec}</option>`;
+  }).join('');
+  ['f_agg_type', 'sl_ns_agg_type'].forEach(id => {
+    const el = document.getElementById(id);
+    if (!el) return;
+    const prev = el.value;
+    el.innerHTML = html;
+    if (prev && AGG_TYPES[prev]) el.value = prev;
+  });
+}
+
+function getActiveSoilSieveNestId() {
+  const sel = document.getElementById('sl_soil_nest_select');
+  if (sel?.value && SOIL_SIEVE_NESTS[sel.value]) return sel.value;
+  if (slCurrentSample?.soil_sieve_nest && SOIL_SIEVE_NESTS[slCurrentSample.soil_sieve_nest]) return slCurrentSample.soil_sieve_nest;
+  return Object.keys(SOIL_SIEVE_NESTS)[0] || 'deldot_two_split';
+}
+
+function soilSieveFieldId(key) {
+  return SOIL_SIEVE_FIELD_IDS[key] || ('sl_s_' + String(key).replace(/[^a-z0-9]/gi, '_'));
+}
+
+function slRenderSoilSieveTable(nestId) {
+  const nest = SOIL_SIEVE_NESTS[nestId || getActiveSoilSieveNestId()];
+  const tbody = document.getElementById('sl_soil_sieve_tbody');
+  const sel = document.getElementById('sl_soil_nest_select');
+  if (sel) {
+    sel.innerHTML = Object.entries(SOIL_SIEVE_NESTS).map(([k, n]) =>
+      `<option value="${k}">${n.label || k}</option>`
+    ).join('');
+    sel.value = nestId || getActiveSoilSieveNestId();
+  }
+  if (!tbody || !nest) return;
+  const row = (key) => {
+    const fid = soilSieveFieldId(key);
+    const label = SIEVE_LABELS[key] || key;
+    return `<tr><td>${label}</td><td><input type="number" step="0.1" id="${fid}" placeholder="0.0"></td></tr>`;
+  };
+  let html = (nest.split1 || []).map(row).join('');
+  html += `<tr class="wash-row"><td>↓ WASH SPLIT ↓</td><td style="text-align:center;color:var(--gold);font-family:var(--mono);font-size:11px;">Wash Wt entered above</td></tr>`;
+  html += (nest.split2 || []).map(row).join('');
+  tbody.innerHTML = html;
+}
+
+function slOnSoilNestChange() {
+  const nestId = getActiveSoilSieveNestId();
+  slRenderSoilSieveTable(nestId);
+  if (slCurrentSample) slCurrentSample.soil_sieve_nest = nestId;
+}
+
+function collectSoilSieveValuesFromForm() {
+  const nest = SOIL_SIEVE_NESTS[getActiveSoilSieveNestId()];
+  const sieves = {};
+  if (!nest) return sieves;
+  const keys = [...(nest.split1 || []), ...(nest.split2 || [])];
+  keys.forEach(key => {
+    const el = document.getElementById(soilSieveFieldId(key));
+    const v = parseFloat(el?.value);
+    sieves[key] = isNaN(v) ? null : v;
+  });
+  return sieves;
+}
+
+function formatBorrowSpecDisplay(c) {
+  if (c.fixed === 'NA') return 'N/A';
+  if (c.fixed === 'PASS') return 'NV';
+  if (c.min != null && c.max != null) return c.min + '–' + c.max + (String(c.name).includes('%') ? '%' : '');
+  if (c.max != null) return '≤ ' + c.max + (String(c.name).includes('%') ? '%' : '');
+  if (c.min != null) return '≥ ' + c.min + (String(c.name).includes('%') ? '%' : '');
+  return '—';
+}
+
+function buildBorrowMetrics(calc, llVal, piVal) {
+  const pctPass200 = calc.results.no200?.pctPass != null ? parseFloat(calc.results.no200.pctPass) : null;
+  const pctPass1in = calc.results.in1?.pctPass != null ? parseFloat(calc.results.in1.pctPass) : 100;
+  const pctPass2in = calc.results.in2?.pctPass != null ? parseFloat(calc.results.in2.pctPass) : 100;
+  return {
+    pass200: pctPass200,
+    pass25in: 100,
+    pass3in: 100,
+    pass1in: pctPass1in,
+    pass2in: pctPass2in,
+    ll: llVal != null ? parseFloat(llVal) : null,
+    pi: piVal != null ? parseFloat(piVal) : null,
+  };
+}
+
+function evalBorrowCriterion(c, metrics) {
+  if (c.fixed) return c.fixed;
+  const val = metrics[c.metric];
+  if (val == null) return 'NT';
+  if (c.min != null && val < c.min) return 'FAIL';
+  if (c.max != null && val > c.max) return 'FAIL';
+  return 'PASS';
+}
+
+function openSlSpecMgmt() {
+  _specMgmtAggKey = Object.keys(AGG_TYPES)[0] || '57';
+  _specMgmtSoilKey = Object.keys(SOIL_BORROW_SPECS)[0] || 'A';
+  _specMgmtNestKey = Object.keys(SOIL_SIEVE_NESTS)[0] || 'deldot_two_split';
+  document.getElementById('slSpecMgmtOverlay')?.classList.add('open');
+  specMgmtRender();
+}
+
+function closeSlSpecMgmt() {
+  document.getElementById('slSpecMgmtOverlay')?.classList.remove('open');
+}
+
+function specMgmtSwitchTab(tab) {
+  _specMgmtTab = tab;
+  specMgmtRender();
+}
+
+function specMgmtSave() {
+  if (_specMgmtTab === 'agg') specMgmtSaveAggFromForm();
+  if (_specMgmtTab === 'soil') specMgmtSaveSoilFromForm();
+  if (_specMgmtTab === 'nest') specMgmtSaveNestFromForm();
+  saveLabSpecConfigLocal();
+  showToast('Specs saved on this device ✓', 'success');
+  specMgmtRender();
+}
+
+function specMgmtResetDefaults() {
+  if (!confirm('Reset all specs and sieve nests to DelDOT defaults? This cannot be undone on this device.')) return;
+  applyLabSpecBundle(getDefaultLabSpecBundle());
+  saveLabSpecConfigLocal();
+  showToast('Defaults restored', 'success');
+  specMgmtRender();
+}
+
+function specMgmtSaveAggFromForm() {
+  const key = document.getElementById('spec_agg_key')?.value?.trim();
+  if (!key || !AGG_TYPES[key]) return;
+  const spec = AGG_TYPES[key];
+  spec.label = document.getElementById('spec_agg_label')?.value?.trim() || spec.label;
+  spec.section = document.getElementById('spec_agg_section')?.value?.trim() || spec.section;
+  spec.source_chart_material = document.getElementById('spec_agg_srcmat')?.value?.trim() || spec.source_chart_material;
+  const sieveStr = document.getElementById('spec_agg_sieves')?.value || '';
+  spec.sieves = sieveStr.split(',').map(s => s.trim()).filter(Boolean);
+  if (!spec.specs) spec.specs = {};
+  spec.sieves.forEach(sk => {
+    const minEl = document.getElementById('spec_agg_min_' + sk);
+    const maxEl = document.getElementById('spec_agg_max_' + sk);
+    const minV = minEl?.value === '' ? null : parseFloat(minEl?.value);
+    const maxV = maxEl?.value === '' ? null : parseFloat(maxEl?.value);
+    spec.specs[sk] = [isNaN(minV) ? null : minV, isNaN(maxV) ? null : maxV];
+  });
+}
+
+function specMgmtAddAggType() {
+  const label = prompt('New aggregate type name (e.g. Custom #57 Variant):');
+  if (!label) return;
+  const key = label.toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_|_$/g, '') || ('custom_' + Date.now());
+  if (AGG_TYPES[key]) { showToast('Key already exists', 'error'); return; }
+  AGG_TYPES[key] = {
+    label,
+    source_chart_material: '',
+    section: '1004',
+    sieves: ['1.5in', '1in', '0.5in', 'no4', 'no8', 'no200'],
+    specs: { '1.5in': [100, 100], '1in': [95, 100], '0.5in': [25, 60], 'no4': [0, 10], 'no8': [0, 5], 'no200': [0, 2] },
+  };
+  _specMgmtAggKey = key;
+  specMgmtRender();
+}
+
+function specMgmtDeleteAggType() {
+  const key = _specMgmtAggKey;
+  if (DEFAULT_AGG_TYPES[key]) { showToast('Built-in types cannot be deleted — edit or duplicate instead', 'error'); return; }
+  if (!confirm('Delete aggregate type "' + (AGG_TYPES[key]?.label || key) + '"?')) return;
+  delete AGG_TYPES[key];
+  _specMgmtAggKey = Object.keys(AGG_TYPES)[0] || '';
+  specMgmtRender();
+}
+
+function specMgmtSaveSoilFromForm() {
+  const key = _specMgmtSoilKey;
+  const def = SOIL_BORROW_SPECS[key];
+  if (!def) return;
+  def.label = document.getElementById('spec_soil_label')?.value?.trim() || def.label;
+  def.sublabel = document.getElementById('spec_soil_sublabel')?.value?.trim() || '';
+  const rows = document.querySelectorAll('[data-spec-soil-crit]');
+  def.criteria = [];
+  rows.forEach(row => {
+    const name = row.querySelector('.spec-crit-name')?.value?.trim();
+    if (!name) return;
+    const metric = row.querySelector('.spec-crit-metric')?.value || 'pass200';
+    const fixed = row.querySelector('.spec-crit-fixed')?.value || '';
+    const minRaw = row.querySelector('.spec-crit-min')?.value;
+    const maxRaw = row.querySelector('.spec-crit-max')?.value;
+    const c = { name, metric };
+    if (fixed) c.fixed = fixed;
+    else {
+      c.min = minRaw === '' ? null : parseFloat(minRaw);
+      c.max = maxRaw === '' ? null : parseFloat(maxRaw);
+    }
+    def.criteria.push(c);
+  });
+}
+
+function specMgmtAddSoilType() {
+  const key = prompt('Borrow type letter (e.g. G):', 'G')?.trim().toUpperCase();
+  if (!key || key.length !== 1) return;
+  if (SOIL_BORROW_SPECS[key]) { showToast('Type already exists', 'error'); return; }
+  SOIL_BORROW_SPECS[key] = { label: 'Type ' + key, sublabel: '', criteria: [] };
+  _specMgmtSoilKey = key;
+  specMgmtRender();
+}
+
+function specMgmtSaveNestFromForm() {
+  const key = _specMgmtNestKey;
+  const nest = SOIL_SIEVE_NESTS[key];
+  if (!nest) return;
+  nest.label = document.getElementById('spec_nest_label')?.value?.trim() || nest.label;
+  nest.split1 = (document.getElementById('spec_nest_split1')?.value || '').split(',').map(s => s.trim()).filter(Boolean);
+  nest.split2 = (document.getElementById('spec_nest_split2')?.value || '').split(',').map(s => s.trim()).filter(Boolean);
+}
+
+function specMgmtAddNest() {
+  const label = prompt('Sieve nest name:', 'Custom nest');
+  if (!label) return;
+  const key = label.toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_|_$/g, '') || ('nest_' + Date.now());
+  if (SOIL_SIEVE_NESTS[key]) { showToast('Nest key exists', 'error'); return; }
+  SOIL_SIEVE_NESTS[key] = labSpecClone(DEFAULT_SOIL_SIEVE_NESTS.deldot_two_split);
+  SOIL_SIEVE_NESTS[key].label = label;
+  _specMgmtNestKey = key;
+  specMgmtRender();
+}
+
+function specMgmtDeleteNest() {
+  if (DEFAULT_SOIL_SIEVE_NESTS[_specMgmtNestKey]) { showToast('Default nest cannot be deleted', 'error'); return; }
+  if (!confirm('Delete this sieve nest?')) return;
+  delete SOIL_SIEVE_NESTS[_specMgmtNestKey];
+  _specMgmtNestKey = Object.keys(SOIL_SIEVE_NESTS)[0];
+  specMgmtRender();
+}
+
+function specMgmtRender() {
+  const body = document.getElementById('slSpecMgmtBody');
+  if (!body) return;
+  document.querySelectorAll('.sl-spec-tab').forEach(btn => {
+    btn.classList.toggle('active', btn.dataset.tab === _specMgmtTab);
+  });
+  if (_specMgmtTab === 'agg') {
+    const keys = Object.keys(AGG_TYPES);
+    const spec = AGG_TYPES[_specMgmtAggKey] || AGG_TYPES[keys[0]];
+    if (!spec) { body.innerHTML = '<p>No aggregate types.</p>'; return; }
+    _specMgmtAggKey = keys.includes(_specMgmtAggKey) ? _specMgmtAggKey : keys[0];
+    const sieveOpts = Object.keys(SIEVE_LABELS).join(', ');
+    let specRows = (spec.sieves || []).map(sk => {
+      const range = (spec.specs || {})[sk] || [null, null];
+      return `<tr><td>${SIEVE_LABELS[sk] || sk} <code style="font-size:9px;">${sk}</code></td>
+        <td><input type="number" id="spec_agg_min_${sk}" value="${range[0] != null ? range[0] : ''}" placeholder="min" style="width:70px;"></td>
+        <td><input type="number" id="spec_agg_max_${sk}" value="${range[1] != null ? range[1] : ''}" placeholder="max" style="width:70px;"></td></tr>`;
+    }).join('');
+    body.innerHTML = `
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px;">
+        <select id="spec_agg_picker" onchange="_specMgmtAggKey=this.value;specMgmtRender()" style="flex:1;min-width:180px;">
+          ${keys.map(k => `<option value="${k}" ${k === _specMgmtAggKey ? 'selected' : ''}>${AGG_TYPES[k].label || k}</option>`).join('')}
+        </select>
+        <button type="button" class="btn btn-ghost" onclick="specMgmtAddAggType()">+ Add type</button>
+        <button type="button" class="btn btn-ghost" onclick="specMgmtDeleteAggType()">Delete</button>
+      </div>
+      <input type="hidden" id="spec_agg_key" value="${_specMgmtAggKey}">
+      <div class="sl-spec-form-grid">
+        <div class="mf"><label>Display label</label><input id="spec_agg_label" value="${spec.label || ''}"></div>
+        <div class="mf"><label>Section</label><input id="spec_agg_section" value="${spec.section || ''}"></div>
+        <div class="mf" style="grid-column:span 2;"><label>Source chart material</label><input id="spec_agg_srcmat" value="${spec.source_chart_material || ''}"></div>
+        <div class="mf" style="grid-column:span 2;"><label>Sieve keys (comma order)</label>
+          <input id="spec_agg_sieves" value="${(spec.sieves || []).join(', ')}" placeholder="${sieveOpts}">
+          <div style="font-size:9px;color:var(--muted);margin-top:4px;">Keys: ${sieveOpts}</div>
+        </div>
+      </div>
+      <table class="sieve-manual-table" style="margin-top:12px;"><thead><tr><th>Sieve</th><th>Min % pass</th><th>Max % pass</th></tr></thead><tbody>${specRows}</tbody></table>`;
+    return;
+  }
+  if (_specMgmtTab === 'soil') {
+    const keys = Object.keys(SOIL_BORROW_SPECS);
+    const def = SOIL_BORROW_SPECS[_specMgmtSoilKey] || SOIL_BORROW_SPECS[keys[0]];
+    _specMgmtSoilKey = keys.includes(_specMgmtSoilKey) ? _specMgmtSoilKey : keys[0];
+    const critRows = (def?.criteria || []).map((c, i) => `
+      <tr data-spec-soil-crit>
+        <td><input class="spec-crit-name" value="${c.name || ''}" style="width:100%;"></td>
+        <td><select class="spec-crit-metric">
+          ${['pass200','pass25in','pass3in','pass1in','pass2in','ll','pi','organics','gradation'].map(m =>
+            `<option value="${m}" ${c.metric === m ? 'selected' : ''}>${m}</option>`).join('')}
+        </select></td>
+        <td><select class="spec-crit-fixed">
+          <option value="" ${!c.fixed ? 'selected' : ''}>Limits</option>
+          <option value="PASS" ${c.fixed === 'PASS' ? 'selected' : ''}>Always pass</option>
+          <option value="NA" ${c.fixed === 'NA' ? 'selected' : ''}>N/A</option>
+        </select></td>
+        <td><input class="spec-crit-min" type="number" value="${c.min != null ? c.min : ''}" style="width:64px;"></td>
+        <td><input class="spec-crit-max" type="number" value="${c.max != null ? c.max : ''}" style="width:64px;"></td>
+      </tr>`).join('');
+    body.innerHTML = `
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px;">
+        <select onchange="_specMgmtSoilKey=this.value;specMgmtRender()" style="flex:1;">
+          ${keys.map(k => `<option value="${k}" ${k === _specMgmtSoilKey ? 'selected' : ''}>${k} — ${SOIL_BORROW_SPECS[k].label}</option>`).join('')}
+        </select>
+        <button type="button" class="btn btn-ghost" onclick="specMgmtAddSoilType()">+ Add type</button>
+      </div>
+      <div class="sl-spec-form-grid">
+        <div class="mf"><label>Label</label><input id="spec_soil_label" value="${def?.label || ''}"></div>
+        <div class="mf"><label>Subtitle</label><input id="spec_soil_sublabel" value="${def?.sublabel || ''}"></div>
+      </div>
+      <p style="font-size:11px;color:var(--muted);margin:12px 0 8px;">Section 1001 borrow criteria — used on LB-44 borrow scoring.</p>
+      <table class="sieve-manual-table"><thead><tr><th>Criterion</th><th>Metric</th><th>Fixed</th><th>Min</th><th>Max</th></tr></thead>
+      <tbody>${critRows}</tbody></table>
+      <button type="button" class="btn btn-ghost" style="margin-top:8px;" onclick="SOIL_BORROW_SPECS[_specMgmtSoilKey].criteria.push({name:'New criterion',metric:'pass200',min:null,max:null});specMgmtRender();">+ Add criterion</button>`;
+    return;
+  }
+  if (_specMgmtTab === 'nest') {
+    const keys = Object.keys(SOIL_SIEVE_NESTS);
+    const nest = SOIL_SIEVE_NESTS[_specMgmtNestKey] || SOIL_SIEVE_NESTS[keys[0]];
+    _specMgmtNestKey = keys.includes(_specMgmtNestKey) ? _specMgmtNestKey : keys[0];
+    const sieveOpts = Object.keys(SIEVE_LABELS).join(', ');
+    body.innerHTML = `
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px;">
+        <select onchange="_specMgmtNestKey=this.value;specMgmtRender()" style="flex:1;">
+          ${keys.map(k => `<option value="${k}" ${k === _specMgmtNestKey ? 'selected' : ''}>${SOIL_SIEVE_NESTS[k].label || k}</option>`).join('')}
+        </select>
+        <button type="button" class="btn btn-ghost" onclick="specMgmtAddNest()">+ Add nest</button>
+        <button type="button" class="btn btn-ghost" onclick="specMgmtDeleteNest()">Delete</button>
+      </div>
+      <div class="sl-spec-form-grid">
+        <div class="mf" style="grid-column:span 2;"><label>Nest name</label><input id="spec_nest_label" value="${nest?.label || ''}"></div>
+        <div class="mf" style="grid-column:span 2;"><label>Split 1 sieves (top stack, comma order)</label>
+          <input id="spec_nest_split1" value="${(nest?.split1 || []).join(', ')}"></div>
+        <div class="mf" style="grid-column:span 2;"><label>Split 2 sieves (after wash, comma order)</label>
+          <input id="spec_nest_split2" value="${(nest?.split2 || []).join(', ')}"></div>
+      </div>
+      <p style="font-size:10px;color:var(--muted);margin-top:8px;">Valid sieve keys: ${sieveOpts}</p>
+      <p style="font-size:11px;color:var(--muted);margin-top:8px;">Soil lab manual entry uses the selected nest. Aggregate nests are defined per aggregate type above.</p>`;
+  }
+}
 
 // ── AGGREGATE SIEVE CALCULATION
 function calculateAggregate(sieveData, aggType) {
@@ -15877,6 +16351,7 @@ async function loadSoilLab() {
   const sub = document.getElementById('sl_queue_sub');
   if (sub && !(allSamples || []).length) sub.textContent = 'Loading samples…';
   await ensureSamplesLoaded();
+  slRenderSoilSieveTable(getActiveSoilSieveNestId());
   slRenderQueue();
   slSyncMobileLayout();
 }
@@ -16371,17 +16846,19 @@ function slPrefill(labData, isAgg, sample) {
     se('sl_org_post', org.wt_dry_bottle); se('sl_org_tare', org.wt_bottle);
     se('sl_total_wt', labData.total_sample_wt);
     se('sl_wash_wt',  labData.wash_sample_wt);
+    const nestId = sample.soil_sieve_nest || Object.keys(SOIL_SIEVE_NESTS)[0] || 'deldot_two_split';
+    slRenderSoilSieveTable(nestId);
     function rSv(k, legacy) {
       const val = sv[k] != null ? sv[k] : (legacy ? sv[legacy] : null);
       return val == null ? null : (typeof val === 'object' ? val.wt_retained : val);
     }
-    se('sl_s_in2',   rSv('2in',     'in2'));
-    se('sl_s_in1',   rSv('1in',     'in1'));
-    se('sl_s_in38',  rSv('0.375in', 'in38'));
-    se('sl_s_no4',   rSv('no4'));
-    se('sl_s_no10',  rSv('no10'));
-    se('sl_s_no40',  rSv('no40'));
-    se('sl_s_no200', rSv('no200'));
+    const nest = SOIL_SIEVE_NESTS[nestId];
+    if (nest) {
+      const legacyMap = { '2in': 'in2', '1in': 'in1', '0.375in': 'in38' };
+      [...(nest.split1 || []), ...(nest.split2 || [])].forEach(key => {
+        se(soilSieveFieldId(key), rSv(key, legacyMap[key]));
+      });
+    }
   }
 
   // Report fields — these live on the sample object, not inside lab_data
@@ -16641,11 +17118,7 @@ function slGenerateFromManual() {
       bottle_no: gv('sl_org_bottle'), wt_wet_soil_bottle: gn('sl_org_pre'),
       wt_dry_bottle: gn('sl_org_post'), wt_bottle: gn('sl_org_tare'),
     },
-    sieves: {
-      '2in': gn('sl_s_in2'), '1in': gn('sl_s_in1'), '0.375in': gn('sl_s_in38'),
-      'no4': gn('sl_s_no4'), 'no10': gn('sl_s_no10'),
-      'no40': gn('sl_s_no40'), 'no200': gn('sl_s_no200'),
-    },
+    sieves: collectSoilSieveValuesFromForm(),
     notes: 'Manual entry — LabTrak soil lab'
   };
 
@@ -16691,6 +17164,9 @@ async function slFinishLab(parsed) {
   slLastLabData = parsed;
   const fields  = slReportFields();
   const updates = { status: 'complete', lab_data: parsed, conforms: 'auto', ...fields };
+  if (slCurrentSample?.test_category !== 'aggregate') {
+    updates.soil_sieve_nest = getActiveSoilSieveNestId();
+  }
   await db.from('samples').update(updates).eq('id', slCurrentSample.id);
   logSampleHistory({ sampleId: slCurrentSample.id, testNo: slCurrentSample.test_no, action: 'lab_complete', details: { type: 'soil', status: 'complete' } });
 
