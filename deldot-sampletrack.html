@@ -6263,7 +6263,7 @@ table.fc-borrow-tbl tr.fc-borrow-detail-row td{background:var(--surface);border-
 // GLOBALS
 // ══════════════════════════════════════════════
 let db = null;
-const APP_BUILD = '2026.07.01-lab-spec-mgmt';
+const APP_BUILD = '2026.07.02-soillab-queue-click';
 const FC_CORE_ICON_SRC = 'docs/r18-reference/core-drill-icon-128.png';
 const BORELOG_ICON_SRC = 'docs/r18-reference/borelog-icon.webp';
 const BORELOG_PATH = 'docs/r18-reference/deldot-borelog.html';
@@ -16202,7 +16202,7 @@ function renderLabHub() {
   queueEl.innerHTML = sorted.slice(0, 10).map(s => {
     const isAgg = (s.test_category||'soil') === 'aggregate';
     const dateDiff = s.date_sampled ? Math.round((Date.now()-new Date(s.date_sampled).getTime())/86400000) : null;
-    return `<div class="hub-sample-row pending" onclick="switchView('soillab');setTimeout(()=>slLoadSample('${s.id}'),300)">
+    return `<div class="hub-sample-row pending" onclick="slOpenSampleInLab('${slEscAttr(s.id)}')">
       <div>
         <div class="hub-sr-id">${s.test_no} <span class="sl-cat-tag${isAgg?' agg':''}" style="margin-left:4px;">${isAgg?'◆ AGG':'● SOIL'}</span></div>
         <div class="hub-sr-info">${s.contract||'—'} · ${s.material_type||'—'}${s.special_requests ? ' <span style="color:var(--red2);font-weight:700;">⚠</span>' : ''}</div>
@@ -16351,6 +16351,7 @@ async function loadSoilLab() {
   const sub = document.getElementById('sl_queue_sub');
   if (sub && !(allSamples || []).length) sub.textContent = 'Loading samples…';
   await ensureSamplesLoaded();
+  slEnsureQueueClickHandler();
   slRenderSoilSieveTable(getActiveSoilSieveNestId());
   slRenderQueue();
   slSyncMobileLayout();
@@ -16393,8 +16394,44 @@ function slGoToApprovalQueue() {
     const firstPending = (allSamples || []).find(s =>
       s.dist_status === 'pending_review' && canApproveThisReport(s)
     );
-    if (firstPending) slLoadSample(firstPending.id);
+  if (firstPending) void slOpenSampleInLab(firstPending.id);
   }, 200);
+}
+
+function slEscHtml(s) {
+  return String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+}
+
+function slEscAttr(s) {
+  return slEscHtml(s).replace(/'/g, '&#39;');
+}
+
+function slEnsureQueueClickHandler() {
+  const list = document.getElementById('sl_queue_list');
+  if (!list || list.dataset.slClickWired === '1') return;
+  list.dataset.slClickWired = '1';
+  list.addEventListener('click', (e) => {
+    const card = e.target.closest('.sl-queue-card');
+    if (!card) return;
+    const id = card.dataset.sampleId;
+    if (id) void slLoadSample(id);
+  });
+  list.addEventListener('keydown', (e) => {
+    if (e.key !== 'Enter' && e.key !== ' ') return;
+    const card = e.target.closest('.sl-queue-card');
+    if (!card) return;
+    e.preventDefault();
+    const id = card.dataset.sampleId;
+    if (id) void slLoadSample(id);
+  });
+}
+
+/** Open soil lab and load a sample after the queue/data are ready. */
+async function slOpenSampleInLab(id) {
+  if (!id) { showToast('Invalid sample', 'error'); return; }
+  switchView('soillab');
+  await loadSoilLab();
+  await slLoadSample(id);
 }
 
 // ── Render queue list ──────────────────────────────────────────
@@ -16473,19 +16510,20 @@ function slRenderQueue() {
     const isDone   = s.status === 'complete';
     const isActive = slCurrentSample && slCurrentSample.id === s.id;
     const locText  = (s.location || s.material_type || '—').substring(0, 30);
+    const sampleId = s.id ? slEscAttr(s.id) : '';
     return `<div class="sl-queue-card${isActive ? ' active' : ''}${isDone ? ' complete' : ''}"
-                 onclick="slLoadSample('${s.id}')">
+                 data-sample-id="${sampleId}" role="button" tabindex="0" aria-label="Open sample ${slEscAttr(s.test_no || '')}">
       <div class="sl-qc-top">
-        <span class="sl-qc-testno">${s.test_no}</span>
-        <span class="badge badge-${s.status || 'pending'}" style="font-size:8px;padding:1px 6px;">${(s.status||'pending').toUpperCase()}</span>
+        <span class="sl-qc-testno">${slEscHtml(s.test_no)}</span>
+        <span class="badge badge-${s.status || 'pending'}" style="font-size:8px;padding:1px 6px;">${slEscHtml((s.status||'pending').toUpperCase())}</span>
         ${s.special_requests ? '<span style="background:rgba(255,80,80,0.18);color:var(--red2);font-family:var(--mono);font-size:8px;font-weight:700;padding:1px 6px;border-radius:3px;border:1px solid rgba(255,80,80,0.35);">⚠ REQ</span>' : ''}
       </div>
-      <div class="sl-qc-contract">${s.contract || '—'}</div>
+      <div class="sl-qc-contract">${slEscHtml(s.contract || '—')}</div>
       <div class="sl-qc-meta">
         <span class="sl-cat-tag${isAgg ? ' agg' : ''}">${isAgg ? '◆ AGG' : '● SOIL'}</span>
-        <span class="sl-qc-loc">${locText}</span>
+        <span class="sl-qc-loc">${slEscHtml(locText)}</span>
       </div>
-      <div class="sl-qc-date">${s.date_sampled || '—'}</div>
+      <div class="sl-qc-date">${slEscHtml(s.date_sampled || '—')}</div>
     </div>`;
   }
 
@@ -16516,8 +16554,7 @@ function slRenderQueue() {
       // Try to find the card by its onclick attribute value
       const cards = list.querySelectorAll('.sl-queue-card');
       for (const card of cards) {
-        const fn = card.getAttribute('onclick') || '';
-        if (fn.includes(_targetId)) {
+        if (card.dataset.sampleId === _targetId) {
           card.click();
           card.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
           break;
@@ -16702,118 +16739,137 @@ async function slOnScanSuccess(text) {
 }
 
 async function slLoadSample(id) {
-  const sample = await fetchSample(id);
-  if (!sample) return;
-  slCurrentSample = sample;
+  if (!id) { showToast('Invalid sample', 'error'); return; }
+  try {
+    const sample = await fetchSample(id);
+    if (!sample) { showToast('Could not open sample', 'error'); return; }
+    slCurrentSample = sample;
 
-  // Refresh queue to show active highlight
-  slRenderQueue();
+    // Refresh queue to show active highlight
+    slRenderQueue();
 
-  // Show lab content
-  document.getElementById('sl_empty_state').style.display  = 'none';
-  const content = document.getElementById('sl_lab_content');
-  content.style.display = 'flex';
-  content.style.flexDirection = 'column';
-  slSetMobileDetail(true);
-
-  // Fill banner
-  document.getElementById('sl_b_testno').textContent     = sample.test_no;
-  document.getElementById('sl_b_contract').textContent   = sample.contract || '—';
-  document.getElementById('sl_b_location').textContent   = sample.location || '—';
-  document.getElementById('sl_b_material').textContent   = sample.material_type || '—';
-  document.getElementById('sl_b_date').textContent       = sample.date_sampled || '—';
-  document.getElementById('sl_b_sampled_by').textContent = sample.sampled_by || '—';
-
-  const badge = document.getElementById('sl_b_status_badge');
-  badge.className = `badge badge-${sample.status || 'pending'}`;
-  badge.textContent = (sample.status || 'PENDING').toUpperCase();
-
-  // Show/hide report button
-  const rptBtn = document.getElementById('sl_view_report_btn');
-  if (rptBtn) rptBtn.style.display = sample.lab_data ? '' : 'none';
-  slUpdateDeleteButton();
-
-  // Already-complete notice
-  const doneBanner = document.getElementById('sl_already_done');
-  if (doneBanner) doneBanner.style.display = sample.lab_data ? 'flex' : 'none';
-
-  // Rejection banner
-  const rejBanner  = document.getElementById('sl_rejection_banner');
-  const rejComment = document.getElementById('sl_rejection_comment');
-  if (rejBanner) {
-    if (sample.dist_status === 'rejected') {
-      rejBanner.style.display = '';
-      if (rejComment) rejComment.textContent = sample.dist_rejected_reason || '(No reason provided)';
-    } else {
-      rejBanner.style.display = 'none';
+    // Show lab content
+    const emptyState = document.getElementById('sl_empty_state');
+    const content = document.getElementById('sl_lab_content');
+    if (!emptyState || !content) {
+      showToast('Lab entry panel not available', 'error');
+      return;
     }
-  }
+    emptyState.style.display = 'none';
+    content.style.display = 'flex';
+    content.style.flexDirection = 'column';
+    slSetMobileDetail(true);
 
-  // Special request alert banner
-  const srBanner = document.getElementById('sl_special_request_banner');
-  const srText   = document.getElementById('sl_special_request_text');
-  if (srBanner && srText) {
-    if (sample.special_requests && sample.special_requests.trim()) {
-      srText.textContent = sample.special_requests.trim();
-      srBanner.style.display = '';
-    } else {
-      srBanner.style.display = 'none';
+    // Fill banner
+    const setText = (elId, val) => {
+      const el = document.getElementById(elId);
+      if (el) el.textContent = val;
+    };
+    setText('sl_b_testno', sample.test_no);
+    setText('sl_b_contract', sample.contract || '—');
+    setText('sl_b_location', sample.location || '—');
+    setText('sl_b_material', sample.material_type || '—');
+    setText('sl_b_date', sample.date_sampled || '—');
+    setText('sl_b_sampled_by', sample.sampled_by || '—');
+
+    const badge = document.getElementById('sl_b_status_badge');
+    if (badge) {
+      badge.className = `badge badge-${sample.status || 'pending'}`;
+      badge.textContent = (sample.status || 'PENDING').toUpperCase();
     }
-  }
 
-  // Show correct entry section
-  const isAgg = sample.test_category === 'aggregate';
-  document.getElementById('sl_soil_entry').style.display = isAgg ? 'none' : 'block';
-  document.getElementById('sl_agg_entry').style.display  = isAgg ? 'block' : 'none';
+    // Show/hide report button
+    const rptBtn = document.getElementById('sl_view_report_btn');
+    if (rptBtn) rptBtn.style.display = sample.lab_data ? '' : 'none';
+    slUpdateDeleteButton();
 
-  // Update analyze button label
-  const btn = document.getElementById('sl_analyze_btn');
-  if (btn) btn.textContent = isAgg
-    ? '⚖️ GENERATE AGGREGATE REPORT'
-    : '🔬 ANALYZE & GENERATE LB-44';
+    // Already-complete notice
+    const doneBanner = document.getElementById('sl_already_done');
+    if (doneBanner) doneBanner.style.display = sample.lab_data ? 'flex' : 'none';
 
-  // Aggregate: populate sieve inputs, then fill saved weights
-  if (isAgg && sample.agg_type) {
-    setTimeout(() => {
-      slPopulateAggSieves(sample.agg_type);
-      // Fill saved sieve weights after inputs are rendered
-      if (sample.lab_data && sample.lab_data.sieve_data) {
-        const sd = sample.lab_data.sieve_data;
-        Object.keys(sd).forEach(key => {
-          if (key === 'pan_weight') return;
-          const el = document.getElementById('sl_agg_' + key);
-          if (el && sd[key] != null) el.value = sd[key];
-        });
-        const panEl = document.getElementById('sl_agg_pan');
-        if (panEl && sd.pan_weight != null) panEl.value = sd.pan_weight;
-        slUpdateSieveLive(); // recalc % passing column
+    // Rejection banner
+    const rejBanner  = document.getElementById('sl_rejection_banner');
+    const rejComment = document.getElementById('sl_rejection_comment');
+    if (rejBanner) {
+      if (sample.dist_status === 'rejected') {
+        rejBanner.style.display = '';
+        if (rejComment) rejComment.textContent = sample.dist_rejected_reason || '(No reason provided)';
+      } else {
+        rejBanner.style.display = 'none';
       }
-    }, 50);
-    slSetAggMode('manual');
-  }
+    }
 
-  // Prefill existing lab data if present
-  if (sample.lab_data) {
-    slPrefill(sample.lab_data, isAgg, sample);
-  }
+    // Special request alert banner
+    const srBanner = document.getElementById('sl_special_request_banner');
+    const srText   = document.getElementById('sl_special_request_text');
+    if (srBanner && srText) {
+      if (sample.special_requests && sample.special_requests.trim()) {
+        srText.textContent = sample.special_requests.trim();
+        srBanner.style.display = '';
+      } else {
+        srBanner.style.display = 'none';
+      }
+    }
 
-  // Default mode
-  if (!isAgg) slSetMode(slCurrentMode);
+    // Show correct entry section
+    const isAgg = sample.test_category === 'aggregate';
+    const soilEntry = document.getElementById('sl_soil_entry');
+    const aggEntry = document.getElementById('sl_agg_entry');
+    if (soilEntry) soilEntry.style.display = isAgg ? 'none' : 'block';
+    if (aggEntry) aggEntry.style.display = isAgg ? 'block' : 'none';
 
-  // Prefill report fields with today's date if still blank
-  const today = new Date().toISOString().split('T')[0];
-  ['sl_date_received','sl_date_tested','sl_date_reported'].forEach(id => {
-    const el = document.getElementById(id);
-    if (el && !el.value) el.value = today;
-  });
+    // Update analyze button label
+    const btn = document.getElementById('sl_analyze_btn');
+    if (btn) btn.textContent = isAgg
+      ? '⚖️ GENERATE AGGREGATE REPORT'
+      : '🔬 ANALYZE & GENERATE LB-44';
 
-  // Scroll entry panel to top
-  const panel = document.getElementById('sl_entry_panel');
-  if (panel) panel.scrollTop = 0;
+    // Aggregate: populate sieve inputs, then fill saved weights
+    if (isAgg && sample.agg_type) {
+      setTimeout(() => {
+        slPopulateAggSieves(sample.agg_type);
+        // Fill saved sieve weights after inputs are rendered
+        if (sample.lab_data && sample.lab_data.sieve_data) {
+          const sd = sample.lab_data.sieve_data;
+          Object.keys(sd).forEach(key => {
+            if (key === 'pan_weight') return;
+            const el = document.getElementById('sl_agg_' + key);
+            if (el && sd[key] != null) el.value = sd[key];
+          });
+          const panEl = document.getElementById('sl_agg_pan');
+          if (panEl && sd.pan_weight != null) panEl.value = sd.pan_weight;
+          slUpdateSieveLive(); // recalc % passing column
+        }
+      }, 50);
+      slSetAggMode('manual');
+    }
 
-  // Auto-route completed samples straight to their report — skip entry form
-  if (sample.status === 'complete' && sample.lab_data) {
-    await slViewReport();
+    // Prefill existing lab data if present
+    if (sample.lab_data) {
+      slPrefill(sample.lab_data, isAgg, sample);
+    }
+
+    // Default mode
+    if (!isAgg) slSetMode(slCurrentMode);
+
+    // Prefill report fields with today's date if still blank
+    const today = new Date().toISOString().split('T')[0];
+    ['sl_date_received','sl_date_tested','sl_date_reported'].forEach(fid => {
+      const el = document.getElementById(fid);
+      if (el && !el.value) el.value = today;
+    });
+
+    // Scroll entry panel to top
+    const panel = document.getElementById('sl_entry_panel');
+    if (panel) panel.scrollTop = 0;
+
+    // Auto-route completed samples straight to their report — skip entry form
+    if (sample.status === 'complete' && sample.lab_data) {
+      await slViewReport();
+    }
+  } catch (e) {
+    console.error('slLoadSample:', e);
+    showToast('Error opening sample: ' + (e.message || e), 'error');
   }
 }
 
@@ -16877,10 +16933,14 @@ function slPrefill(labData, isAgg, sample) {
 // ── Mode switching ─────────────────────────────────────────────
 function slSetMode(mode) {
   slCurrentMode = mode;
-  document.getElementById('sl_ai_panel').style.display     = mode === 'ai'     ? 'block' : 'none';
-  document.getElementById('sl_manual_panel').style.display = mode === 'manual' ? 'block' : 'none';
-  document.getElementById('sl_tab_ai').classList.toggle('active',     mode === 'ai');
-  document.getElementById('sl_tab_manual').classList.toggle('active', mode === 'manual');
+  const aiPanel = document.getElementById('sl_ai_panel');
+  const manualPanel = document.getElementById('sl_manual_panel');
+  const tabAi = document.getElementById('sl_tab_ai');
+  const tabManual = document.getElementById('sl_tab_manual');
+  if (aiPanel) aiPanel.style.display = mode === 'ai' ? 'block' : 'none';
+  if (manualPanel) manualPanel.style.display = mode === 'manual' ? 'block' : 'none';
+  if (tabAi) tabAi.classList.toggle('active', mode === 'ai');
+  if (tabManual) tabManual.classList.toggle('active', mode === 'manual');
   const btn = document.getElementById('sl_analyze_btn');
   if (btn && slCurrentSample?.test_category !== 'aggregate') {
     btn.textContent = mode === 'ai'
@@ -19971,9 +20031,7 @@ async function openSample(id) {
   // PENDING — route by role
   const role = (typeof currentUser === 'object' && currentUser && currentUser.role) || 'admin';
   if (role === 'lab') {
-    switchView('soillab');
-    setTimeout(() => slLoadSample(id), 300);
-    return;
+    return slOpenSampleInLab(id);
   }
   // Field tech, concrete tech, admin → FC session resume by default
   return fcResumeSessionById(id);
