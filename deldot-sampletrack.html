@@ -6307,7 +6307,11 @@ table.fc-borrow-tbl tr.fc-borrow-detail-row td{background:var(--surface);border-
 // GLOBALS
 // ══════════════════════════════════════════════
 let db = null;
+<<<<<<< HEAD
+const APP_BUILD = '2026.07.02-borelog-gps-map';
+=======
 const APP_BUILD = '2026.07.02-soillab-gradient-fix';
+>>>>>>> origin/main
 const FC_CORE_ICON_SRC = 'docs/r18-reference/core-drill-icon-128.png';
 const BORELOG_ICON_SRC = 'docs/r18-reference/borelog-icon.webp';
 const BORELOG_PATH = 'docs/r18-reference/deldot-borelog.html';
@@ -7071,9 +7075,11 @@ function parseGPS(str, relaxBounds) {
 }
 
 function delawareNEToLatLng(northing, easting) {
-  const n = parseFloat(String(northing).replace(/,/g, ''));
-  const e = parseFloat(String(easting).replace(/,/g, ''));
+  let n = parseFloat(String(northing).replace(/,/g, ''));
+  let e = parseFloat(String(easting).replace(/,/g, ''));
   if (!isFinite(n) || !isFinite(e)) return null;
+  // GeoSystem / field sheets sometimes omit Delaware's 2,000,000 ft false easting
+  if (e > 0 && e < 1000000) e += 2000000;
   if (typeof proj4 === 'undefined') return null;
   try {
     const [lng, lat] = proj4(DE_STATE_PLANE, 'WGS84', [e, n]);
@@ -7083,10 +7089,28 @@ function delawareNEToLatLng(northing, easting) {
   } catch (err) { return null; }
 }
 
+function parseBorelogHeaderData(row) {
+  let header = row?.header_data;
+  if (typeof header === 'string') {
+    try { header = JSON.parse(header); } catch { header = {}; }
+  }
+  if (!header || typeof header !== 'object') header = {};
+  return {
+    boring_no: header.boring_no || '',
+    location: header.location || '',
+    station_offset: header.station_offset || '',
+    northing: header.northing || header.NORTH || header.north || '',
+    easting: header.easting || header.EAST || header.east || '',
+    gps_coordinates: header.gps_coordinates || header.gps || header.GPS || '',
+    date_started: header.date_started || '',
+    date_completed: header.date_completed || '',
+  };
+}
+
 function resolveBorelogBoringCoords(b) {
   if (!b) return null;
-  const gps = b.gps_coordinates || b.gps;
-  if (gps) {
+  const gpsCandidates = [b.gps_coordinates, b.gps, b.location].filter(Boolean);
+  for (const gps of gpsCandidates) {
     const parsed = parseGPS(gps, true);
     if (parsed) return parsed;
   }
@@ -7094,17 +7118,17 @@ function resolveBorelogBoringCoords(b) {
 }
 
 function normalizeBorelogMapBoring(row, projectMeta) {
-  const header = row.header_data || {};
+  const fields = parseBorelogHeaderData(row);
   const boring = {
     id: row.id,
-    boring_no: row.boring_no || header.boring_no || '',
-    location: header.location || '',
-    station_offset: header.station_offset || '',
-    northing: header.northing || '',
-    easting: header.easting || '',
-    gps_coordinates: header.gps_coordinates || '',
-    date_started: header.date_started || '',
-    date_completed: header.date_completed || '',
+    boring_no: row.boring_no || fields.boring_no || '',
+    location: fields.location || '',
+    station_offset: fields.station_offset || '',
+    northing: fields.northing || '',
+    easting: fields.easting || '',
+    gps_coordinates: fields.gps_coordinates || '',
+    date_started: fields.date_started || '',
+    date_completed: fields.date_completed || '',
     contract: projectMeta?.contract || row.contract || '',
     projectName: projectMeta?.name || row.projectName || '',
   };
@@ -7120,17 +7144,16 @@ function collectBorelogBoringsFromLocal(contract) {
     const projects = raw.projects || {};
     const borings = raw.borings || {};
     const contractLower = (contract || '').trim().toLowerCase();
-    Object.values(projects).forEach(p => {
+    Object.values(borings).forEach(b => {
+      if (!b?.id) return;
+      const p = projects[b.project_id] || {};
       const pContract = (p.contract_no || p.contract || '').trim().toLowerCase();
       if (contractLower && pContract && pContract !== contractLower) return;
-      Object.values(borings).forEach(b => {
-        if (b.project_id !== p.id) return;
-        const item = normalizeBorelogMapBoring(
-          { id: b.id, boring_no: b.boring_no, header_data: b },
-          { contract: p.contract_no || p.contract || '', name: p.name || '' }
-        );
-        if (item) out.push(item);
-      });
+      const item = normalizeBorelogMapBoring(
+        { id: b.id, boring_no: b.boring_no, header_data: b },
+        { contract: p.contract_no || p.contract || '', name: p.name || '' }
+      );
+      if (item) out.push(item);
     });
   } catch (e) { console.warn('borelog local cache:', e); }
   return out;
@@ -7177,6 +7200,7 @@ function buildBorelogMapPopup(b) {
     <div class="map-popup-row"><span class="map-popup-label">Project:</span><span class="map-popup-val">${b.projectName || '—'}</span></div>
     <div class="map-popup-row"><span class="map-popup-label">Location:</span><span class="map-popup-val">${b.location || '—'}</span></div>
     <div class="map-popup-row"><span class="map-popup-label">Station:</span><span class="map-popup-val">${b.station_offset || '—'}</span></div>
+    <div class="map-popup-row"><span class="map-popup-label">GPS:</span><span class="map-popup-val">${b.gps_coordinates || (b.coords ? b.coords.lat.toFixed(6) + ', ' + b.coords.lng.toFixed(6) : '—')}</span></div>
     <div class="map-popup-row"><span class="map-popup-label">Started:</span><span class="map-popup-val">${b.date_started || '—'}</span></div>
   `;
 }
@@ -7880,7 +7904,7 @@ async function labMapFetchData() {
     store.concrete.push(row);
   };
   const addBoring = (item) => {
-    if (!item?.id || borelogSeen.has(item.id)) return;
+    if (!item?.id || !item?.coords || borelogSeen.has(item.id)) return;
     borelogSeen.add(item.id);
     store.borelog.push(item);
   };
@@ -7888,6 +7912,12 @@ async function labMapFetchData() {
   (allSamples || []).forEach(addSample);
   (window.allCoreDrills || []).forEach(addCore);
   (activeFC_sessionCores || []).forEach(addCore);
+
+  // BoreLog — always load from local cache; merge cloud rows when connected
+  try {
+    const borings = await fetchAllBorelogMapBorings();
+    borings.forEach(addBoring);
+  } catch (e) { console.warn('labMapFetchData borelog:', e); }
 
   if (!db) return store;
 
@@ -7925,11 +7955,6 @@ async function labMapFetchData() {
     (conc || []).forEach(addConcrete);
   } catch (e) { console.warn('labMapFetchData concrete:', e); }
 
-  try {
-    const borings = await fetchAllBorelogMapBorings();
-    borings.forEach(addBoring);
-  } catch (e) { console.warn('labMapFetchData borelog:', e); }
-
   return store;
 }
 
@@ -7941,11 +7966,16 @@ async function labMapReload() {
   const empty = document.getElementById('labMapEmpty');
   const subtitle = document.getElementById('labMapSubtitle');
   if (!db) {
-    if (empty) empty.style.display = 'flex';
-    if (subtitle) subtitle.textContent = 'Connect to Supabase to load map data.';
-    labMapStore = { field_sample: [], density: [], core_drill: [], concrete: [], borelog: [] };
+    labMapStore = await labMapFetchData();
+    const pinTotal = Object.keys(LAB_MAP_LAYER_DEFS).reduce((n, k) => n + (labMapStore[k] || []).length, 0);
+    if (empty) empty.style.display = pinTotal ? 'none' : 'flex';
+    if (subtitle) {
+      subtitle.textContent = pinTotal
+        ? 'Loaded from local cache — connect Supabase for full program data'
+        : 'Connect to Supabase to load map data.';
+    }
     labMapRenderLayerPanel();
-    labMapClearMarkers();
+    labMapPlotMarkers(false);
     return;
   }
   if (empty) empty.style.display = 'none';
