@@ -1029,6 +1029,49 @@ nav:not(#r18-nav), .nav-top-row { display: none !important; }
 .sig-lbl { font-size: 6.5pt; color: #000; letter-spacing: 0.3px; text-transform: uppercase; }
 .lb44-footer { background: #e8edf2; border-top: 1px solid #999; display: flex; justify-content: space-between; padding: 3px 14px; font-size: 7pt; color: #000; }
 
+/* ── SHARED REPORT SHELL (dd-rpt) — unified DelDOT form appearance ── */
+.dd-rpt {
+  max-width: 820px; margin: 0 auto;
+  background: #fff; color: #111;
+  font-family: 'DM Sans', sans-serif;
+  font-size: 10.5pt; border: 2px solid #000;
+}
+.dd-rpt.lb44 { max-width: 100%; border-width: 3px; }
+.dd-rpt-wide { max-width: 1200px; width: 100%; }
+.dd-rpt-banner { background: #1a2535; color: #fff; display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; padding: 8px 16px; gap: 10px; }
+.dd-rpt-banner .bl { font-size: 8pt; line-height: 1.5; }
+.dd-rpt-banner .bc { text-align: center; }
+.dd-rpt-banner .bc .big { font-size: 13pt; font-weight: 700; letter-spacing: 1px; }
+.dd-rpt-banner .bc .sub { font-size: 7.5pt; color: #b0c4de; letter-spacing: 0.5px; line-height: 1.45; }
+.dd-rpt-banner .br { text-align: right; font-size: 8pt; color: #b0c4de; line-height: 1.5; }
+.dd-rpt-subbar { display: flex; justify-content: space-between; flex-wrap: wrap; gap: 4px 12px; background: #e8edf2; border-top: 1px solid #999; border-bottom: 1px solid #999; padding: 4px 14px; font-size: 8pt; font-weight: 700; }
+.dd-rpt-info { padding: 6px 14px; border-bottom: 1px solid #999; font-size: 9pt; }
+.dd-rpt-info-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 4px 16px; }
+.dd-rpt-info-grid.cols-3 { grid-template-columns: 1fr 1fr 1fr; }
+.dd-rpt-info-grid .dd-rpt-kv { font-size: 9pt; }
+.dd-rpt-info-grid .dd-rpt-kv .k { color: #444; }
+.dd-rpt-info-grid .dd-rpt-kv .v { font-weight: 700; }
+.dd-rpt-section { padding: 10px 14px; border-bottom: 1px solid #999; }
+.dd-rpt-section-head { background: #d0d8e4; border: 1px solid #999; padding: 5px 10px; font-size: 8pt; font-weight: 700; letter-spacing: 0.5px; margin-bottom: 8px; }
+.dd-rpt-table { width: 100%; border-collapse: collapse; font-size: 8.5pt; }
+.dd-rpt-table th { background: #d0d8e4; border: 1px solid #999; padding: 5px 8px; font-size: 7.5pt; font-weight: 700; text-align: center; }
+.dd-rpt-table td { border: 1px solid #ddd; padding: 4px 8px; }
+.dd-rpt-table td.dd-rpt-lbl { font-size: 8.5pt; background: #f5f7fa; font-weight: 600; text-align: left; }
+.dd-rpt-table td.dd-rpt-num { font-family: 'DM Mono', monospace; text-align: center; }
+.dd-rpt-table tr.dd-rpt-total td { background: #e8edf2; font-weight: 700; border-color: #999; }
+.dd-rpt-table tr.dd-rpt-avg td { background: #d0d8e4; font-weight: 700; border-color: #999; }
+.dd-rpt-footer { background: #e8edf2; border-top: 1px solid #999; display: flex; justify-content: space-between; padding: 3px 14px; font-size: 7pt; color: #000; }
+.dd-rpt-sigs { border-top: 1px solid #999; display: grid; grid-template-columns: repeat(3, 1fr); padding: 6px 14px; gap: 8px; }
+.dd-rpt-sigs .sig-block { text-align: center; }
+.dd-rpt-sigs .sig-line { border-bottom: 1px solid #555; height: 28px; margin-bottom: 3px; }
+.dd-rpt-sigs .sig-lbl { font-size: 6.5pt; color: #000; letter-spacing: 0.3px; text-transform: uppercase; }
+.dd-rpt-approval { border-top: 2px solid #999; display: grid; grid-template-columns: 1fr 1fr; }
+.dd-rpt-pass { color: #166534; font-weight: 700; }
+.dd-rpt-fail { color: #991b1b; font-weight: 700; }
+/* Concrete forms inside dd-rpt shell */
+.dd-rpt.dmf13, .dd-rpt.dmp15 { max-width: 1000px; font-size: 9pt; }
+.dd-rpt.dmp15 { margin-top: 28px; }
+
 @media print {
   /* Default print mode: soil/aggregate report */
   @page { size: letter portrait; margin: 0.2in; }
@@ -1040,9 +1083,11 @@ nav:not(#r18-nav), .nav-top-row { display: none !important; }
   #app { display: block !important; height: auto !important; overflow: visible !important; position: static !important; }
   #report-view { display: block !important; position: static !important; inset: auto !important; overflow: visible !important; padding: 0 !important; }
   #report-view > div { padding: 0 !important; }
-  .lb44 { max-width: 100%; width: 100%; border: 3px solid #000 !important; margin: 0; box-shadow: none; font-size: 9pt; zoom: 0.88; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  .lb44, .dd-rpt { max-width: 100%; width: 100%; border: 2px solid #000 !important; margin: 0; box-shadow: none; font-size: 9pt; zoom: 0.88; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  .lb44 { border-width: 3px !important; }
   .lb44-banner, .lb44-subbar, .form-sec-head, .sieve-head, .summary-head,
-  .summary-divider, .lb44-footer, .agg-header, .agg-sieve-head, .agg-info-bar,
+  .summary-divider, .lb44-footer, .dd-rpt-banner, .dd-rpt-subbar, .dd-rpt-section-head,
+  .dd-rpt-footer, .agg-header, .agg-sieve-head, .agg-info-bar,
   .con-banner, .dmp15-header, .dmf13-header { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
   table { page-break-inside: avoid; }
   div[style*="max-width:1200px"] { width: 100% !important; max-width: 100% !important; }
@@ -1050,7 +1095,9 @@ nav:not(#r18-nav), .nav-top-row { display: none !important; }
   body.print-concrete #report-view       { display: none !important; }
   body.print-concrete #concrete-view     { display: block !important; }
   body.print-concrete #csub-report       { display: block !important; }
-  body.print-concrete .dmp15             { max-width:100%; page-break-before: always; }
+  body.print-concrete .dd-rpt.dmp15,
+  body.print-concrete .dmp15             { max-width:100%; page-break-before: always; margin-top: 0; }
+  body.print-concrete .dd-rpt.dmf13,
   body.print-concrete .dmf13             { max-width:100%; }
   body.print-concrete .con-page-break    { page-break-before: always; }
   /* Force ALL backgrounds and colors to print inside concrete report output */
@@ -1154,13 +1201,8 @@ nav:not(#r18-nav), .nav-top-row { display: none !important; }
 .fracture-card.selected .fc-type { color: #f5cc7a; text-shadow: 0 0 8px rgba(245,204,122,0.4); }
 .fracture-selected-label { font-family:var(--mono); font-size:11px; color:var(--accent2); margin-top:6px; min-height:16px; }
 
-/* DMP-15 form */
-.dmp15 { max-width:820px; margin:0 auto; background:#fff; color:#111;
-  font-family:'DM Mono',monospace; font-size:9pt; border:2px solid #333; }
-.dmp15-header { text-align:center; padding:5px 16px 3px; border-bottom:2px solid #333; background:#fff; }
-.dmp15-header .dh-agency { font-size:8pt; font-weight:700; line-height:1.3; }
-.dmp15-header .dh-title { font-size:12pt; font-weight:700; letter-spacing:2px; margin:2px 0 1px; font-family:'Roboto Condensed',sans-serif; }
-.dmp15-header .dh-stds { font-size:7pt; }
+/* DMP-15 form (shell from .dd-rpt) */
+.dmp15 { color:#111; font-size:9pt; }
 .dmp15-info { display:grid; grid-template-columns:1fr 1fr; border-bottom:1px solid #999; }
 .dmp15-info .di-col { padding:3px 12px; }
 .dmp15-info .di-col:first-child { border-right:1px solid #999; }
@@ -6263,7 +6305,7 @@ table.fc-borrow-tbl tr.fc-borrow-detail-row td{background:var(--surface);border-
 // GLOBALS
 // ══════════════════════════════════════════════
 let db = null;
-const APP_BUILD = '2026.07.01-lab-spec-mgmt';
+const APP_BUILD = '2026.07.02-uniform-reports';
 const FC_CORE_ICON_SRC = 'docs/r18-reference/core-drill-icon-128.png';
 const BORELOG_ICON_SRC = 'docs/r18-reference/borelog-icon.webp';
 const BORELOG_PATH = 'docs/r18-reference/deldot-borelog.html';
@@ -13185,6 +13227,104 @@ async function generateAggregateReport() {
   showToast('Aggregate Report generated ✓', 'success');
 }
 
+// ══════════════════════════════════════════════
+// SHARED REPORT SHELL — uniform DelDOT form chrome
+// ══════════════════════════════════════════════
+const DD_RPT_AGENCY = 'MATERIALS AND RESEARCH LABORATORY<br>DELAWARE DEPARTMENT OF TRANSPORTATION<br>DOVER, DELAWARE (302) 760-2400';
+
+function ddRptGenerated() {
+  return new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
+}
+
+function ddRptBanner(title, rightHtml, opts) {
+  opts = opts || {};
+  const logo = getLogoSrc();
+  const subtitle = opts.subtitle || DD_RPT_AGENCY;
+  return `<div class="dd-rpt-banner">
+    <div class="bl" style="display:flex;align-items:center;">
+      ${logo ? `<img src="${logo}" style="height:54px;display:block;" alt="DelDOT">` : ''}
+    </div>
+    <div class="bc">
+      <div class="big">${title}</div>
+      <div class="sub">${subtitle}</div>
+    </div>
+    <div class="br">${rightHtml || ''}</div>
+  </div>`;
+}
+
+function ddRptSubbar(items) {
+  const spans = (items || []).filter(Boolean).map(i => `<span>${i}</span>`).join('');
+  return spans ? `<div class="dd-rpt-subbar lb44-subbar">${spans}</div>` : '';
+}
+
+function ddRptFooter(leftText) {
+  return `<div class="dd-rpt-footer lb44-footer">
+    <span>${leftText || ''}</span>
+    <span>Generated: ${ddRptGenerated()}</span>
+  </div>`;
+}
+
+function ddRptSignatures(labels, values) {
+  const cols = (labels || []).length || 1;
+  return `<div class="dd-rpt-sigs lb44-sigs" style="grid-template-columns:repeat(${cols},1fr);">
+    ${(labels || []).map((l, i) => {
+      const v = values && values[i] ? values[i] : '';
+      const lineStyle = v ? ' style="display:flex;align-items:flex-end;justify-content:center;font-size:9pt;padding-bottom:2px;"' : '';
+      return `<div class="sig-block"><div class="sig-line"${lineStyle}>${v}</div><div class="sig-lbl">${l}</div></div>`;
+    }).join('')}
+  </div>`;
+}
+
+function ddRptApproval(conforms, remarksHtml, extraRightHtml) {
+  return `<div class="lb44-approval dd-rpt-approval">
+    <div class="approval-left">
+      <div class="approval-box ${conforms ? 'approved' : 'rejected'}">
+        <div class="ab-main">This sample ${conforms ? 'DOES' : 'DOES NOT'}<br>conform with the requirements of the<br>specifications.</div>
+        <div class="ab-sub">Material represented by this sample has been<br><strong>${conforms ? 'APPROVED' : 'REJECTED'}</strong> for use.</div>
+      </div>
+    </div>
+    <div class="approval-right">
+      <div class="r-lbl">REMARKS:</div><div class="r-val">${remarksHtml || ''}</div>
+      ${extraRightHtml || ''}
+    </div>
+  </div>`;
+}
+
+function ddRptWrap(formId, innerHtml, opts) {
+  opts = opts || {};
+  const extra = opts.wide ? ' dd-rpt-wide' : '';
+  const concrete = opts.concrete ? ' ' + opts.concrete : '';
+  return `<div class="dd-rpt${extra}${concrete}" data-form="${formId}">${innerHtml}</div>`;
+}
+
+function ddRptKvGrid(pairs, cols) {
+  const cells = pairs.map(([k, v]) =>
+    `<div class="dd-rpt-kv"><span class="k">${k}</span> <span class="v">${v || ''}</span></div>`
+  ).join('');
+  return `<div class="dd-rpt-info"><div class="dd-rpt-info-grid${cols === 3 ? ' cols-3' : ''}">${cells}</div></div>`;
+}
+
+function ddRptPrintCss() {
+  return `
+    body{margin:24px;color:#111;font-family:'DM Sans',Arial,sans-serif;background:#fff;}
+    .dd-rpt{max-width:900px;margin:0 auto;background:#fff;border:2px solid #000;font-size:10pt;}
+    .dd-rpt-banner{background:#1a2535;color:#fff;display:grid;grid-template-columns:1fr auto 1fr;align-items:center;padding:8px 16px;gap:10px;-webkit-print-color-adjust:exact;print-color-adjust:exact;}
+    .dd-rpt-banner .bc{text-align:center;}
+    .dd-rpt-banner .bc .big{font-size:13pt;font-weight:700;letter-spacing:1px;}
+    .dd-rpt-banner .bc .sub{font-size:7.5pt;color:#b0c4de;letter-spacing:0.5px;line-height:1.45;}
+    .dd-rpt-banner .br{text-align:right;font-size:8pt;color:#b0c4de;line-height:1.5;}
+    .dd-rpt-subbar{display:flex;justify-content:space-between;flex-wrap:wrap;gap:4px 12px;background:#e8edf2;border-top:1px solid #999;border-bottom:1px solid #999;padding:4px 14px;font-size:8pt;font-weight:700;}
+    .dd-rpt-section{padding:10px 14px;border-bottom:1px solid #999;}
+    .dd-rpt-table{width:100%;border-collapse:collapse;font-size:8.5pt;}
+    .dd-rpt-table th{background:#d0d8e4;border:1px solid #999;padding:5px 8px;font-size:7.5pt;font-weight:700;text-align:center;}
+    .dd-rpt-table td{border:1px solid #ddd;padding:6px 8px;text-align:center;font-family:'DM Mono',monospace;}
+    .dd-rpt-table td.dd-rpt-lbl{text-align:left;background:#f5f7fa;font-weight:600;font-family:'DM Sans',Arial,sans-serif;}
+    .dd-rpt-table tr.dd-rpt-total td{background:#e8edf2;font-weight:700;border-color:#999;}
+    .dd-rpt-footer{background:#e8edf2;border-top:1px solid #999;display:flex;justify-content:space-between;padding:3px 14px;font-size:7pt;color:#000;}
+    @media print{body{margin:12px;}.dd-rpt{border:2px solid #000;}}
+  `;
+}
+
 function renderAggregateReport(sample, calc) {
   const aggType = sample.agg_type || sample.lab_data?.agg_type;
   const spec = AGG_TYPES[aggType] || {};
@@ -13195,104 +13335,56 @@ function renderAggregateReport(sample, calc) {
   // Build sieve table rows
   const sieveRows = calc.results.map(r => `
     <tr>
-      <td style="font-size:9pt;font-weight:700;padding:6px 10px;border:1px solid #ddd;background:#f8f9fa;">${r.label}</td>
-      <td style="font-family:'DM Mono';text-align:center;padding:6px 8px;border:1px solid #ddd;">${r.accumRt}</td>
-      <td style="font-family:'DM Mono';text-align:center;padding:6px 8px;border:1px solid #ddd;font-weight:700;color:#1e3a8a;">${r.pctPass}%</td>
-      <td style="font-family:'DM Mono';text-align:center;padding:6px 8px;border:1px solid #ddd;color:#555;">${r.specStr}</td>
-      <td style="text-align:center;padding:6px 8px;border:1px solid #ddd;font-weight:700;color:${r.passes?'#166534':'#991b1b'};">${r.passes?'✓ PASS':'✗ FAIL'}</td>
+      <td class="dd-rpt-lbl">${r.label}</td>
+      <td class="dd-rpt-num">${r.accumRt}</td>
+      <td class="dd-rpt-num" style="font-weight:700;">${r.pctPass}%</td>
+      <td class="dd-rpt-num" style="color:#555;">${r.specStr}</td>
+      <td class="dd-rpt-num ${r.passes ? 'dd-rpt-pass' : 'dd-rpt-fail'}">${r.passes ? '✓ PASS' : '✗ FAIL'}</td>
     </tr>`).join('');
 
-  const reportHTML = `
-  <div style="max-width:820px;margin:0 auto;background:#fff;color:#111;font-family:'DM Sans',sans-serif;font-size:10.5pt;border:2px solid #333;">
+  const infoPairs = [
+    ['Material:', sample.material_type || 'Stone'],
+    ['Est. Quantity:', sample.est_quantity || ''],
+    ['Sampled At:', sample.sampled_at || sample.location || ''],
+    ['Examined For:', sample.examined_for || spec.section || '1004'],
+    ['Sampled From:', sample.sampled_from || 'Stockpile'],
+    ['Contract:', sample.contract || ''],
+    ['Source / Supplied By:', sample.supplied_by || sample.source || ''],
+    ['Supply Location:', sample.supply_location || ''],
+    ['Contractor:', sample.contractor || ''],
+    ['Sampled By:', sample.sampled_by || ''],
+    ['Date Sampled:', sample.date_sampled || ''],
+    ['Date Received:', sample.date_received || ''],
+    ['Date Tested:', sample.date_tested || ''],
+    ['Date Reported:', dateRpt],
+    ['Testing Lab:', 'DOVER'],
+    ['GPS:', sample.gps_coordinates || ''],
+  ];
 
-    <!-- Header — matches LB-44 style -->
-    <div class="agg-header" style="background:#2c3e50;color:#fff;display:grid;grid-template-columns:1fr auto 1fr;align-items:center;padding:8px 16px;gap:10px;">
-      <div style="display:flex;align-items:center;">
-        <img src="data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAAYEBQYFBAYGBQYHBwYIChAKCgkJChQODwwQFxQYGBcUFhYaHSUfGhsjHBYWICwgIyYnKSopGR8tMC0oMCUoKSj/2wBDAQcHBwoIChMKChMoGhYaKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCj/wAARCABQAEcDASIAAhEBAxEB/8QAGwAAAgMBAQEAAAAAAAAAAAAAAAUCBAYDAQj/xAA6EAABAwIEAwUFBQgDAAAAAAABAgMRAAQFEiExQVGBEyJhcZEGFEKhwSRi0eHwFSNUkqLC0vFygpP/xAAYAQADAQEAAAAAAAAAAAAAAAACAwUEAf/EACYRAAEDAwQBBQEBAAAAAAAAAAEAAgMREjEEEyFBsSJRgZHwocH/2gAMAwEAAhEDEQA/APmyiiitaSulu8u3fQ60rKtBCgfGtxb3XvDCHm1ryLEgZjpzHSl2EYa3b2yVvNpU+sZjmE5RwGvzpglIQoBCQlK9IAgZuHqNPMDnVPTRujFxwVP1EjZDaMhAlDx1MOmf+8a+oHqk86jdspurZxlw91Y35HgamtIWgpkpnZQ+E7g9DBrxtRWgEpyq1Ck8lDcfrhFabRyw4Kz3HhwyFh3m1surbcGVaCUkcjUKf+0tpqm7QN4Q558D9OlIKjyMMbi0qrG8PaHBFFFFLRopngNn7zeZ1iWmoUqeJ4D9cqWpBUoBIJJ0AHGtph9qLO0Qzpn3WeauPptWjTRbj+cBI1Eu23jJVhaglKlrJgDMTEmuZbWsEOrKJEZUJScvU7kc9Na9Pfcy/CghR8VbgdN/5aHnUMMqddVlQnc1TdR1S7AU4VbQDKmlWYEmMwJCgOB/UHrUD3HQfhcISf8Al8J67fy1RtsYtbi5Q0gOJU53ZWABPDj06jlTBaQtCkrnKoQY3/3QscJG+k1IROaY3eocFePNoeZW04JQsZT+P1rE3TC7a4cZcHeQYP41tmlKUnvx2iTlXHPn5EQetJ/aSzzspukDvI7q/EcD029KTqo72CQdJ2mfY6wrOUUUVMVBO/ZuzzvG6WO62YR4q/L8K0ROUTE8hzPAVQwN5t3DGg2MpblKx47z1q/He1+HQDx4n6dTVaBobGLcn9/FMmJdIbsBeITkTE5jqSrmTuaV+0TDz1olTQKkNqOZAGp+95Db1pm4vs0FW0ceXM+QEnpU4yGBIy6Dwo5GCQbYQMeWHcKw9o0p+5bbQoJUpUZiYA8ZrblaCSe1a/8ARP41IqJEEyKiQDuE+goIYHRVoco5ZhLSoXJlxtbjq0utFJyoH7xOuWZO/wB6OlccVfaZw9/OtBK0FCUhQJJOn51bTCTKQkHmAKlmPOmWPtLajlLvbcHUwsBRWj9pbzK2m1QdVQtflwH19KKkyMDHFoNVUjeXtuIolmC3ps7sSR2bndVOw5K6Vrog5QNtAKwRSRqQafNYwEYORm+1pHZJ5xwV0GnnFaNNMI6hyRqIS+hanqCFd8QUnRPEEcfU/ICufYwAEPPISNkhQIHlIJ+dIcNxoW9ulm4bUsIEJUkwY5Grox+24sv9IrQyeIgFx5SHQygkNHCYdgv+KuP6P8ak22pM5n3l+eUf20sVjzAPdYfKeZIFBx+2gwy9PDvCi3oPfyh2Zvbwm2VXBxz+n/GuVyvsLdx1x5wIQmTARJ8B3d6Wt46hc5bR5Ub5VA/Sl2LYob1CWm21NtgyQTJUeFBJPEGm08/KNkEhcLhx8Je+6t95brqipajJJoqOVXI+lFTVQWpxvGLizvyygIU3GY55JMk+NUcQtEX7VpdWaEtruFZFI4Trr8jNXscwa5vL8vIyobjKSuREE+FcPfLWzesrNCwttlRLjg2kgj+4zWx9S5wkx199LIygaCzPf0uH7Jsu0939/wDtW0ZdJ5flM+FRDLltgmIsuaKS6gEA6HanakXZui6lNkLec/bZCVRzmYnxmKWXj3vWGYm62c6A42nMlMAgQAa4WNb1TPhdDnO7rjyu+OYxc2eIKZbDakRPek8fOq79mziaLO5aR2ParyOhI5SSfPQ+oqzjuC3V5freRkQ3ESuRx8qqvXrGGps7ZhfbBped1STvMgj5n0FdfW47mP2FxlLRZn9lF7i6rF82tg02hto5TodSN/8Ae9SXcC5sk4my2lu7tljNporb13nnvUbzBziDyrqwdbW26ZMzoTvw+W9Qvuyw3C1WKHA5cOqlyPh29Nh470JLxW7HX+URANNLc/q1TC9xi6s7GyuWcnaOiVZgSBoNhPjRS/GgRguFkggFOnjoKKCWR12eh4Rxxttx7+V//9k=" style="display:none;"><img src="${getLogoSrc()}" style="height:54px;display:block;">
-      </div>
-      <div style="text-align:center;">
-        <div style="font-size:13pt;font-weight:700;letter-spacing:1px;">COARSE AGGREGATE REPORT</div>
-        <div style="font-size:7.5pt;color:#b0bec5;margin-top:3px;">MATERIALS AND RESEARCH LABORATORY<br>DELAWARE DEPARTMENT OF TRANSPORTATION<br>DOVER, DELAWARE (302) 760-2400</div>
-      </div>
-      <div style="text-align:right;font-size:8pt;color:#b0bec5;">AASHTO T-11 / T-27<br>Section ${spec.section||'1004'}<br>Form LB-67</div>
-    </div>
-
-    <!-- Info bar -->
-    <div class="agg-info-bar" style="display:grid;grid-template-columns:repeat(4,1fr);background:#e8edf2;border-bottom:1px solid #999;font-size:8pt;font-weight:700;">
-      <div style="padding:4px 12px;border-right:1px solid #999;">Size No.: <strong>${sample.size_no||spec.label||aggType}</strong></div>
-      <div style="padding:4px 12px;border-right:1px solid #999;">Lab No.: <strong>${sample.lab_no||sample.test_no}</strong></div>
-      <div style="padding:4px 12px;border-right:1px solid #999;">TEST NO.: <strong>${sample.test_no}</strong></div>
-      <div style="padding:4px 12px;">Examined For: <strong>${sample.examined_for||spec.section||'1004'}</strong></div>
-    </div>
-
-    <!-- Header fields -->
-    <div style="padding:6px 14px;border-bottom:1px solid #999;font-size:9pt;">
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:4px;">
-        <div><span style="color:#000;">Material:</span> <strong>${sample.material_type||'Stone'}</strong></div>
-        <div><span style="color:#000;">Est. Quantity:</span> <strong>${sample.est_quantity||''}</strong></div>
-        <div><span style="color:#000;">Sampled At:</span> <strong>${sample.sampled_at||sample.location||''}</strong></div>
-        <div><span style="color:#000;">Examined For:</span> <strong>${sample.examined_for||spec.section||'1004'}</strong></div>
-        <div><span style="color:#000;">Sampled From:</span> <strong>${sample.sampled_from||'Stockpile'}</strong></div>
-        <div><span style="color:#000;">Contract:</span> <strong>${sample.contract||''}</strong></div>
-        <div><span style="color:#000;">Source / Supplied By:</span> <strong>${sample.supplied_by||sample.source||''}</strong></div>
-        <div><span style="color:#000;">Supply Location:</span> <strong>${sample.supply_location||''}</strong></div>
-        <div><span style="color:#000;">Contractor:</span> <strong>${sample.contractor||''}</strong></div>
-        <div><span style="color:#000;">Sampled By:</span> <strong>${sample.sampled_by||''}</strong></div>
-        <div><span style="color:#000;">Date Sampled:</span> <strong>${sample.date_sampled||''}</strong></div>
-        <div><span style="color:#000;">Date Received:</span> <strong>${sample.date_received||''}</strong></div>
-        <div><span style="color:#000;">Date Tested:</span> <strong>${sample.date_tested||''}</strong></div>
-        <div><span style="color:#000;">Date Reported:</span> <strong>${dateRpt}</strong></div>
-        <div><span style="color:#000;">Testing Lab:</span> <strong>DOVER</strong></div>
-        <div><span style="color:#000;">GPS:</span> <strong style="font-size:8pt;">${sample.gps_coordinates||''}</strong></div>
-      </div>
-    </div>
-
-    <!-- Sieve Analysis -->
-    <div style="padding:12px 14px;border-bottom:1px solid #999;">
-      <div class="agg-sieve-head" style="background:#d0d8e4;border:1px solid #999;padding:5px 10px;font-size:8pt;font-weight:700;letter-spacing:1px;margin-bottom:10px;">
-        SIEVE ANALYSIS — AASHTO T-11 / AASHTO T-27 &nbsp;&nbsp; Wt. of Total Sample: <strong>${calc.total.toFixed(1)}</strong>g
-      </div>
-      <table style="width:100%;border-collapse:collapse;">
-        <thead>
-          <tr class="agg-sieve-head" style="background:#d0d8e4;">
-            <th style="padding:6px 10px;border:1px solid #999;text-align:left;font-size:7.5pt;letter-spacing:0.5px;">SIEVE</th>
-            <th style="padding:6px 10px;border:1px solid #999;font-size:7.5pt;">ACCUM. RT. WT.</th>
-            <th style="padding:6px 10px;border:1px solid #999;font-size:7.5pt;">% PASSING</th>
-            <th style="padding:6px 10px;border:1px solid #999;font-size:7.5pt;">SPECIFICATION</th>
-            <th style="padding:6px 10px;border:1px solid #999;font-size:7.5pt;">STATUS</th>
-          </tr>
-        </thead>
+  const reportHTML = ddRptWrap('LB-67', `
+    ${ddRptBanner('COARSE AGGREGATE REPORT', `AASHTO T-11 / T-27<br>Section ${spec.section || '1004'}<br>Form LB-67`)}
+    ${ddRptSubbar([
+      `Size No.: ${sample.size_no || spec.label || aggType}`,
+      `Lab No.: ${sample.lab_no || sample.test_no}`,
+      `TEST NO.: ${sample.test_no}`,
+      `Examined For: ${sample.examined_for || spec.section || '1004'}`,
+    ])}
+    ${ddRptKvGrid(infoPairs)}
+    <div class="dd-rpt-section">
+      <div class="dd-rpt-section-head">SIEVE ANALYSIS — AASHTO T-11 / AASHTO T-27 &nbsp;&nbsp; Wt. of Total Sample: <strong>${calc.total.toFixed(1)}</strong>g</div>
+      <table class="dd-rpt-table">
+        <thead><tr>
+          <th style="text-align:left;">SIEVE</th><th>ACCUM. RT. WT.</th><th>% PASSING</th><th>SPECIFICATION</th><th>STATUS</th>
+        </tr></thead>
         <tbody>${sieveRows}</tbody>
       </table>
     </div>
-
-    <!-- Approval -->
-    <div style="display:grid;grid-template-columns:1fr 1fr;border-bottom:1px solid #999;">
-      <div style="padding:12px 14px;border-right:1px solid #999;">
-        <div style="border:2px solid ${conforms?'#166534':'#991b1b'};border-radius:2px;padding:10px;text-align:center;background:${conforms?'#f0fff4':'#fff5f5'};">
-          <div style="font-size:9pt;font-weight:700;color:${conforms?'#166534':'#991b1b'};">This sample ${conforms?'DOES':'DOES NOT'}<br>conform with the requirements of the<br>specifications.</div>
-          <div style="font-size:8.5pt;margin-top:6px;">Material represented by this sample has been<br><strong>${conforms?'APPROVED':'REJECTED'}</strong> for use.</div>
-        </div>
-      </div>
-      <div style="padding:12px 14px;font-size:8pt;">
-        <div style="margin-bottom:6px;"><span style="color:#000;">REMARKS:</span></div>
-        <div style="border-bottom:1px solid #bbb;min-height:18px;margin-bottom:8px;">${sample.lab_remarks||''}</div>
-        <div style="margin-bottom:4px;"><span style="color:#000;">Reported By:</span> <strong>${sample.reported_by||''}</strong></div>
-        <div style="margin-bottom:4px;"><span style="color:#000;">Reviewed By:</span> <strong>${sample.reviewed_by||''}</strong></div>
-      </div>
-    </div>
-
-    <!-- Signatures -->
-    <div style="display:grid;grid-template-columns:repeat(2,1fr);padding:8px 14px;gap:16px;border-bottom:1px solid #999;">
-      <div style="text-align:center;"><div style="border-bottom:1px solid #555;height:28px;margin-bottom:4px;"></div><div style="font-size:6.5pt;color:#555;text-transform:uppercase;letter-spacing:0.3px;">Soils Supervisor</div></div>
-      <div style="text-align:center;"><div style="border-bottom:1px solid #555;height:28px;margin-bottom:4px;"></div><div style="font-size:6.5pt;color:#555;text-transform:uppercase;letter-spacing:0.3px;">Geotechnical Engineer</div></div>
-    </div>
-
-    <div style="background:#e8edf2;border-top:1px solid #999;display:flex;justify-content:space-between;padding:3px 14px;font-size:7pt;color:#666;">
-      <span>AASHTO T-11 / T-27 • Section ${spec.section||'1004'}</span>
-      <span>Generated: ${new Date().toLocaleDateString('en-US',{year:'numeric',month:'long',day:'numeric'})}</span>
-    </div>
-  </div>`;
+    ${ddRptApproval(conforms, sample.lab_remarks || '', `
+      <div class="r-lbl">Reported By:</div><div class="r-val">${sample.reported_by || ''}</div>
+      <div class="r-lbl">Reviewed By:</div><div class="r-val">${sample.reviewed_by || ''}</div>`)}
+    ${ddRptSignatures(['Soils Supervisor', 'Geotechnical Engineer'])}
+    ${ddRptFooter(`AASHTO T-11 / T-27 • Section ${spec.section || '1004'}`)}
+  `);
 
   document.getElementById('lb44Output').innerHTML = reportHTML;
 }
@@ -13608,62 +13700,37 @@ function renderNuclearReport(sample, d) {
   const W=K>0&&T>0?K/T*100:0;
 
   const fc = (v, d=1) => v > 0 ? v.toFixed(d) : '—';
-  const row = (label, val, bold=false, highlight=false) =>
-    `<tr${highlight?' style="background:#f0f7ff;"':''}><td style="border:1px solid #ddd;padding:5px 10px;font-size:8.5pt;background:#f5f7fa;font-weight:600;">${label}</td><td style="border:1px solid #ddd;padding:5px 10px;font-family:'DM Mono';font-size:9pt;${bold?'font-weight:700;':''}">${val}</td></tr>`;
+  const row = (label, val, bold, highlight) =>
+    `<tr${highlight ? ' style="background:#f0f7ff;"' : ''}><td class="dd-rpt-lbl">${label}</td><td class="dd-rpt-num"${bold ? ' style="font-weight:700;"' : ''}>${val}</td></tr>`;
 
-  const reportHTML = `
-  <div style="max-width:820px;margin:0 auto;background:#fff;color:#111;font-family:'DM Sans',sans-serif;font-size:10pt;border:2px solid #333;">
-    <div class="agg-header" style="background:#2c3e50;color:#fff;display:grid;grid-template-columns:1fr auto 1fr;align-items:center;padding:8px 16px;gap:10px;">
-      <div><img src="data:image/jpeg;base64,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" style="display:none;"><img src="${getLogoSrc()}" style="height:54px;display:block;"></div>
-      <div style="text-align:center;">
-        <div style="font-size:13pt;font-weight:700;letter-spacing:1px;">NUCLEAR DENSITY WORKSHEET — SOILS</div>
-        <div style="font-size:7.5pt;color:#b0bec5;margin-top:3px;">MATERIALS AND RESEARCH LABORATORY<br>DELAWARE DEPARTMENT OF TRANSPORTATION<br>DOVER, DELAWARE (302) 760-2400</div>
-      </div>
-      <div style="text-align:right;font-size:8pt;color:#b0bec5;">DMF-68C<br>REV 5/2025</div>
-    </div>
+  const nucInfo = ddRptKvGrid([
+    ['Contract #:', fv(d.contract)], ['F.A. #:', fv(d.fa)], ['Date:', fv(d.date)],
+    ['Type & Use of Material:', fv(d.material)], ['Family Used:', fv(d.family)], ['', ''],
+    ['Serial No. Gauge:', fv(d.serial)], ['Density #:', fv(d.density_no)], ['Agg. Specific Gravity:', fv(d.agg_sg)],
+    ['Type of Test:', fv(d.test_type)], ['Operator(s):', fv(d.operator)], ['', ''],
+    ['Road Name / Description:', fv(d.road)], ['Station:', fv(d.station)], ['Offset:', fv(d.offset)],
+    ['Elevation:', fv(d.elevation)], ['', ''], ['', ''],
+  ], 3);
 
-    <div style="padding:8px 14px;border-bottom:1px solid #999;font-size:8.5pt;display:grid;grid-template-columns:1fr 1fr 1fr;gap:4px 20px;">
-      <div><strong>Contract #:</strong> ${fv(d.contract)}</div>
-      <div><strong>F.A. #:</strong> ${fv(d.fa)}</div>
-      <div><strong>Date:</strong> ${fv(d.date)}</div>
-      <div><strong>Type &amp; Use of Material:</strong> ${fv(d.material)}</div>
-      <div><strong>Family Used:</strong> ${fv(d.family)}</div>
-      <div></div>
-      <div><strong>Serial No. Gauge:</strong> ${fv(d.serial)}</div>
-      <div><strong>Density #:</strong> ${fv(d.density_no)}</div>
-      <div><strong>Agg. Specific Gravity:</strong> ${fv(d.agg_sg)}</div>
-      <div><strong>Type of Test:</strong> ${fv(d.test_type)}</div>
-      <div><strong>Operator(s):</strong> ${fv(d.operator)}</div>
-      <div></div>
-      <div style="grid-column:span 3;"><strong>Road Name / Description:</strong> ${fv(d.road)}</div>
-      <div><strong>Station:</strong> ${fv(d.station)}</div>
-      <div><strong>Offset:</strong> ${fv(d.offset)}</div>
-      <div><strong>Elevation:</strong> ${fv(d.elevation)}</div>
-    </div>
-
-    <div style="padding:10px 14px;border-bottom:1px solid #999;">
-      <table style="width:100%;border-collapse:collapse;font-size:8.5pt;">
-        <thead>
-          <tr style="background:#d0d8e4;">
-            <th style="border:1px solid #999;padding:5px 8px;text-align:left;">Density Count</th>
-            <th style="border:1px solid #999;padding:5px 8px;">WD</th>
-            <th style="border:1px solid #999;padding:5px 8px;">DD (X)</th>
-            <th style="border:1px solid #999;padding:5px 8px;">M</th>
-            <th style="border:1px solid #999;padding:5px 8px;">% M (Y)</th>
-          </tr>
-        </thead>
+  const reportHTML = ddRptWrap('DMF-68C', `
+    ${ddRptBanner('NUCLEAR DENSITY WORKSHEET — SOILS', 'DMF-68C<br>REV 5/2025')}
+    ${nucInfo}
+    <div class="dd-rpt-section">
+      <table class="dd-rpt-table">
+        <thead><tr>
+          <th style="text-align:left;">Density Count</th><th>WD</th><th>DD (X)</th><th>M</th><th>% M (Y)</th>
+        </tr></thead>
         <tbody>
-          <tr><td style="border:1px solid #ddd;padding:4px 8px;text-align:right;color:#666;">1</td><td style="border:1px solid #ddd;padding:4px 8px;text-align:center;font-family:'DM Mono';">${fc(wd1)}</td><td style="border:1px solid #ddd;padding:4px 8px;text-align:center;font-family:'DM Mono';">${fc(dd1)}</td><td style="border:1px solid #ddd;padding:4px 8px;text-align:center;font-family:'DM Mono';">${fc(m1)}</td><td style="border:1px solid #ddd;padding:4px 8px;text-align:center;font-family:'DM Mono';">${fc(py1)}</td></tr>
-          <tr style="background:#f9f9f9;"><td style="border:1px solid #ddd;padding:4px 8px;text-align:right;color:#666;">2</td><td style="border:1px solid #ddd;padding:4px 8px;text-align:center;font-family:'DM Mono';">${fc(wd2)}</td><td style="border:1px solid #ddd;padding:4px 8px;text-align:center;font-family:'DM Mono';">${fc(dd2)}</td><td style="border:1px solid #ddd;padding:4px 8px;text-align:center;font-family:'DM Mono';">${fc(m2)}</td><td style="border:1px solid #ddd;padding:4px 8px;text-align:center;font-family:'DM Mono';">${fc(py2)}</td></tr>
-          <tr><td style="border:1px solid #ddd;padding:4px 8px;text-align:right;color:#666;">3</td><td style="border:1px solid #ddd;padding:4px 8px;text-align:center;font-family:'DM Mono';">${fc(wd3)}</td><td style="border:1px solid #ddd;padding:4px 8px;text-align:center;font-family:'DM Mono';">${fc(dd3)}</td><td style="border:1px solid #ddd;padding:4px 8px;text-align:center;font-family:'DM Mono';">${fc(m3)}</td><td style="border:1px solid #ddd;padding:4px 8px;text-align:center;font-family:'DM Mono';">${fc(py3)}</td></tr>
-          <tr style="background:#e8edf2;"><td style="border:1px solid #999;padding:4px 8px;font-weight:700;">Total</td><td style="border:1px solid #999;padding:4px 8px;text-align:center;font-family:'DM Mono';font-weight:700;">${fc(wdTot)}</td><td style="border:1px solid #999;padding:4px 8px;text-align:center;font-family:'DM Mono';font-weight:700;">${fc(ddTot)}</td><td style="border:1px solid #999;padding:4px 8px;text-align:center;font-family:'DM Mono';font-weight:700;">${fc(mTot)}</td><td style="border:1px solid #999;padding:4px 8px;text-align:center;font-family:'DM Mono';font-weight:700;">${fc(pyTot)}</td></tr>
-          <tr style="background:#d0d8e4;"><td style="border:1px solid #999;padding:4px 8px;font-weight:700;">Average</td><td style="border:1px solid #999;padding:4px 8px;text-align:center;font-family:'DM Mono';font-weight:700;">${fc(wdAvg)}</td><td style="border:1px solid #999;padding:4px 8px;text-align:center;font-family:'DM Mono';font-weight:700;">${fc(ddAvg)}</td><td style="border:1px solid #999;padding:4px 8px;text-align:center;font-family:'DM Mono';font-weight:700;">${fc(mTot/3)}</td><td style="border:1px solid #999;padding:4px 8px;text-align:center;font-family:'DM Mono';font-weight:700;">${fc(pyAvg)}</td></tr>
+          <tr><td class="dd-rpt-lbl" style="text-align:right;color:#666;">1</td><td class="dd-rpt-num">${fc(wd1)}</td><td class="dd-rpt-num">${fc(dd1)}</td><td class="dd-rpt-num">${fc(m1)}</td><td class="dd-rpt-num">${fc(py1)}</td></tr>
+          <tr><td class="dd-rpt-lbl" style="text-align:right;color:#666;">2</td><td class="dd-rpt-num">${fc(wd2)}</td><td class="dd-rpt-num">${fc(dd2)}</td><td class="dd-rpt-num">${fc(m2)}</td><td class="dd-rpt-num">${fc(py2)}</td></tr>
+          <tr><td class="dd-rpt-lbl" style="text-align:right;color:#666;">3</td><td class="dd-rpt-num">${fc(wd3)}</td><td class="dd-rpt-num">${fc(dd3)}</td><td class="dd-rpt-num">${fc(m3)}</td><td class="dd-rpt-num">${fc(py3)}</td></tr>
+          <tr class="dd-rpt-total"><td class="dd-rpt-lbl">Total</td><td class="dd-rpt-num">${fc(wdTot)}</td><td class="dd-rpt-num">${fc(ddTot)}</td><td class="dd-rpt-num">${fc(mTot)}</td><td class="dd-rpt-num">${fc(pyTot)}</td></tr>
+          <tr class="dd-rpt-avg"><td class="dd-rpt-lbl">Average</td><td class="dd-rpt-num">${fc(wdAvg)}</td><td class="dd-rpt-num">${fc(ddAvg)}</td><td class="dd-rpt-num">${fc(mTot/3)}</td><td class="dd-rpt-num">${fc(pyAvg)}</td></tr>
         </tbody>
       </table>
     </div>
-
-    <div style="display:grid;grid-template-columns:1fr 1fr;padding:10px 14px;gap:4px 20px;border-bottom:1px solid #999;">
-      <table style="border-collapse:collapse;width:100%;">
+    <div class="dd-rpt-section" style="display:grid;grid-template-columns:1fr 1fr;gap:4px 20px;">
+      <table class="dd-rpt-table">
         ${row('A &nbsp; Wet Dens. pcf — Average', fc(A))}
         ${row('B &nbsp; Water pcf — Average', fc(B))}
         ${row('C &nbsp; Dry Dens. Total Mat. = (X)', fc(C), true, true)}
@@ -13679,7 +13746,7 @@ function renderNuclearReport(sample, d) {
         ${row('L &nbsp; Dry Wt. Total Minus ¾" Mat.', fc(L,2))}
         ${row('M &nbsp; % of ¾" Material [I/(L+I)×100]', fc(M_val,2))}
       </table>
-      <table style="border-collapse:collapse;width:100%;">
+      <table class="dd-rpt-table">
         ${row('N &nbsp; Weight of Specimen and Mold', fc(N,2))}
         ${row('O &nbsp; Weight of Mold', fc(O,2))}
         ${row('P &nbsp; Wet Weight of Specimen (N−O)', fc(P,2))}
@@ -13688,16 +13755,12 @@ function renderNuclearReport(sample, d) {
         ${row('S &nbsp; Max Density (from curves)', fc(S,1))}
         ${row('T &nbsp; Optimum Moisture (from curves)', fc(T,1))}
         ${row('U &nbsp; Corrected Max Dens. (gravel chart)', fc(U,1))}
-        <tr style="background:#e8f4fd;"><td style="border:1px solid #999;padding:6px 10px;font-size:9pt;font-weight:700;">V &nbsp; % Compaction (C/U×100)</td><td style="border:1px solid #999;padding:6px 10px;font-family:'DM Mono';font-size:11pt;font-weight:700;color:${V>=95?'#166534':'#991b1b'};">${fc(V,1)}</td></tr>
-        <tr style="background:#e8f4fd;"><td style="border:1px solid #999;padding:6px 10px;font-size:9pt;font-weight:700;">W &nbsp; % of Optimum Moisture (K/T×100)</td><td style="border:1px solid #999;padding:6px 10px;font-family:'DM Mono';font-size:11pt;font-weight:700;">${fc(W,1)}</td></tr>
+        <tr style="background:#e8f4fd;"><td class="dd-rpt-lbl" style="font-size:9pt;">V &nbsp; % Compaction (C/U×100)</td><td class="dd-rpt-num" style="font-size:11pt;font-weight:700;color:${V>=95?'#166534':'#991b1b'};">${fc(V,1)}</td></tr>
+        <tr style="background:#e8f4fd;"><td class="dd-rpt-lbl" style="font-size:9pt;">W &nbsp; % of Optimum Moisture (K/T×100)</td><td class="dd-rpt-num" style="font-size:11pt;font-weight:700;">${fc(W,1)}</td></tr>
       </table>
     </div>
-
-    <div style="background:#e8edf2;border-top:1px solid #999;display:flex;justify-content:space-between;padding:4px 14px;font-size:7pt;color:#555;">
-      <span>DMF-68C (REV 5/2025) • TEST NO.: ${sample.test_no}</span>
-      <span>Generated: ${new Date().toLocaleDateString('en-US',{year:'numeric',month:'long',day:'numeric'})}</span>
-    </div>
-  </div>`;
+    ${ddRptFooter(`DMF-68C (REV 5/2025) • TEST NO.: ${sample.test_no}`)}
+  `);
 
   document.getElementById('lb44Output').innerHTML = reportHTML;
 }
@@ -14011,8 +14074,8 @@ function renderLB68(sample, d) {
     const rowBg = i % 2 === 0 ? '#fff' : '#f9fafb';
     const compColor = passes === true ? '#166534' : passes === false ? '#991b1b' : '#111';
     const cell = (val, bold, color) =>
-      `<td style="border:1px solid #ddd;padding:2px 3px;text-align:center;font-family:'DM Mono';font-size:7pt;${bold?'font-weight:700;':''}${color?'color:'+color+';':''}">${val||''}</td>`;
-    const locCell = `<td style="border:1px solid #ddd;padding:2px 4px;font-size:7pt;font-weight:600;">${fv(r.location)}</td>`;
+      `<td class="dd-rpt-num" style="font-size:7pt;${bold ? 'font-weight:700;' : ''}${color ? 'color:' + color + ';' : ''}">${val || ''}</td>`;
+    const locCell = `<td class="dd-rpt-lbl" style="font-size:7pt;font-weight:600;">${fv(r.location)}</td>`;
     return `<tr style="background:${rowBg};">
       ${locCell}
       ${cell(r.density_no)}
@@ -14033,105 +14096,37 @@ function renderLB68(sample, d) {
     </tr>`;
   }).join('');
 
-  const th = label => `<th style="border:1px solid #999;padding:3px 2px;font-size:5.5pt;text-align:center;font-weight:700;letter-spacing:0px;background:#d0d8e4;vertical-align:bottom;white-space:nowrap;">${label}</th>`;
+  const th = label => `<th>${label}</th>`;
 
-  const reportHTML = `
-  <div style="width:100%;max-width:1200px;margin:0 auto;background:#fff;color:#111;font-family:'DM Sans',sans-serif;font-size:9pt;border:2px solid #333;">
-
-    <!-- Header -->
-    <div class="agg-header" style="background:#2c3e50;color:#fff;display:grid;grid-template-columns:1fr auto 1fr;align-items:center;padding:8px 16px;gap:10px;">
-      <div><img src="data:image/jpeg;base64,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" style="display:none;"><img src="${getLogoSrc()}" style="height:54px;display:block;"></div>
-      <div style="text-align:center;">
-        <div style="font-size:13pt;font-weight:700;letter-spacing:1px;">SUMMARY OF FIELD DENSITY TESTS</div>
-        <div style="font-size:7.5pt;color:#b0bec5;margin-top:3px;">MATERIALS AND RESEARCH LABORATORY<br>DELAWARE DEPARTMENT OF TRANSPORTATION<br>DOVER, DELAWARE (302) 760-2400</div>
-      </div>
-      <div style="text-align:right;font-size:8pt;color:#b0bec5;">Form LB-68<br>6/12/2015</div>
-    </div>
-
-    <!-- Project info -->
-    <div style="padding:8px 16px;border-bottom:1px solid #999;font-size:9pt;">
-      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:4px;margin-bottom:4px;">
-        <div><span style="color:#555;">Contract:</span> <strong style="text-decoration:underline;">${fv(sample.contract)}</strong></div>
-        <div><span style="color:#555;">F.A. Project:</span> <strong>${fv(d.fa_project)}</strong></div>
-        <div><span style="color:#555;">Contractor:</span> <strong>${fv(d.contractor)}</strong></div>
-      </div>
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:4px;margin-bottom:4px;">
-        <div><span style="color:#555;">Testing Agency:</span> <strong>${fv(d.agency)}</strong></div>
-        <div><span style="color:#555;">Date Tested:</span> <strong style="text-decoration:underline;">${fv(d.date_tested)}</strong> &nbsp;&nbsp; <span style="color:#555;">Material Source:</span> <strong>${fv(d.material_source)}</strong></div>
-      </div>
-      <div style="display:grid;grid-template-columns:1fr;gap:4px;margin-bottom:4px;">
-        <div><span style="color:#555;">Type and Use of Material:</span> <strong>${fv(d.material_type)}</strong></div>
-      </div>
-      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:4px;margin-bottom:4px;">
-        <div><span style="color:#555;">Moisture Density Method:</span> <strong>${fv(d.method)}</strong></div>
-        <div><span style="color:#555;">Family of Curves Used:</span> <strong>${fv(d.family)}</strong></div>
-        <div></div>
-      </div>
-      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:4px;">
-        <div><span style="color:#555;">Test Hole Depth:</span> <strong>${fv(d.hole_depth)}</strong> &nbsp; <span style="color:#555;">Type of Test:</span> <strong>${fv(d.test_type)}</strong></div>
-        <div><span style="color:#555;">Tested by:</span> <strong style="text-decoration:underline;">${fv(d.tested_by)}</strong></div>
-        <div><span style="color:#555;">Reviewed by:</span> <strong style="text-decoration:underline;">${fv(d.reviewed_by)}</strong></div>
-      </div>
-    </div>
-
-    <!-- Sieve table -->
-    <div style="padding:8px 10px;overflow-x:auto;">
-      <table style="width:100%;border-collapse:collapse;font-size:8pt;">
-        <thead>
-          <tr>
-            ${th('Location')}
-            ${th('Density<br>Number')}
-            ${th('Elevation')}
-            ${th('Moisture<br>Content')}
-            ${th('Optimum<br>Moisture')}
-            ${th('% of<br>Optimum<br>Moisture')}
-            ${th('Dry Density<br>of Total<br>Material')}
-            ${th('Maximum<br>Dry Density')}
-            ${th('%<br>Gravel')}
-            ${th('Corrected<br>Maximum<br>Dry Density')}
-            ${th('Dry Density<br>(M/D Points)')}
-            ${th('%<br>Moisture')}
-            ${th('%<br>Compaction')}
-            ${th('% Comp.<br>Required')}
-            ${th('Base &amp; Sub<br>Fin. Thick.<br>Obs\'d')}
-            ${th('Base &amp; Sub<br>Fin. Thick.<br>Req\'d')}
-          </tr>
-        </thead>
-        <tbody>
-          ${rowsHtml}
-        </tbody>
+  const reportHTML = ddRptWrap('LB-68', `
+    ${ddRptBanner('SUMMARY OF FIELD DENSITY TESTS', 'Form LB-68<br>6/12/2015')}
+    ${ddRptKvGrid([
+      ['Contract:', fv(sample.contract)], ['F.A. Project:', fv(d.fa_project)], ['Contractor:', fv(d.contractor)],
+      ['Testing Agency:', fv(d.agency)], ['Date Tested:', fv(d.date_tested)], ['Material Source:', fv(d.material_source)],
+      ['Type and Use of Material:', fv(d.material_type)], ['', ''], ['', ''],
+      ['Moisture Density Method:', fv(d.method)], ['Family of Curves Used:', fv(d.family)], ['', ''],
+      ['Test Hole Depth:', fv(d.hole_depth) + ' · Type: ' + fv(d.test_type)], ['Tested by:', fv(d.tested_by)], ['Reviewed by:', fv(d.reviewed_by)],
+    ], 3)}
+    <div class="dd-rpt-section" style="overflow-x:auto;padding:8px 10px;">
+      <table class="dd-rpt-table" style="font-size:8pt;">
+        <thead><tr>
+          ${th('Location')}${th('Density<br>Number')}${th('Elevation')}${th('Moisture<br>Content')}
+          ${th('Optimum<br>Moisture')}${th('% of<br>Optimum<br>Moisture')}${th('Dry Density<br>of Total<br>Material')}
+          ${th('Maximum<br>Dry Density')}${th('%<br>Gravel')}${th('Corrected<br>Maximum<br>Dry Density')}
+          ${th('Dry Density<br>(M/D Points)')}${th('%<br>Moisture')}${th('%<br>Compaction')}
+          ${th('% Comp.<br>Required')}${th('Base &amp; Sub<br>Fin. Thick.<br>Obs\'d')}${th('Base &amp; Sub<br>Fin. Thick.<br>Req\'d')}
+        </tr></thead>
+        <tbody>${rowsHtml}</tbody>
       </table>
     </div>
-
-    <!-- Remarks -->
-    <div style="padding:8px 16px;border-top:1px solid #ddd;font-size:9pt;">
+    <div class="dd-rpt-info">
       <div style="font-weight:700;margin-bottom:4px;">REMARKS:</div>
       <div style="border-bottom:1px solid #bbb;min-height:20px;margin-bottom:6px;"></div>
-      <div style="border-bottom:1px solid #bbb;min-height:20px;margin-bottom:6px;"></div>
+      <div style="border-bottom:1px solid #bbb;min-height:20px;"></div>
     </div>
-
-    <!-- Signatures -->
-    <div style="display:grid;grid-template-columns:1fr 1fr;padding:10px 16px 8px;gap:40px;border-top:1px solid #ddd;">
-      <div style="text-align:center;">
-        <div style="border-bottom:1px solid #555;height:32px;margin-bottom:4px;"></div>
-        <div style="font-size:7.5pt;text-transform:uppercase;letter-spacing:0.5px;color:#555;">Construction Inspector</div>
-      </div>
-      <div style="text-align:center;">
-        <div style="border-bottom:1px solid #555;height:32px;margin-bottom:4px;"></div>
-        <div style="font-size:7.5pt;text-transform:uppercase;letter-spacing:0.5px;color:#555;">Field Control Supervisor</div>
-      </div>
-    </div>
-    <div style="padding:4px 16px 8px;text-align:center;">
-      <div style="border-bottom:1px solid #555;height:32px;margin-bottom:4px;max-width:300px;margin-left:auto;margin-right:auto;"></div>
-      <div style="font-size:7.5pt;text-transform:uppercase;letter-spacing:0.5px;color:#555;">I.A. Supervisor</div>
-    </div>
-
-    <!-- Footer -->
-    <div style="background:#e8edf2;border-top:1px solid #999;display:flex;justify-content:space-between;padding:3px 14px;font-size:7pt;color:#666;">
-      <span>LB-68 (6/12/2015) • TEST NO.: ${fv(sample.test_no)}</span>
-      <span>Generated: ${today}</span>
-    </div>
-  </div>`;
+    ${ddRptSignatures(['Construction Inspector', 'Field Control Supervisor', 'I.A. Supervisor'])}
+    ${ddRptFooter(`LB-68 (6/12/2015) • TEST NO.: ${fv(sample.test_no)}`)}
+  `, { wide: true });
 
   document.getElementById('lb44Output').innerHTML = reportHTML;
 }
@@ -14856,21 +14851,15 @@ function renderLB44(sample, labData, calc) {
   }
 
   const html = `
-  <div class="lb44">
-    <div class="lb44-banner" style="background:#2c3e50;">
-      <div class="bl" style="display:flex;align-items:center;justify-content:flex-start;">
-        <img src="data:image/jpeg;base64,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" style="display:none;"><img src="${getLogoSrc()}" style="height:54px;display:block;">
-      </div>
-      <div class="bc"><div class="big">SOIL ANALYSIS REPORT</div><div class="sub">MATERIALS AND RESEARCH LABORATORY<br>DELAWARE DEPARTMENT OF TRANSPORTATION<br>DOVER, DELAWARE (302) 760-2400</div></div>
-      <div class="br">Form LB-44 (Rev 5/2003)<br>Doc # 55-08/04/07/20</div>
-    </div>
-    <div class="lb44-subbar">
-      <span>Contract: ${fv(sample.contract)}</span>
-      <span>F.A. Project: ${fv(sample.fa_project)}</span>
-      <span>Contractor: ${fv(sample.contractor)}</span>
-      <span>Road: ${fv(sample.road)}</span>
-      <span>TEST NO.: ${fv(sample.test_no)}</span>
-    </div>
+  <div class="dd-rpt lb44">
+    ${ddRptBanner('SOIL ANALYSIS REPORT', 'Form LB-44 (Rev 5/2003)<br>Doc # 55-08/04/07/20')}
+    ${ddRptSubbar([
+      `Contract: ${fv(sample.contract)}`,
+      `F.A. Project: ${fv(sample.fa_project)}`,
+      `Contractor: ${fv(sample.contractor)}`,
+      `Road: ${fv(sample.road)}`,
+      `TEST NO.: ${fv(sample.test_no)}`,
+    ])}
     <div class="lb44-info">
       <div class="info-line"><div class="lbl">Location:</div><div class="val">${fv(sample.location)}</div><div class="lbl">GPS Coordinates:</div><div class="val" style="font-size:8pt;font-family:'DM Mono',monospace;">${fv(sample.gps_coordinates)}</div></div>
       <div class="info-line"><div class="lbl">Depth:</div><div class="val">${fv(sample.depth)}</div><div class="lbl">Elevation:</div><div class="val">${fv(sample.elevation)}</div></div>
@@ -14965,9 +14954,9 @@ function renderLB44(sample, labData, calc) {
       <div class="sig-block"><div class="sig-line"></div><div class="sig-lbl">Geotechnical Engineer</div></div>
       <div class="sig-block"><div class="sig-line"></div><div class="sig-lbl">QA Supervisor</div></div>
     </div>
-    <div class="lb44-footer">
+    <div class="dd-rpt-footer lb44-footer">
       <span>LB-44 (Rev 5/2003) • Doc # 55-08/04/07/20</span>
-      <span>Generated: ${new Date().toLocaleDateString('en-US',{year:'numeric',month:'long',day:'numeric'})}</span>
+      <span>Generated: ${ddRptGenerated()}</span>
     </div>
   </div>`;
 
@@ -21762,25 +21751,11 @@ function renderBothConcreteReports(setId) {
 }
 
 // ══════════════════════════════════════════════════════════════
-// SHARED BANNER
+// SHARED BANNER (concrete reports — delegates to ddRptBanner)
 // ══════════════════════════════════════════════════════════════
 function conBanner(title, subtitle, rightLines) {
-  const logo = getLogoSrc();
-  return `<table style="width:100%;background:#1a2535;color:#fff;border-collapse:collapse;-webkit-print-color-adjust:exact;print-color-adjust:exact;color-adjust:exact;">
-    <tr>
-      <td style="padding:8px 14px;width:180px;vertical-align:middle;">
-        ${logo ? `<img src="${logo}" style="height:52px;filter:brightness(0) invert(1);display:block;">` : ''}
-        <div style="font-size:7pt;color:#b0c4de;margin-top:4px;line-height:1.5;">Delaware Dept. of Transportation<br>Materials &amp; Research Lab<br>Dover, DE 19901 · (302) 760-2400</div>
-      </td>
-      <td style="text-align:center;padding:8px;vertical-align:middle;">
-        <div style="font-size:14pt;font-weight:700;letter-spacing:2px;font-family:'Roboto Condensed',sans-serif;">${title}</div>
-        ${subtitle ? `<div style="font-size:7.5pt;color:#b0c4de;margin-top:3px;">${subtitle}</div>` : ''}
-      </td>
-      <td style="text-align:right;padding:8px 14px;width:180px;vertical-align:middle;font-size:7.5pt;color:#b0c4de;line-height:1.6;">
-        ${rightLines}
-      </td>
-    </tr>
-  </table>`;
+  const right = [subtitle, rightLines].filter(Boolean).join('<br>');
+  return ddRptBanner(title, right);
 }
 
 function infoRow2(l1,v1,l2,v2) {
@@ -21796,13 +21771,11 @@ function infoRow2(l1,v1,l2,v2) {
 // DMF-13 — AIR AND SLUMP REPORT
 // ══════════════════════════════════════════════════════════════
 function renderDMF13(set) {
-  const today = new Date().toLocaleDateString('en-US',{year:'numeric',month:'long',day:'numeric'});
   const m = set.materials || {};
-  const fv = v => v != null && v !== '' ? v : '';
-  const CELL_LBL = 'background:#f0f4fb;font-size:8pt;color:#444;padding:5px 10px;font-weight:600;white-space:nowrap;vertical-align:middle;';
-  const CELL_VAL = 'font-size:9.5pt;font-weight:700;font-family:\'DM Mono\',monospace;padding:5px 10px;border-bottom:1px solid #e5e7eb;vertical-align:middle;';
-  const CELL_LBL2 = 'background:#f0f4fb;font-size:8pt;color:#444;padding:5px 10px;font-weight:600;white-space:nowrap;border-left:1px solid #ddd;vertical-align:middle;';
-  const CELL_VAL2 = 'font-size:9.5pt;font-weight:700;font-family:\'DM Mono\',monospace;padding:5px 10px;border-bottom:1px solid #e5e7eb;border-left:1px solid #ddd;vertical-align:middle;';
+  const CELL_LBL = 'background:#f5f7fa;font-size:8pt;color:#444;padding:5px 10px;font-weight:600;white-space:nowrap;vertical-align:middle;border:1px solid #ddd;';
+  const CELL_VAL = 'font-size:9.5pt;font-weight:700;font-family:\'DM Mono\',monospace;padding:5px 10px;border:1px solid #ddd;vertical-align:middle;';
+  const CELL_LBL2 = 'background:#f5f7fa;font-size:8pt;color:#444;padding:5px 10px;font-weight:600;white-space:nowrap;border:1px solid #ddd;vertical-align:middle;';
+  const CELL_VAL2 = 'font-size:9.5pt;font-weight:700;font-family:\'DM Mono\',monospace;padding:5px 10px;border:1px solid #ddd;vertical-align:middle;';
 
   const fieldRow4 = (l1,v1,l2,v2) =>
     `<tr><td style="${CELL_LBL}">${l1}</td><td style="${CELL_VAL}">${v1||''}</td>` +
@@ -21815,10 +21788,8 @@ function renderDMF13(set) {
     <td style="font-size:9.5pt;font-weight:700;font-family:'DM Mono',monospace;padding:4px 8px;border-bottom:1px dotted #ccc;">${v2||''}</td>
   </tr>`;
 
-  return `
-  <div class="dmf13" style="width:100%;max-width:100%;background:#fff;color:#111;font-family:'DM Sans',sans-serif;font-size:9pt;border:2px solid #333;">
-    ${conBanner('AIR AND SLUMP REPORT','DMF-13 &nbsp;·&nbsp; Air &amp; Slump Field Report',
-      `<strong>Contract:</strong> ${set.contract||'—'}<br><strong>Test No.:</strong> ${set.testNo||set.id}<br><strong>Date:</strong> ${formatDateShort(set.castDate)}`)}
+  return ddRptWrap('DMF-13', `
+    ${ddRptBanner('AIR AND SLUMP REPORT', `Form DMF-13 (Rev 12/2024)<br><strong>Contract:</strong> ${set.contract||'—'}<br><strong>Test No.:</strong> ${set.testNo||set.id}<br><strong>Date:</strong> ${formatDateShort(set.castDate)}`)}
 
     <!-- Contract info + Source of Material -->
     <table style="width:100%;border-collapse:collapse;border-top:1px solid #999;">
@@ -21833,7 +21804,7 @@ function renderDMF13(set) {
           </table>
         </td>
         <td style="width:50%;padding:8px 14px;vertical-align:top;">
-          <div style="font-size:8pt;font-weight:700;color:#1a2535;letter-spacing:0.5px;margin-bottom:6px;text-transform:uppercase;border-bottom:2px solid #1a2535;padding-bottom:3px;">Source of Material</div>
+          <div class="dd-rpt-section-head" style="margin-bottom:6px;">Source of Material</div>
           <table style="width:100%;border-collapse:collapse;">
             ${infoR('Brand AEA:', m.aea||'', 'GGBFS Corr. Factor:', set.corrFactor||'')}
             ${infoR('Cement:', m.cement1||'', 'Sand:', m.fineAgg||'')}
@@ -21845,76 +21816,38 @@ function renderDMF13(set) {
       </tr>
     </table>
 
-    <!-- Field data — generous rows -->
-    <table style="width:100%;border-collapse:collapse;border-top:2px solid #1a2535;">
-      <thead>
-        <tr style="background:#1a2535;color:#fff;">
-          <th style="padding:6px 10px;font-size:8.5pt;text-align:left;font-family:'Roboto Condensed',sans-serif;white-space:nowrap;width:200px;">Field Data</th>
-          <th style="padding:6px 10px;font-size:8.5pt;text-align:left;font-family:'Roboto Condensed',sans-serif;">Value</th>
-          <th style="padding:6px 10px;font-size:8.5pt;text-align:left;font-family:'Roboto Condensed',sans-serif;white-space:nowrap;border-left:1px solid #3a5272;width:200px;">Field Data</th>
-          <th style="padding:6px 10px;font-size:8.5pt;text-align:left;font-family:'Roboto Condensed',sans-serif;">Value</th>
-        </tr>
-      </thead>
-      <tbody>
-        ${fieldRow4('Time Charged', set.castTime||'', 'Slump (in.) — T 119', set.fresh.slump != null ? set.fresh.slump + '"' : '')}
-        ${fieldRow4('Truck # / Load #', set.truckNo||'', '% Air — T 152', set.fresh.air != null ? set.fresh.air + '%' : '')}
-        ${fieldRow4('Class &amp; Section No.', (set.concreteClass||'') + (set.sectionNo ? ' / ' + set.sectionNo : ''), 'AEA Amt. (Oz/Sk)', m.aeaOz != null ? String(m.aeaOz) : '')}
-        ${fieldRow4('Concrete Temp (°F) — T 309', set.fresh.concTemp != null ? set.fresh.concTemp + '°' : '', 'Air Temp (°F)', set.fresh.ambTemp != null ? set.fresh.ambTemp + '°' : '')}
-        ${fieldRow4('Unit Weight (pcf) — T 121', set.fresh.unitWeight != null ? String(set.fresh.unitWeight) : '', 'Delivery Ticket #', set.ticketNo||'')}
-        ${m.admix1 ? fieldRow4('Admix 1 — ' + m.admix1 + ' (Oz/Sk)', m.admix1Oz||'', m.admix2 ? 'Admix 2 — ' + m.admix2 + ' (Oz/Sk)' : 'Admix 2 (Oz/Sk)', m.admix2Oz||'') : ''}
-        <tr><td colspan="4" style="${CELL_LBL} padding:8px 10px;"><strong style="font-size:9pt;">Location / Station / Lane / C/L:</strong> &nbsp;${set.pourLocation||''}</td></tr>
-      </tbody>
-    </table>
+    <!-- Field data -->
+    <div class="dd-rpt-section" style="padding:0;">
+      <div class="dd-rpt-section-head" style="margin:0;border-left:none;border-right:none;">Field Data</div>
+      <table class="dd-rpt-table" style="font-size:8.5pt;">
+        <tbody>
+          ${fieldRow4('Time Charged', set.castTime||'', 'Slump (in.) — T 119', set.fresh.slump != null ? set.fresh.slump + '"' : '')}
+          ${fieldRow4('Truck # / Load #', set.truckNo||'', '% Air — T 152', set.fresh.air != null ? set.fresh.air + '%' : '')}
+          ${fieldRow4('Class &amp; Section No.', (set.concreteClass||'') + (set.sectionNo ? ' / ' + set.sectionNo : ''), 'AEA Amt. (Oz/Sk)', m.aeaOz != null ? String(m.aeaOz) : '')}
+          ${fieldRow4('Concrete Temp (°F) — T 309', set.fresh.concTemp != null ? set.fresh.concTemp + '°' : '', 'Air Temp (°F)', set.fresh.ambTemp != null ? set.fresh.ambTemp + '°' : '')}
+          ${fieldRow4('Unit Weight (pcf) — T 121', set.fresh.unitWeight != null ? String(set.fresh.unitWeight) : '', 'Delivery Ticket #', set.ticketNo||'')}
+          ${m.admix1 ? fieldRow4('Admix 1 — ' + m.admix1 + ' (Oz/Sk)', m.admix1Oz||'', m.admix2 ? 'Admix 2 — ' + m.admix2 + ' (Oz/Sk)' : 'Admix 2 (Oz/Sk)', m.admix2Oz||'') : ''}
+          <tr><td colspan="4" class="dd-rpt-lbl" style="padding:8px 10px;"><strong>Location / Station / Lane / C/L:</strong> &nbsp;${set.pourLocation||''}</td></tr>
+        </tbody>
+      </table>
+    </div>
 
     <!-- Remarks -->
-    <table style="width:100%;border-collapse:collapse;border-top:1px solid #999;">
-      <tr>
-        <td style="padding:8px 14px;">
-          <div style="font-size:8.5pt;font-weight:700;margin-bottom:6px;">REMARKS / ADDITIONAL NOTES:</div>
-          <div style="font-size:9pt;min-height:60px;padding:4px 0;">${set.remarks||''}</div>
-        </td>
-      </tr>
-    </table>
+    <div class="dd-rpt-section">
+      <div style="font-size:8.5pt;font-weight:700;margin-bottom:6px;">REMARKS / ADDITIONAL NOTES:</div>
+      <div style="font-size:9pt;min-height:60px;padding:4px 0;">${set.remarks||''}</div>
+    </div>
 
     <!-- Cylinder summary bar -->
-    <table style="width:100%;border-collapse:collapse;border-top:2px solid #1a2535;background:#e8edf2;">
-      <tr>
-        <td style="padding:7px 14px;font-size:9pt;border-right:1px solid #aaa;"><strong>Number Cyls. Made:</strong> &nbsp;${set.cylinders.length}</td>
-        <td style="padding:7px 14px;font-size:9pt;border-right:1px solid #aaa;"><strong>Break Request (Days):</strong> &nbsp;${[...new Set(set.cylinders.map(c=>c.breakAge))].sort((a,b)=>a-b).join(' + ')}</td>
-        <td style="padding:7px 14px;font-size:9pt;"><strong>Cylinder Size:</strong>
-          <span style="border:2px solid #1a2535;padding:2px 10px;margin-left:8px;font-weight:700;background:#fff;">${set.cylDiam}" × ${set.cylDiam === 4 ? '8' : '12'}"</span>
-        </td>
-      </tr>
-    </table>
+    <div class="dd-rpt-subbar" style="justify-content:flex-start;gap:24px;">
+      <span><strong>Number Cyls. Made:</strong> ${set.cylinders.length}</span>
+      <span><strong>Break Request (Days):</strong> ${[...new Set(set.cylinders.map(c=>c.breakAge))].sort((a,b)=>a-b).join(' + ')}</span>
+      <span><strong>Cylinder Size:</strong> ${set.cylDiam}" × ${set.cylDiam === 4 ? '8' : '12'}"</span>
+    </div>
 
-    <!-- Signatures — full-height lines -->
-    <table style="width:100%;border-collapse:collapse;border-top:1px solid #999;">
-      <tr>
-        <td style="padding:12px 16px;width:25%;text-align:center;vertical-align:bottom;">
-          <div style="border-bottom:1.5px solid #555;height:56px;margin-bottom:4px;display:flex;align-items:flex-end;justify-content:center;padding-bottom:4px;font-size:9pt;color:#333;">${set.sampledBy||''}</div>
-          <div style="font-size:7.5pt;color:#555;text-transform:uppercase;letter-spacing:0.5px;">Sampled By</div>
-        </td>
-        <td style="padding:12px 16px;width:25%;text-align:center;border-left:1px solid #ddd;vertical-align:bottom;">
-          <div style="border-bottom:1.5px solid #555;height:56px;margin-bottom:4px;"></div>
-          <div style="font-size:7.5pt;color:#555;text-transform:uppercase;letter-spacing:0.5px;">Contractor</div>
-        </td>
-        <td style="padding:12px 16px;width:25%;text-align:center;border-left:1px solid #ddd;vertical-align:bottom;">
-          <div style="border-bottom:1.5px solid #555;height:56px;margin-bottom:4px;"></div>
-          <div style="font-size:7.5pt;color:#555;text-transform:uppercase;letter-spacing:0.5px;">Subcontractor</div>
-        </td>
-        <td style="padding:12px 16px;width:25%;text-align:center;border-left:1px solid #ddd;vertical-align:bottom;">
-          <div style="border-bottom:1.5px solid #555;height:56px;margin-bottom:4px;"></div>
-          <div style="font-size:7.5pt;color:#555;text-transform:uppercase;letter-spacing:0.5px;">Job Inspector</div>
-        </td>
-      </tr>
-    </table>
-    <table style="width:100%;border-collapse:collapse;border-top:1px solid #999;background:#e8edf2;">
-      <tr>
-        <td style="padding:4px 14px;font-size:7.5pt;color:#666;">DMF-13 (REV 12/2024) &nbsp;&nbsp; (Signature Acknowledges Test Results)</td>
-        <td style="padding:4px 14px;font-size:7.5pt;color:#666;text-align:right;">Generated: ${today}</td>
-      </tr>
-    </table>
-  </div>`;
+    ${ddRptSignatures(['Sampled By', 'Contractor', 'Subcontractor', 'Job Inspector'], [set.sampledBy||'', '', '', ''])}
+    ${ddRptFooter('DMF-13 (REV 12/2024) · Signature Acknowledges Test Results')}
+  `, { concrete: 'dmf13' });
 }
 
 
@@ -21971,7 +21904,6 @@ function fractureSVG(type, size) {
 function renderDMP15(set) {
   const fc  = v => v != null && v !== '' ? v : '—';
   const fcBlank = v => v != null && v !== '' ? v : '';
-  const today = new Date().toLocaleDateString('en-US',{year:'numeric',month:'long',day:'numeric'});
   const m = set.materials || {};
 
   // Determine overall pass/fail
@@ -22035,13 +21967,8 @@ function renderDMP15(set) {
   // Break type text list (kept for any other uses)
   const breakTypeList = set.cylinders.filter(c=>c.fracture).map((c,i) => FRACTURE_SHORT[c.fracture]).join('&nbsp;&nbsp;&nbsp;');
 
-  return `
-  <div class="dmp15">
-    <div class="dmp15-header">
-      <div class="dh-agency">MATERIALS AND RESEARCH<br>DELAWARE DEPARTMENT OF TRANSPORTATION<br>800 BAY ROAD DOVER, DELAWARE, 19901 &nbsp;&#x25CF;&nbsp; (302) 760-2400</div>
-      <div class="dh-title">COMPRESSION TEST REPORT</div>
-      <div class="dh-stds">ASTM C-143, ASTM C-39, ASTM C-1231, ASTM C-231, ASTM C-1064</div>
-    </div>
+  return ddRptWrap('DMP-15', `
+    ${ddRptBanner('COMPRESSION TEST REPORT', `Form DMP-15 (Rev 10/2022)<br>ASTM C-143, C-39, C-1231, C-231, C-1064<br><strong>Test No.:</strong> ${set.testNo||set.id}`)}
 
     <div class="dmp15-info">
       <div class="di-col">
@@ -22103,7 +22030,7 @@ function renderDMP15(set) {
     </div>
 
     <div style="padding:0 0 0 0;">
-      <table class="dmp15-table">
+      <table class="dmp15-table dd-rpt-table">
         <thead>
           <tr>
             <th style="width:20px;">#</th>
@@ -22180,12 +22107,8 @@ function renderDMP15(set) {
       </div>
     </div>
 
-    <div class="dmp15-footer">
-      <span>DMP-15 (REV 10/2022)</span>
-      <span>Generated by DelDOT LabTrak &nbsp;·&nbsp; Set: ${set.id}</span>
-      <span>1/1</span>
-    </div>
-  </div>`;
+    ${ddRptFooter(`DMP-15 (REV 10/2022) · Set: ${set.id}`)}
+  `, { concrete: 'dmp15', wide: false });
 }
 
 // ══════════════════════════════════════════════════════════════
@@ -22315,42 +22238,46 @@ function printBorrowReport() {
   contracts.forEach(c => { BORROW_LETTERS.forEach(l => { grand[l] += contractData[c][l]; }); });
   const grandTotal = BORROW_LETTERS.reduce((sum, l) => sum + grand[l], 0);
 
-  const now = new Date().toLocaleString();
+  const now = ddRptGenerated();
 
   let rows = '';
   contracts.forEach(contract => {
     const d = contractData[contract];
     const rowTotal = BORROW_LETTERS.reduce((sum, l) => sum + d[l], 0);
-    rows += `<tr><td>${contract}</td>`;
+    rows += `<tr><td class="dd-rpt-lbl">${contract}</td>`;
     BORROW_LETTERS.forEach(l => { rows += `<td>${d[l] || 0}</td>`; });
     rows += `<td><strong>${rowTotal}</strong></td></tr>`;
   });
-  rows += `<tr class="grand"><td>ALL CONTRACTS</td>`;
+  rows += `<tr class="dd-rpt-total"><td class="dd-rpt-lbl">ALL CONTRACTS</td>`;
   BORROW_LETTERS.forEach(l => { rows += `<td><strong>${grand[l] || 0}</strong></td>`; });
   rows += `<td><strong>${grandTotal}</strong></td></tr>`;
 
   const win = window.open('', '_blank', 'width=900,height=700');
-  win.document.write(`<!DOCTYPE html><html><head><title>Borrow Count Report — DelDOT</title><style>
-    body{font-family:Arial,sans-serif;margin:32px;color:#111;}
-    h1{font-size:20px;margin:0 0 4px;}
-    .meta{font-size:11px;color:#666;margin-bottom:24px;}
-    table{width:100%;border-collapse:collapse;font-size:13px;}
-    th{background:#10b981;color:#fff;padding:10px 14px;text-align:center;letter-spacing:1px;font-size:11px;}
-    th.lft{text-align:left;}
-    td{padding:9px 14px;text-align:center;border-bottom:1px solid #e5e7eb;}
-    td:first-child{text-align:left;font-weight:600;color:#0f4c3a;}
-    tr:nth-child(even){background:#f0fdf4;}
-    tr.grand{background:#d1fae5;}
-    tr.grand td{font-weight:700;}
-    @media print{body{margin:12px;}}
-  </style></head><body>
-  <h1>BORROW COUNT REPORT</h1>
-  <div class="meta">DelDOT Materials Testing &nbsp;|&nbsp; Generated: ${now}</div>
-  <table><thead><tr>
-    <th class="lft">CONTRACT</th>
-    <th>TYPE A</th><th>TYPE B</th><th>TYPE C</th><th>TYPE D</th><th>TYPE F</th>
-    <th>TOTAL</th>
-  </tr></thead><tbody>${rows}</tbody></table>
+  win.document.write(`<!DOCTYPE html><html><head><title>Borrow Count Report — DelDOT</title><style>${ddRptPrintCss()}</style></head><body>
+  <div class="dd-rpt">
+    <div class="dd-rpt-banner">
+      <div class="bl"></div>
+      <div class="bc">
+        <div class="big">BORROW COUNT REPORT</div>
+        <div class="sub">${DD_RPT_AGENCY}</div>
+      </div>
+      <div class="br">Section 1001 Borrow<br>Generated: ${now}</div>
+    </div>
+    <div class="dd-rpt-section" style="padding:0;">
+      <table class="dd-rpt-table">
+        <thead><tr>
+          <th class="dd-rpt-lbl" style="text-align:left;">CONTRACT</th>
+          <th>TYPE A</th><th>TYPE B</th><th>TYPE C</th><th>TYPE D</th><th>TYPE F</th>
+          <th>TOTAL</th>
+        </tr></thead>
+        <tbody>${rows}</tbody>
+      </table>
+    </div>
+    <div class="dd-rpt-footer">
+      <span>Section 1001 Borrow Classification Counts</span>
+      <span>Generated: ${now}</span>
+    </div>
+  </div>
   </body></html>`);
   win.document.close();
   win.focus();
