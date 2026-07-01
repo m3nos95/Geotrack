@@ -564,7 +564,10 @@ html.comfort-mode .hab-pulse{animation:none !important;box-shadow:none !importan
           <div class="form-group"><label>Surface Elevation (ft)</label><input type="text" id="bh_elev"></div>
           <div class="form-group" style="grid-column:1 / -1;">
             <label>GPS Coordinates</label>
-            <input type="text" id="bh_gps" placeholder="From boring log, or auto-computed from N/E on save">
+            <div style="display:flex;gap:8px;align-items:center;">
+              <input type="text" id="bh_gps" placeholder="39.146760, -75.504430" style="flex:1;">
+              <button type="button" class="btn btn-ghost btn-sm" onclick="captureBoringGPS()">📍 GPS</button>
+            </div>
           </div>
           <div class="form-group"><label>Date Started</label><input type="date" id="bh_date_start"></div>
           <div class="form-group"><label>Date Completed</label><input type="date" id="bh_date_end"></div>
@@ -1888,9 +1891,10 @@ function parseBorelogGps(str) {
 }
 
 function delawareNEToLatLng(northing, easting) {
-  const n = parseFloat(String(northing).replace(/,/g, ''));
-  const e = parseFloat(String(easting).replace(/,/g, ''));
+  let n = parseFloat(String(northing).replace(/,/g, ''));
+  let e = parseFloat(String(easting).replace(/,/g, ''));
   if (!isFinite(n) || !isFinite(e)) return null;
+  if (e > 0 && e < 1000000) e += 2000000;
   if (typeof proj4 === 'undefined') return null;
   try {
     const [lng, lat] = proj4(DE_STATE_PLANE, 'WGS84', [e, n]);
@@ -1923,6 +1927,31 @@ function syncBoringGpsFields(b) {
   }
   b.gps_coordinates = manual;
   return b.gps_coordinates;
+}
+
+function captureBoringGPS() {
+  const el = $('bh_gps');
+  if (!el) return;
+  if (!navigator.geolocation) { toast('GPS not supported', true); return; }
+  el.value = '📍 Locating…';
+  navigator.geolocation.getCurrentPosition(
+    p => {
+      el.value = formatBoringGps(p.coords.latitude, p.coords.longitude, ' (±' + Math.round(p.coords.accuracy) + 'm)');
+      toast('GPS captured — save header to persist');
+    },
+    () => {
+      el.value = '';
+      toast('Could not get GPS fix', true);
+    },
+    { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 }
+  );
+}
+
+function boringGpsDisplay(b) {
+  if (!b) return '';
+  if (b.gps_coordinates) return b.gps_coordinates;
+  const fromPlane = delawareNEToLatLng(b.northing, b.easting);
+  return fromPlane ? formatBoringGps(fromPlane.lat, fromPlane.lng, ' (state plane)') : '';
 }
 
 const LABTRAK_CTX_KEY = 'labtrak_borelog_context';
@@ -2421,7 +2450,7 @@ function renderBoringEdit(){
   f('bh_state_contract', b.state_contract || p.contract_no);
   f('bh_federal_contract', b.federal_contract || p.federal_no); f('bh_station', b.station_offset);
   f('bh_reference', b.reference); f('bh_northing', b.northing); f('bh_easting', b.easting);
-  f('bh_elev', b.surface_elev); f('bh_gps', b.gps_coordinates); f('bh_date_start', b.date_started); f('bh_date_end', b.date_completed);
+  f('bh_elev', b.surface_elev); f('bh_gps', boringGpsDisplay(b)); f('bh_date_start', b.date_started); f('bh_date_end', b.date_completed);
   f('bh_hammer_wt', b.hammer_wt||140); f('bh_hammer_fall', b.hammer_fall||30);
   f('bh_d_sampler', b.d_sampler||'Split Barrel'); f('bh_d_od', b.d_od||2);
   f('bh_u_sampler', b.u_sampler); f('bh_u_od', b.u_od);
@@ -2439,6 +2468,7 @@ function saveBoringHeader(){
   b.state_contract=get('bh_state_contract'); b.federal_contract=get('bh_federal_contract');
   b.station_offset=get('bh_station'); b.reference=get('bh_reference');
   b.northing=get('bh_northing'); b.easting=get('bh_easting'); b.surface_elev=get('bh_elev');
+  b.gps_coordinates = get('bh_gps');
   syncBoringGpsFields(b);
   b.date_started=$('bh_date_start').value; b.date_completed=$('bh_date_end').value;
   b.hammer_wt=$('bh_hammer_wt').value; b.hammer_fall=$('bh_hammer_fall').value;
@@ -3687,6 +3717,7 @@ async function runGeoImport(){
         remarks:        pd['NOTES']           || '',
         created_at: new Date().toISOString()
       };
+      syncBoringGpsFields(boring);
       store.saveBoring(boring);
 
       // Determine sample list: prefer .$P$ SAMP_NUM, fall back to MDT.
