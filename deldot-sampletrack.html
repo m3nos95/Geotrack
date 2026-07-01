@@ -98,7 +98,7 @@ _loadScript(
 }
 * { box-sizing: border-box; margin: 0; padding: 0; }
 html, body { height: 100%; }
-body { background: var(--bg); color: var(--text); font-family: var(--sans); font-size: 14px; background-image: radial-gradient(ellipse at 20% 50%, rgba(196,124,42,0.04) 0%, transparent 60%), radial-gradient(ellipse at 80% 10%, rgba(74,144,226,0.04) 0%, transparent 50%); }
+body { background: var(--bg); color: var(--text); font-family: var(--sans); font-size: 14px; }
 
 /* ── SETUP OVERLAY ── */
 #setupOverlay {
@@ -144,6 +144,8 @@ body { background: var(--bg); color: var(--text); font-family: var(--sans); font
   grid-template-columns: 68px 1fr;
   height: 100vh;
   overflow: hidden;
+  position: relative;
+  z-index: 1;
 }
 
 /* ── TOP BAR ── */
@@ -274,6 +276,9 @@ body { background: var(--bg); color: var(--text); font-family: var(--sans); font
 /* ── VIEWS ── */
 .view { display: none; }
 .view.active { display: block; overflow-y: auto; position: absolute; inset: 0; }
+#report-view { background: #e8ecf0; }
+#report-view.active > div { background: #e8ecf0; min-height: 100%; }
+#report-view .dd-rpt { position: relative; z-index: 1; }
 
 /* Legacy nav hidden — JS still references .nav-tab for active state */
 nav:not(#r18-nav), .nav-top-row { display: none !important; }
@@ -281,11 +286,11 @@ nav:not(#r18-nav), .nav-top-row { display: none !important; }
 .nav-tab  { display: none !important; }
 
 /* ── SOIL/LAB MODULE ── */
-#soillab-view { overflow: hidden; }
+#soillab-view { overflow: hidden; background: var(--surface); }
 #soillab-view.active { display: flex; flex-direction: column; overflow: hidden; }
-.soillab-layout { display: grid; grid-template-columns: 300px 1fr; grid-template-rows: 1fr; height: 100%; overflow: hidden; }
+.soillab-layout { display: grid; grid-template-columns: 300px 1fr; grid-template-rows: 1fr; height: 100%; overflow: hidden; background: var(--surface); }
 .sl-queue-panel { background: var(--surface); border-right: 1px solid var(--border); display: flex; flex-direction: column; overflow: hidden; min-height: 0; }
-.sl-entry-panel { overflow-y: auto; min-height: 0; background: var(--bg); display: block; }
+.sl-entry-panel { overflow-y: auto; min-height: 0; background: var(--surface); display: block; }
 .sl-queue-header { padding: 12px 14px 8px; border-bottom: 1px solid var(--border); flex-shrink: 0; }
 .sl-queue-title { font-family: var(--mono); font-size: 9px; letter-spacing: 2px; color: var(--accent2); text-transform: uppercase; }
 .sl-queue-sub { font-family: var(--sans); font-size: 10px; color: var(--muted); margin-top: 2px; }
@@ -1981,9 +1986,6 @@ body { font-family: var(--sans); font-size: 13.5px; line-height: 1.5; letter-spa
 /* ── View container ── */
 #view-container {
   background: var(--bg);
-  background-image:
-    radial-gradient(ellipse at 15% 0%, rgba(217,138,56,0.04) 0%, transparent 55%),
-    radial-gradient(ellipse at 85% 100%, rgba(74,144,226,0.03) 0%, transparent 55%);
 }
 
 /* ── Cards and panels ── */
@@ -2486,7 +2488,7 @@ h2 { font-family: var(--display); font-size: 20px; font-weight: 700; color: var(
 /* ── Subtle grid lines on body ── */
 body::before {
   content: '';
-  position: fixed; inset: 0; pointer-events: none; z-index: 0;
+  position: fixed; inset: 0; pointer-events: none; z-index: -1;
   background-image:
     linear-gradient(rgba(255,255,255,0.012) 1px, transparent 1px),
     linear-gradient(90deg, rgba(255,255,255,0.012) 1px, transparent 1px);
@@ -6305,7 +6307,7 @@ table.fc-borrow-tbl tr.fc-borrow-detail-row td{background:var(--surface);border-
 // GLOBALS
 // ══════════════════════════════════════════════
 let db = null;
-const APP_BUILD = '2026.07.02-uniform-reports';
+const APP_BUILD = '2026.07.02-soillab-gradient-fix';
 const FC_CORE_ICON_SRC = 'docs/r18-reference/core-drill-icon-128.png';
 const BORELOG_ICON_SRC = 'docs/r18-reference/borelog-icon.webp';
 const BORELOG_PATH = 'docs/r18-reference/deldot-borelog.html';
@@ -24724,38 +24726,8 @@ document.addEventListener('keydown', function(e) {
      ══════════════════════════════════════════════════════════════ -->
 <style id="motion-system">
 
-/* ── 1. AMBIENT BACKGROUND DRIFT ─────────────────────────────
-   Two large blurred radial blobs drift slowly across the body,
-   giving the UI a living, breathing quality.                 */
-@keyframes ambient-a {
-  0%,100% { transform: translate(0,    0)    scale(1); }
-  33%     { transform: translate(3vw,  2vh)  scale(1.06); }
-  66%     { transform: translate(-2vw, 4vh)  scale(0.97); }
-}
-@keyframes ambient-b {
-  0%,100% { transform: translate(0, 0)       scale(1); }
-  50%     { transform: translate(-4vw, -3vh) scale(1.09); }
-}
-body::before, body::after {
-  content: '';
-  position: fixed;
-  border-radius: 50%;
-  pointer-events: none;
-  z-index: 0;
-  filter: blur(90px);
-}
-body::before {
-  width: 60vw; height: 60vw;
-  left: -12vw; top: 15vh;
-  background: radial-gradient(circle, rgba(196,124,42,0.05) 0%, transparent 65%);
-  animation: ambient-a 30s ease-in-out infinite;
-}
-body::after {
-  width: 50vw; height: 50vw;
-  right: -10vw; top: -8vh;
-  background: radial-gradient(circle, rgba(74,144,226,0.04) 0%, transparent 65%);
-  animation: ambient-b 24s ease-in-out infinite;
-}
+/* ── 1. AMBIENT BACKGROUND DRIFT — disabled; blurred body pseudo-elements
+   were painting over form views (visible haze in the upper-right corner). ── */
 
 /* ── 2. STATUS DOT PULSES ────────────────────────────────────
    All status dot colors get a breathing glow.               */
@@ -25194,7 +25166,6 @@ body::after {
 /* ── REDUCED MOTION ─────────────────────────────────────────
    Strip everything for users who prefer no motion.         */
 @media (prefers-reduced-motion: reduce) {
-  body::before, body::after { animation: none !important; }
   .topbar-stat-dot, .conn-dot, .sync-status-chip.syncing .sync-status-dot { animation: none !important; }
   .rail-item.active .rail-icon-wrap,
   .sl-filter-btn.active,
