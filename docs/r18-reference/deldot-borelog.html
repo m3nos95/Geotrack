@@ -1881,27 +1881,45 @@ function parseBorelogGps(str) {
   const a = parseFloat(m[1]);
   const b = parseFloat(m[2]);
   if (!isFinite(a) || !isFinite(b)) return null;
+  if (a > 10000 && b > 10000) return delawareNEToLatLng(a, b);
+
   let lat = a;
   let lng = b;
   if (a > 0 && b < 0) { lat = a; lng = b; }
   else if (a < 0 && b > 0) { lng = a; lat = b; }
   else if (Math.abs(a) > 90 && Math.abs(b) <= 90) { lng = a; lat = b; }
+  else if (Math.abs(b) > 90 && Math.abs(a) <= 90) { lat = a; lng = b; }
+
+  // Delaware coords are often entered without the minus on longitude (e.g. "39.15, 75.52")
+  if (lat >= 36 && lat <= 42 && lng > 70 && lng <= 80) lng = -lng;
+
+  if (lat < -90 || lat > 90 || lng < -180 || lng > 180) return null;
   if (lat < 36 || lat > 41 || lng < -77 || lng > -73) return null;
   return { lat, lng };
 }
 
 function delawareNEToLatLng(northing, easting) {
-  let n = parseFloat(String(northing).replace(/,/g, ''));
-  let e = parseFloat(String(easting).replace(/,/g, ''));
-  if (!isFinite(n) || !isFinite(e)) return null;
-  if (e > 0 && e < 1000000) e += 2000000;
+  const n0 = parseFloat(String(northing).replace(/,/g, ''));
+  const e0 = parseFloat(String(easting).replace(/,/g, ''));
+  if (!isFinite(n0) || !isFinite(e0)) return null;
   if (typeof proj4 === 'undefined') return null;
-  try {
-    const [lng, lat] = proj4(DE_STATE_PLANE, 'WGS84', [e, n]);
-    if (!isFinite(lat) || !isFinite(lng)) return null;
-    if (lat < 36 || lat > 41 || lng < -77 || lng > -73) return null;
-    return { lat, lng };
-  } catch (e) { return null; }
+
+  const FT = 3.280839895;
+  const attempts = [
+    [e0 > 0 && e0 < 1000000 ? e0 + 2000000 : e0, n0],
+    [e0, n0],
+    [e0 * FT, n0 * FT],
+    [e0 * FT + (e0 > 0 && e0 < 1000000 ? 2000000 : 0), n0 * FT],
+  ];
+
+  for (const [e, n] of attempts) {
+    try {
+      const [lng, lat] = proj4(DE_STATE_PLANE, 'WGS84', [e, n]);
+      if (!isFinite(lat) || !isFinite(lng)) continue;
+      if (lat >= 36 && lat <= 41 && lng >= -77 && lng <= -73) return { lat, lng };
+    } catch (err) { /* try next */ }
+  }
+  return null;
 }
 
 function formatBoringGps(lat, lng, suffix) {
@@ -1912,20 +1930,32 @@ function formatBoringGps(lat, lng, suffix) {
 function syncBoringGpsFields(b) {
   const gpsEl = $('bh_gps');
   const manual = (gpsEl ? gpsEl.value : b.gps_coordinates || '').trim();
+  if (!manual && !String(b.northing || '').trim() && !String(b.easting || '').trim()) {
+    b.map_lat = '';
+    b.map_lng = '';
+    b.gps_coordinates = '';
+    return '';
+  }
   const parsed = parseBorelogGps(manual);
   if (parsed) {
     const suffix = manual.match(/\(.*\)/) ? manual.slice(manual.indexOf('(')) : '';
     b.gps_coordinates = formatBoringGps(parsed.lat, parsed.lng, suffix);
+    b.map_lat = parsed.lat;
+    b.map_lng = parsed.lng;
     if (gpsEl) gpsEl.value = b.gps_coordinates;
     return b.gps_coordinates;
   }
   const fromPlane = delawareNEToLatLng(b.northing, b.easting);
   if (fromPlane) {
     b.gps_coordinates = formatBoringGps(fromPlane.lat, fromPlane.lng, ' (state plane)');
+    b.map_lat = fromPlane.lat;
+    b.map_lng = fromPlane.lng;
     if (gpsEl && !manual) gpsEl.value = b.gps_coordinates;
     return b.gps_coordinates;
   }
   b.gps_coordinates = manual;
+  b.map_lat = '';
+  b.map_lng = '';
   return b.gps_coordinates;
 }
 
@@ -2439,9 +2469,18 @@ function deleteBoring(){
 }
 
 /* ---------- BORING EDIT ---------- */
+function ensureBoringMapCoords(b) {
+  if (!b) return;
+  const hadMap = isFinite(parseFloat(b.map_lat)) && isFinite(parseFloat(b.map_lng));
+  syncBoringGpsFields(b);
+  const hasMap = isFinite(parseFloat(b.map_lat)) && isFinite(parseFloat(b.map_lng));
+  if (!hadMap && hasMap) store.saveBoring(b);
+}
+
 function renderBoringEdit(){
   const b = store.getBoring(currentBoringId); const p = store.getProject(currentProjectId);
   if(!b){ showView('borings'); return; }
+  ensureBoringMapCoords(b);
   $('bcProjName2').textContent = p.name;
   $('bcBoringNo').textContent = b.boring_no || '(no #)';
   $('editBoringTitle').textContent = b.boring_no || 'Boring';

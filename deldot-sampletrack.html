@@ -6307,7 +6307,7 @@ table.fc-borrow-tbl tr.fc-borrow-detail-row td{background:var(--surface);border-
 // GLOBALS
 // ══════════════════════════════════════════════
 let db = null;
-const APP_BUILD = '2026.07.03-labtrak';
+const APP_BUILD = '2026.07.03-borelog-gps-v2';
 const FC_CORE_ICON_SRC = 'docs/r18-reference/core-drill-icon-128.png';
 const BORELOG_ICON_SRC = 'docs/r18-reference/borelog-icon.webp';
 const BORELOG_PATH = 'docs/r18-reference/deldot-borelog.html';
@@ -7062,6 +7062,9 @@ function parseGPS(str, relaxBounds) {
     lng = b;
   }
 
+  // Delaware coords are often entered without the minus on longitude (e.g. "39.15, 75.52")
+  if (lat >= 36 && lat <= 42 && lng > 70 && lng <= 80) lng = -lng;
+
   if (!relaxBounds) {
     if (lat < 38 || lat > 40 || lng < -76 || lng > -74) return null;
   } else if (lat < -90 || lat > 90 || lng < -180 || lng > 180) {
@@ -7070,19 +7073,56 @@ function parseGPS(str, relaxBounds) {
   return { lat, lng };
 }
 
+function looksLikeGpsString(str) {
+  if (!str) return false;
+  const s = String(str).trim();
+  if (/^-?\d+(?:\.\d+)?\s*[, ]\s*-?\d+(?:\.\d+)?/.test(s)) return true;
+  const parts = s.split(/[,;\s]+/).map(p => p.trim()).filter(Boolean);
+  if (parts.length < 2) return false;
+  const a = parseFloat(parts[0]);
+  const b = parseFloat(parts[1]);
+  if (!isFinite(a) || !isFinite(b)) return false;
+  if (Math.abs(a) <= 90 && Math.abs(b) <= 180) return true;
+  if (a > 10000 && b > 10000) return true;
+  return false;
+}
+
+function parseGpsOrStatePlane(raw) {
+  if (!raw) return null;
+  const parsed = parseGPS(raw, true);
+  if (parsed) return parsed;
+  const s = String(raw).replace(/\(.*?\)/g, '').trim();
+  const parts = s.split(/[,;\s]+/).map(p => p.trim()).filter(Boolean);
+  if (parts.length < 2) return null;
+  const a = parseFloat(parts[0]);
+  const b = parseFloat(parts[1]);
+  if (!isFinite(a) || !isFinite(b)) return null;
+  if (a > 10000 && b > 10000) return delawareNEToLatLng(a, b);
+  return null;
+}
+
 function delawareNEToLatLng(northing, easting) {
-  let n = parseFloat(String(northing).replace(/,/g, ''));
-  let e = parseFloat(String(easting).replace(/,/g, ''));
-  if (!isFinite(n) || !isFinite(e)) return null;
-  // GeoSystem / field sheets sometimes omit Delaware's 2,000,000 ft false easting
-  if (e > 0 && e < 1000000) e += 2000000;
+  const n0 = parseFloat(String(northing).replace(/,/g, ''));
+  const e0 = parseFloat(String(easting).replace(/,/g, ''));
+  if (!isFinite(n0) || !isFinite(e0)) return null;
   if (typeof proj4 === 'undefined') return null;
-  try {
-    const [lng, lat] = proj4(DE_STATE_PLANE, 'WGS84', [e, n]);
-    if (!isFinite(lat) || !isFinite(lng)) return null;
-    if (lat < 36 || lat > 41 || lng < -77 || lng > -73) return null;
-    return { lat, lng };
-  } catch (err) { return null; }
+
+  const FT = 3.280839895;
+  const attempts = [
+    [e0 > 0 && e0 < 1000000 ? e0 + 2000000 : e0, n0],
+    [e0, n0],
+    [e0 * FT, n0 * FT],
+    [e0 * FT + (e0 > 0 && e0 < 1000000 ? 2000000 : 0), n0 * FT],
+  ];
+
+  for (const [e, n] of attempts) {
+    try {
+      const [lng, lat] = proj4(DE_STATE_PLANE, 'WGS84', [e, n]);
+      if (!isFinite(lat) || !isFinite(lng)) continue;
+      if (lat >= 36 && lat <= 41 && lng >= -77 && lng <= -73) return { lat, lng };
+    } catch (err) { /* try next */ }
+  }
+  return null;
 }
 
 function parseBorelogHeaderData(row) {
@@ -7098,6 +7138,8 @@ function parseBorelogHeaderData(row) {
     northing: header.northing || header.NORTH || header.north || '',
     easting: header.easting || header.EAST || header.east || '',
     gps_coordinates: header.gps_coordinates || header.gps || header.GPS || '',
+    map_lat: header.map_lat ?? header.latitude ?? header.LAT ?? header.lat ?? '',
+    map_lng: header.map_lng ?? header.longitude ?? header.LON ?? header.lng ?? header.long ?? '',
     date_started: header.date_started || '',
     date_completed: header.date_completed || '',
   };
@@ -7105,9 +7147,14 @@ function parseBorelogHeaderData(row) {
 
 function resolveBorelogBoringCoords(b) {
   if (!b) return null;
-  const gpsCandidates = [b.gps_coordinates, b.gps, b.location].filter(Boolean);
-  for (const gps of gpsCandidates) {
-    const parsed = parseGPS(gps, true);
+  const mapLat = parseFloat(b.map_lat);
+  const mapLng = parseFloat(b.map_lng);
+  if (isFinite(mapLat) && isFinite(mapLng)) return { lat: mapLat, lng: mapLng };
+
+  const gpsCandidates = [b.gps_coordinates, b.gps];
+  if (looksLikeGpsString(b.location)) gpsCandidates.push(b.location);
+  for (const gps of gpsCandidates.filter(Boolean)) {
+    const parsed = parseGpsOrStatePlane(gps);
     if (parsed) return parsed;
   }
   return delawareNEToLatLng(b.northing, b.easting);
@@ -7123,6 +7170,8 @@ function normalizeBorelogMapBoring(row, projectMeta) {
     northing: fields.northing || '',
     easting: fields.easting || '',
     gps_coordinates: fields.gps_coordinates || '',
+    map_lat: fields.map_lat || '',
+    map_lng: fields.map_lng || '',
     date_started: fields.date_started || '',
     date_completed: fields.date_completed || '',
     contract: projectMeta?.contract || row.contract || '',
@@ -7166,18 +7215,21 @@ async function fetchBorelogBoringsForContract(contract) {
   collectBorelogBoringsFromLocal(contract).forEach(add);
   if (!db) return out;
   try {
-    let projQuery = db.from('borelog_projects').select('id,contract,name').is('deleted_at', null);
-    if (contract) projQuery = projQuery.ilike('contract', contract);
-    const { data: projects } = await projQuery;
-    const projs = projects || [];
-    if (!projs.length) return out;
-    const projById = Object.fromEntries(projs.map(p => [p.id, p]));
-    const { data: rows } = await db.from('borelog_borings')
-      .select('*')
-      .in('project_id', projs.map(p => p.id))
-      .is('deleted_at', null);
+    const contractLower = (contract || '').trim().toLowerCase();
+    const [{ data: projects, error: pErr }, { data: rows, error: bErr }] = await Promise.all([
+      db.from('borelog_projects').select('id,contract,name').is('deleted_at', null),
+      db.from('borelog_borings').select('*').is('deleted_at', null),
+    ]);
+    if (pErr) throw pErr;
+    if (bErr) throw bErr;
+    const projById = Object.fromEntries((projects || []).map(p => [p.id, p]));
     (rows || []).forEach(row => {
-      const item = normalizeBorelogMapBoring(row, projById[row.project_id]);
+      const meta = projById[row.project_id] || {};
+      if (contractLower) {
+        const pc = (meta.contract || '').trim().toLowerCase();
+        if (pc && pc !== contractLower) return;
+      }
+      const item = normalizeBorelogMapBoring(row, meta);
       if (item) add(item);
     });
   } catch (e) { console.warn('fetchBorelogBoringsForContract:', e); }
@@ -8017,6 +8069,12 @@ function initLabMapView() {
 
 window.addEventListener('resize', () => {
   if (currentView === 'labmap') labMapResizeSoon();
+});
+
+window.addEventListener('storage', (e) => {
+  if (e.key !== BORELOG_STORE_KEY) return;
+  if (!labMap || currentView !== 'labmap') return;
+  labMapReload();
 });
 
 // ══════════════════════════════════════════════
