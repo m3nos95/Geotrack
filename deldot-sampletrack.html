@@ -6894,6 +6894,7 @@ async function openProjectMap(contract, projectName, opts) {
     syncMapStyleButtons();
     projectMap.addControl(new mapboxgl.NavigationControl(), 'top-right');
     projectMap.addControl(new mapboxgl.FullscreenControl(), 'top-right');
+    setupMapPopupDismiss(projectMap, () => mapMarkers);
   }
 
   // Clear existing markers
@@ -7476,6 +7477,16 @@ function addLabTrakMapMarker(map, options) {
     .addTo(map);
   wireMapMarkerPopup(marker, { getSiblings, popupLayer });
   return marker;
+}
+
+function setupMapPopupDismiss(map, getMarkers) {
+  if (!map || map._labtrakPopupDismiss) return;
+  map._labtrakPopupDismiss = true;
+  map.on('click', (e) => {
+    const t = e.originalEvent?.target;
+    if (t?.closest?.('.mapboxgl-marker') || t?.closest?.('.mapboxgl-popup')) return;
+    closeAllMapPopups(typeof getMarkers === 'function' ? getMarkers() : []);
+  });
 }
 
 function createMarkerEl(color, symbol, isActive, dimmed) {
@@ -8275,6 +8286,7 @@ function initLabMapView() {
     syncMapStyleButtons();
     labMap.addControl(new mapboxgl.NavigationControl(), 'top-right');
     labMap.addControl(new mapboxgl.FullscreenControl(), 'top-right');
+    setupMapPopupDismiss(labMap, () => labMapMarkers);
     labMap.on('load', () => {
       labMapInitDraw();
       labMapResizeSoon();
