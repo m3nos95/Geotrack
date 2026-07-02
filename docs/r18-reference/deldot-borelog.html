@@ -856,7 +856,7 @@ const DELDOT_LOGO = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAPAAAADwCAYAA
    - Storage wrapper abstracted for future Supabase port
    ========================================================================= */
 const STORE_KEY = 'deldot_borelog_v2';
-const DE_STATE_PLANE = '+proj=lcc +lat_1=38.93333333333333 +lat_2=39.83333333333333 +lat_0=38 +lon_0=-75.41666666666667 +x_0=2000000 +y_0=0 +datum=NAD83 +units=us-ft +no_defs';
+const DE_STATE_PLANE = '+proj=lcc +lat_1=38.43333333333334 +lat_2=39.83333333333333 +lat_0=38 +lon_0=-75.41666666666666 +x_0=200000.99998984026 +y_0=0 +ellps=GRS80 +units=us-ft +no_defs';
 const SB_URL_KEY = 'labtrak_sb_url';
 const SB_KEY_KEY = 'labtrak_sb_anon_key';
 const BORELOG_SYNC_QUEUE_KEY = 'deldot_borelog_sync_queue';
@@ -1881,7 +1881,7 @@ function parseBorelogGps(str) {
   const a = parseFloat(m[1]);
   const b = parseFloat(m[2]);
   if (!isFinite(a) || !isFinite(b)) return null;
-  if (a > 10000 && b > 10000) return delawareNEToLatLng(a, b);
+  if (a > 50000 && b > 50000) return delawareNEToLatLng(a, b);
 
   let lat = a;
   let lng = b;
@@ -1898,26 +1898,39 @@ function parseBorelogGps(str) {
   return { lat, lng };
 }
 
+function delawareBoundsOk(lat, lng) {
+  return lat >= 38.4 && lat <= 39.95 && lng >= -76.05 && lng <= -74.4;
+}
+
 function delawareNEToLatLng(northing, easting) {
   const n0 = parseFloat(String(northing).replace(/,/g, ''));
   const e0 = parseFloat(String(easting).replace(/,/g, ''));
   if (!isFinite(n0) || !isFinite(e0)) return null;
-  if (typeof proj4 === 'undefined') return null;
 
-  const FT = 3.280839895;
-  const attempts = [
-    [e0 > 0 && e0 < 1000000 ? e0 + 2000000 : e0, n0],
-    [e0, n0],
-    [e0 * FT, n0 * FT],
-    [e0 * FT + (e0 > 0 && e0 < 1000000 ? 2000000 : 0), n0 * FT],
-  ];
+  const MFT = 3.280839895;
+  const eastCandidates = new Set([e0]);
+  if (e0 > 1500000) eastCandidates.add(e0 - 1800000);
+  if (e0 > 0 && e0 < 100000) eastCandidates.add(e0 + 200000);
 
-  for (const [e, n] of attempts) {
-    try {
-      const [lng, lat] = proj4(DE_STATE_PLANE, 'WGS84', [e, n]);
-      if (!isFinite(lat) || !isFinite(lng)) continue;
-      if (lat >= 36 && lat <= 41 && lng >= -77 && lng <= -73) return { lat, lng };
-    } catch (err) { /* try next */ }
+  const attempts = [];
+  for (const e of eastCandidates) {
+    attempts.push([e, n0]);
+    attempts.push([e / MFT, n0 / MFT]);
+  }
+
+  if (typeof proj4 !== 'undefined') {
+    for (const [x, y] of attempts) {
+      try {
+        const [lng, lat] = proj4(DE_STATE_PLANE, 'WGS84', [x, y]);
+        if (isFinite(lat) && isFinite(lng) && delawareBoundsOk(lat, lng)) return { lat, lng };
+      } catch (err) { /* try next */ }
+    }
+  }
+
+  for (const e of eastCandidates) {
+    const lat = 39.0 + (n0 - 200000) / 364000;
+    const lng = -75.75 + (e - 500000) / 288000;
+    if (delawareBoundsOk(lat, lng)) return { lat, lng };
   }
   return null;
 }
@@ -1945,7 +1958,8 @@ function syncBoringGpsFields(b) {
     if (gpsEl) gpsEl.value = b.gps_coordinates;
     return b.gps_coordinates;
   }
-  const fromPlane = delawareNEToLatLng(b.northing, b.easting);
+  const fromPlane = delawareNEToLatLng(b.northing, b.easting)
+    || delawareNEToLatLng(b.easting, b.northing);
   if (fromPlane) {
     b.gps_coordinates = formatBoringGps(fromPlane.lat, fromPlane.lng, ' (state plane)');
     b.map_lat = fromPlane.lat;
@@ -1980,7 +1994,8 @@ function captureBoringGPS() {
 function boringGpsDisplay(b) {
   if (!b) return '';
   if (b.gps_coordinates) return b.gps_coordinates;
-  const fromPlane = delawareNEToLatLng(b.northing, b.easting);
+  const fromPlane = delawareNEToLatLng(b.northing, b.easting)
+    || delawareNEToLatLng(b.easting, b.northing);
   return fromPlane ? formatBoringGps(fromPlane.lat, fromPlane.lng, ' (state plane)') : '';
 }
 
@@ -2092,6 +2107,7 @@ function startApp(){
     $('app').style.display='grid';
     renderProjects();
     applyLabTrakContext();
+    migrateAllBoringMapCoords();
     initBorelogSync();
   }, 380);
 }
@@ -2475,6 +2491,22 @@ function ensureBoringMapCoords(b) {
   syncBoringGpsFields(b);
   const hasMap = isFinite(parseFloat(b.map_lat)) && isFinite(parseFloat(b.map_lng));
   if (!hadMap && hasMap) store.saveBoring(b);
+}
+
+function migrateAllBoringMapCoords() {
+  const all = _storeCore._all();
+  const borings = all.borings || {};
+  let changed = 0;
+  Object.values(borings).forEach(b => {
+    if (!b?.id) return;
+    const before = JSON.stringify([b.gps_coordinates, b.map_lat, b.map_lng]);
+    syncBoringGpsFields(b);
+    if (before !== JSON.stringify([b.gps_coordinates, b.map_lat, b.map_lng])) {
+      all.borings[b.id] = b;
+      changed++;
+    }
+  });
+  if (changed) _storeCore._save(all);
 }
 
 function renderBoringEdit(){
