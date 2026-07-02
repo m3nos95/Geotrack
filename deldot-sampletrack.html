@@ -1624,6 +1624,15 @@ nav:not(#r18-nav), .nav-top-row { display: none !important; }
 .map-popup-pass { color: #34d399; font-weight: 700; }
 .map-popup-fail { color: #f87171; font-weight: 700; }
 .map-popup-pend { color: #fbbf24; font-weight: 700; }
+.map-popup-section { margin-top: 8px; padding-top: 8px; border-top: 1px solid #2d3748; }
+.map-popup-section-title { font-size: 9px; letter-spacing: 0.08em; text-transform: uppercase; color: #64748b; margin-bottom: 4px; }
+.map-popup-action { margin-top: 10px; }
+.map-popup-action button {
+  width: 100%; padding: 7px 10px; border-radius: 4px; border: 1px solid rgba(34, 211, 238, 0.35);
+  background: rgba(34, 211, 238, 0.12); color: #22d3ee; font-family: inherit; font-size: 10px;
+  font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; cursor: pointer;
+}
+.map-popup-action button:hover { background: rgba(34, 211, 238, 0.22); }
 
 /* ── LabTrak admin map view ── */
 #labmap-view { overflow: hidden; }
@@ -6307,7 +6316,7 @@ table.fc-borrow-tbl tr.fc-borrow-detail-row td{background:var(--surface);border-
 // GLOBALS
 // ══════════════════════════════════════════════
 let db = null;
-const APP_BUILD = '2026.07.03-borelog-ne-fix';
+const APP_BUILD = '2026.07.03-borelog-map-popup';
 const FC_CORE_ICON_SRC = 'docs/r18-reference/core-drill-icon-128.png';
 const BORELOG_ICON_SRC = 'docs/r18-reference/borelog-icon.webp';
 const BORELOG_PATH = 'docs/r18-reference/deldot-borelog.html';
@@ -7138,6 +7147,16 @@ function delawareNEToLatLng(northing, easting) {
   return null;
 }
 
+function mapEscHtml(s) {
+  if (s == null || s === '') return '';
+  return String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+}
+
+function mapPopupRow(label, val) {
+  const display = val == null || val === '' ? '—' : String(val);
+  return `<div class="map-popup-row"><span class="map-popup-label">${mapEscHtml(label)}:</span><span class="map-popup-val">${mapEscHtml(display)}</span></div>`;
+}
+
 function parseBorelogHeaderData(row) {
   let header = row?.header_data;
   if (typeof header === 'string') {
@@ -7153,6 +7172,14 @@ function parseBorelogHeaderData(row) {
     gps_coordinates: header.gps_coordinates || header.gps || header.GPS || '',
     map_lat: header.map_lat ?? header.latitude ?? header.LAT ?? header.lat ?? '',
     map_lng: header.map_lng ?? header.longitude ?? header.LON ?? header.lng ?? header.long ?? '',
+    surface_elev: header.surface_elev || header.elevation || header.elev || '',
+    reference: header.reference || '',
+    contractor: header.contractor || '',
+    rig: header.rig || '',
+    driller: header.driller || '',
+    logged_by: header.logged_by || '',
+    supervisor: header.supervisor || '',
+    remarks: header.remarks || '',
     date_started: header.date_started || '',
     date_completed: header.date_completed || '',
   };
@@ -7178,6 +7205,7 @@ function normalizeBorelogMapBoring(row, projectMeta) {
   const fields = parseBorelogHeaderData(row);
   const boring = {
     id: row.id,
+    project_id: row.project_id || '',
     boring_no: row.boring_no || fields.boring_no || '',
     location: fields.location || '',
     station_offset: fields.station_offset || '',
@@ -7186,6 +7214,14 @@ function normalizeBorelogMapBoring(row, projectMeta) {
     gps_coordinates: fields.gps_coordinates || '',
     map_lat: fields.map_lat || '',
     map_lng: fields.map_lng || '',
+    surface_elev: fields.surface_elev || '',
+    reference: fields.reference || '',
+    contractor: fields.contractor || '',
+    rig: fields.rig || '',
+    driller: fields.driller || '',
+    logged_by: fields.logged_by || '',
+    supervisor: fields.supervisor || '',
+    remarks: fields.remarks || '',
     date_started: fields.date_started || '',
     date_completed: fields.date_completed || '',
     contract: projectMeta?.contract || row.contract || '',
@@ -7209,7 +7245,7 @@ function collectBorelogBoringsFromLocal(contract) {
       const pContract = (p.contract_no || p.contract || '').trim().toLowerCase();
       if (contractLower && pContract && pContract !== contractLower) return;
       const item = normalizeBorelogMapBoring(
-        { id: b.id, boring_no: b.boring_no, header_data: b },
+        { id: b.id, project_id: b.project_id, boring_no: b.boring_no, header_data: b },
         { contract: p.contract_no || p.contract || '', name: p.name || '' }
       );
       if (item) out.push(item);
@@ -7254,16 +7290,72 @@ async function fetchAllBorelogMapBorings() {
   return fetchBorelogBoringsForContract(null);
 }
 
+function getBorelogMapSampleSummary(boringId) {
+  if (!boringId) return null;
+  try {
+    const raw = JSON.parse(localStorage.getItem(BORELOG_STORE_KEY) || '{}');
+    const samples = Object.values(raw.samples || {}).filter(s => s.boring_id === boringId);
+    if (!samples.length) return { count: 0, depthRange: '', maxDepth: null };
+    const depthsFrom = samples.map(s => parseFloat(s.depth_from)).filter(n => isFinite(n));
+    const depthsTo = samples.map(s => parseFloat(s.depth_to)).filter(n => isFinite(n));
+    const minD = depthsFrom.length ? Math.min(...depthsFrom) : null;
+    const maxD = depthsTo.length ? Math.max(...depthsTo) : (depthsFrom.length ? Math.max(...depthsFrom) : null);
+    const depthRange = minD != null && maxD != null ? `${minD}–${maxD} ft` : '';
+    return { count: samples.length, depthRange, maxDepth: maxD };
+  } catch (e) {
+    return null;
+  }
+}
+
 function buildBorelogMapPopup(b) {
+  if (b?.id) {
+    window._borelogMapById = window._borelogMapById || {};
+    window._borelogMapById[b.id] = b;
+  }
+  const gps = b.gps_coordinates
+    || (b.coords ? `${b.coords.lat.toFixed(6)}, ${b.coords.lng.toFixed(6)}` : '');
+  const ne = (b.northing || b.easting)
+    ? [b.northing, b.easting].filter(Boolean).join(' / ')
+    : '';
+  const sampleInfo = getBorelogMapSampleSummary(b.id);
+  const sampleLine = sampleInfo
+    ? (sampleInfo.count
+      ? `${sampleInfo.count} sample${sampleInfo.count === 1 ? '' : 's'}${sampleInfo.depthRange ? ' · ' + sampleInfo.depthRange : ''}`
+      : 'No samples in local BoreLog cache')
+    : '';
+  const openBtn = b.id
+    ? `<div class="map-popup-action"><button type="button" onclick="openBoreLogFromMapId('${mapEscHtml(b.id)}')">Open in BoreLog →</button></div>`
+    : '';
   return `
-    <div class="map-popup-title">Boring ${b.boring_no || '—'}</div>
-    <div class="map-popup-row"><span class="map-popup-label">Layer:</span><span class="map-popup-val">BoreLog</span></div>
-    <div class="map-popup-row"><span class="map-popup-label">Contract:</span><span class="map-popup-val">${b.contract || '—'}</span></div>
-    <div class="map-popup-row"><span class="map-popup-label">Project:</span><span class="map-popup-val">${b.projectName || '—'}</span></div>
-    <div class="map-popup-row"><span class="map-popup-label">Location:</span><span class="map-popup-val">${b.location || '—'}</span></div>
-    <div class="map-popup-row"><span class="map-popup-label">Station:</span><span class="map-popup-val">${b.station_offset || '—'}</span></div>
-    <div class="map-popup-row"><span class="map-popup-label">GPS:</span><span class="map-popup-val">${b.gps_coordinates || (b.coords ? b.coords.lat.toFixed(6) + ', ' + b.coords.lng.toFixed(6) : '—')}</span></div>
-    <div class="map-popup-row"><span class="map-popup-label">Started:</span><span class="map-popup-val">${b.date_started || '—'}</span></div>
+    <div class="map-popup-title">Boring ${mapEscHtml(b.boring_no || '—')}</div>
+    ${mapPopupRow('Layer', 'BoreLog')}
+    ${mapPopupRow('Contract', b.contract)}
+    ${mapPopupRow('Project', b.projectName)}
+    <div class="map-popup-section">
+      <div class="map-popup-section-title">Location</div>
+      ${mapPopupRow('Location', b.location)}
+      ${mapPopupRow('Station / Offset', b.station_offset)}
+      ${mapPopupRow('GPS', gps)}
+      ${ne ? mapPopupRow('N / E', ne) : ''}
+      ${mapPopupRow('Surface Elev.', b.surface_elev)}
+      ${mapPopupRow('Reference', b.reference)}
+    </div>
+    <div class="map-popup-section">
+      <div class="map-popup-section-title">Field crew</div>
+      ${mapPopupRow('Contractor', b.contractor)}
+      ${mapPopupRow('Rig', b.rig)}
+      ${mapPopupRow('Driller', b.driller)}
+      ${mapPopupRow('Logged by', b.logged_by)}
+      ${mapPopupRow('Supervisor', b.supervisor)}
+    </div>
+    <div class="map-popup-section">
+      <div class="map-popup-section-title">Schedule</div>
+      ${mapPopupRow('Started', b.date_started)}
+      ${mapPopupRow('Completed', b.date_completed)}
+      ${sampleLine ? mapPopupRow('Samples', sampleLine) : ''}
+      ${b.remarks ? mapPopupRow('Remarks', b.remarks) : ''}
+    </div>
+    ${openBtn}
   `;
 }
 
@@ -22408,9 +22500,12 @@ function getBoreLogContext() {
   return ctx;
 }
 
-function openBoreLog() {
+function openBoreLog(opts) {
+  const ctx = opts && typeof opts === 'object'
+    ? { ...getBoreLogContext(), ...opts }
+    : getBoreLogContext();
   try {
-    sessionStorage.setItem(BORELOG_CTX_KEY, JSON.stringify(getBoreLogContext()));
+    sessionStorage.setItem(BORELOG_CTX_KEY, JSON.stringify(ctx));
   } catch (e) {}
 
   const existing = window._borelogWindow;
@@ -22423,6 +22518,17 @@ function openBoreLog() {
   const w = window.open(BORELOG_PATH, BORELOG_WIN_NAME);
   if (!w) window.open(BORELOG_PATH, '_blank');
   else window._borelogWindow = w;
+}
+
+function openBoreLogFromMapId(boringId) {
+  if (!boringId) return;
+  const b = (window._borelogMapById || {})[boringId] || {};
+  openBoreLog({
+    boringId,
+    borelogProjectId: b.project_id || '',
+    contract: b.contract || currentProjectFilter || '',
+    projectName: b.projectName || currentProjectName || '',
+  });
 }
 
 function openR18() {

@@ -2046,7 +2046,13 @@ function applyLabTrakContext() {
       store.saveProject(match);
     }
     openProject(match.id);
-    toast('Opened LabTrak project');
+    const boringId = String(ctx.boringId || ctx.boring_id || '').trim();
+    if (boringId && store.getBoring(boringId)) {
+      openBoring(boringId);
+      toast('Opened boring from LabTrak map');
+    } else {
+      toast('Opened LabTrak project');
+    }
     return;
   }
 
