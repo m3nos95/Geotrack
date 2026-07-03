@@ -5765,9 +5765,10 @@ table.fc-borrow-tbl tr.fc-borrow-detail-row td{background:var(--surface);border-
                     <div class="mf"><label>Wt. of Total Sample (g)</label><input type="number" step="0.1" id="sl_total_wt" placeholder="1026.7"></div>
                     <div class="mf"><label>Wt. of Wash Sample (g)</label><input type="number" step="0.1" id="sl_wash_wt" placeholder="114.3"></div>
                   </div>
-                  <div class="mf" style="margin-bottom:12px;max-width:320px;">
+                  <div class="mf" style="margin-bottom:12px;max-width:420px;">
                     <label>Sieve nest arrangement</label>
                     <select id="sl_soil_nest_select" onchange="slOnSoilNestChange()"></select>
+                    <p style="font-family:var(--mono);font-size:9px;color:var(--muted);margin:6px 0 0;line-height:1.5;">Choose <strong style="color:var(--text);">Single Stack (No Wash Split)</strong> when #40 and #200 are cumulative on the total sample — no separate wash weight.</p>
                   </div>
                   <table class="sieve-manual-table">
                     <thead><tr><th>SIEVE</th><th>CUM. WT. RETAINED (g)</th></tr></thead>
@@ -6467,7 +6468,7 @@ table.fc-borrow-tbl tr.fc-borrow-detail-row td{background:var(--surface);border-
 // GLOBALS
 // ══════════════════════════════════════════════
 let db = null;
-const APP_BUILD = '2026.07.03-settings-collapse';
+const APP_BUILD = '2026.07.03-soil-sieve-no-split';
 const FC_CORE_ICON_SRC = 'docs/r18-reference/core-drill-icon-128.png';
 const BORELOG_ICON_SRC = 'docs/r18-reference/borelog-icon.webp';
 const BORELOG_PATH = 'docs/r18-reference/deldot-borelog.html';
@@ -7072,7 +7073,7 @@ async function openProjectMap(contract, projectName, opts) {
     if ((s.test_category || 'soil') === 'soil' && s.material_type) {
       const lab = s.lab_data;
       if (lab) {
-        const calc = calculateSieve(lab);
+        const calc = calculateSieve(lab, s.soil_sieve_nest || lab.soil_sieve_nest);
         const llv = lab.liquid_limit ? (parseFloat(lab.liquid_limit.wt_wet_soil_bottle)||0) > 0 ? 
           ((parseFloat(lab.liquid_limit.wt_wet_soil_bottle)-parseFloat(lab.liquid_limit.wt_dry_bottle))/(parseFloat(lab.liquid_limit.wt_dry_bottle)-parseFloat(lab.liquid_limit.wt_bottle))*100) : null : null;
         const plv = lab.plastic_limit ? (parseFloat(lab.plastic_limit.wt_wet_soil_bottle)||0) > 0 ?
@@ -12938,7 +12939,7 @@ async function finishLabGeneration(parsed) {
 
   await dbWrite('samples', 'update', labData, currentSample.id);
 
-  const calc = calculateSieve(parsed);
+  const calc = calculateSieve(parsed, currentSample?.soil_sieve_nest || parsed.soil_sieve_nest);
   // Important: spread order ensures fresh parsed lab_data overrides any stale currentSample.lab_data
   const merged = { ...currentSample, ...labData, lab_data: parsed };
   // Also update currentSample in memory so subsequent edits use fresh data
@@ -13201,7 +13202,7 @@ async function viewReport(id) {
     const aggCalc = calculateAggregate(sample.lab_data.sieve_data, sample.lab_data.agg_type || sample.agg_type);
     renderAggregateReport(sample, aggCalc);
   } else {
-    const calc = calculateSieve(sample.lab_data);
+    const calc = calculateSieve(sample.lab_data, sample.soil_sieve_nest || sample.lab_data?.soil_sieve_nest);
     renderLB44(sample, sample.lab_data, calc);
   }
   switchView('report');
@@ -13228,7 +13229,10 @@ async function viewQR(id) {
 // ══════════════════════════════════════════════
 // SIEVE CALCULATIONS
 // ══════════════════════════════════════════════
-function calculateSieve(d) {
+function calculateSieve(d, nestId) {
+  if (isNoWashSplitNest(resolveSieveNestId(nestId, d), d)) {
+    return calculateSieveNoWashSplit(d);
+  }
   // Delaware DOT Two-Split GeoSystem Method
   // Split 1 (dry, top stack): 2",1",3/8",#4,#10
   //   - WT RT = individual weight retained on each sieve
@@ -13350,6 +13354,87 @@ function calculateSieve(d) {
     totalWt:        total,
     washWt,
     wtPass10,
+    noWashSplit: false,
+  };
+}
+
+function calculateSieveNoWashSplit(d) {
+  // Single continuous stack — all sieves cumulative on total sample weight (no wash split)
+  const total = parseFloat(d.total_sample_wt) || 0;
+  const sieves = d.sieves || {};
+  function g(k) {
+    const v = sieves[k];
+    if (v == null) return 0;
+    if (typeof v === 'object') return parseFloat(v.wt_retained) || 0;
+    return parseFloat(v) || 0;
+  }
+  function gSieve(newKey, legacyKey) {
+    if (sieves[newKey] != null) return g(newKey);
+    if (legacyKey && sieves[legacyKey] != null) return g(legacyKey);
+    return 0;
+  }
+
+  const cum2 = gSieve('2in', 'in2');
+  const cum1 = gSieve('1in', 'in1');
+  const cum38 = gSieve('0.375in', 'in38');
+  const cum4 = gSieve('no4', 'no4');
+  const cum10 = gSieve('no10', 'no10');
+  const cum40 = gSieve('no40', 'no40');
+  const cum200 = gSieve('no200', 'no200');
+
+  const ret2 = cum2;
+  const ret1 = cum1 - cum2;
+  const ret38 = cum38 - cum1;
+  const ret4 = cum4 - cum38;
+  const ret10 = cum10 - cum4;
+  const ret40 = cum40 - cum10;
+  const ret200 = cum200 - cum40;
+
+  function row(indRet, cumWt, key) {
+    const hasMat = indRet > 0;
+    const alwaysShow = ['in2', 'in1', 'in38', 'no4', 'no10', 'no40', 'no200'].includes(key);
+    const pctRetInd = total > 0 ? indRet / total * 100 : 0;
+    const cumPctRet = total > 0 ? cumWt / total * 100 : 0;
+    const pctPassVal = total > 0 ? 100 - cumPctRet : 100;
+    return {
+      ret: (hasMat || alwaysShow) ? indRet.toFixed(1) : null,
+      cum: (hasMat || alwaysShow) ? cumWt.toFixed(1) : null,
+      pctRet: (hasMat || alwaysShow) ? pctRetInd.toFixed(1) : null,
+      pctPass: (hasMat || alwaysShow) ? pctPassVal.toFixed(1) : null,
+    };
+  }
+
+  const results = {
+    in2: row(ret2, cum2, 'in2'),
+    in1: row(ret1, cum1, 'in1'),
+    in38: row(ret38, cum38, 'in38'),
+    no4: row(ret4, cum4, 'no4'),
+    no10: row(ret10, cum10, 'no10'),
+    no40: row(ret40, cum40, 'no40'),
+    no200: row(ret200, cum200, 'no200'),
+  };
+
+  const pctPass200 = results.no200.pctPass != null ? parseFloat(results.no200.pctPass) : 0;
+  const pass200_pan = total > 0 ? Math.max(0, total - cum200) : 0;
+  const cumPctRet_at200 = total > 0 ? cum200 / total * 100 : 0;
+  const pctSandGravel = Math.min(100, Math.max(0, cumPctRet_at200)).toFixed(1);
+  const wtPass10 = total > 0 ? (total - cum10).toFixed(0) : '';
+  const pctPassWash = results.no10?.pctPass != null ? parseFloat(results.no10.pctPass) : 100;
+
+  results.pass200 = {
+    wt: pass200_pan > 0 ? pass200_pan.toFixed(1) : null,
+    pctPass: pctPass200 > 0 ? pctPass200.toFixed(1) : null,
+  };
+
+  return {
+    results,
+    pass200wt: pass200_pan > 0 ? pass200_pan.toFixed(1) : null,
+    pctSandGravel,
+    classification: aashto(pctPass200, pctPassWash, null, null, null),
+    totalWt: total,
+    washWt: 0,
+    wtPass10,
+    noWashSplit: true,
   };
 }
 
@@ -14785,7 +14870,13 @@ const DEFAULT_SOIL_SIEVE_NESTS = {
     label: 'DelDOT Two-Split (GeoSystem)',
     split1: ['2in', '1in', '0.375in', 'no4', 'no10'],
     split2: ['no40', 'no200'],
-  }
+  },
+  single_stack: {
+    label: 'Single Stack (No Wash Split)',
+    noWashSplit: true,
+    split1: ['2in', '1in', '0.375in', 'no4', 'no10', 'no40', 'no200'],
+    split2: [],
+  },
 };
 
 const LAB_SPEC_STORAGE_KEY = 'labtrak_lab_specs';
@@ -14812,6 +14903,9 @@ function applyLabSpecBundle(bundle) {
   AGG_TYPES = bundle?.aggTypes || base.aggTypes;
   SOIL_BORROW_SPECS = bundle?.soilBorrowSpecs || base.soilBorrowSpecs;
   SOIL_SIEVE_NESTS = bundle?.soilSieveNests || base.soilSieveNests;
+  Object.entries(base.soilSieveNests).forEach(([k, v]) => {
+    if (!SOIL_SIEVE_NESTS[k]) SOIL_SIEVE_NESTS[k] = labSpecClone(v);
+  });
   refreshAggTypeDropdowns();
   if (typeof slRenderSoilSieveTable === 'function') slRenderSoilSieveTable(getActiveSoilSieveNestId());
 }
@@ -14891,8 +14985,28 @@ function getActiveSoilSieveNestId() {
   return Object.keys(SOIL_SIEVE_NESTS)[0] || 'deldot_two_split';
 }
 
+function getSoilSieveNest(nestId) {
+  const id = nestId || getActiveSoilSieveNestId();
+  return SOIL_SIEVE_NESTS[id] || SOIL_SIEVE_NESTS.deldot_two_split || null;
+}
+
+function isNoWashSplitNest(nestId, labData) {
+  const nest = getSoilSieveNest(nestId || labData?.soil_sieve_nest);
+  return !!(nest?.noWashSplit);
+}
+
+function resolveSieveNestId(nestId, labData) {
+  return nestId || labData?.soil_sieve_nest || slCurrentSample?.soil_sieve_nest || 'deldot_two_split';
+}
+
 function soilSieveFieldId(key) {
   return SOIL_SIEVE_FIELD_IDS[key] || ('sl_s_' + String(key).replace(/[^a-z0-9]/gi, '_'));
+}
+
+function slUpdateWashSplitUI(nestId) {
+  const nest = getSoilSieveNest(nestId);
+  const washField = document.getElementById('sl_wash_wt')?.closest('.mf');
+  if (washField) washField.style.display = nest?.noWashSplit ? 'none' : '';
 }
 
 function slRenderSoilSieveTable(nestId) {
@@ -14905,6 +15019,7 @@ function slRenderSoilSieveTable(nestId) {
     ).join('');
     sel.value = nestId || getActiveSoilSieveNestId();
   }
+  slUpdateWashSplitUI(nestId);
   if (!tbody || !nest) return;
   const row = (key) => {
     const fid = soilSieveFieldId(key);
@@ -14912,8 +15027,10 @@ function slRenderSoilSieveTable(nestId) {
     return `<tr><td>${label}</td><td><input type="number" step="0.1" id="${fid}" placeholder="0.0"></td></tr>`;
   };
   let html = (nest.split1 || []).map(row).join('');
-  html += `<tr class="wash-row"><td>↓ WASH SPLIT ↓</td><td style="text-align:center;color:var(--gold);font-family:var(--mono);font-size:11px;">Wash Wt entered above</td></tr>`;
-  html += (nest.split2 || []).map(row).join('');
+  if (!nest.noWashSplit) {
+    html += `<tr class="wash-row"><td>↓ WASH SPLIT ↓</td><td style="text-align:center;color:var(--gold);font-family:var(--mono);font-size:11px;">Wash Wt entered above</td></tr>`;
+    html += (nest.split2 || []).map(row).join('');
+  }
   tbody.innerHTML = html;
 }
 
@@ -15322,6 +15439,21 @@ function renderLB44(sample, labData, calc) {
   const conformsResult = autoConforms(sample.material_type, borrowTypes);
   const conforms = conformsResult.conforms !== false; // null = unknown = show as pass
   const dateRpt = sample.date_reported || new Date().toLocaleDateString('en-US');
+  const noWashSplit = !!calc.noWashSplit;
+  const washSampleRowHtml = noWashSplit
+    ? `<div class="test-row" style="background:#f8f9fa;">
+          <div class="row-lbl" style="font-weight:700;">WT. OF TOTAL SAMPLE:</div>
+          <div class="row-val result" style="grid-column:span 3;">${fn(labData.total_sample_wt)}</div>
+        </div>`
+    : `<div class="test-row" style="background:#f8f9fa;">
+          <div class="row-lbl" style="font-weight:700;">WT. OF TOTAL SAMPLE:</div>
+          <div class="row-val result" style="grid-column:span 2;">${fn(labData.total_sample_wt)}</div>
+          <div class="row-lbl" style="font-weight:700;border-left:1px solid #ddd;">WT. OF WASH SAMPLE:</div>
+          <div class="row-val result">${fn(labData.wash_sample_wt)}</div>
+        </div>`;
+  const washSieveRowHtml = noWashSplit
+    ? ''
+    : `<div class="sieve-row wash-row"><div class="s-lbl">WASH WT.</div><div class="s-val" style="grid-column:span 2;font-style:italic;color:#92400e;">${fn(labData.wash_sample_wt)}</div><div class="s-val">—</div><div class="s-val">—</div></div>`;
 
   function sieveRowHtml(label, sv2) {
     return `<div class="sieve-row">
@@ -15370,12 +15502,7 @@ function renderLB44(sample, labData, calc) {
         <div class="test-row" style="grid-template-columns:150px repeat(3,1fr);"><div class="row-lbl">PERCENT OF WATER / LOSS:</div><div class="row-val">${llPct?llPct+'%':''}</div><div class="row-val">${plPct?plPct+'%':''}</div><div class="row-val result">${orgPct?orgPct+'%':''}</div></div>
         <div class="test-row" style="grid-template-columns:150px repeat(3,1fr);"><div class="row-lbl">BLOWS FOR CLOSURE:</div><div class="row-val">${fn(ll.blows)}</div><div class="row-val"></div><div class="row-val"></div></div>
         <div class="test-row" style="grid-template-columns:150px repeat(3,1fr);"><div class="row-lbl">CORRECTED LIQUID LIMIT %:</div><div class="row-val result">${llD!=='NV'?llD:''}</div><div class="row-val"></div><div class="row-val"></div></div>
-        <div class="test-row" style="background:#f8f9fa;">
-          <div class="row-lbl" style="font-weight:700;">WT. OF TOTAL SAMPLE:</div>
-          <div class="row-val result" style="grid-column:span 2;">${fn(labData.total_sample_wt)}</div>
-          <div class="row-lbl" style="font-weight:700;border-left:1px solid #ddd;">WT. OF WASH SAMPLE:</div>
-          <div class="row-val result">${fn(labData.wash_sample_wt)}</div>
-        </div>
+        ${washSampleRowHtml}
         <div style="display:grid;grid-template-columns:1fr 1fr 1fr;font-size:8pt;background:#f0f4f8;border-top:1px solid #999;border-bottom:1px solid #999;padding:3px 8px;gap:8px;font-style:italic;">
           <span>LIQUID LIMIT: <strong>${llD}</strong></span>
           <span>PLASTIC LIMIT: <strong>${plD}</strong></span>
@@ -15387,7 +15514,7 @@ function renderLB44(sample, labData, calc) {
         ${sieveRowHtml('3/8" (9.52mm)', r.in38)}
         ${sieveRowHtml('#4 (4.76mm)', r.no4)}
         ${sieveRowHtml('#10 (2.00mm)', r.no10)}
-        <div class="sieve-row wash-row"><div class="s-lbl">WASH WT.</div><div class="s-val" style="grid-column:span 2;font-style:italic;color:#92400e;">${fn(labData.wash_sample_wt)}</div><div class="s-val">—</div><div class="s-val">—</div></div>
+        ${washSieveRowHtml}
         ${sieveRowHtml('#40 (0.42mm)', r.no40)}
         ${sieveRowHtml('#200 (0.074mm)', r.no200)}
         <div class="sieve-row pass200"><div class="s-lbl">PASS #200</div><div class="s-val">${calc.pass200wt||''}</div><div class="s-val">${calc.pass200wt||''}</div><div class="s-val pct">${r.pass200?.pctPass?r.pass200.pctPass+'%':''}</div><div class="s-val pct" style="background:#e6f9ee;color:#166534;">${r.pass200?.pctPass?r.pass200.pctPass+'%':''}</div></div>
@@ -17318,7 +17445,7 @@ function slPrefill(labData, isAgg, sample) {
     se('sl_org_post', org.wt_dry_bottle); se('sl_org_tare', org.wt_bottle);
     se('sl_total_wt', labData.total_sample_wt);
     se('sl_wash_wt',  labData.wash_sample_wt);
-    const nestId = sample.soil_sieve_nest || Object.keys(SOIL_SIEVE_NESTS)[0] || 'deldot_two_split';
+    const nestId = sample.soil_sieve_nest || labData.soil_sieve_nest || Object.keys(SOIL_SIEVE_NESTS)[0] || 'deldot_two_split';
     slRenderSoilSieveTable(nestId);
     function rSv(k, legacy) {
       const val = sv[k] != null ? sv[k] : (legacy ? sv[legacy] : null);
@@ -17577,7 +17704,8 @@ function slGenerateFromManual() {
 
   const parsed = {
     total_sample_wt: gn('sl_total_wt'),
-    wash_sample_wt:  gn('sl_wash_wt'),
+    wash_sample_wt: isNoWashSplitNest() ? null : gn('sl_wash_wt'),
+    soil_sieve_nest: getActiveSoilSieveNestId(),
     liquid_limit: {
       bottle_no: gv('sl_ll_bottle'), wt_wet_soil_bottle: gn('sl_ll_wet'),
       wt_dry_bottle: gn('sl_ll_dry'), wt_bottle: gn('sl_ll_tare'), blows: gn('sl_ll_blows'),
@@ -17635,14 +17763,17 @@ async function slHandleDistribution(sample) {
 async function slFinishLab(parsed) {
   slLastLabData = parsed;
   const fields  = slReportFields();
+  const nestId = getActiveSoilSieveNestId();
+  parsed.soil_sieve_nest = nestId;
+  if (isNoWashSplitNest(nestId)) parsed.wash_sample_wt = null;
   const updates = { status: 'complete', lab_data: parsed, conforms: 'auto', ...fields };
   if (slCurrentSample?.test_category !== 'aggregate') {
-    updates.soil_sieve_nest = getActiveSoilSieveNestId();
+    updates.soil_sieve_nest = nestId;
   }
   await db.from('samples').update(updates).eq('id', slCurrentSample.id);
   logSampleHistory({ sampleId: slCurrentSample.id, testNo: slCurrentSample.test_no, action: 'lab_complete', details: { type: 'soil', status: 'complete' } });
 
-  const calc   = calculateSieve(parsed);
+  const calc   = calculateSieve(parsed, updates.soil_sieve_nest || getActiveSoilSieveNestId());
   const merged = { ...slCurrentSample, ...updates, lab_data: parsed };
   // Keep currentSample in sync so edit overlay & report-view work
   currentSample = merged;
@@ -17769,7 +17900,7 @@ async function slViewReport() {
     const aggCalc = calculateAggregate(fresh.lab_data.sieve_data, fresh.lab_data.agg_type || fresh.agg_type);
     renderAggregateReport(fresh, aggCalc);
   } else {
-    const calc = calculateSieve(fresh.lab_data);
+    const calc = calculateSieve(fresh.lab_data, fresh.soil_sieve_nest || fresh.lab_data?.soil_sieve_nest);
     renderLB44(fresh, fresh.lab_data, calc);
   }
   currentSample = fresh;
