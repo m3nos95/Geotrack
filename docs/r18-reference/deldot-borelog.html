@@ -122,7 +122,7 @@ nav{background:var(--surface);border-bottom:1px solid var(--border);box-shadow:0
 .sieve-tbl td.cell-comp{color:var(--accent2);font-weight:600;background:rgba(196,124,42,0.04);}
 .computed-row{display:grid;grid-template-columns:repeat(5,1fr);gap:8px;margin-top:12px;}
 
-/* v3 — COMPACT SAMPLE CARDS (GeoSystem-style) */
+/* v3 — COMPACT SAMPLE CARDS */
 .gs-sample{background:var(--panel);border:1px solid var(--border);border-radius:var(--radius);
   margin-bottom:10px;overflow:hidden;transition:border-color .15s;}
 .gs-sample.has-open-panel{border-color:var(--accent);}
@@ -471,7 +471,7 @@ html.comfort-mode .hab-pulse{animation:none !important;box-shadow:none !importan
     </div>
     <div class="splash-wordmark">DelDOT Borelog</div>
     <div class="splash-agency">Materials &amp; Research Lab</div>
-    <div class="splash-version">v6.0 — GeoSystem-style entry</div>
+    <div class="splash-version">v6.0 — DelDOT lab entry</div>
     <div class="splash-divider"></div>
     <div class="splash-features">
       <div class="splash-feat"><strong>Boring Logs</strong>DelDOT format</div>
@@ -482,7 +482,7 @@ html.comfort-mode .hab-pulse{animation:none !important;box-shadow:none !importan
     <div class="splash-enter">
       <button onclick="startApp()">⊙ &nbsp;ENTER</button>
     </div>
-    <div class="splash-tagline">DelDOT lab entry · GeoSystem import · cloud sync with LabTrak</div>
+    <div class="splash-tagline">DelDOT lab entry · .GEO import · cloud sync with LabTrak</div>
   </div>
 </div>
 
@@ -685,7 +685,7 @@ html.comfort-mode .hab-pulse{animation:none !important;box-shadow:none !importan
 
     <div class="pm-section">▣ Drilling Contractor</div>
     <div class="pm-section inherit-note" style="margin-top:-10px;font-family:var(--mono);font-size:9px;color:var(--muted);letter-spacing:0.5px;font-style:italic;">
-      Drilling contractor info comes from the received boring log or GeoSystem import — not LabTrak project contractor.
+      Drilling contractor info comes from the received boring log or .GEO import — not LabTrak project contractor.
     </div>
     <div class="form-grid two">
       <div class="form-group">
@@ -850,7 +850,7 @@ const DELDOT_LOGO = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAPAAAADwCAYAA
 /* =========================================================================
    DELDOT BORELOG v5.0 — Polished Log + Logo + Fixed Depth Column
    - Atterberg (T-89/T-90), Moisture (T-265), Organic (T-267)
-   - Sieve via DelDOT two-split GeoSystem (ported from v11 calculateSieve)
+   - Sieve via DelDOT two-split method (ported from v11 calculateSieve)
    - AASHTO M-145 classification with full GI calc (ported from v11 aashto)
    - Description engine (port of Aaron's Python)
    - Storage wrapper abstracted for future Supabase port
@@ -1262,7 +1262,7 @@ function calcOrganic(tare, pre, post){
   return ((drySoil - ignSoil) / drySoil) * 100;
 }
 
-/* DelDOT GeoSystem two-split sieve calculation (ported from v11)
+/* DelDOT two-split sieve calculation (ported from v11)
    Split 1 (dry, top): 2", 1", 3/8", #4, #10 — values are CUMULATIVE within split 1
    Wash split between #10 and #40
    Split 2 (wet, bottom): #40, #200 — values are CUMULATIVE within split 2 (reset after wash)
@@ -2776,7 +2776,7 @@ function renderSamples(){
       </div>
 
       <div class="gs-panel" data-panel="sieve">
-        <div class="gp-title">Sieve Analysis <span class="gp-aux">· DelDOT Two-Split GeoSystem</span></div>
+        <div class="gp-title">Sieve Analysis <span class="gp-aux">· DelDOT Two-Split</span></div>
         <div class="form-grid">
           <div class="form-group"><label>Wt. Total Sample (g)</label><input type="number" step="0.1" id="s_total_${s.id}" value="${s.sieve_inputs?.total_wt||''}" placeholder="1026.7"></div>
           <div class="form-group"><label>Wt. Wash Sample (g)</label><input type="number" step="0.1" id="s_wash_${s.id}" value="${s.sieve_inputs?.wash_wt||''}" placeholder="114.3"></div>
@@ -3284,7 +3284,7 @@ function renderPSDReport(){
   pages.forEach((ps, pi)=>{
     html += `<div class="print-page psd-print">
       <h3>Particle Size Distribution Report</h3>
-      <h4>ASTM D422 · Percent Finer · DelDOT GeoSystem Two-Split</h4>
+      <h4>ASTM D422 · Percent Finer · DelDOT Two-Split</h4>
       <table class="psd-table">
         <thead><tr>
           <th rowspan="2">Source</th><th rowspan="2">Depth (ft)</th><th rowspan="2">Sample #</th>
@@ -4215,7 +4215,7 @@ function computePoleBase(boring, samples){
   const splitDepth = wlDepth;
 
   // Use min(depth_from, depth_to) as the top-of-sample depth to handle
-  // GeoSystem's convention of storing samples with depth_from > depth_to.
+  // imported .GEO files that store samples with depth_from > depth_to.
   const topOf    = s => Math.min(parseFloat(s.depth_from)||0, parseFloat(s.depth_to)||0);
   const thickOf  = s => Math.abs((parseFloat(s.depth_from)||0)-(parseFloat(s.depth_to)||0)) || 2;
   const upperSamps = samples.filter(s => topOf(s) < splitDepth);

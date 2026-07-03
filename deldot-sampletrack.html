@@ -6191,7 +6191,7 @@ table.fc-borrow-tbl tr.fc-borrow-detail-row td{background:var(--surface);border-
         <img src="docs/r18-reference/borelog-icon.webp" alt="BoreLog" style="width:80px;height:80px;border-radius:14px;object-fit:contain;flex-shrink:0;display:block;">
         <div>
           <div style="font-family:var(--display);font-size:15px;font-weight:700;color:var(--text);letter-spacing:0.5px;">DelDOT BoreLog</div>
-          <div style="font-family:var(--mono);font-size:9px;color:var(--accent2);letter-spacing:2px;margin-top:3px;">LAB ENTRY · GEOSYSTEM IMPORT</div>
+          <div style="font-family:var(--mono);font-size:9px;color:var(--accent2);letter-spacing:2px;margin-top:3px;">LAB ENTRY · .GEO IMPORT</div>
           <div style="font-family:var(--mono);font-size:9px;color:var(--muted);margin-top:6px;">Enter data from received boring logs — lab use only</div>
         </div>
         <div style="margin-left:auto;font-size:18px;color:var(--muted);opacity:0.5;">&#8599;</div>
@@ -6468,7 +6468,7 @@ table.fc-borrow-tbl tr.fc-borrow-detail-row td{background:var(--surface);border-
 // GLOBALS
 // ══════════════════════════════════════════════
 let db = null;
-const APP_BUILD = '2026.07.03-soil-sieve-no-split';
+const APP_BUILD = '2026.07.03-remove-geosystem';
 const FC_CORE_ICON_SRC = 'docs/r18-reference/core-drill-icon-128.png';
 const BORELOG_ICON_SRC = 'docs/r18-reference/borelog-icon.webp';
 const BORELOG_PATH = 'docs/r18-reference/deldot-borelog.html';
@@ -10736,7 +10736,7 @@ const LABTRAK_TOUR_STEPS = [
     view: 'labhub',
     tour: 'borelog',
     title: 'BoreLog — lab entry only',
-    body: 'Opens DelDOT BoreLog in a new tab. Lab staff enter data from received boring logs or GeoSystem import — not consultant field intake.',
+    body: 'Opens DelDOT BoreLog in a new tab. Lab staff enter data from received boring logs or .GEO import — not consultant field intake.',
     placement: 'top',
     pad: 6
   },
@@ -13233,7 +13233,7 @@ function calculateSieve(d, nestId) {
   if (isNoWashSplitNest(resolveSieveNestId(nestId, d), d)) {
     return calculateSieveNoWashSplit(d);
   }
-  // Delaware DOT Two-Split GeoSystem Method
+  // Delaware DOT Two-Split Method
   // Split 1 (dry, top stack): 2",1",3/8",#4,#10
   //   - WT RT = individual weight retained on each sieve
   //   - CUM WT RT = running cumulative from top (as recorded on form)
@@ -14867,7 +14867,7 @@ const DEFAULT_SOIL_BORROW_SPECS = {
 
 const DEFAULT_SOIL_SIEVE_NESTS = {
   deldot_two_split: {
-    label: 'DelDOT Two-Split (GeoSystem)',
+    label: 'DelDOT Two-Split',
     split1: ['2in', '1in', '0.375in', 'no4', 'no10'],
     split2: ['no40', 'no200'],
   },
