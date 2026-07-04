@@ -2019,20 +2019,6 @@ function parseOffsetFeet(raw) {
   return isFinite(n) ? sign * Math.abs(n) : NaN;
 }
 
-function parseStationOffsetFields(b) {
-  const so = String(b?.station_offset || '').trim();
-  const parts = so.split(/\s*\/\s*/);
-  let station = parts[0] ? parseStationFeet(parts[0]) : NaN;
-  let offset = parts[1] ? parseOffsetFeet(parts[1]) : NaN;
-  const n = parseCoordNumber(b?.northing);
-  const e = parseCoordNumber(b?.easting);
-  if (!isFinite(station) && isProfileGridNE(n, e)) station = e;
-  if (!isFinite(offset) && isProfileGridNE(n, e)) offset = n;
-  if (!isFinite(station) && isDelawareStatePlaneNE(n, e)) station = n;
-  if (!isFinite(offset)) offset = 0;
-  return { station, offset, northing: n, easting: e };
-}
-
 function buildBorelogAlignmentFrame(borings) {
   const anchors = (borings || []).map(b => {
     const { station, offset, northing, easting } = parseStationOffsetFields(b);
@@ -2066,6 +2052,38 @@ function statePlaneFromProfile(station, offset, frame) {
   return delawareNEToLatLng(n, e) || delawareNEToLatLng(e, n);
 }
 
+function parseStationOffsetFields(b) {
+  const so = String(b?.station_offset || '').trim();
+  const parts = so.split(/\s*\/\s*/);
+  let station = b?.station ? parseStationFeet(b.station) : NaN;
+  let offset = b?.offset ? parseOffsetFeet(b.offset) : NaN;
+  if (!isFinite(station) && parts[0]) station = parseStationFeet(parts[0]);
+  if (!isFinite(offset) && parts[1]) offset = parseOffsetFeet(parts[1]);
+  const n = parseCoordNumber(b?.northing);
+  const e = parseCoordNumber(b?.easting);
+  if (!isFinite(station) && isProfileGridNE(n, e)) station = e;
+  if (!isFinite(offset) && isProfileGridNE(n, e)) offset = n;
+  if (!isFinite(station) && isDelawareStatePlaneNE(n, e)) station = n;
+  if (!isFinite(offset)) offset = 0;
+  return { station, offset, northing: n, easting: e };
+}
+
+function parseStoredGpsLatLng(b) {
+  const raw = b?.gps_coordinates || '';
+  if (!raw) return null;
+  const cleaned = String(raw).replace(/\(.*?\)/g, '').trim();
+  const parts = cleaned.split(/[,;\s]+/).map(parseCoordNumber).filter(n => isFinite(n));
+  if (/\(state\s*plane\)/i.test(raw) && parts.length >= 2
+      && parts[0] < 50000 && Math.abs(parts[1]) < 50000) {
+    return null;
+  }
+  const parsed = parseBorelogGps(cleaned);
+  if (!parsed) return null;
+  if (parsed.lat > 50000 || parsed.lng > 50000) return null;
+  if (parsed.lat < 36 || parsed.lat > 42 || parsed.lng < -77 || parsed.lng > -73) return null;
+  return parsed;
+}
+
 function resolveBoringMapCoords(b, frame) {
   const { station, offset, northing, easting } = parseStationOffsetFields(b);
   const isSP = isDelawareStatePlaneNE(northing, easting);
@@ -2089,7 +2107,9 @@ function resolveBoringMapCoords(b, frame) {
       if (fromGrid) return fromGrid;
     }
   }
-  return extractBorelogStatePlaneCoords(b);
+  const fromNE = extractBorelogStatePlaneCoords(b);
+  if (fromNE) return fromNE;
+  return parseStoredGpsLatLng(b);
 }
 
 function normalizeBoringStatePlaneFields(b) {
@@ -2719,15 +2739,22 @@ function ensureBoringMapCoords(b) {
 function migrateAllBoringMapCoords() {
   const all = _storeCore._all();
   const borings = all.borings || {};
-  let changed = 0;
+  const byProject = {};
   Object.values(borings).forEach(b => {
     if (!b?.id) return;
-    const before = JSON.stringify([b.gps_coordinates, b.map_lat, b.map_lng]);
-    syncBoringGpsFields(b);
-    if (before !== JSON.stringify([b.gps_coordinates, b.map_lat, b.map_lng])) {
-      all.borings[b.id] = b;
-      changed++;
-    }
+    (byProject[b.project_id] = byProject[b.project_id] || []).push(b);
+  });
+  let changed = 0;
+  Object.values(byProject).forEach(group => {
+    const frame = buildBorelogAlignmentFrame(group);
+    group.forEach(b => {
+      const before = JSON.stringify([b.gps_coordinates, b.map_lat, b.map_lng]);
+      syncBoringGpsFields(b);
+      if (before !== JSON.stringify([b.gps_coordinates, b.map_lat, b.map_lng])) {
+        all.borings[b.id] = b;
+        changed++;
+      }
+    });
   });
   if (changed) _storeCore._save(all);
 }
@@ -3995,6 +4022,8 @@ async function runGeoImport(){
         federal_contract: projFields['FEDERAL_CONTRACT'] || '',
         location:       pd['LOCATION']        || '',
         station_offset: stationOffset,
+        station,
+        offset,
         northing:       pd['NORTH'] || pd['NORTHING'] || '',
         easting:        pd['EAST'] || pd['EASTING'] || '',
         surface_elev: '', reference: '',
