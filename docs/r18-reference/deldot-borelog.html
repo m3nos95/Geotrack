@@ -383,12 +383,17 @@ nav{background:var(--surface);border-bottom:1px solid var(--border);box-shadow:0
 .geo-modal .gm-title{font-family:var(--display);font-size:20px;color:var(--accent2);letter-spacing:2px;
   text-transform:uppercase;margin-bottom:4px;}
 .geo-modal .gm-sub{font-family:var(--mono);font-size:10px;color:var(--muted);letter-spacing:2px;margin-bottom:22px;}
+.geo-file-input{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0;}
 .geo-drop{border:2px dashed var(--border);border-radius:var(--radius);padding:32px 20px;text-align:center;
-  cursor:pointer;transition:all .2s;margin-bottom:20px;background:var(--panel);}
+  cursor:pointer;transition:all .2s;margin-bottom:20px;background:var(--panel);display:block;}
 .geo-drop:hover,.geo-drop.drag-over{border-color:var(--accent2);background:rgba(224,152,72,0.07);}
 .geo-drop .gd-icon{font-size:36px;margin-bottom:10px;}
 .geo-drop .gd-label{font-family:var(--display);font-size:15px;letter-spacing:1px;color:var(--text);margin-bottom:4px;}
 .geo-drop .gd-sub{font-family:var(--mono);font-size:10px;color:var(--muted);letter-spacing:1px;}
+.geo-drop .gd-mobile{display:none;margin-top:10px;padding:10px 12px;background:rgba(224,152,72,0.08);border-radius:var(--radius-sm);
+  font-family:var(--sans);font-size:11px;color:var(--accent2);line-height:1.45;text-align:left;}
+@media (max-width:768px),(pointer:coarse){.geo-drop .gd-mobile{display:block;}}
+.geo-log .gl-info{color:var(--muted);}
 .geo-log{background:var(--bg);border:1px solid var(--border);border-radius:var(--radius-sm);
   padding:12px 14px;font-family:var(--mono);font-size:11px;color:var(--muted);min-height:80px;
   max-height:200px;overflow-y:auto;margin-bottom:16px;display:none;}
@@ -529,7 +534,8 @@ html.comfort-mode .hab-pulse{animation:none !important;box-shadow:none !importan
           <button class="btn btn-primary" onclick="openProjectModal()">+ NEW PROJECT</button>
         </div>
       </div>
-      <input type="file" id="geoFolderInput" multiple style="display:none" onchange="handleGeoFiles(this.files)">
+      <input type="file" id="geoFolderInput" class="geo-file-input" multiple
+        accept=".mdt,.gs,.lim,.ndx,.pdt,.geo,.$p$,.$P$,*/*">
       <div id="projectList"></div>
     </div>
 
@@ -863,11 +869,17 @@ html.comfort-mode .hab-pulse{animation:none !important;box-shadow:none !importan
   <div class="geo-modal">
     <div class="gm-title">Import GeoSystem .GEO</div>
     <div class="gm-sub">LOGDRAFT / LABSUITE PROJECT FOLDER IMPORT</div>
-    <div class="geo-drop" id="geoDrop" onclick="$('geoFolderInput').click()">
+    <label class="geo-drop" id="geoDrop" for="geoFolderInput">
       <div class="gd-icon">📂</div>
-      <div class="gd-label">Click → open the .GEO folder → Ctrl+A → Open</div>
-      <div class="gd-sub">Select ALL files inside the .GEO folder — includes .$P$, .GS, .LIM, .MDT</div>
-    </div>
+      <div class="gd-label" id="geoDropLabel">Tap to select .GEO project files</div>
+      <div class="gd-sub" id="geoDropSub">Select ALL files inside the .GEO folder — GSCOMB.MDT, .$P$, .GS, .LIM</div>
+      <div class="gd-mobile" id="geoMobileHint">
+        <strong>Phone / tablet:</strong> Google Drive files often fail until saved locally.
+        Open the .GEO folder in Drive → <em>Download</em> or <em>Make available offline</em>,
+        then use <strong>Browse</strong> (not Drive shortcut) and select every file in the folder.
+        On iPhone, tap <strong>Select</strong> and check all files before confirming.
+      </div>
+    </label>
     <div class="geo-log" id="geoLog"></div>
     <div class="geo-result" id="geoResult"></div>
     <div style="display:flex;gap:10px;justify-content:flex-end;">
@@ -2158,6 +2170,7 @@ function startApp(){
 // Wire logo into splash as soon as script runs
 (function(){ const el = document.getElementById('splashLogo'); if(el) el.src = DELDOT_LOGO; })();
 initComfortMode();
+initGeoImportInput();
 
 document.querySelectorAll('.nav-tab').forEach(t=>{
   t.addEventListener('click',()=>{
@@ -3615,34 +3628,118 @@ function playHydBeep(type){
 
 let _geoFiles = null;  // FileList or Array from folder picker
 
+function isGeoMobilePicker(){
+  return /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent || '');
+}
+
+function initGeoImportInput(){
+  const inp = $('geoFolderInput');
+  if(!inp || inp.dataset.geoInit === '1') return;
+  inp.dataset.geoInit = '1';
+  // Folder picker on desktop; multi-file picker on phones/tablets.
+  if(!isGeoMobilePicker()) inp.setAttribute('webkitdirectory', '');
+  inp.addEventListener('change', geoInputChanged);
+  inp.addEventListener('input', geoInputChanged);
+}
+
+function geoInputChanged(evt){
+  const inp = evt && evt.target ? evt.target : $('geoFolderInput');
+  if(!inp || !inp.files) return;
+  handleGeoFiles(inp.files);
+}
+
 function openGeoImport(){
+  initGeoImportInput();
+  const inp = $('geoFolderInput');
+  if(inp) inp.value = '';
   $('geoImportOverlay').classList.add('open');
   $('geoLog').className = 'geo-log';
   $('geoLog').innerHTML = '';
   $('geoResult').className = 'geo-result';
   $('geoResult').innerHTML = '';
-  $('geoGoBtn').style.display = 'none';
+  const goBtn = $('geoGoBtn');
+  goBtn.style.display = 'none';
+  goBtn.textContent = '⬆ IMPORT NOW';
+  goBtn.disabled = false;
+  goBtn.onclick = () => runGeoImport();
   _geoFiles = null;
+
+  const lbl = $('geoDropLabel');
+  const sub = $('geoDropSub');
+  if(lbl) lbl.textContent = isGeoMobilePicker()
+    ? 'Tap to select .GEO project files'
+    : 'Click → open the .GEO folder → Ctrl+A → Open';
+  if(sub) sub.textContent = isGeoMobilePicker()
+    ? 'Select every file in the folder (use Browse, not a Drive shortcut)'
+    : 'Select ALL files inside the .GEO folder — GSCOMB.MDT, .$P$, .GS, .LIM';
 }
 function closeGeoImport(){
   $('geoImportOverlay').classList.remove('open');
-  $('geoFolderInput').value = '';
+  const inp = $('geoFolderInput');
+  if(inp) inp.value = '';
   _geoFiles = null;
 }
 
-function handleGeoFiles(fileList){
-  _geoFiles = Array.from(fileList);
+/* Materialize cloud-picked files (Google Drive on Android) into real blobs immediately */
+async function materializeGeoFile(file){
+  try {
+    const buf = await file.arrayBuffer();
+    return new File([buf], file.name, {
+      type: file.type || 'application/octet-stream',
+      lastModified: file.lastModified || Date.now()
+    });
+  } catch (err) {
+    const hint = isGeoMobilePicker()
+      ? ' Save the file to your device first (Drive → Download), then try again.'
+      : '';
+    throw new Error(`Could not read "${file.name}".${hint}`);
+  }
+}
+
+async function handleGeoFiles(fileList){
   const log = $('geoLog');
   log.className = 'geo-log visible';
   log.innerHTML = '';
+  $('geoGoBtn').style.display = 'none';
+  _geoFiles = null;
+
+  const raw = fileList ? Array.from(fileList) : [];
+  if(!raw.length){
+    geoLog('err', '❌ No files received. On mobile, pick files via <b>Browse</b> after downloading the .GEO folder — Drive shortcuts often fail.');
+    return;
+  }
+
+  geoLog('info', `⏳ Reading ${raw.length} file(s)…`);
+
+  const materialized = [];
+  for(const f of raw){
+    if(!f || !f.name){ continue; }
+    try {
+      materialized.push(await materializeGeoFile(f));
+    } catch(e){
+      geoLog('err', '❌ ' + e.message);
+      return;
+    }
+  }
+
+  if(!materialized.length){
+    geoLog('err', '❌ No readable files — try downloading the .GEO folder to your device first.');
+    return;
+  }
+
+  _geoFiles = materialized;
 
   const names = _geoFiles.map(f => f.name.toUpperCase());
   const hasMDT   = names.includes('GSCOMB.MDT');
   const gsFiles  = _geoFiles.filter(f => /^\d{8}\.GS$/i.test(f.name));
   const limFiles = _geoFiles.filter(f => /^\d{8}\.LIM$/i.test(f.name));
   // Note: .$P$ files are detected by content during import (not by filename) since Windows may rename them
-  geoLog('ok', `📂 ${_geoFiles.length} files selected: ${_geoFiles.map(f=>f.name).join(' · ')}`);
-  if(!hasMDT){ geoLog('err','❌ GSCOMB.MDT not found — select ALL files inside the .GEO folder (Ctrl+A)'); return; }
+  geoLog('ok', `📂 ${_geoFiles.length} files ready: ${_geoFiles.map(f=>f.name).join(' · ')}`);
+  if(!hasMDT){
+    geoLog('err','❌ GSCOMB.MDT not found — select ALL files inside the .GEO folder.');
+    if(isGeoMobilePicker()) geoLog('warn', 'Tip: you must select every file at once (multi-select), not just one file.');
+    return;
+  }
   geoLog('ok', `✔ GSCOMB.MDT found`);
   geoLog('ok', `✔ ${gsFiles.length} sieve (.GS) files · ${limFiles.length} Atterberg/moisture (.LIM) files`);
   geoLog('ok', `📋 .$P$ data files will be auto-detected by content during import`);
@@ -3652,7 +3749,7 @@ function handleGeoFiles(fileList){
 
 function geoLog(type, msg){
   const log = $('geoLog');
-  const cls = type === 'ok' ? 'gl-ok' : type === 'warn' ? 'gl-warn' : 'gl-err';
+  const cls = type === 'ok' ? 'gl-ok' : type === 'warn' ? 'gl-warn' : type === 'info' ? 'gl-info' : 'gl-err';
   log.innerHTML += `<div class="${cls}">${msg}</div>`;
   log.scrollTop = log.scrollHeight;
 }
@@ -3968,12 +4065,12 @@ async function runGeoImport(){
   }
 }
 
-/* Read a File object as text */
+/* Read a File object as text (files are materialized during pick) */
 function readFileText(file){
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
     reader.onload = e => resolve(e.target.result);
-    reader.onerror = () => reject(new Error('FileReader error'));
+    reader.onerror = () => reject(new Error('FileReader error reading ' + (file.name || 'file')));
     reader.readAsText(file);
   });
 }
