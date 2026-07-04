@@ -7329,13 +7329,6 @@ function extractBorelogStatePlaneCoords(b) {
   return parseStatePlaneNE(northing, easting);
 }
 
-function coordsDistanceMeters(a, b) {
-  if (!a || !b) return Infinity;
-  const dlat = (a.lat - b.lat) * 111320;
-  const dlng = (a.lng - b.lng) * 111320 * Math.cos(((a.lat + b.lat) / 2) * Math.PI / 180);
-  return Math.sqrt(dlat * dlat + dlng * dlng);
-}
-
 function delawareNEToLatLng(northing, easting) {
   const n0 = parseFloat(String(northing).replace(/,/g, ''));
   const e0 = parseFloat(String(easting).replace(/,/g, ''));
