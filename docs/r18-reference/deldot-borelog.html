@@ -1940,6 +1940,20 @@ function delawareBoundsOk(lat, lng) {
   return lat >= 38.4 && lat <= 39.95 && lng >= -76.05 && lng <= -74.4;
 }
 
+function parseStatePlaneNE(northing, easting) {
+  const n0 = parseFloat(String(northing).replace(/,/g, ''));
+  const e0 = parseFloat(String(easting).replace(/,/g, ''));
+  if (!isFinite(n0) || !isFinite(e0) || n0 < 50000 || e0 < 50000) return null;
+  return delawareNEToLatLng(n0, e0) || delawareNEToLatLng(e0, n0);
+}
+
+function coordsDistanceMeters(a, b) {
+  if (!a || !b) return Infinity;
+  const dlat = (a.lat - b.lat) * 111320;
+  const dlng = (a.lng - b.lng) * 111320 * Math.cos(((a.lat + b.lat) / 2) * Math.PI / 180);
+  return Math.sqrt(dlat * dlat + dlng * dlng);
+}
+
 function delawareNEToLatLng(northing, easting) {
   const n0 = parseFloat(String(northing).replace(/,/g, ''));
   const e0 = parseFloat(String(easting).replace(/,/g, ''));
@@ -1987,7 +2001,17 @@ function syncBoringGpsFields(b) {
     b.gps_coordinates = '';
     return '';
   }
-  const parsed = parseBorelogGps(manual);
+  const fromPlane = parseStatePlaneNE(b.northing, b.easting);
+  const parsed = manual ? parseBorelogGps(manual) : null;
+  const manualIsStatePlane = /\(state\s*plane\)/i.test(manual);
+
+  if (fromPlane && (!parsed || manualIsStatePlane || coordsDistanceMeters(fromPlane, parsed) > 500)) {
+    b.gps_coordinates = formatBoringGps(fromPlane.lat, fromPlane.lng, ' (state plane)');
+    b.map_lat = fromPlane.lat;
+    b.map_lng = fromPlane.lng;
+    if (gpsEl && (!manual || manualIsStatePlane)) gpsEl.value = b.gps_coordinates;
+    return b.gps_coordinates;
+  }
   if (parsed) {
     const suffix = manual.match(/\(.*\)/) ? manual.slice(manual.indexOf('(')) : '';
     b.gps_coordinates = formatBoringGps(parsed.lat, parsed.lng, suffix);
@@ -1996,8 +2020,6 @@ function syncBoringGpsFields(b) {
     if (gpsEl) gpsEl.value = b.gps_coordinates;
     return b.gps_coordinates;
   }
-  const fromPlane = delawareNEToLatLng(b.northing, b.easting)
-    || delawareNEToLatLng(b.easting, b.northing);
   if (fromPlane) {
     b.gps_coordinates = formatBoringGps(fromPlane.lat, fromPlane.lng, ' (state plane)');
     b.map_lat = fromPlane.lat;
@@ -3804,6 +3826,10 @@ async function runGeoImport(){
         return `${yr}-${String(m[1]).padStart(2,'0')}-${String(m[2]).padStart(2,'0')}`;
       }
 
+      const station = pd['STATION'] || pd['STA'] || '';
+      const offset = pd['OFFSET'] || pd['OFF'] || '';
+      const stationOffset = [station, offset].filter(Boolean).join(' / ');
+
       const boringId = uid();
       const boring = {
         id: boringId, project_id: projId,
@@ -3811,9 +3837,9 @@ async function runGeoImport(){
         state_contract: contractNo,
         federal_contract: projFields['FEDERAL_CONTRACT'] || '',
         location:       pd['LOCATION']        || '',
-        station_offset: '',
-        northing:       pd['NORTH']           || '',
-        easting:        pd['EAST']            || '',
+        station_offset: stationOffset,
+        northing:       pd['NORTH'] || pd['NORTHING'] || '',
+        easting:        pd['EAST'] || pd['EASTING'] || '',
         surface_elev: '', reference: '',
         date_started:   fmtGeoDate(pd['BDATE']  || ''),
         date_completed: fmtGeoDate(pd['CDATE']  || ''),
