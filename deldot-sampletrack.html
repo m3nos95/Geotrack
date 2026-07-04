@@ -922,9 +922,12 @@ nav:not(#r18-nav), .nav-top-row { display: none !important; }
 
 /* ── SCANNER VIEW ── */
 #scanner-box { max-width: 400px; margin: 0 auto; }
+#la-scanner-box { max-width: 400px; margin: 0 auto; }
 #html5-qrcode-button-camera-permission, #html5-qrcode-button-camera-start, #html5-qrcode-button-camera-stop { display: none; }
 #reader { border-radius: var(--radius); overflow: hidden; border: 2px solid var(--accent); }
 #reader video { border-radius: var(--radius); }
+#la-reader { border-radius: var(--radius); overflow: hidden; border: 2px solid #34d399; }
+#la-reader video { border-radius: var(--radius); }
 
 /* ── LAB ENTRY VIEW ── */
 .lab-sample-banner {
@@ -3652,6 +3655,16 @@ table.fc-borrow-tbl tr.fc-borrow-detail-row td{background:var(--surface);border-
         <div class="rail-label">Scan QR</div>
       </div>
 
+      <div class="rail-item" data-view="labarrival" id="ri-labarrival" onclick="switchView('labarrival')">
+        <div class="rail-icon-wrap">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="color:#34d399;">
+            <path d="M21 16V8a2 2 0 00-1-1.73l-7-4a2 2 0 00-2 0l-7 4A2 2 0 003 8v8a2 2 0 001 1.73l7 4a2 2 0 002 0l7-4A2 2 0 0021 16z"/>
+            <polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/>
+          </svg>
+        </div>
+        <div class="rail-label">Lab Arrival</div>
+      </div>
+
       <div class="rail-divider"></div>
 
       <!-- Soil & Aggregate — Sieve nest -->
@@ -4381,6 +4394,18 @@ table.fc-borrow-tbl tr.fc-borrow-detail-row td{background:var(--surface);border-
           </div>
         </div>
 
+        <!-- Lab sample arrival -->
+        <div class="card" style="margin-top:14px;border:1px solid rgba(52,211,153,0.35);background:linear-gradient(135deg,rgba(52,211,153,0.08),rgba(52,211,153,0.02));cursor:pointer;" onclick="switchView('labarrival')" data-tour="fc-lab-arrival">
+          <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;">
+            <div>
+              <div style="font-family:var(--mono);font-size:9px;letter-spacing:1.5px;color:#34d399;margin-bottom:6px;">LAB INTAKE</div>
+              <div style="font-family:var(--display);font-size:14px;font-weight:700;color:var(--text);">📦 Scan Sample Arrival</div>
+              <div style="font-family:var(--mono);font-size:10px;color:var(--muted);margin-top:6px;line-height:1.5;">Log when field samples are delivered to the lab — stamps date received and audit history.</div>
+            </div>
+            <button type="button" class="btn btn-success" style="font-size:11px;padding:10px 18px;letter-spacing:1px;flex-shrink:0;" onclick="event.stopPropagation();switchView('labarrival')">OPEN SCANNER →</button>
+          </div>
+        </div>
+
         <!-- Open field sessions (in progress) -->
         <div class="card" style="margin-top:14px;" id="fc_open_sessions_card">
           <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
@@ -4880,6 +4905,50 @@ table.fc-borrow-tbl tr.fc-borrow-detail-row td{background:var(--surface);border-
             <button class="btn btn-primary" onclick="loadByTestNo()">LOAD</button>
           </div>
         </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── LAB SAMPLE ARRIVAL (Field Control intake) ── -->
+  <div class="view" id="labarrival-view">
+    <div class="page">
+      <div class="card" style="border:1px solid rgba(52,211,153,0.35);background:linear-gradient(135deg,rgba(52,211,153,0.06),rgba(52,211,153,0.02));">
+        <div class="card-title" style="color:#34d399;">📦 Lab Sample Arrival</div>
+        <p style="color:var(--muted);font-size:12px;margin-bottom:14px;font-family:var(--mono);line-height:1.6;">
+          Scan each sample bag as it is delivered to the lab. Each scan logs the arrival time, sets <strong style="color:var(--text);font-weight:600;">Date Received</strong> on the sample (if not already set), and records who received it.
+        </p>
+        <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:16px;">
+          <div style="background:var(--panel);border:1px solid var(--border);border-radius:8px;padding:10px 12px;text-align:center;">
+            <div style="font-family:var(--mono);font-size:22px;font-weight:700;color:#34d399;" id="la_count_session">0</div>
+            <div style="font-family:var(--mono);font-size:8px;color:var(--muted);letter-spacing:1px;margin-top:4px;">THIS SESSION</div>
+          </div>
+          <div style="background:var(--panel);border:1px solid var(--border);border-radius:8px;padding:10px 12px;text-align:center;">
+            <div style="font-family:var(--mono);font-size:22px;font-weight:700;color:var(--accent2);" id="la_count_today">0</div>
+            <div style="font-family:var(--mono);font-size:8px;color:var(--muted);letter-spacing:1px;margin-top:4px;">TODAY (ALL USERS)</div>
+          </div>
+          <div style="background:var(--panel);border:1px solid var(--border);border-radius:8px;padding:10px 12px;text-align:center;">
+            <div style="font-family:var(--mono);font-size:13px;font-weight:700;color:var(--text);padding-top:6px;" id="la_receiver">—</div>
+            <div style="font-family:var(--mono);font-size:8px;color:var(--muted);letter-spacing:1px;margin-top:4px;">RECEIVING AS</div>
+          </div>
+        </div>
+        <div id="la-scanner-box" data-tour="la-scan-box">
+          <div id="la-reader"></div>
+        </div>
+        <div style="margin-top:16px;border-top:1px solid var(--border);padding-top:16px;">
+          <p style="color:var(--muted);font-size:11px;font-family:var(--mono);margin-bottom:10px;">Or enter Test No. manually:</p>
+          <div style="display:flex;gap:10px;">
+            <input type="text" id="la_manual_testno" placeholder="e.g. 1143" style="flex:1;background:var(--panel);border:1px solid var(--border);color:var(--text);padding:9px 12px;border-radius:var(--radius);font-size:13px;outline:none;">
+            <button class="btn btn-primary" onclick="laLoadByTestNo()">LOG ARRIVAL</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="card" style="margin-top:14px;">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
+          <div class="card-title" style="margin:0;">Recent Arrivals — This Session</div>
+          <button type="button" onclick="laClearSessionLog()" style="background:transparent;border:1px solid var(--border);color:var(--muted);padding:4px 10px;border-radius:4px;font-family:var(--mono);font-size:9px;cursor:pointer;">CLEAR LIST</button>
+        </div>
+        <div id="la_session_log" style="font-family:var(--mono);font-size:10px;color:var(--muted);">No samples scanned yet — point the camera at a bag QR code.</div>
       </div>
     </div>
   </div>
@@ -6049,6 +6118,7 @@ table.fc-borrow-tbl tr.fc-borrow-detail-row td{background:var(--surface);border-
       <div class="hub-actions">
         <button class="hub-action-btn primary" onclick="switchView('fieldcontrol')">⚡ NEW TEST</button>
         <button class="hub-action-btn" onclick="fcOpenCoreDrillFromHub()"><span class="fc-core-icon fc-core-icon--sm" aria-hidden="true"><img src="docs/r18-reference/core-drill-icon-128.png" alt=""></span> CORE DRILL</button>
+        <button class="hub-action-btn" onclick="switchView('labarrival')">📦 LAB ARRIVAL</button>
         <button class="hub-action-btn" onclick="switchView('scan')">📷 SCAN QR</button>
         <button class="hub-action-btn" onclick="switchView('fieldcontrol')">⚖️ LB-68</button>
         <button class="hub-action-btn" onclick="switchView('fieldcontrol')">☢️ NUCLEAR</button>
@@ -6199,7 +6269,7 @@ table.fc-borrow-tbl tr.fc-borrow-detail-row td{background:var(--surface);border-
 
       <div class="hub-actions">
         <button class="hub-action-btn primary" onclick="switchView('soillab')">🔬 OPEN LAB MODULE</button>
-
+        <button class="hub-action-btn" onclick="switchView('labarrival')">📦 SCAN ARRIVAL</button>
       </div>
 
       <div class="hub-panel" data-tour="labhub-queue">
@@ -6468,7 +6538,7 @@ table.fc-borrow-tbl tr.fc-borrow-detail-row td{background:var(--surface);border-
 // GLOBALS
 // ══════════════════════════════════════════════
 let db = null;
-const APP_BUILD = '2026.07.03-remove-geosystem';
+const APP_BUILD = '2026.07.04-lab-arrival-scan';
 const FC_CORE_ICON_SRC = 'docs/r18-reference/core-drill-icon-128.png';
 const BORELOG_ICON_SRC = 'docs/r18-reference/borelog-icon.webp';
 const BORELOG_PATH = 'docs/r18-reference/deldot-borelog.html';
@@ -10182,6 +10252,9 @@ function switchView(name) {
   setActiveView(name);
   closeMobileMore();
   if (name === 'scan') initScanner();
+  if (name === 'labarrival') initLabArrivalView();
+  if (name !== 'labarrival') stopLabArrivalScanner();
+  if (name !== 'scan' && qrScanner) { qrScanner.stop().catch(()=>{}); qrScanner = null; }
   if (name === 'home') { renderDashboard(); setTimeout(refreshApprovalBadge, 500); }
   if (name === 'dashboard') loadSamples();
   if (name === 'projects') { loadProjects(); loadSamples(); }
@@ -10252,6 +10325,7 @@ function helpViewTitle(viewName) {
     appsources: 'Approved Sources',
     fieldcontrol: 'Field Control',
     scan: 'QR Scanner',
+    labarrival: 'Lab Sample Arrival',
     soillab: 'Soil & Aggregate Lab',
     concrete: 'Concrete Module',
     labhub: 'Soil Lab Hub',
@@ -12660,6 +12734,254 @@ function showScanResult(sample) {
 function goToLabFromScan() {
   if (!scannedSample) return;
   openSample(scannedSample.id);
+}
+
+// ══════════════════════════════════════════════
+// LAB SAMPLE ARRIVAL (Field Control intake)
+// ══════════════════════════════════════════════
+let laQrScanner = null;
+let _laSessionLog = [];
+let _laLastScan = { id: null, ts: 0 };
+const LA_SCAN_DEBOUNCE_MS = 3500;
+
+function _laLocalDate() {
+  return new Date().toISOString().split('T')[0];
+}
+
+function _laParseSampleIdFromQr(text) {
+  let sampleId = text;
+  try {
+    const u = new URL(text);
+    sampleId = u.searchParams.get('sample') || text;
+  } catch {}
+  return sampleId;
+}
+
+function stopLabArrivalScanner() {
+  if (laQrScanner) {
+    laQrScanner.stop().catch(() => {});
+    laQrScanner = null;
+  }
+}
+
+function initLabArrivalView() {
+  const recv = document.getElementById('la_receiver');
+  if (recv) recv.textContent = currentUser?.name || 'Signed in user';
+  laRenderSessionLog();
+  void laRefreshTodayCount();
+  initLabArrivalScanner();
+}
+
+function initLabArrivalScanner() {
+  const readerEl = document.getElementById('la-reader');
+  if (!readerEl) return;
+  if (laQrScanner && laQrScanner._isScanning) return;
+
+  if (laQrScanner) {
+    laQrScanner.stop().catch(() => {});
+    laQrScanner = null;
+  }
+
+  const isSecure = location.protocol === 'https:' || location.hostname === 'localhost' || location.hostname === '127.0.0.1';
+  if (!isSecure) {
+    readerEl.innerHTML =
+      '<div style="color:var(--gold);font-family:var(--mono);font-size:11px;padding:20px;text-align:center;border:1px solid var(--gold);border-radius:8px;">' +
+      '⚠ Camera requires HTTPS.<br><br>Use manual Test No. entry below.</div>';
+    return;
+  }
+
+  if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+    readerEl.innerHTML =
+      '<p style="color:var(--muted);font-family:var(--mono);font-size:11px;padding:20px;text-align:center;">' +
+      'Camera not supported on this browser.<br>Use manual entry below.</p>';
+    return;
+  }
+
+  readerEl.innerHTML =
+    '<p style="color:var(--muted);font-family:var(--mono);font-size:11px;padding:16px;text-align:center;">⏳ Requesting camera…</p>';
+
+  navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } })
+    .then(stream => {
+      stream.getTracks().forEach(t => t.stop());
+      laQrScanner = new Html5Qrcode('la-reader');
+      laQrScanner.start(
+        { facingMode: { ideal: 'environment' } },
+        { fps: 10, qrbox: { width: 250, height: 250 } },
+        laOnScanSuccess,
+        () => {}
+      ).catch(() => {
+        Html5Qrcode.getCameras().then(cameras => {
+          if (!cameras || !cameras.length) {
+            readerEl.innerHTML =
+              '<p style="color:var(--muted);font-family:var(--mono);font-size:11px;padding:20px;text-align:center;">' +
+              'No cameras found.<br>Use manual entry below.</p>';
+            return;
+          }
+          laQrScanner = new Html5Qrcode('la-reader');
+          laQrScanner.start(
+            cameras[cameras.length - 1].id,
+            { fps: 10, qrbox: { width: 250, height: 250 } },
+            laOnScanSuccess,
+            () => {}
+          ).catch(err => {
+            readerEl.innerHTML =
+              '<p style="color:var(--muted);font-family:var(--mono);font-size:11px;padding:20px;text-align:center;">' +
+              'Camera error: ' + (err.message || err) + '<br>Use manual entry below.</p>';
+            laQrScanner = null;
+          });
+        });
+      });
+    })
+    .catch(err => {
+      const denied = err.name === 'NotAllowedError' || err.name === 'PermissionDeniedError';
+      readerEl.innerHTML =
+        '<div style="font-family:var(--mono);font-size:11px;padding:20px;text-align:center;">' +
+        (denied
+          ? '<span style="color:#ef4444;">Camera permission denied.</span><br><br>' +
+            '<button onclick="laQrScanner=null;initLabArrivalScanner();" style="margin-top:8px;background:var(--accent);border:none;color:#fff;padding:6px 16px;border-radius:6px;cursor:pointer;font-family:var(--mono);font-size:11px;">↻ Retry Camera</button>'
+          : '<span style="color:var(--muted);">Camera unavailable: ' + (err.message || err) + '</span>') +
+        '<br><br>Or use manual entry below.</div>';
+      laQrScanner = null;
+    });
+}
+
+async function laOnScanSuccess(text) {
+  const sampleId = _laParseSampleIdFromQr(text);
+  const now = Date.now();
+  if (_laLastScan.id === sampleId && now - _laLastScan.ts < LA_SCAN_DEBOUNCE_MS) return;
+  _laLastScan = { id: sampleId, ts: now };
+  await recordLabArrival(sampleId, 'qr');
+}
+
+async function laLoadByTestNo() {
+  const tn = document.getElementById('la_manual_testno')?.value.trim();
+  if (!tn) { showToast('Enter a test number', 'error'); return; }
+  if (!db && !navigator.onLine) {
+    showToast('Connect to the database to log arrivals', 'error');
+    return;
+  }
+  let sample = (allSamples || []).find(s => String(s.test_no || '').toLowerCase() === tn.toLowerCase());
+  if (!sample && db) {
+    const { data, error } = await db.from('samples').select('*').ilike('test_no', tn).maybeSingle();
+    if (error || !data) { showToast('Sample not found: ' + tn, 'error'); return; }
+    sample = data;
+  }
+  if (!sample) { showToast('Sample not found: ' + tn, 'error'); return; }
+  document.getElementById('la_manual_testno').value = '';
+  await recordLabArrival(sample.id, 'manual', sample);
+}
+
+async function recordLabArrival(sampleId, source, prefetchedSample) {
+  const sample = prefetchedSample || await fetchSample(sampleId);
+  if (!sample) return;
+
+  const arrivedAt = new Date().toISOString();
+  const dateReceived = _laLocalDate();
+  const hadDateReceived = !!(sample.date_received && sample.date_received.trim());
+
+  const updates = {};
+  if (!hadDateReceived) updates.date_received = dateReceived;
+
+  let updatedSample = sample;
+  if (Object.keys(updates).length) {
+    const { data, error, queued } = await dbWrite('samples', 'update', updates, sample.id);
+    if (error) {
+      showToast('Could not update sample: ' + error.message, 'error');
+      return;
+    }
+    updatedSample = data || { ...sample, ...updates };
+    const idx = (allSamples || []).findIndex(s => s.id === sample.id);
+    if (idx >= 0) allSamples[idx] = { ...allSamples[idx], ...updates };
+    else if (allSamples) allSamples.unshift(updatedSample);
+    if (queued) showToast('Saved locally — will sync when online', 'info');
+  }
+
+  await logSampleHistory({
+    sampleId: sample.id,
+    testNo: sample.test_no,
+    action: 'lab_arrived',
+    details: {
+      arrived_at: arrivedAt,
+      date_received: updatedSample.date_received || dateReceived,
+      source: source || 'qr',
+      prior_date_received: hadDateReceived ? sample.date_received : null,
+    },
+  });
+
+  _laSessionLog.unshift({
+    test_no: sample.test_no,
+    contract: sample.contract,
+    material_type: sample.material_type,
+    arrived_at: arrivedAt,
+    date_received: updatedSample.date_received || dateReceived,
+    was_repeat: hadDateReceived,
+  });
+  if (_laSessionLog.length > 100) _laSessionLog.length = 100;
+
+  laRenderSessionLog();
+  void laRefreshTodayCount();
+
+  const timeStr = new Date(arrivedAt).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
+  if (hadDateReceived) {
+    showToast('✓ #' + sample.test_no + ' logged again at ' + timeStr + ' (received ' + sample.date_received + ')', 'success');
+  } else {
+    showToast('✓ #' + sample.test_no + ' received at lab — ' + timeStr, 'success');
+  }
+}
+
+function laRenderSessionLog() {
+  const el = document.getElementById('la_session_log');
+  const countEl = document.getElementById('la_count_session');
+  if (countEl) countEl.textContent = String(_laSessionLog.length);
+  if (!el) return;
+  if (!_laSessionLog.length) {
+    el.innerHTML = 'No samples scanned yet — point the camera at a bag QR code.';
+    return;
+  }
+  el.innerHTML = _laSessionLog.map(row => {
+    const when = new Date(row.arrived_at).toLocaleString();
+    const repeat = row.was_repeat
+      ? '<span style="color:var(--gold);font-size:9px;margin-left:6px;">RE-SCAN</span>'
+      : '';
+    return `<div style="display:flex;justify-content:space-between;align-items:baseline;gap:10px;padding:8px 4px;border-bottom:1px solid var(--border);">
+      <div>
+        <span style="font-weight:700;color:var(--accent2);font-size:13px;">#${row.test_no || '—'}</span>${repeat}
+        <span style="color:var(--muted);margin-left:8px;">${row.contract || '—'}</span>
+        <span style="color:var(--muted);margin-left:6px;">${row.material_type || ''}</span>
+      </div>
+      <div style="text-align:right;white-space:nowrap;">
+        <div style="color:var(--text);font-size:10px;">${when}</div>
+        <div style="color:var(--muted);font-size:9px;">Recv ${row.date_received || '—'}</div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function laClearSessionLog() {
+  _laSessionLog = [];
+  laRenderSessionLog();
+}
+
+async function laRefreshTodayCount() {
+  const el = document.getElementById('la_count_today');
+  if (!el) return;
+  const today = _laLocalDate();
+  if (!db) {
+    el.textContent = '—';
+    return;
+  }
+  try {
+    const start = today + 'T00:00:00.000Z';
+    const end = today + 'T23:59:59.999Z';
+    const { count, error } = await db.from('sample_history')
+      .select('*', { count: 'exact', head: true })
+      .eq('action', 'lab_arrived')
+      .gte('created_at', start)
+      .lte('created_at', end);
+    el.textContent = error ? '—' : String(count ?? 0);
+  } catch {
+    el.textContent = '—';
+  }
 }
 
 // ══════════════════════════════════════════════
@@ -15680,6 +16002,7 @@ const HISTORY_ACTION_LABELS = {
   restored: 'Restored from delete',
   hard_deleted: 'Permanently deleted',
   fc_status: 'Field control status changed',
+  lab_arrived: 'Received at lab',
 };
 
 function showActiveSampleHistory() {
@@ -15726,6 +16049,13 @@ async function showSampleHistory(sampleId, testNo) {
       if (row.details.reason) extra = '<div style="color:var(--muted);margin-top:4px;">' + row.details.reason + '</div>';
       else if (row.details.fields?.length) extra = '<div style="color:var(--muted);margin-top:4px;">Fields: ' + row.details.fields.join(', ') + '</div>';
       else if (row.details.status) extra = '<div style="color:var(--muted);margin-top:4px;">Status: ' + row.details.status + '</div>';
+      else if (row.details.arrived_at) {
+        const at = new Date(row.details.arrived_at).toLocaleString();
+        extra = '<div style="color:var(--muted);margin-top:4px;">Arrived: ' + at;
+        if (row.details.date_received) extra += ' · Date received: ' + row.details.date_received;
+        if (row.details.prior_date_received) extra += ' · (was ' + row.details.prior_date_received + ')';
+        extra += '</div>';
+      }
     }
     return `<div style="border-bottom:1px solid var(--border);padding:10px 4px;">
       <div style="display:flex;justify-content:space-between;gap:8px;align-items:baseline;">
@@ -15933,7 +16263,7 @@ let currentView = 'home';
 
 const VIEW_LABELS = {
   home: 'Home', projects: 'Projects', dashboard: 'Samples', fieldcontrol: 'Field',
-  scan: 'Scan', soillab: 'Soil', concrete: 'Concrete', appsources: 'Sources',
+  scan: 'Scan', labarrival: 'Arrival', soillab: 'Soil', concrete: 'Concrete', appsources: 'Sources',
   fieldhub: 'Field', labhub: 'Lab', conchub: 'Concrete', hotmix: 'Hot Mix',
   precast: 'Pre-Cast', chemlab: 'Chem', r18: 'R-18', labmap: 'Map'
 };
@@ -15942,6 +16272,7 @@ const MOBILE_NAV_ICONS = {
   home: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>',
   projects: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M2 7a2 2 0 012-2h4l2 2h10a2 2 0 012 2v8a2 2 0 01-2 2H4a2 2 0 01-2-2V7z"/></svg>',
   scan: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M4 7V5a1 1 0 011-1h2M20 7V5a1 1 0 00-1-1h-2M4 17v2a1 1 0 001 1h2M20 17v2a1 1 0 01-1 1h-2"/><rect x="7" y="7" width="10" height="10" rx="1"/></svg>',
+  labarrival: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M21 16V8a2 2 0 00-1-1.73l-7-4a2 2 0 00-2 0l-7 4A2 2 0 003 8v8a2 2 0 001 1.73l7 4a2 2 0 002 0l7-4A2 2 0 0021 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/></svg>',
   dashboard: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M4 6h16M4 12h16M4 18h10"/></svg>',
   fieldcontrol: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5M2 12l10 5 10-5"/></svg>',
   soillab: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M9 3h6v4H9z"/><path d="M10 7v14M14 7v14M8 21h8"/></svg>',
@@ -16016,7 +16347,7 @@ function setActiveView(name) {
   document.getElementById('app')?.classList.toggle('labmap-mode', name === 'labmap');
   document.querySelectorAll('.rail-item').forEach(r => r.classList.toggle('active', r.dataset.view === name));
   document.querySelectorAll('.view').forEach(v => v.classList.toggle('active', v.id === name + '-view'));
-  const _sectionMap = {home:'',labmap:'MAP',projects:'PROJECTS',dashboard:'ALL SAMPLES',fieldcontrol:'FIELD CONTROL',scan:'SCAN QR',soillab:'SOIL & AGGREGATE',concrete:'CONCRETE',fieldhub:'FIELD CONTROL',labhub:'SOIL LAB',conchub:'CONCRETE HUB',lab:'LAB ENTRY',report:'REPORT',hotmix:'HOT MIX ASPHALT',precast:'PRE-CAST CONCRETE',chemlab:'CHEMISTRY LAB',r18:'R-18 COMPLIANCE'};
+  const _sectionMap = {home:'',labmap:'MAP',projects:'PROJECTS',dashboard:'ALL SAMPLES',fieldcontrol:'FIELD CONTROL',scan:'SCAN QR',labarrival:'LAB ARRIVAL',soillab:'SOIL & AGGREGATE',concrete:'CONCRETE',fieldhub:'FIELD CONTROL',labhub:'SOIL LAB',conchub:'CONCRETE HUB',lab:'LAB ENTRY',report:'REPORT',hotmix:'HOT MIX ASPHALT',precast:'PRE-CAST CONCRETE',chemlab:'CHEMISTRY LAB',r18:'R-18 COMPLIANCE'};
   const _sl = document.getElementById('ts-section-label');
   if (_sl) { const _lbl = _sectionMap[name]||''; _sl.textContent=_lbl; _sl.style.display=_lbl?'':'none'; }
   syncMobileNav();
@@ -16030,8 +16361,8 @@ function setActiveView(name) {
 const ROLE_DEFS = {
   admin:         { label: 'Administrator',    color: '#e09848', tabs: ['home','labmap','projects','dashboard','fieldhub','labhub','conchub','hotmix','precast','chemlab','appsources','r18'] },
   section_admin: { label: 'Section Admin',    color: '#fb923c', tabs: [] }, // tabs come from restricted_hubs
-  field:         { label: 'Field Technician', color: '#60a5fa', tabs: ['projects','fieldhub','scan','r18'] },
-  lab:           { label: 'Lab Technician',   color: '#34d399', tabs: ['projects','dashboard','labhub','soillab','r18'] },
+  field:         { label: 'Field Technician', color: '#60a5fa', tabs: ['projects','fieldhub','labarrival','scan','r18'] },
+  lab:           { label: 'Lab Technician',   color: '#34d399', tabs: ['projects','dashboard','labhub','labarrival','soillab','r18'] },
   concrete:      { label: 'Concrete Tech',    color: '#a78bfa', tabs: ['projects','conchub','concrete','r18'] },
 };
 const ROLE_HOME = { admin:'home', section_admin:'home', field:'fieldhub', lab:'labhub', concrete:'conchub' };
@@ -16273,7 +16604,7 @@ function applyRoleUI(role) {
   // Map of view → rail item id
   const railMap = {
     home: 'ri-home', labmap: 'ri-labmap', projects: 'ri-projects', dashboard: 'ri-dashboard',
-    fieldcontrol: 'ri-fieldcontrol', scan: 'ri-scan',
+    fieldcontrol: 'ri-fieldcontrol', scan: 'ri-scan', labarrival: 'ri-labarrival',
     soillab: 'ri-soillab', concrete: 'ri-concrete', appsources: 'ri-appsources',
     fieldhub: 'ri-fieldhub', labhub: 'ri-labhub', conchub: 'ri-conchub',
     hotmix: 'ri-hotmix', precast: 'ri-precast', chemlab: 'ri-chemlab', r18: 'ri-r18',
@@ -25049,6 +25380,7 @@ const CMD_VIEWS = [
   { id:'chemlab',      label:'Chemistry Lab',    icon:'🧪', sub:'Chloride · pH · Titration' },
   { id:'r18',          label:'R-18 Compliance',  icon:'📋', sub:'Equipment calibration tracker' },
   { id:'scan',         label:'Scan QR Code',     icon:'⬡', sub:'QR code scanner' },
+  { id:'labarrival',   label:'Lab Arrival',      icon:'📦', sub:'Log samples received at lab' },
   { id:'fieldhub',     label:'Field Control',        icon:'🏕', sub:'Field calendar & hub notes' },
   { id:'labhub',       label:'Lab Hub',          icon:'🔬', sub:'Lab calendar & hub notes' },
   { id:'conchub',      label:'Concrete',     icon:'🏛', sub:'Concrete hub & calendar' },
@@ -25060,6 +25392,7 @@ const CMD_ACTIONS = [
   { label:'New Concrete Set',   icon:'＋', sub:'Open concrete cylinder intake',  action:()=>switchView('concrete') },
   { label:'R-18 Compliance',    icon:'📋', sub:'Check equipment calibration',    action:()=>switchView('r18') },
   { label:'Scan QR Code',       icon:'⬡', sub:'Open QR scanner',               action:()=>switchView('scan') },
+  { label:'Lab Sample Arrival', icon:'📦', sub:'Log samples received at lab',   action:()=>switchView('labarrival') },
 ];
 
 // ── State ──────────────────────────────────────────────────────
