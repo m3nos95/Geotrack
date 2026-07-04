@@ -3918,7 +3918,7 @@ async function runGeoImport(){
         const bName = (d['BORING']||'').trim();
         if(bName){
           boringDataMap[bName] = d;
-          geoLog('ok', `✔ Boring file: ${f.name} → BORING="${bName}" LOCATION="${d['LOCATION']}" NORTH="${d['NORTH']}"`);
+          geoLog('ok', `✔ Boring file: ${f.name} → BORING="${bName}" LOCATION="${d['LOCATION']}" NORTH="${d['NORTH']}" EAST="${d['EAST']}" STATION="${d['STATION']||''}"`);
           geoLog('ok', `   BLOWS1="${(d['BLOWS1']||'').slice(0,40)}" DESC="${(d['DESCRIPTION']||'').slice(0,40)}"`);
         } else {
           geoLog('warn', `⚠ ${f.name}: no BORING key found. Keys: ${Object.keys(d).join(', ')}`);
@@ -4013,6 +4013,8 @@ async function runGeoImport(){
       const station = pd['STATION'] || pd['STA'] || '';
       const offset = pd['OFFSET'] || pd['OFF'] || '';
       const stationOffset = [station, offset].filter(Boolean).join(' / ');
+      const geoLat = pd['LATITUDE'] || pd['LAT'] || pd['LAT_DD'] || '';
+      const geoLng = pd['LONGITUDE'] || pd['LONG'] || pd['LON'] || pd['LONG_DD'] || '';
 
       const boringId = uid();
       const boring = {
@@ -4044,6 +4046,15 @@ async function runGeoImport(){
         remarks:        pd['NOTES']           || '',
         created_at: new Date().toISOString()
       };
+      if (geoLat && geoLng) {
+        const lat = parseFloat(String(geoLat).replace(/,/g, ''));
+        const lng = parseFloat(String(geoLng).replace(/,/g, ''));
+        if (isFinite(lat) && isFinite(lng) && lat >= 36 && lat <= 42 && lng >= -77 && lng <= -73) {
+          boring.gps_coordinates = formatBoringGps(lat, lng, '');
+          boring.map_lat = lat;
+          boring.map_lng = lng;
+        }
+      }
       syncBoringGpsFields(boring);
       normalizeBoringStatePlaneFields(boring);
       store.saveBoring(boring);
