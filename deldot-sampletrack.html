@@ -7629,7 +7629,7 @@ function collectBorelogBoringsFromLocal(contract) {
       if (contractLower && pContract && pContract !== contractLower) return;
       const item = normalizeBorelogMapBoring(
         { id: b.id, project_id: b.project_id, boring_no: b.boring_no, header_data: b },
-        { contract: p.contract_no || p.contract || '', name: p.name || '' }
+        { contract: sanitizeBorelogContract(p.contract_no || p.contract || ''), name: p.name || '' }
       );
       if (item) out.push(item);
     });
