@@ -2068,6 +2068,21 @@ function parseStationOffsetFields(b) {
   return { station, offset, northing: n, easting: e };
 }
 
+function parseDirectMapLatLng(b) {
+  const lat = parseCoordNumber(b?.map_lat ?? b?.latitude ?? b?.LAT);
+  const lng = parseCoordNumber(b?.map_lng ?? b?.longitude ?? b?.LON ?? b?.lng ?? b?.long);
+  if (!isFinite(lat) || !isFinite(lng)) return null;
+  if (lat > 50000 || Math.abs(lng) > 50000) return null;
+  if (lat < 36 || lat > 42 || lng < -77 || lng > -73) return null;
+  return { lat, lng };
+}
+
+function hasTrustedBorelogGps(b) {
+  const raw = String(b?.gps_coordinates || '').trim();
+  if (/\(state\s*plane\)/i.test(raw)) return false;
+  return !!(parseDirectMapLatLng(b) || parseStoredGpsLatLng(b));
+}
+
 function parseStoredGpsLatLng(b) {
   const raw = b?.gps_coordinates || '';
   if (!raw) return null;
@@ -2090,6 +2105,10 @@ function resolveBoringMapCoords(b, frame) {
   const isProfile = isProfileGridNE(northing, easting);
   const hasExplicitStation = /\d+\s*\+/.test(String(b.station_offset || ''))
     || String(b.station_offset || '').includes('/');
+
+  if (hasTrustedBorelogGps(b)) {
+    return parseDirectMapLatLng(b) || parseStoredGpsLatLng(b);
+  }
 
   if (isSP && !(frame?.constantE && hasExplicitStation)) {
     const fromNE = delawareNEToLatLng(northing, easting) || delawareNEToLatLng(easting, northing);
