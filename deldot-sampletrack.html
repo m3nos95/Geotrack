@@ -6468,7 +6468,7 @@ table.fc-borrow-tbl tr.fc-borrow-detail-row td{background:var(--surface);border-
 // GLOBALS
 // ══════════════════════════════════════════════
 let db = null;
-const APP_BUILD = '2026.07.04-borelog-gps-nocache';
+const APP_BUILD = '2026.07.04-borelog-anchor-filter';
 const FC_CORE_ICON_SRC = 'docs/r18-reference/core-drill-icon-128.png';
 const BORELOG_ICON_SRC = 'docs/r18-reference/borelog-icon.webp';
 const BORELOG_PATH = 'docs/r18-reference/deldot-borelog.html';
@@ -7540,7 +7540,13 @@ function resolveBorelogBoringCoords(b, frame) {
   const hasExplicitStation = /\d+\s*\+/.test(String(b.station_offset || ''))
     || String(b.station_offset || '').includes('/');
 
-  if (isSP && !(frame?.constantE && hasExplicitStation)) {
+  if (frame && isFinite(station)) {
+    const fromProfile = statePlaneFromProfile(station, offset, frame);
+    if (fromProfile && (frame.constantE || hasExplicitStation || isProfile)) {
+      return { ...fromProfile, _src: 'station' };
+    }
+  }
+  if (isSP) {
     const fromNE = delawareNEToLatLng(northing, easting) || delawareNEToLatLng(easting, northing);
     if (fromNE) return { ...fromNE, _src: 'ne' };
   }
@@ -7566,6 +7572,50 @@ function resolveBorelogBoringCoords(b, frame) {
   return null;
 }
 
+function getBorelogProjectAnchor(group) {
+  if (!group?.length) return null;
+  const sample = group[0];
+  const text = [
+    sample.projectName, sample.projectLocation, sample.location, sample.contract,
+  ].filter(Boolean).join(' ').toLowerCase();
+
+  const anchors = [
+    { test: /dover|west\s*dover|kent\s*county/, lat: 39.158, lng: -75.524, radiusM: 35000, minN: 390000, maxN: 430000, minE: 605000, maxE: 650000 },
+    { test: /wilmington|new\s*castle/, lat: 39.745, lng: -75.547, radiusM: 40000, minN: 420000, maxN: 460000, minE: 600000, maxE: 650000 },
+    { test: /georgetown|sussex/, lat: 38.690, lng: -75.386, radiusM: 45000, minN: 360000, maxN: 400000, minE: 620000, maxE: 680000 },
+  ];
+  for (const a of anchors) {
+    if (a.test.test(text)) return a;
+  }
+
+  // Fall back to densest cluster of northern Delaware state-plane borings
+  const northern = group.map(b => {
+    const { northing, easting } = parseStationOffsetFields(b);
+    if (!isDelawareStatePlaneNE(northing, easting)) return null;
+    const pt = delawareNEToLatLng(northing, easting);
+    return pt && northing >= 360000 ? pt : null;
+  }).filter(Boolean);
+  if (northern.length >= 3) {
+    return {
+      lat: median(northern.map(c => c.lat)),
+      lng: median(northern.map(c => c.lng)),
+      radiusM: 40000,
+      minN: 360000,
+    };
+  }
+  return null;
+}
+
+function isPlausibleBorelogCoord(b, coords, anchor) {
+  if (!coords || !anchor) return true;
+  const { northing, easting } = parseStationOffsetFields(b);
+  if (isFinite(anchor.minN) && isFinite(northing) && northing < anchor.minN) return false;
+  if (isFinite(anchor.maxN) && isFinite(northing) && northing > anchor.maxN) return false;
+  if (isFinite(anchor.minE) && isFinite(easting) && easting < anchor.minE) return false;
+  if (isFinite(anchor.maxE) && isFinite(easting) && easting > anchor.maxE) return false;
+  return coordsDistanceMeters(coords, anchor) <= (anchor.radiusM || 40000);
+}
+
 function stripCoordMeta(coords) {
   if (!coords) return null;
   return { lat: coords.lat, lng: coords.lng };
@@ -7579,15 +7629,24 @@ function applyBorelogProjectCoords(items) {
   });
   Object.values(byProject).forEach(group => {
     const frame = buildBorelogAlignmentFrame(group);
+    const anchor = getBorelogProjectAnchor(group);
     group.forEach(item => {
       const coords = resolveBorelogBoringCoords(item, frame);
       item.coords = stripCoordMeta(coords);
       item._coordSrc = coords?._src || '';
     });
 
-    const spCoords = group.filter(g => g._coordSrc === 'ne' || g._coordSrc === 'station' || g._coordSrc === 'profile')
-      .map(g => g.coords).filter(Boolean);
-    if (spCoords.length >= 3) {
+    group.forEach(item => {
+      if (!item.coords) return;
+      if (!isPlausibleBorelogCoord(item, item.coords, anchor)) {
+        item.coords = null;
+        item._coordSrc = '';
+      }
+    });
+
+    const spCoords = group.filter(g => g.coords && (g._coordSrc === 'ne' || g._coordSrc === 'station' || g._coordSrc === 'profile'))
+      .map(g => g.coords);
+    if (spCoords.length >= 3 && anchor) {
       const med = { lat: median(spCoords.map(c => c.lat)), lng: median(spCoords.map(c => c.lng)) };
       group.forEach(item => {
         if (!item.coords || item._coordSrc === 'ne' || item._coordSrc === 'station' || item._coordSrc === 'profile') return;
@@ -7611,12 +7670,19 @@ function migrateBorelogLocalStorageCoords() {
     all.forEach(b => { (byProject[b.project_id] = byProject[b.project_id] || []).push(b); });
 
     let changed = 0;
+    const projects = raw.projects || {};
     Object.values(byProject).forEach(group => {
+      const proj = projects[group[0]?.project_id] || {};
+      const anchor = getBorelogProjectAnchor(group.map(b => ({
+        ...b,
+        projectName: proj.name || '',
+        projectLocation: proj.location || '',
+      })));
       const frame = buildBorelogAlignmentFrame(group);
       group.forEach(b => {
         const resolved = resolveBorelogBoringCoords(b, frame);
         const coords = stripCoordMeta(resolved);
-        if (!coords) return;
+        if (!coords || !isPlausibleBorelogCoord(b, coords, anchor)) return;
         const gps = `${coords.lat.toFixed(6)}, ${coords.lng.toFixed(6)} (state plane)`;
         const before = JSON.stringify([b.map_lat, b.map_lng, b.gps_coordinates]);
         b.map_lat = coords.lat;
@@ -7669,6 +7735,7 @@ function normalizeBorelogMapBoring(row, projectMeta) {
     date_completed: fields.date_completed || '',
     contract: sanitizeBorelogContract(projectMeta?.contract || row.contract || ''),
     projectName: projectMeta?.name || row.projectName || '',
+    projectLocation: projectMeta?.location || row.projectLocation || '',
   };
   const ne = extractBorelogStatePlaneValues(boring);
   if (isFinite(ne.northing) && ne.northing > 50000) boring.northing = String(ne.northing);
@@ -7699,7 +7766,7 @@ function collectBorelogBoringsFromLocal(contract) {
       if (contractLower && pContract && pContract !== contractLower) return;
       const item = normalizeBorelogMapBoring(
         { id: b.id, project_id: b.project_id, boring_no: b.boring_no, header_data: b },
-        { contract: sanitizeBorelogContract(p.contract_no || p.contract || ''), name: p.name || '' }
+        { contract: sanitizeBorelogContract(p.contract_no || p.contract || ''), name: p.name || '', location: p.location || '' }
       );
       if (item) out.push(item);
     });
@@ -7723,7 +7790,7 @@ async function fetchBorelogBoringsForContract(contract) {
   try {
     const contractLower = (contract || '').trim().toLowerCase();
     const [{ data: projects, error: pErr }, { data: rows, error: bErr }] = await Promise.all([
-      db.from('borelog_projects').select('id,contract,name').is('deleted_at', null),
+      db.from('borelog_projects').select('id,contract,name,location').is('deleted_at', null),
       db.from('borelog_borings').select('*').is('deleted_at', null),
     ]);
     if (pErr) throw pErr;
