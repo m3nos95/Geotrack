@@ -6468,7 +6468,7 @@ table.fc-borrow-tbl tr.fc-borrow-detail-row td{background:var(--surface);border-
 // GLOBALS
 // ══════════════════════════════════════════════
 let db = null;
-const APP_BUILD = '2026.07.04-borelog-gps-fix';
+const APP_BUILD = '2026.07.04-borelog-gps-fix2';
 const FC_CORE_ICON_SRC = 'docs/r18-reference/core-drill-icon-128.png';
 const BORELOG_ICON_SRC = 'docs/r18-reference/borelog-icon.webp';
 const BORELOG_PATH = 'docs/r18-reference/deldot-borelog.html';
@@ -7276,18 +7276,57 @@ function delawareBoundsOk(lat, lng) {
   return lat >= 38.4 && lat <= 39.95 && lng >= -76.05 && lng <= -74.4;
 }
 
+function parseCoordNumber(raw) {
+  if (raw == null || raw === '') return NaN;
+  const m = String(raw).replace(/,/g, '').trim().match(/-?\d+(?:\.\d+)?/);
+  return m ? parseFloat(m[0]) : NaN;
+}
+
+function splitCombinedNE(text) {
+  if (!text) return [NaN, NaN];
+  const parts = String(text).trim().split(/\s*[\/,;]\s*/)
+    .map(parseCoordNumber)
+    .filter(n => isFinite(n));
+  if (parts.length >= 2) return [parts[0], parts[1]];
+  return [parseCoordNumber(text), NaN];
+}
+
+function extractBorelogStatePlaneValues(b) {
+  if (!b) return { northing: NaN, easting: NaN };
+  let n = parseCoordNumber(b.northing);
+  let e = parseCoordNumber(b.easting);
+
+  if (!(isFinite(e) && e > 50000) && b.northing) {
+    const [sn, se] = splitCombinedNE(b.northing);
+    if (isFinite(sn) && isFinite(se) && sn > 50000 && se > 50000) { n = sn; e = se; }
+  }
+  if (!(isFinite(n) && n > 50000) && b.easting) {
+    const [sn, se] = splitCombinedNE(b.easting);
+    if (isFinite(sn) && isFinite(se) && sn > 50000 && se > 50000) { n = sn; e = se; }
+  }
+
+  const gpsCandidates = [b.gps_coordinates, b.gps];
+  if (looksLikeGpsString(b.location)) gpsCandidates.push(b.location);
+  for (const gps of gpsCandidates.filter(Boolean)) {
+    if (isFinite(n) && isFinite(e) && n > 50000 && e > 50000) break;
+    const cleaned = String(gps).replace(/\(.*?\)/g, '').trim();
+    const [gn, ge] = splitCombinedNE(cleaned);
+    if (isFinite(gn) && isFinite(ge) && gn > 50000 && ge > 50000) { n = gn; e = ge; }
+  }
+
+  return { northing: n, easting: e };
+}
+
 function parseStatePlaneNE(northing, easting) {
-  const n0 = parseFloat(String(northing).replace(/,/g, ''));
-  const e0 = parseFloat(String(easting).replace(/,/g, ''));
+  const n0 = parseCoordNumber(northing);
+  const e0 = parseCoordNumber(easting);
   if (!isFinite(n0) || !isFinite(e0) || n0 < 50000 || e0 < 50000) return null;
   return delawareNEToLatLng(n0, e0) || delawareNEToLatLng(e0, n0);
 }
 
-function coordsDistanceMeters(a, b) {
-  if (!a || !b) return Infinity;
-  const dlat = (a.lat - b.lat) * 111320;
-  const dlng = (a.lng - b.lng) * 111320 * Math.cos(((a.lat + b.lat) / 2) * Math.PI / 180);
-  return Math.sqrt(dlat * dlat + dlng * dlng);
+function extractBorelogStatePlaneCoords(b) {
+  const { northing, easting } = extractBorelogStatePlaneValues(b);
+  return parseStatePlaneNE(northing, easting);
 }
 
 function delawareNEToLatLng(northing, easting) {
@@ -7363,15 +7402,12 @@ function parseBorelogHeaderData(row) {
 
 function resolveBorelogBoringCoords(b) {
   if (!b) return null;
-  const fromNE = parseStatePlaneNE(b.northing, b.easting);
+  const fromNE = extractBorelogStatePlaneCoords(b);
   const mapLat = parseFloat(b.map_lat);
   const mapLng = parseFloat(b.map_lng);
   const cached = isFinite(mapLat) && isFinite(mapLng) ? { lat: mapLat, lng: mapLng } : null;
 
-  if (fromNE) {
-    if (!cached || coordsDistanceMeters(fromNE, cached) > 500) return fromNE;
-    return cached;
-  }
+  if (fromNE) return fromNE;
   if (cached) return cached;
 
   const gpsCandidates = [b.gps_coordinates, b.gps];
@@ -7409,6 +7445,9 @@ function normalizeBorelogMapBoring(row, projectMeta) {
     contract: projectMeta?.contract || row.contract || '',
     projectName: projectMeta?.name || row.projectName || '',
   };
+  const ne = extractBorelogStatePlaneValues(boring);
+  if (isFinite(ne.northing) && ne.northing > 50000) boring.northing = String(ne.northing);
+  if (isFinite(ne.easting) && ne.easting > 50000) boring.easting = String(ne.easting);
   const coords = resolveBorelogBoringCoords(boring);
   if (!coords) return null;
   return { ...boring, coords, _sourceRow: row };
@@ -7444,8 +7483,10 @@ async function fetchBorelogBoringsForContract(contract) {
     seen.add(item.id);
     out.push(item);
   };
-  collectBorelogBoringsFromLocal(contract).forEach(add);
-  if (!db) return out;
+  if (!db) {
+    collectBorelogBoringsFromLocal(contract).forEach(add);
+    return out;
+  }
   try {
     const contractLower = (contract || '').trim().toLowerCase();
     const [{ data: projects, error: pErr }, { data: rows, error: bErr }] = await Promise.all([
@@ -7465,6 +7506,7 @@ async function fetchBorelogBoringsForContract(contract) {
       if (item) add(item);
     });
   } catch (e) { console.warn('fetchBorelogBoringsForContract:', e); }
+  collectBorelogBoringsFromLocal(contract).forEach(add);
   return out;
 }
 
