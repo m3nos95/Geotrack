@@ -425,6 +425,15 @@ nav{background:var(--surface);border-bottom:1px solid var(--border);box-shadow:0
 .list-card .lc-btn:hover{border-color:var(--accent2);color:var(--text);}
 .list-card .lc-btn.danger:hover{border-color:var(--red2);color:var(--red2);}
 
+/* Map modal */
+#mapModal{position:fixed;inset:0;background:rgba(0,0,0,0.88);z-index:2000;display:none;align-items:flex-start;justify-content:center;overflow-y:auto;padding:30px 16px;}
+#mapModal.open{display:flex;}
+#mapBox{background:var(--surface);border-radius:14px;width:100%;max-width:900px;padding:24px;box-sizing:border-box;}
+#mapBox h3{margin:0 0 4px;font-size:16px;color:var(--text);}
+#leafletMap{width:100%;height:520px;border-radius:10px;border:1px solid var(--border);margin-top:14px;}
+.map-toolbar{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:10px;}
+.map-no-coords{background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:10px 14px;font-size:11px;color:var(--muted);margin-top:6px;}
+
 /* ── Comfort mode (shared with LabTrak) ── */
 .btn-comfort-mode{background:rgba(255,255,255,0.06);border:1px solid var(--border);color:var(--muted);
   padding:5px 9px;font-family:var(--sans);font-size:14px;line-height:1;cursor:pointer;border-radius:var(--radius-sm);transition:all .15s;}
@@ -461,6 +470,8 @@ html.comfort-mode .htb-status-dot.warning,
 html.comfort-mode .htb-next-val.due,
 html.comfort-mode .hab-pulse{animation:none !important;box-shadow:none !important;text-shadow:none !important;}
 </style>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 </head>
 <body>
 
@@ -545,6 +556,7 @@ html.comfort-mode .hab-pulse{animation:none !important;box-shadow:none !importan
           <button class="btn btn-ghost btn-sm" onclick="showView('log-print')">📄 VIEW LOG</button>
           <button class="btn btn-ghost btn-sm" onclick="showView('psd-print')">📊 PSD REPORT</button>
           <button class="btn btn-ghost btn-sm" onclick="openPoleBase()">📐 POLE BASE</button>
+          <button class="btn btn-ghost btn-sm" onclick="openMapModal()">🗺 MAP</button>
           <button class="btn btn-danger btn-sm" onclick="deleteBoring()">DELETE</button>
         </div>
       </div>
@@ -815,11 +827,33 @@ html.comfort-mode .hab-pulse{animation:none !important;box-shadow:none !importan
   </div>
 </div>
 
+
+<div id="mapModal" onclick="if(event.target===this)closeMapModal()">
+  <div id="mapBox">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px;">
+      <h3>🗺 Boring Locations</h3>
+      <button class="btn btn-ghost btn-sm" onclick="closeMapModal()">✕ CLOSE</button>
+    </div>
+
+    <div class="map-toolbar">
+      <span style="font-size:11px;color:var(--muted);">State Plane DE 700 · US Survey Feet → WGS84</span>
+      <button class="btn btn-ghost btn-sm" onclick="exportKML()" style="margin-left:auto;">⬇ Export KML</button>
+    </div>
+    <div id="mapNoCoordsWarn" class="map-no-coords" style="display:none;">
+      ⚠ Some borings are missing Northing/Easting — only borings with coordinates are shown.
+    </div>
+    <div id="leafletMap"></div>
+  </div>
+</div>
+
 <div id="poleBaseModal">
   <div class="pb-modal">
     <div class="pb-title">
       <span>📐 &nbsp;POLE BASE ANALYSIS — DelDOT TDM Table IV-11</span>
-      <button class="btn btn-ghost btn-sm" onclick="closePoleBase()">✕ CLOSE</button>
+      <div style="display:flex;gap:8px;">
+        <button class="btn btn-ghost btn-sm" onclick="printPbReport()">📋 REPORT</button>
+        <button class="btn btn-ghost btn-sm" onclick="closePoleBase()">✕ CLOSE</button>
+      </div>
     </div>
     <div id="poleBaseContent" style="padding:0;"></div>
   </div>
@@ -1777,17 +1811,21 @@ function generateDescription(sample, prevMoistureState){
 }
 
 /* ---------- N-VALUE HELPERS ---------- */
+function isNoSplit(b){ return /^n\/?a$/i.test(String(b||'').trim()); }
 function computeN(blows){
   if(!Array.isArray(blows)) return null;
+  if(blows.some(isNoSplit)) return null;  // N/A = no split sampling, suppress N value
   const vals = blows.map(b => parseFloat(b)).filter(v => !isNaN(v));
   if(vals.length === 0) return null;
-  if(vals.length === 1) return vals[0];                   // 1 count: use it as N
-  if(vals.length === 2) return vals[0] + vals[1];         // 2 counts: sum of both
-  return vals[1] + vals[2];                               // 3 or 4 counts: sum of 2nd + 3rd
+  if(vals.length === 1) return vals[0];
+  if(vals.length === 2) return vals[0] + vals[1];
+  return vals[1] + vals[2];
 }
 function isSoftDrive(blows){
   if(!Array.isArray(blows)) return '';
-  for(const b of blows){ const s=String(b||'').toUpperCase().trim();
+  for(const b of blows){
+    if(isNoSplit(b)) continue;
+    const s = String(b||'').toUpperCase().trim();
     if(s.startsWith('WR')||s.startsWith('WH')||s.startsWith('WOH')) return s;
   }
   return '';
@@ -4171,6 +4209,18 @@ const POLE_IV11 = {
   '32-ft Strain Pole':   ['3C','*','3A','3C','*','3B', '3B','3C','3A','3B','3C','3A'],
   '37-ft Strain Pole':   ['3C','*','3A','3C','*','3A', '3B','3C','3A','3B','3C','3A'],
 };
+const STRAIN_POLE_ANCHORS = { 32: POLE_IV11['32-ft Strain Pole'], 37: POLE_IV11['37-ft Strain Pole'] };
+const CAMERA_POLE_ANCHORS = { 75: POLE_IV11['75-ft Camera Pole'] };
+
+function strainPoleRowForFt(ft){
+  const sizes = [32, 37];
+  if(ft <= sizes[0]) return {row: STRAIN_POLE_ANCHORS[32], note: ft < 32 ? `Using 32-ft standard row (smallest standard strain pole)` : null};
+  if(ft >= sizes[sizes.length-1]) return {row: STRAIN_POLE_ANCHORS[37], note: `Using 37-ft standard row (nearest standard ≤ ${ft} ft)`};
+  return {row: STRAIN_POLE_ANCHORS[32], note: `Using 32-ft standard row (nearest standard ≤ ${ft} ft)`};
+}
+function cameraPoleRowForFt(ft){
+  return {row: CAMERA_POLE_ANCHORS[75], note: ft !== 75 ? `Using 75-ft standard row` : null};
+}
 const POLE_BASE_INFO = {
   '3':  {label:'Type 3', depth:'10 ft', note:'3-ft dia'},
   '3A': {label:'Type 3A',depth:'12 ft', note:'3-ft dia'},
@@ -4204,7 +4254,7 @@ function pbCondition(soilType, n){
   return null;
 }
 
-function computePoleBase(boring, samples){
+function computePoleBase(boring, samples, clayDominant){
   // Water table depth
   const wlSamp = samples.find(s=>s.water_level);
   const wlDepth = wlSamp ? (parseFloat(wlSamp.depth_from)||5) : 5;
@@ -4215,7 +4265,7 @@ function computePoleBase(boring, samples){
   const splitDepth = wlDepth;
 
   // Use min(depth_from, depth_to) as the top-of-sample depth to handle
-  // imported .GEO files that store samples with depth_from > depth_to.
+  // GeoSystem's convention of storing samples with depth_from > depth_to.
   const topOf    = s => Math.min(parseFloat(s.depth_from)||0, parseFloat(s.depth_to)||0);
   const thickOf  = s => Math.abs((parseFloat(s.depth_from)||0)-(parseFloat(s.depth_to)||0)) || 2;
   const upperSamps = samples.filter(s => topOf(s) < splitDepth);
@@ -4228,61 +4278,93 @@ function computePoleBase(boring, samples){
   // Depth-weighted voting prevents thin unclassified SPT stubs from
   // outvoting a thick classified soil layer (e.g., 17-ft A-5 layer vs
   // three 2-ft SPT samples).  Unclassified samples count as cohesionless.
-  function zoneAnalysis(typeSamps, condSamps){
+  function zoneAnalysis(typeSamps, condSamps, applyClayDominant){
     const zs = typeSamps;
     const cs = condSamps || typeSamps;
-    if(!zs.length && !cs.length) return {type:'cohesionless', cond:'poor', samples:[]};
+    if(!zs.length && !cs.length) return {type:'cohesionless', cond:'medium', samples:[]};
     if(zs.some(s=>pbSoilType(s.aashto)==='rock')) return {type:'rock', cond:'rock', samples:[]};
 
     const typed = zs.map(s=>({type:pbSoilType(s.aashto), s})).filter(x=>x.type);
     const unclassifiedWt = zs.filter(s=>!pbSoilType(s.aashto)).reduce((sum,s)=>sum+thickOf(s), 0);
     const wts = {cohesionless: unclassifiedWt, cohesive: 0};
     typed.forEach(x=>{ if(x.type in wts) wts[x.type] += thickOf(x.s); });
-    const type = wts.cohesive > wts.cohesionless ? 'cohesive' : 'cohesionless';
+    // Clay-Dominant Lower Zone: if any cohesive layer exists in the type window,
+    // classify as cohesive and let clay drive condition.
+    const type = (applyClayDominant && wts.cohesive > 0)
+      ? 'cohesive'
+      : (wts.cohesive > wts.cohesionless ? 'cohesive' : 'cohesionless');
 
-    const nVals = cs.map(s=>parseFloat(s.n_value)).filter(v=>!isNaN(v));
+    // When clay-dominant and cohesive layers exist, condition is driven by
+    // cohesive samples only — the clay controls both type and quality.
+    const condSrc = (applyClayDominant && wts.cohesive > 0)
+      ? cs.filter(s => pbSoilType(s.aashto) === 'cohesive')
+      : cs;
+    const nVals = condSrc.map(s=>parseFloat(s.n_value)).filter(v=>!isNaN(v));
     const avgN  = nVals.length ? nVals.reduce((a,b)=>a+b,0)/nVals.length : NaN;
-    const cond  = pbCondition(type, avgN) || 'poor';
+    // If more than half the SPT zone thickness has no N value, treat as Poor.
+    // Exclude samples that have AASHTO but no N — these are grab/auger samples,
+    // not SPT intervals, so they don't count as "unsampled" SPT coverage.
+    const sptSamps   = condSrc.filter(s => !isNaN(parseFloat(s.n_value)) || !pbSoilType(s.aashto));
+    const totalThk   = sptSamps.reduce((sum,s)=>sum+thickOf(s), 0);
+    const sampledThk = sptSamps.filter(s=>!isNaN(parseFloat(s.n_value))).reduce((sum,s)=>sum+thickOf(s), 0);
+    const dataPoor  = totalThk > 0 && sampledThk / totalThk < 0.5;
+    const cond  = dataPoor ? 'poor' : (pbCondition(type, avgN) || 'poor');
     return {type, cond, samples:typed};
   }
 
-  const upper = zoneAnalysis(upperSamps);
+  const upper = zoneAnalysis(upperSamps, null, false);
 
-  // For lower zone SOIL TYPE use only the first 10 ft below the WT —
+  // For lower zone SOIL TYPE use only the first 15 ft below the WT —
   // the critical lateral-resistance zone.  Deeper layers still contribute
   // to the condition average but shouldn't dominate the type classification.
-  const lowerTypeLimit  = splitDepth + 10;
+  const lowerTypeLimit  = splitDepth + 15;
   const lowerTypeSamps  = lowerSamps.filter(s => topOf(s) < lowerTypeLimit);
   const lower = zoneAnalysis(
     lowerTypeSamps.length ? lowerTypeSamps : lowerSamps,
-    lowerSamps
+    lowerSamps,
+    clayDominant
   );
 
   // Either zone being poor means the site has poor conditions overall.
   const isPoor = upper.cond !== 'medium' || lower.cond !== 'medium';
   const condGroup = isPoor ? 'poor' : 'medium';
 
-  // Case combo: [C/C, C/S, S/C, S/S, C/R, S/R] → idx 0-5
-  // Table IV-11 organizes: poor conditions = cases 1-6, medium = cases 7-12,
-  // with cohesive-over-cohesive (most common) first in each block.
-  function comboIdx(ut, lt){
-    if(lt==='rock') return ut==='cohesive' ? 4 : 5;
-    if(ut==='cohesive') return lt==='cohesive' ? 0 : 1;  // C/C=0, C/S=1
-    return lt==='cohesive' ? 2 : 3;                       // S/C=2, S/S=3
+  // Table IV-11 case numbering (verified from engineer results):
+  //   Poor cases 1-6:   S/S=1, S/C=2, S/R=3, C/S=4, C/C=5, C/R=6
+  //   Medium cases 7-12: C/C=7, C/S=8, C/R=9, S/S=10, S/C=11, S/R=12
+  // The poor and medium blocks use different combo orderings.
+  let caseIdx;
+  if(isPoor){
+    const poorOrder = {
+      'cohesionless-cohesionless': 0,  // S/S=1
+      'cohesionless-cohesive':     1,  // S/C=2
+      'cohesionless-rock':         2,  // S/R=3
+      'cohesive-cohesionless':     3,  // C/S=4
+      'cohesive-cohesive':         4,  // C/C=5
+      'cohesive-rock':             5,  // C/R=6
+    };
+    caseIdx = poorOrder[`${upper.type}-${lower.type}`] ?? 0;
+  } else {
+    const medOrder = {
+      'cohesive-cohesive':         6,  // C/C=7
+      'cohesive-cohesionless':     7,  // C/S=8
+      'cohesive-rock':             8,  // C/R=9
+      'cohesionless-cohesionless': 9,  // S/S=10
+      'cohesionless-cohesive':    10,  // S/C=11
+      'cohesionless-rock':        11,  // S/R=12
+    };
+    caseIdx = medOrder[`${upper.type}-${lower.type}`] ?? 6;
   }
-  const combo = comboIdx(upper.type, lower.type);
-  const caseNum = (isPoor ? 0 : 6) + combo + 1;
-  const caseIdx = caseNum - 1;
+  const caseNum = caseIdx + 1;
 
   const CASE_NAMES = [
-    'Clay over Clay','Clay over Sand','Sand over Clay','Sand over Sand',
-    'Clay over Rock','Sand over Rock'
+    'Sand over Sand','Sand over Clay','Sand over Rock','Clay over Sand','Clay over Clay','Clay over Rock',
+    'Clay over Clay','Clay over Sand','Clay over Rock','Sand over Sand','Sand over Clay','Sand over Rock',
   ];
 
-  function buildResults(customArms){
+  function buildResults(customArms, customPoles){
     const rows = [];
     // Custom mast arm entries — each is {ft, dual} where dual may be null.
-    // For dual-arm poles the LARGER arm governs the foundation size.
     for(const arm of customArms){
       const governFt = arm.dual ? Math.max(arm.ft, arm.dual) : arm.ft;
       const smallFt  = arm.dual ? Math.min(arm.ft, arm.dual) : null;
@@ -4291,6 +4373,14 @@ function computePoleBase(boring, samples){
       const label = arm.dual
         ? `Dual ${governFt}-ft & ${smallFt}-ft Mast Arm`
         : `${arm.ft}-ft Mast Arm`;
+      rows.push({pole:label, baseType:bt, interpNote:note,
+                 ...(POLE_BASE_INFO[bt]||{label:bt,depth:'?',note:'?'})});
+    }
+    // Custom strain / camera poles
+    for(const p of (customPoles||[])){
+      const {row, note} = p.type==='strain' ? strainPoleRowForFt(p.ft) : cameraPoleRowForFt(p.ft);
+      const bt    = row[caseIdx];
+      const label = `${p.ft}-ft ${p.type==='strain' ? 'Strain Pole' : 'Camera Pole'}`;
       rows.push({pole:label, baseType:bt, interpNote:note,
                  ...(POLE_BASE_INFO[bt]||{label:bt,depth:'?',note:'?'})});
     }
@@ -4304,17 +4394,21 @@ function computePoleBase(boring, samples){
   }
 
   return {wlDepth, splitDepth, upper, lower, condGroup, caseNum, caseIdx,
-          caseName: CASE_NAMES[combo], buildResults, _samples: samples};
+          caseName: CASE_NAMES[caseIdx], buildResults, _samples: samples};
 }
 
-let _pbCustomArms = [];   // extra arm lengths user has added this session
+let _pbCustomArms   = [];
+let _pbCustomPoles  = [];
+let _pbClayDominant = false;
 
 function openPoleBase(){
   const b = store.getBoring(currentBoringId);
   if(!b) return;
   const samples = store.getSamples(currentBoringId);
-  const pb = computePoleBase(b, samples);
-  _pbCustomArms = [];       // reset each time modal opens
+  _pbCustomArms   = [];
+  _pbCustomPoles  = [];
+  _pbClayDominant = false;
+  const pb = computePoleBase(b, samples, _pbClayDominant);
   _renderPoleBase(pb);
   $('poleBaseModal').classList.add('open');
 }
@@ -4343,7 +4437,7 @@ function _renderPoleBase(pb){
 
   // Results table — build with current custom arm list
   const baseClass = bt => ({'3':'pb-base pb-base-3','3A':'pb-base pb-base-3A','3B':'pb-base pb-base-3B','3C':'pb-base pb-base-3C','*':'pb-base pb-base-star'}[bt]||'pb-base');
-  const results = pb.buildResults(_pbCustomArms);
+  const results = pb.buildResults(_pbCustomArms, _pbCustomPoles);
   const resultRows = results.map(r=>`<tr>
     <td style="font-weight:600;font-size:12px;">
       ${escape(r.pole)}
@@ -4353,6 +4447,13 @@ function _renderPoleBase(pb){
     <td style="font-size:11px;color:var(--text);">${r.depth}</td>
     <td style="font-size:10px;color:var(--muted);">${r.note}</td>
   </tr>`).join('');
+
+  // Custom pole chips
+  const poleChips = _pbCustomPoles.map((p,i)=>{
+    const lbl = `${p.ft}-ft ${p.type==='strain'?'Strain':'Camera'}`;
+    return `<span style="display:inline-flex;align-items:center;gap:4px;background:var(--surface2);border:1px solid var(--border);border-radius:12px;padding:2px 8px;font-size:11px;">
+      ${lbl} <span style="cursor:pointer;color:var(--accent2);font-weight:700;" onclick="_pbRemovePole(${i})">×</span></span>`;
+  }).join('');
 
   // Custom arm chips
   const armChips = _pbCustomArms.map((arm,i)=>{
@@ -4367,7 +4468,12 @@ function _renderPoleBase(pb){
 
   $('poleBaseContent').innerHTML = `
     <div class="pb-section">
-      <h4>Step 1 — Soil Profile</h4>
+      <h4 style="display:flex;align-items:center;gap:12px;">Step 1 — Soil Profile
+        <label style="display:flex;align-items:center;gap:5px;font-size:11px;font-weight:400;color:var(--text);cursor:pointer;">
+          <input type="checkbox" id="pbClayDominant" onchange="_pbToggleClayDominant()" style="cursor:pointer;">
+          Clay-Dominant Lower Zone
+        </label>
+      </h4>
       <div style="font-size:10px;color:var(--muted);margin-bottom:8px;">
         Water table depth: <b style="color:var(--text);">${pb.wlDepth} ft</b> &nbsp;·&nbsp;
         Upper zone (0–${pb.splitDepth} ft unsaturated): <span class="${chipClass(pb.upper.type)}">${typeLabel(pb.upper.type)}</span> <span class="${condChip(pb.upper.cond)}">${condLabel(pb.upper.cond)}</span> &nbsp;·&nbsp;
@@ -4390,6 +4496,18 @@ function _renderPoleBase(pb){
     </div>
     <div class="pb-section" style="border-bottom:none;">
       <h4>Step 3 — Table IV-11 Pole Base Selection</h4>
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;flex-wrap:wrap;">
+        <span style="font-size:11px;color:var(--muted);white-space:nowrap;">Add custom pole:</span>
+        <select id="pbCustomPoleType" style="padding:4px 8px;border:1px solid var(--border);border-radius:6px;font-size:12px;background:var(--surface);color:var(--text);">
+          <option value="strain">Strain Pole</option>
+          <option value="camera">Camera Pole</option>
+        </select>
+        <input id="pbCustomPoleInput" type="number" min="1" max="200" placeholder="height (ft)"
+          style="width:100px;padding:4px 8px;border:1px solid var(--border);border-radius:6px;font-size:12px;background:var(--surface);color:var(--text);"
+          onkeydown="if(event.key==='Enter') _pbAddPole()">
+        <button onclick="_pbAddPole()" style="padding:4px 12px;border-radius:6px;border:none;background:var(--accent);color:#fff;font-size:12px;cursor:pointer;">Add</button>
+        ${poleChips}
+      </div>
       <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;flex-wrap:wrap;">
         <span style="font-size:11px;color:var(--muted);white-space:nowrap;">Add custom mast arm:</span>
         <input id="pbCustomArmInput" type="number" min="1" max="200" placeholder="arm 1 (ft)"
@@ -4417,6 +4535,19 @@ function _renderPoleBase(pb){
   `;
   // stash pb on window so add/remove can re-render
   window._pbCurrent = pb;
+  const cdCk = $('pbClayDominant');
+  if(cdCk) cdCk.checked = _pbClayDominant;
+}
+
+function _pbToggleClayDominant(){
+  _pbClayDominant = !!$('pbClayDominant').checked;
+  const pb = computePoleBase(
+    store.getBoring(currentBoringId),
+    store.getSamples(currentBoringId),
+    _pbClayDominant
+  );
+  window._pbCurrent = pb;
+  _renderPoleBase(pb);
 }
 
 function _pbToggleDual(){
@@ -4447,15 +4578,337 @@ function _pbAddArm(){
   inp.value = '';
   if(dualInp) dualInp.value = '';
   _renderPoleBase(window._pbCurrent);
+  if($('pbClayDominant')) $('pbClayDominant').checked = _pbClayDominant;
 }
 
 function _pbRemoveArm(idx){
   _pbCustomArms.splice(idx, 1);
   _renderPoleBase(window._pbCurrent);
+  if($('pbClayDominant')) $('pbClayDominant').checked = _pbClayDominant;
+}
+
+function _pbAddPole(){
+  const inp = $('pbCustomPoleInput');
+  const ft  = parseFloat(inp.value);
+  const type = $('pbCustomPoleType').value;
+  if(!ft || ft <= 0 || ft > 500){ inp.focus(); return; }
+  if(_pbCustomPoles.some(p => p.ft === ft && p.type === type)){ inp.value=''; return; }
+  _pbCustomPoles.push({ft, type});
+  _pbCustomPoles.sort((a,b) => a.ft - b.ft);
+  inp.value = '';
+  _renderPoleBase(window._pbCurrent);
+  if($('pbClayDominant')) $('pbClayDominant').checked = _pbClayDominant;
+}
+
+function _pbRemovePole(idx){
+  _pbCustomPoles.splice(idx, 1);
+  _renderPoleBase(window._pbCurrent);
+  if($('pbClayDominant')) $('pbClayDominant').checked = _pbClayDominant;
+}
+
+function renderPbReport(){
+  const proj = store.getProject(currentProjectId);
+  const borings = store.getBorings(currentProjectId).sort((a,b)=>(a.boring_no||'').localeCompare(b.boring_no||''));
+  const clayDom = $('pbRptClayDom') && $('pbRptClayDom').checked;
+
+  const ARMS  = [40, 60, 90];
+  const POLES = ['75-ft Camera Pole','40-ft Detector Pole','32-ft Strain Pole','37-ft Strain Pole'];
+
+  const btCell = bt => {
+    const cls = {'3':'rpt-3','3A':'rpt-3a','3B':'rpt-3b','3C':'rpt-3c','*':'rpt-star'}[bt]||'';
+    return `<td class="bt-cell ${cls}">${bt||'—'}</td>`;
+  };
+
+  const armHdrs = ARMS.map(a=>`<th>${a}-ft<br>Arm</th>`).join('');
+  const poleHdrs = POLES.map(p=>`<th>${p.replace(' Pole','').replace('-ft ','&#8209;ft<br>')}</th>`).join('');
+
+  const rows = borings.map(b => {
+    const samples = store.getSamples(b.id);
+    const pb = computePoleBase(b, samples, clayDom);
+    const condLabel = {'poor':'Poor','medium':'Medium','very-poor':'Very Poor','rock':'Rock'}[pb.condGroup]||pb.condGroup;
+    const caseClass = pb.condGroup==='medium' ? 'case-med' : 'case-poor';
+
+    // One call: pass standard arm sizes as customArms; standard poles always included
+    const results = pb.buildResults(ARMS.map(ft=>({ft})), []);
+
+    const armCells = ARMS.map(ft => {
+      const r = results.find(r => r.pole === `${ft}-ft Mast Arm`);
+      return btCell(r ? r.baseType : '—');
+    }).join('');
+
+    const poleCells = POLES.map(pName => {
+      const r = results.find(r => r.pole === pName);
+      return btCell(r ? r.baseType : '—');
+    }).join('');
+
+    return `<tr>
+      <td class="rpt-boring">${escape(b.boring_no||'—')}</td>
+      <td class="rpt-loc">${escape(b.location||'—')}</td>
+      <td class="rpt-wt">${pb.wlDepth} ft</td>
+      <td><span class="rpt-case ${caseClass}">Case ${pb.caseNum}</span></td>
+      <td class="rpt-cname">${pb.caseName}</td>
+      <td class="rpt-cond">${condLabel}</td>
+      ${armCells}
+      ${poleCells}
+    </tr>`;
+  }).join('');
+
+  const proj_name = proj ? escape(proj.name||'') : '';
+  const html = `
+  <style>
+    .rpt-wrap{font-family:Arial,sans-serif;font-size:10px;color:#000;padding:16px;}
+    .rpt-title{font-size:14px;font-weight:700;margin-bottom:2px;}
+    .rpt-sub{font-size:10px;color:#555;margin-bottom:10px;}
+    .rpt-table{width:100%;border-collapse:collapse;font-size:9px;}
+    .rpt-table th{background:#1a2a3a;color:#fff;padding:5px 4px;text-align:center;border:1px solid #999;white-space:nowrap;}
+    .rpt-table td{padding:4px;border:1px solid #ccc;vertical-align:middle;}
+    .rpt-table tr:nth-child(even) td{background:#f7f9fb;}
+    .rpt-boring{font-weight:700;white-space:nowrap;}
+    .rpt-loc{color:#444;font-size:8px;max-width:120px;}
+    .rpt-wt{text-align:center;}
+    .rpt-case{display:inline-block;padding:2px 6px;border-radius:4px;font-weight:700;font-size:9px;white-space:nowrap;}
+    .case-med{background:#1a3a5c;color:#fff;}
+    .case-poor{background:#5c1a1a;color:#fff;}
+    .rpt-cname{font-size:8px;white-space:nowrap;}
+    .rpt-cond{text-align:center;font-size:8px;}
+    .bt-cell{text-align:center;font-weight:700;font-size:10px;}
+    .rpt-3{color:#555;}
+    .rpt-3a{color:#1a5c1a;}
+    .rpt-3b{color:#1a3a8c;}
+    .rpt-3c{color:#8c5a00;}
+    .rpt-star{color:#8c0000;}
+    .rpt-legend{margin-top:12px;font-size:8px;color:#555;border-top:1px solid #ccc;padding-top:6px;}
+    @media print{.no-print{display:none!important;}.print-view{overflow:visible!important;}}
+  </style>
+  <div class="rpt-wrap">
+    <div class="rpt-title">Pole Base Analysis Summary — DelDOT Table IV-11</div>
+    <div class="rpt-sub">${proj_name}${clayDom ? ' &nbsp;·&nbsp; Clay-Dominant Lower Zone applied' : ''}</div>
+    <table class="rpt-table">
+      <thead>
+        <tr>
+          <th rowspan="2">Boring</th>
+          <th rowspan="2">Location</th>
+          <th rowspan="2">WT<br>Depth</th>
+          <th rowspan="2">Case #</th>
+          <th rowspan="2">Case Name</th>
+          <th rowspan="2">Condition</th>
+          <th colspan="${ARMS.length}">Mast Arms</th>
+          <th colspan="${POLES.length}">Poles</th>
+        </tr>
+        <tr>${armHdrs}${poleHdrs}</tr>
+      </thead>
+      <tbody>${rows}</tbody>
+    </table>
+    <div class="rpt-legend">
+      Base Types: &nbsp;<b>3</b> = Standard &nbsp;<b>3A</b> = Extended &nbsp;<b>3B</b> = Heavy &nbsp;<b>3C</b> = Extra Heavy &nbsp;<b>*</b> = Special Design Required<br>
+      Source: DelDOT Traffic Design Manual Table IV-11. Always verify with current standards.
+    </div>
+  </div>`;
+
+  $('pbReportArea').innerHTML = html;
+}
+
+function printPbReport(){
+  const proj    = store.getProject(currentProjectId);
+  const borings = store.getBorings(currentProjectId).sort((a,b)=>(a.boring_no||'').localeCompare(b.boring_no||''));
+  const ARMS    = [40, 60, 90];
+  const POLES   = ['75-ft Camera Pole','40-ft Detector Pole','32-ft Strain Pole','37-ft Strain Pole'];
+
+  const btCell = bt => {
+    const color = {'3':'#555','3A':'#1a5c1a','3B':'#1a3a8c','3C':'#8c5a00','*':'#8c0000'}[bt]||'#000';
+    return `<td style="text-align:center;font-weight:700;color:${color};border:1px solid #ccc;padding:4px 6px;">${bt||'—'}</td>`;
+  };
+
+  const thSt = 'background:#1a2a3a;color:#fff;padding:5px 4px;text-align:center;border:1px solid #999;font-size:9px;white-space:nowrap;';
+
+  const customArmHdrs = _pbCustomArms.map(a => {
+    const lbl = a.dual ? `Dual ${Math.max(a.ft,a.dual)}&#8209;&amp;${Math.min(a.ft,a.dual)}&#8209;ft` : `${a.ft}&#8209;ft Arm`;
+    return `<th style="${thSt}">${lbl}</th>`;
+  }).join('');
+  const customPoleHdrs = _pbCustomPoles.map(p =>
+    `<th style="${thSt}">${p.ft}&#8209;ft ${p.type==='strain'?'Strain':'Camera'}</th>`
+  ).join('');
+
+  const rows = borings.map(b => {
+    const samples = store.getSamples(b.id);
+    const pb = computePoleBase(b, samples, _pbClayDominant);
+    const results = pb.buildResults(_pbCustomArms, _pbCustomPoles);
+    const condLabel = {poor:'Poor',medium:'Medium','very-poor':'Very Poor',rock:'Rock'}[pb.condGroup]||pb.condGroup;
+    const caseBg = pb.condGroup==='medium' ? '#1a3a5c' : '#5c1a1a';
+
+    const armCells = ARMS.map(ft => {
+      const r = results.find(r => r.pole === `${ft}-ft Mast Arm`);
+      return btCell(r ? r.baseType : '—');
+    }).join('');
+
+    const customArmCells = _pbCustomArms.map(arm => {
+      const lbl = arm.dual
+        ? `Dual ${Math.max(arm.ft,arm.dual)}-ft & ${Math.min(arm.ft,arm.dual)}-ft Mast Arm`
+        : `${arm.ft}-ft Mast Arm`;
+      const r = results.find(r => r.pole === lbl);
+      return btCell(r ? r.baseType : '—');
+    }).join('');
+
+    const poleCells = POLES.map(pName => {
+      const r = results.find(r => r.pole === pName);
+      return btCell(r ? r.baseType : '—');
+    }).join('');
+
+    const customPoleCells = _pbCustomPoles.map(p => {
+      const lbl = `${p.ft}-ft ${p.type==='strain'?'Strain Pole':'Camera Pole'}`;
+      const r = results.find(r => r.pole === lbl);
+      return btCell(r ? r.baseType : '—');
+    }).join('');
+
+    return `<tr>
+      <td style="font-weight:700;white-space:nowrap;border:1px solid #ccc;padding:4px 6px;">${escape(b.boring_no||'—')}</td>
+      <td style="font-size:8px;color:#444;border:1px solid #ccc;padding:4px 6px;max-width:110px;">${escape(b.location||'—')}</td>
+      <td style="text-align:center;border:1px solid #ccc;padding:4px 6px;">${pb.wlDepth} ft</td>
+      <td style="text-align:center;border:1px solid #ccc;padding:4px 6px;"><span style="background:${caseBg};color:#fff;padding:2px 6px;border-radius:4px;font-weight:700;font-size:9px;">Case ${pb.caseNum}</span></td>
+      <td style="font-size:8px;white-space:nowrap;border:1px solid #ccc;padding:4px 6px;">${pb.caseName}</td>
+      <td style="text-align:center;font-size:8px;border:1px solid #ccc;padding:4px 6px;">${condLabel}</td>
+      ${armCells}${customArmCells}${poleCells}${customPoleCells}
+    </tr>`;
+  }).join('');
+
+  const projName = proj ? (proj.name||'') : '';
+
+  const html = `<!DOCTYPE html><html><head><meta charset="UTF-8">
+  <title>Pole Base Report — ${projName}</title>
+  <style>
+    body{font-family:Arial,sans-serif;font-size:10px;color:#000;margin:16px;}
+    h2{margin:0 0 2px;font-size:14px;}
+    .sub{font-size:10px;color:#555;margin-bottom:10px;}
+    table{width:100%;border-collapse:collapse;}
+    tr:nth-child(even) td{background:#f7f9fb;}
+    .legend{margin-top:12px;font-size:8px;color:#555;border-top:1px solid #ccc;padding-top:6px;}
+    @media print{@page{margin:12mm;}}
+  </style></head><body>
+  <h2>Pole Base Analysis Summary — DelDOT Table IV-11</h2>
+  <div class="sub">${projName}${_pbClayDominant?' &nbsp;·&nbsp; Clay-Dominant Lower Zone applied':''}</div>
+  <table>
+    <thead>
+      <tr>
+        <th rowspan="2" style="${thSt}">Boring</th>
+        <th rowspan="2" style="${thSt}">Location</th>
+        <th rowspan="2" style="${thSt}">WT</th>
+        <th rowspan="2" style="${thSt}">Case #</th>
+        <th rowspan="2" style="${thSt}">Case Name</th>
+        <th rowspan="2" style="${thSt}">Cond.</th>
+        <th colspan="${ARMS.length + _pbCustomArms.length}" style="${thSt}">Mast Arms</th>
+        <th colspan="${POLES.length + _pbCustomPoles.length}" style="${thSt}">Poles</th>
+      </tr>
+      <tr>
+        ${ARMS.map(a=>`<th style="${thSt}">${a}-ft</th>`).join('')}
+        ${customArmHdrs}
+        ${POLES.map(p=>`<th style="${thSt}">${p.replace(' Pole','').replace(/-ft /,'&#8209;ft<br>')}</th>`).join('')}
+        ${customPoleHdrs}
+      </tr>
+    </thead>
+    <tbody>${rows}</tbody>
+  </table>
+  <div class="legend">
+    <b>3</b> = Standard &nbsp; <b>3A</b> = Extended &nbsp; <b>3B</b> = Heavy &nbsp; <b>3C</b> = Extra Heavy &nbsp; <b>*</b> = Special Design Required<br>
+    Source: DelDOT Traffic Design Manual Table IV-11. Always verify with current standards.
+  </div>
+  <div style="position:fixed;top:12px;right:16px;no-print">
+    <button onclick="window.print()" style="padding:8px 18px;background:#1a2a3a;color:#fff;border:none;border-radius:6px;font-size:13px;cursor:pointer;font-family:Arial,sans-serif;">🖨 Print / Save PDF</button>
+  </div>
+  </body></html>`;
+
+  const w = window.open('','_blank');
+  if(w){ w.document.write(html); w.document.close(); }
 }
 
 function closePoleBase(){
   $('poleBaseModal').classList.remove('open');
+}
+
+
+// ── Map ──────────────────────────────────────────────────────────────────────
+let _mapInstance = null;
+
+function boringNeToLatLng(northing, easting) {
+  const pt = delawareNEToLatLng(northing, easting) || delawareNEToLatLng(easting, northing);
+  return pt ? { lat: pt.lat, lon: pt.lng } : null;
+}
+
+function openMapModal(){
+  const proj = store.getProject(currentProjectId);
+  const borings = store.getBorings(currentProjectId);
+
+  const mapped = borings.map(b => {
+    const n = parseFloat(b.northing), e = parseFloat(b.easting);
+    if(isNaN(n) || isNaN(e) || n === 0 || e === 0) return null;
+    const ll = boringNeToLatLng(n, e);
+    if(!ll) return null;
+    return {b, lat: ll.lat, lon: ll.lon};
+  }).filter(Boolean);
+
+  $('mapNoCoordsWarn').style.display = mapped.length < borings.length ? '' : 'none';
+  $('mapModal').classList.add('open');
+
+  if(_mapInstance){ _mapInstance.remove(); _mapInstance = null; }
+
+  if(!mapped.length){
+    $('leafletMap').innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:100%;color:var(--muted);font-size:13px;">No borings have Northing / Easting coordinates.</div>';
+    return;
+  }
+
+  const map = L.map('leafletMap');
+  _mapInstance = map;
+
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
+    maxZoom: 20
+  }).addTo(map);
+
+  const bounds = [];
+  mapped.forEach(({b, lat, lon}) => {
+    bounds.push([lat, lon]);
+    const depth = b.total_depth ? `${b.total_depth} ft` : '—';
+    const popup = `<b>${b.boring_no || '(no #)'}</b><br>
+      ${b.location || ''}<br>
+      N: ${b.northing} &nbsp; E: ${b.easting}<br>
+      Depth: ${depth}`;
+    L.marker([lat, lon]).addTo(map).bindPopup(popup);
+  });
+
+  map.fitBounds(bounds, {padding: [40, 40]});
+}
+
+function closeMapModal(){
+  $('mapModal').classList.remove('open');
+}
+
+function exportKML(){
+  const proj = store.getProject(currentProjectId);
+  const borings = store.getBorings(currentProjectId);
+  const placemarks = borings.map(b => {
+    const n = parseFloat(b.northing), e = parseFloat(b.easting);
+    if(isNaN(n) || isNaN(e) || n === 0 || e === 0) return '';
+    const ll = boringNeToLatLng(n, e);
+    if(!ll) return '';
+    const depth = b.total_depth ? `${b.total_depth} ft` : 'unknown depth';
+    return `  <Placemark>
+    <name>${b.boring_no || '(no #)'}</name>
+    <description>${b.location || ''} · ${depth}</description>
+    <Point><coordinates>${ll.lon},${ll.lat},0</coordinates></Point>
+  </Placemark>`;
+  }).filter(Boolean).join('\n');
+
+  const kml = `<?xml version="1.0" encoding="UTF-8"?>
+<kml xmlns="http://www.opengis.net/kml/2.2">
+<Document>
+  <name>${proj ? proj.name || 'Borings' : 'Borings'}</name>
+${placemarks}
+</Document>
+</kml>`;
+
+  const a = document.createElement('a');
+  a.href = 'data:application/vnd.google-earth.kml+xml,' + encodeURIComponent(kml);
+  a.download = (proj ? (proj.name || 'borings').replace(/[^a-z0-9]/gi,'_') : 'borings') + '.kml';
+  a.click();
 }
 
 
