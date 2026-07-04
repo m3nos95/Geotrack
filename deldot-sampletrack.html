@@ -6468,7 +6468,7 @@ table.fc-borrow-tbl tr.fc-borrow-detail-row td{background:var(--surface);border-
 // GLOBALS
 // ══════════════════════════════════════════════
 let db = null;
-const APP_BUILD = '2026.07.04-borelog-station-offset';
+const APP_BUILD = '2026.07.04-borelog-gps-nocache';
 const FC_CORE_ICON_SRC = 'docs/r18-reference/core-drill-icon-128.png';
 const BORELOG_ICON_SRC = 'docs/r18-reference/borelog-icon.webp';
 const BORELOG_PATH = 'docs/r18-reference/deldot-borelog.html';
@@ -7392,25 +7392,38 @@ function parseBorelogHeaderData(row) {
     try { header = JSON.parse(header); } catch { header = {}; }
   }
   if (!header || typeof header !== 'object') header = {};
+  const flat = row && row !== header ? row : {};
+  const pick = (key, ...alts) => {
+    for (const k of [key, ...alts]) {
+      const v = header[k] ?? flat[k];
+      if (v != null && v !== '') return v;
+    }
+    return '';
+  };
+  const station = pick('station', 'STATION', 'STA');
+  const offset = pick('offset', 'OFFSET', 'OFF');
+  const stationOffset = pick('station_offset') || [station, offset].filter(Boolean).join(' / ');
   return {
-    boring_no: header.boring_no || '',
-    location: header.location || '',
-    station_offset: header.station_offset || '',
-    northing: header.northing || header.NORTH || header.NORTHING || header.north || '',
-    easting: header.easting || header.EAST || header.EASTING || header.east || '',
-    gps_coordinates: header.gps_coordinates || header.gps || header.GPS || '',
-    map_lat: header.map_lat ?? header.latitude ?? header.LAT ?? header.lat ?? '',
-    map_lng: header.map_lng ?? header.longitude ?? header.LON ?? header.lng ?? header.long ?? '',
-    surface_elev: header.surface_elev || header.elevation || header.elev || '',
-    reference: header.reference || '',
-    contractor: header.contractor || '',
-    rig: header.rig || '',
-    driller: header.driller || '',
-    logged_by: header.logged_by || '',
-    supervisor: header.supervisor || '',
-    remarks: header.remarks || '',
-    date_started: header.date_started || '',
-    date_completed: header.date_completed || '',
+    boring_no: pick('boring_no'),
+    location: pick('location'),
+    station_offset: stationOffset,
+    station,
+    offset,
+    northing: pick('northing', 'NORTH', 'NORTHING', 'north'),
+    easting: pick('easting', 'EAST', 'EASTING', 'east'),
+    gps_coordinates: pick('gps_coordinates', 'gps', 'GPS'),
+    map_lat: header.map_lat ?? header.latitude ?? header.LAT ?? header.lat ?? flat.map_lat ?? '',
+    map_lng: header.map_lng ?? header.longitude ?? header.LON ?? header.lng ?? header.long ?? flat.map_lng ?? '',
+    surface_elev: pick('surface_elev', 'elevation', 'elev'),
+    reference: pick('reference'),
+    contractor: pick('contractor'),
+    rig: pick('rig'),
+    driller: pick('driller'),
+    logged_by: pick('logged_by'),
+    supervisor: pick('supervisor'),
+    remarks: pick('remarks'),
+    date_started: pick('date_started'),
+    date_completed: pick('date_completed'),
   };
 }
 
@@ -7444,8 +7457,10 @@ function parseOffsetFeet(raw) {
 function parseStationOffsetFields(b) {
   const so = String(b?.station_offset || '').trim();
   const parts = so.split(/\s*\/\s*/);
-  let station = parts[0] ? parseStationFeet(parts[0]) : NaN;
-  let offset = parts[1] ? parseOffsetFeet(parts[1]) : NaN;
+  let station = b?.station ? parseStationFeet(b.station) : NaN;
+  let offset = b?.offset ? parseOffsetFeet(b.offset) : NaN;
+  if (!isFinite(station) && parts[0]) station = parseStationFeet(parts[0]);
+  if (!isFinite(offset) && parts[1]) offset = parseOffsetFeet(parts[1]);
   const n = parseCoordNumber(b?.northing);
   const e = parseCoordNumber(b?.easting);
 
@@ -7456,6 +7471,23 @@ function parseStationOffsetFields(b) {
   if (!isFinite(offset)) offset = 0;
 
   return { station, offset, northing: n, easting: e };
+}
+
+function parseStoredGpsLatLng(b) {
+  const raw = b?.gps_coordinates || b?.gps || '';
+  if (!raw) return null;
+  const cleaned = String(raw).replace(/\(.*?\)/g, '').trim();
+  const parts = cleaned.split(/[,;\s]+/).map(parseCoordNumber).filter(n => isFinite(n));
+  // Legacy mislabeled cache: decimal degrees stored with '(state plane)' suffix
+  if (/\(state\s*plane\)/i.test(raw) && parts.length >= 2
+      && parts[0] < 50000 && Math.abs(parts[1]) < 50000) {
+    return null;
+  }
+  const parsed = parseGPS(cleaned, true);
+  if (!parsed) return null;
+  if (parsed.lat > 50000 || parsed.lng > 50000) return null;
+  if (parsed.lat < 36 || parsed.lat > 42 || parsed.lng < -77 || parsed.lng > -73) return null;
+  return parsed;
 }
 
 function buildBorelogAlignmentFrame(borings) {
@@ -7510,35 +7542,33 @@ function resolveBorelogBoringCoords(b, frame) {
 
   if (isSP && !(frame?.constantE && hasExplicitStation)) {
     const fromNE = delawareNEToLatLng(northing, easting) || delawareNEToLatLng(easting, northing);
-    if (fromNE) return fromNE;
+    if (fromNE) return { ...fromNE, _src: 'ne' };
   }
   if (frame && isFinite(station)) {
     const fromProfile = statePlaneFromProfile(station, offset, frame);
-    if (fromProfile) return fromProfile;
+    if (fromProfile) return { ...fromProfile, _src: 'station' };
   }
   if (isProfile && frame) {
     const inRange = station >= frame.originStation - 500
       && station <= (frame.maxStation || frame.originStation) + 500;
     if (inRange) {
       const fromGrid = statePlaneFromProfile(easting, northing, frame);
-      if (fromGrid) return fromGrid;
+      if (fromGrid) return { ...fromGrid, _src: 'profile' };
     }
   }
 
   const fromNE = extractBorelogStatePlaneCoords(b);
-  if (fromNE) return fromNE;
+  if (fromNE) return { ...fromNE, _src: 'ne' };
 
-  const mapLat = parseFloat(b.map_lat);
-  const mapLng = parseFloat(b.map_lng);
-  if (isFinite(mapLat) && isFinite(mapLng)) return { lat: mapLat, lng: mapLng };
+  const fromGps = parseStoredGpsLatLng(b);
+  if (fromGps) return { ...fromGps, _src: 'gps' };
 
-  const gpsCandidates = [b.gps_coordinates, b.gps];
-  if (looksLikeGpsString(b.location)) gpsCandidates.push(b.location);
-  for (const gps of gpsCandidates.filter(Boolean)) {
-    const parsed = parseGpsOrStatePlane(gps);
-    if (parsed) return parsed;
-  }
   return null;
+}
+
+function stripCoordMeta(coords) {
+  if (!coords) return null;
+  return { lat: coords.lat, lng: coords.lng };
 }
 
 function applyBorelogProjectCoords(items) {
@@ -7551,22 +7581,60 @@ function applyBorelogProjectCoords(items) {
     const frame = buildBorelogAlignmentFrame(group);
     group.forEach(item => {
       const coords = resolveBorelogBoringCoords(item, frame);
-      if (coords) item.coords = coords;
+      item.coords = stripCoordMeta(coords);
+      item._coordSrc = coords?._src || '';
     });
 
-    const resolved = group.map(g => g.coords).filter(Boolean);
-    if (resolved.length >= 3) {
-      const med = { lat: median(resolved.map(c => c.lat)), lng: median(resolved.map(c => c.lng)) };
+    const spCoords = group.filter(g => g._coordSrc === 'ne' || g._coordSrc === 'station' || g._coordSrc === 'profile')
+      .map(g => g.coords).filter(Boolean);
+    if (spCoords.length >= 3) {
+      const med = { lat: median(spCoords.map(c => c.lat)), lng: median(spCoords.map(c => c.lng)) };
       group.forEach(item => {
-        if (!item.coords) return;
-        const dist = coordsDistanceMeters(item.coords, med);
-        const fromNE = extractBorelogStatePlaneCoords(item);
-        if (dist > 25000 && fromNE) item.coords = fromNE;
-        else if (dist > 25000 && !fromNE) item.coords = null;
+        if (!item.coords || item._coordSrc === 'ne' || item._coordSrc === 'station' || item._coordSrc === 'profile') return;
+        if (coordsDistanceMeters(item.coords, med) > 25000) {
+          item.coords = null;
+        }
       });
     }
   });
   return items;
+}
+
+function migrateBorelogLocalStorageCoords() {
+  try {
+    const raw = JSON.parse(localStorage.getItem(BORELOG_STORE_KEY) || '{}');
+    const borings = raw.borings || {};
+    const all = Object.values(borings).filter(b => b?.id);
+    if (!all.length) return 0;
+
+    const byProject = {};
+    all.forEach(b => { (byProject[b.project_id] = byProject[b.project_id] || []).push(b); });
+
+    let changed = 0;
+    Object.values(byProject).forEach(group => {
+      const frame = buildBorelogAlignmentFrame(group);
+      group.forEach(b => {
+        const resolved = resolveBorelogBoringCoords(b, frame);
+        const coords = stripCoordMeta(resolved);
+        if (!coords) return;
+        const gps = `${coords.lat.toFixed(6)}, ${coords.lng.toFixed(6)} (state plane)`;
+        const before = JSON.stringify([b.map_lat, b.map_lng, b.gps_coordinates]);
+        b.map_lat = coords.lat;
+        b.map_lng = coords.lng;
+        b.gps_coordinates = gps;
+        if (before !== JSON.stringify([b.map_lat, b.map_lng, b.gps_coordinates])) changed++;
+      });
+    });
+
+    if (changed) {
+      raw.borings = borings;
+      localStorage.setItem(BORELOG_STORE_KEY, JSON.stringify(raw));
+    }
+    return changed;
+  } catch (e) {
+    console.warn('migrateBorelogLocalStorageCoords:', e);
+    return 0;
+  }
 }
 
 function sanitizeBorelogContract(raw) {
@@ -7582,6 +7650,8 @@ function normalizeBorelogMapBoring(row, projectMeta) {
     boring_no: row.boring_no || fields.boring_no || '',
     location: fields.location || '',
     station_offset: fields.station_offset || '',
+    station: fields.station || '',
+    offset: fields.offset || '',
     northing: fields.northing || '',
     easting: fields.easting || '',
     gps_coordinates: fields.gps_coordinates || '',
@@ -7609,7 +7679,7 @@ function normalizeBorelogMapBoring(row, projectMeta) {
 function finalizeBorelogMapBorings(items) {
   return applyBorelogProjectCoords(items).filter(item => {
     if (!item.coords) {
-      item.coords = resolveBorelogBoringCoords(item, null);
+      item.coords = stripCoordMeta(resolveBorelogBoringCoords(item, null));
     }
     return !!item.coords;
   });
@@ -7629,7 +7699,7 @@ function collectBorelogBoringsFromLocal(contract) {
       if (contractLower && pContract && pContract !== contractLower) return;
       const item = normalizeBorelogMapBoring(
         { id: b.id, project_id: b.project_id, boring_no: b.boring_no, header_data: b },
-        { contract: p.contract_no || p.contract || '', name: p.name || '' }
+        { contract: sanitizeBorelogContract(p.contract_no || p.contract || ''), name: p.name || '' }
       );
       if (item) out.push(item);
     });
@@ -7638,6 +7708,7 @@ function collectBorelogBoringsFromLocal(contract) {
 }
 
 async function fetchBorelogBoringsForContract(contract) {
+  migrateBorelogLocalStorageCoords();
   const seen = new Set();
   const out = [];
   const add = (item) => {
@@ -8595,6 +8666,7 @@ async function labMapReload() {
     showToast('LabTrak Map is for administrators only', 'error');
     return;
   }
+  const migrated = migrateBorelogLocalStorageCoords();
   const empty = document.getElementById('labMapEmpty');
   const subtitle = document.getElementById('labMapSubtitle');
   if (!db) {
@@ -8615,6 +8687,14 @@ async function labMapReload() {
   labMapStore = await labMapFetchData();
   labMapRenderLayerPanel();
   labMapPlotMarkers(false);
+  if (subtitle) {
+    const pinTotal = Object.keys(LAB_MAP_LAYER_DEFS).reduce((n, k) => n + (labMapStore[k] || []).length, 0);
+    const boreCount = (labMapStore.borelog || []).length;
+    subtitle.textContent = (pinTotal ? pinTotal + ' pins' : 'No pins')
+      + (boreCount ? ' · ' + boreCount + ' BoreLog' : '')
+      + ' · build ' + APP_BUILD
+      + (migrated ? ' · migrated ' + migrated + ' coords' : '');
+  }
 }
 
 function labMapResizeSoon() {
