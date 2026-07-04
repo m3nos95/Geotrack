@@ -6468,7 +6468,7 @@ table.fc-borrow-tbl tr.fc-borrow-detail-row td{background:var(--surface);border-
 // GLOBALS
 // ══════════════════════════════════════════════
 let db = null;
-const APP_BUILD = '2026.07.04-borelog-r18-update';
+const APP_BUILD = '2026.07.04-borelog-gps-fix';
 const FC_CORE_ICON_SRC = 'docs/r18-reference/core-drill-icon-128.png';
 const BORELOG_ICON_SRC = 'docs/r18-reference/borelog-icon.webp';
 const BORELOG_PATH = 'docs/r18-reference/deldot-borelog.html';
@@ -7276,6 +7276,20 @@ function delawareBoundsOk(lat, lng) {
   return lat >= 38.4 && lat <= 39.95 && lng >= -76.05 && lng <= -74.4;
 }
 
+function parseStatePlaneNE(northing, easting) {
+  const n0 = parseFloat(String(northing).replace(/,/g, ''));
+  const e0 = parseFloat(String(easting).replace(/,/g, ''));
+  if (!isFinite(n0) || !isFinite(e0) || n0 < 50000 || e0 < 50000) return null;
+  return delawareNEToLatLng(n0, e0) || delawareNEToLatLng(e0, n0);
+}
+
+function coordsDistanceMeters(a, b) {
+  if (!a || !b) return Infinity;
+  const dlat = (a.lat - b.lat) * 111320;
+  const dlng = (a.lng - b.lng) * 111320 * Math.cos(((a.lat + b.lat) / 2) * Math.PI / 180);
+  return Math.sqrt(dlat * dlat + dlng * dlng);
+}
+
 function delawareNEToLatLng(northing, easting) {
   const n0 = parseFloat(String(northing).replace(/,/g, ''));
   const e0 = parseFloat(String(easting).replace(/,/g, ''));
@@ -7349,9 +7363,16 @@ function parseBorelogHeaderData(row) {
 
 function resolveBorelogBoringCoords(b) {
   if (!b) return null;
+  const fromNE = parseStatePlaneNE(b.northing, b.easting);
   const mapLat = parseFloat(b.map_lat);
   const mapLng = parseFloat(b.map_lng);
-  if (isFinite(mapLat) && isFinite(mapLng)) return { lat: mapLat, lng: mapLng };
+  const cached = isFinite(mapLat) && isFinite(mapLng) ? { lat: mapLat, lng: mapLng } : null;
+
+  if (fromNE) {
+    if (!cached || coordsDistanceMeters(fromNE, cached) > 500) return fromNE;
+    return cached;
+  }
+  if (cached) return cached;
 
   const gpsCandidates = [b.gps_coordinates, b.gps];
   if (looksLikeGpsString(b.location)) gpsCandidates.push(b.location);
@@ -7359,8 +7380,7 @@ function resolveBorelogBoringCoords(b) {
     const parsed = parseGpsOrStatePlane(gps);
     if (parsed) return parsed;
   }
-  return delawareNEToLatLng(b.northing, b.easting)
-    || delawareNEToLatLng(b.easting, b.northing);
+  return null;
 }
 
 function normalizeBorelogMapBoring(row, projectMeta) {
@@ -7474,8 +7494,9 @@ function buildBorelogMapPopup(b) {
     window._borelogMapById = window._borelogMapById || {};
     window._borelogMapById[b.id] = b;
   }
-  const gps = b.gps_coordinates
-    || (b.coords ? `${b.coords.lat.toFixed(6)}, ${b.coords.lng.toFixed(6)}` : '');
+  const gps = b.coords
+    ? `${b.coords.lat.toFixed(6)}, ${b.coords.lng.toFixed(6)}${/\(state\s*plane\)/i.test(b.gps_coordinates || '') ? ' (state plane)' : ''}`
+    : (b.gps_coordinates || '');
   const ne = (b.northing || b.easting)
     ? [b.northing, b.easting].filter(Boolean).join(' / ')
     : '';
