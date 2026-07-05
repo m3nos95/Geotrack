@@ -2000,6 +2000,23 @@ function isProfileGridNE(n, e) {
   return isFinite(n) && isFinite(e) && e >= 50 && e < 200000 && Math.abs(n) <= 20000;
 }
 
+const WEST_DOVER_REF_N = 415747;
+const WEST_DOVER_REF_E = 621271;
+const WEST_DOVER_ALIGN_HALF_FT = 10000;
+
+function isGoodDoverNE(n, e) {
+  return isDelawareStatePlaneNE(n, e)
+    && n >= 390000 && n <= 430000
+    && e >= 605000 && e <= 630000;
+}
+
+function isSuspectVerticalNE(n, e) {
+  if (!isDelawareStatePlaneNE(n, e)) return false;
+  if (e >= 570000 && e <= 600000) return true;
+  if (e >= 635000 && e <= 655000) return true;
+  return false;
+}
+
 function parseStationFeet(raw) {
   if (raw == null || raw === '') return NaN;
   const s = String(raw).trim().toUpperCase().replace(/,/g, '');
@@ -2019,10 +2036,12 @@ function parseOffsetFeet(raw) {
   return isFinite(n) ? sign * Math.abs(n) : NaN;
 }
 
-function buildBorelogAlignmentFrame(borings) {
+function buildBorelogAlignmentFrame(borings, opts) {
+  const goodOnly = opts?.goodOnly;
   const anchors = (borings || []).map(b => {
     const { station, offset, northing, easting } = parseStationOffsetFields(b);
     if (!isDelawareStatePlaneNE(northing, easting)) return null;
+    if (goodOnly && !isGoodDoverNE(northing, easting)) return null;
     return { station, offset, northing, easting };
   }).filter(Boolean);
   if (anchors.length < 2) return null;
@@ -2040,7 +2059,39 @@ function buildBorelogAlignmentFrame(borings) {
     alongN: dN / dStation, alongE: dE / dStation,
     perpN: -dE / len, perpE: dN / len,
     constantE: eastRange < 50,
+    fromGoodAnchors: !!goodOnly,
   };
+}
+
+function buildSyntheticDoverAlignmentFrame(borings) {
+  const pts = (borings || []).map(b => parseStationOffsetFields(b))
+    .filter(p => isFinite(p.northing) && isSuspectVerticalNE(p.northing, p.easting));
+  if (pts.length < 2) return null;
+  pts.sort((a, b) => a.northing - b.northing);
+  const minStation = pts[0].northing;
+  const maxStation = pts[pts.length - 1].northing;
+  const dStation = maxStation - minStation;
+  if (!isFinite(dStation) || dStation < 1) return null;
+  return {
+    originN: WEST_DOVER_REF_N,
+    originE: WEST_DOVER_REF_E - WEST_DOVER_ALIGN_HALF_FT,
+    originStation: minStation,
+    maxStation,
+    alongN: 0,
+    alongE: (2 * WEST_DOVER_ALIGN_HALF_FT) / dStation,
+    perpN: 1,
+    perpE: 0,
+    constantE: false,
+    synthetic: true,
+  };
+}
+
+function pickBorelogAlignmentFrame(group) {
+  const goodFrame = buildBorelogAlignmentFrame(group, { goodOnly: true });
+  if (goodFrame) return goodFrame;
+  const allFrame = buildBorelogAlignmentFrame(group);
+  if (allFrame && !allFrame.constantE) return allFrame;
+  return buildSyntheticDoverAlignmentFrame(group) || allFrame;
 }
 
 function statePlaneFromProfile(station, offset, frame) {
@@ -2103,6 +2154,8 @@ function resolveBoringMapCoords(b, frame) {
   const { station, offset, northing, easting } = parseStationOffsetFields(b);
   const isSP = isDelawareStatePlaneNE(northing, easting);
   const isProfile = isProfileGridNE(northing, easting);
+  const suspect = isSuspectVerticalNE(northing, easting);
+  const goodNE = isGoodDoverNE(northing, easting);
   const hasExplicitStation = /\d+\s*\+/.test(String(b.station_offset || ''))
     || String(b.station_offset || '').includes('/');
 
@@ -2110,7 +2163,12 @@ function resolveBoringMapCoords(b, frame) {
     return parseDirectMapLatLng(b) || parseStoredGpsLatLng(b);
   }
 
-  if (isSP && !(frame?.constantE && hasExplicitStation)) {
+  if (frame && isFinite(station) && (suspect || frame.synthetic || (frame.fromGoodAnchors && !goodNE))) {
+    const fromProfile = statePlaneFromProfile(station, offset, frame);
+    if (fromProfile) return fromProfile;
+  }
+
+  if (isSP && goodNE && !suspect && !(frame?.constantE && hasExplicitStation)) {
     const fromNE = delawareNEToLatLng(northing, easting) || delawareNEToLatLng(easting, northing);
     if (fromNE) return fromNE;
   }
@@ -2126,8 +2184,10 @@ function resolveBoringMapCoords(b, frame) {
       if (fromGrid) return fromGrid;
     }
   }
-  const fromNE = extractBorelogStatePlaneCoords(b);
-  if (fromNE) return fromNE;
+  if (isSP && !suspect) {
+    const fromNE = extractBorelogStatePlaneCoords(b);
+    if (fromNE) return fromNE;
+  }
   return parseStoredGpsLatLng(b);
 }
 
@@ -2194,7 +2254,7 @@ function syncBoringGpsFields(b) {
     return '';
   }
   const projectBorings = b.project_id ? store.getBorings(b.project_id) : [b];
-  const frame = buildBorelogAlignmentFrame(projectBorings);
+  const frame = pickBorelogAlignmentFrame(projectBorings);
   const fromPlane = resolveBoringMapCoords(b, frame);
   const parsed = manual ? parseBorelogGps(manual) : null;
   const manualIsStatePlane = /\(state\s*plane\)/i.test(manual);
@@ -2250,7 +2310,7 @@ function boringGpsDisplay(b) {
   if (!b) return '';
   normalizeBoringStatePlaneFields(b);
   const projectBorings = b.project_id ? store.getBorings(b.project_id) : [b];
-  const frame = buildBorelogAlignmentFrame(projectBorings);
+  const frame = pickBorelogAlignmentFrame(projectBorings);
   const fromPlane = resolveBoringMapCoords(b, frame);
   return fromPlane ? formatBoringGps(fromPlane.lat, fromPlane.lng, ' (state plane)') : (b.gps_coordinates || '');
 }
@@ -2765,7 +2825,7 @@ function migrateAllBoringMapCoords() {
   });
   let changed = 0;
   Object.values(byProject).forEach(group => {
-    const frame = buildBorelogAlignmentFrame(group);
+    const frame = pickBorelogAlignmentFrame(group);
     group.forEach(b => {
       const before = JSON.stringify([b.gps_coordinates, b.map_lat, b.map_lng]);
       syncBoringGpsFields(b);
@@ -5084,7 +5144,7 @@ function boringCoordsForMap(b, frame) {
 function openMapModal(){
   const proj = store.getProject(currentProjectId);
   const borings = store.getBorings(currentProjectId);
-  const frame = buildBorelogAlignmentFrame(borings);
+  const frame = pickBorelogAlignmentFrame(borings);
 
   const mapped = borings.map(b => {
     const ll = boringCoordsForMap(b, frame);
@@ -5131,7 +5191,7 @@ function closeMapModal(){
 function exportKML(){
   const proj = store.getProject(currentProjectId);
   const borings = store.getBorings(currentProjectId);
-  const frame = buildBorelogAlignmentFrame(borings);
+  const frame = pickBorelogAlignmentFrame(borings);
   const placemarks = borings.map(b => {
     const ll = boringCoordsForMap(b, frame);
     if(!ll) return '';
