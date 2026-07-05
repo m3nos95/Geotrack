@@ -6468,7 +6468,7 @@ table.fc-borrow-tbl tr.fc-borrow-detail-row td{background:var(--surface);border-
 // GLOBALS
 // ══════════════════════════════════════════════
 let db = null;
-const APP_BUILD = '2026.07.04-borelog-alignment-spread';
+const APP_BUILD = '2026.07.04-borelog-connector-bounds';
 const FC_CORE_ICON_SRC = 'docs/r18-reference/core-drill-icon-128.png';
 const BORELOG_ICON_SRC = 'docs/r18-reference/borelog-icon.webp';
 const BORELOG_PATH = 'docs/r18-reference/deldot-borelog.html';
@@ -7437,7 +7437,9 @@ function isProfileGridNE(n, e) {
 
 const WEST_DOVER_REF_N = 415747;
 const WEST_DOVER_REF_E = 621271;
-const WEST_DOVER_ALIGN_HALF_FT = 10000;
+// West Dover Connector geographic endpoints (WGS84)
+const CONNECTOR_WEST = { lat: 39.148, lng: -75.558 };
+const CONNECTOR_EAST = { lat: 39.140, lng: -75.502 };
 
 function isGoodDoverNE(n, e) {
   return isDelawareStatePlaneNE(n, e)
@@ -7583,27 +7585,37 @@ function buildBorelogAlignmentFrame(borings, opts) {
   };
 }
 
+function percentile(sorted, p) {
+  if (!sorted.length) return NaN;
+  const idx = Math.min(sorted.length - 1, Math.max(0, Math.floor((sorted.length - 1) * p)));
+  return sorted[idx];
+}
+
 function buildSyntheticDoverAlignmentFrame(borings) {
   const pts = (borings || []).map(b => parseStationOffsetFields(b))
     .filter(p => isFinite(p.northing) && isSuspectVerticalNE(p.northing, p.easting));
   if (pts.length < 2) return null;
 
-  pts.sort((a, b) => a.northing - b.northing);
-  const minStation = pts[0].northing;
-  const maxStation = pts[pts.length - 1].northing;
+  // Use the dominant wrong-easting cluster only (580k or 640k band)
+  const westBand = pts.filter(p => p.easting >= 570000 && p.easting <= 600000);
+  const eastBand = pts.filter(p => p.easting >= 635000 && p.easting <= 655000);
+  const main = westBand.length >= eastBand.length ? westBand : eastBand;
+  if (main.length < 2) return null;
+
+  const northings = main.map(p => p.northing).sort((a, b) => a - b);
+  const minStation = percentile(northings, 0.08);
+  const maxStation = percentile(northings, 0.92);
   const dStation = maxStation - minStation;
   if (!isFinite(dStation) || dStation < 1) return null;
 
   return {
-    originN: WEST_DOVER_REF_N,
-    originE: WEST_DOVER_REF_E - WEST_DOVER_ALIGN_HALF_FT,
+    geographic: true,
+    west: CONNECTOR_WEST,
+    east: CONNECTOR_EAST,
     originStation: minStation,
     maxStation,
-    alongN: 0,
-    alongE: (2 * WEST_DOVER_ALIGN_HALF_FT) / dStation,
-    perpN: 1,
+    perpN: 0,
     perpE: 0,
-    constantE: false,
     synthetic: true,
   };
 }
@@ -7618,6 +7630,14 @@ function pickBorelogAlignmentFrame(group) {
 
 function statePlaneFromProfile(station, offset, frame) {
   if (!frame || !isFinite(station)) return null;
+  if (frame.geographic) {
+    const dStation = frame.maxStation - frame.originStation;
+    const t = dStation > 0 ? (station - frame.originStation) / dStation : 0;
+    const lat = frame.west.lat + t * (frame.east.lat - frame.west.lat);
+    const lng = frame.west.lng + t * (frame.east.lng - frame.west.lng);
+    if (!delawareBoundsOk(lat, lng)) return null;
+    return { lat, lng };
+  }
   const ds = station - frame.originStation;
   const off = isFinite(offset) ? offset : 0;
   const n = frame.originN + ds * frame.alongN + off * frame.perpN;
@@ -7686,7 +7706,7 @@ function getBorelogProjectAnchor(group, projectMeta) {
   const text = borelogProjectContextText(group, projectMeta);
 
   const anchors = [
-    { test: /dover|west\s*dover|kent\s*county|west\s*dover\s*connector|connector/, lat: 39.158, lng: -75.524, radiusM: 35000, minN: 390000, maxN: 430000, minE: 605000, maxE: 630000, minLat: 38.95 },
+    { test: /dover|west\s*dover|kent\s*county|west\s*dover\s*connector|connector/, lat: 39.158, lng: -75.524, radiusM: 12000, minN: 390000, maxN: 430000, minE: 605000, maxE: 630000, minLat: 39.08, maxLat: 39.20, minLng: -75.58, maxLng: -75.48 },
     { test: /wilmington|new\s*castle/, lat: 39.745, lng: -75.547, radiusM: 40000, minN: 420000, maxN: 460000, minE: 600000, maxE: 650000 },
     { test: /georgetown|sussex/, lat: 38.690, lng: -75.386, radiusM: 45000, minN: 360000, maxN: 400000, minE: 620000, maxE: 680000 },
   ];
@@ -7747,14 +7767,17 @@ function getBorelogProjectAnchor(group, projectMeta) {
     const eastings = suspectPts.map(p => p.easting);
     if (Math.max(...eastings) - Math.min(...eastings) < 100) {
       return {
-        lat: 39.158,
-        lng: -75.524,
-        radiusM: 35000,
+        lat: 39.144,
+        lng: -75.530,
+        radiusM: 12000,
         minN: 0,
         maxN: 9999999,
         minE: 605000,
         maxE: 630000,
-        minLat: 38.95,
+        minLat: 39.08,
+        maxLat: 39.20,
+        minLng: -75.58,
+        maxLng: -75.48,
       };
     }
   }
@@ -7773,6 +7796,9 @@ function isPlausibleBorelogCoord(b, coords, anchor) {
     if (isFinite(anchor.maxE) && isFinite(easting) && easting > anchor.maxE) return false;
   }
   if (isFinite(anchor.minLat) && coords.lat < anchor.minLat) return false;
+  if (isFinite(anchor.maxLat) && coords.lat > anchor.maxLat) return false;
+  if (isFinite(anchor.minLng) && coords.lng < anchor.minLng) return false;
+  if (isFinite(anchor.maxLng) && coords.lng > anchor.maxLng) return false;
   return coordsDistanceMeters(coords, anchor) <= (anchor.radiusM || 40000);
 }
 
