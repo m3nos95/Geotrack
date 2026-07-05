@@ -2119,16 +2119,19 @@ function buildConnectorPolylineFrame(borings) {
   const sorted = [...candidates].sort((a, b) => parseBoringSortKey(a) - parseBoringSortKey(b));
   const tById = new Map();
   sorted.forEach((b, i) => {
-    tById.set(b.id, sorted.length > 1 ? i / (sorted.length - 1) : 0.5);
+    const t = sorted.length > 1 ? i / (sorted.length - 1) : 0.5;
+    if (b.id) tById.set(b.id, t);
+    const bno = String(b.boring_no || '').trim();
+    if (bno) tById.set(bno, t);
   });
   return { polyline: true, waypoints: CONNECTOR_POLYLINE, tById, synthetic: true };
 }
 
 function pickBorelogAlignmentFrame(group) {
-  const goodFrame = buildBorelogAlignmentFrame(group, { goodOnly: true });
-  if (goodFrame) return goodFrame;
   const polylineFrame = buildConnectorPolylineFrame(group);
   if (polylineFrame) return polylineFrame;
+  const goodFrame = buildBorelogAlignmentFrame(group, { goodOnly: true });
+  if (goodFrame) return goodFrame;
   const allFrame = buildBorelogAlignmentFrame(group);
   if (allFrame && !allFrame.constantE) return allFrame;
   return allFrame;
@@ -2170,8 +2173,16 @@ function parseDirectMapLatLng(b) {
 
 function hasTrustedBorelogGps(b) {
   const raw = String(b?.gps_coordinates || '').trim();
-  if (/\(state\s*plane\)/i.test(raw)) return false;
-  return !!(parseDirectMapLatLng(b) || parseStoredGpsLatLng(b));
+  if (!raw || /\(state\s*plane\)/i.test(raw)) return false;
+  return !!parseStoredGpsLatLng(b);
+}
+
+function getPolylineT(frame, b) {
+  if (!frame?.tById || !b) return null;
+  if (b.id && frame.tById.has(b.id)) return frame.tById.get(b.id);
+  const bno = String(b.boring_no || '').trim();
+  if (bno && frame.tById.has(bno)) return frame.tById.get(bno);
+  return null;
 }
 
 function parseStoredGpsLatLng(b) {
@@ -2196,22 +2207,30 @@ function resolveBoringMapCoords(b, frame) {
   const isProfile = isProfileGridNE(northing, easting);
   const polylineCandidate = isPolylineCandidateNE(northing, easting);
   const rejected = isRejectedCorridorNE(northing, easting);
-  const suspect = polylineCandidate || rejected;
   const goodNE = isGoodDoverNE(northing, easting);
   const hasExplicitStation = /\d+\s*\+/.test(String(b.station_offset || ''))
     || String(b.station_offset || '').includes('/');
 
   if (rejected) return null;
 
+  if (polylineCandidate) {
+    const t = getPolylineT(frame, b);
+    if (frame?.polyline && t != null) {
+      return interpolatePolyline(frame.waypoints, t);
+    }
+    return null;
+  }
+
   if (hasTrustedBorelogGps(b)) {
-    return parseDirectMapLatLng(b) || parseStoredGpsLatLng(b);
+    return parseStoredGpsLatLng(b);
   }
 
-  if (frame?.polyline && polylineCandidate && frame.tById?.has(b.id)) {
-    return interpolatePolyline(frame.waypoints, frame.tById.get(b.id));
+  if (isSP && goodNE) {
+    const fromNE = delawareNEToLatLng(northing, easting) || delawareNEToLatLng(easting, northing);
+    if (fromNE) return fromNE;
   }
 
-  if (frame && isFinite(station) && (polylineCandidate || frame.synthetic || (frame.fromGoodAnchors && !goodNE))) {
+  if (frame && isFinite(station) && (frame.synthetic || (frame.fromGoodAnchors && !goodNE))) {
     const fromProfile = statePlaneFromProfile(station, offset, frame);
     if (fromProfile) return fromProfile;
   }

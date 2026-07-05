@@ -6468,7 +6468,7 @@ table.fc-borrow-tbl tr.fc-borrow-detail-row td{background:var(--surface);border-
 // GLOBALS
 // ══════════════════════════════════════════════
 let db = null;
-const APP_BUILD = '2026.07.04-borelog-polyline';
+const APP_BUILD = '2026.07.05-borelog-gps-recompute';
 const FC_CORE_ICON_SRC = 'docs/r18-reference/core-drill-icon-128.png';
 const BORELOG_ICON_SRC = 'docs/r18-reference/borelog-icon.webp';
 const BORELOG_PATH = 'docs/r18-reference/deldot-borelog.html';
@@ -7549,8 +7549,16 @@ function parseDirectMapLatLng(b) {
 
 function hasTrustedBorelogGps(b) {
   const raw = String(b?.gps_coordinates || b?.gps || '').trim();
-  if (/\(state\s*plane\)/i.test(raw)) return false;
-  return !!(parseDirectMapLatLng(b) || parseStoredGpsLatLng(b));
+  if (!raw || /\(state\s*plane\)/i.test(raw)) return false;
+  return !!parseStoredGpsLatLng(b);
+}
+
+function getPolylineT(frame, b) {
+  if (!frame?.tById || !b) return null;
+  if (b.id && frame.tById.has(b.id)) return frame.tById.get(b.id);
+  const bno = String(b.boring_no || '').trim();
+  if (bno && frame.tById.has(bno)) return frame.tById.get(bno);
+  return null;
 }
 
 function parseStoredGpsLatLng(b) {
@@ -7641,7 +7649,10 @@ function buildConnectorPolylineFrame(borings) {
   const sorted = [...candidates].sort((a, b) => parseBoringSortKey(a) - parseBoringSortKey(b));
   const tById = new Map();
   sorted.forEach((b, i) => {
-    tById.set(b.id, sorted.length > 1 ? i / (sorted.length - 1) : 0.5);
+    const t = sorted.length > 1 ? i / (sorted.length - 1) : 0.5;
+    if (b.id) tById.set(b.id, t);
+    const bno = String(b.boring_no || '').trim();
+    if (bno) tById.set(bno, t);
   });
 
   return {
@@ -7653,10 +7664,10 @@ function buildConnectorPolylineFrame(borings) {
 }
 
 function pickBorelogAlignmentFrame(group) {
-  const goodFrame = buildBorelogAlignmentFrame(group, { goodOnly: true });
-  if (goodFrame) return goodFrame;
   const polylineFrame = buildConnectorPolylineFrame(group);
   if (polylineFrame) return polylineFrame;
+  const goodFrame = buildBorelogAlignmentFrame(group, { goodOnly: true });
+  if (goodFrame) return goodFrame;
   const allFrame = buildBorelogAlignmentFrame(group);
   if (allFrame && !allFrame.constantE) return allFrame;
   return allFrame;
@@ -7678,27 +7689,34 @@ function resolveBorelogBoringCoords(b, frame, anchor) {
   const isProfile = isProfileGridNE(northing, easting);
   const polylineCandidate = isPolylineCandidateNE(northing, easting);
   const rejected = isRejectedCorridorNE(northing, easting);
-  const suspect = polylineCandidate || rejected;
   const goodNE = isGoodDoverNE(northing, easting);
   const hasExplicitStation = /\d+\s*\+/.test(String(b.station_offset || ''))
     || String(b.station_offset || '').includes('/');
 
   if (rejected) return null;
 
-  // GeoSystem LAT/LONG import — trust over N/E when not state-plane labeled
+  // 580k corridor: polyline only — never cached map_lat or raw N/E
+  if (polylineCandidate) {
+    const t = getPolylineT(frame, b);
+    if (frame?.polyline && t != null) {
+      const pt = interpolatePolyline(frame.waypoints, t);
+      if (pt) return { ...pt, _src: 'polyline' };
+    }
+    return null;
+  }
+
+  // GeoSystem LAT/LONG import (gps field only, not cached map_lat/map_lng)
   if (hasTrustedBorelogGps(b)) {
-    const gps = parseDirectMapLatLng(b) || parseStoredGpsLatLng(b);
+    const gps = parseStoredGpsLatLng(b);
     if (gps) return { ...gps, _src: 'gps' };
   }
 
-  // Place wrong 580k-corridor borings along connector polyline by boring number
-  if (frame?.polyline && polylineCandidate && frame.tById?.has(b.id)) {
-    const pt = interpolatePolyline(frame.waypoints, frame.tById.get(b.id));
-    if (pt) return { ...pt, _src: 'polyline' };
+  if (isSP && goodNE) {
+    const fromNE = delawareNEToLatLng(northing, easting) || delawareNEToLatLng(easting, northing);
+    if (fromNE) return { ...fromNE, _src: 'ne' };
   }
 
-  // Wrong constant-easting corridor: spread along project alignment instead of raw N/E
-  if (frame && isFinite(station) && (polylineCandidate || frame.synthetic || (frame.fromGoodAnchors && !goodNE))) {
+  if (frame && isFinite(station) && (frame.synthetic || (frame.fromGoodAnchors && !goodNE))) {
     const fromProfile = statePlaneFromProfile(station, offset, frame);
     if (fromProfile) return { ...fromProfile, _src: frame.synthetic ? 'synthetic' : 'station' };
   }
@@ -7708,10 +7726,6 @@ function resolveBorelogBoringCoords(b, frame, anchor) {
     if (fromProfile && (frame.constantE || hasExplicitStation || isProfile)) {
       return { ...fromProfile, _src: 'station' };
     }
-  }
-  if (isSP && goodNE && !suspect) {
-    const fromNE = delawareNEToLatLng(northing, easting) || delawareNEToLatLng(easting, northing);
-    if (fromNE) return { ...fromNE, _src: 'ne' };
   }
   if (frame && isFinite(station)) {
     const fromProfile = statePlaneFromProfile(station, offset, frame);
@@ -7726,7 +7740,7 @@ function resolveBorelogBoringCoords(b, frame, anchor) {
     }
   }
 
-  if (isSP && !suspect) {
+  if (isSP) {
     const fromNE = extractBorelogStatePlaneCoords(b);
     if (fromNE) return { ...fromNE, _src: 'ne' };
   }
@@ -7970,8 +7984,6 @@ function normalizeBorelogMapBoring(row, projectMeta) {
     northing: fields.northing || '',
     easting: fields.easting || '',
     gps_coordinates: fields.gps_coordinates || '',
-    map_lat: fields.map_lat || '',
-    map_lng: fields.map_lng || '',
     surface_elev: fields.surface_elev || '',
     reference: fields.reference || '',
     contractor: fields.contractor || '',
@@ -8045,7 +8057,6 @@ function collectBorelogBoringsFromLocal(contract) {
 }
 
 async function fetchBorelogBoringsForContract(contract) {
-  migrateBorelogLocalStorageCoords();
   const seen = new Set();
   const out = [];
   const add = (item) => {
@@ -9003,7 +9014,7 @@ async function labMapReload() {
     showToast('LabTrak Map is for administrators only', 'error');
     return;
   }
-  const migrated = migrateBorelogLocalStorageCoords();
+  const migrated = 0;
   const empty = document.getElementById('labMapEmpty');
   const subtitle = document.getElementById('labMapSubtitle');
   if (!db) {
