@@ -6475,6 +6475,67 @@ const BORELOG_PATH = 'docs/r18-reference/deldot-borelog.html';
 const BORELOG_WIN_NAME = 'deldot-borelog';
 const BORELOG_CTX_KEY = 'labtrak_borelog_context';
 const BORELOG_STORE_KEY = 'deldot_borelog_v2';
+const BORELOG_STORE_TS_KEY = 'deldot_borelog_v2_ts';
+const BORELOG_IDB_NAME = 'deldot_borelog';
+const BORELOG_IDB_KV = 'kv';
+let _borelogStoreCache = null;
+let _borelogIdbPromise = null;
+
+function _openBorelogStoreIdb() {
+  if (!_borelogIdbPromise) {
+    _borelogIdbPromise = new Promise((resolve, reject) => {
+      if (typeof indexedDB === 'undefined') { reject(new Error('IndexedDB unavailable')); return; }
+      const req = indexedDB.open(BORELOG_IDB_NAME, 1);
+      req.onupgradeneeded = (e) => {
+        const db = e.target.result;
+        if (!db.objectStoreNames.contains(BORELOG_IDB_KV)) db.createObjectStore(BORELOG_IDB_KV);
+      };
+      req.onsuccess = () => resolve(req.result);
+      req.onerror = () => reject(req.error);
+    });
+  }
+  return _borelogIdbPromise;
+}
+
+function _readBorelogStoreFromIdb() {
+  return _openBorelogStoreIdb().then(db => new Promise((resolve, reject) => {
+    const tx = db.transaction(BORELOG_IDB_KV, 'readonly');
+    const req = tx.objectStore(BORELOG_IDB_KV).get(BORELOG_STORE_KEY);
+    req.onsuccess = () => resolve(req.result || null);
+    req.onerror = () => reject(req.error);
+  })).catch(e => {
+    console.warn('borelog idb read:', e);
+    return null;
+  });
+}
+
+function readBorelogStoreSync() {
+  if (_borelogStoreCache) return _borelogStoreCache;
+  try {
+    const raw = localStorage.getItem(BORELOG_STORE_KEY);
+    if (raw) {
+      _borelogStoreCache = JSON.parse(raw);
+      return _borelogStoreCache;
+    }
+  } catch (e) { console.warn('borelog local read:', e); }
+  return { projects: {}, borings: {}, samples: {} };
+}
+
+async function loadBorelogStore() {
+  const sync = readBorelogStoreSync();
+  const hasLocal = Object.keys(sync.borings || {}).length > 0;
+  if (hasLocal) return sync;
+  const idb = await _readBorelogStoreFromIdb();
+  if (idb && (Object.keys(idb.borings || {}).length || Object.keys(idb.projects || {}).length)) {
+    _borelogStoreCache = idb;
+    return idb;
+  }
+  return sync;
+}
+
+function invalidateBorelogStoreCache() {
+  _borelogStoreCache = null;
+}
 const DE_STATE_PLANE = '+proj=lcc +lat_1=38.43333333333334 +lat_2=39.83333333333333 +lat_0=38 +lon_0=-75.41666666666666 +x_0=200000.99998984026 +y_0=0 +ellps=GRS80 +units=us-ft +no_defs';
 window._dbConnected = false;
 window._syncInProgress = false;
@@ -7911,7 +7972,7 @@ function applyBorelogProjectCoords(items) {
 
 function migrateBorelogLocalStorageCoords() {
   try {
-    const raw = JSON.parse(localStorage.getItem(BORELOG_STORE_KEY) || '{}');
+    const raw = readBorelogStoreSync();
     const borings = raw.borings || {};
     const all = Object.values(borings).filter(b => b?.id);
     if (!all.length) return 0;
@@ -8025,10 +8086,10 @@ function finalizeBorelogMapBorings(items) {
   return applyBorelogProjectCoords(items).filter(item => !!item.coords);
 }
 
-function collectBorelogBoringsFromLocal(contract) {
+async function collectBorelogBoringsFromLocal(contract) {
   const out = [];
   try {
-    const raw = JSON.parse(localStorage.getItem(BORELOG_STORE_KEY) || '{}');
+    const raw = await loadBorelogStore();
     const projects = raw.projects || {};
     const borings = raw.borings || {};
     const contractLower = (contract || '').trim().toLowerCase();
@@ -8065,7 +8126,7 @@ async function fetchBorelogBoringsForContract(contract) {
     out.push(item);
   };
   if (!db) {
-    collectBorelogBoringsFromLocal(contract).forEach(add);
+    (await collectBorelogBoringsFromLocal(contract)).forEach(add);
     return finalizeBorelogMapBorings(out);
   }
   try {
@@ -8087,7 +8148,7 @@ async function fetchBorelogBoringsForContract(contract) {
       if (item) add(item);
     });
   } catch (e) { console.warn('fetchBorelogBoringsForContract:', e); }
-  collectBorelogBoringsFromLocal(contract).forEach(add);
+  (await collectBorelogBoringsFromLocal(contract)).forEach(add);
   return finalizeBorelogMapBorings(out);
 }
 
@@ -8098,7 +8159,7 @@ async function fetchAllBorelogMapBorings() {
 function getBorelogMapSampleSummary(boringId) {
   if (!boringId) return null;
   try {
-    const raw = JSON.parse(localStorage.getItem(BORELOG_STORE_KEY) || '{}');
+    const raw = readBorelogStoreSync();
     const samples = Object.values(raw.samples || {}).filter(s => s.boring_id === boringId);
     if (!samples.length) return { count: 0, depthRange: '', maxDepth: null };
     const depthsFrom = samples.map(s => parseFloat(s.depth_from)).filter(n => isFinite(n));
@@ -9085,7 +9146,8 @@ window.addEventListener('resize', () => {
 });
 
 window.addEventListener('storage', (e) => {
-  if (e.key !== BORELOG_STORE_KEY) return;
+  if (e.key !== BORELOG_STORE_KEY && e.key !== BORELOG_STORE_TS_KEY) return;
+  invalidateBorelogStoreCache();
   if (!labMap || currentView !== 'labmap') return;
   labMapReload();
 });
