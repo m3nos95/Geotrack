@@ -890,15 +890,142 @@ const DELDOT_LOGO = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAPAAAADwCAYAA
    - Storage wrapper abstracted for future Supabase port
    ========================================================================= */
 const STORE_KEY = 'deldot_borelog_v2';
+const STORE_TS_KEY = 'deldot_borelog_v2_ts';
 const DE_STATE_PLANE = '+proj=lcc +lat_1=38.43333333333334 +lat_2=39.83333333333333 +lat_0=38 +lon_0=-75.41666666666666 +x_0=200000.99998984026 +y_0=0 +ellps=GRS80 +units=us-ft +no_defs';
 const SB_URL_KEY = 'labtrak_sb_url';
 const SB_KEY_KEY = 'labtrak_sb_anon_key';
 const BORELOG_SYNC_QUEUE_KEY = 'deldot_borelog_sync_queue';
 
-/* ---------- STORAGE (local + cloud queue) ---------- */
+/* ---------- STORAGE (IndexedDB + in-memory cache) ----------
+   localStorage caps at ~5–10 MB — large Geo imports exceed that quickly.
+   Primary store is IndexedDB (typically hundreds of MB). A tiny timestamp
+   key in localStorage notifies LabTrak when BoreLog data changes. ---------- */
+let _memStore = null;
+let _saveTimer = null;
+let _batchSaveDepth = 0;
+let _idbOpenPromise = null;
+const IDB_NAME = 'deldot_borelog';
+const IDB_KV = 'kv';
+
+function _loadLegacyLocalStore() {
+  try { return JSON.parse(localStorage.getItem(STORE_KEY) || '{}'); } catch { return {}; }
+}
+
+function _openBorelogIdb() {
+  if (!_idbOpenPromise) {
+    _idbOpenPromise = new Promise((resolve, reject) => {
+      if (typeof indexedDB === 'undefined') { reject(new Error('IndexedDB unavailable')); return; }
+      const req = indexedDB.open(IDB_NAME, 1);
+      req.onupgradeneeded = (e) => {
+        const db = e.target.result;
+        if (!db.objectStoreNames.contains(IDB_KV)) db.createObjectStore(IDB_KV);
+      };
+      req.onsuccess = () => resolve(req.result);
+      req.onerror = () => reject(req.error || new Error('IndexedDB open failed'));
+    });
+  }
+  return _idbOpenPromise;
+}
+
+function _idbGet(key) {
+  return _openBorelogIdb().then(db => new Promise((resolve, reject) => {
+    const tx = db.transaction(IDB_KV, 'readonly');
+    const req = tx.objectStore(IDB_KV).get(key);
+    req.onsuccess = () => resolve(req.result);
+    req.onerror = () => reject(req.error);
+  }));
+}
+
+function _idbPut(key, val) {
+  return _openBorelogIdb().then(db => new Promise((resolve, reject) => {
+    const tx = db.transaction(IDB_KV, 'readwrite');
+    tx.objectStore(IDB_KV).put(val, key);
+    tx.oncomplete = () => resolve();
+    tx.onerror = () => reject(tx.error);
+  }));
+}
+
+async function initBorelogStore() {
+  if (_memStore) return _memStore;
+  let data = null;
+  try { data = await _idbGet(STORE_KEY); } catch (e) { console.warn('borelog idb read:', e); }
+  const legacy = _loadLegacyLocalStore();
+  const legacyHas = Object.keys(legacy.projects || {}).length
+    || Object.keys(legacy.borings || {}).length
+    || Object.keys(legacy.samples || {}).length;
+  if (!data || (legacyHas && JSON.stringify(legacy).length > JSON.stringify(data || {}).length)) {
+    data = legacyHas ? legacy : (data || {});
+    if (legacyHas) {
+      try { await _idbPut(STORE_KEY, data); } catch (e) { console.warn('borelog idb migrate:', e); }
+      try { localStorage.removeItem(STORE_KEY); } catch (e) {}
+    }
+  }
+  _memStore = data || {};
+  return _memStore;
+}
+
+function _notifyBorelogStoreChange() {
+  try { localStorage.setItem(STORE_TS_KEY, String(Date.now())); } catch (e) {}
+}
+
+function _mirrorSmallLocalStore(o) {
+  try {
+    const json = JSON.stringify(o);
+    if (json.length < 3_500_000) localStorage.setItem(STORE_KEY, json);
+    else localStorage.removeItem(STORE_KEY);
+  } catch (e) {
+    try { localStorage.removeItem(STORE_KEY); } catch (_) {}
+  }
+}
+
+async function flushBorelogStoreAsync() {
+  clearTimeout(_saveTimer);
+  if (!_memStore) return;
+  await _idbPut(STORE_KEY, _memStore);
+  _mirrorSmallLocalStore(_memStore);
+  _notifyBorelogStoreChange();
+}
+
+function _persistBorelogStore(o) {
+  _idbPut(STORE_KEY, o).then(() => {
+    _mirrorSmallLocalStore(o);
+    _notifyBorelogStoreChange();
+  }).catch(e => console.error('borelog idb save failed:', e));
+}
+
+function beginBorelogBatchSave() { _batchSaveDepth++; }
+
+function endBorelogBatchSave() {
+  _batchSaveDepth = Math.max(0, _batchSaveDepth - 1);
+  if (_batchSaveDepth === 0 && _memStore) {
+    clearTimeout(_saveTimer);
+    _persistBorelogStore(_memStore);
+  }
+}
+
+function borelogStorageError(err) {
+  const msg = String(err?.message || err || '');
+  if (/quota/i.test(msg) || err?.name === 'QuotaExceededError') {
+    return new Error(
+      'Browser storage is full for this site. Refresh the page and try the import again — ' +
+      'large projects now save to IndexedDB. If it still fails, delete old BoreLog projects ' +
+      'or connect Supabase and use ☁ SYNC NOW.'
+    );
+  }
+  return err instanceof Error ? err : new Error(msg);
+}
+
 const _storeCore = {
-  _all:()=>{ try { return JSON.parse(localStorage.getItem(STORE_KEY)||'{}'); } catch(e){ return {}; } },
-  _save:(o)=>localStorage.setItem(STORE_KEY, JSON.stringify(o)),
+  _all() {
+    if (!_memStore) _memStore = _loadLegacyLocalStore();
+    return _memStore;
+  },
+  _save(o) {
+    _memStore = o;
+    if (_batchSaveDepth > 0) return;
+    clearTimeout(_saveTimer);
+    _saveTimer = setTimeout(() => _persistBorelogStore(o), 40);
+  },
   getProjects:()=>_storeCore._all().projects||{},
   getProject:(id)=>(_storeCore._all().projects||{})[id],
   saveProject:(p)=>{const all=_storeCore._all();all.projects=all.projects||{};all.projects[p.id]=p;_storeCore._save(all);},
@@ -2488,17 +2615,22 @@ function initComfortMode() {
 }
 
 function startApp(){
-  const ol = $('setupOverlay');
-  ol.style.transition='opacity .4s';
-  ol.style.opacity='0';
-  setTimeout(()=>{
-    ol.style.display='none';
-    $('app').style.display='grid';
-    renderProjects();
-    applyLabTrakContext();
-    migrateAllBoringMapCoords();
-    initBorelogSync();
-  }, 380);
+  initBorelogStore().then(() => {
+    const ol = $('setupOverlay');
+    ol.style.transition='opacity .4s';
+    ol.style.opacity='0';
+    setTimeout(()=>{
+      ol.style.display='none';
+      $('app').style.display='grid';
+      renderProjects();
+      applyLabTrakContext();
+      migrateAllBoringMapCoords();
+      initBorelogSync();
+    }, 380);
+  }).catch(e => {
+    console.error('borelog store init:', e);
+    toast('Storage init failed — refresh and try again', true);
+  });
 }
 // Wire logo into splash as soon as script runs
 (function(){ const el = document.getElementById('splashLogo'); if(el) el.src = DELDOT_LOGO; })();
@@ -4015,6 +4147,7 @@ async function runGeoImport(){
   $('geoGoBtn').textContent = '⏳ IMPORTING…';
   $('geoLog').className = 'geo-log visible';
 
+  beginBorelogBatchSave();
   try {
     const fileMap = {};
     _geoFiles.forEach(f => { fileMap[f.name.toUpperCase()] = f; });
@@ -4325,16 +4458,20 @@ async function runGeoImport(){
     $('geoGoBtn').textContent = '✔ OPEN PROJECT →';
     $('geoGoBtn').onclick = ()=>{ closeGeoImport(); openProject(projId); };
     $('geoGoBtn').disabled = false;
+    await flushBorelogStoreAsync();
     syncBorelogNow().catch(() => {});
 
   } catch(err){
-    geoLog('err', `❌ Import failed: ${err.message}`);
-    geoLog('err', err.stack ? err.stack.split('\n')[1] : '(no stack)');
-    console.error(err);
+    const shown = borelogStorageError(err);
+    geoLog('err', `❌ Import failed: ${shown.message}`);
+    geoLog('err', shown.stack ? shown.stack.split('\n')[1] : '(no stack)');
+    console.error(shown);
     $('geoResult').className = 'geo-result visible';
-    $('geoResult').innerHTML = `<div class="gr-line" style="color:var(--red2)">❌ ${err.message}</div>`;
+    $('geoResult').innerHTML = `<div class="gr-line" style="color:var(--red2)">❌ ${escape(shown.message)}</div>`;
     $('geoGoBtn').textContent = '⬆ RETRY';
     $('geoGoBtn').disabled = false;
+  } finally {
+    endBorelogBatchSave();
   }
 }
 
