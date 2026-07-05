@@ -434,6 +434,19 @@ nav{background:var(--surface);border-bottom:1px solid var(--border);box-shadow:0
 .map-toolbar{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:10px;}
 .map-no-coords{background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:10px 14px;font-size:11px;color:var(--muted);margin-top:6px;}
 
+/* 3D site modal */
+#site3dModal{position:fixed;inset:0;background:rgba(0,0,0,0.92);z-index:2100;display:none;align-items:flex-start;justify-content:center;overflow-y:auto;padding:20px 12px;}
+#site3dModal.open{display:flex;}
+#site3dBox{background:var(--surface);border-radius:14px;width:100%;max-width:1100px;padding:20px 22px;box-sizing:border-box;}
+#site3dBox h3{margin:0;font-size:16px;color:var(--text);}
+#site3dCanvas{width:100%;height:560px;border-radius:10px;border:1px solid var(--border);margin-top:12px;background:#0a1018;touch-action:none;}
+.site3d-toolbar{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-top:10px;}
+.site3d-toolbar label{font-size:11px;color:var(--muted);display:flex;align-items:center;gap:5px;cursor:pointer;}
+.site3d-legend{display:flex;flex-wrap:wrap;gap:10px 14px;margin-top:10px;font-size:10px;color:var(--muted);}
+.site3d-legend span{display:flex;align-items:center;gap:5px;}
+.site3d-legend i{display:inline-block;width:12px;height:12px;border-radius:2px;border:1px solid rgba(255,255,255,0.15);}
+.site3d-warn{background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:10px 14px;font-size:11px;color:var(--muted);margin-top:8px;line-height:1.5;}
+
 /* ── Comfort mode (shared with LabTrak) ── */
 .btn-comfort-mode{background:rgba(255,255,255,0.06);border:1px solid var(--border);color:var(--muted);
   padding:5px 9px;font-family:var(--sans);font-size:14px;line-height:1;cursor:pointer;border-radius:var(--radius-sm);transition:all .15s;}
@@ -538,7 +551,11 @@ html.comfort-mode .hab-pulse{animation:none !important;box-shadow:none !importan
       <div class="breadcrumb"><span onclick="showView('projects')">Projects</span> / <span id="bcProjName"></span></div>
       <div class="page-head">
         <div><h2 id="boringsTitle">Borings</h2><div class="ph-sub" id="boringsSub"></div></div>
-<button class="btn btn-primary" onclick="newBoring()">+ NEW BORING</button>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;">
+          <button class="btn btn-ghost btn-sm" onclick="openMapModal()">🗺 MAP</button>
+          <button class="btn btn-ghost btn-sm" onclick="openSite3DModal()">🏔 3D SITE</button>
+          <button class="btn btn-primary" onclick="newBoring()">+ NEW BORING</button>
+        </div>
       </div>
       <div id="boringList"></div>
     </div>
@@ -557,6 +574,7 @@ html.comfort-mode .hab-pulse{animation:none !important;box-shadow:none !importan
           <button class="btn btn-ghost btn-sm" onclick="showView('psd-print')">📊 PSD REPORT</button>
           <button class="btn btn-ghost btn-sm" onclick="openPoleBase()">📐 POLE BASE</button>
           <button class="btn btn-ghost btn-sm" onclick="openMapModal()">🗺 MAP</button>
+          <button class="btn btn-ghost btn-sm" onclick="openSite3DModal()">🏔 3D SITE</button>
           <button class="btn btn-danger btn-sm" onclick="deleteBoring()">DELETE</button>
         </div>
       </div>
@@ -843,6 +861,27 @@ html.comfort-mode .hab-pulse{animation:none !important;box-shadow:none !importan
       ⚠ Some borings are missing Northing/Easting — only borings with coordinates are shown.
     </div>
     <div id="leafletMap"></div>
+  </div>
+</div>
+
+<div id="site3dModal" onclick="if(event.target===this)closeSite3DModal()">
+  <div id="site3dBox">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px;gap:12px;flex-wrap:wrap;">
+      <div>
+        <h3>🏔 3D Site View</h3>
+        <div style="font-size:11px;color:var(--muted);margin-top:2px;">Topography from surface elevations · subsurface from sample intervals</div>
+      </div>
+      <button class="btn btn-ghost btn-sm" onclick="closeSite3DModal()">✕ CLOSE</button>
+    </div>
+    <div id="site3dWarn" class="site3d-warn" style="display:none;"></div>
+    <div id="site3dCanvas"></div>
+    <div class="site3d-toolbar">
+      <label><input type="checkbox" id="site3dShowTopo" checked onchange="refreshSite3DOptions()"> Ground surface</label>
+      <label><input type="checkbox" id="site3dShowCols" checked onchange="refreshSite3DOptions()"> Boring columns</label>
+      <label><input type="checkbox" id="site3dShowLabels" checked onchange="refreshSite3DOptions()"> Labels</label>
+      <span style="font-size:10px;color:var(--muted);margin-left:auto;">Drag to orbit · scroll to zoom · right-drag to pan</span>
+    </div>
+    <div class="site3d-legend" id="site3dLegend"></div>
   </div>
 </div>
 
@@ -5282,6 +5321,384 @@ ${placemarks}
   a.href = 'data:application/vnd.google-earth.kml+xml,' + encodeURIComponent(kml);
   a.download = (proj ? (proj.name || 'borings').replace(/[^a-z0-9]/gi,'_') : 'borings') + '.kml';
   a.click();
+}
+
+
+// ── 3D Site View ─────────────────────────────────────────────────────────────
+let _site3dState = null;
+
+const USCS_3D_COLORS = {
+  GW:'#c8a882', GP:'#d4b896', GM:'#b89868', GC:'#a88858',
+  SW:'#e8d070', SP:'#f0e088', SM:'#d8c060', SC:'#c8b050',
+  CL:'#9a7020', CI:'#806018', CH:'#604010', ML:'#909090', MH:'#707878',
+  OL:'#987850', OH:'#806848', PT:'#305830', ROCK:'#505060', FILL:'#777788'
+};
+
+function site3dSampleColor(s) {
+  const uscs = String(s.uscs || s.uscs_calc?.symbol || '').trim().toUpperCase();
+  if (uscs) {
+    for (const key of Object.keys(USCS_3D_COLORS)) {
+      if (uscs.startsWith(key)) return USCS_3D_COLORS[key];
+    }
+  }
+  const aa = String(s.aashto || s.aashto_calc?.full || '').trim().toUpperCase();
+  if (aa.includes('ROCK')) return USCS_3D_COLORS.ROCK;
+  const st = pbSoilType(aa);
+  if (st === 'rock') return USCS_3D_COLORS.ROCK;
+  if (st === 'cohesive') return USCS_3D_COLORS.CL;
+  if (st === 'cohesionless') return USCS_3D_COLORS.SP;
+  return USCS_3D_COLORS.FILL;
+}
+
+function site3dTopOf(s) {
+  return Math.min(parseFloat(s.depth_from) || 0, parseFloat(s.depth_to) || 0);
+}
+
+function site3dThickOf(s) {
+  return Math.abs((parseFloat(s.depth_from) || 0) - (parseFloat(s.depth_to) || 0)) || 2;
+}
+
+function collectSitePlanPoints(borings, frame) {
+  const raw = [];
+  borings.forEach(b => {
+    const { northing, easting } = parseStationOffsetFields(b);
+    if (isDelawareStatePlaneNE(northing, easting) && isGoodDoverNE(northing, easting)) {
+      raw.push({ b, x: easting, z: northing, source: 'sp' });
+      return;
+    }
+    const ll = resolveBoringMapCoords(b, frame);
+    if (!ll) return;
+    raw.push({ b, x: ll.lng, z: ll.lat, source: 'll' });
+  });
+  if (!raw.length) return [];
+
+  const spPts = raw.filter(p => p.source === 'sp');
+  if (spPts.length >= 2) {
+    const cx = spPts.reduce((s, p) => s + p.x, 0) / spPts.length;
+    const cz = spPts.reduce((s, p) => s + p.z, 0) / spPts.length;
+    const latMid = spPts.reduce((s, p) => s + p.z, 0) / spPts.length; // unused for sp
+    return raw.map(p => {
+      if (p.source === 'sp') return { b: p.b, lx: p.x - cx, lz: p.z - cz };
+      const ftPerDegLat = 364000;
+      const ftPerDegLng = 364000 * Math.cos(latMid * Math.PI / 180);
+      const spCenter = delawareNEToLatLng(cz, cx);
+      const refLat = spCenter ? spCenter.lat : p.z;
+      const refLng = spCenter ? spCenter.lng : p.x;
+      return {
+        b: p.b,
+        lx: (p.x - refLng) * (364000 * Math.cos(refLat * Math.PI / 180)),
+        lz: (p.z - refLat) * 364000
+      };
+    });
+  }
+
+  const cx = raw.reduce((s, p) => s + p.x, 0) / raw.length;
+  const cz = raw.reduce((s, p) => s + p.z, 0) / raw.length;
+  const latMid = cz;
+  const ftPerDegLat = 364000;
+  const ftPerDegLng = 364000 * Math.cos(latMid * Math.PI / 180);
+  return raw.map(p => ({
+    b: p.b,
+    lx: (p.x - cx) * ftPerDegLng,
+    lz: (p.z - cz) * ftPerDegLat
+  }));
+}
+
+function buildSite3DModel(projectId) {
+  const borings = store.getBorings(projectId);
+  const frame = pickBorelogAlignmentFrame(borings);
+  const planPts = collectSitePlanPoints(borings, frame);
+  const warnings = [];
+
+  if (planPts.length < 2) {
+    return { ok: false, warnings: ['Need at least 2 borings with coordinates (GPS, N/E, or station/offset).'] };
+  }
+
+  const columns = planPts.map(({ b, lx, lz }) => {
+    const samples = store.getSamples(b.id).slice().sort((a, c) => site3dTopOf(a) - site3dTopOf(c));
+    let surface = parseFloat(String(b.surface_elev || '').replace(/,/g, ''));
+    if (!isFinite(surface)) surface = null;
+    const intervals = samples.map(s => {
+      const top = site3dTopOf(s);
+      const thick = site3dThickOf(s);
+      return {
+        top, bottom: top + thick,
+        color: site3dSampleColor(s),
+        label: s.uscs || s.aashto || s.aashto_calc?.full || ''
+      };
+    });
+    const maxDepth = intervals.length
+      ? Math.max(...intervals.map(i => i.bottom))
+      : (parseFloat(b.total_depth) || 0);
+    return {
+      id: b.id,
+      boring_no: b.boring_no || '(no #)',
+      lx, lz,
+      surface,
+      maxDepth,
+      intervals
+    };
+  });
+
+  const withSurf = columns.filter(c => c.surface != null);
+  if (withSurf.length < 2) {
+    warnings.push('Fewer than 2 borings have Surface Elevation — ground mesh uses a flat reference.');
+    const fallback = withSurf.length ? withSurf[0].surface : 100;
+    columns.forEach(c => { if (c.surface == null) c.surface = fallback; });
+  } else if (withSurf.length < columns.length) {
+    warnings.push('Some borings missing Surface Elevation — those use nearest-neighbor interpolation.');
+    columns.filter(c => c.surface == null).forEach(c => {
+      let best = null, bestD = Infinity;
+      withSurf.forEach(w => {
+        const d = Math.hypot(c.lx - w.lx, c.lz - w.lz);
+        if (d < bestD) { bestD = d; best = w.surface; }
+      });
+      c.surface = best != null ? best : withSurf[0].surface;
+    });
+  }
+
+  const xs = columns.map(c => c.lx);
+  const zs = columns.map(c => c.lz);
+  const extent = Math.max(
+    Math.max(...xs) - Math.min(...xs),
+    Math.max(...zs) - Math.min(...zs),
+    20
+  );
+  const colRadius = Math.max(1.5, extent * 0.015);
+
+  return { ok: true, columns, warnings, colRadius, extent };
+}
+
+function renderSite3DLegend() {
+  const keys = ['SP', 'SM', 'CL', 'CH', 'ML', 'ROCK', 'FILL'];
+  const labels = {
+    SP: 'Sand (SP/SW)', SM: 'Silty sand', CL: 'Clay (CL/CI)', CH: 'Fat clay',
+    ML: 'Silt', ROCK: 'Rock', FILL: 'Unclassified'
+  };
+  $('site3dLegend').innerHTML = keys.map(k =>
+    `<span><i style="background:${USCS_3D_COLORS[k]}"></i>${labels[k]}</span>`
+  ).join('');
+}
+
+async function openSite3DModal() {
+  if (!currentProjectId) return;
+  closeSite3DRenderer();
+  const model = buildSite3DModel(currentProjectId);
+  const warnEl = $('site3dWarn');
+  if (!model.ok) {
+    warnEl.style.display = '';
+    warnEl.textContent = model.warnings[0];
+    $('site3dCanvas').innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:100%;color:var(--muted);font-size:13px;padding:24px;text-align:center;">Add coordinates and samples to at least two borings to build a 3D site model.</div>';
+    $('site3dModal').classList.add('open');
+    renderSite3DLegend();
+    return;
+  }
+
+  warnEl.style.display = model.warnings.length ? '' : 'none';
+  warnEl.textContent = model.warnings.join(' ');
+  renderSite3DLegend();
+  $('site3dModal').classList.add('open');
+
+  closeSite3DRenderer();
+  $('site3dCanvas').innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:100%;color:var(--muted);font-size:13px;">Loading 3D view…</div>';
+
+  try {
+    const THREE = await import('https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js');
+    const { OrbitControls } = await import('https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/controls/OrbitControls.js');
+    const { Delaunay } = await import('https://cdn.jsdelivr.net/npm/d3-delaunay@6/+esm');
+    await initSite3DScene(THREE, OrbitControls, Delaunay, model);
+  } catch (err) {
+    console.error(err);
+    $('site3dCanvas').innerHTML = `<div style="display:flex;align-items:center;justify-content:center;height:100%;color:var(--red2);font-size:13px;padding:24px;text-align:center;">Could not load 3D engine: ${escape(String(err.message || err))}</div>`;
+  }
+}
+
+async function initSite3DScene(THREE, OrbitControls, Delaunay, model) {
+  const container = $('site3dCanvas');
+  container.innerHTML = '';
+
+  const scene = new THREE.Scene();
+  scene.background = new THREE.Color(0x0a1018);
+  scene.fog = new THREE.Fog(0x0a1018, model.extent * 3, model.extent * 8);
+
+  const camera = new THREE.PerspectiveCamera(50, container.clientWidth / container.clientHeight, 0.5, model.extent * 50);
+  const renderer = new THREE.WebGLRenderer({ antialias: true });
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+  renderer.setSize(container.clientWidth, container.clientHeight);
+  container.appendChild(renderer.domElement);
+
+  const controls = new OrbitControls(camera, renderer.domElement);
+  controls.enableDamping = true;
+  controls.dampingFactor = 0.08;
+  controls.maxPolarAngle = Math.PI * 0.49;
+
+  scene.add(new THREE.AmbientLight(0xffffff, 0.55));
+  const sun = new THREE.DirectionalLight(0xffffff, 0.85);
+  sun.position.set(model.extent, model.extent * 2, model.extent);
+  scene.add(sun);
+  const fill = new THREE.DirectionalLight(0x88aacc, 0.35);
+  fill.position.set(-model.extent, model.extent, -model.extent);
+  scene.add(fill);
+
+  const groups = {
+    topo: new THREE.Group(),
+    cols: new THREE.Group(),
+    labels: new THREE.Group()
+  };
+  Object.values(groups).forEach(g => scene.add(g));
+
+  // Ground surface mesh (Delaunay triangulation of boring locations)
+  const pts2d = model.columns.map(c => [c.lx, c.lz]);
+  const delaunay = Delaunay.from(pts2d);
+  const tri = delaunay.triangles;
+  const topoGeo = new THREE.BufferGeometry();
+  const vertices = [];
+  const indices = [];
+  for (let i = 0; i < model.columns.length; i++) {
+    vertices.push(model.columns[i].lx, model.columns[i].surface, -model.columns[i].lz);
+  }
+  for (let i = 0; i < tri.length; i += 3) {
+    indices.push(tri[i], tri[i + 1], tri[i + 2]);
+  }
+  topoGeo.setIndex(indices);
+  topoGeo.setAttribute('position', new THREE.Float32BufferAttribute(vertices, 3));
+  topoGeo.computeVertexNormals();
+  const topoMat = new THREE.MeshStandardMaterial({
+    color: 0x3d6b40,
+    roughness: 0.92,
+    metalness: 0.02,
+    side: THREE.DoubleSide,
+    transparent: true,
+    opacity: 0.88
+  });
+  const topoMesh = new THREE.Mesh(topoGeo, topoMat);
+  groups.topo.add(topoMesh);
+
+  // Wireframe outline for terrain readability
+  const topoWire = new THREE.LineSegments(
+    new THREE.WireframeGeometry(topoGeo),
+    new THREE.LineBasicMaterial({ color: 0x2a4a2c, transparent: true, opacity: 0.35 })
+  );
+  groups.topo.add(topoWire);
+
+  // Boring columns + labels
+  const labelCanvas = document.createElement('canvas');
+  const labelCtx = labelCanvas.getContext('2d');
+
+  model.columns.forEach(col => {
+    const r = model.colRadius;
+    col.intervals.forEach(iv => {
+      const yTop = col.surface - iv.top;
+      const yBot = col.surface - iv.bottom;
+      const h = Math.max(0.5, yTop - yBot);
+      const geo = new THREE.CylinderGeometry(r, r, h, 10, 1, false);
+      const mat = new THREE.MeshStandardMaterial({
+        color: new THREE.Color(iv.color),
+        roughness: 0.82,
+        metalness: 0.04
+      });
+      const mesh = new THREE.Mesh(geo, mat);
+      mesh.position.set(col.lx, yBot + h / 2, -col.lz);
+      groups.cols.add(mesh);
+    });
+
+    // Surface marker ring
+    const ringGeo = new THREE.RingGeometry(r * 1.2, r * 1.55, 24);
+    const ringMat = new THREE.MeshBasicMaterial({ color: 0xffffff, side: THREE.DoubleSide, transparent: true, opacity: 0.7 });
+    const ring = new THREE.Mesh(ringGeo, ringMat);
+    ring.rotation.x = -Math.PI / 2;
+    ring.position.set(col.lx, col.surface + 0.2, -col.lz);
+    groups.labels.add(ring);
+
+    // Text sprite label
+    const text = col.boring_no;
+    labelCanvas.width = 256;
+    labelCanvas.height = 64;
+    labelCtx.clearRect(0, 0, 256, 64);
+    labelCtx.fillStyle = 'rgba(10,16,24,0.75)';
+    labelCtx.fillRect(0, 0, 256, 64);
+    labelCtx.fillStyle = '#e2ecf8';
+    labelCtx.font = 'bold 28px Arial,sans-serif';
+    labelCtx.textAlign = 'center';
+    labelCtx.textBaseline = 'middle';
+    labelCtx.fillText(text, 128, 32);
+    const tex = new THREE.CanvasTexture(labelCanvas);
+    tex.needsUpdate = true;
+    const spriteMat = new THREE.SpriteMaterial({ map: tex, transparent: true, depthTest: false });
+    const sprite = new THREE.Sprite(spriteMat);
+    const labelScale = Math.max(8, model.extent * 0.06);
+    sprite.scale.set(labelScale * 2.5, labelScale * 0.65, 1);
+    sprite.position.set(col.lx, col.surface + labelScale * 0.5, -col.lz);
+    sprite.userData.isLabel = true;
+    groups.labels.add(sprite);
+  });
+
+  // Reference grid at min elevation
+  const minElev = Math.min(...model.columns.map(c => c.surface - (c.maxDepth || 0)));
+  const gridSize = model.extent * 1.4;
+  const grid = new THREE.GridHelper(gridSize, 10, 0x2a3548, 0x1a2435);
+  grid.position.y = minElev - 2;
+  scene.add(grid);
+
+  // Camera framing
+  const cx = model.columns.reduce((s, c) => s + c.lx, 0) / model.columns.length;
+  const cz = model.columns.reduce((s, c) => s + c.lz, 0) / model.columns.length;
+  const cy = model.columns.reduce((s, c) => s + c.surface, 0) / model.columns.length;
+  const depthSpan = Math.max(...model.columns.map(c => c.maxDepth || 0), 10);
+  const dist = model.extent * 1.6 + depthSpan * 0.4;
+  camera.position.set(cx + dist * 0.7, cy + dist * 0.55, -cz + dist * 0.7);
+  controls.target.set(cx, cy - depthSpan * 0.15, -cz);
+  controls.update();
+
+  let animId = null;
+  function animate() {
+    animId = requestAnimationFrame(animate);
+    controls.update();
+    renderer.render(scene, camera);
+  }
+  animate();
+
+  function onResize() {
+    if (!container.isConnected) return;
+    const w = container.clientWidth;
+    const h = container.clientHeight;
+    camera.aspect = w / h;
+    camera.updateProjectionMatrix();
+    renderer.setSize(w, h);
+  }
+  window.addEventListener('resize', onResize);
+
+  _site3dState = { renderer, scene, camera, controls, groups, animId, onResize, container };
+  refreshSite3DOptions();
+}
+
+function refreshSite3DOptions() {
+  if (!_site3dState) return;
+  const { groups } = _site3dState;
+  if (groups.topo) groups.topo.visible = $('site3dShowTopo')?.checked !== false;
+  if (groups.cols) groups.cols.visible = $('site3dShowCols')?.checked !== false;
+  if (groups.labels) groups.labels.visible = $('site3dShowLabels')?.checked !== false;
+}
+
+function closeSite3DRenderer() {
+  if (!_site3dState) return;
+  const { renderer, animId, onResize, container, controls } = _site3dState;
+  if (animId) cancelAnimationFrame(animId);
+  if (onResize) window.removeEventListener('resize', onResize);
+  if (controls) controls.dispose();
+  if (renderer) {
+    renderer.dispose();
+    if (renderer.domElement && renderer.domElement.parentNode) {
+      renderer.domElement.parentNode.removeChild(renderer.domElement);
+    }
+  }
+  if (container) container.innerHTML = '';
+  _site3dState = null;
+}
+
+function closeSite3DModal() {
+  $('site3dModal').classList.remove('open');
+  closeSite3DRenderer();
 }
 
 
