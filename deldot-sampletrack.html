@@ -6468,14 +6468,12 @@ table.fc-borrow-tbl tr.fc-borrow-detail-row td{background:var(--surface);border-
 // GLOBALS
 // ══════════════════════════════════════════════
 let db = null;
-const APP_BUILD = '2026.07.06-borelog-perf-v2';
+const APP_BUILD = '2026.07.06-borelog-perf-v3';
 const FC_CORE_ICON_SRC = 'docs/r18-reference/core-drill-icon-128.png';
 const BORELOG_ICON_SRC = 'docs/r18-reference/borelog-icon.webp';
 const BORELOG_PATH = 'docs/r18-reference/deldot-borelog.html';
-const BORELOG_CDN = 'https://cdn.jsdelivr.net/gh/m3nos95/Geotrack@main/docs/r18-reference/deldot-borelog.html';
-const BORELOG_BUILD = '2026.07.06-borelog-perf-v2';
-// CDN bypasses stuck GitHub Pages deploys — always loads latest BoreLog from main
-const BORELOG_URL = BORELOG_CDN + '?v=' + encodeURIComponent(BORELOG_BUILD);
+const BORELOG_BUILD = '2026.07.06-borelog-perf-v3';
+const BORELOG_URL = BORELOG_PATH + '?v=' + encodeURIComponent(BORELOG_BUILD);
 const BORELOG_WIN_NAME = 'deldot-borelog';
 const BORELOG_CTX_KEY = 'labtrak_borelog_context';
 const BORELOG_STORE_KEY = 'deldot_borelog_v2';
