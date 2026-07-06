@@ -2374,6 +2374,7 @@ function resolveBoringMapCoords(b, frame) {
   const polylineCandidate = isPolylineCandidateNE(northing, easting);
   const rejected = isRejectedCorridorNE(northing, easting);
   const goodNE = isGoodDoverNE(northing, easting);
+  const suspect = isSuspectVerticalNE(northing, easting);
   const hasExplicitStation = /\d+\s*\+/.test(String(b.station_offset || ''))
     || String(b.station_offset || '').includes('/');
 
