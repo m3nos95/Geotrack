@@ -7870,6 +7870,13 @@ function parseDirectMapLatLng(b) {
   return { lat, lng };
 }
 
+function resolveExplicitBorelogGps(b) {
+  const fromMap = parseDirectMapLatLng(b);
+  if (fromMap) return fromMap;
+  if (hasTrustedBorelogGps(b)) return parseStoredGpsLatLng(b);
+  return parseStoredGpsLatLng(b);
+}
+
 function hasTrustedBorelogGps(b) {
   const raw = String(b?.gps_coordinates || b?.gps || '').trim();
   if (!raw || /\(state\s*plane\)/i.test(raw)) return false;
@@ -8007,6 +8014,10 @@ function statePlaneFromProfile(station, offset, frame) {
 
 function resolveBorelogBoringCoords(b, frame, anchor) {
   if (!b) return null;
+
+  const explicitGps = resolveExplicitBorelogGps(b);
+  if (explicitGps) return { ...explicitGps, _src: 'gps' };
+
   const { station, offset, northing, easting } = parseStationOffsetFields(b);
   const isSP = isDelawareStatePlaneNE(northing, easting);
   const isProfile = isProfileGridNE(northing, easting);
@@ -8018,7 +8029,7 @@ function resolveBorelogBoringCoords(b, frame, anchor) {
 
   if (rejected) return null;
 
-  // 580k corridor: polyline only — never cached map_lat or raw N/E
+  // 580k corridor: polyline only when no explicit GPS
   if (polylineCandidate) {
     const t = getPolylineT(frame, b);
     if (frame?.polyline && t != null) {
@@ -8026,12 +8037,6 @@ function resolveBorelogBoringCoords(b, frame, anchor) {
       if (pt) return { ...pt, _src: 'polyline' };
     }
     return null;
-  }
-
-  // GeoSystem LAT/LONG import (gps field only, not cached map_lat/map_lng)
-  if (hasTrustedBorelogGps(b)) {
-    const gps = parseStoredGpsLatLng(b);
-    if (gps) return { ...gps, _src: 'gps' };
   }
 
   if (isSP && goodNE) {
@@ -8067,9 +8072,6 @@ function resolveBorelogBoringCoords(b, frame, anchor) {
     const fromNE = extractBorelogStatePlaneCoords(b);
     if (fromNE) return { ...fromNE, _src: 'ne' };
   }
-
-  const fromGps = parseStoredGpsLatLng(b);
-  if (fromGps) return { ...fromGps, _src: 'gps' };
 
   return null;
 }
@@ -8160,6 +8162,10 @@ function getBorelogProjectAnchor(group, projectMeta) {
 
 function isPlausibleBorelogCoord(b, coords, anchor) {
   if (!coords || !anchor) return true;
+  if (b?._coordSrc === 'gps') {
+    return coords.lat >= 38.4 && coords.lat <= 39.95
+      && coords.lng >= -76.05 && coords.lng <= -74.4;
+  }
   const { northing, easting } = parseStationOffsetFields(b);
   const aligned = b._coordSrc === 'synthetic' || b._coordSrc === 'station' || b._coordSrc === 'profile' || b._coordSrc === 'polyline';
   if (!aligned) {
@@ -8209,7 +8215,8 @@ function applyBorelogProjectCoords(items) {
     if (spCoords.length >= 3 && anchor) {
       const med = { lat: median(spCoords.map(c => c.lat)), lng: median(spCoords.map(c => c.lng)) };
       group.forEach(item => {
-        if (!item.coords || item._coordSrc === 'ne' || item._coordSrc === 'station' || item._coordSrc === 'profile' || item._coordSrc === 'synthetic' || item._coordSrc === 'polyline') return;
+        if (!item.coords || item._coordSrc === 'gps') return;
+        if (item._coordSrc === 'ne' || item._coordSrc === 'station' || item._coordSrc === 'profile' || item._coordSrc === 'synthetic' || item._coordSrc === 'polyline') return;
         if (coordsDistanceMeters(item.coords, med) > 25000) {
           item.coords = null;
         }
@@ -8311,6 +8318,8 @@ function normalizeBorelogMapBoring(row, projectMeta) {
     northing: fields.northing || '',
     easting: fields.easting || '',
     gps_coordinates: fields.gps_coordinates || '',
+    map_lat: fields.map_lat || '',
+    map_lng: fields.map_lng || '',
     surface_elev: fields.surface_elev || '',
     reference: fields.reference || '',
     contractor: fields.contractor || '',

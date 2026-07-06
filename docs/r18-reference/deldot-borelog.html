@@ -947,7 +947,7 @@ const DELDOT_LOGO = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAPAAAADwCAYAA
    - Storage wrapper abstracted for future Supabase port
    ========================================================================= */
 const STORE_KEY = 'deldot_borelog_v2';
-const BORELOG_BUILD = '2026.07.06-geo-import-v2';
+const BORELOG_BUILD = '2026.07.06-map-gps-priority';
 const MAP_MIGRATE_KEY = 'deldot_borelog_gps_migrated_v2';
 const STORE_TS_KEY = 'deldot_borelog_v2_ts';
 const DE_STATE_PLANE = '+proj=lcc +lat_1=38.43333333333334 +lat_2=39.83333333333333 +lat_0=38 +lon_0=-75.41666666666666 +x_0=200000.99998984026 +y_0=0 +ellps=GRS80 +units=us-ft +no_defs';
@@ -2506,6 +2506,13 @@ function parseDirectMapLatLng(b) {
   return { lat, lng };
 }
 
+function resolveExplicitBorelogGps(b) {
+  const fromMap = parseDirectMapLatLng(b);
+  if (fromMap) return fromMap;
+  if (hasTrustedBorelogGps(b)) return parseStoredGpsLatLng(b);
+  return parseStoredGpsLatLng(b);
+}
+
 function hasTrustedBorelogGps(b) {
   const raw = String(b?.gps_coordinates || '').trim();
   if (!raw || /\(state\s*plane\)/i.test(raw)) return false;
@@ -2538,6 +2545,10 @@ function parseStoredGpsLatLng(b) {
 
 function resolveBoringMapCoords(b, frame) {
   if (!b) return null;
+
+  const explicitGps = resolveExplicitBorelogGps(b);
+  if (explicitGps) return explicitGps;
+
   const { station, offset, northing, easting } = parseStationOffsetFields(b);
   const isSP = isDelawareStatePlaneNE(northing, easting);
   const isProfile = isProfileGridNE(northing, easting);
@@ -2555,10 +2566,6 @@ function resolveBoringMapCoords(b, frame) {
       return interpolatePolyline(frame.waypoints, t);
     }
     return null;
-  }
-
-  if (hasTrustedBorelogGps(b)) {
-    return parseStoredGpsLatLng(b);
   }
 
   if (isSP && goodNE) {
@@ -2595,7 +2602,7 @@ function resolveBoringMapCoords(b, frame) {
     if (fromNE) return fromNE;
   }
 
-  return parseStoredGpsLatLng(b);
+  return null;
 }
 
 function normalizeBoringStatePlaneFields(b) {
