@@ -4,6 +4,9 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<meta http-equiv="Pragma" content="no-cache">
+<meta http-equiv="Expires" content="0">
 <title>DelDOT Borelog v5 — Materials &amp; Research Lab</title>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/proj4js/2.11.0/proj4.min.js"></script>
@@ -514,7 +517,7 @@ html.comfort-mode .hab-pulse{animation:none !important;box-shadow:none !importan
   <nav>
     <div class="nav-logo">
       DELDOT BORELOG
-      <span class="app-sub">M&amp;R · v5.0</span>
+      <span class="app-sub" id="blBuildTag">M&amp;R · v5.0</span>
     </div>
     <div class="nav-tabs">
       <div class="nav-tab active" data-view="projects">⊙ PROJECTS</div>
@@ -929,6 +932,7 @@ const DELDOT_LOGO = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAPAAAADwCAYAA
    - Storage wrapper abstracted for future Supabase port
    ========================================================================= */
 const STORE_KEY = 'deldot_borelog_v2';
+const BORELOG_BUILD = '2026.07.06-borelog-coords';
 const STORE_TS_KEY = 'deldot_borelog_v2_ts';
 const DE_STATE_PLANE = '+proj=lcc +lat_1=38.43333333333334 +lat_2=39.83333333333333 +lat_0=38 +lon_0=-75.41666666666666 +x_0=200000.99998984026 +y_0=0 +ellps=GRS80 +units=us-ft +no_defs';
 const SB_URL_KEY = 'labtrak_sb_url';
@@ -2368,13 +2372,13 @@ function parseStoredGpsLatLng(b) {
 }
 
 function resolveBoringMapCoords(b, frame) {
+  if (!b) return null;
   const { station, offset, northing, easting } = parseStationOffsetFields(b);
   const isSP = isDelawareStatePlaneNE(northing, easting);
   const isProfile = isProfileGridNE(northing, easting);
   const polylineCandidate = isPolylineCandidateNE(northing, easting);
   const rejected = isRejectedCorridorNE(northing, easting);
   const goodNE = isGoodDoverNE(northing, easting);
-  const suspect = isSuspectVerticalNE(northing, easting);
   const hasExplicitStation = /\d+\s*\+/.test(String(b.station_offset || ''))
     || String(b.station_offset || '').includes('/');
 
@@ -2402,9 +2406,11 @@ function resolveBoringMapCoords(b, frame) {
     if (fromProfile) return fromProfile;
   }
 
-  if (isSP && goodNE && !suspect && !(frame?.constantE && hasExplicitStation)) {
-    const fromNE = delawareNEToLatLng(northing, easting) || delawareNEToLatLng(easting, northing);
-    if (fromNE) return fromNE;
+  if (frame && isFinite(station)) {
+    const fromProfile = statePlaneFromProfile(station, offset, frame);
+    if (fromProfile && (frame.constantE || hasExplicitStation || isProfile)) {
+      return fromProfile;
+    }
   }
   if (frame && isFinite(station)) {
     const fromProfile = statePlaneFromProfile(station, offset, frame);
@@ -2418,10 +2424,12 @@ function resolveBoringMapCoords(b, frame) {
       if (fromGrid) return fromGrid;
     }
   }
-  if (isSP && !suspect) {
+
+  if (isSP) {
     const fromNE = extractBorelogStatePlaneCoords(b);
     if (fromNE) return fromNE;
   }
+
   return parseStoredGpsLatLng(b);
 }
 
@@ -2656,6 +2664,8 @@ function initComfortMode() {
 
 function startApp(){
   initBorelogStore().then(() => {
+    const tag = $('blBuildTag');
+    if (tag) tag.textContent = 'M&R · ' + BORELOG_BUILD;
     const ol = $('setupOverlay');
     ol.style.transition='opacity .4s';
     ol.style.opacity='0';
