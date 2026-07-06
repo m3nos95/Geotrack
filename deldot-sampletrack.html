@@ -6539,7 +6539,7 @@ table.fc-borrow-tbl tr.fc-borrow-detail-row td{background:var(--surface);border-
 // GLOBALS
 // ══════════════════════════════════════════════
 let db = null;
-const APP_BUILD = '2026.07.06-lab-arrival-scan';
+const APP_BUILD = '2026.07.06-lab-arrival-date-sync';
 const FC_CORE_ICON_SRC = 'docs/r18-reference/core-drill-icon-128.png';
 const BORELOG_ICON_SRC = 'docs/r18-reference/borelog-icon.webp';
 const BORELOG_PATH = 'docs/r18-reference/deldot-borelog.html';
@@ -6893,9 +6893,9 @@ self.addEventListener('fetch', e => {
   setTimeout(refreshSessionActionsUI, 600);
   setTimeout(refreshSessionActionsUI, 3000);
 
-  // Set today's date defaults
+  // Set today's date defaults (date received is set from lab arrival scan / sample record)
   const today = new Date().toISOString().split('T')[0];
-  ['f_date_sampled','l_date_received','l_date_tested','l_date_reported','a_date_sampled'].forEach(id => {
+  ['f_date_sampled','l_date_tested','l_date_reported','a_date_sampled'].forEach(id => {
     const el = document.getElementById(id); if (el) el.value = today;
   });
 
@@ -13638,6 +13638,32 @@ function _laParseSampleIdFromQr(text) {
   return sampleId;
 }
 
+/** Push date_received from lab arrival scan into open forms and in-memory sample caches. */
+function syncDateReceivedToForms(sampleId, dateReceived) {
+  if (!sampleId || !dateReceived) return;
+
+  if (slCurrentSample?.id === sampleId) {
+    slCurrentSample = { ...slCurrentSample, date_received: dateReceived };
+  }
+  if (currentSample?.id === sampleId) {
+    currentSample = { ...currentSample, date_received: dateReceived };
+  }
+  if (scannedSample?.id === sampleId) {
+    scannedSample = { ...scannedSample, date_received: dateReceived };
+  }
+  const idx = (allSamples || []).findIndex(s => s.id === sampleId);
+  if (idx >= 0) allSamples[idx] = { ...allSamples[idx], date_received: dateReceived };
+
+  if (slCurrentSample?.id === sampleId) {
+    const el = document.getElementById('sl_date_received');
+    if (el) el.value = dateReceived;
+  }
+  if (currentSample?.id === sampleId) {
+    const el = document.getElementById('l_date_received');
+    if (el) el.value = dateReceived;
+  }
+}
+
 function stopLabArrivalScanner() {
   if (laQrScanner) {
     laQrScanner.stop().catch(() => {});
@@ -13802,6 +13828,9 @@ async function recordLabArrival(sampleId, source, prefetchedSample) {
   laRenderSessionLog();
   void laRefreshTodayCount();
 
+  const effectiveDateReceived = updatedSample.date_received || dateReceived;
+  syncDateReceivedToForms(sample.id, effectiveDateReceived);
+
   const timeStr = new Date(arrivedAt).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
   if (hadDateReceived) {
     showToast('✓ #' + sample.test_no + ' logged again at ' + timeStr + ' (received ' + sample.date_received + ')', 'success');
@@ -13926,14 +13955,16 @@ function loadSampleIntoLab(sample) {
   // ── Helper used by both soil and aggregate blocks below ──
   function sv_(id, val) { const el = document.getElementById(id); if (el && val != null && val !== '') el.value = val; }
 
-  // ── Always populate shared Report Fields from saved sample data ──
+  // Date received always comes from sample record (lab arrival scan)
+  sv_('l_date_received', sample.date_received);
+
+  // ── Populate other report fields when sample is complete ──
   if (sample.status === 'complete') {
     sv_('l_reported_by',   sample.reported_by);
     sv_('l_reviewed_by',   sample.reviewed_by);
     sv_('l_qa_sup',        sample.qa_supervisor);
     sv_('l_ia_sup',        sample.ia_supervisor);
     sv_('l_geo_eng',       sample.geo_engineer);
-    sv_('l_date_received', sample.date_received);
     sv_('l_date_tested',   sample.date_tested);
     sv_('l_date_reported', sample.date_reported);
     sv_('l_remarks',       sample.lab_remarks);
@@ -18618,12 +18649,16 @@ async function slLoadSample(id) {
   // Default mode
   if (!isAgg) slSetMode(slCurrentMode);
 
-  // Prefill report fields with today's date if still blank
+  // Default date tested/reported to today if blank; date received comes from sample / lab arrival scan
   const today = new Date().toISOString().split('T')[0];
-  ['sl_date_received','sl_date_tested','sl_date_reported'].forEach(id => {
+  ['sl_date_tested','sl_date_reported'].forEach(id => {
     const el = document.getElementById(id);
     if (el && !el.value) el.value = today;
   });
+  if (sample.date_received) {
+    const recvEl = document.getElementById('sl_date_received');
+    if (recvEl) recvEl.value = sample.date_received;
+  }
 
   // Scroll entry panel to top
   const panel = document.getElementById('sl_entry_panel');
