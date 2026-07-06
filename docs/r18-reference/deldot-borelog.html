@@ -4557,7 +4557,7 @@ async function handleGeoFiles(fileList) {
 
   const raw = fileList ? Array.from(fileList) : [];
   if (!raw.length) {
-    geoLog('err', '❌ No files received. On mobile, use <b>Browse</b> and select every file in the .GEO folder.');
+    geoLog('err', '❌ No files selected. Open the .GEO folder, press <b>Ctrl+A</b>, then Open. If the list is empty, enable <b>Hidden items</b> in the file dialog View menu.');
     return;
   }
 
