@@ -6468,16 +6468,17 @@ table.fc-borrow-tbl tr.fc-borrow-detail-row td{background:var(--surface);border-
 // GLOBALS
 // ══════════════════════════════════════════════
 let db = null;
-const APP_BUILD = '2026.07.06-borelog-perf-v3';
+const APP_BUILD = '2026.07.06-borelog-perf-v4';
 const FC_CORE_ICON_SRC = 'docs/r18-reference/core-drill-icon-128.png';
 const BORELOG_ICON_SRC = 'docs/r18-reference/borelog-icon.webp';
 const BORELOG_PATH = 'docs/r18-reference/deldot-borelog.html';
-const BORELOG_BUILD = '2026.07.06-borelog-perf-v3';
+const BORELOG_BUILD = '2026.07.06-borelog-perf-v4';
 const BORELOG_URL = BORELOG_PATH + '?v=' + encodeURIComponent(BORELOG_BUILD);
 const BORELOG_WIN_NAME = 'deldot-borelog';
 const BORELOG_CTX_KEY = 'labtrak_borelog_context';
 const BORELOG_STORE_KEY = 'deldot_borelog_v2';
 const BORELOG_STORE_TS_KEY = 'deldot_borelog_v2_ts';
+const BORELOG_SYNC_QUEUE_KEY = 'deldot_borelog_sync_queue';
 const BORELOG_IDB_NAME = 'deldot_borelog';
 const BORELOG_IDB_KV = 'kv';
 let _borelogStoreCache = null;
@@ -6524,15 +6525,35 @@ function readBorelogStoreSync() {
 }
 
 async function loadBorelogStore() {
-  const sync = readBorelogStoreSync();
-  const hasLocal = Object.keys(sync.borings || {}).length > 0;
-  if (hasLocal) return sync;
   const idb = await _readBorelogStoreFromIdb();
   if (idb && (Object.keys(idb.borings || {}).length || Object.keys(idb.projects || {}).length)) {
     _borelogStoreCache = idb;
     return idb;
   }
+  const sync = readBorelogStoreSync();
+  _borelogStoreCache = sync;
   return sync;
+}
+
+function readBorelogSyncQueue() {
+  try { return JSON.parse(localStorage.getItem(BORELOG_SYNC_QUEUE_KEY) || '[]'); } catch { return []; }
+}
+
+function getBorelogPendingDeleteSets() {
+  const out = {
+    borelog_projects: new Set(),
+    borelog_borings: new Set(),
+    borelog_samples: new Set(),
+  };
+  readBorelogSyncQueue().forEach(e => {
+    if (e.op === 'delete' && e.table && e.id && out[e.table]) out[e.table].add(e.id);
+  });
+  return out;
+}
+
+function isBorelogMapBoringDeleted(boringId, pendingDel) {
+  if (!boringId) return true;
+  return pendingDel.borelog_borings.has(boringId);
 }
 
 function invalidateBorelogStoreCache() {
@@ -7072,6 +7093,7 @@ async function mapLoadCoreDrills(contract, fieldTestId) {
 async function openProjectMap(contract, projectName, opts) {
   const mapOpts = opts || {};
   const fieldTestId = mapOpts.fieldTestId || null;
+  window._projectMapCtx = { contract, projectName, fieldTestId };
   document.getElementById('mapOverlay').classList.add('open');
   document.getElementById('mapOverlayTitle').textContent = (contract || 'Core drill') + ' — ' + (projectName || 'Map');
   document.getElementById('mapOverlaySubtitle').textContent = 'Loading locations...';
@@ -8090,13 +8112,14 @@ function finalizeBorelogMapBorings(items) {
 
 async function collectBorelogBoringsFromLocal(contract) {
   const out = [];
+  const pendingDel = getBorelogPendingDeleteSets();
   try {
     const raw = await loadBorelogStore();
     const projects = raw.projects || {};
     const borings = raw.borings || {};
     const contractLower = (contract || '').trim().toLowerCase();
     Object.values(borings).forEach(b => {
-      if (!b?.id) return;
+      if (!b?.id || isBorelogMapBoringDeleted(b.id, pendingDel)) return;
       const p = projects[b.project_id] || {};
       const pContract = (p.contract_no || p.contract || '').trim().toLowerCase();
       if (contractLower && pContract && pContract !== contractLower) return;
@@ -8122,8 +8145,9 @@ async function collectBorelogBoringsFromLocal(contract) {
 async function fetchBorelogBoringsForContract(contract) {
   const seen = new Set();
   const out = [];
+  const pendingDel = getBorelogPendingDeleteSets();
   const add = (item) => {
-    if (!item?.id || seen.has(item.id)) return;
+    if (!item?.id || seen.has(item.id) || isBorelogMapBoringDeleted(item.id, pendingDel)) return;
     seen.add(item.id);
     out.push(item);
   };
@@ -8141,6 +8165,7 @@ async function fetchBorelogBoringsForContract(contract) {
     if (bErr) throw bErr;
     const projById = Object.fromEntries((projects || []).map(p => [p.id, p]));
     (rows || []).forEach(row => {
+      if (isBorelogMapBoringDeleted(row.id, pendingDel)) return;
       const meta = projById[row.project_id] || {};
       if (contractLower) {
         const pc = (meta.contract || '').trim().toLowerCase();
@@ -9148,8 +9173,12 @@ window.addEventListener('resize', () => {
 });
 
 window.addEventListener('storage', (e) => {
-  if (e.key !== BORELOG_STORE_KEY && e.key !== BORELOG_STORE_TS_KEY) return;
+  if (e.key !== BORELOG_STORE_KEY && e.key !== BORELOG_STORE_TS_KEY && e.key !== BORELOG_SYNC_QUEUE_KEY) return;
   invalidateBorelogStoreCache();
+  const ctx = window._projectMapCtx;
+  if (document.getElementById('mapOverlay')?.classList.contains('open') && ctx) {
+    openProjectMap(ctx.contract, ctx.projectName, { fieldTestId: ctx.fieldTestId });
+  }
   if (!labMap || currentView !== 'labmap') return;
   labMapReload();
 });
@@ -17884,14 +17913,16 @@ function slRenderQueue() {
         '&daily=weather_code,temperature_2m_max,temperature_2m_min,precipitation_probability_max' +
         '&temperature_unit=fahrenheit&wind_speed_unit=mph&precipitation_unit=inch' +
         '&timezone=America%2FNew_York&forecast_days=7';
-      const r = await fetch(url);
+      const r = await fetch(url, { cache: 'no-store' });
+      if (!r.ok) throw new Error('weather http ' + r.status);
       const d = await r.json();
       const c = d.current;
+      if (!c) throw new Error('no current weather');
       const [ico, desc] = wmoDesc(c.weather_code);
       const tempVal = Math.round(c.temperature_2m) + '°F';
-      const humVal  = c.relative_humidity_2m + '%';
-      const windVal = Math.round(c.wind_speed_10m) + ' mph';
-      const precVal = c.precipitation_probability + '%';
+      const humVal  = (c.relative_humidity_2m ?? '--') + '%';
+      const windVal = Math.round(c.wind_speed_10m || 0) + ' mph';
+      const precVal = (c.precipitation_probability ?? '--') + '%';
       // Topbar
       setEl('tb-wx-icon', ico);  setEl('tb-wx-temp', tempVal);
       setEl('tb-wx-desc', desc); setEl('tb-wx-hum', humVal); setEl('tb-wx-wind', windVal);
@@ -17907,76 +17938,81 @@ function slRenderQueue() {
       setEl('chub-wx-icon', ico); setEl('chub-wx-temp', tempVal);
       setEl('chub-wx-desc', desc); setEl('chub-wx-hum', humVal);
       setEl('chub-wx-wind', windVal); setEl('chub-wx-precip', precVal);
-      // 7-day forecast — dashboard + hubs
-      const fc = document.getElementById('dash-wx-forecast');
-      if (fc && d.daily) {
-        const days7 = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
-        fc.innerHTML = d.daily.time.map((dateStr, i) => {
-          const dt   = new Date(dateStr + 'T12:00:00');
-          const day  = i === 0 ? 'Today' : days7[dt.getDay()];
-          const [fi] = wmoDesc(d.daily.weather_code[i]);
-          const hi   = Math.round(d.daily.temperature_2m_max[i]);
-          const lo   = Math.round(d.daily.temperature_2m_min[i]);
-          const pop  = d.daily.precipitation_probability_max[i];
-          return '<div style="display:flex;align-items:center;justify-content:space-between;' +
-            'font-family:var(--mono);font-size:12px;padding:6px 0;border-bottom:1px solid rgba(255,255,255,0.07);">' +
-            '<span style="width:48px;color:var(--muted);">' + day + '</span>' +
-            '<span style="font-size:18px;width:26px;text-align:center;">' + fi + '</span>' +
-            '<span style="color:rgba(255,255,255,0.4);font-size:11px;width:36px;text-align:right;">' + pop + '%☔</span>' +
-            '<span style="color:var(--text);font-weight:700;font-size:13px;width:36px;text-align:right;">' + hi + '°</span>' +
-            '<span style="color:var(--muted);font-size:12px;width:32px;text-align:right;">' + lo + '°</span>' +
-            '</div>';
-        }).join('');
-        ['fhub-wx-forecast','chub-wx-forecast'].forEach(function(id) {
-          const el = document.getElementById(id); if (el && fc) el.innerHTML = fc.innerHTML;
-        });
-      }
-      // ── Hourly forecast strip ──────────────────────────────────
-      const _hubHourlyIds = ['dash-wx-hourly', 'fhub-wx-hourly', 'chub-wx-hourly'];
-      const hfc = document.getElementById('dash-wx-hourly');
-      if (hfc && d.hourly) {
-        // Find current hour slot in ET (API returns local ET times)
-        const etNow = new Date().toLocaleString('sv-SE', {timeZone: 'America/New_York'})
-                        .slice(0, 13).replace(' ', 'T'); // "2026-05-27T14"
-        let si = d.hourly.time.findIndex(t => t.slice(0, 13) === etNow);
-        if (si < 0) si = 0;
-        const slots = d.hourly.time.slice(si, si + 9); // current + next 8 hours
-        const _hourlySlots = slots;
-        const _buildHourlyHtml = (slots) => slots.map((timeStr, i) => {
-          const idx  = si + i;
-          const hr   = parseInt(timeStr.slice(11, 13), 10);
-          const label = i === 0 ? 'Now'
-                      : hr === 0  ? '12a'
-                      : hr < 12   ? hr + 'a'
-                      : hr === 12 ? '12p'
-                      : (hr - 12) + 'p';
-          const [ico] = wmoDesc(d.hourly.weather_code[idx]);
-          const temp  = Math.round(d.hourly.temperature_2m[idx]);
-          const pop   = d.hourly.precipitation_probability[idx] || 0;
-          const wind  = Math.round(d.hourly.wind_speed_10m[idx]);
-          const rainBorder = pop >= 50 ? '1px solid #3b82f6'
-                           : pop >= 20 ? '1px solid rgba(96,165,250,0.55)'
-                           : '1px solid var(--border)';
-          const rainColor  = pop >= 50 ? '#60a5fa' : 'rgba(96,165,250,0.7)';
-          return '<div style="flex-shrink:0;text-align:center;padding:6px 8px;border-radius:6px;' +
-            'background:rgba(255,255,255,0.04);min-width:46px;border:' + rainBorder + ';">' +
-            '<div style="font-family:var(--mono);font-size:8px;color:var(--muted);margin-bottom:3px;letter-spacing:0.5px;">' + label + '</div>' +
-            '<div style="font-size:17px;line-height:1.2;margin-bottom:3px;">' + ico + '</div>' +
-            '<div style="font-family:var(--display);font-size:13px;font-weight:700;color:var(--text);">' + temp + '°</div>' +
-            (pop >= 10
-              ? '<div style="font-family:var(--mono);font-size:8px;color:' + rainColor + ';margin-top:2px;">' + pop + '%</div>'
-              : '<div style="height:11px;"></div>') +
-            (i === 0
-              ? '<div style="font-family:var(--mono);font-size:7px;color:var(--muted);margin-top:1px;">' + wind + 'mph</div>'
-              : '<div style="height:10px;"></div>') +
-            '</div>';
-        }).join('');
-        hfc.innerHTML = _buildHourlyHtml(_hourlySlots);
-        ['fhub-wx-hourly','chub-wx-hourly'].forEach(function(id) {
-          const el = document.getElementById(id); if (el) el.innerHTML = _buildHourlyHtml(_hourlySlots);
-        });
-      }
+      try {
+        // 7-day forecast — dashboard + hubs
+        const fc = document.getElementById('dash-wx-forecast');
+        if (fc && d.daily) {
+          const days7 = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+          fc.innerHTML = d.daily.time.map((dateStr, i) => {
+            const dt   = new Date(dateStr + 'T12:00:00');
+            const day  = i === 0 ? 'Today' : days7[dt.getDay()];
+            const [fi] = wmoDesc(d.daily.weather_code[i]);
+            const hi   = Math.round(d.daily.temperature_2m_max[i]);
+            const lo   = Math.round(d.daily.temperature_2m_min[i]);
+            const pop  = d.daily.precipitation_probability_max[i];
+            return '<div style="display:flex;align-items:center;justify-content:space-between;' +
+              'font-family:var(--mono);font-size:12px;padding:6px 0;border-bottom:1px solid rgba(255,255,255,0.07);">' +
+              '<span style="width:48px;color:var(--muted);">' + day + '</span>' +
+              '<span style="font-size:18px;width:26px;text-align:center;">' + fi + '</span>' +
+              '<span style="color:rgba(255,255,255,0.4);font-size:11px;width:36px;text-align:right;">' + pop + '%☔</span>' +
+              '<span style="color:var(--text);font-weight:700;font-size:13px;width:36px;text-align:right;">' + hi + '°</span>' +
+              '<span style="color:var(--muted);font-size:12px;width:32px;text-align:right;">' + lo + '°</span>' +
+              '</div>';
+          }).join('');
+          ['fhub-wx-forecast','chub-wx-forecast'].forEach(function(id) {
+            const el = document.getElementById(id); if (el && fc) el.innerHTML = fc.innerHTML;
+          });
+        }
+      } catch (fcErr) { console.warn('weather forecast:', fcErr); }
+      try {
+        // ── Hourly forecast strip ──────────────────────────────────
+        const _hubHourlyIds = ['dash-wx-hourly', 'fhub-wx-hourly', 'chub-wx-hourly'];
+        const hfc = document.getElementById('dash-wx-hourly');
+        if (hfc && d.hourly) {
+          // Find current hour slot in ET (API returns local ET times)
+          const etNow = new Date().toLocaleString('sv-SE', {timeZone: 'America/New_York'})
+                          .slice(0, 13).replace(' ', 'T'); // "2026-05-27T14"
+          let si = d.hourly.time.findIndex(t => t.slice(0, 13) === etNow);
+          if (si < 0) si = 0;
+          const slots = d.hourly.time.slice(si, si + 9); // current + next 8 hours
+          const _hourlySlots = slots;
+          const _buildHourlyHtml = (slots) => slots.map((timeStr, i) => {
+            const idx  = si + i;
+            const hr   = parseInt(timeStr.slice(11, 13), 10);
+            const label = i === 0 ? 'Now'
+                        : hr === 0  ? '12a'
+                        : hr < 12   ? hr + 'a'
+                        : hr === 12 ? '12p'
+                        : (hr - 12) + 'p';
+            const [ico] = wmoDesc(d.hourly.weather_code[idx]);
+            const temp  = Math.round(d.hourly.temperature_2m[idx]);
+            const pop   = d.hourly.precipitation_probability[idx] || 0;
+            const wind  = Math.round(d.hourly.wind_speed_10m[idx]);
+            const rainBorder = pop >= 50 ? '1px solid #3b82f6'
+                             : pop >= 20 ? '1px solid rgba(96,165,250,0.55)'
+                             : '1px solid var(--border)';
+            const rainColor  = pop >= 50 ? '#60a5fa' : 'rgba(96,165,250,0.7)';
+            return '<div style="flex-shrink:0;text-align:center;padding:6px 8px;border-radius:6px;' +
+              'background:rgba(255,255,255,0.04);min-width:46px;border:' + rainBorder + ';">' +
+              '<div style="font-family:var(--mono);font-size:8px;color:var(--muted);margin-bottom:3px;letter-spacing:0.5px;">' + label + '</div>' +
+              '<div style="font-size:17px;line-height:1.2;margin-bottom:3px;">' + ico + '</div>' +
+              '<div style="font-family:var(--display);font-size:13px;font-weight:700;color:var(--text);">' + temp + '°</div>' +
+              (pop >= 10
+                ? '<div style="font-family:var(--mono);font-size:8px;color:' + rainColor + ';margin-top:2px;">' + pop + '%</div>'
+                : '<div style="height:11px;"></div>') +
+              (i === 0
+                ? '<div style="font-family:var(--mono);font-size:7px;color:var(--muted);margin-top:1px;">' + wind + 'mph</div>'
+                : '<div style="height:10px;"></div>') +
+              '</div>';
+          }).join('');
+          hfc.innerHTML = _buildHourlyHtml(_hourlySlots);
+          ['fhub-wx-hourly','chub-wx-hourly'].forEach(function(id) {
+            const el = document.getElementById(id); if (el) el.innerHTML = _buildHourlyHtml(_hourlySlots);
+          });
+        }
+      } catch (hrErr) { console.warn('weather hourly:', hrErr); }
     } catch(e) {
+      console.warn('fetchWeather:', e);
       setEl('tb-wx-desc', 'Unavailable'); setEl('dash-wx-desc', 'Weather unavailable');
     }
   }

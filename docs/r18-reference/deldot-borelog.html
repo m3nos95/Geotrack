@@ -943,7 +943,7 @@ const DELDOT_LOGO = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAPAAAADwCAYAA
    - Storage wrapper abstracted for future Supabase port
    ========================================================================= */
 const STORE_KEY = 'deldot_borelog_v2';
-const BORELOG_BUILD = '2026.07.06-borelog-perf-v3';
+const BORELOG_BUILD = '2026.07.06-borelog-perf-v4';
 const MAP_MIGRATE_KEY = 'deldot_borelog_gps_migrated_v2';
 const STORE_TS_KEY = 'deldot_borelog_v2_ts';
 const DE_STATE_PLANE = '+proj=lcc +lat_1=38.43333333333334 +lat_2=39.83333333333333 +lat_0=38 +lon_0=-75.41666666666666 +x_0=200000.99998984026 +y_0=0 +ellps=GRS80 +units=us-ft +no_defs';
@@ -1369,6 +1369,39 @@ async function flushBorelogSyncQueue() {
   _writeBorelogSyncQueue(remaining);
 }
 
+function getBorelogPendingDeleteSets() {
+  const out = {
+    borelog_projects: new Set(),
+    borelog_borings: new Set(),
+    borelog_samples: new Set(),
+  };
+  _readBorelogSyncQueue().forEach(e => {
+    if (e.op === 'delete' && e.table && e.id && out[e.table]) out[e.table].add(e.id);
+  });
+  return out;
+}
+
+function purgeBorelogPendingDeletes(storeObj, pendingDel) {
+  pendingDel.borelog_projects.forEach(id => {
+    delete storeObj.projects[id];
+    Object.keys(storeObj.borings || {}).forEach(bid => {
+      if (storeObj.borings[bid]?.project_id === id) delete storeObj.borings[bid];
+    });
+    Object.keys(storeObj.samples || {}).forEach(sid => {
+      if (storeObj.samples[sid]?.project_id === id) delete storeObj.samples[sid];
+    });
+  });
+  pendingDel.borelog_borings.forEach(id => {
+    delete storeObj.borings[id];
+    Object.keys(storeObj.samples || {}).forEach(sid => {
+      if (storeObj.samples[sid]?.boring_id === id) delete storeObj.samples[sid];
+    });
+  });
+  pendingDel.borelog_samples.forEach(id => {
+    if (storeObj.samples) delete storeObj.samples[id];
+  });
+}
+
 async function pullAndMergeBorelog() {
   const db = getBorelogSupabaseClient();
   if (!db) return false;
@@ -1381,28 +1414,36 @@ async function pullAndMergeBorelog() {
   if (bRes.error) throw bRes.error;
   if (sRes.error) throw sRes.error;
 
+  const pendingDel = getBorelogPendingDeleteSets();
   const local = store._all();
   const merged = {
     projects: { ...(local.projects || {}) },
     borings: { ...(local.borings || {}) },
     samples: { ...(local.samples || {}) }
   };
+  purgeBorelogPendingDeletes(merged, pendingDel);
 
   (pRes.data || []).forEach(r => {
     const p = rowToProject(r);
+    if (pendingDel.borelog_projects.has(p.id)) return;
     const cur = merged.projects[p.id];
     if (!cur || _blTs(p.updated_at) >= _blTs(cur.updated_at)) merged.projects[p.id] = p;
   });
   (bRes.data || []).forEach(r => {
     const b = rowToBoring(r);
+    if (pendingDel.borelog_borings.has(b.id)) return;
     const cur = merged.borings[b.id];
     if (!cur || _blTs(b.updated_at) >= _blTs(cur.updated_at)) merged.borings[b.id] = b;
   });
   (sRes.data || []).forEach(r => {
     const s = rowToSample(r);
+    if (pendingDel.borelog_samples.has(s.id)) return;
+    const bid = s.boring_id;
+    if (bid && pendingDel.borelog_borings.has(bid)) return;
     const cur = merged.samples[s.id];
     if (!cur || _blTs(s.updated_at) >= _blTs(cur.updated_at)) merged.samples[s.id] = s;
   });
+  purgeBorelogPendingDeletes(merged, pendingDel);
 
   store._save(merged);
 
@@ -3159,7 +3200,13 @@ function _generateSamplesForCurrentBoring(depths){
 function openBoring(id){ currentBoringId=id; showView('boring-edit'); }
 function deleteBoring(){
   if(!confirm('Delete this boring and ALL its samples?')) return;
-  store.delBoring(currentBoringId); currentBoringId=null; showView('borings'); toast('Boring deleted');
+  const id = currentBoringId;
+  store.delBoring(id);
+  if (window._borelogMapById && id) delete window._borelogMapById[id];
+  currentBoringId = null;
+  showView('borings');
+  toast('Boring deleted');
+  if ($('mapModal')?.classList.contains('open')) openMapModal();
 }
 
 /* ---------- BORING EDIT ---------- */
