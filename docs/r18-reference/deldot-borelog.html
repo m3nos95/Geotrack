@@ -943,7 +943,7 @@ const DELDOT_LOGO = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAPAAAADwCAYAA
    - Storage wrapper abstracted for future Supabase port
    ========================================================================= */
 const STORE_KEY = 'deldot_borelog_v2';
-const BORELOG_BUILD = '2026.07.06-borelog-perf-v6';
+const BORELOG_BUILD = '2026.07.06-borelog-perf-v7';
 const MAP_MIGRATE_KEY = 'deldot_borelog_gps_migrated_v2';
 const STORE_TS_KEY = 'deldot_borelog_v2_ts';
 const DE_STATE_PLANE = '+proj=lcc +lat_1=38.43333333333334 +lat_2=39.83333333333333 +lat_0=38 +lon_0=-75.41666666666666 +x_0=200000.99998984026 +y_0=0 +ellps=GRS80 +units=us-ft +no_defs';
@@ -1507,6 +1507,7 @@ async function pullAndMergeBorelog() {
   purgeBorelogPendingDeletes(merged, pendingDel);
 
   store._save(merged);
+  pruneOrphanBoringsInStore();
 
   const cloudProjIds = new Set((pRes.data || []).map(r => r.id));
   const cloudBorIds = new Set((bRes.data || []).map(r => r.id));
@@ -2835,10 +2836,29 @@ function purgeStaleBorelogLocalMirror() {
   } catch {}
 }
 
+function pruneOrphanBoringsInStore() {
+  const all = store._all();
+  const projects = all.projects || {};
+  let changed = false;
+  Object.keys(all.borings || {}).forEach(id => {
+    const b = all.borings[id];
+    if (!b?.project_id || !projects[b.project_id]) {
+      tombstoneBorelogBoring(id);
+      delete all.borings[id];
+      changed = true;
+      Object.keys(all.samples || {}).forEach(sid => {
+        if (all.samples[sid]?.boring_id === id) delete all.samples[sid];
+      });
+    }
+  });
+  if (changed) store._save(all);
+}
+
 function startApp(){
   initBorelogStore().then(() => {
     purgeStaleBorelogLocalMirror();
     backfillBorelogTombstonesFromQueue();
+    pruneOrphanBoringsInStore();
     const tag = $('blBuildTag');
     if (tag) tag.textContent = 'M&R · ' + BORELOG_BUILD;
     const ol = $('setupOverlay');
