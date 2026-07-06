@@ -928,6 +928,8 @@ nav:not(#r18-nav), .nav-top-row { display: none !important; }
 #reader video { border-radius: var(--radius); }
 #la-reader { border-radius: var(--radius); overflow: hidden; border: 2px solid #34d399; }
 #la-reader video { border-radius: var(--radius); }
+#sl-test-reader { border-radius: var(--radius); overflow: hidden; border: 2px solid var(--accent2); }
+#sl-test-reader video { border-radius: var(--radius); }
 
 /* ── LAB ENTRY VIEW ── */
 .lab-sample-banner {
@@ -5895,7 +5897,17 @@ table.fc-borrow-tbl tr.fc-borrow-detail-row td{background:var(--surface);border-
                 <div class="form-group"><label>IA Supervisor</label><input type="text" id="sl_ia_sup" placeholder="Name"></div>
                 <div class="form-group"><label>Geotechnical Engineer</label><input type="text" id="sl_geo_eng" placeholder="Name"></div>
                 <div class="form-group"><label>Date Received</label><input type="date" id="sl_date_received"></div>
-                <div class="form-group"><label>Date Tested</label><input type="date" id="sl_date_tested"></div>
+                <div class="form-group" data-tour="sl-date-tested-scan">
+                  <label>Date Tested</label>
+                  <div style="display:flex;gap:8px;align-items:center;">
+                    <input type="date" id="sl_date_tested" style="flex:1;min-width:0;">
+                    <button type="button" class="btn btn-ghost" style="font-size:9px;padding:6px 10px;letter-spacing:0.5px;white-space:nowrap;flex-shrink:0;" onclick="slToggleTestScanner()">📷 SCAN QR</button>
+                  </div>
+                  <p style="font-family:var(--mono);font-size:9px;color:var(--muted);margin:6px 0 0;line-height:1.4;">Scan the bag QR when you start testing to stamp this date.</p>
+                  <div id="sl-test-scanner-wrap" style="display:none;margin-top:8px;">
+                    <div id="sl-test-reader"></div>
+                  </div>
+                </div>
                 <div class="form-group"><label>Date Reported</label><input type="date" id="sl_date_reported"></div>
                 <div class="form-group span2"><label>Remarks</label><input type="text" id="sl_remarks" placeholder="e.g. COMPARISON: Aaron Wieczorek"></div>
               </div>
@@ -6539,7 +6551,7 @@ table.fc-borrow-tbl tr.fc-borrow-detail-row td{background:var(--surface);border-
 // GLOBALS
 // ══════════════════════════════════════════════
 let db = null;
-const APP_BUILD = '2026.07.06-lab-arrival-date-sync';
+const APP_BUILD = '2026.07.06-soil-lab-test-scan';
 const FC_CORE_ICON_SRC = 'docs/r18-reference/core-drill-icon-128.png';
 const BORELOG_ICON_SRC = 'docs/r18-reference/borelog-icon.webp';
 const BORELOG_PATH = 'docs/r18-reference/deldot-borelog.html';
@@ -6893,9 +6905,9 @@ self.addEventListener('fetch', e => {
   setTimeout(refreshSessionActionsUI, 600);
   setTimeout(refreshSessionActionsUI, 3000);
 
-  // Set today's date defaults (date received is set from lab arrival scan / sample record)
+  // Set today's date defaults (received/tested come from scans or sample record)
   const today = new Date().toISOString().split('T')[0];
-  ['f_date_sampled','l_date_tested','l_date_reported','a_date_sampled'].forEach(id => {
+  ['f_date_sampled','l_date_reported','a_date_sampled'].forEach(id => {
     const el = document.getElementById(id); if (el) el.value = today;
   });
 
@@ -11149,6 +11161,7 @@ function switchView(name) {
     }
   }
   if (name === 'soillab') { void loadSoilLab(); }
+  if (name !== 'soillab') stopSlTestScanner();
   if (name === 'appsources') { srcLoad(); }
   if (name === 'fieldhub') {
     void (async () => {
@@ -13664,6 +13677,32 @@ function syncDateReceivedToForms(sampleId, dateReceived) {
   }
 }
 
+/** Push date_tested from soil-lab test-start scan into open forms and in-memory sample caches. */
+function syncDateTestedToForms(sampleId, dateTested) {
+  if (!sampleId || !dateTested) return;
+
+  if (slCurrentSample?.id === sampleId) {
+    slCurrentSample = { ...slCurrentSample, date_tested: dateTested };
+  }
+  if (currentSample?.id === sampleId) {
+    currentSample = { ...currentSample, date_tested: dateTested };
+  }
+  if (scannedSample?.id === sampleId) {
+    scannedSample = { ...scannedSample, date_tested: dateTested };
+  }
+  const idx = (allSamples || []).findIndex(s => s.id === sampleId);
+  if (idx >= 0) allSamples[idx] = { ...allSamples[idx], date_tested: dateTested };
+
+  if (slCurrentSample?.id === sampleId) {
+    const el = document.getElementById('sl_date_tested');
+    if (el) el.value = dateTested;
+  }
+  if (currentSample?.id === sampleId) {
+    const el = document.getElementById('l_date_tested');
+    if (el) el.value = dateTested;
+  }
+}
+
 function stopLabArrivalScanner() {
   if (laQrScanner) {
     laQrScanner.stop().catch(() => {});
@@ -13957,6 +13996,7 @@ function loadSampleIntoLab(sample) {
 
   // Date received always comes from sample record (lab arrival scan)
   sv_('l_date_received', sample.date_received);
+  sv_('l_date_tested', sample.date_tested);
 
   // ── Populate other report fields when sample is complete ──
   if (sample.status === 'complete') {
@@ -16915,6 +16955,7 @@ const HISTORY_ACTION_LABELS = {
   hard_deleted: 'Permanently deleted',
   fc_status: 'Field control status changed',
   lab_arrived: 'Received at lab',
+  lab_testing_started: 'Testing started',
 };
 
 function showActiveSampleHistory() {
@@ -16966,6 +17007,13 @@ async function showSampleHistory(sampleId, testNo) {
         extra = '<div style="color:var(--muted);margin-top:4px;">Arrived: ' + at;
         if (row.details.date_received) extra += ' · Date received: ' + row.details.date_received;
         if (row.details.prior_date_received) extra += ' · (was ' + row.details.prior_date_received + ')';
+        extra += '</div>';
+      }
+      else if (row.details.tested_at) {
+        const at = new Date(row.details.tested_at).toLocaleString();
+        extra = '<div style="color:var(--muted);margin-top:4px;">Testing started: ' + at;
+        if (row.details.date_tested) extra += ' · Date tested: ' + row.details.date_tested;
+        if (row.details.prior_date_tested) extra += ' · (was ' + row.details.prior_date_tested + ')';
         extra += '</div>';
       }
     }
@@ -18518,6 +18566,126 @@ function slRenderQueue() {
 })();
 let slQrScanner = null;
 let slScannerOn = false;
+let slTestQrScanner = null;
+let slTestScannerOn = false;
+let _slLastTestScan = { id: null, ts: 0 };
+const SL_TEST_SCAN_DEBOUNCE_MS = 3500;
+
+function stopSlTestScanner() {
+  if (slTestQrScanner) {
+    slTestQrScanner.stop().catch(() => {});
+    slTestQrScanner = null;
+  }
+  slTestScannerOn = false;
+  const wrap = document.getElementById('sl-test-scanner-wrap');
+  if (wrap) wrap.style.display = 'none';
+}
+
+function slToggleTestScanner() {
+  const wrap = document.getElementById('sl-test-scanner-wrap');
+  if (!wrap) return;
+  if (slTestScannerOn) {
+    stopSlTestScanner();
+    return;
+  }
+  wrap.style.display = 'block';
+  const readerEl = document.getElementById('sl-test-reader');
+  if (!readerEl) return;
+  if (slTestQrScanner) {
+    slTestQrScanner.stop().catch(() => {});
+    slTestQrScanner = null;
+  }
+
+  const isSecure = location.protocol === 'https:' || location.hostname === 'localhost' || location.hostname === '127.0.0.1';
+  if (!isSecure) {
+    readerEl.innerHTML =
+      '<p style="color:var(--gold);font-family:var(--mono);font-size:11px;padding:12px;text-align:center;">HTTPS required for camera.<br>Enter Date Tested manually.</p>';
+    slTestScannerOn = true;
+    return;
+  }
+
+  readerEl.innerHTML = '<p style="color:var(--muted);font-family:var(--mono);font-size:11px;padding:12px;text-align:center;">⏳ Requesting camera…</p>';
+  Html5Qrcode.getCameras().then(cams => {
+    if (!cams || !cams.length) {
+      readerEl.innerHTML = '<p style="color:var(--muted);font-family:var(--mono);font-size:11px;text-align:center;padding:12px;">No camera found.</p>';
+      return;
+    }
+    slTestQrScanner = new Html5Qrcode('sl-test-reader');
+    const cfg = { fps: 10, qrbox: { width: 220, height: 220 } };
+    slTestQrScanner.start(cams[cams.length - 1].id, cfg, slOnTestScanSuccess, () => {})
+      .catch(() => slTestQrScanner.start({ facingMode: { ideal: 'environment' } }, cfg, slOnTestScanSuccess, () => {})
+        .catch(err => {
+          readerEl.innerHTML = '<p style="color:var(--muted);font-family:var(--mono);font-size:11px;text-align:center;padding:12px;">Camera error: ' + (err.message || err) + '</p>';
+          slTestQrScanner = null;
+        }));
+  }).catch(() => {
+    readerEl.innerHTML = '<p style="color:var(--muted);font-family:var(--mono);font-size:11px;text-align:center;padding:12px;">Camera unavailable.</p>';
+  });
+  slTestScannerOn = true;
+}
+
+async function slOnTestScanSuccess(text) {
+  const sampleId = _laParseSampleIdFromQr(text);
+  const now = Date.now();
+  if (_slLastTestScan.id === sampleId && now - _slLastTestScan.ts < SL_TEST_SCAN_DEBOUNCE_MS) return;
+  _slLastTestScan = { id: sampleId, ts: now };
+
+  const sample = await fetchSample(sampleId);
+  if (!sample) return;
+
+  if (!slCurrentSample || slCurrentSample.id !== sample.id) {
+    await slLoadSample(sample.id);
+  }
+  await recordLabTestStart(sample.id, 'qr', sample);
+}
+
+async function recordLabTestStart(sampleId, source, prefetchedSample) {
+  const sample = prefetchedSample || await fetchSample(sampleId);
+  if (!sample) return;
+
+  const testedAt = new Date().toISOString();
+  const dateTested = _laLocalDate();
+  const hadDateTested = !!(sample.date_tested && sample.date_tested.trim());
+
+  const updates = {};
+  if (!hadDateTested) updates.date_tested = dateTested;
+
+  let updatedSample = sample;
+  if (Object.keys(updates).length) {
+    const { data, error, queued } = await dbWrite('samples', 'update', updates, sample.id);
+    if (error) {
+      showToast('Could not update sample: ' + error.message, 'error');
+      return;
+    }
+    updatedSample = data || { ...sample, ...updates };
+    const idx = (allSamples || []).findIndex(s => s.id === sample.id);
+    if (idx >= 0) allSamples[idx] = { ...allSamples[idx], ...updates };
+    else if (allSamples) allSamples.unshift(updatedSample);
+    if (queued) showToast('Saved locally — will sync when online', 'info');
+  }
+
+  await logSampleHistory({
+    sampleId: sample.id,
+    testNo: sample.test_no,
+    action: 'lab_testing_started',
+    details: {
+      tested_at: testedAt,
+      date_tested: updatedSample.date_tested || dateTested,
+      source: source || 'qr',
+      prior_date_tested: hadDateTested ? sample.date_tested : null,
+    },
+  });
+
+  const effectiveDateTested = updatedSample.date_tested || dateTested;
+  syncDateTestedToForms(sample.id, effectiveDateTested);
+
+  const timeStr = new Date(testedAt).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
+  if (hadDateTested) {
+    showToast('✓ #' + sample.test_no + ' testing logged again at ' + timeStr + ' (tested ' + sample.date_tested + ')', 'success');
+  } else {
+    showToast('✓ #' + sample.test_no + ' testing started — ' + timeStr, 'success');
+  }
+}
 
 function slToggleScanner() {
   const wrap = document.getElementById('sl-scanner-wrap');
@@ -18649,15 +18817,17 @@ async function slLoadSample(id) {
   // Default mode
   if (!isAgg) slSetMode(slCurrentMode);
 
-  // Default date tested/reported to today if blank; date received comes from sample / lab arrival scan
+  // Default date reported to today if blank; received/tested come from scans or sample record
   const today = new Date().toISOString().split('T')[0];
-  ['sl_date_tested','sl_date_reported'].forEach(id => {
-    const el = document.getElementById(id);
-    if (el && !el.value) el.value = today;
-  });
+  const reportedEl = document.getElementById('sl_date_reported');
+  if (reportedEl && !reportedEl.value) reportedEl.value = today;
   if (sample.date_received) {
     const recvEl = document.getElementById('sl_date_received');
     if (recvEl) recvEl.value = sample.date_received;
+  }
+  if (sample.date_tested) {
+    const testedEl = document.getElementById('sl_date_tested');
+    if (testedEl) testedEl.value = sample.date_tested;
   }
 
   // Scroll entry panel to top
