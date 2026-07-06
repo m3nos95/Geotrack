@@ -6371,6 +6371,7 @@ table.fc-borrow-tbl tr.fc-borrow-detail-row td{background:var(--surface);border-
               <button type="button" class="map-style-btn" data-map-style="dark" onclick="labMapSetStyle('dark')">Dark</button>
             </div>
             <button type="button" class="btn btn-ghost" onclick="labMapReload()" style="font-size:10px;letter-spacing:1px;">↻ REFRESH</button>
+            <button type="button" class="btn btn-ghost" onclick="clearAllBorelogMapPins()" style="font-size:10px;letter-spacing:1px;" title="Remove orphan BoreLog pins">✕ BORELOG PINS</button>
             <div class="labmap-area-tools" id="labMapAreaTools" data-tour="labmap-area">
               <button type="button" class="labmap-area-btn" id="labMapDrawBtn" onclick="labMapStartAreaDraw()" title="Draw a boundary — admin only">✏ DRAW AREA</button>
               <button type="button" class="labmap-area-btn" id="labMapClearAreaBtn" onclick="labMapClearArea()" style="display:none;">✕ CLEAR</button>
@@ -6468,11 +6469,11 @@ table.fc-borrow-tbl tr.fc-borrow-detail-row td{background:var(--surface);border-
 // GLOBALS
 // ══════════════════════════════════════════════
 let db = null;
-const APP_BUILD = '2026.07.06-borelog-perf-v6';
+const APP_BUILD = '2026.07.06-borelog-perf-v7';
 const FC_CORE_ICON_SRC = 'docs/r18-reference/core-drill-icon-128.png';
 const BORELOG_ICON_SRC = 'docs/r18-reference/borelog-icon.webp';
 const BORELOG_PATH = 'docs/r18-reference/deldot-borelog.html';
-const BORELOG_BUILD = '2026.07.06-borelog-perf-v6';
+const BORELOG_BUILD = '2026.07.06-borelog-perf-v7';
 const BORELOG_URL = BORELOG_PATH + '?v=' + encodeURIComponent(BORELOG_BUILD);
 const BORELOG_WIN_NAME = 'deldot-borelog';
 const BORELOG_CTX_KEY = 'labtrak_borelog_context';
@@ -6547,9 +6548,64 @@ async function loadBorelogStore() {
   return sync;
 }
 
-async function purgeStaleBorelogMapGhosts() {
+async function getAuthoritativeBorelogStore() {
+  invalidateBorelogStoreCache();
   const idb = await _readBorelogStoreFromIdb();
-  const liveIds = new Set(Object.keys((idb && idb.borings) || {}));
+  if (idb != null) {
+    try { if (localStorage.getItem(BORELOG_STORE_KEY)) localStorage.removeItem(BORELOG_STORE_KEY); } catch {}
+    return idb;
+  }
+  return readBorelogStoreSync();
+}
+
+async function saveBorelogTombstones(ts) {
+  const clean = {
+    borings: [...new Set(ts.borings || [])],
+    projects: [...new Set(ts.projects || [])],
+  };
+  try { localStorage.setItem(BORELOG_TOMBSTONES_KEY, JSON.stringify(clean)); } catch {}
+  await _writeBorelogKvToIdb(BORELOG_TOMBSTONES_KEY, clean);
+  try { localStorage.setItem(BORELOG_STORE_TS_KEY, String(Date.now())); } catch {}
+  return clean;
+}
+
+async function pruneBorelogStoreOrphans(store) {
+  if (!store) return store;
+  const projects = store.projects || {};
+  const ts = await loadBorelogTombstones();
+  let tsChanged = false;
+  let storeChanged = false;
+  const markTombstone = (id) => {
+    if (!id || ts.borings.includes(id)) return;
+    ts.borings.push(id);
+    tsChanged = true;
+  };
+
+  Object.keys(store.borings || {}).forEach(id => {
+    const b = store.borings[id];
+    if (!b?.project_id || !projects[b.project_id]) {
+      markTombstone(id);
+      delete store.borings[id];
+      storeChanged = true;
+      Object.keys(store.samples || {}).forEach(sid => {
+        if (store.samples[sid]?.boring_id === id) delete store.samples[sid];
+      });
+    }
+  });
+
+  if (storeChanged) {
+    await _writeBorelogKvToIdb(BORELOG_STORE_KEY, store);
+    try { localStorage.removeItem(BORELOG_STORE_KEY); } catch {}
+    invalidateBorelogStoreCache();
+  }
+  if (tsChanged) await saveBorelogTombstones(ts);
+  return store;
+}
+
+async function purgeStaleBorelogMapGhosts() {
+  const store = await getAuthoritativeBorelogStore();
+  await pruneBorelogStoreOrphans(store);
+  const liveIds = new Set(Object.keys(store.borings || {}));
   const ts = await loadBorelogTombstones();
   let tsChanged = false;
   const markTombstone = (id) => {
@@ -6558,31 +6614,43 @@ async function purgeStaleBorelogMapGhosts() {
     tsChanged = true;
   };
 
-  if (idb != null) {
-    try {
-      const raw = localStorage.getItem(BORELOG_STORE_KEY);
-      if (raw) {
-        const ls = JSON.parse(raw);
-        Object.keys(ls.borings || {}).forEach(id => { if (!liveIds.has(id)) markTombstone(id); });
-        localStorage.removeItem(BORELOG_STORE_KEY);
-      }
-    } catch {}
-    Object.keys(idb.samples || {}).forEach(sid => {
-      const bid = idb.samples[sid]?.boring_id;
-      if (bid && !liveIds.has(bid)) markTombstone(bid);
-    });
-  }
+  try {
+    const raw = localStorage.getItem(BORELOG_STORE_KEY);
+    if (raw) {
+      const ls = JSON.parse(raw);
+      Object.keys(ls.borings || {}).forEach(id => { if (!liveIds.has(id)) markTombstone(id); });
+      localStorage.removeItem(BORELOG_STORE_KEY);
+    }
+  } catch {}
 
-  if (tsChanged) {
-    const clean = {
-      borings: [...new Set(ts.borings)],
-      projects: [...new Set(ts.projects || [])],
-    };
-    try { localStorage.setItem(BORELOG_TOMBSTONES_KEY, JSON.stringify(clean)); } catch {}
-    await _writeBorelogKvToIdb(BORELOG_TOMBSTONES_KEY, clean);
-    try { localStorage.setItem(BORELOG_STORE_TS_KEY, String(Date.now())); } catch {}
-  }
+  if (tsChanged) await saveBorelogTombstones(ts);
   invalidateBorelogStoreCache();
+}
+
+async function clearAllBorelogMapPins() {
+  if (!confirm('Remove ALL BoreLog borings from local storage and clear their map pins? This cannot be undone.')) return;
+  const store = await getAuthoritativeBorelogStore();
+  const ts = await loadBorelogTombstones();
+  Object.keys(store.borings || {}).forEach(id => {
+    if (!ts.borings.includes(id)) ts.borings.push(id);
+    delete store.borings[id];
+  });
+  Object.keys(store.samples || {}).forEach(sid => {
+    const bid = store.samples[sid]?.boring_id;
+    if (!bid || !store.borings[bid]) delete store.samples[sid];
+  });
+  await _writeBorelogKvToIdb(BORELOG_STORE_KEY, store);
+  await saveBorelogTombstones(ts);
+  try { localStorage.removeItem(BORELOG_STORE_KEY); } catch {}
+  invalidateBorelogStoreCache();
+  window._borelogMapById = {};
+  if (typeof showToast === 'function') showToast('BoreLog map pins cleared', 'success');
+  const ctx = window._projectMapCtx;
+  if (document.getElementById('mapOverlay')?.classList.contains('open') && ctx) {
+    openProjectMap(ctx.contract, ctx.projectName, { fieldTestId: ctx.fieldTestId });
+  } else if (labMap && currentView === 'labmap') {
+    labMapReload();
+  }
 }
 
 function _readBorelogKvFromIdb(key) {
@@ -6661,6 +6729,7 @@ window.addEventListener('DOMContentLoaded', () => {
   if (typeof syncMapStyleButtons === 'function') syncMapStyleButtons();
   if (typeof initMapRoadSearch === 'function') initMapRoadSearch();
   loadLabSpecConfig();
+  purgeStaleBorelogMapGhosts().catch(() => {});
   // Register service worker for offline support
   if ('serviceWorker' in navigator) {
     navigator.serviceWorker.register('#', { scope: './' }).catch(() => {});
@@ -7356,8 +7425,13 @@ async function openProjectMap(contract, projectName, opts) {
 
   const corePinCount = allCores.filter(c => parseGPS(c.gps_coordinates, true)).length;
   let subtitle = pinCount + ' location' + (pinCount !== 1 ? 's' : '') + ' plotted';
+  subtitle += ' · ' + borelogPinCount + ' BoreLog ▲';
   if (corePinCount) subtitle += ' · ' + corePinCount + ' core' + (corePinCount !== 1 ? 's' : '');
-  if (borelogPinCount) subtitle += ' · ' + borelogPinCount + ' boring' + (borelogPinCount !== 1 ? 's' : '');
+  const samplePinCount = pinCount - borelogPinCount - corePinCount - allConc.filter(cs => {
+    const set = typeof concreteRowToSet === 'function' ? concreteRowToSet(cs) : cs;
+    return set?.gps_coordinates && parseGPS(set.gps_coordinates);
+  }).length;
+  if (samplePinCount > 0) subtitle += ' · ' + samplePinCount + ' field sample' + (samplePinCount !== 1 ? 's' : '');
   document.getElementById('mapOverlaySubtitle').textContent = subtitle;
 
   // Fit map to pins
@@ -8200,12 +8274,14 @@ async function collectBorelogBoringsFromLocal(contract) {
   const out = [];
   const pendingDel = await getBorelogDeletedSets();
   try {
-    const raw = await loadBorelogStore();
+    const raw = await getAuthoritativeBorelogStore();
+    await pruneBorelogStoreOrphans(raw);
     const projects = raw.projects || {};
     const borings = raw.borings || {};
     const contractLower = (contract || '').trim().toLowerCase();
     Object.values(borings).forEach(b => {
       if (!b?.id || isBorelogMapBoringDeleted(b.id, pendingDel)) return;
+      if (!b.project_id || !projects[b.project_id]) return;
       if (pendingDel.borelog_projects.has(b.project_id)) return;
       const p = projects[b.project_id] || {};
       const pContract = (p.contract_no || p.contract || '').trim().toLowerCase();
@@ -8231,6 +8307,8 @@ async function collectBorelogBoringsFromLocal(contract) {
 
 async function fetchBorelogBoringsForContract(contract) {
   await purgeStaleBorelogMapGhosts();
+  const raw = await getAuthoritativeBorelogStore();
+  if (!Object.keys(raw.borings || {}).length) return [];
   const items = await collectBorelogBoringsFromLocal(contract);
   return finalizeBorelogMapBorings(items);
 }
@@ -23799,12 +23877,17 @@ function openR18() {
           <svg width="14" height="14" viewBox="0 0 14 14"><circle cx="7" cy="7" r="3" fill="none" stroke="#60a5fa" stroke-width="1" opacity="0.6"/><line x1="7" y1="1" x2="7" y2="4.5" stroke="#60a5fa" stroke-width="1.2" stroke-linecap="square"/><line x1="7" y1="9.5" x2="7" y2="13" stroke="#60a5fa" stroke-width="1.2" stroke-linecap="square"/><line x1="1" y1="7" x2="4.5" y2="7" stroke="#60a5fa" stroke-width="1.2" stroke-linecap="square"/><line x1="9.5" y1="7" x2="13" y2="7" stroke="#60a5fa" stroke-width="1.2" stroke-linecap="square"/><circle cx="7" cy="7" r="1.3" fill="#60a5fa"/></svg>
           Concrete
         </div>
+        <div class="map-legend-item">
+          <svg width="14" height="14" viewBox="0 0 14 14"><polygon points="7,1 13,13 1,13" fill="none" stroke="#22d3ee" stroke-width="1.2"/><polygon points="7,4 10,11 4,11" fill="#22d3ee" opacity="0.5"/></svg>
+          BoreLog ▲
+        </div>
       </div>
       <div class="map-style-toggle" id="projectMapStyleToggle">
         <button type="button" class="map-style-btn" data-map-style="streets" onclick="labMapSetStyle('streets')">Streets</button>
         <button type="button" class="map-style-btn" data-map-style="satellite" onclick="labMapSetStyle('satellite')">Satellite</button>
         <button type="button" class="map-style-btn" data-map-style="dark" onclick="labMapSetStyle('dark')">Dark</button>
       </div>
+      <button type="button" class="btn btn-ghost" onclick="clearAllBorelogMapPins()" style="flex-shrink:0;font-size:10px;letter-spacing:1px;" title="Clear all BoreLog map pins">✕ BORELOG PINS</button>
       <button class="btn btn-ghost" onclick="closeProjectMap()" style="flex-shrink:0;">✕ CLOSE</button>
     </div>
     <div class="project-map-shell">
