@@ -6468,11 +6468,11 @@ table.fc-borrow-tbl tr.fc-borrow-detail-row td{background:var(--surface);border-
 // GLOBALS
 // ══════════════════════════════════════════════
 let db = null;
-const APP_BUILD = '2026.07.06-borelog-perf-v5';
+const APP_BUILD = '2026.07.06-borelog-perf-v6';
 const FC_CORE_ICON_SRC = 'docs/r18-reference/core-drill-icon-128.png';
 const BORELOG_ICON_SRC = 'docs/r18-reference/borelog-icon.webp';
 const BORELOG_PATH = 'docs/r18-reference/deldot-borelog.html';
-const BORELOG_BUILD = '2026.07.06-borelog-perf-v5';
+const BORELOG_BUILD = '2026.07.06-borelog-perf-v6';
 const BORELOG_URL = BORELOG_PATH + '?v=' + encodeURIComponent(BORELOG_BUILD);
 const BORELOG_WIN_NAME = 'deldot-borelog';
 const BORELOG_CTX_KEY = 'labtrak_borelog_context';
@@ -6525,15 +6525,64 @@ function readBorelogStoreSync() {
   return { projects: {}, borings: {}, samples: {} };
 }
 
+function _writeBorelogKvToIdb(key, val) {
+  return _openBorelogStoreIdb().then(db => new Promise((resolve, reject) => {
+    const tx = db.transaction(BORELOG_IDB_KV, 'readwrite');
+    tx.objectStore(BORELOG_IDB_KV).put(val, key);
+    tx.oncomplete = () => resolve();
+    tx.onerror = () => reject(tx.error);
+  })).catch(() => {});
+}
+
 async function loadBorelogStore() {
   const idb = await _readBorelogStoreFromIdb();
-  if (idb && (Object.keys(idb.borings || {}).length || Object.keys(idb.projects || {}).length)) {
+  if (idb != null) {
+    // IndexedDB is authoritative — drop stale localStorage mirror that still holds deleted borings.
+    try { if (localStorage.getItem(BORELOG_STORE_KEY)) localStorage.removeItem(BORELOG_STORE_KEY); } catch {}
     _borelogStoreCache = idb;
     return idb;
   }
   const sync = readBorelogStoreSync();
   _borelogStoreCache = sync;
   return sync;
+}
+
+async function purgeStaleBorelogMapGhosts() {
+  const idb = await _readBorelogStoreFromIdb();
+  const liveIds = new Set(Object.keys((idb && idb.borings) || {}));
+  const ts = await loadBorelogTombstones();
+  let tsChanged = false;
+  const markTombstone = (id) => {
+    if (!id || ts.borings.includes(id)) return;
+    ts.borings.push(id);
+    tsChanged = true;
+  };
+
+  if (idb != null) {
+    try {
+      const raw = localStorage.getItem(BORELOG_STORE_KEY);
+      if (raw) {
+        const ls = JSON.parse(raw);
+        Object.keys(ls.borings || {}).forEach(id => { if (!liveIds.has(id)) markTombstone(id); });
+        localStorage.removeItem(BORELOG_STORE_KEY);
+      }
+    } catch {}
+    Object.keys(idb.samples || {}).forEach(sid => {
+      const bid = idb.samples[sid]?.boring_id;
+      if (bid && !liveIds.has(bid)) markTombstone(bid);
+    });
+  }
+
+  if (tsChanged) {
+    const clean = {
+      borings: [...new Set(ts.borings)],
+      projects: [...new Set(ts.projects || [])],
+    };
+    try { localStorage.setItem(BORELOG_TOMBSTONES_KEY, JSON.stringify(clean)); } catch {}
+    await _writeBorelogKvToIdb(BORELOG_TOMBSTONES_KEY, clean);
+    try { localStorage.setItem(BORELOG_STORE_TS_KEY, String(Date.now())); } catch {}
+  }
+  invalidateBorelogStoreCache();
 }
 
 function _readBorelogKvFromIdb(key) {
@@ -7126,6 +7175,7 @@ async function openProjectMap(contract, projectName, opts) {
   const mapOpts = opts || {};
   const fieldTestId = mapOpts.fieldTestId || null;
   window._projectMapCtx = { contract, projectName, fieldTestId };
+  window._borelogMapById = {};
   document.getElementById('mapOverlay').classList.add('open');
   document.getElementById('mapOverlayTitle').textContent = (contract || 'Core drill') + ' — ' + (projectName || 'Map');
   document.getElementById('mapOverlaySubtitle').textContent = 'Loading locations...';
@@ -8027,9 +8077,11 @@ function applyBorelogProjectCoords(items) {
 }
 
 function migrateBorelogLocalStorageCoords() {
-  try {
-    const raw = readBorelogStoreSync();
-    const borings = raw.borings || {};
+  return _readBorelogStoreFromIdb().then(async (idb) => {
+    if (idb == null) return 0;
+    try {
+      const raw = idb;
+      const borings = raw.borings || {};
     const all = Object.values(borings).filter(b => b?.id);
     if (!all.length) return 0;
 
@@ -8073,13 +8125,15 @@ function migrateBorelogLocalStorageCoords() {
 
     if (changed) {
       raw.borings = borings;
-      localStorage.setItem(BORELOG_STORE_KEY, JSON.stringify(raw));
+      await _writeBorelogKvToIdb(BORELOG_STORE_KEY, raw);
+      invalidateBorelogStoreCache();
     }
     return changed;
   } catch (e) {
     console.warn('migrateBorelogLocalStorageCoords:', e);
     return 0;
   }
+  }).catch(() => 0);
 }
 
 function sanitizeBorelogContract(raw) {
@@ -8176,7 +8230,7 @@ async function collectBorelogBoringsFromLocal(contract) {
 }
 
 async function fetchBorelogBoringsForContract(contract) {
-  // Map pins come from local BoreLog store only — never ghost pins from stale cloud rows.
+  await purgeStaleBorelogMapGhosts();
   const items = await collectBorelogBoringsFromLocal(contract);
   return finalizeBorelogMapBorings(items);
 }
