@@ -6472,6 +6472,8 @@ const APP_BUILD = '2026.07.05-borelog-gps-recompute';
 const FC_CORE_ICON_SRC = 'docs/r18-reference/core-drill-icon-128.png';
 const BORELOG_ICON_SRC = 'docs/r18-reference/borelog-icon.webp';
 const BORELOG_PATH = 'docs/r18-reference/deldot-borelog.html';
+const BORELOG_BUILD = '2026.07.06-borelog-coords';
+const BORELOG_URL = BORELOG_PATH + '?v=' + encodeURIComponent(BORELOG_BUILD);
 const BORELOG_WIN_NAME = 'deldot-borelog';
 const BORELOG_CTX_KEY = 'labtrak_borelog_context';
 const BORELOG_STORE_KEY = 'deldot_borelog_v2';
@@ -23648,12 +23650,12 @@ function openBoreLog(opts) {
   const existing = window._borelogWindow;
   if (existing && !existing.closed) {
     existing.focus();
-    try { existing.location.reload(); } catch (e) {}
+    try { existing.location.href = BORELOG_URL; } catch (e) {}
     return;
   }
 
-  const w = window.open(BORELOG_PATH, BORELOG_WIN_NAME);
-  if (!w) window.open(BORELOG_PATH, '_blank');
+  const w = window.open(BORELOG_URL, BORELOG_WIN_NAME);
+  if (!w) window.open(BORELOG_URL, '_blank');
   else window._borelogWindow = w;
 }
 
