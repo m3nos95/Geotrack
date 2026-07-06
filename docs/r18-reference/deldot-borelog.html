@@ -943,13 +943,14 @@ const DELDOT_LOGO = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAPAAAADwCAYAA
    - Storage wrapper abstracted for future Supabase port
    ========================================================================= */
 const STORE_KEY = 'deldot_borelog_v2';
-const BORELOG_BUILD = '2026.07.06-borelog-perf-v4';
+const BORELOG_BUILD = '2026.07.06-borelog-perf-v5';
 const MAP_MIGRATE_KEY = 'deldot_borelog_gps_migrated_v2';
 const STORE_TS_KEY = 'deldot_borelog_v2_ts';
 const DE_STATE_PLANE = '+proj=lcc +lat_1=38.43333333333334 +lat_2=39.83333333333333 +lat_0=38 +lon_0=-75.41666666666666 +x_0=200000.99998984026 +y_0=0 +ellps=GRS80 +units=us-ft +no_defs';
 const SB_URL_KEY = 'labtrak_sb_url';
 const SB_KEY_KEY = 'labtrak_sb_anon_key';
 const BORELOG_SYNC_QUEUE_KEY = 'deldot_borelog_sync_queue';
+const BORELOG_TOMBSTONES_KEY = 'deldot_borelog_tombstones';
 
 /* ---------- STORAGE (IndexedDB + in-memory cache) ----------
    localStorage caps at ~5–10 MB — large Geo imports exceed that quickly.
@@ -1029,6 +1030,55 @@ async function initBorelogStore() {
 
 function _notifyBorelogStoreChange() {
   try { localStorage.setItem(STORE_TS_KEY, String(Date.now())); } catch (e) {}
+}
+
+function _readBorelogTombstonesRaw() {
+  try {
+    const raw = localStorage.getItem(BORELOG_TOMBSTONES_KEY);
+    if (raw) {
+      const o = JSON.parse(raw);
+      return {
+        borings: [...new Set(o.borings || [])],
+        projects: [...new Set(o.projects || [])],
+      };
+    }
+  } catch {}
+  return { borings: [], projects: [] };
+}
+
+function _writeBorelogTombstones(ts) {
+  const clean = {
+    borings: [...new Set(ts.borings || [])],
+    projects: [...new Set(ts.projects || [])],
+  };
+  try { localStorage.setItem(BORELOG_TOMBSTONES_KEY, JSON.stringify(clean)); } catch {}
+  _idbPut(BORELOG_TOMBSTONES_KEY, clean).catch(() => {});
+  _notifyBorelogStoreChange();
+}
+
+function tombstoneBorelogBoring(id) {
+  if (!id) return;
+  const ts = _readBorelogTombstonesRaw();
+  if (!ts.borings.includes(id)) ts.borings.push(id);
+  _writeBorelogTombstones(ts);
+}
+
+function tombstoneBorelogProject(id) {
+  if (!id) return;
+  const ts = _readBorelogTombstonesRaw();
+  if (!ts.projects.includes(id)) ts.projects.push(id);
+  _writeBorelogTombstones(ts);
+}
+
+function backfillBorelogTombstonesFromQueue() {
+  const ts = _readBorelogTombstonesRaw();
+  let changed = false;
+  _readBorelogSyncQueue().forEach(e => {
+    if (e.op !== 'delete' || !e.id) return;
+    if (e.table === 'borelog_borings' && !ts.borings.includes(e.id)) { ts.borings.push(e.id); changed = true; }
+    if (e.table === 'borelog_projects' && !ts.projects.includes(e.id)) { ts.projects.push(e.id); changed = true; }
+  });
+  if (changed) _writeBorelogTombstones(ts);
 }
 
 function _mirrorSmallLocalStore(o) {
@@ -1131,7 +1181,14 @@ const store = {
     borelogQueueUpsert('borelog_projects', p);
   },
   delProject(id) {
+    const all = _storeCore._all();
+    if (all.borings) {
+      Object.values(all.borings).forEach(b => {
+        if (b?.project_id === id && b.id) tombstoneBorelogBoring(b.id);
+      });
+    }
     _storeCore.delProject(id);
+    tombstoneBorelogProject(id);
     borelogQueueDelete('borelog_projects', id);
   },
   getBorings: (projId) => _storeCore.getBorings(projId),
@@ -1143,6 +1200,7 @@ const store = {
   },
   delBoring(id) {
     _storeCore.delBoring(id);
+    tombstoneBorelogBoring(id);
     borelogQueueDelete('borelog_borings', id);
   },
   getSamples: (boringId) => _storeCore.getSamples(boringId),
@@ -1378,6 +1436,9 @@ function getBorelogPendingDeleteSets() {
   _readBorelogSyncQueue().forEach(e => {
     if (e.op === 'delete' && e.table && e.id && out[e.table]) out[e.table].add(e.id);
   });
+  const ts = _readBorelogTombstonesRaw();
+  ts.borings.forEach(id => out.borelog_borings.add(id));
+  ts.projects.forEach(id => out.borelog_projects.add(id));
   return out;
 }
 
@@ -2763,6 +2824,7 @@ function initComfortMode() {
 
 function startApp(){
   initBorelogStore().then(() => {
+    backfillBorelogTombstonesFromQueue();
     const tag = $('blBuildTag');
     if (tag) tag.textContent = 'M&R · ' + BORELOG_BUILD;
     const ol = $('setupOverlay');

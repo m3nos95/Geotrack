@@ -6468,17 +6468,18 @@ table.fc-borrow-tbl tr.fc-borrow-detail-row td{background:var(--surface);border-
 // GLOBALS
 // ══════════════════════════════════════════════
 let db = null;
-const APP_BUILD = '2026.07.06-borelog-perf-v4';
+const APP_BUILD = '2026.07.06-borelog-perf-v5';
 const FC_CORE_ICON_SRC = 'docs/r18-reference/core-drill-icon-128.png';
 const BORELOG_ICON_SRC = 'docs/r18-reference/borelog-icon.webp';
 const BORELOG_PATH = 'docs/r18-reference/deldot-borelog.html';
-const BORELOG_BUILD = '2026.07.06-borelog-perf-v4';
+const BORELOG_BUILD = '2026.07.06-borelog-perf-v5';
 const BORELOG_URL = BORELOG_PATH + '?v=' + encodeURIComponent(BORELOG_BUILD);
 const BORELOG_WIN_NAME = 'deldot-borelog';
 const BORELOG_CTX_KEY = 'labtrak_borelog_context';
 const BORELOG_STORE_KEY = 'deldot_borelog_v2';
 const BORELOG_STORE_TS_KEY = 'deldot_borelog_v2_ts';
 const BORELOG_SYNC_QUEUE_KEY = 'deldot_borelog_sync_queue';
+const BORELOG_TOMBSTONES_KEY = 'deldot_borelog_tombstones';
 const BORELOG_IDB_NAME = 'deldot_borelog';
 const BORELOG_IDB_KV = 'kv';
 let _borelogStoreCache = null;
@@ -6535,6 +6536,24 @@ async function loadBorelogStore() {
   return sync;
 }
 
+function _readBorelogKvFromIdb(key) {
+  return _openBorelogStoreIdb().then(db => new Promise((resolve, reject) => {
+    const tx = db.transaction(BORELOG_IDB_KV, 'readonly');
+    const req = tx.objectStore(BORELOG_IDB_KV).get(key);
+    req.onsuccess = () => resolve(req.result ?? null);
+    req.onerror = () => reject(req.error);
+  })).catch(() => null);
+}
+
+async function loadBorelogTombstones() {
+  try {
+    const raw = localStorage.getItem(BORELOG_TOMBSTONES_KEY);
+    if (raw) return JSON.parse(raw);
+  } catch {}
+  const idb = await _readBorelogKvFromIdb(BORELOG_TOMBSTONES_KEY);
+  return idb || { borings: [], projects: [] };
+}
+
 function readBorelogSyncQueue() {
   try { return JSON.parse(localStorage.getItem(BORELOG_SYNC_QUEUE_KEY) || '[]'); } catch { return []; }
 }
@@ -6548,6 +6567,19 @@ function getBorelogPendingDeleteSets() {
   readBorelogSyncQueue().forEach(e => {
     if (e.op === 'delete' && e.table && e.id && out[e.table]) out[e.table].add(e.id);
   });
+  try {
+    const raw = JSON.parse(localStorage.getItem(BORELOG_TOMBSTONES_KEY) || '{}');
+    (raw.borings || []).forEach(id => out.borelog_borings.add(id));
+    (raw.projects || []).forEach(id => out.borelog_projects.add(id));
+  } catch {}
+  return out;
+}
+
+async function getBorelogDeletedSets() {
+  const out = getBorelogPendingDeleteSets();
+  const ts = await loadBorelogTombstones();
+  (ts.borings || []).forEach(id => out.borelog_borings.add(id));
+  (ts.projects || []).forEach(id => out.borelog_projects.add(id));
   return out;
 }
 
@@ -8112,7 +8144,7 @@ function finalizeBorelogMapBorings(items) {
 
 async function collectBorelogBoringsFromLocal(contract) {
   const out = [];
-  const pendingDel = getBorelogPendingDeleteSets();
+  const pendingDel = await getBorelogDeletedSets();
   try {
     const raw = await loadBorelogStore();
     const projects = raw.projects || {};
@@ -8120,6 +8152,7 @@ async function collectBorelogBoringsFromLocal(contract) {
     const contractLower = (contract || '').trim().toLowerCase();
     Object.values(borings).forEach(b => {
       if (!b?.id || isBorelogMapBoringDeleted(b.id, pendingDel)) return;
+      if (pendingDel.borelog_projects.has(b.project_id)) return;
       const p = projects[b.project_id] || {};
       const pContract = (p.contract_no || p.contract || '').trim().toLowerCase();
       if (contractLower && pContract && pContract !== contractLower) return;
@@ -8143,40 +8176,9 @@ async function collectBorelogBoringsFromLocal(contract) {
 }
 
 async function fetchBorelogBoringsForContract(contract) {
-  const seen = new Set();
-  const out = [];
-  const pendingDel = getBorelogPendingDeleteSets();
-  const add = (item) => {
-    if (!item?.id || seen.has(item.id) || isBorelogMapBoringDeleted(item.id, pendingDel)) return;
-    seen.add(item.id);
-    out.push(item);
-  };
-  if (!db) {
-    (await collectBorelogBoringsFromLocal(contract)).forEach(add);
-    return finalizeBorelogMapBorings(out);
-  }
-  try {
-    const contractLower = (contract || '').trim().toLowerCase();
-    const [{ data: projects, error: pErr }, { data: rows, error: bErr }] = await Promise.all([
-      db.from('borelog_projects').select('id,contract,name,location,county,route,structure,labtrak_project_id').is('deleted_at', null),
-      db.from('borelog_borings').select('*').is('deleted_at', null),
-    ]);
-    if (pErr) throw pErr;
-    if (bErr) throw bErr;
-    const projById = Object.fromEntries((projects || []).map(p => [p.id, p]));
-    (rows || []).forEach(row => {
-      if (isBorelogMapBoringDeleted(row.id, pendingDel)) return;
-      const meta = projById[row.project_id] || {};
-      if (contractLower) {
-        const pc = (meta.contract || '').trim().toLowerCase();
-        if (pc && pc !== contractLower) return;
-      }
-      const item = normalizeBorelogMapBoring(row, meta);
-      if (item) add(item);
-    });
-  } catch (e) { console.warn('fetchBorelogBoringsForContract:', e); }
-  (await collectBorelogBoringsFromLocal(contract)).forEach(add);
-  return finalizeBorelogMapBorings(out);
+  // Map pins come from local BoreLog store only — never ghost pins from stale cloud rows.
+  const items = await collectBorelogBoringsFromLocal(contract);
+  return finalizeBorelogMapBorings(items);
 }
 
 async function fetchAllBorelogMapBorings() {
@@ -9173,7 +9175,8 @@ window.addEventListener('resize', () => {
 });
 
 window.addEventListener('storage', (e) => {
-  if (e.key !== BORELOG_STORE_KEY && e.key !== BORELOG_STORE_TS_KEY && e.key !== BORELOG_SYNC_QUEUE_KEY) return;
+  if (e.key !== BORELOG_STORE_KEY && e.key !== BORELOG_STORE_TS_KEY
+      && e.key !== BORELOG_SYNC_QUEUE_KEY && e.key !== BORELOG_TOMBSTONES_KEY) return;
   invalidateBorelogStoreCache();
   const ctx = window._projectMapCtx;
   if (document.getElementById('mapOverlay')?.classList.contains('open') && ctx) {
