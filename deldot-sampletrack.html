@@ -13935,8 +13935,7 @@ function loadSampleIntoLab(sample) {
   if (soilPanel) soilPanel.style.display = isAgg ? 'none' : 'block';
 
   // Update analyze button text and populate sieve inputs
-  const btn = document.getElementById('labAnalyzeBtn');
-  if (btn) btn.textContent = isAgg ? '⚖️ GENERATE AGGREGATE REPORT' : '🔬 ANALYZE & GENERATE LB-44';
+  refreshLabScanButtonLabels();
 
   // Populate aggregate sieve inputs immediately
   if (isAgg && sample.agg_type) {
