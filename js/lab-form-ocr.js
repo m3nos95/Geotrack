@@ -12,8 +12,9 @@
   let workerInitPromise = null;
   let workerInstance = null;
 
-  const CORE_SIMD = 'https://cdn.jsdelivr.net/npm/tesseract.js-core@5.1.1/dist/tesseract-core-simd-lstm.wasm.js';
-  const CORE_STD = 'https://cdn.jsdelivr.net/npm/tesseract.js-core@5.1.1/dist/tesseract-core-lstm.wasm.js';
+  const CORE_BASE = `https://cdn.jsdelivr.net/npm/tesseract.js-core@${TESSERACT_VER}`;
+  const CORE_SIMD = `${CORE_BASE}/tesseract-core-simd-lstm.wasm.js`;
+  const CORE_STD = `${CORE_BASE}/tesseract-core-lstm.wasm.js`;
 
   function wrapOcrError(e, fallback) {
     if (e instanceof Error && e.message) return e;
