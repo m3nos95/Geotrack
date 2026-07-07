@@ -6532,7 +6532,7 @@ table.fc-borrow-tbl tr.fc-borrow-detail-row td{background:var(--surface);border-
 // GLOBALS
 // ══════════════════════════════════════════════
 let db = null;
-const APP_BUILD = '2026.07.07-approval-report-nav';
+const APP_BUILD = '2026.07.07-approval-fetch-fresh';
 const FC_CORE_ICON_SRC = 'docs/r18-reference/core-drill-icon-128.png';
 const BORELOG_ICON_SRC = 'docs/r18-reference/borelog-icon.webp';
 const BORELOG_PATH = 'docs/r18-reference/deldot-borelog.html';
@@ -14498,7 +14498,7 @@ async function analyzeLabForm() {
 // REPORT FROM DASHBOARD
 // ══════════════════════════════════════════════
 async function viewReport(id) {
-  const sample = await fetchSample(id);
+  const sample = await fetchSample(id, { forceFresh: true, requireLabData: true });
   if (!sample || !sample.lab_data) { showToast('No lab data for this sample', 'error'); return; }
   slCurrentSample = sample;
   currentSample = sample;
@@ -16844,18 +16844,48 @@ function renderLB44(sample, labData, calc) {
 // ══════════════════════════════════════════════
 // HELPERS
 // ══════════════════════════════════════════════
-async function fetchSample(id) {
-  // Check in-memory cache first (works offline too)
+async function fetchSample(id, opts) {
+  opts = opts || {};
   const cached = (allSamples || []).find(s => s.id === id);
-  if (cached) return cached;
-  // Offline — can't hit Supabase
+  const cacheHasLab = cached?.lab_data != null && cached.lab_data !== '';
+  const useCache = cached && !opts.forceFresh && (!opts.requireLabData || cacheHasLab);
+  if (useCache) return cached;
+
   if (!navigator.onLine || !db) {
+    if (cached) return cached;
     showToast('Sample not available offline', 'info');
     return null;
   }
   const { data, error } = await db.from('samples').select('*').eq('id', id).single();
-  if (error) { showToast('Sample not found', 'error'); return null; }
+  if (error) {
+    if (cached) return cached;
+    showToast('Sample not found', 'error');
+    return null;
+  }
+  if (data) upsertAllSample(data);
   return data;
+}
+
+function upsertAllSample(sample) {
+  if (!sample?.id) return;
+  if (!allSamples) allSamples = [];
+  const i = allSamples.findIndex(s => s.id === sample.id);
+  if (i >= 0) allSamples[i] = { ...allSamples[i], ...sample };
+  else allSamples.unshift(sample);
+}
+
+/** Merge pending-approval rows from DB — in-memory list can lag behind the badge count. */
+async function slRefreshPendingApprovalSamples() {
+  if (!db) return;
+  try {
+    const { data, error } = await db.from('samples').select('*')
+      .eq('dist_status', 'pending_review')
+      .is('deleted_at', null)
+      .order('date_sampled', { ascending: false })
+      .limit(100);
+    if (error || !data) return;
+    data.forEach(upsertAllSample);
+  } catch (e) { console.warn('slRefreshPendingApprovalSamples:', e); }
 }
 
 function v(id) { return document.getElementById(id)?.value?.trim() || ''; }
@@ -18250,6 +18280,7 @@ function slSetFilter(type, value, btn) {
     slStatusFilter = value;
     document.querySelectorAll('#soillab-view .sl-filter-row:nth-child(1) .sl-filter-btn')
       .forEach(b => b.classList.remove('active'));
+    if (value === 'approval') void slRefreshPendingApprovalSamples().then(() => slRenderQueue());
   } else if (type === 'scope') {
     slMineFilter = value;
     document.querySelectorAll('#soillab-view .sl-filter-row:nth-child(3) .sl-filter-btn')
@@ -18267,22 +18298,20 @@ function slFilterQueue() { slRenderQueue(); }
 
 // ── Jump directly to the approval queue from dashboard ─────────
 function slGoToApprovalQueue() {
-  // Set filter BEFORE switchView so loadSoilLab renders the right queue immediately
   slStatusFilter = 'approval';
   switchView('soillab');
-  // Highlight the correct button and auto-open first pending sample
-  setTimeout(() => {
+  void (async () => {
+    await slRefreshPendingApprovalSamples();
     document.querySelectorAll('#soillab-view .sl-filter-row:nth-child(1) .sl-filter-btn')
       .forEach(b => b.classList.remove('active'));
     const btn = document.getElementById('sl-filter-approval');
     if (btn) btn.classList.add('active');
     slRenderQueue();
-    // Auto-open the first sample awaiting approval so admin lands straight on it
     const firstPending = (allSamples || []).find(s =>
       s.dist_status === 'pending_review' && canApproveThisReport(s)
     );
-    if (firstPending) slOpenPendingReport(firstPending.id);
-  }, 200);
+    if (firstPending) await slOpenPendingReport(firstPending.id);
+  })();
 }
 
 // ── Render queue list ──────────────────────────────────────────
@@ -18361,8 +18390,9 @@ function slRenderQueue() {
     const isDone   = s.status === 'complete';
     const isActive = slCurrentSample && slCurrentSample.id === s.id;
     const locText  = (s.location || s.material_type || '—').substring(0, 30);
+    const openFn   = slStatusFilter === 'approval' ? `slOpenPendingReport('${s.id}')` : `slLoadSample('${s.id}')`;
     return `<div class="sl-queue-card${isActive ? ' active' : ''}${isDone ? ' complete' : ''}"
-                 onclick="slLoadSample('${s.id}')">
+                 onclick="${openFn}">
       <div class="sl-qc-top">
         <span class="sl-qc-testno">${s.test_no}</span>
         <span class="badge badge-${s.status || 'pending'}" style="font-size:8px;padding:1px 6px;">${(s.status||'pending').toUpperCase()}</span>
@@ -18716,14 +18746,17 @@ async function slOnScanSuccess(text) {
   if (typeof showToast === 'function') showToast('Sample loaded from QR scan', 'success');
 }
 
+let slEditingComplete = false;
+
 // Open a completed / pending-approval sample on its report (approval queue, etc.)
 async function slOpenPendingReport(id) {
-  const sample = await fetchSample(id);
+  slEditingComplete = false;
+  const sample = await fetchSample(id, { forceFresh: true, requireLabData: true });
   if (!sample) return;
   slCurrentSample = sample;
   slRenderQueue();
   if (!sample.lab_data) {
-    showToast('No lab data for this sample', 'error');
+    showToast('No lab data on this sample — try refreshing the page', 'error');
     return;
   }
   await slViewReport();
@@ -18731,17 +18764,28 @@ async function slOpenPendingReport(id) {
 
 async function slLoadSample(id, opts) {
   opts = opts || {};
-  const sample = await fetchSample(id);
+  if (opts.edit) slEditingComplete = true;
+  else if (!opts.keepEditFlag) slEditingComplete = false;
+
+  const forceFresh = !opts.edit;
+  let sample = await fetchSample(id, { forceFresh, requireLabData: !opts.edit });
   if (!sample) return;
   slCurrentSample = sample;
 
   // Refresh queue to show active highlight
   slRenderQueue();
 
-  // Completed or awaiting approval — go straight to the report, not data entry
-  if (!opts.edit && sample.lab_data &&
-      (sample.status === 'complete' || sample.dist_status === 'pending_review')) {
-    await slViewReport();
+  const isLockedComplete = sample.status === 'complete' || sample.dist_status === 'pending_review';
+  if (!opts.edit && isLockedComplete) {
+    if (!sample.lab_data) {
+      sample = await fetchSample(id, { forceFresh: true, requireLabData: true }) || sample;
+      slCurrentSample = sample;
+    }
+    if (sample.lab_data) {
+      await slViewReport();
+      return;
+    }
+    showToast('Lab data not found — refresh the page or contact the lab tech', 'error');
     return;
   }
 
@@ -19132,6 +19176,11 @@ async function slHandleDistribution(sample) {
 
 // ── Shared finish: save + render + switch view ─────────────────
 async function slFinishLab(parsed) {
+  if (!slCurrentSample) return;
+  if (slCurrentSample.lab_data && slCurrentSample.status === 'complete' && !slEditingComplete) {
+    showToast('This sample is already complete — use Edit Report to change data', 'error');
+    return;
+  }
   slLastLabData = parsed;
   const fields  = slReportFields();
   const nestId = getActiveSoilSieveNestId();
@@ -19158,11 +19207,16 @@ async function slFinishLab(parsed) {
   // Queue for approval or email immediately
   await slHandleDistribution(merged);
   refreshReportEmailBtn(merged);
+  slEditingComplete = false;
 }
 
 // ── Aggregate manual report ────────────────────────────────────
 async function slGenerateAggReport() {
   if (!slCurrentSample) { showToast('No sample loaded', 'error'); return; }
+  if (slCurrentSample.lab_data && slCurrentSample.status === 'complete' && !slEditingComplete) {
+    showToast('This sample is already complete — use Edit Report to change data', 'error');
+    return;
+  }
   const aggType = slCurrentSample.agg_type;
   if (!aggType || !AGG_TYPES[aggType]) { showToast('No aggregate type on this sample', 'error'); return; }
 
@@ -19200,6 +19254,7 @@ async function slGenerateAggReport() {
   // Queue for approval or email immediately
   await slHandleDistribution(merged);
   refreshReportEmailBtn(merged);
+  slEditingComplete = false;
 }
 
 // ── Aggregate photo scan ─────────────────────────────────────────
@@ -19243,8 +19298,9 @@ async function slAnalyzeAggPhoto() {
 // ── View report for loaded sample ──────────────────────────────
 async function slViewReport() {
   if (!slCurrentSample) return;
-  const fresh = await fetchSample(slCurrentSample.id);
+  const fresh = await fetchSample(slCurrentSample.id, { forceFresh: true, requireLabData: true });
   if (!fresh || !fresh.lab_data) { showToast('No lab data found', 'error'); return; }
+  slCurrentSample = fresh;
   if (fresh.test_category === 'aggregate') {
     const aggCalc = calculateAggregate(fresh.lab_data.sieve_data, fresh.lab_data.agg_type || fresh.agg_type);
     renderAggregateReport(fresh, aggCalc);
