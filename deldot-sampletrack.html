@@ -1419,12 +1419,15 @@ nav:not(#r18-nav), .nav-top-row { display: none !important; }
 }
 .fc-core-photo-btn:active { transform:scale(0.98); }
 #fc_core_photo_preview { width:72px; height:72px; object-fit:cover; border-radius:8px; border:1px solid rgba(168,85,247,0.45); }
-#fc_core_camera_overlay {
+#fc_core_camera_overlay,
+#lab_scan_camera_overlay {
   display:none; position:fixed; inset:0; z-index:10050;
   background:#000; flex-direction:column;
 }
-#fc_core_camera_overlay.open { display:flex; }
-#fc_core_camera_video { flex:1; width:100%; object-fit:cover; background:#111; }
+#fc_core_camera_overlay.open,
+#lab_scan_camera_overlay.open { display:flex; }
+#fc_core_camera_video,
+#lab_scan_camera_video { flex:1; width:100%; object-fit:cover; background:#111; }
 .fc-core-camera-bar {
   display:flex; align-items:center; justify-content:space-between; gap:12px;
   padding:16px 18px calc(16px + env(safe-area-inset-bottom));
@@ -4968,7 +4971,7 @@ table.fc-borrow-tbl tr.fc-borrow-detail-row td{background:var(--surface);border-
             <div class="card-title">Lab Form Image</div>
             <div class="upload-zone" id="labDropZone">
               <input type="file" id="labImageInput" accept="image/*">
-              <p>📋 Drop or tap to upload photo of handwritten lab sheet<br><span style="font-size:11px;">JPG, PNG, HEIC</span></p>
+              <p>📁 Drop or tap to browse a photo<br><span style="font-size:11px;">JPG, PNG, HEIC — or use Scan below to take a photo</span></p>
               <img class="thumb" id="labThumb">
             </div>
           </div>
@@ -5046,7 +5049,7 @@ table.fc-borrow-tbl tr.fc-borrow-detail-row td{background:var(--surface);border-
               <div class="card-title">Upload Photo of Sieve Card</div>
               <div class="upload-zone" id="aggDropZone">
                 <input type="file" id="aggImageInput" accept="image/*">
-                <p>📋 Photo of the back of the sample card<br><span style="font-size:11px;">Showing sieve labels and weights</span></p>
+                <p>📁 Drop or tap to browse a photo<br><span style="font-size:11px;">Or use Scan below to open the camera</span></p>
                 <img class="thumb" id="aggThumb">
               </div>
             </div>
@@ -5772,7 +5775,7 @@ table.fc-borrow-tbl tr.fc-borrow-detail-row td{background:var(--surface);border-
                        ondragleave="this.classList.remove('drag')"
                        ondrop="event.preventDefault();this.classList.remove('drag');slHandleImage(event.dataTransfer.files[0])">
                     <input type="file" id="sl_image_input" accept="image/*" style="display:none;" onchange="slHandleImage(this.files[0])">
-                    <p>📋 Drop or tap to upload photo of handwritten lab sheet<br><span style="font-size:11px;">JPG, PNG, HEIC accepted</span></p>
+                    <p>📁 Drop or tap to browse a photo<br><span style="font-size:11px;">JPG, PNG, HEIC — or use Scan below to open the camera</span></p>
                     <img id="sl_image_thumb" style="display:none;max-width:100%;max-height:200px;border-radius:6px;margin-top:10px;">
                   </div>
                 </div>
@@ -5843,7 +5846,7 @@ table.fc-borrow-tbl tr.fc-borrow-detail-row td{background:var(--surface);border-
                        ondragleave="this.classList.remove('drag')"
                        ondrop="event.preventDefault();this.classList.remove('drag');slHandleAggImage(event.dataTransfer.files[0])">
                     <input type="file" id="sl_agg_image_input" accept="image/*" style="display:none;" onchange="slHandleAggImage(this.files[0])">
-                    <p>📋 Photo of the back of the aggregate sample card<br><span style="font-size:11px;">Showing sieve labels and retained weights</span></p>
+                    <p>📁 Drop or tap to browse a photo<br><span style="font-size:11px;">Or use Scan below to open the camera</span></p>
                     <img id="sl_agg_image_thumb" style="display:none;max-width:100%;max-height:200px;border-radius:6px;margin-top:10px;">
                   </div>
                 </div>
@@ -6529,7 +6532,7 @@ table.fc-borrow-tbl tr.fc-borrow-detail-row td{background:var(--surface);border-
 // GLOBALS
 // ══════════════════════════════════════════════
 let db = null;
-const APP_BUILD = '2026.07.07-remove-ai-settings';
+const APP_BUILD = '2026.07.07-photo-scan-camera';
 const FC_CORE_ICON_SRC = 'docs/r18-reference/core-drill-icon-128.png';
 const BORELOG_ICON_SRC = 'docs/r18-reference/borelog-icon.webp';
 const BORELOG_PATH = 'docs/r18-reference/deldot-borelog.html';
@@ -11274,7 +11277,7 @@ const HELP_FIELD_REGISTRY = {
   fc_core_gps: { title: 'GPS coordinates', body: 'Tap to capture device GPS. Coordinates appear on the admin map when synced.' },
   fc_core_remarks: { title: 'Core remarks', body: 'Optional notes — damage, water, unusual conditions.' },
   sl_search: { title: 'Queue search', body: 'Filter the lab queue by test number, contract, location, or material without leaving the module.' },
-  sl_image_input: { title: 'Photo scan upload', body: 'Photograph the field sample card. On-device OCR reads Atterberg and sieve values into the form (free, no API key).' },
+  sl_image_input: { title: 'Browse photo', body: 'Tap to browse a saved photo from your device. Use Take Photo & Scan below to open the camera instead.' },
   sl_ll_bottle: { title: 'Liquid limit bottle', body: 'Bottle ID used for the LL moisture test (cup/bottle label on bench sheet).' },
   sl_ll_wet: { title: 'LL — wet soil + bottle', body: 'Mass of wet soil and bottle before oven drying (grams).' },
   sl_ll_dry: { title: 'LL — dry soil + bottle', body: 'Mass after drying to constant weight (grams).' },
@@ -14026,14 +14029,167 @@ function loadSampleIntoLab(sample) {
 function handleLabImage(file) {
   if (!file) return;
   const r = new FileReader();
-  r.onload = ev => {
-    labImageB64 = ev.target.result.split(',')[1];
-    labImageType = file.type || 'image/jpeg';
-    const thumb = document.getElementById('labThumb');
-    thumb.src = ev.target.result;
-    thumb.style.display = 'block';
+  r.onload = ev => applyLabScanDataUrl('lab', ev.target.result);
+  r.readAsDataURL(file);
+}
+
+// ══════════════════════════════════════════════
+// LAB PHOTO SCAN — camera capture for OCR
+// ══════════════════════════════════════════════
+const LAB_SCAN_TARGETS = {
+  lab:     { set: (b64, type) => { labImageB64 = b64; labImageType = type; },     thumbId: 'labThumb' },
+  agg:     { set: (b64, type) => { aggImageB64 = b64; aggImageType = type; },     thumbId: 'aggThumb' },
+  sl:      { set: (b64, type) => { slImageB64 = b64; slImageType = type; },      thumbId: 'sl_image_thumb' },
+  sl_agg:  { set: (b64, type) => { slAggImageB64 = b64; slAggImageType = type; }, thumbId: 'sl_agg_image_thumb' },
+};
+
+let _labScanCameraStream = null;
+let _labScanCameraTarget = null;
+let _labScanCameraAfterCapture = null;
+
+function applyLabScanDataUrl(target, dataUrl) {
+  const m = String(dataUrl || '').match(/^data:([^;]+);base64,(.+)$/);
+  const mime = m ? m[1] : 'image/jpeg';
+  const b64 = m ? m[2] : String(dataUrl || '').split(',')[1];
+  const cfg = LAB_SCAN_TARGETS[target];
+  if (!cfg || !b64) return;
+  cfg.set(b64, mime);
+  const thumb = document.getElementById(cfg.thumbId);
+  if (thumb) { thumb.src = dataUrl; thumb.style.display = 'block'; }
+  refreshLabScanButtonLabels();
+}
+
+function refreshLabScanButtonLabels() {
+  const labBtn = document.getElementById('labAnalyzeBtn');
+  if (labBtn) {
+    if (currentSample?.test_category === 'aggregate') {
+      const aggAi = document.getElementById('aggTabAI')?.classList.contains('active');
+      labBtn.textContent = aggAi
+        ? (aggImageB64 ? '📷 SCAN CARD & GENERATE' : '📷 TAKE PHOTO & SCAN CARD')
+        : '⚖️ GENERATE AGGREGATE REPORT';
+    } else if (currentLabMode === 'ai') {
+      labBtn.textContent = labImageB64 ? '📷 SCAN & GENERATE LB-44' : '📷 TAKE PHOTO & SCAN';
+    } else {
+      labBtn.textContent = '⌨️ GENERATE LB-44 FROM MANUAL DATA';
+    }
+  }
+  const slBtn = document.getElementById('sl_analyze_btn');
+  if (slBtn && slCurrentSample) {
+    if (slCurrentSample.test_category === 'aggregate') {
+      const aggAi = document.getElementById('sl_agg_tab_ai')?.classList.contains('active');
+      slBtn.textContent = aggAi
+        ? (slAggImageB64 ? '📷 SCAN CARD & GENERATE' : '📷 TAKE PHOTO & SCAN CARD')
+        : '⚖️ GENERATE AGGREGATE REPORT';
+    } else if (slCurrentMode === 'ai') {
+      slBtn.textContent = slImageB64 ? '📷 SCAN & GENERATE LB-44' : '📷 TAKE PHOTO & SCAN';
+    } else if (slCurrentSample.test_category !== 'aggregate') {
+      slBtn.textContent = '⌨️ GENERATE LB-44 FROM MANUAL DATA';
+    }
+  }
+}
+
+function labScanCameraFallbackInput() {
+  const inp = document.getElementById('lab_scan_camera_fallback');
+  if (!inp) { showToast('Camera not available on this device', 'error'); return; }
+  inp.value = '';
+  inp.click();
+}
+
+function closeLabScanCamera() {
+  const overlay = document.getElementById('lab_scan_camera_overlay');
+  const video = document.getElementById('lab_scan_camera_video');
+  if (_labScanCameraStream) {
+    _labScanCameraStream.getTracks().forEach(t => t.stop());
+    _labScanCameraStream = null;
+  }
+  if (video) video.srcObject = null;
+  if (overlay) {
+    overlay.classList.remove('open');
+    overlay.setAttribute('aria-hidden', 'true');
+  }
+}
+
+async function openLabScanCamera(target, afterCapture) {
+  _labScanCameraTarget = target;
+  _labScanCameraAfterCapture = typeof afterCapture === 'function' ? afterCapture : null;
+  const overlay = document.getElementById('lab_scan_camera_overlay');
+  const video = document.getElementById('lab_scan_camera_video');
+  if (!navigator.mediaDevices?.getUserMedia || !overlay || !video) {
+    labScanCameraFallbackInput();
+    return;
+  }
+  try {
+    closeLabScanCamera();
+    const stream = await navigator.mediaDevices.getUserMedia({
+      video: { facingMode: { ideal: 'environment' } },
+      audio: false,
+    });
+    _labScanCameraStream = stream;
+    video.srcObject = stream;
+    overlay.classList.add('open');
+    overlay.setAttribute('aria-hidden', 'false');
+  } catch (e) {
+    console.warn('openLabScanCamera:', e);
+    showToast('Opening device camera…', 'info');
+    labScanCameraFallbackInput();
+  }
+}
+
+async function snapLabScanPhoto() {
+  const video = document.getElementById('lab_scan_camera_video');
+  if (!video || !video.videoWidth) {
+    showToast('Camera not ready yet', 'error');
+    return;
+  }
+  try {
+    const canvas = document.createElement('canvas');
+    canvas.width = video.videoWidth;
+    canvas.height = video.videoHeight;
+    canvas.getContext('2d').drawImage(video, 0, 0);
+    const dataUrl = canvas.toDataURL('image/jpeg', 0.92);
+    applyLabScanDataUrl(_labScanCameraTarget, dataUrl);
+    closeLabScanCamera();
+    showToast('Photo captured ✓', 'success');
+    if (_labScanCameraAfterCapture) {
+      const cb = _labScanCameraAfterCapture;
+      _labScanCameraAfterCapture = null;
+      await cb();
+    }
+  } catch (e) {
+    showToast('Photo error: ' + e.message, 'error');
+  }
+}
+
+function labScanCameraFallbackChange(inp) {
+  const file = inp?.files?.[0];
+  if (!file) return;
+  const r = new FileReader();
+  r.onload = async ev => {
+    applyLabScanDataUrl(_labScanCameraTarget, ev.target.result);
+    showToast('Photo captured ✓', 'success');
+    if (_labScanCameraAfterCapture) {
+      const cb = _labScanCameraAfterCapture;
+      _labScanCameraAfterCapture = null;
+      await cb();
+    }
   };
   r.readAsDataURL(file);
+}
+
+function labScanHasImage(target) {
+  if (target === 'lab') return !!labImageB64;
+  if (target === 'agg') return !!aggImageB64;
+  if (target === 'sl') return !!slImageB64;
+  if (target === 'sl_agg') return !!slAggImageB64;
+  return false;
+}
+
+function labScanOrCapture(target, runScan) {
+  if (labScanHasImage(target)) {
+    runScan();
+    return;
+  }
+  openLabScanCamera(target, runScan);
 }
 
 
@@ -14091,7 +14247,7 @@ function setLabMode(mode) {
   document.getElementById('modeTabManual').classList.toggle('active', mode === 'manual');
   document.getElementById('aiModePanel').style.display = mode === 'ai' ? 'block' : 'none';
   document.getElementById('manualModePanel').style.display = mode === 'manual' ? 'block' : 'none';
-  document.getElementById('labAnalyzeBtn').textContent = mode === 'ai' ? '📷 SCAN & GENERATE LB-44' : '⌨️ GENERATE LB-44 FROM MANUAL DATA';
+  refreshLabScanButtonLabels();
 }
 
 // ══════════════════════════════════════════════
@@ -14100,11 +14256,16 @@ function setLabMode(mode) {
 function submitLabEntry() {
   // Route to aggregate report if this is an aggregate sample
   if (currentSample?.test_category === 'aggregate') {
+    const aggMode = document.getElementById('aggTabAI')?.classList.contains('active') ? 'ai' : 'manual';
+    if (aggMode === 'ai') {
+      labScanOrCapture('agg', () => generateAggregateReport());
+      return;
+    }
     generateAggregateReport();
     return;
   }
   if (currentLabMode === 'ai') {
-    analyzeLabForm();
+    labScanOrCapture('lab', () => analyzeLabForm());
   } else {
     generateFromManual();
   }
@@ -14828,8 +14989,7 @@ function setAggMode(mode) {
   document.getElementById('aggTabAI').classList.toggle('active', mode === 'ai');
   document.getElementById('aggManualPanel').style.display = mode === 'manual' ? 'block' : 'none';
   document.getElementById('aggAIPanel').style.display = mode === 'ai' ? 'block' : 'none';
-  const btn = document.getElementById('labAnalyzeBtn');
-  if (btn) btn.textContent = mode === 'ai' ? '📷 READ CARD & GENERATE REPORT' : '⚖️ GENERATE AGGREGATE REPORT';
+  refreshLabScanButtonLabels();
 }
 
 // Wire up aggregate image upload
@@ -14849,12 +15009,7 @@ document.addEventListener('DOMContentLoaded', () => {
 function handleAggImage(file) {
   if (!file) return;
   const r = new FileReader();
-  r.onload = ev => {
-    aggImageB64 = ev.target.result.split(',')[1];
-    aggImageType = file.type || 'image/jpeg';
-    const thumb = document.getElementById('aggThumb');
-    if (thumb) { thumb.src = ev.target.result; thumb.style.display = 'block'; }
-  };
+  r.onload = ev => applyLabScanDataUrl('agg', ev.target.result);
   r.readAsDataURL(file);
 }
 
@@ -14895,7 +15050,7 @@ async function generateAggregateReport() {
 
   // AI mode — read the card photo
   if (aggMode === 'ai') {
-    if (!aggImageB64) { showToast('Upload a photo of the sieve card first', 'error'); return; }
+    if (!aggImageB64) { showToast('Take or browse a sieve card photo first', 'error'); return; }
     await readAggCardWithAI(aggType, spec);
     return;
   }
@@ -18614,10 +18769,7 @@ async function slLoadSample(id) {
   document.getElementById('sl_agg_entry').style.display  = isAgg ? 'block' : 'none';
 
   // Update analyze button label
-  const btn = document.getElementById('sl_analyze_btn');
-  if (btn) btn.textContent = isAgg
-    ? '⚖️ GENERATE AGGREGATE REPORT'
-    : '🔬 ANALYZE & GENERATE LB-44';
+  refreshLabScanButtonLabels();
 
   // Aggregate: populate sieve inputs, then fill saved weights
   if (isAgg && sample.agg_type) {
@@ -18734,12 +18886,7 @@ function slSetMode(mode) {
   document.getElementById('sl_manual_panel').style.display = mode === 'manual' ? 'block' : 'none';
   document.getElementById('sl_tab_ai').classList.toggle('active',     mode === 'ai');
   document.getElementById('sl_tab_manual').classList.toggle('active', mode === 'manual');
-  const btn = document.getElementById('sl_analyze_btn');
-  if (btn && slCurrentSample?.test_category !== 'aggregate') {
-    btn.textContent = mode === 'ai'
-      ? '🔬 ANALYZE & GENERATE LB-44'
-      : '⌨️ GENERATE LB-44 FROM MANUAL DATA';
-  }
+  refreshLabScanButtonLabels();
 }
 
 function slSetAggMode(mode) {
@@ -18747,34 +18894,21 @@ function slSetAggMode(mode) {
   document.getElementById('sl_agg_ai_panel').style.display     = mode === 'ai'     ? 'block' : 'none';
   document.getElementById('sl_agg_tab_manual').classList.toggle('active', mode === 'manual');
   document.getElementById('sl_agg_tab_ai').classList.toggle('active',     mode === 'ai');
-  const btn = document.getElementById('sl_analyze_btn');
-  if (btn) btn.textContent = mode === 'ai'
-    ? '📷 READ CARD & GENERATE REPORT'
-    : '⚖️ GENERATE AGGREGATE REPORT';
+  refreshLabScanButtonLabels();
 }
 
 // ── Image handling ─────────────────────────────────────────────
 function slHandleImage(file) {
   if (!file) return;
   const r = new FileReader();
-  r.onload = ev => {
-    slImageB64  = ev.target.result.split(',')[1];
-    slImageType = file.type || 'image/jpeg';
-    const thumb = document.getElementById('sl_image_thumb');
-    if (thumb) { thumb.src = ev.target.result; thumb.style.display = 'block'; }
-  };
+  r.onload = ev => applyLabScanDataUrl('sl', ev.target.result);
   r.readAsDataURL(file);
 }
 
 function slHandleAggImage(file) {
   if (!file) return;
   const r = new FileReader();
-  r.onload = ev => {
-    slAggImageB64  = ev.target.result.split(',')[1];
-    slAggImageType = file.type || 'image/jpeg';
-    const thumb = document.getElementById('sl_agg_image_thumb');
-    if (thumb) { thumb.src = ev.target.result; thumb.style.display = 'block'; }
-  };
+  r.onload = ev => applyLabScanDataUrl('sl_agg', ev.target.result);
   r.readAsDataURL(file);
 }
 
@@ -18869,10 +19003,18 @@ function slSubmitEntry() {
   if (!slCurrentSample) { showToast('No sample loaded', 'error'); return; }
   if (slCurrentSample.test_category === 'aggregate') {
     const aggMode = document.getElementById('sl_agg_tab_ai')?.classList.contains('active') ? 'ai' : 'manual';
-    aggMode === 'ai' ? slAnalyzeAggPhoto() : slGenerateAggReport();
+    if (aggMode === 'ai') {
+      labScanOrCapture('sl_agg', () => slAnalyzeAggPhoto());
+      return;
+    }
+    slGenerateAggReport();
     return;
   }
-  slCurrentMode === 'ai' ? slAnalyzeSoilPhoto() : slGenerateFromManual();
+  if (slCurrentMode === 'ai') {
+    labScanOrCapture('sl', () => slAnalyzeSoilPhoto());
+  } else {
+    slGenerateFromManual();
+  }
 }
 
 // ── Soil photo scan (free on-device OCR) ─────────────────────────
@@ -27646,6 +27788,16 @@ html.comfort-mode .tour-step-badge { font-family: var(--sans) !important; }
 
 })();
 </script>
+  <!-- Lab form photo scan camera -->
+  <input type="file" id="lab_scan_camera_fallback" accept="image/*" capture="environment" style="display:none;" onchange="labScanCameraFallbackChange(this)">
+  <div id="lab_scan_camera_overlay" aria-hidden="true">
+    <video id="lab_scan_camera_video" autoplay playsinline muted></video>
+    <div class="fc-core-camera-bar">
+      <button type="button" class="fc-core-camera-cancel" onclick="closeLabScanCamera()">Cancel</button>
+      <button type="button" class="fc-core-camera-shutter" onclick="snapLabScanPhoto()" aria-label="Capture lab form photo">📷</button>
+      <span style="width:64px;"></span>
+    </div>
+  </div>
   <!-- Core Drill camera capture -->
   <div id="fc_core_camera_overlay" aria-hidden="true">
     <video id="fc_core_camera_video" autoplay playsinline muted></video>
