@@ -3138,23 +3138,6 @@ table.fc-borrow-tbl tr.fc-borrow-detail-row td{background:var(--surface);border-
       </div>
     </div>
 
-    <div class="setup-collapse" id="setupAiSection" data-setup-open="false">
-      <button type="button" class="setup-collapse-hdr" onclick="toggleSetupSection(this)" aria-expanded="false">
-        <span class="setup-collapse-title">PHOTO FORM SCANNING</span>
-        <span class="setup-collapse-chevron" aria-hidden="true">▾</span>
-      </button>
-      <div class="setup-collapse-body">
-
-    <div class="setup-steps">
-      <p>
-        Lab form photo reading runs <strong style="color:var(--text);">free in your browser</strong> using on-device OCR (Tesseract.js).
-        No API key or internet AI service is required after the page loads. Handwriting quality affects accuracy — always review values before signing reports.
-      </p>
-    </div>
-
-      </div>
-    </div>
-
     <!-- User management (admin) -->
     <div class="user-mgmt-section setup-collapse" id="dataMaintenanceSection" data-setup-open="false" style="display:none;">
       <button type="button" class="setup-collapse-hdr" onclick="toggleSetupSection(this)" aria-expanded="false">
@@ -6546,7 +6529,7 @@ table.fc-borrow-tbl tr.fc-borrow-detail-row td{background:var(--surface);border-
 // GLOBALS
 // ══════════════════════════════════════════════
 let db = null;
-const APP_BUILD = '2026.07.07-free-lab-form-ocr';
+const APP_BUILD = '2026.07.07-remove-ai-settings';
 const FC_CORE_ICON_SRC = 'docs/r18-reference/core-drill-icon-128.png';
 const BORELOG_ICON_SRC = 'docs/r18-reference/borelog-icon.webp';
 const BORELOG_PATH = 'docs/r18-reference/deldot-borelog.html';
@@ -10980,11 +10963,6 @@ function offlineLoadCached() {
     const cachedProjects = localStorage.getItem('labtrak_cached_projects');
     if (cachedProjects) allProjects = JSON.parse(cachedProjects);
   } catch(e) { allProjects = []; }
-}
-
-// Save AI product key from settings panel (legacy — photo OCR no longer needs a key)
-async function saveAiKey() {
-  showToast('Photo scanning is free — no product key needed', 'success');
 }
 
 function showSetup() {
