@@ -947,7 +947,7 @@ const DELDOT_LOGO = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAPAAAADwCAYAA
    - Storage wrapper abstracted for future Supabase port
    ========================================================================= */
 const STORE_KEY = 'deldot_borelog_v2';
-const BORELOG_BUILD = '2026.07.06-map-gps-priority';
+const BORELOG_BUILD = '2026.07.07-sync-deletions-fix';
 const MAP_MIGRATE_KEY = 'deldot_borelog_gps_migrated_v2';
 const STORE_TS_KEY = 'deldot_borelog_v2_ts';
 const DE_STATE_PLANE = '+proj=lcc +lat_1=38.43333333333334 +lat_2=39.83333333333333 +lat_0=38 +lon_0=-75.41666666666666 +x_0=200000.99998984026 +y_0=0 +ellps=GRS80 +units=us-ft +no_defs';
@@ -1467,6 +1467,47 @@ function purgeBorelogPendingDeletes(storeObj, pendingDel) {
   });
 }
 
+function getBorelogPendingUpsertSets() {
+  const out = {
+    borelog_projects: new Set(),
+    borelog_borings: new Set(),
+    borelog_samples: new Set(),
+  };
+  _readBorelogSyncQueue().forEach(e => {
+    if (e.op === 'upsert' && e.table && e.id && out[e.table]) out[e.table].add(e.id);
+  });
+  return out;
+}
+
+function pruneBorelogMissingFromCloud(merged, cloudProjIds, cloudBorIds, cloudSampIds, pendingUpsert) {
+  Object.keys(merged.projects || {}).forEach(id => {
+    if (cloudProjIds.has(id) || pendingUpsert.borelog_projects.has(id)) return;
+    tombstoneBorelogProject(id);
+    delete merged.projects[id];
+    Object.keys(merged.borings || {}).forEach(bid => {
+      if (merged.borings[bid]?.project_id === id) {
+        tombstoneBorelogBoring(bid);
+        delete merged.borings[bid];
+      }
+    });
+    Object.keys(merged.samples || {}).forEach(sid => {
+      if (merged.samples[sid]?.project_id === id) delete merged.samples[sid];
+    });
+  });
+  Object.keys(merged.borings || {}).forEach(id => {
+    if (cloudBorIds.has(id) || pendingUpsert.borelog_borings.has(id)) return;
+    tombstoneBorelogBoring(id);
+    delete merged.borings[id];
+    Object.keys(merged.samples || {}).forEach(sid => {
+      if (merged.samples[sid]?.boring_id === id) delete merged.samples[sid];
+    });
+  });
+  Object.keys(merged.samples || {}).forEach(id => {
+    if (cloudSampIds.has(id) || pendingUpsert.borelog_samples.has(id)) return;
+    delete merged.samples[id];
+  });
+}
+
 async function pullAndMergeBorelog() {
   const db = getBorelogSupabaseClient();
   if (!db) return false;
@@ -1510,12 +1551,16 @@ async function pullAndMergeBorelog() {
   });
   purgeBorelogPendingDeletes(merged, pendingDel);
 
-  store._save(merged);
-  pruneOrphanBoringsInStore();
-
   const cloudProjIds = new Set((pRes.data || []).map(r => r.id));
   const cloudBorIds = new Set((bRes.data || []).map(r => r.id));
   const cloudSampIds = new Set((sRes.data || []).map(r => r.id));
+  const pendingUpsert = getBorelogPendingUpsertSets();
+  pruneBorelogMissingFromCloud(merged, cloudProjIds, cloudBorIds, cloudSampIds, pendingUpsert);
+  purgeBorelogPendingDeletes(merged, pendingDel);
+
+  store._save(merged);
+  pruneOrphanBoringsInStore();
+
   const cloudProjMap = Object.fromEntries((pRes.data || []).map(r => [r.id, r]));
   const cloudBorMap = Object.fromEntries((bRes.data || []).map(r => [r.id, r]));
   const cloudSampMap = Object.fromEntries((sRes.data || []).map(r => [r.id, r]));
@@ -1523,17 +1568,29 @@ async function pullAndMergeBorelog() {
   beginBorelogQueueBatch();
   try {
     Object.values(merged.projects).forEach(p => {
-      if (!cloudProjIds.has(p.id) || _blTs(p.updated_at) > _blTs(cloudProjMap[p.id]?.updated_at)) {
+      if (!cloudProjIds.has(p.id)) {
+        if (pendingUpsert.borelog_projects.has(p.id)) borelogQueueUpsert('borelog_projects', p);
+        return;
+      }
+      if (_blTs(p.updated_at) > _blTs(cloudProjMap[p.id]?.updated_at)) {
         borelogQueueUpsert('borelog_projects', p);
       }
     });
     Object.values(merged.borings).forEach(b => {
-      if (!cloudBorIds.has(b.id) || _blTs(b.updated_at) > _blTs(cloudBorMap[b.id]?.updated_at)) {
+      if (!cloudBorIds.has(b.id)) {
+        if (pendingUpsert.borelog_borings.has(b.id)) borelogQueueUpsert('borelog_borings', b);
+        return;
+      }
+      if (_blTs(b.updated_at) > _blTs(cloudBorMap[b.id]?.updated_at)) {
         borelogQueueUpsert('borelog_borings', b);
       }
     });
     Object.values(merged.samples).forEach(s => {
-      if (!cloudSampIds.has(s.id) || _blTs(s.updated_at) > _blTs(cloudSampMap[s.id]?.updated_at)) {
+      if (!cloudSampIds.has(s.id)) {
+        if (pendingUpsert.borelog_samples.has(s.id)) borelogQueueUpsert('borelog_samples', s);
+        return;
+      }
+      if (_blTs(s.updated_at) > _blTs(cloudSampMap[s.id]?.updated_at)) {
         borelogQueueUpsert('borelog_samples', s);
       }
     });
