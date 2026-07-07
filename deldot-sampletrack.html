@@ -5172,7 +5172,7 @@ table.fc-borrow-tbl tr.fc-borrow-detail-row td{background:var(--surface);border-
     <div style="padding:20px 0 20px 0;">
       <div class="report-toolbar" style="padding:0 20px 12px 20px;">
         <button onclick="window.print()">🖨️ PRINT / SAVE PDF</button>
-        <button id="rpt-soillab-edit-btn" onclick="slReturnToSoilLab()" style="display:none;background:var(--blue2);color:#fff;border-color:var(--blue);">✏️ EDIT REPORT</button>
+        <button id="rpt-soillab-edit-btn" onclick="slReturnToSoilLabEdit()" style="display:none;background:var(--blue2);color:#fff;border-color:var(--blue);">✏️ EDIT REPORT</button>
         <button id="rpt-email-btn" onclick="emailCurrentReport()" style="display:none;background:#064e2b;color:#fff;border-color:#16a34a;">📧 EMAIL REPORT</button>
         <button id="rpt-approve-btn" onclick="slApproveForDistribution()" style="display:none;">✅ APPROVE &amp; SEND</button>
         <button id="rpt-reject-btn"  onclick="slOpenRejectModal()"          style="display:none;">❌ REJECT</button>
@@ -6532,7 +6532,7 @@ table.fc-borrow-tbl tr.fc-borrow-detail-row td{background:var(--surface);border-
 // GLOBALS
 // ══════════════════════════════════════════════
 let db = null;
-const APP_BUILD = '2026.07.07-soil-lab-upload-only';
+const APP_BUILD = '2026.07.07-approval-report-nav';
 const FC_CORE_ICON_SRC = 'docs/r18-reference/core-drill-icon-128.png';
 const BORELOG_ICON_SRC = 'docs/r18-reference/borelog-icon.webp';
 const BORELOG_PATH = 'docs/r18-reference/deldot-borelog.html';
@@ -9794,6 +9794,7 @@ function refreshReportEmailBtn(sample) {
 
 // ── Approve report and fire the email ─────────────────────────────
 async function slApproveForDistribution() {
+  if (!slCurrentSample && currentSample) slCurrentSample = currentSample;
   if (!slCurrentSample) return;
   if (!canApproveReports()) { showToast('You do not have permission to approve reports', 'error'); return; }
   const approvedBy = currentUser?.name || 'Admin';
@@ -9813,6 +9814,9 @@ async function slApproveForDistribution() {
 
   refreshReportEmailBtn(updated);
   refreshApprovalBadge();
+
+  // Stay on the completed report — do not fall back to soil lab data entry
+  await slViewReport();
 
   // Sync result to Approved Sources chart
   // Fetch fresh from DB so we have all fields (push_to_sources, supplied_by, etc.)
@@ -14496,6 +14500,7 @@ async function analyzeLabForm() {
 async function viewReport(id) {
   const sample = await fetchSample(id);
   if (!sample || !sample.lab_data) { showToast('No lab data for this sample', 'error'); return; }
+  slCurrentSample = sample;
   currentSample = sample;
   if (sample.test_category === 'aggregate') {
     const aggCalc = calculateAggregate(sample.lab_data.sieve_data, sample.lab_data.agg_type || sample.agg_type);
@@ -14505,6 +14510,9 @@ async function viewReport(id) {
     renderLB44(sample, sample.lab_data, calc);
   }
   switchView('report');
+  const editBtn = document.getElementById('rpt-soillab-edit-btn');
+  if (editBtn) editBtn.style.display = 'none';
+  refreshReportEmailBtn(sample);
 }
 
 async function viewQR(id) {
@@ -17028,6 +17036,14 @@ function slReturnToSoilLab() {
   switchView('soillab');
 }
 
+function slReturnToSoilLabEdit() {
+  const btn = document.getElementById('rpt-soillab-edit-btn');
+  if (btn) btn.style.display = 'none';
+  if (!slCurrentSample) { switchView('soillab'); return; }
+  switchView('soillab');
+  slLoadSample(slCurrentSample.id, { edit: true });
+}
+
 function slUpdateDeleteButton() {
   const section = document.getElementById('sl_delete_section');
   if (!section) return;
@@ -18265,7 +18281,7 @@ function slGoToApprovalQueue() {
     const firstPending = (allSamples || []).find(s =>
       s.dist_status === 'pending_review' && canApproveThisReport(s)
     );
-    if (firstPending) slLoadSample(firstPending.id);
+    if (firstPending) slOpenPendingReport(firstPending.id);
   }, 200);
 }
 
@@ -18700,13 +18716,34 @@ async function slOnScanSuccess(text) {
   if (typeof showToast === 'function') showToast('Sample loaded from QR scan', 'success');
 }
 
-async function slLoadSample(id) {
+// Open a completed / pending-approval sample on its report (approval queue, etc.)
+async function slOpenPendingReport(id) {
+  const sample = await fetchSample(id);
+  if (!sample) return;
+  slCurrentSample = sample;
+  slRenderQueue();
+  if (!sample.lab_data) {
+    showToast('No lab data for this sample', 'error');
+    return;
+  }
+  await slViewReport();
+}
+
+async function slLoadSample(id, opts) {
+  opts = opts || {};
   const sample = await fetchSample(id);
   if (!sample) return;
   slCurrentSample = sample;
 
   // Refresh queue to show active highlight
   slRenderQueue();
+
+  // Completed or awaiting approval — go straight to the report, not data entry
+  if (!opts.edit && sample.lab_data &&
+      (sample.status === 'complete' || sample.dist_status === 'pending_review')) {
+    await slViewReport();
+    return;
+  }
 
   // Show lab content
   document.getElementById('sl_empty_state').style.display  = 'none';
@@ -18812,11 +18849,6 @@ async function slLoadSample(id) {
   // Scroll entry panel to top
   const panel = document.getElementById('sl_entry_panel');
   if (panel) panel.scrollTop = 0;
-
-  // Auto-route completed samples straight to their report — skip entry form
-  if (sample.status === 'complete' && sample.lab_data) {
-    await slViewReport();
-  }
 }
 
 // ── Pre-fill form with existing lab data ───────────────────────
