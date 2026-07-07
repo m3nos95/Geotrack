@@ -3974,7 +3974,7 @@ table.fc-borrow-tbl tr.fc-borrow-detail-row td{background:var(--surface);border-
           <h2 style="font-family:var(--display);font-size:22px;color:var(--text);letter-spacing:1px;">PROJECTS</h2>
           <p style="color:var(--muted);font-size:12px;font-family:var(--mono);margin-top:3px;">Select a project to view its samples, or add a new one below.</p>
         </div>
-        <button class="btn btn-primary" onclick="openNewProject()" style="font-size:13px;padding:10px 18px;">+ NEW PROJECT</button>
+        <button class="btn btn-primary" id="btnNewProject" onclick="openNewProject()" style="font-size:13px;padding:10px 18px;">+ NEW PROJECT</button>
       </div>
 
       <div class="projects-grid" id="projectsGrid" data-tour="projects-grid">
@@ -6476,7 +6476,7 @@ table.fc-borrow-tbl tr.fc-borrow-detail-row td{background:var(--surface);border-
 // GLOBALS
 // ══════════════════════════════════════════════
 let db = null;
-const APP_BUILD = '2026.07.07-sync-local-only';
+const APP_BUILD = '2026.07.07-fix-projects-rls';
 const FC_CORE_ICON_SRC = 'docs/r18-reference/core-drill-icon-128.png';
 const BORELOG_ICON_SRC = 'docs/r18-reference/borelog-icon.webp';
 const BORELOG_PATH = 'docs/r18-reference/deldot-borelog.html';
@@ -9442,6 +9442,10 @@ function clearProjectFilter() {
 }
 
 function openNewProject() {
+  if (!canManageProjects()) {
+    showToast('Only administrators can create projects', 'error');
+    return;
+  }
   document.getElementById('projOverlayTitle').textContent = 'NEW PROJECT';
   document.getElementById('proj_id').value = '';
   ['proj_contract','proj_fa_project','proj_contractor','proj_road','proj_material_type',
@@ -9469,6 +9473,17 @@ async function openEditProject(id) {
 }
 
 async function saveProject() {
+  if (!db) { showToast('Not connected to database', 'error'); return; }
+  const auth = await ensureWritableDbSession();
+  if (!auth.ok) {
+    showToast(auth.message, 'error');
+    if (auth.needAuth) showAuthSignInPanel();
+    return;
+  }
+  if (!canManageProjects()) {
+    showToast('Only administrators can create or edit projects', 'error');
+    return;
+  }
   const gv = id => document.getElementById(id)?.value?.trim() || null;
   const id = document.getElementById('proj_id').value;
   const data = {
@@ -9487,16 +9502,28 @@ async function saveProject() {
   } else {
     ({ error } = await db.from('projects').insert(data));
   }
-  if (error) { showToast('Save failed: ' + error.message, 'error'); return; }
+  if (error) {
+    console.warn('saveProject:', { uid: _supabaseAuthSession?.user?.id, profileRole: _authProfile?.role, currentRole: currentUser?.role, error });
+    showToast('Save failed: ' + formatDbRlsError('projects', error), 'error');
+    if (isDbRlsError(error) && !_supabaseAuthSession?.user) showAuthSignInPanel();
+    return;
+  }
   document.getElementById('projectOverlay').classList.remove('open');
   showToast(id ? 'Project updated ✓' : 'Project created ✓', 'success');
   loadProjects();
 }
 
 async function deleteProject(id, contract, name) {
+  if (!canManageProjects()) { showToast('Only administrators can delete projects', 'error'); return; }
+  const auth = await ensureWritableDbSession();
+  if (!auth.ok) {
+    showToast(auth.message, 'error');
+    if (auth.needAuth) showAuthSignInPanel();
+    return;
+  }
   if (!confirm('Delete project "' + contract + ' — ' + name + '"?\n\nThis only removes the project record. Soil/aggregate samples linked to this contract are NOT deleted.')) return;
   const { error } = await db.from('projects').delete().eq('id', id);
-  if (error) { showToast('Delete failed: ' + error.message, 'error'); return; }
+  if (error) { showToast('Delete failed: ' + formatDbRlsError('projects', error), 'error'); return; }
   showToast('Project deleted ✓', 'success');
   loadProjects();
 }
@@ -10012,6 +10039,11 @@ async function probeAnonAccess() {
   try {
     const { error } = await db.from('samples').select('id').limit(1);
     if (!error) {
+      const { error: projErr } = await db.from('projects').select('id').limit(1);
+      if (projErr && isDbRlsError(projErr)) {
+        window._anonBlocked = true;
+        return false;
+      }
       window._anonBlocked = false;
       return true;
     }
@@ -10099,6 +10131,74 @@ async function resolveUserFromAuth() {
     assigned_tech_ids: merged?.assigned_tech_ids,
     _fromAuth: true,
   };
+}
+
+function isDbRlsError(err) {
+  if (!err) return false;
+  const code = err.code || '';
+  const msg = (err.message || String(err)).toLowerCase();
+  return code === '42501' || code === 'PGRST301' || msg.includes('row-level security') || msg.includes('policy');
+}
+
+function canManageProjects() {
+  const role = _authProfile?.role || currentUser?.role;
+  if (role !== 'admin' && role !== 'section_admin') return false;
+  if (isAuthRequired() || window._anonBlocked) return !!_supabaseAuthSession?.user;
+  return !!currentUser;
+}
+
+async function ensureWritableDbSession() {
+  if (!db) return { ok: false, needAuth: false, message: 'Not connected to database' };
+  if (!isAuthRequired() && !window._anonBlocked) return { ok: true };
+
+  let session = _supabaseAuthSession;
+  if (!session && db.auth) {
+    const { data: { session: s } } = await db.auth.getSession();
+    session = s;
+    _supabaseAuthSession = s;
+  }
+  if (!session?.user) {
+    return {
+      ok: false,
+      needAuth: true,
+      message: 'Sign in with your LabTrak email and password to save (not PIN tiles only).',
+    };
+  }
+  if (session.expires_at && session.expires_at * 1000 < Date.now() + 60000 && db.auth) {
+    const { data, error } = await db.auth.refreshSession();
+    if (error || !data.session) {
+      return { ok: false, needAuth: true, message: 'Session expired — please sign in again.' };
+    }
+    _supabaseAuthSession = data.session;
+    session = data.session;
+  }
+  try {
+    if (!_authProfile) await loadAuthProfile();
+  } catch (e) {
+    console.warn('loadAuthProfile:', e);
+  }
+  return { ok: true, session };
+}
+
+function formatDbRlsError(table, err) {
+  const msg = err?.message || String(err);
+  if (!isDbRlsError(err)) return msg;
+  if (!_supabaseAuthSession?.user) {
+    return 'Database security blocked this action — sign in with email/password under Settings, then retry.';
+  }
+  const role = _authProfile?.role || currentUser?.role || 'unknown';
+  if (table === 'projects') {
+    if (role !== 'admin' && role !== 'section_admin') {
+      return 'Only administrators can manage projects (you are signed in as ' + role + ').';
+    }
+    return 'Permission denied — your Supabase account may not be linked as admin. Settings → Provision sign-in, or ask an administrator.';
+  }
+  return msg;
+}
+
+function refreshProjectAdminUI() {
+  const btn = document.getElementById('btnNewProject');
+  if (btn) btn.style.display = canManageProjects() ? '' : 'none';
 }
 
 function hideAllLoginPanels() {
@@ -10755,6 +10855,7 @@ function refreshSessionActionsUI() {
   document.getElementById('ubadgeAv').style.background = currentUser?.color || rd.color;
   document.getElementById('ubadgeName').textContent = displayName;
   document.getElementById('ubadgeRole').textContent = rd.label.toUpperCase();
+  refreshProjectAdminUI();
 }
 
 async function ensureAuthUserLoaded() {
@@ -17366,6 +17467,7 @@ function loginUser(user, silent = false) {
     if (g) _renderDashCal();
   });
   if (!silent) showToast(`Welcome, ${user.name} ✓`, 'success');
+  refreshProjectAdminUI();
   // Refresh approval badge after samples have had time to load
   setTimeout(refreshApprovalBadge, 800);
   setTimeout(refreshApprovalBadge, 2500);
@@ -17403,6 +17505,7 @@ function applyRoleUI(role) {
   });
 
   syncMobileNav();
+  refreshProjectAdminUI();
 
   refreshSessionActionsUI();
 
