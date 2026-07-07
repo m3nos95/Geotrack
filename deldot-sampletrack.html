@@ -6476,7 +6476,7 @@ table.fc-borrow-tbl tr.fc-borrow-detail-row td{background:var(--surface);border-
 // GLOBALS
 // ══════════════════════════════════════════════
 let db = null;
-const APP_BUILD = '2026.07.07-approval-lab-data-fix';
+const APP_BUILD = '2026.07.07-lab-save-verify';
 const FC_CORE_ICON_SRC = 'docs/r18-reference/core-drill-icon-128.png';
 const BORELOG_ICON_SRC = 'docs/r18-reference/borelog-icon.webp';
 const BORELOG_PATH = 'docs/r18-reference/deldot-borelog.html';
@@ -16418,6 +16418,45 @@ function sampleHasLabData(sample) {
   return hasValue(rest);
 }
 
+/** Strip undefined / non-finite numbers so JSONB writes succeed. */
+function sanitizeForJsonb(value) {
+  if (value === undefined) return undefined;
+  if (value === null) return null;
+  if (typeof value === 'number') return Number.isFinite(value) ? value : null;
+  if (typeof value === 'string') return value;
+  if (Array.isArray(value)) return value.map(sanitizeForJsonb);
+  if (typeof value === 'object') {
+    const out = {};
+    Object.keys(value).forEach((k) => {
+      const v = sanitizeForJsonb(value[k]);
+      if (v !== undefined) out[k] = v;
+    });
+    return out;
+  }
+  return null;
+}
+
+/** Update a sample row and return the persisted row, or null on failure. */
+async function slPersistSample(id, updates) {
+  if (!id || !updates || !db) {
+    showToast('Not connected to database', 'error');
+    return null;
+  }
+  const body = { ...updates };
+  if (body.lab_data != null) body.lab_data = sanitizeForJsonb(body.lab_data);
+  const { data, error } = await db.from('samples').update(body).eq('id', id).select('*').single();
+  if (error) {
+    console.error('slPersistSample:', error);
+    showToast('Save failed: ' + error.message, 'error');
+    return null;
+  }
+  if (data) {
+    data.lab_data = normalizeLabData(data.lab_data);
+    upsertAllSample(data);
+  }
+  return data;
+}
+
 async function fetchSample(id, opts) {
   opts = opts || {};
   const cached = (allSamples || []).find(s => s.id === id);
@@ -18727,17 +18766,17 @@ function slReportFields() {
 }
 
 // ── Main submit ────────────────────────────────────────────────
-function slSubmitEntry() {
+async function slSubmitEntry() {
   if (!slCurrentSample) { showToast('No sample loaded', 'error'); return; }
   if (slCurrentSample.test_category === 'aggregate') {
-    slGenerateAggReport();
+    await slGenerateAggReport();
     return;
   }
-  slGenerateFromManual();
+  await slGenerateFromManual();
 }
 
 // ── Soil manual entry → report ─────────────────────────────────
-function slGenerateFromManual() {
+async function slGenerateFromManual() {
   if (!slCurrentSample) { showToast('No sample loaded', 'error'); return; }
   function gv(id) { const el = document.getElementById(id); return el ? (el.value.trim() || null) : null; }
   function gn(id) { const el = document.getElementById(id); const v = parseFloat(el?.value); return isNaN(v) ? null : v; }
@@ -18763,7 +18802,7 @@ function slGenerateFromManual() {
   };
 
   if (!parsed.total_sample_wt) { showToast('Enter Total Sample Weight', 'error'); return; }
-  slFinishLab(parsed);
+  await slFinishLab(parsed);
 }
 
 // ── Queue for approval or email immediately ────────────────────
@@ -18785,17 +18824,17 @@ async function slHandleDistribution(sample) {
 
   // Always queue for admin approval first — Gmail only needed at send time
   if (!db) { showToast('Not connected to database', 'error'); return; }
-  const { error } = await db.from('samples').update({
+  const { data, error } = await db.from('samples').update({
     dist_status: 'pending_review',
     dist_submitted_by: currentUser?.id || '',
     sync_to_chart: syncToChart,
-  }).eq('id', sample.id);
+  }).eq('id', sample.id).select('*').single();
   if (error) { console.error('dist_status update failed:', error.message); return; }
   logSampleHistory({ sampleId: sample.id, testNo: sample.test_no, action: 'dist_queued', details: { sync_to_chart: syncToChart } });
-  const updated = { ...sample, dist_status: 'pending_review', dist_submitted_by: currentUser?.id || '' };
+  const updated = data ? { ...data, lab_data: normalizeLabData(data.lab_data) } : { ...sample, dist_status: 'pending_review', dist_submitted_by: currentUser?.id || '' };
   slCurrentSample = updated;
   currentSample   = updated;
-  allSamples = allSamples.map(s => s.id === updated.id ? updated : s);
+  upsertAllSample(updated);
   refreshApprovalBadge();
   showToast('Report queued for admin approval ✓', 'success');
 }
@@ -18816,21 +18855,22 @@ async function slFinishLab(parsed) {
   if (slCurrentSample?.test_category !== 'aggregate') {
     updates.soil_sieve_nest = nestId;
   }
-  await db.from('samples').update(updates).eq('id', slCurrentSample.id);
+  const saved = await slPersistSample(slCurrentSample.id, updates);
+  if (!saved) return;
+  if (!sampleHasLabData(saved)) {
+    showToast('Lab data did not save — check connection and try again', 'error');
+    return;
+  }
   logSampleHistory({ sampleId: slCurrentSample.id, testNo: slCurrentSample.test_no, action: 'lab_complete', details: { type: 'soil', status: 'complete' } });
 
-  const calc   = calculateSieve(parsed, updates.soil_sieve_nest || getActiveSoilSieveNestId());
-  const merged = { ...slCurrentSample, ...updates, lab_data: parsed };
-  // Keep currentSample in sync so edit overlay & report-view work
+  const merged = saved;
   currentSample = merged;
   slCurrentSample = merged;
 
+  const calc = calculateSieve(parsed, merged.soil_sieve_nest || nestId);
   renderLB44(merged, parsed, calc);
   switchView('report');
   showToast('LB-44 generated ✓', 'success');
-  // Refresh queue badge
-  loadSamples();
-  // Queue for approval or email immediately
   await slHandleDistribution(merged);
   refreshReportEmailBtn(merged);
   slEditingComplete = false;
@@ -18865,18 +18905,22 @@ async function slGenerateAggReport() {
   };
   const fields  = slReportFields();
   const updates = { status: 'complete', lab_data: labData, conforms: 'auto', ...fields };
-  await db.from('samples').update(updates).eq('id', slCurrentSample.id);
+  const saved = await slPersistSample(slCurrentSample.id, updates);
+  if (!saved) return;
+  if (!sampleHasLabData(saved)) {
+    showToast('Lab data did not save — check connection and try again', 'error');
+    return;
+  }
   logSampleHistory({ sampleId: slCurrentSample.id, testNo: slCurrentSample.test_no, action: 'lab_complete', details: { type: 'aggregate', status: 'complete', agg_type: aggType } });
 
   const aggCalc = calculateAggregate(sieveData, aggType);
-  const merged  = { ...slCurrentSample, ...updates, lab_data: labData };
+  const merged  = saved;
   currentSample = merged;
   slCurrentSample = merged;
 
   renderAggregateReport(merged, aggCalc);
   switchView('report');
   showToast('Aggregate report generated ✓', 'success');
-  loadSamples();
   // Queue for approval or email immediately
   await slHandleDistribution(merged);
   refreshReportEmailBtn(merged);
