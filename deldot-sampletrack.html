@@ -9355,6 +9355,7 @@ async function loadProjects() {
   allProjects = data || [];
   try { localStorage.setItem('labtrak_cached_projects', JSON.stringify(allProjects)); } catch(e) {}
   await renderProjectCards(allProjects);
+  refreshProjectAdminUI();
 }
 
 async function renderProjectCards(projects) {
