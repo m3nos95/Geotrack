@@ -610,6 +610,9 @@ nav:not(#r18-nav), .nav-top-row { display: none !important; }
 
 .badge { display: inline-block; padding: 2px 8px; border-radius: 2px; font-size: 10px; font-family: var(--mono); letter-spacing: 0.5px; font-weight: 600; }
 .badge-pending { background: rgba(200,167,67,0.15); color: var(--gold); border: 1px solid rgba(200,167,67,0.3); }
+.badge-awaiting { background: rgba(200,167,67,0.15); color: var(--gold); border: 1px solid rgba(200,167,67,0.3); }
+.badge-arrived { background: rgba(74,144,226,0.12); color: var(--blue2); border: 1px solid rgba(74,144,226,0.3); }
+.badge-in-progress { background: rgba(34,197,94,0.12); color: #4ade80; border: 1px solid rgba(34,197,94,0.28); }
 .badge-complete { background: rgba(46,125,82,0.15); color: var(--green2); border: 1px solid rgba(46,125,82,0.3); }
 .badge-approved { background: rgba(46,125,82,0.2); color: var(--green2); border: 1px solid var(--green2); }
 .badge-rejected { background: rgba(168,48,48,0.2); color: var(--red2); border: 1px solid var(--red2); }
@@ -5631,7 +5634,7 @@ table.fc-borrow-tbl tr.fc-borrow-detail-row td{background:var(--surface);border-
         <div class="sl-filters">
           <div class="sl-filter-row">
             <span class="sl-filter-label">STATUS</span>
-            <button class="sl-filter-btn active" onclick="slSetFilter('status','pending',this)">PENDING</button>
+            <button class="sl-filter-btn active" onclick="slSetFilter('status','pending',this)">QUEUE</button>
             <button class="sl-filter-btn" id="sl-filter-approval" onclick="slSetFilter('status','approval',this)" style="color:#f59e0b;border-color:rgba(245,158,11,0.4);">⚠️ APPROVAL</button>
             <button class="sl-filter-btn" onclick="slSetFilter('status','archive',this)">📦 ARCHIVE</button>
           </div>
@@ -5696,7 +5699,7 @@ table.fc-borrow-tbl tr.fc-borrow-detail-row td{background:var(--surface);border-
               </div>
             </div>
             <div class="sl-banner-actions">
-              <span class="badge badge-pending" id="sl_b_status_badge">PENDING</span>
+              <span class="badge badge-awaiting" id="sl_b_status_badge">AWAITING</span>
               <button class="btn btn-ghost" style="font-size:10px;padding:5px 11px;" onclick="showActiveSampleHistory()" title="View audit trail for this sample">🕓 HISTORY</button>
               <button class="btn btn-ghost" style="font-size:10px;padding:5px 11px;" onclick="slViewReport()" id="sl_view_report_btn" title="View existing report">📄 REPORT</button>
             </div>
@@ -6476,7 +6479,7 @@ table.fc-borrow-tbl tr.fc-borrow-detail-row td{background:var(--surface);border-
 // GLOBALS
 // ══════════════════════════════════════════════
 let db = null;
-const APP_BUILD = '2026.07.07-fix-projects-rls';
+const APP_BUILD = '2026.07.07-lab-queue-stages';
 const FC_CORE_ICON_SRC = 'docs/r18-reference/core-drill-icon-128.png';
 const BORELOG_ICON_SRC = 'docs/r18-reference/borelog-icon.webp';
 const BORELOG_PATH = 'docs/r18-reference/deldot-borelog.html';
@@ -13641,8 +13644,11 @@ async function loadByTestNo() {
 function showScanResult(sample) {
   const el = document.getElementById('scanResult');
   el.style.display = 'block';
+  const isLab = isSoilLabSample(sample);
+  const wf = isLab ? getLabWorkflowStage(sample) : null;
   const status = sample.status || 'pending';
-  const badgeLabel = status === 'density' ? 'DENSITY' : status.toUpperCase();
+  const badgeLabel = wf ? wf.label : (status === 'density' ? 'DENSITY' : status.toUpperCase());
+  const badgeClass = wf ? wf.badgeClass : status;
   const buttonLabel = status === 'complete'
     ? '📄 OPEN REPORT →'
     : status === 'density'
@@ -13652,7 +13658,7 @@ function showScanResult(sample) {
     <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;">
       <div><div style="font-size:9px;color:var(--muted);font-family:var(--mono);">TEST NO.</div><div style="font-size:18px;font-weight:700;color:var(--accent2);">${sample.test_no}</div></div>
       <div><div style="font-size:9px;color:var(--muted);font-family:var(--mono);">CONTRACT</div><div style="font-weight:600;">${sample.contract||'—'}</div></div>
-      <div><div style="font-size:9px;color:var(--muted);font-family:var(--mono);">STATUS</div><div><span class="badge badge-${status}" style="font-size:9px;">${badgeLabel}</span></div></div>
+      <div><div style="font-size:9px;color:var(--muted);font-family:var(--mono);">STATUS</div><div><span class="badge badge-${badgeClass}" style="font-size:9px;">${badgeLabel}</span></div></div>
       <div><div style="font-size:9px;color:var(--muted);font-family:var(--mono);">MATERIAL</div><div style="font-weight:600;">${sample.material_type||'—'}</div></div>
       <div style="grid-column:span 2;"><div style="font-size:9px;color:var(--muted);font-family:var(--mono);">LOCATION</div><div>${sample.location||'—'}</div></div>
     </div>`;
@@ -13912,6 +13918,8 @@ async function recordLabArrival(sampleId, source, prefetchedSample) {
   } else {
     showToast('✓ #' + sample.test_no + ' received at lab — ' + timeStr, 'success');
   }
+  if (typeof slRenderQueue === 'function') slRenderQueue();
+  if (typeof renderLabHub === 'function') renderLabHub();
 }
 
 function laRenderSessionLog() {
@@ -16560,6 +16568,50 @@ function sampleHasLabData(sample) {
   return hasValue(rest);
 }
 
+/** Lab queue workflow stage (display only — DB status stays pending until complete). */
+function getLabWorkflowStage(sample) {
+  if (!sample) return { key: 'awaiting', label: 'AWAITING', badgeClass: 'awaiting' };
+  if (sample.status === 'density') return { key: 'density', label: 'DENSITY', badgeClass: 'density' };
+  if (sample.status === 'complete') return { key: 'complete', label: 'COMPLETE', badgeClass: 'complete' };
+  if (sample.dist_status === 'pending_review') return { key: 'approval', label: 'APPROVAL', badgeClass: 'pending' };
+  if (sample.dist_status === 'rejected') return { key: 'rejected', label: 'REJECTED', badgeClass: 'rejected' };
+
+  const hasReceived = !!(sample.date_received && String(sample.date_received).trim());
+  const hasTested = !!(sample.date_tested && String(sample.date_tested).trim());
+  const inLabWork = hasTested || sampleHasLabData(sample);
+
+  if (!hasReceived) return { key: 'awaiting', label: 'AWAITING', badgeClass: 'awaiting' };
+  if (!inLabWork) return { key: 'arrived', label: 'ARRIVED', badgeClass: 'arrived' };
+  return { key: 'in_progress', label: 'IN PROGRESS', badgeClass: 'in-progress' };
+}
+
+function labWorkflowBadgeHtml(sample, style) {
+  const st = getLabWorkflowStage(sample);
+  return `<span class="badge badge-${st.badgeClass}" style="${style || 'font-size:8px;padding:1px 6px;'}">${st.label}</span>`;
+}
+
+function applyLabWorkflowBadge(el, sample) {
+  if (!el) return;
+  const st = getLabWorkflowStage(sample);
+  el.className = `badge badge-${st.badgeClass}`;
+  el.textContent = st.label;
+}
+
+function summarizeLabWorkflowStages(samples) {
+  const counts = { awaiting: 0, arrived: 0, in_progress: 0 };
+  filterSoilLabSamples(samples || [])
+    .filter(s => s.status !== 'complete')
+    .forEach(s => {
+      const st = getLabWorkflowStage(s);
+      if (st.key in counts) counts[st.key]++;
+    });
+  const parts = [];
+  if (counts.awaiting) parts.push(`${counts.awaiting} awaiting`);
+  if (counts.arrived) parts.push(`${counts.arrived} arrived`);
+  if (counts.in_progress) parts.push(`${counts.in_progress} in progress`);
+  return parts.length ? parts.join(' · ') : '0 in queue';
+}
+
 /** Strip undefined / non-finite numbers so JSONB writes succeed. */
 function sanitizeForJsonb(value) {
   if (value === undefined) return undefined;
@@ -16917,9 +16969,7 @@ function slShowBrokenSamplePanel(sample) {
   document.getElementById('sl_b_date').textContent       = sample.date_sampled || '—';
   document.getElementById('sl_b_sampled_by').textContent = sample.sampled_by || '—';
 
-  const badge = document.getElementById('sl_b_status_badge');
-  badge.className = `badge badge-${sample.status || 'pending'}`;
-  badge.textContent = (sample.status || 'PENDING').toUpperCase();
+  applyLabWorkflowBadge(document.getElementById('sl_b_status_badge'), sample);
 
   document.getElementById('sl_soil_entry').style.display = 'none';
   document.getElementById('sl_agg_entry').style.display  = 'none';
@@ -17970,7 +18020,7 @@ function renderFieldHub() {
             <div class="hub-sr-info">${s.contract||'—'} · ${s.material_type||s.agg_type||'—'}</div>
           </div>
           <div class="hub-sr-right">
-            <span class="badge badge-${s.status||'pending'}" style="font-size:8px;">${isDone?'COMPLETE':'PENDING'}</span>
+            ${isDone ? '<span class="badge badge-complete" style="font-size:8px;">COMPLETE</span>' : labWorkflowBadgeHtml(s, 'font-size:8px;')}
             ${rightCol}
           </div>
         </div>`;
@@ -18028,6 +18078,7 @@ function renderLabHub() {
         <div class="hub-sr-info">${s.contract||'—'} · ${s.material_type||'—'}${s.special_requests ? ' <span style="color:var(--red2);font-weight:700;">⚠</span>' : ''}</div>
       </div>
       <div class="hub-sr-right">
+        ${labWorkflowBadgeHtml(s, 'font-size:8px;')}
         <div class="hub-sr-date" style="color:${dateDiff>7?'var(--red2)':dateDiff>3?'var(--gold)':'var(--muted)'};">${dateDiff!=null?dateDiff+'d ago':s.date_sampled||'—'}</div>
         <div class="hub-sr-info">${s.sampled_by||''}</div>
       </div>
@@ -18266,11 +18317,11 @@ function slRenderQueue() {
   const approvalCount = labSamples.filter(s => s.dist_status === 'pending_review').length;
   if (sub) {
     if (slStatusFilter === 'archive') {
-      sub.textContent = `${archived} archived · ${pending} still pending`;
+      sub.textContent = `${archived} archived · ${summarizeLabWorkflowStages(allSamples)}`;
     } else if (slStatusFilter === 'approval') {
       sub.textContent = `${approvalCount} report${approvalCount !== 1 ? 's' : ''} awaiting approval`;
     } else {
-      sub.textContent = `${pending} pending · ${archived} archived`;
+      sub.textContent = summarizeLabWorkflowStages(allSamples) + ` · ${archived} archived`;
     }
   }
 
@@ -18298,7 +18349,7 @@ function slRenderQueue() {
       <div class="sl-qc-top">
         <span class="sl-qc-testno">${s.test_no}${corrupt ? ' <span style="color:var(--red2);font-size:9px;">(empty)</span>' : ''}</span>
         <span style="display:flex;align-items:center;gap:5px;">
-          <span class="badge badge-${s.status || 'pending'}" style="font-size:8px;padding:1px 6px;">${(s.status||'pending').toUpperCase()}</span>
+          ${labWorkflowBadgeHtml(s)}
           ${s.special_requests ? '<span style="background:rgba(255,80,80,0.18);color:var(--red2);font-family:var(--mono);font-size:8px;font-weight:700;padding:1px 6px;border-radius:3px;border:1px solid rgba(255,80,80,0.35);">⚠ REQ</span>' : ''}
           ${delBtn}
         </span>
@@ -18618,6 +18669,8 @@ async function recordLabTestStart(sampleId, source, prefetchedSample) {
   } else {
     showToast('✓ #' + sample.test_no + ' testing started — ' + timeStr, 'success');
   }
+  if (typeof slRenderQueue === 'function') slRenderQueue();
+  if (typeof renderLabHub === 'function') renderLabHub();
 }
 
 function slToggleScanner() {
@@ -18718,9 +18771,7 @@ async function slLoadSample(id, opts) {
   document.getElementById('sl_b_date').textContent       = sample.date_sampled || '—';
   document.getElementById('sl_b_sampled_by').textContent = sample.sampled_by || '—';
 
-  const badge = document.getElementById('sl_b_status_badge');
-  badge.className = `badge badge-${sample.status || 'pending'}`;
-  badge.textContent = (sample.status || 'PENDING').toUpperCase();
+  applyLabWorkflowBadge(document.getElementById('sl_b_status_badge'), sample);
 
   // Show/hide report button
   const rptBtn = document.getElementById('sl_view_report_btn');
