@@ -5708,7 +5708,11 @@ table.fc-borrow-tbl tr.fc-borrow-detail-row td{background:var(--surface);border-
             <!-- Broken / empty lab data — cannot open report -->
             <div class="sl-broken-notice" id="sl_broken_notice" style="display:none;">
               <strong>⚠ NO LAB DATA</strong><br>
-              This sample has no saved lab results (it may have been corrupted). You can remove it from the queue below, or use the 🗑 button on the queue card.
+              This sample is marked complete but has no saved test results (often from an interrupted entry). Remove it from the approval queue, or send it back to the lab tech to re-enter data.
+              <div class="btn-row" style="margin-top:12px;flex-wrap:wrap;">
+                <button type="button" class="btn btn-primary" style="font-size:10px;" onclick="slSendBackForReentry()">↩ SEND BACK FOR RE-ENTRY</button>
+                <button type="button" class="btn btn-ghost" style="font-size:10px;" onclick="slDeleteSample()">🗑 REMOVE SAMPLE</button>
+              </div>
             </div>
 
             <!-- Already-complete notice -->
@@ -5805,6 +5809,7 @@ table.fc-borrow-tbl tr.fc-borrow-detail-row td{background:var(--surface);border-
               </div>
             </div><!-- end sl_agg_entry -->
 
+            <div id="sl_entry_chrome">
             <!-- ══ REPORT FIELDS (shared) ══ -->
             <div class="card">
               <div class="card-title">Report Fields</div>
@@ -5842,6 +5847,8 @@ table.fc-borrow-tbl tr.fc-borrow-detail-row td{background:var(--surface);border-
             <div class="sl-delete-section" id="sl_delete_section">
               <button class="sl-delete-btn" onclick="slDeleteSample()">🗑 DELETE SAMPLE</button>
             </div>
+
+            </div><!-- end sl_entry_chrome -->
 
           </div><!-- end sl-entry-inner -->
         </div><!-- end sl_lab_content -->
@@ -6469,7 +6476,7 @@ table.fc-borrow-tbl tr.fc-borrow-detail-row td{background:var(--surface);border-
 // GLOBALS
 // ══════════════════════════════════════════════
 let db = null;
-const APP_BUILD = '2026.07.07-manual-lab-entry-only';
+const APP_BUILD = '2026.07.07-approval-lab-data-fix';
 const FC_CORE_ICON_SRC = 'docs/r18-reference/core-drill-icon-128.png';
 const BORELOG_ICON_SRC = 'docs/r18-reference/borelog-icon.webp';
 const BORELOG_PATH = 'docs/r18-reference/deldot-borelog.html';
@@ -14123,7 +14130,7 @@ async function applyEditsAndRegenerate() {
 // ══════════════════════════════════════════════
 async function viewReport(id) {
   const sample = await fetchSample(id, { forceFresh: true, requireLabData: true });
-  if (!sample || !sample.lab_data) { showToast('No lab data for this sample', 'error'); return; }
+  if (!sample || !sampleHasLabData(sample)) { showToast('No lab data for this sample', 'error'); return; }
   slCurrentSample = sample;
   currentSample = sample;
   if (sample.test_category === 'aggregate') {
@@ -16389,10 +16396,32 @@ function renderLB44(sample, labData, calc) {
 // ══════════════════════════════════════════════
 // HELPERS
 // ══════════════════════════════════════════════
+function normalizeLabData(ld) {
+  if (ld == null || ld === '') return null;
+  if (typeof ld === 'string') {
+    try { ld = JSON.parse(ld); } catch { return null; }
+  }
+  return (typeof ld === 'object') ? ld : null;
+}
+
+function sampleHasLabData(sample) {
+  const ld = normalizeLabData(sample?.lab_data);
+  if (!ld) return false;
+  function hasValue(v) {
+    if (v == null || v === '') return false;
+    if (typeof v === 'number') return !isNaN(v);
+    if (typeof v === 'string') return v.trim().length > 0;
+    if (typeof v === 'object') return Object.values(v).some(hasValue);
+    return false;
+  }
+  const { notes, ...rest } = ld;
+  return hasValue(rest);
+}
+
 async function fetchSample(id, opts) {
   opts = opts || {};
   const cached = (allSamples || []).find(s => s.id === id);
-  const cacheHasLab = cached?.lab_data != null && cached.lab_data !== '';
+  const cacheHasLab = sampleHasLabData(cached);
   const useCache = cached && !opts.forceFresh && (!opts.requireLabData || cacheHasLab);
   if (useCache) return cached;
 
@@ -16407,7 +16436,10 @@ async function fetchSample(id, opts) {
     showToast('Sample not found', 'error');
     return null;
   }
-  if (data) upsertAllSample(data);
+  if (data) {
+    data.lab_data = normalizeLabData(data.lab_data);
+    upsertAllSample(data);
+  }
   return data;
 }
 
@@ -16415,8 +16447,19 @@ function upsertAllSample(sample) {
   if (!sample?.id) return;
   if (!allSamples) allSamples = [];
   const i = allSamples.findIndex(s => s.id === sample.id);
-  if (i >= 0) allSamples[i] = { ...allSamples[i], ...sample };
-  else allSamples.unshift(sample);
+  if (i >= 0) {
+    const prev = allSamples[i];
+    const merged = { ...prev, ...sample };
+    if (!Object.prototype.hasOwnProperty.call(sample, 'lab_data') && prev.lab_data != null) {
+      merged.lab_data = prev.lab_data;
+    } else if (sample.lab_data != null) {
+      merged.lab_data = normalizeLabData(sample.lab_data);
+    }
+    allSamples[i] = merged;
+  } else {
+    if (sample.lab_data != null) sample.lab_data = normalizeLabData(sample.lab_data);
+    allSamples.unshift(sample);
+  }
 }
 
 /** Merge pending-approval rows from DB — in-memory list can lag behind the badge count. */
@@ -16622,6 +16665,7 @@ function slReturnToSoilLabEdit() {
 function slCanDeleteFromQueue(s) {
   if (!currentUser || !s) return false;
   if (currentUser.role === 'admin') return true;
+  if (canApproveReports() && slIsCorruptSample(s)) return true;
   const corrupt = slIsCorruptSample(s);
   const pending = !s.status || s.status === 'pending';
   return pending || corrupt;
@@ -16630,7 +16674,7 @@ function slCanDeleteFromQueue(s) {
 function slIsCorruptSample(s) {
   if (!s) return false;
   const locked = s.status === 'complete' || s.dist_status === 'pending_review';
-  return locked && !s.lab_data;
+  return locked && !sampleHasLabData(s);
 }
 
 async function slQueueDeleteSample(id, ev) {
@@ -16666,6 +16710,8 @@ function slShowBrokenSamplePanel(sample) {
 
   document.getElementById('sl_soil_entry').style.display = 'none';
   document.getElementById('sl_agg_entry').style.display  = 'none';
+  const chrome = document.getElementById('sl_entry_chrome');
+  if (chrome) chrome.style.display = 'none';
   const broken = document.getElementById('sl_broken_notice');
   if (broken) broken.style.display = 'block';
   const doneBanner = document.getElementById('sl_already_done');
@@ -16676,9 +16722,43 @@ function slShowBrokenSamplePanel(sample) {
   slUpdateDeleteButton();
 }
 
+/** Reset corrupt / empty approval samples so the tech can re-enter data. */
+async function slSendBackForReentry() {
+  if (!slCurrentSample || !db) return;
+  const target = slCurrentSample;
+  const updates = {
+    status: 'pending',
+    dist_status: null,
+    dist_submitted_by: null,
+    dist_approved_by: null,
+    dist_approved_at: null,
+    dist_rejected_reason: null,
+    lab_data: null,
+  };
+  const { error } = await db.from('samples').update(updates).eq('id', target.id);
+  if (error) { showToast('Could not reset sample: ' + error.message, 'error'); return; }
+  logSampleHistory({
+    sampleId: target.id,
+    testNo: target.test_no,
+    action: 'sent_back_for_reentry',
+    details: { reason: 'missing_lab_data' },
+  });
+  const updated = { ...target, ...updates };
+  slCurrentSample = updated;
+  currentSample = updated;
+  upsertAllSample(updated);
+  slRenderQueue();
+  refreshApprovalBadge();
+  showToast(`Sample ${target.test_no} sent back for lab re-entry`, 'success');
+  slHideBrokenNotice();
+  await slLoadSample(target.id);
+}
+
 function slHideBrokenNotice() {
   const broken = document.getElementById('sl_broken_notice');
   if (broken) broken.style.display = 'none';
+  const chrome = document.getElementById('sl_entry_chrome');
+  if (chrome) chrome.style.display = '';
 }
 
 function slUpdateDeleteButton() {
@@ -17909,9 +17989,10 @@ function slGoToApprovalQueue() {
     const btn = document.getElementById('sl-filter-approval');
     if (btn) btn.classList.add('active');
     slRenderQueue();
-    const firstPending = (allSamples || []).find(s =>
+    const pending = (allSamples || []).filter(s =>
       s.dist_status === 'pending_review' && canApproveThisReport(s)
     );
+    const firstPending = pending.find(sampleHasLabData) || pending[0];
     if (firstPending) await slOpenPendingReport(firstPending.id);
   })();
 }
@@ -18360,12 +18441,13 @@ let slEditingComplete = false;
 // Open a completed / pending-approval sample on its report (approval queue, etc.)
 async function slOpenPendingReport(id) {
   slEditingComplete = false;
+  await slRefreshPendingApprovalSamples();
   const sample = await fetchSample(id, { forceFresh: true, requireLabData: true });
   if (!sample) return;
   slCurrentSample = sample;
   slRenderQueue();
-  if (!sample.lab_data) {
-    showToast('No lab data on this sample — try refreshing the page', 'error');
+  if (!sampleHasLabData(sample)) {
+    showToast('No lab data on this sample — send back for re-entry or remove it', 'error');
     slShowBrokenSamplePanel(sample);
     return;
   }
@@ -18387,15 +18469,15 @@ async function slLoadSample(id, opts) {
 
   const isLockedComplete = sample.status === 'complete' || sample.dist_status === 'pending_review';
   if (!opts.edit && isLockedComplete) {
-    if (!sample.lab_data) {
+    if (!sampleHasLabData(sample)) {
       sample = await fetchSample(id, { forceFresh: true, requireLabData: true }) || sample;
       slCurrentSample = sample;
     }
-    if (sample.lab_data) {
+    if (sampleHasLabData(sample)) {
       await slViewReport();
       return;
     }
-    showToast('No lab data on this sample — you can delete it from the queue', 'error');
+    showToast('No lab data on this sample — send back for re-entry or remove it', 'error');
     slShowBrokenSamplePanel(sample);
     return;
   }
@@ -18423,12 +18505,12 @@ async function slLoadSample(id, opts) {
 
   // Show/hide report button
   const rptBtn = document.getElementById('sl_view_report_btn');
-  if (rptBtn) rptBtn.style.display = sample.lab_data ? '' : 'none';
+  if (rptBtn) rptBtn.style.display = sampleHasLabData(sample) ? '' : 'none';
   slUpdateDeleteButton();
 
   // Already-complete notice
   const doneBanner = document.getElementById('sl_already_done');
-  if (doneBanner) doneBanner.style.display = sample.lab_data ? 'flex' : 'none';
+  if (doneBanner) doneBanner.style.display = sampleHasLabData(sample) ? 'flex' : 'none';
 
   // Rejection banner
   const rejBanner  = document.getElementById('sl_rejection_banner');
@@ -18686,6 +18768,7 @@ function slGenerateFromManual() {
 
 // ── Queue for approval or email immediately ────────────────────
 async function slHandleDistribution(sample) {
+  if (!sampleHasLabData(sample)) return;
   const proj = (allProjects || []).find(p =>
     p.contract && sample?.contract &&
     p.contract.toLowerCase() === sample.contract.toLowerCase()
@@ -18804,7 +18887,7 @@ async function slGenerateAggReport() {
 async function slViewReport() {
   if (!slCurrentSample) return;
   const fresh = await fetchSample(slCurrentSample.id, { forceFresh: true, requireLabData: true });
-  if (!fresh || !fresh.lab_data) { showToast('No lab data found', 'error'); return; }
+  if (!fresh || !sampleHasLabData(fresh)) { showToast('No lab data found', 'error'); return; }
   slCurrentSample = fresh;
   if (fresh.test_category === 'aggregate') {
     const aggCalc = calculateAggregate(fresh.lab_data.sieve_data, fresh.lab_data.agg_type || fresh.agg_type);
