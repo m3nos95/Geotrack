@@ -18481,8 +18481,12 @@ let slEditingComplete = false;
 async function slOpenPendingReport(id) {
   slEditingComplete = false;
   await slRefreshPendingApprovalSamples();
-  const sample = await fetchSample(id, { forceFresh: true, requireLabData: true });
+  let sample = await fetchSample(id, { forceFresh: true, requireLabData: true });
   if (!sample) return;
+  if (!sampleHasLabData(sample) && sample.status === 'complete') {
+    await new Promise(r => setTimeout(r, 400));
+    sample = await fetchSample(id, { forceFresh: true, requireLabData: true }) || sample;
+  }
   slCurrentSample = sample;
   slRenderQueue();
   if (!sampleHasLabData(sample)) {
