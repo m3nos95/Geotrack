@@ -6550,7 +6550,7 @@ table.fc-borrow-tbl tr.fc-borrow-detail-row td{background:var(--surface);border-
 // GLOBALS
 // ══════════════════════════════════════════════
 let db = null;
-const APP_BUILD = '2026.07.07-tesseract-wasm-path';
+const APP_BUILD = '2026.07.07-ocr-review-before-generate';
 const FC_CORE_ICON_SRC = 'docs/r18-reference/core-drill-icon-128.png';
 const BORELOG_ICON_SRC = 'docs/r18-reference/borelog-icon.webp';
 const BORELOG_PATH = 'docs/r18-reference/deldot-borelog.html';
@@ -14483,6 +14483,95 @@ async function applyEditsAndRegenerate() {
   showToast('Report updated with corrected values ✓', 'success');
 }
 
+// Prefill Lab Entry manual fields (m_* IDs) from OCR parse result
+function labPrefillFromOcr(parsed) {
+  if (!parsed) return;
+  function se(id, val) { const el = document.getElementById(id); if (el && val != null && val !== '') el.value = val; }
+  const ll  = parsed.liquid_limit  || {};
+  const pl  = parsed.plastic_limit || {};
+  const org = parsed.organic       || {};
+  const sv  = parsed.sieves        || {};
+  function readSv(k, legacy) {
+    const vv = sv[k] != null ? sv[k] : (legacy ? sv[legacy] : null);
+    if (vv == null) return null;
+    return typeof vv === 'object' ? vv.wt_retained : vv;
+  }
+  se('m_total_wt',  parsed.total_sample_wt);
+  se('m_wash_wt',   parsed.wash_sample_wt);
+  se('m_ll_bottle', ll.bottle_no);
+  se('m_ll_wet',    ll.wt_wet_soil_bottle);
+  se('m_ll_dry',    ll.wt_dry_bottle);
+  se('m_ll_tare',   ll.wt_bottle);
+  se('m_ll_blows',  ll.blows);
+  se('m_pl_bottle', pl.bottle_no);
+  se('m_pl_wet',    pl.wt_wet_soil_bottle);
+  se('m_pl_dry',    pl.wt_dry_bottle);
+  se('m_pl_tare',   pl.wt_bottle);
+  se('m_org_bottle',org.bottle_no);
+  se('m_org_pre',   org.wt_wet_soil_bottle);
+  se('m_org_post',  org.wt_dry_bottle);
+  se('m_org_tare',  org.wt_bottle);
+  se('m_s_in2',   readSv('2in',     'in2'));
+  se('m_s_in1',   readSv('1in',     'in1'));
+  se('m_s_in38',  readSv('0.375in', 'in38'));
+  se('m_s_no4',   readSv('no4'));
+  se('m_s_no10',  readSv('no10'));
+  se('m_s_no40',  readSv('no40'));
+  se('m_s_no200', readSv('no200'));
+}
+
+// Apply OCR result — auto-generate only when enough fields read; else prefill manual form
+async function slApplyOcrScanResult(parsed, st) {
+  const score = (window.LabFormOCR && LabFormOCR.scoreFieldControlSheet)
+    ? LabFormOCR.scoreFieldControlSheet(parsed) : 0;
+  const hasTotal = !!(parsed && parsed.total_sample_wt);
+  const minScore = 4; // need total + at least one other section
+
+  if (!hasTotal || score < minScore) {
+    if (slCurrentSample) {
+      slPrefill(parsed, false, slCurrentSample);
+      slSetMode('manual');
+    }
+    const msg = !hasTotal
+      ? '⚠ Could not read sample weights — switch to Manual Data Entry and type values'
+      : `⚠ Scan read partial data (score ${score}) — review in Manual Data Entry, then Generate`;
+    if (st) st(msg);
+    showToast('Handwriting scan is limited — review values in Manual Data Entry before generating', 'info');
+    return false;
+  }
+
+  const warn = validateOcrSieveData(parsed);
+  if (st) st(warn || '✓ Scan complete — saving & generating report…');
+  await slFinishLab(parsed);
+  return true;
+}
+
+async function applyLabOcrScanResult(parsed, statusEl) {
+  const score = (window.LabFormOCR && LabFormOCR.scoreFieldControlSheet)
+    ? LabFormOCR.scoreFieldControlSheet(parsed) : 0;
+  const hasTotal = !!(parsed && parsed.total_sample_wt);
+  const minScore = 4;
+
+  if (!hasTotal || score < minScore) {
+    lastLabData = parsed;
+    currentLabMode = 'manual';
+    setLabMode('manual');
+    if (parsed) labPrefillFromOcr(parsed);
+    const msg = !hasTotal
+      ? '⚠ Could not read sample weights — use Manual Data Entry'
+      : `⚠ Partial scan (score ${score}) — review in Manual Data Entry`;
+    if (statusEl) statusEl.textContent = msg;
+    showToast('Handwriting scan is limited — review values manually before generating', 'info');
+    return false;
+  }
+
+  const warn = validateOcrSieveData(parsed);
+  if (statusEl) statusEl.textContent = warn || '✓ Scan complete — generating report…';
+  parsed.notes = 'Photo OCR';
+  await finishLabGeneration(parsed);
+  return true;
+}
+
 // Validate OCR-read sieve weights (catches common column-shift errors)
 function validateOcrSieveData(sieveData) {
   const sv = sieveData.sieves || {};
@@ -14527,13 +14616,8 @@ async function analyzeLabForm() {
       labImageName
     );
     if (!parsed) throw new Error('Could not read lab form');
-
-    const warn = validateOcrSieveData(parsed);
-    if (warn) statusEl.textContent = warn;
-    else statusEl.textContent = '✓ Scan complete — generating report…';
-
     parsed.notes = 'Photo OCR';
-    await finishLabGeneration(parsed);
+    await applyLabOcrScanResult(parsed, statusEl);
 
   } catch (e) {
     const msg = formatScanError(e);
@@ -19235,10 +19319,8 @@ async function slAnalyzeSoilPhoto() {
     );
     if (!parsed) throw new Error('Could not read lab form');
 
-    const warn = validateOcrSieveData(parsed);
     parsed.notes = 'Photo OCR — LabTrak soil lab';
-    st(warn || '✓ Scan complete — saving & generating report…');
-    await slFinishLab(parsed);
+    await slApplyOcrScanResult(parsed, st);
 
   } catch(e) {
     const msg = formatScanError(e);

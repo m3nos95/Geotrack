@@ -112,7 +112,7 @@
           logger,
         });
         await worker.setParameters({
-          tessedit_pageseg_mode: '6',
+          tessedit_pageseg_mode: '3', // fully automatic — better for full form photos
           preserve_interword_spaces: '1',
         });
         return worker;
@@ -152,7 +152,7 @@
     const seen = new Set();
     function add(w) {
       if (!w || !w.text || !String(w.text).trim()) return;
-      if (w.confidence != null && w.confidence <= 15) return;
+      if (w.confidence != null && w.confidence < 0) return; // keep low-confidence handwriting
       const text = String(w.text).trim();
       const key = text + '|' + (w.bbox?.x0 || 0) + '|' + (w.bbox?.y0 || 0);
       if (seen.has(key)) return;
@@ -248,29 +248,60 @@
 
   function findTestColumn(words, testNo, width, height) {
     const variants = testNoVariants(testNo);
-    const header = words.filter((w) => wordMidY(w) < height * 0.18);
+    // Search header band AND full page for test number (handwriting may not land in top 18%)
+    const bands = [
+      words.filter((w) => wordMidY(w) < height * 0.22),
+      words,
+    ];
     let best = null;
     let bestScore = 0;
-    for (const w of header) {
-      const norm = normalizeText(w.text).replace(/\s/g, '');
-      for (const v of variants) {
-        const vn = v.replace(/\s/g, '').toUpperCase();
-        if (!vn) continue;
-        let score = 0;
-        if (norm === vn) score = 100;
-        else if (norm.includes(vn) || vn.includes(norm)) score = 70;
-        else if (digitsMatch(norm, vn)) score = 55;
-        if (score > bestScore) {
-          bestScore = score;
-          best = w;
+    for (const band of bands) {
+      for (const w of band) {
+        const norm = normalizeText(w.text).replace(/\s/g, '');
+        for (const v of variants) {
+          const vn = v.replace(/\s/g, '').toUpperCase();
+          if (!vn) continue;
+          let score = 0;
+          if (norm === vn) score = 100;
+          else if (norm.includes(vn) || vn.includes(norm)) score = 70;
+          else if (digitsMatch(norm, vn)) score = 55;
+          if (score > bestScore) {
+            bestScore = score;
+            best = w;
+          }
         }
       }
+      if (best) break;
     }
     if (best) return wordCenterX(best);
-    // Fallback: rightmost numeric header in top band (often last column)
-    const nums = header.filter((w) => /\d{3,}/.test(w.text));
-    if (nums.length) return wordCenterX(nums[nums.length - 1]);
+
+    // Fallback: column with the most numeric tokens (often the filled-in sample column)
+    const cols = clusterNumericColumns(words, width);
+    if (cols.length) return cols[cols.length - 1].centerX;
+
     return width * 0.72;
+  }
+
+  function clusterNumericColumns(words, width) {
+    const nums = words
+      .map((w) => ({ x: wordCenterX(w), n: parseOcrNumber(w.text) }))
+      .filter((p) => p.n != null);
+    if (!nums.length) return [];
+    nums.sort((a, b) => a.x - b.x);
+    const gap = Math.max(40, width * 0.07);
+    const cols = [];
+    let cur = { centerX: nums[0].x, count: 1, sumX: nums[0].x };
+    for (let i = 1; i < nums.length; i++) {
+      if (nums[i].x - nums[i - 1].x > gap) {
+        cols.push({ centerX: cur.sumX / cur.count, count: cur.count });
+        cur = { centerX: nums[i].x, count: 1, sumX: nums[i].x };
+      } else {
+        cur.count++;
+        cur.sumX += nums[i].x;
+      }
+    }
+    cols.push({ centerX: cur.sumX / cur.count, count: cur.count });
+    return cols.sort((a, b) => a.centerX - b.centerX);
   }
 
   function digitsMatch(a, b) {
@@ -280,7 +311,7 @@
   }
 
   function columnTolerance(width) {
-    return Math.max(45, width * 0.09);
+    return Math.max(55, width * 0.12);
   }
 
   function wordsInColumn(words, colX, tol) {
@@ -458,6 +489,99 @@
     return result;
   }
 
+  function mergePreferNonNull(primary, fallback) {
+    if (!fallback) return primary;
+    const out = { ...primary };
+    if (!out.total_sample_wt && fallback.total_sample_wt) out.total_sample_wt = fallback.total_sample_wt;
+    if (!out.wash_sample_wt && fallback.wash_sample_wt) out.wash_sample_wt = fallback.wash_sample_wt;
+    ['liquid_limit', 'plastic_limit', 'organic'].forEach((k) => {
+      out[k] = out[k] || {};
+      const fb = fallback[k] || {};
+      Object.keys(fb).forEach((f) => {
+        if ((out[k][f] == null || out[k][f] === '') && fb[f] != null && fb[f] !== '') out[k][f] = fb[f];
+      });
+    });
+    out.sieves = { ...(fallback.sieves || {}), ...(out.sieves || {}) };
+    Object.keys(out.sieves).forEach((k) => {
+      if (!out.sieves[k] && fallback.sieves && fallback.sieves[k]) out.sieves[k] = fallback.sieves[k];
+    });
+    return out;
+  }
+
+  /** Count meaningful fields read — mirrors what Claude prompts expected. */
+  function scoreFieldControlSheet(parsed) {
+    if (!parsed) return 0;
+    let score = 0;
+    const total = parseFloat(parsed.total_sample_wt);
+    if (total >= 500 && total <= 2500) score += 3;
+    else if (total > 0) score += 1;
+    const wash = parseFloat(parsed.wash_sample_wt);
+    if (wash >= 50 && wash <= 300) score += 1;
+    const ll = parsed.liquid_limit || {};
+    const pl = parsed.plastic_limit || {};
+    if (ll.wt_wet_soil_bottle || ll.wt_dry_bottle || ll.bottle_no) score += 1;
+    if (pl.wt_wet_soil_bottle || pl.wt_dry_bottle || pl.bottle_no) score += 1;
+    const sv = parsed.sieves || {};
+    Object.values(sv).forEach((v) => { if (v != null && parseFloat(v) > 0) score += 0.5; });
+    return Math.round(score * 2) / 2;
+  }
+
+  /** Positional fallback when row labels are not detected — uses column number stack. */
+  function parseFromColumnNumbers(colWords) {
+    const items = colWords
+      .map((w) => ({ y: wordMidY(w), n: parseOcrNumber(w.text), raw: w.text }))
+      .filter((p) => p.n != null)
+      .sort((a, b) => a.y - b.y);
+
+    const total = items.find((p) => p.n >= 800 && p.n <= 2200)?.n ?? null;
+    const wash  = items.find((p) => p.n >= 70 && p.n <= 280)?.n ?? null;
+
+    const sieveKeys = ['2in', '1in', '0.375in', 'no4', 'no10', 'no40', 'no200'];
+    const sieves = {};
+    sieveKeys.forEach((k) => { sieves[k] = 0; });
+
+    const mid = items.filter((p) => p.n > 0 && p.n < 800 && p !== items.find((x) => x.n === wash));
+    // Assign increasing sieve cumulatives in vertical order (skip wash-sized values)
+    const sieveVals = mid
+      .filter((p) => !(wash && Math.abs(p.n - wash) < 0.5))
+      .map((p) => p.n);
+    sieveKeys.forEach((k, i) => {
+      if (sieveVals[i] != null) sieves[k] = sieveVals[i];
+    });
+
+    const bottles = colWords
+      .filter((w) => isBottleToken(w.text))
+      .sort((a, b) => wordMidY(a) - wordMidY(b))
+      .map((w) => parseBottleNo(w.text));
+
+    const topNums = items.filter((p) => p.y < (items[items.length - 1]?.y || 0) * 0.45).map((p) => p.n);
+
+    return {
+      total_sample_wt: total,
+      wash_sample_wt: wash,
+      liquid_limit: {
+        bottle_no: bottles[0] || '',
+        wt_wet_soil_bottle: topNums[0] ?? null,
+        wt_dry_bottle: topNums[1] ?? null,
+        wt_bottle: topNums[2] ?? null,
+        blows: topNums[3] ?? null,
+      },
+      plastic_limit: {
+        bottle_no: bottles[1] || '',
+        wt_wet_soil_bottle: topNums[4] ?? null,
+        wt_dry_bottle: topNums[5] ?? null,
+        wt_bottle: topNums[6] ?? null,
+      },
+      organic: {
+        bottle_no: bottles[2] || '',
+        wt_wet_soil_bottle: topNums[7] ?? null,
+        wt_dry_bottle: topNums[8] ?? null,
+        wt_bottle: topNums[9] ?? null,
+      },
+      sieves,
+    };
+  }
+
   function mergeSoilResults(atterberg, sieve) {
     return {
       total_sample_wt: sieve.total_sample_wt || atterberg.total_sample_wt,
@@ -471,6 +595,9 @@
 
   async function readFieldControlSheet(b64, mediaType, testNo, onProgress, fileName) {
     const { words, width, height } = await ocrImage(b64, mediaType, onProgress, fileName);
+    if (!words.length) {
+      throw new Error('No text detected — use a flat, well-lit photo of the full form');
+    }
     if (onProgress) onProgress('⏳ Parsing Atterberg values…', 0.9);
     const colX = findTestColumn(words, testNo, width, height);
     const tol = columnTolerance(width);
@@ -478,7 +605,14 @@
     const atterberg = parseAtterbergFromColumn(colWords, words, width, height);
     if (onProgress) onProgress('⏳ Parsing sieve weights…', 0.95);
     const sieve = parseSieveFromColumn(colWords, words, width, height);
-    return mergeSoilResults(atterberg, sieve);
+    let parsed = mergeSoilResults(atterberg, sieve);
+
+    // Fallback: positional column parse when label matching found little
+    if (scoreFieldControlSheet(parsed) < 3) {
+      const fallback = parseFromColumnNumbers(colWords.length ? colWords : words);
+      parsed = mergePreferNonNull(parsed, fallback);
+    }
+    return parsed;
   }
 
   function labelPatternsForKey(key, label) {
@@ -558,6 +692,7 @@
   global.LabFormOCR = {
     readFieldControlSheet,
     readAggregateSieveCard,
+    scoreFieldControlSheet,
     _ocrImage: ocrImage,
   };
 })(typeof window !== 'undefined' ? window : globalThis);
