@@ -5775,7 +5775,7 @@ table.fc-borrow-tbl tr.fc-borrow-detail-row td{background:var(--surface);border-
                        ondragleave="this.classList.remove('drag')"
                        ondrop="event.preventDefault();this.classList.remove('drag');slHandleImage(event.dataTransfer.files[0])">
                     <input type="file" id="sl_image_input" accept="image/*" style="display:none;" onchange="slHandleImage(this.files[0])">
-                    <p>📁 Drop or tap to browse a photo<br><span style="font-size:11px;">JPG, PNG, HEIC — or use Scan below to open the camera</span></p>
+                    <p>📋 Drop or tap to upload photo of handwritten lab sheet<br><span style="font-size:11px;">JPG, PNG, HEIC accepted</span></p>
                     <img id="sl_image_thumb" style="display:none;max-width:100%;max-height:200px;border-radius:6px;margin-top:10px;">
                   </div>
                 </div>
@@ -5846,7 +5846,7 @@ table.fc-borrow-tbl tr.fc-borrow-detail-row td{background:var(--surface);border-
                        ondragleave="this.classList.remove('drag')"
                        ondrop="event.preventDefault();this.classList.remove('drag');slHandleAggImage(event.dataTransfer.files[0])">
                     <input type="file" id="sl_agg_image_input" accept="image/*" style="display:none;" onchange="slHandleAggImage(this.files[0])">
-                    <p>📁 Drop or tap to browse a photo<br><span style="font-size:11px;">Or use Scan below to open the camera</span></p>
+                    <p>📋 Photo of the back of the aggregate sample card<br><span style="font-size:11px;">Showing sieve labels and retained weights</span></p>
                     <img id="sl_agg_image_thumb" style="display:none;max-width:100%;max-height:200px;border-radius:6px;margin-top:10px;">
                   </div>
                 </div>
@@ -6532,7 +6532,7 @@ table.fc-borrow-tbl tr.fc-borrow-detail-row td{background:var(--surface);border-
 // GLOBALS
 // ══════════════════════════════════════════════
 let db = null;
-const APP_BUILD = '2026.07.07-photo-scan-camera';
+const APP_BUILD = '2026.07.07-soil-lab-upload-only';
 const FC_CORE_ICON_SRC = 'docs/r18-reference/core-drill-icon-128.png';
 const BORELOG_ICON_SRC = 'docs/r18-reference/borelog-icon.webp';
 const BORELOG_PATH = 'docs/r18-reference/deldot-borelog.html';
@@ -11277,7 +11277,7 @@ const HELP_FIELD_REGISTRY = {
   fc_core_gps: { title: 'GPS coordinates', body: 'Tap to capture device GPS. Coordinates appear on the admin map when synced.' },
   fc_core_remarks: { title: 'Core remarks', body: 'Optional notes — damage, water, unusual conditions.' },
   sl_search: { title: 'Queue search', body: 'Filter the lab queue by test number, contract, location, or material without leaving the module.' },
-  sl_image_input: { title: 'Browse photo', body: 'Tap to browse a saved photo from your device. Use Take Photo & Scan below to open the camera instead.' },
+  sl_image_input: { title: 'Photo upload', body: 'Upload a photo of the field sample card. On-device OCR reads Atterberg and sieve values into the form.' },
   sl_ll_bottle: { title: 'Liquid limit bottle', body: 'Bottle ID used for the LL moisture test (cup/bottle label on bench sheet).' },
   sl_ll_wet: { title: 'LL — wet soil + bottle', body: 'Mass of wet soil and bottle before oven drying (grams).' },
   sl_ll_dry: { title: 'LL — dry soil + bottle', body: 'Mass after drying to constant weight (grams).' },
@@ -14076,12 +14076,10 @@ function refreshLabScanButtonLabels() {
   if (slBtn && slCurrentSample) {
     if (slCurrentSample.test_category === 'aggregate') {
       const aggAi = document.getElementById('sl_agg_tab_ai')?.classList.contains('active');
-      slBtn.textContent = aggAi
-        ? (slAggImageB64 ? '📷 SCAN CARD & GENERATE' : '📷 TAKE PHOTO & SCAN CARD')
-        : '⚖️ GENERATE AGGREGATE REPORT';
+      slBtn.textContent = aggAi ? '📷 SCAN CARD & GENERATE' : '⚖️ GENERATE AGGREGATE REPORT';
     } else if (slCurrentMode === 'ai') {
-      slBtn.textContent = slImageB64 ? '📷 SCAN & GENERATE LB-44' : '📷 TAKE PHOTO & SCAN';
-    } else if (slCurrentSample.test_category !== 'aggregate') {
+      slBtn.textContent = '📷 SCAN & GENERATE LB-44';
+    } else {
       slBtn.textContent = '⌨️ GENERATE LB-44 FROM MANUAL DATA';
     }
   }
@@ -19002,18 +19000,10 @@ function slSubmitEntry() {
   if (!slCurrentSample) { showToast('No sample loaded', 'error'); return; }
   if (slCurrentSample.test_category === 'aggregate') {
     const aggMode = document.getElementById('sl_agg_tab_ai')?.classList.contains('active') ? 'ai' : 'manual';
-    if (aggMode === 'ai') {
-      labScanOrCapture('sl_agg', () => slAnalyzeAggPhoto());
-      return;
-    }
-    slGenerateAggReport();
+    aggMode === 'ai' ? slAnalyzeAggPhoto() : slGenerateAggReport();
     return;
   }
-  if (slCurrentMode === 'ai') {
-    labScanOrCapture('sl', () => slAnalyzeSoilPhoto());
-  } else {
-    slGenerateFromManual();
-  }
+  slCurrentMode === 'ai' ? slAnalyzeSoilPhoto() : slGenerateFromManual();
 }
 
 // ── Soil photo scan (free on-device OCR) ─────────────────────────
