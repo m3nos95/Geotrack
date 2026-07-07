@@ -68,7 +68,6 @@ _loadScript(
   _scriptLoaded, _scriptFailed('html2pdf')
 );
 </script>
-<script src="js/lab-form-ocr.js" defer></script>
 <!-- ── End offline-safe script loader ───────────────────────── -->
 
 <style>
@@ -1431,15 +1430,12 @@ nav:not(#r18-nav), .nav-top-row { display: none !important; }
 }
 .fc-core-photo-btn:active { transform:scale(0.98); }
 #fc_core_photo_preview { width:72px; height:72px; object-fit:cover; border-radius:8px; border:1px solid rgba(168,85,247,0.45); }
-#fc_core_camera_overlay,
-#lab_scan_camera_overlay {
+#fc_core_camera_overlay {
   display:none; position:fixed; inset:0; z-index:10050;
   background:#000; flex-direction:column;
 }
-#fc_core_camera_overlay.open,
-#lab_scan_camera_overlay.open { display:flex; }
-#fc_core_camera_video,
-#lab_scan_camera_video { flex:1; width:100%; object-fit:cover; background:#111; }
+#fc_core_camera_overlay.open { display:flex; }
+#fc_core_camera_video { flex:1; width:100%; object-fit:cover; background:#111; }
 .fc-core-camera-bar {
   display:flex; align-items:center; justify-content:space-between; gap:12px;
   padding:16px 18px calc(16px + env(safe-area-inset-bottom));
@@ -4968,29 +4964,11 @@ table.fc-borrow-tbl tr.fc-borrow-detail-row td{background:var(--surface);border-
 
       <div id="labForm" style="display:none;">
 
-        <!-- MODE TABS -->
-        <div class="lab-mode-tabs">
-          <button class="lab-mode-tab active" id="modeTabAI" onclick="setLabMode('ai')">📷 PHOTO SCAN</button>
-          <button class="lab-mode-tab" id="modeTabManual" onclick="setLabMode('manual')">⌨️ MANUAL DATA ENTRY</button>
-        </div>
-
         <!-- SOIL LAB PANEL -->
         <div id="soilLabPanel">
 
-        <!-- AI MODE -->
-        <div id="aiModePanel">
-          <div class="card">
-            <div class="card-title">Lab Form Image</div>
-            <div class="upload-zone" id="labDropZone">
-              <input type="file" id="labImageInput" accept="image/*">
-              <p>📁 Drop or tap to browse a photo<br><span style="font-size:11px;">JPG, PNG, HEIC — or use Scan below to take a photo</span></p>
-              <img class="thumb" id="labThumb">
-            </div>
-          </div>
-        </div>
-
-        <!-- MANUAL MODE -->
-        <div id="manualModePanel" style="display:none;">
+        <!-- MANUAL DATA ENTRY -->
+        <div id="manualModePanel">
           <div class="card">
             <div class="card-title">Atterberg Limits — Liquid Limit (T-89)</div>
             <div class="manual-grid five">
@@ -5049,25 +5027,7 @@ table.fc-borrow-tbl tr.fc-borrow-detail-row td{background:var(--surface);border-
         <!-- AGGREGATE LAB PANEL -->
         <div id="aggLabPanel" style="display:none;">
 
-          <!-- Aggregate mode tabs -->
-          <div class="lab-mode-tabs" id="aggModeTabs">
-            <button class="lab-mode-tab active" id="aggTabManual" onclick="setAggMode('manual')">⌨️ MANUAL ENTRY</button>
-            <button class="lab-mode-tab" id="aggTabAI" onclick="setAggMode('ai')">📷 PHOTO SCAN (CARD BACK)</button>
-          </div>
-
-          <!-- Aggregate AI photo mode -->
-          <div id="aggAIPanel" style="display:none;">
-            <div class="card">
-              <div class="card-title">Upload Photo of Sieve Card</div>
-              <div class="upload-zone" id="aggDropZone">
-                <input type="file" id="aggImageInput" accept="image/*">
-                <p>📁 Drop or tap to browse a photo<br><span style="font-size:11px;">Or use Scan below to open the camera</span></p>
-                <img class="thumb" id="aggThumb">
-              </div>
-            </div>
-          </div>
-
-          <!-- Aggregate manual mode -->
+          <!-- Aggregate manual entry -->
           <div id="aggManualPanel">
             <div class="card">
               <div class="card-title">Sieve Weights — Cumulative Retained</div>
@@ -5107,7 +5067,7 @@ table.fc-borrow-tbl tr.fc-borrow-detail-row td{background:var(--surface);border-
         </div>
 
         <div class="btn-row">
-          <button class="btn btn-success" id="labAnalyzeBtn" onclick="submitLabEntry()">🔬 GENERATE LB-44</button>
+          <button class="btn btn-success" id="labAnalyzeBtn" onclick="submitLabEntry()">⌨️ GENERATE REPORT</button>
         </div>
         <div style="font-family:var(--mono);font-size:11px;color:var(--muted);margin-top:8px;" id="labStatus"></div>
       </div>
@@ -5118,7 +5078,7 @@ table.fc-borrow-tbl tr.fc-borrow-detail-row td{background:var(--surface);border-
   <div class="edit-overlay" id="editOverlay">
     <div class="edit-panel">
       <h2>EDIT / OVERRIDE VALUES</h2>
-      <p>Correct any AI misread values below. All calculations update automatically when you regenerate.</p>
+      <p>Correct any misread values below. All calculations update automatically when you regenerate.</p>
 
       <div class="manual-section">
         <div class="manual-section-title">Liquid Limit (T-89)</div>
@@ -5777,30 +5737,8 @@ table.fc-borrow-tbl tr.fc-borrow-detail-row td{background:var(--surface);border-
             <!-- ══ SOIL ENTRY ══ -->
             <div id="sl_soil_entry">
 
-              <!-- Mode tabs -->
-              <div class="lab-mode-tabs" style="margin-bottom:14px;">
-                <button class="lab-mode-tab active" id="sl_tab_ai" onclick="slSetMode('ai')">📷 PHOTO SCAN</button>
-                <button class="lab-mode-tab" id="sl_tab_manual" onclick="slSetMode('manual')">⌨️ MANUAL DATA ENTRY</button>
-              </div>
-
-              <!-- AI mode -->
-              <div id="sl_ai_panel">
-                <div class="card">
-                  <div class="card-title">Lab Form Image</div>
-                  <div class="upload-zone" id="sl_drop_zone"
-                       onclick="document.getElementById('sl_image_input').click()"
-                       ondragover="event.preventDefault();this.classList.add('drag')"
-                       ondragleave="this.classList.remove('drag')"
-                       ondrop="event.preventDefault();this.classList.remove('drag');slHandleImage(event.dataTransfer.files[0])">
-                    <input type="file" id="sl_image_input" accept="image/jpeg,image/png,image/webp,image/gif" style="display:none;" onchange="slHandleImage(this.files[0])">
-                    <p>📋 Drop or tap to upload photo of handwritten lab sheet<br><span style="font-size:11px;">JPG, PNG, HEIC accepted</span></p>
-                    <img id="sl_image_thumb" style="display:none;max-width:100%;max-height:200px;border-radius:6px;margin-top:10px;">
-                  </div>
-                </div>
-              </div>
-
-              <!-- Manual mode -->
-              <div id="sl_manual_panel" style="display:none;">
+              <!-- Manual data entry -->
+              <div id="sl_manual_panel">
                 <div class="card">
                   <div class="card-title">Atterberg Limits — Liquid Limit (T-89)</div>
                   <div class="manual-grid five">
@@ -5850,26 +5788,7 @@ table.fc-borrow-tbl tr.fc-borrow-detail-row td{background:var(--surface);border-
 
             <!-- ══ AGGREGATE ENTRY ══ -->
             <div id="sl_agg_entry" style="display:none;">
-              <div class="lab-mode-tabs" style="margin-bottom:14px;">
-                <button class="lab-mode-tab active" id="sl_agg_tab_manual" onclick="slSetAggMode('manual')">⌨️ MANUAL SIEVE ENTRY</button>
-                <button class="lab-mode-tab" id="sl_agg_tab_ai" onclick="slSetAggMode('ai')">📷 PHOTO SCAN (CARD BACK)</button>
-              </div>
-              <!-- Aggregate AI -->
-              <div id="sl_agg_ai_panel" style="display:none;">
-                <div class="card">
-                  <div class="card-title">Upload Photo of Sieve Card Back</div>
-                  <div class="upload-zone" id="sl_agg_drop_zone"
-                       onclick="document.getElementById('sl_agg_image_input').click()"
-                       ondragover="event.preventDefault();this.classList.add('drag')"
-                       ondragleave="this.classList.remove('drag')"
-                       ondrop="event.preventDefault();this.classList.remove('drag');slHandleAggImage(event.dataTransfer.files[0])">
-                    <input type="file" id="sl_agg_image_input" accept="image/*" style="display:none;" onchange="slHandleAggImage(this.files[0])">
-                    <p>📋 Photo of the back of the aggregate sample card<br><span style="font-size:11px;">Showing sieve labels and retained weights</span></p>
-                    <img id="sl_agg_image_thumb" style="display:none;max-width:100%;max-height:200px;border-radius:6px;margin-top:10px;">
-                  </div>
-                </div>
-              </div>
-              <!-- Aggregate manual -->
+              <!-- Aggregate manual entry -->
               <div id="sl_agg_manual_panel">
                 <div class="card">
                   <div class="card-title">Sieve Weights — Cumulative Retained</div>
@@ -5914,7 +5833,7 @@ table.fc-borrow-tbl tr.fc-borrow-detail-row td{background:var(--surface);border-
 
             <!-- Submit row -->
             <div class="btn-row">
-              <button class="btn btn-success" id="sl_analyze_btn" onclick="slSubmitEntry()">🔬 ANALYZE &amp; GENERATE LB-44</button>
+              <button class="btn btn-success" id="sl_analyze_btn" onclick="slSubmitEntry()">⌨️ GENERATE REPORT</button>
               <button class="btn btn-ghost" onclick="slClearEntry()">CLEAR FORM</button>
             </div>
             <div style="font-family:var(--mono);font-size:11px;color:var(--muted);margin-top:8px;" id="sl_status"></div>
@@ -6550,7 +6469,7 @@ table.fc-borrow-tbl tr.fc-borrow-detail-row td{background:var(--surface);border-
 // GLOBALS
 // ══════════════════════════════════════════════
 let db = null;
-const APP_BUILD = '2026.07.07-tesseract-wasm-path';
+const APP_BUILD = '2026.07.07-manual-lab-entry-only';
 const FC_CORE_ICON_SRC = 'docs/r18-reference/core-drill-icon-128.png';
 const BORELOG_ICON_SRC = 'docs/r18-reference/borelog-icon.webp';
 const BORELOG_PATH = 'docs/r18-reference/deldot-borelog.html';
@@ -6793,9 +6712,6 @@ const DE_STATE_PLANE = '+proj=lcc +lat_1=38.43333333333334 +lat_2=39.83333333333
 window._dbConnected = false;
 window._syncInProgress = false;
 let currentSample = null;
-let labImageB64 = null;
-let labImageName = '';
-let labImageType = null;
 let qrScanner = null;
 let scannedSample = null;
 
@@ -6923,16 +6839,6 @@ self.addEventListener('fetch', e => {
   // Search
   const searchEl = document.getElementById('searchInput');
   if (searchEl) searchEl.addEventListener('input', filterTable);
-
-  // Lab image upload
-  const labInput = document.getElementById('labImageInput');
-  const labDrop = document.getElementById('labDropZone');
-  if (labInput) labInput.addEventListener('change', e => handleLabImage(e.target.files[0]));
-  if (labDrop) {
-    labDrop.addEventListener('dragover', e => { e.preventDefault(); labDrop.classList.add('drag'); });
-    labDrop.addEventListener('dragleave', () => labDrop.classList.remove('drag'));
-    labDrop.addEventListener('drop', e => { e.preventDefault(); labDrop.classList.remove('drag'); handleLabImage(e.dataTransfer.files[0]); });
-  }
 });
 
 
@@ -11300,7 +11206,6 @@ const HELP_FIELD_REGISTRY = {
   fc_core_gps: { title: 'GPS coordinates', body: 'Tap to capture device GPS. Coordinates appear on the admin map when synced.' },
   fc_core_remarks: { title: 'Core remarks', body: 'Optional notes — damage, water, unusual conditions.' },
   sl_search: { title: 'Queue search', body: 'Filter the lab queue by test number, contract, location, or material without leaving the module.' },
-  sl_image_input: { title: 'Photo upload', body: 'Upload a photo of the field sample card. On-device OCR reads Atterberg and sieve values into the form.' },
   sl_ll_bottle: { title: 'Liquid limit bottle', body: 'Bottle ID used for the LL moisture test (cup/bottle label on bench sheet).' },
   sl_ll_wet: { title: 'LL — wet soil + bottle', body: 'Mass of wet soil and bottle before oven drying (grams).' },
   sl_ll_dry: { title: 'LL — dry soil + bottle', body: 'Mass after drying to constant weight (grams).' },
@@ -11421,7 +11326,7 @@ const CONTEXT_HELP_VIEWS = {
       { tour: 'soillab-queue', title: 'Sample queue', body: 'Pending samples from field intake. Select a row to open lab data entry.' }
     ],
     fieldOrder: [
-      'sl_search', 'sl_image_input',
+      'sl_search',
       'sl_ll_bottle', 'sl_ll_wet', 'sl_ll_dry', 'sl_ll_tare', 'sl_ll_blows',
       'sl_pl_bottle', 'sl_pl_wet', 'sl_pl_dry', 'sl_pl_tare',
       'sl_org_bottle', 'sl_org_pre', 'sl_org_post', 'sl_org_tare',
@@ -13957,9 +13862,6 @@ function loadSampleIntoLab(sample) {
   if (aggPanel) aggPanel.style.display = isAgg ? 'block' : 'none';
   if (soilPanel) soilPanel.style.display = isAgg ? 'none' : 'block';
 
-  // Update analyze button text and populate sieve inputs
-  refreshLabScanButtonLabels();
-
   // Populate aggregate sieve inputs immediately
   if (isAgg && sample.agg_type) {
     // Small timeout to ensure DOM is visible first
@@ -13977,12 +13879,6 @@ function loadSampleIntoLab(sample) {
       }
     }, 50);
   }
-
-  // Hide AI/Manual tabs for aggregate — aggregate uses its own panel
-  const aiTab = document.getElementById('modeTabAI');
-  const manTab = document.getElementById('modeTabManual');
-  const modeTabsEl = document.querySelector('.lab-mode-tabs');
-  if (modeTabsEl) modeTabsEl.style.display = isAgg ? 'none' : 'flex';
 
   // ── Helper used by both soil and aggregate blocks below ──
   function sv_(id, val) { const el = document.getElementById(id); if (el && val != null && val !== '') el.value = val; }
@@ -14042,281 +13938,20 @@ function loadSampleIntoLab(sample) {
     sv_('m_s_no10',  readSv('no10'));
     sv_('m_s_no40',  readSv('no40'));
     sv_('m_s_no200', readSv('no200'));
-
-    // Switch to Manual mode so existing data is visible immediately
-    setLabMode('manual');
   }
-}
-
-function handleLabImage(file) {
-  if (!file) return;
-  const bad = ensureLabScanMime(file.type, file.name);
-  if (bad) { showToast(bad, 'error'); return; }
-  const r = new FileReader();
-  r.onload = ev => applyLabScanDataUrl('lab', ev.target.result, file.name);
-  r.readAsDataURL(file);
 }
 
 // ══════════════════════════════════════════════
-// LAB PHOTO SCAN — camera capture for OCR
+// LAB DATA ENTRY
 // ══════════════════════════════════════════════
-const LAB_SCAN_TARGETS = {
-  lab:     { set: (b64, type, name) => { labImageB64 = b64; labImageType = type; labImageName = name || ''; },     thumbId: 'labThumb' },
-  agg:     { set: (b64, type, name) => { aggImageB64 = b64; aggImageType = type; aggImageName = name || ''; },     thumbId: 'aggThumb' },
-  sl:      { set: (b64, type, name) => { slImageB64 = b64; slImageType = type; slImageFileName = name || ''; },      thumbId: 'sl_image_thumb' },
-  sl_agg:  { set: (b64, type, name) => { slAggImageB64 = b64; slAggImageType = type; slAggImageFileName = name || ''; }, thumbId: 'sl_agg_image_thumb' },
-};
-
-let _labScanCameraStream = null;
-let _labScanCameraTarget = null;
-let _labScanCameraAfterCapture = null;
-
-function formatScanError(e) {
-  if (!e) return 'Unknown error';
-  if (typeof e === 'string') return e;
-  return e.message || e.error || e.reason
-    || (typeof e.toString === 'function' && e.toString() !== '[object Object]' ? e.toString() : '')
-    || 'Scan failed — try a clear JPG/PNG photo of the form';
-}
-
-function ensureLabScanMime(mime, fileName) {
-  const m = (mime || '').toLowerCase();
-  const name = (fileName || '').toLowerCase();
-  if (m.includes('pdf') || name.endsWith('.pdf')) {
-    return 'PDF files cannot be scanned — photograph the form or save as JPG/PNG';
-  }
-  if (/heic|heif/.test(m) || /\.heic$|\.heif$/.test(name)) {
-    return 'HEIC/iPhone photos are not supported — use Camera → Formats → Most Compatible (JPEG)';
-  }
-  if (m && !m.startsWith('image/')) {
-    return 'Please upload a photo (JPG or PNG), not ' + (m.split('/')[1] || 'that file type');
-  }
-  return null;
-}
-
-function applyLabScanDataUrl(target, dataUrl, fileName) {
-  const m = String(dataUrl || '').match(/^data:([^;]+);base64,(.+)$/);
-  const mime = m ? m[1] : 'image/jpeg';
-  const b64 = m ? m[2] : String(dataUrl || '').split(',')[1];
-  const bad = ensureLabScanMime(mime, fileName);
-  if (bad) { showToast(bad, 'error'); return false; }
-  const cfg = LAB_SCAN_TARGETS[target];
-  if (!cfg || !b64) return false;
-  cfg.set(b64, mime, fileName || '');
-  const thumb = document.getElementById(cfg.thumbId);
-  if (thumb) { thumb.src = dataUrl; thumb.style.display = 'block'; }
-  refreshLabScanButtonLabels();
-  return true;
-}
-
-function refreshLabScanButtonLabels() {
-  const labBtn = document.getElementById('labAnalyzeBtn');
-  if (labBtn) {
-    if (currentSample?.test_category === 'aggregate') {
-      const aggAi = document.getElementById('aggTabAI')?.classList.contains('active');
-      labBtn.textContent = aggAi
-        ? (aggImageB64 ? '📷 SCAN CARD & GENERATE' : '📷 TAKE PHOTO & SCAN CARD')
-        : '⚖️ GENERATE AGGREGATE REPORT';
-    } else if (currentLabMode === 'ai') {
-      labBtn.textContent = labImageB64 ? '📷 SCAN & GENERATE LB-44' : '📷 TAKE PHOTO & SCAN';
-    } else {
-      labBtn.textContent = '⌨️ GENERATE LB-44 FROM MANUAL DATA';
-    }
-  }
-  const slBtn = document.getElementById('sl_analyze_btn');
-  if (slBtn && slCurrentSample) {
-    if (slCurrentSample.test_category === 'aggregate') {
-      const aggAi = document.getElementById('sl_agg_tab_ai')?.classList.contains('active');
-      slBtn.textContent = aggAi ? '📷 SCAN CARD & GENERATE' : '⚖️ GENERATE AGGREGATE REPORT';
-    } else if (slCurrentMode === 'ai') {
-      slBtn.textContent = '📷 SCAN & GENERATE LB-44';
-    } else {
-      slBtn.textContent = '⌨️ GENERATE LB-44 FROM MANUAL DATA';
-    }
-  }
-}
-
-function labScanCameraFallbackInput() {
-  const inp = document.getElementById('lab_scan_camera_fallback');
-  if (!inp) { showToast('Camera not available on this device', 'error'); return; }
-  inp.value = '';
-  inp.click();
-}
-
-function closeLabScanCamera() {
-  const overlay = document.getElementById('lab_scan_camera_overlay');
-  const video = document.getElementById('lab_scan_camera_video');
-  if (_labScanCameraStream) {
-    _labScanCameraStream.getTracks().forEach(t => t.stop());
-    _labScanCameraStream = null;
-  }
-  if (video) video.srcObject = null;
-  if (overlay) {
-    overlay.classList.remove('open');
-    overlay.setAttribute('aria-hidden', 'true');
-  }
-}
-
-async function openLabScanCamera(target, afterCapture) {
-  _labScanCameraTarget = target;
-  _labScanCameraAfterCapture = typeof afterCapture === 'function' ? afterCapture : null;
-  const overlay = document.getElementById('lab_scan_camera_overlay');
-  const video = document.getElementById('lab_scan_camera_video');
-  if (!navigator.mediaDevices?.getUserMedia || !overlay || !video) {
-    labScanCameraFallbackInput();
-    return;
-  }
-  try {
-    closeLabScanCamera();
-    const stream = await navigator.mediaDevices.getUserMedia({
-      video: { facingMode: { ideal: 'environment' } },
-      audio: false,
-    });
-    _labScanCameraStream = stream;
-    video.srcObject = stream;
-    overlay.classList.add('open');
-    overlay.setAttribute('aria-hidden', 'false');
-  } catch (e) {
-    console.warn('openLabScanCamera:', e);
-    showToast('Opening device camera…', 'info');
-    labScanCameraFallbackInput();
-  }
-}
-
-async function snapLabScanPhoto() {
-  const video = document.getElementById('lab_scan_camera_video');
-  if (!video || !video.videoWidth) {
-    showToast('Camera not ready yet', 'error');
-    return;
-  }
-  try {
-    const canvas = document.createElement('canvas');
-    canvas.width = video.videoWidth;
-    canvas.height = video.videoHeight;
-    canvas.getContext('2d').drawImage(video, 0, 0);
-    const dataUrl = canvas.toDataURL('image/jpeg', 0.92);
-    applyLabScanDataUrl(_labScanCameraTarget, dataUrl);
-    closeLabScanCamera();
-    showToast('Photo captured ✓', 'success');
-    if (_labScanCameraAfterCapture) {
-      const cb = _labScanCameraAfterCapture;
-      _labScanCameraAfterCapture = null;
-      await cb();
-    }
-  } catch (e) {
-    showToast('Photo error: ' + e.message, 'error');
-  }
-}
-
-function labScanCameraFallbackChange(inp) {
-  const file = inp?.files?.[0];
-  if (!file) return;
-  const r = new FileReader();
-  r.onload = async ev => {
-    applyLabScanDataUrl(_labScanCameraTarget, ev.target.result);
-    showToast('Photo captured ✓', 'success');
-    if (_labScanCameraAfterCapture) {
-      const cb = _labScanCameraAfterCapture;
-      _labScanCameraAfterCapture = null;
-      await cb();
-    }
-  };
-  r.readAsDataURL(file);
-}
-
-function labScanHasImage(target) {
-  if (target === 'lab') return !!labImageB64;
-  if (target === 'agg') return !!aggImageB64;
-  if (target === 'sl') return !!slImageB64;
-  if (target === 'sl_agg') return !!slAggImageB64;
-  return false;
-}
-
-function labScanOrCapture(target, runScan) {
-  if (labScanHasImage(target)) {
-    runScan();
-    return;
-  }
-  openLabScanCamera(target, runScan);
-}
-
-
-
-// ══════════════════════════════════════════════
-// SIEVE ENTRY OVERLAY (after AI photo analysis)
-// ══════════════════════════════════════════════
-let pendingAIData = null;
-
-function showSieveEntryForm(aiData) {
-  // Pre-fill total and wash weights if AI read them
-  if (aiData.total_sample_wt) document.getElementById('se_total_wt').value = aiData.total_sample_wt;
-  if (aiData.wash_sample_wt)  document.getElementById('se_wash_wt').value  = aiData.wash_sample_wt;
-  // Clear sieve fields
-  ['se_in2','se_in1','se_in38','se_no4','se_no10','se_no40','se_no200'].forEach(id => {
-    const el = document.getElementById(id);
-    if (el && !['se_in2','se_in1'].includes(id)) el.value = '';
-    if (el && ['se_in2','se_in1'].includes(id)) el.value = '0';
-  });
-  document.getElementById('sieveEntryOverlay').classList.add('open');
-  document.getElementById('labStatus').textContent = '✓ Atterberg values read — enter sieve weights below';
-}
-
-async function submitSieveEntry() {
-  if (!pendingAIData) return;
-  function gn(id) { const v = parseFloat(document.getElementById(id)?.value); return isNaN(v) ? 0 : v; }
-
-  // Merge sieve data into the AI-read data
-  pendingAIData.total_sample_wt = gn('se_total_wt') || pendingAIData.total_sample_wt;
-  pendingAIData.wash_sample_wt  = gn('se_wash_wt')  || pendingAIData.wash_sample_wt;
-  pendingAIData.sieves = {
-    '2in':     gn('se_in2'),
-    '1in':     gn('se_in1'),
-    '0.375in': gn('se_in38'),
-    'no4':     gn('se_no4'),
-    'no10':    gn('se_no10'),
-    'no40':    gn('se_no40'),
-    'no200':   gn('se_no200'),
-  };
-
-  document.getElementById('sieveEntryOverlay').classList.remove('open');
-  await finishLabGeneration(pendingAIData);
-  pendingAIData = null;
-}
-
-// ══════════════════════════════════════════════
-// LAB MODE SWITCHING
-// ══════════════════════════════════════════════
-let currentLabMode = 'ai';
 let lastLabData = null; // stores last parsed data for edit overlay
 
-function setLabMode(mode) {
-  currentLabMode = mode;
-  document.getElementById('modeTabAI').classList.toggle('active', mode === 'ai');
-  document.getElementById('modeTabManual').classList.toggle('active', mode === 'manual');
-  document.getElementById('aiModePanel').style.display = mode === 'ai' ? 'block' : 'none';
-  document.getElementById('manualModePanel').style.display = mode === 'manual' ? 'block' : 'none';
-  refreshLabScanButtonLabels();
-}
-
-// ══════════════════════════════════════════════
-// UNIFIED LAB SUBMIT — routes to AI or manual
-// ══════════════════════════════════════════════
 function submitLabEntry() {
-  // Route to aggregate report if this is an aggregate sample
   if (currentSample?.test_category === 'aggregate') {
-    const aggMode = document.getElementById('aggTabAI')?.classList.contains('active') ? 'ai' : 'manual';
-    if (aggMode === 'ai') {
-      labScanOrCapture('agg', () => generateAggregateReport());
-      return;
-    }
     generateAggregateReport();
     return;
   }
-  if (currentLabMode === 'ai') {
-    labScanOrCapture('lab', () => analyzeLabForm());
-  } else {
-    generateFromManual();
-  }
+  generateFromManual();
 }
 
 // ══════════════════════════════════════════════
@@ -14481,67 +14116,6 @@ async function applyEditsAndRegenerate() {
   await finishLabGeneration(edited);
   document.getElementById('labStatus').textContent = '';
   showToast('Report updated with corrected values ✓', 'success');
-}
-
-// Validate OCR-read sieve weights (catches common column-shift errors)
-function validateOcrSieveData(sieveData) {
-  const sv = sieveData.sieves || {};
-  const washWt = parseFloat(sieveData.wash_sample_wt) || 0;
-  const totalWt = parseFloat(sieveData.total_sample_wt) || 0;
-  let statusMsg = '';
-
-  if (washWt > 200 || (totalWt > 0 && washWt > totalWt * 0.5)) {
-    statusMsg = '⚠ Wash weight seems wrong — please use Edit/Override to correct sieve values';
-  }
-
-  const in38 = parseFloat(sv['0.375in']) || 0;
-  const no4  = parseFloat(sv['no4'])     || 0;
-  const no10 = parseFloat(sv['no10'])    || 0;
-  if (no4 > 0 && in38 > 0 && no4 < in38) {
-    console.warn('Sieve validation: no4 < 0.375in — possible shift error');
-  }
-  if (no10 > 0 && no4 > 0 && no10 < no4) {
-    console.warn('Sieve validation: no10 < no4 — possible shift error');
-  }
-  return statusMsg;
-}
-
-function ensureLabFormOCR() {
-  if (!window.LabFormOCR) throw new Error('OCR library not loaded — refresh the page');
-}
-
-async function analyzeLabForm() {
-  if (!currentSample) { showToast('No sample loaded', 'error'); return; }
-  if (!labImageB64) { showToast('Upload a lab form image first', 'error'); return; }
-
-  const btn = document.getElementById('labAnalyzeBtn');
-  btn.disabled = true;
-  const statusEl = document.getElementById('labStatus');
-
-  try {
-    ensureLabFormOCR();
-    statusEl.textContent = '⏳ Loading OCR engine…';
-    const parsed = await LabFormOCR.readFieldControlSheet(
-      labImageB64, labImageType, currentSample.test_no,
-      (msg) => { statusEl.textContent = msg; },
-      labImageName
-    );
-    if (!parsed) throw new Error('Could not read lab form');
-
-    const warn = validateOcrSieveData(parsed);
-    if (warn) statusEl.textContent = warn;
-    else statusEl.textContent = '✓ Scan complete — generating report…';
-
-    parsed.notes = 'Photo OCR';
-    await finishLabGeneration(parsed);
-
-  } catch (e) {
-    const msg = formatScanError(e);
-    statusEl.textContent = '✗ Error: ' + msg;
-    showToast('Scan error: ' + msg, 'error');
-    console.error('analyzeLabForm:', e);
-  }
-  btn.disabled = false;
 }
 
 // ══════════════════════════════════════════════
@@ -15034,44 +14608,6 @@ function renderInlineBorrow(calc, llVal, piVal, types) {
 
 
 // ══════════════════════════════════════════════
-// AGGREGATE LAB MODE
-// ══════════════════════════════════════════════
-let aggImageB64 = null;
-let aggImageName = '';
-let aggImageType = null;
-
-function setAggMode(mode) {
-  document.getElementById('aggTabManual').classList.toggle('active', mode === 'manual');
-  document.getElementById('aggTabAI').classList.toggle('active', mode === 'ai');
-  document.getElementById('aggManualPanel').style.display = mode === 'manual' ? 'block' : 'none';
-  document.getElementById('aggAIPanel').style.display = mode === 'ai' ? 'block' : 'none';
-  refreshLabScanButtonLabels();
-}
-
-// Wire up aggregate image upload
-document.addEventListener('DOMContentLoaded', () => {
-  const aggInput = document.getElementById('aggImageInput');
-  const aggDrop  = document.getElementById('aggDropZone');
-  if (aggInput) {
-    aggInput.addEventListener('change', e => handleAggImage(e.target.files[0]));
-  }
-  if (aggDrop) {
-    aggDrop.addEventListener('dragover', e => { e.preventDefault(); aggDrop.classList.add('drag'); });
-    aggDrop.addEventListener('dragleave', () => aggDrop.classList.remove('drag'));
-    aggDrop.addEventListener('drop', e => { e.preventDefault(); aggDrop.classList.remove('drag'); handleAggImage(e.dataTransfer.files[0]); });
-  }
-});
-
-function handleAggImage(file) {
-  if (!file) return;
-  const bad = ensureLabScanMime(file.type, file.name);
-  if (bad) { showToast(bad, 'error'); return; }
-  const r = new FileReader();
-  r.onload = ev => applyLabScanDataUrl('agg', ev.target.result, file.name);
-  r.readAsDataURL(file);
-}
-
-// ══════════════════════════════════════════════
 // AGGREGATE LAB ENTRY
 // ══════════════════════════════════════════════
 function populateAggSieveInputs(aggType) {
@@ -15104,16 +14640,7 @@ async function generateAggregateReport() {
   if (!aggType || !AGG_TYPES[aggType]) { showToast('No aggregate type set for this sample', 'error'); return; }
 
   const spec = AGG_TYPES[aggType];
-  const aggMode = document.getElementById('aggTabAI')?.classList.contains('active') ? 'ai' : 'manual';
 
-  // AI mode — read the card photo
-  if (aggMode === 'ai') {
-    if (!aggImageB64) { showToast('Take or browse a sieve card photo first', 'error'); return; }
-    await readAggCardWithAI(aggType, spec);
-    return;
-  }
-
-  // Manual mode
   const panWt = parseFloat(document.getElementById('agg_pan')?.value) || 0;
   if (!panWt) { showToast('Enter the PAN weight (total sample weight)', 'error'); return; }
 
@@ -15309,44 +14836,6 @@ function renderAggregateReport(sample, calc) {
   `);
 
   document.getElementById('lb44Output').innerHTML = reportHTML;
-}
-
-
-async function readAggCardWithAI(aggType, spec) {
-  if (!aggImageB64) { showToast('Upload a sieve card photo first', 'error'); return; }
-
-  document.getElementById('labStatus').textContent = '⏳ Reading sieve card…';
-  document.getElementById('labAnalyzeBtn').disabled = true;
-
-  try {
-    ensureLabFormOCR();
-    const parsed = await LabFormOCR.readAggregateSieveCard(
-      aggImageB64, aggImageType, spec.sieves, SIEVE_LABELS,
-      (msg) => { document.getElementById('labStatus').textContent = msg; },
-      aggImageName
-    );
-    if (!parsed) throw new Error('Could not read sieve card');
-
-    document.getElementById('labStatus').textContent = '✓ Card read — generating report…';
-
-    if (parsed.pan_weight) document.getElementById('agg_pan').value = parsed.pan_weight;
-    for (const key of spec.sieves) {
-      const el = document.getElementById('agg_' + key);
-      const val = parsed.sieves[key];
-      if (el && val != null) el.value = val;
-    }
-
-    setAggMode('manual');
-    showToast('Card scanned ✓ — review values then click Generate', 'success');
-    document.getElementById('labStatus').textContent = '✓ Values populated — review and click Generate Report';
-
-  } catch(e) {
-    const msg = formatScanError(e);
-    document.getElementById('labStatus').textContent = '✗ Error: ' + msg;
-    showToast('Scan error: ' + msg, 'error');
-    console.error('readAggCardWithAI:', e);
-  }
-  document.getElementById('labAnalyzeBtn').disabled = false;
 }
 
 
@@ -18332,16 +17821,9 @@ function renderConcreteHub() {
 function setText(id, val) { const e = document.getElementById(id); if (e) e.textContent = val; }
 // ══════════════════════════════════════════════════════════════
 let slCurrentSample  = null;
-let slImageB64       = null;
-let slImageType      = 'image/jpeg';
-let slImageFileName  = '';
-let slAggImageB64    = null;
-let slAggImageType   = 'image/jpeg';
-let slAggImageFileName = '';
 let slStatusFilter   = 'pending'; // 'active' | 'pending' | 'archive'
 let slCatFilter      = 'all';   // 'all' | 'soil' | 'aggregate'
 let slMineFilter     = 'all';   // 'all' | 'mine'
-let slCurrentMode    = 'ai';    // 'ai' | 'manual'
 let slLastLabData    = null;
 
 // ── Mobile layout: queue ↔ sample detail ─────────────────────
@@ -18977,9 +18459,6 @@ async function slLoadSample(id, opts) {
   document.getElementById('sl_soil_entry').style.display = isAgg ? 'none' : 'block';
   document.getElementById('sl_agg_entry').style.display  = isAgg ? 'block' : 'none';
 
-  // Update analyze button label
-  refreshLabScanButtonLabels();
-
   // Aggregate: populate sieve inputs, then fill saved weights
   if (isAgg && sample.agg_type) {
     setTimeout(() => {
@@ -18997,7 +18476,6 @@ async function slLoadSample(id, opts) {
         slUpdateSieveLive(); // recalc % passing column
       }
     }, 50);
-    slSetAggMode('manual');
   }
 
   // Prefill existing lab data if present
@@ -19005,10 +18483,7 @@ async function slLoadSample(id, opts) {
     slPrefill(sample.lab_data, isAgg, sample);
   }
 
-  // Default mode
-  if (!isAgg) slSetMode(slCurrentMode);
-
-  // Default date reported to today if blank; received/tested come from scans or sample record
+  // Default date reported to today if blank; received/tested come from sample record
   const today = new Date().toISOString().split('T')[0];
   const reportedEl = document.getElementById('sl_date_reported');
   if (reportedEl && !reportedEl.value) reportedEl.value = today;
@@ -19081,43 +18556,6 @@ function slPrefill(labData, isAgg, sample) {
   se('sl_date_tested',   s.date_tested    || labData.date_tested);
   se('sl_date_reported', s.date_reported  || labData.date_reported);
   se('sl_remarks',       s.lab_remarks    || labData.lab_remarks);
-}
-
-// ── Mode switching ─────────────────────────────────────────────
-function slSetMode(mode) {
-  slCurrentMode = mode;
-  document.getElementById('sl_ai_panel').style.display     = mode === 'ai'     ? 'block' : 'none';
-  document.getElementById('sl_manual_panel').style.display = mode === 'manual' ? 'block' : 'none';
-  document.getElementById('sl_tab_ai').classList.toggle('active',     mode === 'ai');
-  document.getElementById('sl_tab_manual').classList.toggle('active', mode === 'manual');
-  refreshLabScanButtonLabels();
-}
-
-function slSetAggMode(mode) {
-  document.getElementById('sl_agg_manual_panel').style.display = mode === 'manual' ? 'block' : 'none';
-  document.getElementById('sl_agg_ai_panel').style.display     = mode === 'ai'     ? 'block' : 'none';
-  document.getElementById('sl_agg_tab_manual').classList.toggle('active', mode === 'manual');
-  document.getElementById('sl_agg_tab_ai').classList.toggle('active',     mode === 'ai');
-  refreshLabScanButtonLabels();
-}
-
-// ── Image handling ─────────────────────────────────────────────
-function slHandleImage(file) {
-  if (!file) return;
-  const bad = ensureLabScanMime(file.type, file.name);
-  if (bad) { showToast(bad, 'error'); return; }
-  const r = new FileReader();
-  r.onload = ev => applyLabScanDataUrl('sl', ev.target.result, file.name);
-  r.readAsDataURL(file);
-}
-
-function slHandleAggImage(file) {
-  if (!file) return;
-  const bad = ensureLabScanMime(file.type, file.name);
-  if (bad) { showToast(bad, 'error'); return; }
-  const r = new FileReader();
-  r.onload = ev => applyLabScanDataUrl('sl_agg', ev.target.result, file.name);
-  r.readAsDataURL(file);
 }
 
 // ── Aggregate sieve inputs ─────────────────────────────────────
@@ -19206,47 +18644,14 @@ function slReportFields() {
   };
 }
 
-// ── Main submit router ─────────────────────────────────────────
+// ── Main submit ────────────────────────────────────────────────
 function slSubmitEntry() {
   if (!slCurrentSample) { showToast('No sample loaded', 'error'); return; }
   if (slCurrentSample.test_category === 'aggregate') {
-    const aggMode = document.getElementById('sl_agg_tab_ai')?.classList.contains('active') ? 'ai' : 'manual';
-    aggMode === 'ai' ? slAnalyzeAggPhoto() : slGenerateAggReport();
+    slGenerateAggReport();
     return;
   }
-  slCurrentMode === 'ai' ? slAnalyzeSoilPhoto() : slGenerateFromManual();
-}
-
-// ── Soil photo scan (free on-device OCR) ─────────────────────────
-async function slAnalyzeSoilPhoto() {
-  if (!slImageB64) { showToast('Upload a lab form image first', 'error'); return; }
-
-  const btn = document.getElementById('sl_analyze_btn');
-  if (btn) btn.disabled = true;
-  const st = id => { const el = document.getElementById('sl_status'); if (el) el.textContent = id; };
-
-  try {
-    ensureLabFormOCR();
-    st('⏳ Loading OCR engine…');
-    const parsed = await LabFormOCR.readFieldControlSheet(
-      slImageB64, slImageType, slCurrentSample.test_no,
-      (msg) => st(msg),
-      slImageFileName
-    );
-    if (!parsed) throw new Error('Could not read lab form');
-
-    const warn = validateOcrSieveData(parsed);
-    parsed.notes = 'Photo OCR — LabTrak soil lab';
-    st(warn || '✓ Scan complete — saving & generating report…');
-    await slFinishLab(parsed);
-
-  } catch(e) {
-    const msg = formatScanError(e);
-    st('✗ Error: ' + msg);
-    showToast('Scan error: ' + msg, 'error');
-    console.error('slAnalyzeSoilPhoto:', e);
-  }
-  if (btn) btn.disabled = false;
+  slGenerateFromManual();
 }
 
 // ── Soil manual entry → report ─────────────────────────────────
@@ -19393,47 +18798,6 @@ async function slGenerateAggReport() {
   await slHandleDistribution(merged);
   refreshReportEmailBtn(merged);
   slEditingComplete = false;
-}
-
-// ── Aggregate photo scan ─────────────────────────────────────────
-async function slAnalyzeAggPhoto() {
-  if (!slAggImageB64) { showToast('Upload a photo of the card back first', 'error'); return; }
-  const aggType = slCurrentSample?.agg_type;
-  if (!aggType || !AGG_TYPES[aggType]) { showToast('No aggregate type on this sample', 'error'); return; }
-
-  const btn = document.getElementById('sl_analyze_btn');
-  if (btn) btn.disabled = true;
-  const st = msg => { const el = document.getElementById('sl_status'); if (el) el.textContent = msg; };
-  st('⏳ Reading aggregate sieve card…');
-
-  try {
-    ensureLabFormOCR();
-    const spec = AGG_TYPES[aggType];
-    const parsed = await LabFormOCR.readAggregateSieveCard(
-      slAggImageB64, slAggImageType, spec.sieves, SIEVE_LABELS,
-      (msg) => st(msg),
-      slAggImageFileName
-    );
-    if (!parsed) throw new Error('Could not read sieve card');
-
-    const sieveData = parsed.sieve_data || parsed.sieves || {};
-    Object.keys(sieveData).forEach(key => {
-      const el = document.getElementById('sl_agg_' + key);
-      if (el) el.value = sieveData[key];
-    });
-    const panEl = document.getElementById('sl_agg_pan');
-    if (panEl && parsed.total_sample_wt) panEl.value = parsed.total_sample_wt;
-
-    slSetAggMode('manual');
-    st('✓ Scan complete — review values above, then click Generate');
-    showToast('Card scanned — review sieve values', 'success');
-  } catch(e) {
-    const msg = formatScanError(e);
-    st('✗ Error: ' + msg);
-    showToast('Scan error: ' + msg, 'error');
-    console.error('slAnalyzeSoilPhoto:', e);
-  }
-  if (btn) btn.disabled = false;
 }
 
 // ── View report for loaded sample ──────────────────────────────
@@ -19670,9 +19034,6 @@ function slClearEntry() {
    'sl_total_wt','sl_wash_wt','sl_s_in2','sl_s_in1','sl_s_in38',
    'sl_s_no4','sl_s_no10','sl_s_no40','sl_s_no200',
    'sl_agg_pan'].forEach(id => { const el=document.getElementById(id); if(el) el.value=''; });
-  const thumb = document.getElementById('sl_image_thumb');
-  if (thumb) { thumb.src=''; thumb.style.display='none'; }
-  slImageB64 = null;
   document.getElementById('sl_status').textContent = '';
   showToast('Form cleared', 'success');
 }
@@ -19683,45 +19044,6 @@ function slClearEntry() {
   Run that file in the Supabase SQL Editor to create all tables,
   indexes, triggers, and starter RLS policies.
 ══════════════════════════════════════ -->
-
-  <!-- ── SIEVE ENTRY OVERLAY (shown after AI reads Atterberg) ── -->
-  <div class="edit-overlay" id="sieveEntryOverlay">
-    <div class="edit-panel">
-      <h2>ENTER SIEVE DATA</h2>
-      <p>Photo scan has read the Atterberg and Organic values. Now enter the sieve weights from the form.</p>
-
-      <div class="manual-section">
-        <div class="manual-section-title">Sample Weights</div>
-        <div class="manual-grid two">
-          <div class="mf"><label>Wt. of Total Sample (g)</label><input type="number" step="0.1" id="se_total_wt" placeholder="1026.7"></div>
-          <div class="mf"><label>Wt. of Wash Sample (g)</label><input type="number" step="0.1" id="se_wash_wt" placeholder="114.3"></div>
-        </div>
-      </div>
-
-      <div class="manual-section">
-        <div class="manual-section-title">Sieve Weights — Cumulative Retained (g)</div>
-        <p style="color:var(--muted);font-family:var(--mono);font-size:10px;margin-bottom:10px;">Enter 0 for any sieve with no material retained. Split 1 = dry sieved. Split 2 = wet sieved after wash.</p>
-        <table class="sieve-manual-table">
-          <thead><tr><th>SIEVE</th><th>SPLIT</th><th>CUM. WT. RETAINED (g)</th></tr></thead>
-          <tbody>
-            <tr><td>2" (50.8mm)</td><td style="text-align:center;font-family:var(--mono);font-size:10px;color:var(--muted);">1</td><td><input type="number" step="0.1" id="se_in2" placeholder="0.0" value="0"></td></tr>
-            <tr><td>1" (25.4mm)</td><td style="text-align:center;font-family:var(--mono);font-size:10px;color:var(--muted);">1</td><td><input type="number" step="0.1" id="se_in1" placeholder="0.0" value="0"></td></tr>
-            <tr><td>3/8" (9.52mm)</td><td style="text-align:center;font-family:var(--mono);font-size:10px;color:var(--muted);">1</td><td><input type="number" step="0.1" id="se_in38" placeholder="117.1"></td></tr>
-            <tr><td>#4 (4.76mm)</td><td style="text-align:center;font-family:var(--mono);font-size:10px;color:var(--muted);">1</td><td><input type="number" step="0.1" id="se_no4" placeholder="178.3"></td></tr>
-            <tr><td>#10 (2.00mm)</td><td style="text-align:center;font-family:var(--mono);font-size:10px;color:var(--muted);">1</td><td><input type="number" step="0.1" id="se_no10" placeholder="276.7"></td></tr>
-            <tr class="wash-row"><td>↓ WASH SPLIT ↓</td><td></td><td style="text-align:center;color:var(--gold);font-family:var(--mono);font-size:11px;">Wash Wt entered above</td></tr>
-            <tr><td>#40 (0.42mm)</td><td style="text-align:center;font-family:var(--mono);font-size:10px;color:var(--muted);">2</td><td><input type="number" step="0.1" id="se_no40" placeholder="39.4"></td></tr>
-            <tr><td>#200 (0.074mm)</td><td style="text-align:center;font-family:var(--mono);font-size:10px;color:var(--muted);">2</td><td><input type="number" step="0.1" id="se_no200" placeholder="81.1"></td></tr>
-          </tbody>
-        </table>
-      </div>
-
-      <div class="btn-row" style="margin-top:16px;">
-        <button class="btn btn-success" onclick="submitSieveEntry()">✓ GENERATE LB-44 REPORT</button>
-        <button class="btn btn-ghost" onclick="document.getElementById('sieveEntryOverlay').classList.remove('open')">CANCEL</button>
-      </div>
-    </div>
-  </div>
 
   <!-- ── EDIT SAMPLE OVERLAY ── -->
   <div class="edit-overlay" id="editSampleOverlay">
@@ -28006,16 +27328,6 @@ html.comfort-mode .tour-step-badge { font-family: var(--sans) !important; }
 
 })();
 </script>
-  <!-- Lab form photo scan camera -->
-  <input type="file" id="lab_scan_camera_fallback" accept="image/*" capture="environment" style="display:none;" onchange="labScanCameraFallbackChange(this)">
-  <div id="lab_scan_camera_overlay" aria-hidden="true">
-    <video id="lab_scan_camera_video" autoplay playsinline muted></video>
-    <div class="fc-core-camera-bar">
-      <button type="button" class="fc-core-camera-cancel" onclick="closeLabScanCamera()">Cancel</button>
-      <button type="button" class="fc-core-camera-shutter" onclick="snapLabScanPhoto()" aria-label="Capture lab form photo">📷</button>
-      <span style="width:64px;"></span>
-    </div>
-  </div>
   <!-- Core Drill camera capture -->
   <div id="fc_core_camera_overlay" aria-hidden="true">
     <video id="fc_core_camera_video" autoplay playsinline muted></video>
