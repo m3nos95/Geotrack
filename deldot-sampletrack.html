@@ -68,6 +68,7 @@ _loadScript(
   _scriptLoaded, _scriptFailed('html2pdf')
 );
 </script>
+<script src="js/lab-form-ocr.js" defer></script>
 <!-- ── End offline-safe script loader ───────────────────────── -->
 
 <style>
@@ -3139,23 +3140,17 @@ table.fc-borrow-tbl tr.fc-borrow-detail-row td{background:var(--surface);border-
 
     <div class="setup-collapse" id="setupAiSection" data-setup-open="false">
       <button type="button" class="setup-collapse-hdr" onclick="toggleSetupSection(this)" aria-expanded="false">
-        <span class="setup-collapse-title">AI FEATURES</span>
+        <span class="setup-collapse-title">PHOTO FORM SCANNING</span>
         <span class="setup-collapse-chevron" aria-hidden="true">▾</span>
       </button>
       <div class="setup-collapse-body">
 
     <div class="setup-steps">
       <p>
-        Enter your product key to enable AI-powered lab form reading and photo analysis. Contact your system administrator for your key.
+        Lab form photo reading runs <strong style="color:var(--text);">free in your browser</strong> using on-device OCR (Tesseract.js).
+        No API key or internet AI service is required after the page loads. Handwriting quality affects accuracy — always review values before signing reports.
       </p>
     </div>
-    <div class="setup-field">
-      <label>Product Key</label>
-      <input type="password" id="aiKey" placeholder="Enter product key…">
-    </div>
-<button class="btn-setup" onclick="saveAiKey()">✦ ENABLE AI FEATURES</button>
-    <div class="setup-err" id="setupErr"></div>
-    <p style="color:var(--muted);font-size:10px;font-family:var(--mono);margin-top:14px;">Key saved to this browser — you only need to enter it once per device.</p>
 
       </div>
     </div>
@@ -4977,7 +4972,7 @@ table.fc-borrow-tbl tr.fc-borrow-detail-row td{background:var(--surface);border-
 
         <!-- MODE TABS -->
         <div class="lab-mode-tabs">
-          <button class="lab-mode-tab active" id="modeTabAI" onclick="setLabMode('ai')">📷 AI PHOTO ANALYSIS</button>
+          <button class="lab-mode-tab active" id="modeTabAI" onclick="setLabMode('ai')">📷 PHOTO SCAN</button>
           <button class="lab-mode-tab" id="modeTabManual" onclick="setLabMode('manual')">⌨️ MANUAL DATA ENTRY</button>
         </div>
 
@@ -5059,7 +5054,7 @@ table.fc-borrow-tbl tr.fc-borrow-detail-row td{background:var(--surface);border-
           <!-- Aggregate mode tabs -->
           <div class="lab-mode-tabs" id="aggModeTabs">
             <button class="lab-mode-tab active" id="aggTabManual" onclick="setAggMode('manual')">⌨️ MANUAL ENTRY</button>
-            <button class="lab-mode-tab" id="aggTabAI" onclick="setAggMode('ai')">📷 AI PHOTO (CARD BACK)</button>
+            <button class="lab-mode-tab" id="aggTabAI" onclick="setAggMode('ai')">📷 PHOTO SCAN (CARD BACK)</button>
           </div>
 
           <!-- Aggregate AI photo mode -->
@@ -5780,7 +5775,7 @@ table.fc-borrow-tbl tr.fc-borrow-detail-row td{background:var(--surface);border-
 
               <!-- Mode tabs -->
               <div class="lab-mode-tabs" style="margin-bottom:14px;">
-                <button class="lab-mode-tab active" id="sl_tab_ai" onclick="slSetMode('ai')">📷 AI PHOTO ANALYSIS</button>
+                <button class="lab-mode-tab active" id="sl_tab_ai" onclick="slSetMode('ai')">📷 PHOTO SCAN</button>
                 <button class="lab-mode-tab" id="sl_tab_manual" onclick="slSetMode('manual')">⌨️ MANUAL DATA ENTRY</button>
               </div>
 
@@ -5853,7 +5848,7 @@ table.fc-borrow-tbl tr.fc-borrow-detail-row td{background:var(--surface);border-
             <div id="sl_agg_entry" style="display:none;">
               <div class="lab-mode-tabs" style="margin-bottom:14px;">
                 <button class="lab-mode-tab active" id="sl_agg_tab_manual" onclick="slSetAggMode('manual')">⌨️ MANUAL SIEVE ENTRY</button>
-                <button class="lab-mode-tab" id="sl_agg_tab_ai" onclick="slSetAggMode('ai')">📷 AI PHOTO (CARD BACK)</button>
+                <button class="lab-mode-tab" id="sl_agg_tab_ai" onclick="slSetAggMode('ai')">📷 PHOTO SCAN (CARD BACK)</button>
               </div>
               <!-- Aggregate AI -->
               <div id="sl_agg_ai_panel" style="display:none;">
@@ -6551,7 +6546,7 @@ table.fc-borrow-tbl tr.fc-borrow-detail-row td{background:var(--surface);border-
 // GLOBALS
 // ══════════════════════════════════════════════
 let db = null;
-const APP_BUILD = '2026.07.06-soil-lab-test-scan';
+const APP_BUILD = '2026.07.07-free-lab-form-ocr';
 const FC_CORE_ICON_SRC = 'docs/r18-reference/core-drill-icon-128.png';
 const BORELOG_ICON_SRC = 'docs/r18-reference/borelog-icon.webp';
 const BORELOG_PATH = 'docs/r18-reference/deldot-borelog.html';
@@ -6880,10 +6875,6 @@ self.addEventListener('fetch', e => {
       console.warn('SW blob registration not supported:', e);
     }
   }
-
-  // Pre-fill the key field if one is stored (for the settings panel).
-  const storedKey = localStorage.getItem('ai_key');
-  if (storedKey) document.getElementById('aiKey').value = storedKey;
 
   loadSupabaseSettings();
   renderAppBuildStamp();
@@ -10991,19 +10982,9 @@ function offlineLoadCached() {
   } catch(e) { allProjects = []; }
 }
 
-// Save AI product key from settings panel
+// Save AI product key from settings panel (legacy — photo OCR no longer needs a key)
 async function saveAiKey() {
-  const aiInput = document.getElementById('aiKey').value.trim();
-  const err = document.getElementById('setupErr');
-  err.style.display = 'none';
-  if (!aiInput) {
-    err.textContent = 'Enter a product key to enable AI features.';
-    err.style.display = 'block';
-    return;
-  }
-  localStorage.setItem('ai_key', aiInput);
-  document.getElementById('setupOverlay').style.display = 'none';
-  showToast('AI features enabled ✓', 'success');
+  showToast('Photo scanning is free — no product key needed', 'success');
 }
 
 function showSetup() {
@@ -11315,7 +11296,7 @@ const HELP_FIELD_REGISTRY = {
   fc_core_gps: { title: 'GPS coordinates', body: 'Tap to capture device GPS. Coordinates appear on the admin map when synced.' },
   fc_core_remarks: { title: 'Core remarks', body: 'Optional notes — damage, water, unusual conditions.' },
   sl_search: { title: 'Queue search', body: 'Filter the lab queue by test number, contract, location, or material without leaving the module.' },
-  sl_image_input: { title: 'AI photo upload', body: 'Photograph the field sample card. AI reads Atterberg and sieve values into the form.' },
+  sl_image_input: { title: 'Photo scan upload', body: 'Photograph the field sample card. On-device OCR reads Atterberg and sieve values into the form (free, no API key).' },
   sl_ll_bottle: { title: 'Liquid limit bottle', body: 'Bottle ID used for the LL moisture test (cup/bottle label on bench sheet).' },
   sl_ll_wet: { title: 'LL — wet soil + bottle', body: 'Mass of wet soil and bottle before oven drying (grams).' },
   sl_ll_dry: { title: 'LL — dry soil + bottle', body: 'Mass after drying to constant weight (grams).' },
@@ -14132,7 +14113,7 @@ function setLabMode(mode) {
   document.getElementById('modeTabManual').classList.toggle('active', mode === 'manual');
   document.getElementById('aiModePanel').style.display = mode === 'ai' ? 'block' : 'none';
   document.getElementById('manualModePanel').style.display = mode === 'manual' ? 'block' : 'none';
-  document.getElementById('labAnalyzeBtn').textContent = mode === 'ai' ? '🔬 ANALYZE & GENERATE LB-44' : '⌨️ GENERATE LB-44 FROM MANUAL DATA';
+  document.getElementById('labAnalyzeBtn').textContent = mode === 'ai' ? '📷 SCAN & GENERATE LB-44' : '⌨️ GENERATE LB-44 FROM MANUAL DATA';
 }
 
 // ══════════════════════════════════════════════
@@ -14315,161 +14296,60 @@ async function applyEditsAndRegenerate() {
   showToast('Report updated with corrected values ✓', 'success');
 }
 
+// Validate OCR-read sieve weights (catches common column-shift errors)
+function validateOcrSieveData(sieveData) {
+  const sv = sieveData.sieves || {};
+  const washWt = parseFloat(sieveData.wash_sample_wt) || 0;
+  const totalWt = parseFloat(sieveData.total_sample_wt) || 0;
+  let statusMsg = '';
+
+  if (washWt > 200 || (totalWt > 0 && washWt > totalWt * 0.5)) {
+    statusMsg = '⚠ Wash weight seems wrong — please use Edit/Override to correct sieve values';
+  }
+
+  const in38 = parseFloat(sv['0.375in']) || 0;
+  const no4  = parseFloat(sv['no4'])     || 0;
+  const no10 = parseFloat(sv['no10'])    || 0;
+  if (no4 > 0 && in38 > 0 && no4 < in38) {
+    console.warn('Sieve validation: no4 < 0.375in — possible shift error');
+  }
+  if (no10 > 0 && no4 > 0 && no10 < no4) {
+    console.warn('Sieve validation: no10 < no4 — possible shift error');
+  }
+  return statusMsg;
+}
+
+function ensureLabFormOCR() {
+  if (!window.LabFormOCR) throw new Error('OCR library not loaded — refresh the page');
+}
+
 async function analyzeLabForm() {
   if (!currentSample) { showToast('No sample loaded', 'error'); return; }
   if (!labImageB64) { showToast('Upload a lab form image first', 'error'); return; }
-  const aiKey = localStorage.getItem('ai_key');
-  if (!aiKey) { showToast('No API key configured', 'error'); return; }
 
   const btn = document.getElementById('labAnalyzeBtn');
   btn.disabled = true;
-
-  async function callAI(prompt) {
-    const resp = await fetch('https://api.anthropic.com/v1/messages', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'x-api-key': aiKey,
-        'anthropic-version': '2023-06-01',
-        'anthropic-dangerous-direct-browser-access': 'true'
-      },
-      body: JSON.stringify({
-        model: 'claude-sonnet-4-20250514',
-        max_tokens: 1000,
-        messages: [{ role: 'user', content: [
-          { type: 'image', source: { type: 'base64', media_type: labImageType, data: labImageB64 } },
-          { type: 'text', text: prompt }
-        ]}]
-      })
-    });
-    const data = await resp.json();
-    if (data.error) throw new Error(data.error.message);
-    const raw = data.content.map(c => c.text || '').join('');
-    try { return JSON.parse(raw.replace(/```json|```/g,'').trim()); }
-    catch { const m = raw.match(/\{[\s\S]*\}/); return m ? JSON.parse(m[0]) : null; }
-  }
+  const statusEl = document.getElementById('labStatus');
 
   try {
-    // ── CALL 1: Atterberg + Organic only
-    document.getElementById('labStatus').textContent = '⏳ Step 1/2 — Reading Atterberg limits…';
-    const col = currentSample.test_no;
-    const atterbergPrompt = `You are a Delaware DOT lab technician. Read this handwritten Field Control Sheet.
+    ensureLabFormOCR();
+    statusEl.textContent = '⏳ Loading OCR engine…';
+    const parsed = await LabFormOCR.readFieldControlSheet(
+      labImageB64, labImageType, currentSample.test_no,
+      (msg) => { statusEl.textContent = msg; }
+    );
+    if (!parsed) throw new Error('Could not read lab form');
 
-Target test number: ${col}
-Find the column headed "${col}" and read ONLY the Atterberg/Organic section (top half of form).
+    const warn = validateOcrSieveData(parsed);
+    if (warn) statusEl.textContent = warn;
+    else statusEl.textContent = '✓ Scan complete — generating report…';
 
-COLUMN ID: Find "${col}" in the top row. Note its physical position (1st, 2nd, 3rd column from left). Stay in that column.
-
-Read these rows from your target column:
-- Liquid Limit Bottle #, WT Wet Soil & Bottle, WT Dry & Bottle, WT Bottle, Blows
-- Plastic Limit Bottle #, WT Wet Soil & Bottle, WT Dry & Bottle, WT Bottle
-- Organic Bottle #, WT Dry & Bottle (pre-ignition), WT Ignition & Bottle (post-ignition), WT Bottle (dish tare)
-- Also read: WT of Total Sample (top of form, 4-digit number 900-1800g)
-
-If "NP" or "NV" is written for LL or PL, return null for those bottle weights.
-Decimal digits are critical — 20.10 ≠ 26.1. WT WET > WT DRY > WT BOTTLE always.
-
-Return ONLY JSON:
-{
-  "total_sample_wt": null,
-  "liquid_limit": {"bottle_no":"","wt_wet_soil_bottle":null,"wt_dry_bottle":null,"wt_bottle":null,"blows":null},
-  "plastic_limit": {"bottle_no":"","wt_wet_soil_bottle":null,"wt_dry_bottle":null,"wt_bottle":null},
-  "organic": {"bottle_no":"","wt_wet_soil_bottle":null,"wt_dry_bottle":null,"wt_bottle":null}
-}`;
-
-    const atterbergData = await callAI(atterbergPrompt);
-    if (!atterbergData) throw new Error('Could not read Atterberg data');
-
-    // ── CALL 2: Sieves only
-    document.getElementById('labStatus').textContent = '⏳ Step 2/2 — Reading sieve weights…';
-    const sievePrompt = `You are a Delaware DOT lab technician. Read this handwritten Field Control Sheet.
-
-Target test number: ${col}
-Find the column headed "${col}" and read ONLY the sieve analysis section (bottom half of form).
-
-COLUMN ID: Find "${col}" in the top row. Note its physical position (1st, 2nd, 3rd column from left). Stay in THAT column for every row.
-
-IGNORE the top section (LL, PL, Organic) completely.
-
-THE SIEVE TABLE ROWS — in exact top-to-bottom order as they appear on the form:
-1. "WT of Total Sample" → total_sample_wt. This is ABOVE the sieve table. Always a 4-digit number (900–1800g).
-2. "2 (50.8mm)"  → "2in". Usually 0 or blank.
-3. "1 (25.4mm)"  → "1in". Usually 0 or blank.
-4. "3/8 (9.52mm)" → "0.375in". This is the FIRST sieve that typically has a significant value (e.g. 117.1, 133.3, 156.2).
-5. "No. 4 (4.76mm)" → "no4". Cumulative — always GREATER than 3/8" value.
-6. "No. 10 (2.00mm)" → "no10". Cumulative — always GREATER than #4 value.
-7. "Wash WT" → wash_sample_wt. This is a SEPARATE row labeled "Wash WT" between #10 and #40. It is the wash split weight, typically 100–200g (e.g. 112.8, 114.3, 119.1, 125.1). THIS IS NOT A SIEVE — do not put this value into any sieve field.
-8. "No. 40 (0.42mm)" → "no40". This is AFTER the Wash WT row. Cumulative within the wash split — typically 50–120g.
-9. "No. 200 (0.074mm)" → "no200". Cumulative within wash split — typically GREATER than #40 value and LESS than wash weight.
-10. "Pass #200" → IGNORE this row entirely. It is calculated, not measured.
-
-VALIDATION — check these before returning:
-- total_sample_wt must be 900–1800g
-- wash_sample_wt must be 100–200g. If you think wash_sample_wt is over 200g, you have read the wrong row — re-examine.
-- no4 must be greater than 0.375in
-- no10 must be greater than no4
-- no200 must be greater than no40 and less than wash_sample_wt
-- Wash WT value must NEVER appear in "0.375in", "no4", "no10", "no40", or "no200" fields
-
-Return ONLY JSON:
-{
-  "total_sample_wt": null,
-  "wash_sample_wt": null,
-  "sieves": {
-    "2in": 0, "1in": 0, "0.375in": 0,
-    "no4": 0, "no10": 0, "no40": 0, "no200": 0
-  }
-}`;
-
-    const sieveData = await callAI(sievePrompt);
-    if (!sieveData) throw new Error('Could not read sieve data');
-
-    // ── Post-AI validation: catch common shift errors
-    const sv = sieveData.sieves || {};
-    const washWt = parseFloat(sieveData.wash_sample_wt) || 0;
-    const totalWt = parseFloat(sieveData.total_sample_wt) || 0;
-
-    // If wash_sample_wt > 200g it's likely a sieve value — find the real wash
-    // by checking if 0.375in is suspiciously large (close to total sample wt)
-    if (washWt > 200 || washWt > totalWt * 0.5) {
-      // Wash got misread — likely the 3/8" value ended up there
-      // Shift: move 0.375in→wash, no4→0.375in, no10→no4, no40→no10... etc
-      // But we don't know exactly where it shifted, so flag for manual entry
-      document.getElementById('labStatus').textContent = '⚠ Wash weight seems wrong — please use Edit/Override to correct sieve values';
-    }
-
-    // Validate cumulative order: no4 >= 0.375in, no10 >= no4
-    const in38 = parseFloat(sv['0.375in']) || 0;
-    const no4  = parseFloat(sv['no4'])     || 0;
-    const no10 = parseFloat(sv['no10'])    || 0;
-    const no40 = parseFloat(sv['no40'])    || 0;
-    const no200= parseFloat(sv['no200'])   || 0;
-
-    // If cumulative order is violated, values likely shifted — log warning
-    if (no4 > 0 && in38 > 0 && no4 < in38) {
-      console.warn('Sieve validation: no4 < 0.375in — possible shift error');
-    }
-    if (no10 > 0 && no4 > 0 && no10 < no4) {
-      console.warn('Sieve validation: no10 < no4 — possible shift error');
-    }
-
-    // ── Merge both results
-    const parsed = {
-      total_sample_wt: sieveData.total_sample_wt || atterbergData.total_sample_wt,
-      wash_sample_wt:  sieveData.wash_sample_wt,
-      liquid_limit:    atterbergData.liquid_limit,
-      plastic_limit:   atterbergData.plastic_limit,
-      organic:         atterbergData.organic,
-      sieves:          sieveData.sieves,
-      notes: ''
-    };
-
-    document.getElementById('labStatus').textContent = '✓ Analysis complete — generating report…';
+    parsed.notes = 'Photo OCR';
     await finishLabGeneration(parsed);
 
   } catch (e) {
-    document.getElementById('labStatus').textContent = '✗ Error: ' + e.message;
-    showToast('AI error: ' + e.message, 'error');
+    statusEl.textContent = '✗ Error: ' + e.message;
+    showToast('Scan error: ' + e.message, 'error');
   }
   btn.disabled = false;
 }
@@ -15242,72 +15122,35 @@ function renderAggregateReport(sample, calc) {
 
 
 async function readAggCardWithAI(aggType, spec) {
-  const aiKey = localStorage.getItem('ai_key');
-  if (!aiKey) { showToast('No API key configured', 'error'); return; }
+  if (!aggImageB64) { showToast('Upload a sieve card photo first', 'error'); return; }
 
   document.getElementById('labStatus').textContent = '⏳ Reading sieve card…';
   document.getElementById('labAnalyzeBtn').disabled = true;
 
-  const sieveList = spec.sieves.map(k => `${SIEVE_LABELS[k]||k} → "${k}"`).join('\n  ');
-
-  const prompt = `You are a Delaware DOT lab technician. This is a handwritten aggregate sieve card showing cumulative retained weights.
-
-Read the sieve size label and its weight from each row. The last row labeled "PAN" is the total sample weight.
-
-Map the values to these JSON keys:
-  ${sieveList}
-  PAN → pan_weight (total sample weight)
-
-Return ONLY JSON, no markdown:
-{
-  "pan_weight": null,
-  ${spec.sieves.map(k => `"${k}": 0`).join(',\n  ')}
-}`;
-
   try {
-    const resp = await fetch('https://api.anthropic.com/v1/messages', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'x-api-key': aiKey,
-        'anthropic-version': '2023-06-01',
-        'anthropic-dangerous-direct-browser-access': 'true'
-      },
-      body: JSON.stringify({
-        model: 'claude-sonnet-4-20250514',
-        max_tokens: 500,
-        messages: [{ role: 'user', content: [
-          { type: 'image', source: { type: 'base64', media_type: aggImageType, data: aggImageB64 } },
-          { type: 'text', text: prompt }
-        ]}]
-      })
-    });
-
-    const data = await resp.json();
-    if (data.error) throw new Error(data.error.message);
-    const raw = data.content.map(c => c.text||'').join('');
-    let parsed;
-    try { parsed = JSON.parse(raw.replace(/\`\`\`json|\`\`\`/g,'').trim()); }
-    catch { const m = raw.match(/\{[\s\S]*\}/); parsed = m ? JSON.parse(m[0]) : null; }
-    if (!parsed) throw new Error('Could not parse AI response');
+    ensureLabFormOCR();
+    const parsed = await LabFormOCR.readAggregateSieveCard(
+      aggImageB64, aggImageType, spec.sieves, SIEVE_LABELS,
+      (msg) => { document.getElementById('labStatus').textContent = msg; }
+    );
+    if (!parsed) throw new Error('Could not read sieve card');
 
     document.getElementById('labStatus').textContent = '✓ Card read — generating report…';
 
-    // Fill manual fields with AI values so tech can review
     if (parsed.pan_weight) document.getElementById('agg_pan').value = parsed.pan_weight;
     for (const key of spec.sieves) {
       const el = document.getElementById('agg_' + key);
-      if (el && parsed[key] != null) el.value = parsed[key];
+      const val = parsed.sieves[key];
+      if (el && val != null) el.value = val;
     }
 
-    // Switch to manual view so tech can verify before generating
     setAggMode('manual');
-    showToast('Card read ✓ — review values then click Generate', 'success');
+    showToast('Card scanned ✓ — review values then click Generate', 'success');
     document.getElementById('labStatus').textContent = '✓ Values populated — review and click Generate Report';
 
   } catch(e) {
     document.getElementById('labStatus').textContent = '✗ Error: ' + e.message;
-    showToast('AI error: ' + e.message, 'error');
+    showToast('Scan error: ' + e.message, 'error');
   }
   document.getElementById('labAnalyzeBtn').disabled = false;
 }
@@ -19054,77 +18897,31 @@ function slSubmitEntry() {
   slCurrentMode === 'ai' ? slAnalyzeSoilPhoto() : slGenerateFromManual();
 }
 
-// ── Soil AI photo analysis ─────────────────────────────────────
+// ── Soil photo scan (free on-device OCR) ─────────────────────────
 async function slAnalyzeSoilPhoto() {
   if (!slImageB64) { showToast('Upload a lab form image first', 'error'); return; }
-  const aiKey = localStorage.getItem('ai_key');
-  if (!aiKey) { showToast('No API key configured', 'error'); return; }
 
   const btn = document.getElementById('sl_analyze_btn');
   if (btn) btn.disabled = true;
   const st = id => { const el = document.getElementById('sl_status'); if (el) el.textContent = id; };
 
-  async function callAI(prompt) {
-    const resp = await fetch('https://api.anthropic.com/v1/messages', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'x-api-key': aiKey,
-        'anthropic-version': '2023-06-01',
-        'anthropic-dangerous-direct-browser-access': 'true'
-      },
-      body: JSON.stringify({
-        model: 'claude-sonnet-4-20250514',
-        max_tokens: 1000,
-        messages: [{ role: 'user', content: [
-          { type: 'image', source: { type: 'base64', media_type: slImageType, data: slImageB64 } },
-          { type: 'text', text: prompt }
-        ]}]
-      })
-    });
-    const data = await resp.json();
-    if (data.error) throw new Error(data.error.message);
-    const raw = data.content.map(c => c.text || '').join('');
-    try { return JSON.parse(raw.replace(/```json|```/g,'').trim()); }
-    catch { const m = raw.match(/\{[\s\S]*\}/); return m ? JSON.parse(m[0]) : null; }
-  }
-
   try {
-    const col = slCurrentSample.test_no;
-    st('⏳ Step 1/2 — Reading Atterberg limits…');
-    const atterbergData = await callAI(`You are a Delaware DOT lab technician. Read this handwritten Field Control Sheet.
-Target test number: ${col}. Find the column headed "${col}" and read ONLY the Atterberg/Organic section.
-COLUMN ID: Find "${col}" in the top row. Stay in that column for every row.
-Read: Liquid Limit Bottle #, WT Wet Soil & Bottle, WT Dry & Bottle, WT Bottle, Blows. Plastic Limit Bottle #, same weights. Organic Bottle #, Pre-Ignition (Dish+Dry), Post-Ignition (Dish+Ignited), Dish Tare.
-If "NP" or "NV", return null. Decimal digits critical — 20.10 ≠ 26.1. WT WET > WT DRY > WT BOTTLE always.
-Return ONLY JSON:
-{"total_sample_wt":null,"liquid_limit":{"bottle_no":"","wt_wet_soil_bottle":null,"wt_dry_bottle":null,"wt_bottle":null,"blows":null},"plastic_limit":{"bottle_no":"","wt_wet_soil_bottle":null,"wt_dry_bottle":null,"wt_bottle":null},"organic":{"bottle_no":"","wt_wet_soil_bottle":null,"wt_dry_bottle":null,"wt_bottle":null}}`);
-    if (!atterbergData) throw new Error('Could not read Atterberg data');
+    ensureLabFormOCR();
+    st('⏳ Loading OCR engine…');
+    const parsed = await LabFormOCR.readFieldControlSheet(
+      slImageB64, slImageType, slCurrentSample.test_no,
+      (msg) => st(msg)
+    );
+    if (!parsed) throw new Error('Could not read lab form');
 
-    st('⏳ Step 2/2 — Reading sieve weights…');
-    const sieveData = await callAI(`You are a Delaware DOT lab technician. Read this handwritten Field Control Sheet.
-Target test number: ${col}. Find the column headed "${col}" and read ONLY the sieve section.
-COLUMN ID: Stay in the "${col}" column for every row. IGNORE LL/PL/Organic entirely.
-Sieve rows in order: WT Total Sample (4-digit, 900-1800g) → 2in → 1in → 0.375in → no4 → no10 → Wash WT (100-200g, separate row between #10 and #40) → no40 → no200.
-Validation: total 900-1800g, wash 100-200g, no4>0.375in, no10>no4, no200>no40<wash.
-Return ONLY JSON: {"total_sample_wt":null,"wash_sample_wt":null,"sieves":{"2in":0,"1in":0,"0.375in":0,"no4":0,"no10":0,"no40":0,"no200":0}}`);
-    if (!sieveData) throw new Error('Could not read sieve data');
-
-    const parsed = {
-      total_sample_wt: sieveData.total_sample_wt || atterbergData.total_sample_wt,
-      wash_sample_wt:  sieveData.wash_sample_wt,
-      liquid_limit:    atterbergData.liquid_limit,
-      plastic_limit:   atterbergData.plastic_limit,
-      organic:         atterbergData.organic,
-      sieves:          sieveData.sieves,
-      notes: 'AI photo — LabTrak soil lab'
-    };
-    st('✓ Analysis complete — saving & generating report…');
+    const warn = validateOcrSieveData(parsed);
+    parsed.notes = 'Photo OCR — LabTrak soil lab';
+    st(warn || '✓ Scan complete — saving & generating report…');
     await slFinishLab(parsed);
 
   } catch(e) {
     st('✗ Error: ' + e.message);
-    showToast('AI error: ' + e.message, 'error');
+    showToast('Scan error: ' + e.message, 'error');
   }
   if (btn) btn.disabled = false;
 }
@@ -19264,11 +19061,9 @@ async function slGenerateAggReport() {
   refreshReportEmailBtn(merged);
 }
 
-// ── Aggregate AI photo ─────────────────────────────────────────
+// ── Aggregate photo scan ─────────────────────────────────────────
 async function slAnalyzeAggPhoto() {
   if (!slAggImageB64) { showToast('Upload a photo of the card back first', 'error'); return; }
-  const aiKey = localStorage.getItem('ai_key');
-  if (!aiKey) { showToast('No API key configured', 'error'); return; }
   const aggType = slCurrentSample?.agg_type;
   if (!aggType || !AGG_TYPES[aggType]) { showToast('No aggregate type on this sample', 'error'); return; }
 
@@ -19278,35 +19073,15 @@ async function slAnalyzeAggPhoto() {
   st('⏳ Reading aggregate sieve card…');
 
   try {
-    const spec   = AGG_TYPES[aggType];
-    const labels = spec.sieves.map(k => `${SIEVE_LABELS[k]||k} → key "${k}"`).join(', ');
-    const resp   = await fetch('https://api.anthropic.com/v1/messages', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'x-api-key': aiKey,
-        'anthropic-version': '2023-06-01',
-        'anthropic-dangerous-direct-browser-access': 'true'
-      },
-      body: JSON.stringify({
-        model: 'claude-sonnet-4-20250514', max_tokens: 800,
-        messages: [{ role: 'user', content: [
-          { type: 'image', source: { type: 'base64', media_type: slAggImageType, data: slAggImageB64 } },
-          { type: 'text', text: `Read this aggregate sieve card. Extract cumulative retained weights for these sieves: ${labels}. Also find the total sample / pan weight.
-Return ONLY JSON: {"total_sample_wt": 0, "sieve_data": {${spec.sieves.map(k=>`"${k}": 0`).join(', ')}}}` }
-        ]}]
-      })
-    });
-    const data = await resp.json();
-    if (data.error) throw new Error(data.error.message);
-    const raw = data.content.map(c => c.text||'').join('');
-    let parsed;
-    try { parsed = JSON.parse(raw.replace(/```json|```/g,'').trim()); }
-    catch { const m = raw.match(/\{[\s\S]*\}/); parsed = m ? JSON.parse(m[0]) : null; }
-    if (!parsed) throw new Error('Could not parse AI response');
+    ensureLabFormOCR();
+    const spec = AGG_TYPES[aggType];
+    const parsed = await LabFormOCR.readAggregateSieveCard(
+      slAggImageB64, slAggImageType, spec.sieves, SIEVE_LABELS,
+      (msg) => st(msg)
+    );
+    if (!parsed) throw new Error('Could not read sieve card');
 
-    // Pre-fill the manual form with AI values and let user review
-    const sieveData = parsed.sieve_data || {};
+    const sieveData = parsed.sieve_data || parsed.sieves || {};
     Object.keys(sieveData).forEach(key => {
       const el = document.getElementById('sl_agg_' + key);
       if (el) el.value = sieveData[key];
@@ -19314,12 +19089,12 @@ Return ONLY JSON: {"total_sample_wt": 0, "sieve_data": {${spec.sieves.map(k=>`"$
     const panEl = document.getElementById('sl_agg_pan');
     if (panEl && parsed.total_sample_wt) panEl.value = parsed.total_sample_wt;
 
-    slSetAggMode('manual'); // switch to manual to show pre-filled values
-    st('✓ AI read complete — review values above, then click Generate');
-    showToast('AI read complete — review sieve values', 'success');
+    slSetAggMode('manual');
+    st('✓ Scan complete — review values above, then click Generate');
+    showToast('Card scanned — review sieve values', 'success');
   } catch(e) {
     st('✗ Error: ' + e.message);
-    showToast('AI error: ' + e.message, 'error');
+    showToast('Scan error: ' + e.message, 'error');
   }
   if (btn) btn.disabled = false;
 }
@@ -19575,7 +19350,7 @@ function slClearEntry() {
   <div class="edit-overlay" id="sieveEntryOverlay">
     <div class="edit-panel">
       <h2>ENTER SIEVE DATA</h2>
-      <p>AI has read the Atterberg and Organic values. Now enter the sieve weights from the form.</p>
+      <p>Photo scan has read the Atterberg and Organic values. Now enter the sieve weights from the form.</p>
 
       <div class="manual-section">
         <div class="manual-section-title">Sample Weights</div>
