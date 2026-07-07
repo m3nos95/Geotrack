@@ -6476,7 +6476,7 @@ table.fc-borrow-tbl tr.fc-borrow-detail-row td{background:var(--surface);border-
 // GLOBALS
 // ══════════════════════════════════════════════
 let db = null;
-const APP_BUILD = '2026.07.07-multi-borrow-approve';
+const APP_BUILD = '2026.07.07-fix-sync-pending';
 const FC_CORE_ICON_SRC = 'docs/r18-reference/core-drill-icon-128.png';
 const BORELOG_ICON_SRC = 'docs/r18-reference/borelog-icon.webp';
 const BORELOG_PATH = 'docs/r18-reference/deldot-borelog.html';
@@ -10301,12 +10301,58 @@ function updateSupabaseStatus() {
   }
 }
 
+function getPendingSyncBreakdown() {
+  const read = (key) => {
+    try { return JSON.parse(localStorage.getItem(key) || '[]'); } catch { return []; }
+  };
+  return {
+    offline: read('labtrak_offline_queue'),
+    history: read('labtrak_history_queue'),
+    concrete: read('st_concrete_sync_queue'),
+  };
+}
+
 function getPendingSyncCount() {
-  let n = 0;
-  try { n += JSON.parse(localStorage.getItem('labtrak_offline_queue') || '[]').length; } catch (e) {}
-  try { n += JSON.parse(localStorage.getItem('labtrak_history_queue') || '[]').length; } catch (e) {}
-  try { n += JSON.parse(localStorage.getItem('st_concrete_sync_queue') || '[]').length; } catch (e) {}
-  return n;
+  const b = getPendingSyncBreakdown();
+  return b.offline.length + b.history.length + b.concrete.length;
+}
+
+function isValidUuid(v) {
+  return typeof v === 'string' &&
+    /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(v);
+}
+
+function isPermanentDbError(err) {
+  if (!err) return false;
+  const code = err.code || '';
+  const msg = (err.message || String(err)).toLowerCase();
+  if (['22P02', '42501', 'PGRST301', '23503'].includes(code)) return true;
+  if (msg.includes('row-level security') || msg.includes('permission denied')) return true;
+  if (msg.includes('invalid input syntax for type uuid')) return true;
+  return false;
+}
+
+function isRetryableHistoryError(err) {
+  if (!err) return false;
+  if (isPermanentDbError(err)) return false;
+  const msg = (err.message || String(err)).toLowerCase();
+  return msg.includes('fetch') || msg.includes('network') || msg.includes('failed to fetch');
+}
+
+function sanitizeHistoryEntry(entry) {
+  const row = { ...entry };
+  delete row.created_at;
+  if (row.sample_id && !isValidUuid(row.sample_id)) row.sample_id = null;
+  return row;
+}
+
+function describePendingSyncQueues() {
+  const b = getPendingSyncBreakdown();
+  const parts = [];
+  if (b.offline.length) parts.push(b.offline.length + ' data change' + (b.offline.length !== 1 ? 's' : ''));
+  if (b.history.length) parts.push(b.history.length + ' audit log' + (b.history.length !== 1 ? 's' : ''));
+  if (b.concrete.length) parts.push(b.concrete.length + ' concrete record' + (b.concrete.length !== 1 ? 's' : ''));
+  return parts.join(', ');
 }
 
 function setDbConnected(connected) {
@@ -10368,6 +10414,7 @@ function onSyncChipClick() {
   if (pending > 0) {
     setSyncInProgress(true);
     Promise.resolve()
+      .then(() => offlineQueuePruneDeadOps())
       .then(() => offlineSync())
       .then(() => flushSampleHistoryQueue())
       .then(() => flushConcreteSyncQueue())
@@ -10375,6 +10422,12 @@ function onSyncChipClick() {
         setSyncInProgress(false);
         offlineUpdateBanner();
         updateSyncStatusChip();
+        const left = getPendingSyncCount();
+        if (left > 0) {
+          showToast(left + ' item' + (left !== 1 ? 's' : '') + ' still pending (' + describePendingSyncQueues() + ')', 'error');
+        } else if (pending > 0) {
+          showToast('All changes synced ✓', 'success');
+        }
       });
     return;
   }
@@ -10828,7 +10881,8 @@ async function connectSupabase(silent = false) {
     updateSupabaseStatus();
     pullLabSpecConfigFromDb().catch(() => {});
     refreshAuthProvisionUI();
-    flushSampleHistoryQueue();
+    offlineQueuePruneDeadOps();
+    await flushSampleHistoryQueue();
     await pullAndMergeConcreteSets();
     await flushConcreteSyncQueue();
 
@@ -16562,7 +16616,7 @@ function _historyActor() {
 function queueSampleHistory(entry) {
   try {
     const q = JSON.parse(localStorage.getItem(HISTORY_QUEUE_KEY) || '[]');
-    q.push(entry);
+    q.push(sanitizeHistoryEntry(entry));
     localStorage.setItem(HISTORY_QUEUE_KEY, JSON.stringify(q.slice(-200)));
   } catch (e) {}
   updateSyncStatusChip();
@@ -16583,30 +16637,43 @@ async function logSampleHistory({ sampleId, testNo, action, details }) {
     return;
   }
   try {
-    const { error } = await db.from('sample_history').insert(entry);
+    const { error } = await db.from('sample_history').insert(sanitizeHistoryEntry(entry));
     if (error) throw error;
   } catch (e) {
     console.warn('logSampleHistory:', e);
-    queueSampleHistory({ ...entry, created_at: new Date().toISOString() });
+    // Only queue when offline or transient network errors — not permission/RLS failures
+    if (!navigator.onLine || isRetryableHistoryError(e)) {
+      queueSampleHistory({ ...entry, created_at: new Date().toISOString() });
+    }
   }
 }
 
 async function flushSampleHistoryQueue() {
-  if (!db) return;
+  if (!db) return { synced: 0, dropped: 0, remaining: 0 };
   let q;
-  try { q = JSON.parse(localStorage.getItem(HISTORY_QUEUE_KEY) || '[]'); } catch { return; }
-  if (!q.length) return;
+  try { q = JSON.parse(localStorage.getItem(HISTORY_QUEUE_KEY) || '[]'); } catch { return { synced: 0, dropped: 0, remaining: 0 }; }
+  if (!q.length) return { synced: 0, dropped: 0, remaining: 0 };
   const remaining = [];
+  let synced = 0, dropped = 0;
   for (const entry of q) {
     try {
-      const row = { ...entry };
-      delete row.created_at;
+      const row = sanitizeHistoryEntry(entry);
       const { error } = await db.from('sample_history').insert(row);
-      if (error) remaining.push(entry);
-    } catch { remaining.push(entry); }
+      if (error) {
+        if (isPermanentDbError(error)) { dropped++; continue; }
+        remaining.push(entry);
+        continue;
+      }
+      synced++;
+    } catch (e) {
+      if (isPermanentDbError(e)) { dropped++; continue; }
+      remaining.push(entry);
+    }
   }
   try { localStorage.setItem(HISTORY_QUEUE_KEY, JSON.stringify(remaining)); } catch (e) {}
+  if (dropped > 0) console.warn('Dropped', dropped, 'unsyncable audit log entries');
   updateSyncStatusChip();
+  return { synced, dropped, remaining: remaining.length };
 }
 
 const HISTORY_ACTION_LABELS = {
@@ -22203,6 +22270,23 @@ function offlineQueueClear() {
   offlineUpdateBanner();
 }
 
+/** Drop offline updates that can never succeed (temp IDs with no matching insert). */
+function offlineQueuePruneDeadOps() {
+  const q = offlineQueueGet();
+  if (!q.length) return 0;
+  const insertTempIds = new Set(
+    q.filter(op => op.op === 'insert' && op.tempId).map(op => op.tempId)
+  );
+  const pruned = q.filter(op => {
+    if (op.op !== 'update') return true;
+    const id = op.matchId || op.payload?.id;
+    if (typeof id === 'string' && id.startsWith('OFFLINE_') && !insertTempIds.has(id)) return false;
+    return true;
+  });
+  if (pruned.length !== q.length) offlineQueueSave(pruned);
+  return q.length - pruned.length;
+}
+
 // ── Banner ──────────────────────────────────────────────────────
 function offlineUpdateBanner() {
   const banner  = document.getElementById('offlineBanner');
@@ -22284,6 +22368,7 @@ async function offlineSync() {
     showToast('Still offline — will retry when connected', 'error');
     return;
   }
+  offlineQueuePruneDeadOps();
   const q = offlineQueueGet();
   if (q.length === 0) { offlineUpdateBanner(); return; }
 
@@ -22372,6 +22457,13 @@ async function offlineSync() {
 // Initialise banner on load
 document.addEventListener('DOMContentLoaded', () => {
   offlineQueueSanitizeCoreDrills();
+  offlineQueuePruneDeadOps();
+  // Drop audit logs that reference invalid temp sample IDs (common stuck "1 pending" cause)
+  try {
+    const hq = JSON.parse(localStorage.getItem('labtrak_history_queue') || '[]');
+    const cleaned = hq.map(sanitizeHistoryEntry).filter(e => e.action);
+    if (cleaned.length !== hq.length) localStorage.setItem('labtrak_history_queue', JSON.stringify(cleaned));
+  } catch (e) { /* ignore */ }
   offlineUpdateBanner();
   renderAppBuildStamp();
   updateSyncStatusChip();
@@ -22800,15 +22892,21 @@ async function flushConcreteSyncQueue() {
     try {
       if (entry.op === 'delete') {
         const { error } = await db.from('concrete_sets').delete().eq('id', entry.id);
-        if (error) throw error;
+        if (error) {
+          if (isPermanentDbError(error)) continue;
+          throw error;
+        }
       } else if (entry.set) {
         const row = concreteSetToRow(entry.set);
         if (!row) continue;
         const { error } = await db.from('concrete_sets').upsert(row, { onConflict: 'id' });
-        if (error) throw error;
+        if (error) {
+          if (isPermanentDbError(error)) continue;
+          throw error;
+        }
       }
-    } catch {
-      remaining.push(entry);
+    } catch (e) {
+      if (!isPermanentDbError(e)) remaining.push(entry);
     }
   }
   try { localStorage.setItem(CONCRETE_SYNC_QUEUE_KEY, JSON.stringify(remaining)); } catch (e) {}
