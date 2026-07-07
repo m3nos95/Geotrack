@@ -9,7 +9,33 @@
   const CDN = `https://cdn.jsdelivr.net/npm/tesseract.js@${TESSERACT_VER}/dist`;
 
   let tessScriptPromise = null;
-  let workerPromise = null;
+  let workerInitPromise = null;
+  let workerInstance = null;
+
+  const CORE_SIMD = 'https://cdn.jsdelivr.net/npm/tesseract.js-core@5.1.1/dist/tesseract-core-simd-lstm.wasm.js';
+  const CORE_STD = 'https://cdn.jsdelivr.net/npm/tesseract.js-core@5.1.1/dist/tesseract-core-lstm.wasm.js';
+
+  function wrapOcrError(e, fallback) {
+    if (e instanceof Error && e.message) return e;
+    const msg = typeof e === 'string' ? e
+      : (e && (e.message || e.error || e.reason || e.status)) || fallback || 'OCR engine failed';
+    return new Error(String(msg));
+  }
+
+  function rejectBadMime(mediaType, fileName) {
+    const m = (mediaType || '').toLowerCase();
+    const name = (fileName || '').toLowerCase();
+    if (m.includes('pdf') || name.endsWith('.pdf')) {
+      return new Error('PDF files cannot be scanned — photograph the form or export as JPG/PNG');
+    }
+    if (/heic|heif/.test(m) || /\.heic$|\.heif$/.test(name)) {
+      return new Error('HEIC/iPhone photos are not supported — use Camera → Formats → Most Compatible (JPEG)');
+    }
+    if (m && !m.startsWith('image/')) {
+      return new Error('Please upload a photo (JPG or PNG), not ' + (m.split('/')[1] || 'that file type'));
+    }
+    return null;
+  }
 
   function normalizeText(s) {
     return (s || '').toUpperCase().replace(/[^A-Z0-9./#\s-]/g, ' ').replace(/\s+/g, ' ').trim();
@@ -61,36 +87,107 @@
     return tessScriptPromise;
   }
 
-  async function getWorker(onProgress) {
-    if (workerPromise) return workerPromise;
-    workerPromise = (async () => {
-      const Tesseract = await loadTesseractScript();
-      const worker = await Tesseract.createWorker('eng', 1, {
-        workerPath: `${CDN}/worker.min.js`,
-        langPath: 'https://tessdata.projectnaptha.com/4.0.0',
-        corePath: 'https://cdn.jsdelivr.net/npm/tesseract.js-core@5.1.1/dist/tesseract-core-simd-lstm.wasm.js',
-        logger: (m) => {
-          if (!onProgress || !m) return;
-          if (m.status === 'recognizing text' && m.progress != null) {
-            onProgress(`⏳ Reading text… ${Math.round(m.progress * 100)}%`, m.progress);
-          } else if (m.status) {
-            onProgress(`⏳ ${m.status}…`, m.progress || 0);
-          }
-        },
-      });
-      await worker.setParameters({
-        tessedit_pageseg_mode: '6', // uniform block of text
-        preserve_interword_spaces: '1',
-      });
-      return worker;
-    })();
-    return workerPromise;
+  async function createOcrWorker(onProgress) {
+    const Tesseract = await loadTesseractScript();
+    const logger = (m) => {
+      if (!onProgress || !m) return;
+      if (m.status === 'recognizing text' && m.progress != null) {
+        onProgress(`⏳ Reading text… ${Math.round(m.progress * 100)}%`, m.progress);
+      } else if (m.status) {
+        onProgress(`⏳ ${m.status}…`, m.progress || 0);
+      }
+    };
+    const configs = [
+      { corePath: CORE_SIMD, label: 'SIMD' },
+      { corePath: CORE_STD, label: 'standard' },
+    ];
+    let lastErr;
+    for (const cfg of configs) {
+      try {
+        const worker = await Tesseract.createWorker('eng', 1, {
+          workerPath: `${CDN}/worker.min.js`,
+          langPath: 'https://tessdata.projectnaptha.com/4.0.0',
+          corePath: cfg.corePath,
+          logger,
+        });
+        await worker.setParameters({
+          tessedit_pageseg_mode: '6',
+          preserve_interword_spaces: '1',
+        });
+        return worker;
+      } catch (e) {
+        lastErr = e;
+        console.warn('OCR worker init failed (' + cfg.label + '):', e);
+      }
+    }
+    throw wrapOcrError(lastErr, 'Could not start OCR engine — check network connection and refresh');
   }
 
-  async function preprocessImage(b64, mediaType) {
+  async function getWorker(onProgress) {
+    if (workerInstance) return workerInstance;
+    if (!workerInitPromise) {
+      workerInitPromise = createOcrWorker(onProgress)
+        .then((w) => {
+          workerInstance = w;
+          return w;
+        })
+        .catch((e) => {
+          workerInitPromise = null;
+          workerInstance = null;
+          throw wrapOcrError(e);
+        });
+    }
+    try {
+      return await workerInitPromise;
+    } catch (e) {
+      workerInitPromise = null;
+      workerInstance = null;
+      throw wrapOcrError(e);
+    }
+  }
+
+  function collectOcrWords(data) {
+    const out = [];
+    const seen = new Set();
+    function add(w) {
+      if (!w || !w.text || !String(w.text).trim()) return;
+      if (w.confidence != null && w.confidence <= 15) return;
+      const text = String(w.text).trim();
+      const key = text + '|' + (w.bbox?.x0 || 0) + '|' + (w.bbox?.y0 || 0);
+      if (seen.has(key)) return;
+      seen.add(key);
+      out.push({
+        text,
+        conf: w.confidence || 0,
+        bbox: w.bbox || { x0: 0, y0: 0, x1: 0, y1: 0 },
+      });
+    }
+    (data.words || []).forEach(add);
+    if (out.length) return out;
+    (data.lines || []).forEach((line) => (line.words || []).forEach(add));
+    if (out.length) return out;
+    (data.blocks || []).forEach((block) => {
+      (block.paragraphs || []).forEach((p) => {
+        (p.lines || []).forEach((line) => (line.words || []).forEach(add));
+      });
+    });
+    return out;
+  }
+
+  async function preprocessImage(b64, mediaType, fileName) {
+    const bad = rejectBadMime(mediaType, fileName);
+    if (bad) throw bad;
+    if (!b64 || !String(b64).trim()) {
+      throw new Error('No image data — upload a photo of the lab form first');
+    }
+    const outMime = /png/i.test(mediaType || '') ? 'image/png' : 'image/jpeg';
     return new Promise((resolve, reject) => {
       const img = new Image();
       img.onload = () => {
+        if (!img.width || !img.height) {
+          reject(new Error('Image is empty — try another photo'));
+          return;
+        }
         const scale = Math.min(2.5, Math.max(1, 1800 / Math.max(img.width, img.height)));
         const w = Math.round(img.width * scale);
         const h = Math.round(img.height * scale);
@@ -107,31 +204,30 @@
           d[i] = d[i + 1] = d[i + 2] = boosted;
         }
         ctx.putImageData(id, 0, 0);
-        resolve(canvas.toDataURL(mediaType || 'image/jpeg', 0.92));
+        resolve(canvas.toDataURL(outMime, 0.92));
       };
-      img.onerror = () => reject(new Error('Could not load image for OCR'));
+      img.onerror = () => reject(new Error('Could not read this image — use JPG or PNG (not PDF or HEIC)'));
       img.src = `data:${mediaType || 'image/jpeg'};base64,${b64}`;
     });
   }
 
-  async function ocrImage(b64, mediaType, onProgress) {
+  async function ocrImage(b64, mediaType, onProgress, fileName) {
     const worker = await getWorker(onProgress);
     if (onProgress) onProgress('⏳ Preparing image…', 0);
-    const prepped = await preprocessImage(b64, mediaType);
+    const prepped = await preprocessImage(b64, mediaType, fileName);
     if (onProgress) onProgress('⏳ Scanning form…', 0.05);
-    const { data } = await worker.recognize(prepped);
-    const words = (data.words || [])
-      .filter((w) => w.text && w.text.trim() && (w.confidence == null || w.confidence > 15))
-      .map((w) => ({
-        text: w.text.trim(),
-        conf: w.confidence || 0,
-        bbox: w.bbox,
-      }));
+    let data;
+    try {
+      ({ data } = await worker.recognize(prepped));
+    } catch (e) {
+      throw wrapOcrError(e, 'OCR scan failed — try a clearer, flatter photo');
+    }
+    const words = collectOcrWords(data || {});
     return {
       words,
-      text: data.text || '',
-      width: data.imageWidth || 1,
-      height: data.imageHeight || 1,
+      text: (data && data.text) || '',
+      width: (data && data.imageWidth) || 1,
+      height: (data && data.imageHeight) || 1,
     };
   }
 
@@ -372,8 +468,8 @@
     };
   }
 
-  async function readFieldControlSheet(b64, mediaType, testNo, onProgress) {
-    const { words, width, height } = await ocrImage(b64, mediaType, onProgress);
+  async function readFieldControlSheet(b64, mediaType, testNo, onProgress, fileName) {
+    const { words, width, height } = await ocrImage(b64, mediaType, onProgress, fileName);
     if (onProgress) onProgress('⏳ Parsing Atterberg values…', 0.9);
     const colX = findTestColumn(words, testNo, width, height);
     const tol = columnTolerance(width);
@@ -417,8 +513,8 @@
     return candidates.length ? parseOcrNumber(candidates[0].text) : null;
   }
 
-  async function readAggregateSieveCard(b64, mediaType, sieveKeys, sieveLabels, onProgress) {
-    const { words, text } = await ocrImage(b64, mediaType, onProgress);
+  async function readAggregateSieveCard(b64, mediaType, sieveKeys, sieveLabels, onProgress, fileName) {
+    const { words, text } = await ocrImage(b64, mediaType, onProgress, fileName);
     if (onProgress) onProgress('⏳ Parsing sieve card…', 0.92);
 
     const result = { total_sample_wt: null, pan_weight: null, sieves: {}, sieve_data: {} };
