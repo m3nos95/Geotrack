@@ -3488,7 +3488,7 @@ table.fc-borrow-tbl tr.fc-borrow-detail-row td{background:var(--surface);border-
           <div class="topbar-stat-lbl">Samples</div>
         </div>
       </div>
-      <div class="topbar-stat">
+      <div class="topbar-stat" style="display:none;" id="ts-pending-stat">
         <div class="topbar-stat-dot amber" id="ts-dot-pending"></div>
         <div>
           <div class="topbar-stat-val" id="ts-pending">—</div>
@@ -6476,7 +6476,7 @@ table.fc-borrow-tbl tr.fc-borrow-detail-row td{background:var(--surface);border-
 // GLOBALS
 // ══════════════════════════════════════════════
 let db = null;
-const APP_BUILD = '2026.07.07-fix-sync-pending';
+const APP_BUILD = '2026.07.07-sync-local-only';
 const FC_CORE_ICON_SRC = 'docs/r18-reference/core-drill-icon-128.png';
 const BORELOG_ICON_SRC = 'docs/r18-reference/borelog-icon.webp';
 const BORELOG_PATH = 'docs/r18-reference/deldot-borelog.html';
@@ -10279,24 +10279,20 @@ function persistSupabaseSettings() {
 function updateSupabaseStatus() {
   const el = document.getElementById('sbConnStatus');
   if (!el) return;
-  const connected = window._dbConnected && navigator.onLine;
-  const pending = typeof getPendingSyncCount === 'function' ? getPendingSyncCount() : 0;
+  const synced = window._dbConnected && navigator.onLine;
   const url = document.getElementById('sbUrl')?.value.trim() || '';
   const host = url.replace(/^https?:\/\//, '').replace(/\/$/, '');
   if (window._syncInProgress) {
     el.textContent = '↻ Syncing with database…';
     el.style.color = '#93c5fd';
-  } else if (connected && pending > 0) {
-    el.textContent = '✓ Connected to ' + host + ' · ' + pending + ' pending sync';
-    el.style.color = '#fde68a';
-  } else if (connected && host) {
-    el.textContent = '✓ Connected to ' + host;
+  } else if (synced && host) {
+    el.textContent = '✓ Synced to ' + host;
     el.style.color = 'var(--green2)';
   } else if (!navigator.onLine) {
-    el.textContent = pending > 0 ? 'Offline · ' + pending + ' changes queued' : 'Offline — data saved locally until connected';
+    el.textContent = 'Local mode — data saved on this device until connected';
     el.style.color = 'var(--muted)';
   } else {
-    el.textContent = 'Not connected — check URL and key, then click Connect';
+    el.textContent = 'Local mode — connect URL and key in Settings';
     el.style.color = 'var(--muted)';
   }
 }
@@ -10372,9 +10368,8 @@ function updateSyncStatusChip() {
   const labelEl = document.getElementById('syncStatusLabel');
   if (!chip || !labelEl) return;
 
-  const pending = getPendingSyncCount();
   const online = navigator.onLine;
-  const connected = window._dbConnected && online;
+  const synced = window._dbConnected && online;
 
   chip.classList.remove('connected', 'offline', 'pending', 'syncing');
 
@@ -10382,60 +10377,48 @@ function updateSyncStatusChip() {
     chip.classList.add('syncing');
     labelEl.textContent = 'Syncing…';
     chip.title = 'Synchronizing with the database';
-  } else if (!online) {
-    chip.classList.add('offline');
-    labelEl.textContent = pending > 0 ? ('Offline · ' + pending) : 'Offline';
-    chip.title = pending > 0 ? (pending + ' changes queued — will sync when online') : 'No network connection';
-  } else if (!window._dbConnected) {
-    chip.classList.add('offline');
-    labelEl.textContent = 'Not connected';
-    chip.title = 'Click to open Settings and connect to Supabase';
-  } else if (pending > 0) {
-    chip.classList.add('pending');
-    labelEl.textContent = pending + ' pending';
-    chip.title = pending + ' changes waiting to sync — click to sync now';
-  } else {
+  } else if (synced) {
     chip.classList.add('connected');
-    labelEl.textContent = 'Connected';
+    labelEl.textContent = 'Synced';
     const url = document.getElementById('sbUrl')?.value.trim() || '';
     const host = url.replace(/^https?:\/\//, '').replace(/\/$/, '');
-    chip.title = host ? ('Connected to ' + host) : 'Database connected';
+    chip.title = host ? ('Synced to ' + host + ' — click to refresh') : 'Synced to database — click to refresh';
+  } else {
+    chip.classList.add('offline');
+    labelEl.textContent = 'Local';
+    chip.title = !online
+      ? 'Working locally — will sync when back online'
+      : 'Working locally — click to connect to Supabase';
   }
 
   updateSupabaseStatus();
 }
 
+function runBackgroundSync() {
+  if (!navigator.onLine || !window._dbConnected || !db) return Promise.resolve();
+  setSyncInProgress(true);
+  return Promise.resolve()
+    .then(() => offlineQueuePruneDeadOps())
+    .then(() => offlineSync())
+    .then(() => flushSampleHistoryQueue())
+    .then(() => flushConcreteSyncQueue())
+    .finally(() => {
+      setSyncInProgress(false);
+      offlineUpdateBanner();
+      updateSyncStatusChip();
+    });
+}
+
 function onSyncChipClick() {
-  const pending = getPendingSyncCount();
   if (!navigator.onLine) {
-    showToast('Offline — connect to the internet to sync', 'info');
-    return;
-  }
-  if (pending > 0) {
-    setSyncInProgress(true);
-    Promise.resolve()
-      .then(() => offlineQueuePruneDeadOps())
-      .then(() => offlineSync())
-      .then(() => flushSampleHistoryQueue())
-      .then(() => flushConcreteSyncQueue())
-      .finally(() => {
-        setSyncInProgress(false);
-        offlineUpdateBanner();
-        updateSyncStatusChip();
-        const left = getPendingSyncCount();
-        if (left > 0) {
-          showToast(left + ' item' + (left !== 1 ? 's' : '') + ' still pending (' + describePendingSyncQueues() + ')', 'error');
-        } else if (pending > 0) {
-          showToast('All changes synced ✓', 'success');
-        }
-      });
+    showToast('Local mode — connect to the internet to sync', 'info');
     return;
   }
   if (!window._dbConnected) {
     showSetup();
     return;
   }
-  showToast('All changes synced ✓', 'success');
+  runBackgroundSync().then(() => showToast('Synced ✓', 'success'));
 }
 
 function renderAppBuildStamp() {
