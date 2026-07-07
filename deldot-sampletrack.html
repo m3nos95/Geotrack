@@ -6476,7 +6476,7 @@ table.fc-borrow-tbl tr.fc-borrow-detail-row td{background:var(--surface);border-
 // GLOBALS
 // ══════════════════════════════════════════════
 let db = null;
-const APP_BUILD = '2026.07.07-lab-save-verify';
+const APP_BUILD = '2026.07.07-fix-sieve-nest-save';
 const FC_CORE_ICON_SRC = 'docs/r18-reference/core-drill-icon-128.png';
 const BORELOG_ICON_SRC = 'docs/r18-reference/borelog-icon.webp';
 const BORELOG_PATH = 'docs/r18-reference/deldot-borelog.html';
@@ -9765,9 +9765,14 @@ async function slApproveForDistribution() {
 async function srcSyncFromSample(sample) {
   if (!sample) return;
 
-  // Gate: only sync if flagged at submission time (sync_to_chart) OR push_to_sources checkbox
-  // sync_to_chart is stamped by slHandleDistribution when project.track_sources or push_to_sources is true
-  if (!sample.sync_to_chart && !sample.push_to_sources) return;
+  const proj = (allProjects || []).find(p =>
+    p.contract && sample?.contract &&
+    p.contract.toLowerCase() === sample.contract.toLowerCase()
+  );
+  const tracksSource  = !!(proj?.track_sources);
+  const pushToSources = !!(sample.push_to_sources);
+  const syncToChart   = !!(sample.sync_to_chart || tracksSource || pushToSources);
+  if (!syncToChart && !pushToSources) return;
 
   console.log('srcSyncFromSample firing — agg_type:', sample.agg_type,
     'supplied_by:', sample.supplied_by, 'sync_to_chart:', sample.sync_to_chart);
@@ -16436,13 +16441,32 @@ function sanitizeForJsonb(value) {
   return null;
 }
 
+/** Columns that exist on public.samples — strips unknown keys before Supabase writes. */
+const SAMPLE_ROW_UPDATE_KEYS = new Set([
+  'test_no', 'contract', 'fa_project', 'contractor', 'road', 'location', 'depth', 'elevation',
+  'source', 'material_type', 'gps_coordinates', 'method_placed', 'sample_type', 'date_sampled',
+  'sampled_by', 'remarks', 'status', 'lab_data', 'reported_by', 'reviewed_by', 'qa_supervisor',
+  'ia_supervisor', 'geo_engineer', 'date_received', 'date_tested', 'date_reported', 'conforms',
+  'lab_remarks', 'test_category', 'supplied_by', 'archived', 'dist_status', 'dist_submitted_by',
+  'dist_approved_by', 'dist_approved_at', 'dist_rejected_reason', 'deleted_at', 'record_kind',
+  'field_test_id', 'nuclear_data', 'density_data',
+]);
+
+function pickSampleRowUpdates(updates) {
+  const out = {};
+  Object.keys(updates || {}).forEach((k) => {
+    if (SAMPLE_ROW_UPDATE_KEYS.has(k)) out[k] = updates[k];
+  });
+  return out;
+}
+
 /** Update a sample row and return the persisted row, or null on failure. */
 async function slPersistSample(id, updates) {
   if (!id || !updates || !db) {
     showToast('Not connected to database', 'error');
     return null;
   }
-  const body = { ...updates };
+  const body = pickSampleRowUpdates(updates);
   if (body.lab_data != null) body.lab_data = sanitizeForJsonb(body.lab_data);
   const { data, error } = await db.from('samples').update(body).eq('id', id).select('*').single();
   if (error) {
@@ -18828,14 +18852,15 @@ async function slHandleDistribution(sample) {
 
   // Always queue for admin approval first — Gmail only needed at send time
   if (!db) { showToast('Not connected to database', 'error'); return; }
-  const { data, error } = await db.from('samples').update({
+  const { data, error } = await db.from('samples').update(pickSampleRowUpdates({
     dist_status: 'pending_review',
     dist_submitted_by: currentUser?.id || '',
-    sync_to_chart: syncToChart,
-  }).eq('id', sample.id).select('*').single();
+  })).eq('id', sample.id).select('*').single();
   if (error) { console.error('dist_status update failed:', error.message); return; }
   logSampleHistory({ sampleId: sample.id, testNo: sample.test_no, action: 'dist_queued', details: { sync_to_chart: syncToChart } });
-  const updated = data ? { ...data, lab_data: normalizeLabData(data.lab_data) } : { ...sample, dist_status: 'pending_review', dist_submitted_by: currentUser?.id || '' };
+  const updated = data
+    ? { ...data, lab_data: normalizeLabData(data.lab_data), sync_to_chart: syncToChart }
+    : { ...sample, dist_status: 'pending_review', dist_submitted_by: currentUser?.id || '', sync_to_chart: syncToChart };
   slCurrentSample = updated;
   currentSample   = updated;
   upsertAllSample(updated);
@@ -18856,9 +18881,6 @@ async function slFinishLab(parsed) {
   parsed.soil_sieve_nest = nestId;
   if (isNoWashSplitNest(nestId)) parsed.wash_sample_wt = null;
   const updates = { status: 'complete', lab_data: parsed, conforms: 'auto', ...fields };
-  if (slCurrentSample?.test_category !== 'aggregate') {
-    updates.soil_sieve_nest = nestId;
-  }
   const saved = await slPersistSample(slCurrentSample.id, updates);
   if (!saved) return;
   if (!sampleHasLabData(saved)) {
@@ -18871,7 +18893,7 @@ async function slFinishLab(parsed) {
   currentSample = merged;
   slCurrentSample = merged;
 
-  const calc = calculateSieve(parsed, merged.soil_sieve_nest || nestId);
+  const calc = calculateSieve(parsed, parsed.soil_sieve_nest || nestId);
   renderLB44(merged, parsed, calc);
   switchView('report');
   showToast('LB-44 generated ✓', 'success');
