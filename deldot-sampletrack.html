@@ -6476,7 +6476,7 @@ table.fc-borrow-tbl tr.fc-borrow-detail-row td{background:var(--surface);border-
 // GLOBALS
 // ══════════════════════════════════════════════
 let db = null;
-const APP_BUILD = '2026.07.07-gmail-auto-email';
+const APP_BUILD = '2026.07.07-multi-borrow-approve';
 const FC_CORE_ICON_SRC = 'docs/r18-reference/core-drill-icon-128.png';
 const BORELOG_ICON_SRC = 'docs/r18-reference/borelog-icon.webp';
 const BORELOG_PATH = 'docs/r18-reference/deldot-borelog.html';
@@ -14722,12 +14722,17 @@ function ddRptSignatures(labels, values) {
   </div>`;
 }
 
-function ddRptApproval(conforms, remarksHtml, extraRightHtml) {
+function ddRptApproval(conforms, remarksHtml, extraRightHtml, opts) {
+  opts = opts || {};
+  const rejectNote = opts.rejectNote || '';
+  const reasonNote = opts.reasonNote || '';
   return `<div class="lb44-approval dd-rpt-approval">
     <div class="approval-left">
       <div class="approval-box ${conforms ? 'approved' : 'rejected'}">
         <div class="ab-main">This sample ${conforms ? 'DOES' : 'DOES NOT'}<br>conform with the requirements of the<br>specifications.</div>
         <div class="ab-sub">Material represented by this sample has been<br><strong>${conforms ? 'APPROVED' : 'REJECTED'}</strong> for use.</div>
+        ${rejectNote ? `<div class="ab-note" style="font-size:7pt;margin-top:5px;color:#991b1b;line-height:1.35;">${rejectNote}</div>` : ''}
+        ${reasonNote && !rejectNote ? `<div class="ab-note" style="font-size:7pt;margin-top:5px;color:#555;">${reasonNote}</div>` : ''}
       </div>
     </div>
     <div class="approval-right">
@@ -16181,23 +16186,38 @@ function parseBorrowTypes(materialType) {
 }
 
 function autoConforms(materialType, borrowScoreTypes) {
-  // borrowScoreTypes = result of scoreBorrow() 
-  // Returns { conforms: bool, passingTypes: [], requiredTypes: [], reason: '' }
+  // borrowScoreTypes = result of scoreBorrow()
+  // Returns approval when ANY required borrow type passes (partial approval allowed).
   const required = parseBorrowTypes(materialType);
   if (!required.length) {
-    return { conforms: null, required: [], passing: [], reason: 'Material type not recognized as borrow spec' };
+    return {
+      conforms: null, required: [], passing: [], failing: [], approved: [], rejected: [],
+      reason: 'Material type not recognized as borrow spec', rejectNote: '',
+    };
   }
   const passing = Object.entries(borrowScoreTypes)
-    .filter(([,t]) => t.passes).map(([k]) => k);
-  
-  // Sample conforms if ALL required types pass
-  const conforms = required.every(r => passing.includes(r));
-  const failing  = required.filter(r => !passing.includes(r));
-  
-  return { conforms, required, passing, failing,
-    reason: conforms
-      ? 'Meets requirements for Type ' + required.join(', ')
-      : 'Fails Type ' + failing.join(', ') + ' requirements' };
+    .filter(([, t]) => t.passes).map(([k]) => k);
+
+  const approved = required.filter(r => passing.includes(r));
+  const rejected = required.filter(r => !passing.includes(r));
+
+  // Approve if at least one required borrow type passes
+  const conforms = approved.length > 0;
+
+  let reason = '';
+  let rejectNote = '';
+  if (conforms) {
+    reason = 'Approved for Type ' + approved.join(', ');
+    if (rejected.length) {
+      rejectNote = 'Type ' + rejected.join(', ') + ' does not meet specifications';
+    }
+  } else {
+    reason = 'Fails Type ' + rejected.join(', ') + ' requirements';
+  }
+
+  return {
+    conforms, required, passing, failing: rejected, approved, rejected, reason, rejectNote,
+  };
 }
 
 // ══════════════════════════════════════════════
@@ -16245,6 +16265,11 @@ function renderLB44(sample, labData, calc) {
   const borrowTypes = scoreBorrow(calc, llScoreVal, piScoreVal);
   const conformsResult = autoConforms(sample.material_type, borrowTypes);
   const conforms = conformsResult.conforms !== false; // null = unknown = show as pass
+  const approvalHtml = ddRptApproval(conforms, fv(sample.lab_remarks), `
+        <div class="r-lbl">GEOTECHNICAL ENGINEER:</div><div class="r-val">${fv(sample.geo_engineer)}</div>`, {
+    rejectNote: conformsResult.rejectNote || '',
+    reasonNote: (!conformsResult.rejectNote && conformsResult.reason) ? conformsResult.reason : '',
+  });
   const dateRpt = sample.date_reported || new Date().toLocaleDateString('en-US');
   const noWashSplit = !!calc.noWashSplit;
   const washSampleRowHtml = noWashSplit
@@ -16352,20 +16377,7 @@ function renderLB44(sample, labData, calc) {
         __INLINE_BORROW__
       </div>
     </div>
-    <div class="lb44-approval">
-      <div class="approval-left">
-        <div class="approval-box ${conforms?'approved':'rejected'}">
-          <div class="ab-main">This sample ${conforms?'DOES':'DOES NOT'}<br>conform with the requirements of the<br>specifications.</div>
-          <div class="ab-sub">Material represented by this sample has been<br><strong>${conforms?'APPROVED':'REJECTED'}</strong> for use.</div>
-          ${conformsResult.reason ? '<div style="font-size:7pt;margin-top:5px;color:#555;">'+conformsResult.reason+'</div>' : ''}
-        </div>
-      </div>
-      <div class="approval-right">
-        <div class="r-lbl">REMARKS:</div><div class="r-val">${fv(sample.lab_remarks)}</div>
-
-        <div class="r-lbl">GEOTECHNICAL ENGINEER:</div><div class="r-val">${fv(sample.geo_engineer)}</div>
-      </div>
-    </div>
+    ${approvalHtml}
     <div class="lb44-sigs">
       <div class="sig-block"><div class="sig-line"></div><div class="sig-lbl">Soils Supervisor</div></div>
       <div class="sig-block"><div class="sig-line"></div><div class="sig-lbl">Geotechnical Engineer</div></div>
