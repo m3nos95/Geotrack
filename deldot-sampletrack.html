@@ -5792,7 +5792,7 @@ table.fc-borrow-tbl tr.fc-borrow-detail-row td{background:var(--surface);border-
                        ondragover="event.preventDefault();this.classList.add('drag')"
                        ondragleave="this.classList.remove('drag')"
                        ondrop="event.preventDefault();this.classList.remove('drag');slHandleImage(event.dataTransfer.files[0])">
-                    <input type="file" id="sl_image_input" accept="image/*" style="display:none;" onchange="slHandleImage(this.files[0])">
+                    <input type="file" id="sl_image_input" accept="image/jpeg,image/png,image/webp,image/gif" style="display:none;" onchange="slHandleImage(this.files[0])">
                     <p>📋 Drop or tap to upload photo of handwritten lab sheet<br><span style="font-size:11px;">JPG, PNG, HEIC accepted</span></p>
                     <img id="sl_image_thumb" style="display:none;max-width:100%;max-height:200px;border-radius:6px;margin-top:10px;">
                   </div>
@@ -6550,7 +6550,7 @@ table.fc-borrow-tbl tr.fc-borrow-detail-row td{background:var(--surface);border-
 // GLOBALS
 // ══════════════════════════════════════════════
 let db = null;
-const APP_BUILD = '2026.07.07-soil-lab-queue-delete';
+const APP_BUILD = '2026.07.07-soil-lab-scan-fix';
 const FC_CORE_ICON_SRC = 'docs/r18-reference/core-drill-icon-128.png';
 const BORELOG_ICON_SRC = 'docs/r18-reference/borelog-icon.webp';
 const BORELOG_PATH = 'docs/r18-reference/deldot-borelog.html';
@@ -6794,6 +6794,7 @@ window._dbConnected = false;
 window._syncInProgress = false;
 let currentSample = null;
 let labImageB64 = null;
+let labImageName = '';
 let labImageType = null;
 let qrScanner = null;
 let scannedSample = null;
@@ -14049,8 +14050,10 @@ function loadSampleIntoLab(sample) {
 
 function handleLabImage(file) {
   if (!file) return;
+  const bad = ensureLabScanMime(file.type, file.name);
+  if (bad) { showToast(bad, 'error'); return; }
   const r = new FileReader();
-  r.onload = ev => applyLabScanDataUrl('lab', ev.target.result);
+  r.onload = ev => applyLabScanDataUrl('lab', ev.target.result, file.name);
   r.readAsDataURL(file);
 }
 
@@ -14058,26 +14061,52 @@ function handleLabImage(file) {
 // LAB PHOTO SCAN — camera capture for OCR
 // ══════════════════════════════════════════════
 const LAB_SCAN_TARGETS = {
-  lab:     { set: (b64, type) => { labImageB64 = b64; labImageType = type; },     thumbId: 'labThumb' },
-  agg:     { set: (b64, type) => { aggImageB64 = b64; aggImageType = type; },     thumbId: 'aggThumb' },
-  sl:      { set: (b64, type) => { slImageB64 = b64; slImageType = type; },      thumbId: 'sl_image_thumb' },
-  sl_agg:  { set: (b64, type) => { slAggImageB64 = b64; slAggImageType = type; }, thumbId: 'sl_agg_image_thumb' },
+  lab:     { set: (b64, type, name) => { labImageB64 = b64; labImageType = type; labImageName = name || ''; },     thumbId: 'labThumb' },
+  agg:     { set: (b64, type, name) => { aggImageB64 = b64; aggImageType = type; aggImageName = name || ''; },     thumbId: 'aggThumb' },
+  sl:      { set: (b64, type, name) => { slImageB64 = b64; slImageType = type; slImageFileName = name || ''; },      thumbId: 'sl_image_thumb' },
+  sl_agg:  { set: (b64, type, name) => { slAggImageB64 = b64; slAggImageType = type; slAggImageFileName = name || ''; }, thumbId: 'sl_agg_image_thumb' },
 };
 
 let _labScanCameraStream = null;
 let _labScanCameraTarget = null;
 let _labScanCameraAfterCapture = null;
 
-function applyLabScanDataUrl(target, dataUrl) {
+function formatScanError(e) {
+  if (!e) return 'Unknown error';
+  if (typeof e === 'string') return e;
+  return e.message || e.error || e.reason
+    || (typeof e.toString === 'function' && e.toString() !== '[object Object]' ? e.toString() : '')
+    || 'Scan failed — try a clear JPG/PNG photo of the form';
+}
+
+function ensureLabScanMime(mime, fileName) {
+  const m = (mime || '').toLowerCase();
+  const name = (fileName || '').toLowerCase();
+  if (m.includes('pdf') || name.endsWith('.pdf')) {
+    return 'PDF files cannot be scanned — photograph the form or save as JPG/PNG';
+  }
+  if (/heic|heif/.test(m) || /\.heic$|\.heif$/.test(name)) {
+    return 'HEIC/iPhone photos are not supported — use Camera → Formats → Most Compatible (JPEG)';
+  }
+  if (m && !m.startsWith('image/')) {
+    return 'Please upload a photo (JPG or PNG), not ' + (m.split('/')[1] || 'that file type');
+  }
+  return null;
+}
+
+function applyLabScanDataUrl(target, dataUrl, fileName) {
   const m = String(dataUrl || '').match(/^data:([^;]+);base64,(.+)$/);
   const mime = m ? m[1] : 'image/jpeg';
   const b64 = m ? m[2] : String(dataUrl || '').split(',')[1];
+  const bad = ensureLabScanMime(mime, fileName);
+  if (bad) { showToast(bad, 'error'); return false; }
   const cfg = LAB_SCAN_TARGETS[target];
-  if (!cfg || !b64) return;
-  cfg.set(b64, mime);
+  if (!cfg || !b64) return false;
+  cfg.set(b64, mime, fileName || '');
   const thumb = document.getElementById(cfg.thumbId);
   if (thumb) { thumb.src = dataUrl; thumb.style.display = 'block'; }
   refreshLabScanButtonLabels();
+  return true;
 }
 
 function refreshLabScanButtonLabels() {
@@ -14494,7 +14523,8 @@ async function analyzeLabForm() {
     statusEl.textContent = '⏳ Loading OCR engine…';
     const parsed = await LabFormOCR.readFieldControlSheet(
       labImageB64, labImageType, currentSample.test_no,
-      (msg) => { statusEl.textContent = msg; }
+      (msg) => { statusEl.textContent = msg; },
+      labImageName
     );
     if (!parsed) throw new Error('Could not read lab form');
 
@@ -14506,8 +14536,10 @@ async function analyzeLabForm() {
     await finishLabGeneration(parsed);
 
   } catch (e) {
-    statusEl.textContent = '✗ Error: ' + e.message;
-    showToast('Scan error: ' + e.message, 'error');
+    const msg = formatScanError(e);
+    statusEl.textContent = '✗ Error: ' + msg;
+    showToast('Scan error: ' + msg, 'error');
+    console.error('analyzeLabForm:', e);
   }
   btn.disabled = false;
 }
@@ -15005,6 +15037,7 @@ function renderInlineBorrow(calc, llVal, piVal, types) {
 // AGGREGATE LAB MODE
 // ══════════════════════════════════════════════
 let aggImageB64 = null;
+let aggImageName = '';
 let aggImageType = null;
 
 function setAggMode(mode) {
@@ -15031,8 +15064,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
 function handleAggImage(file) {
   if (!file) return;
+  const bad = ensureLabScanMime(file.type, file.name);
+  if (bad) { showToast(bad, 'error'); return; }
   const r = new FileReader();
-  r.onload = ev => applyLabScanDataUrl('agg', ev.target.result);
+  r.onload = ev => applyLabScanDataUrl('agg', ev.target.result, file.name);
   r.readAsDataURL(file);
 }
 
@@ -15287,7 +15322,8 @@ async function readAggCardWithAI(aggType, spec) {
     ensureLabFormOCR();
     const parsed = await LabFormOCR.readAggregateSieveCard(
       aggImageB64, aggImageType, spec.sieves, SIEVE_LABELS,
-      (msg) => { document.getElementById('labStatus').textContent = msg; }
+      (msg) => { document.getElementById('labStatus').textContent = msg; },
+      aggImageName
     );
     if (!parsed) throw new Error('Could not read sieve card');
 
@@ -15305,8 +15341,10 @@ async function readAggCardWithAI(aggType, spec) {
     document.getElementById('labStatus').textContent = '✓ Values populated — review and click Generate Report';
 
   } catch(e) {
-    document.getElementById('labStatus').textContent = '✗ Error: ' + e.message;
-    showToast('Scan error: ' + e.message, 'error');
+    const msg = formatScanError(e);
+    document.getElementById('labStatus').textContent = '✗ Error: ' + msg;
+    showToast('Scan error: ' + msg, 'error');
+    console.error('readAggCardWithAI:', e);
   }
   document.getElementById('labAnalyzeBtn').disabled = false;
 }
@@ -18296,8 +18334,10 @@ function setText(id, val) { const e = document.getElementById(id); if (e) e.text
 let slCurrentSample  = null;
 let slImageB64       = null;
 let slImageType      = 'image/jpeg';
+let slImageFileName  = '';
 let slAggImageB64    = null;
 let slAggImageType   = 'image/jpeg';
+let slAggImageFileName = '';
 let slStatusFilter   = 'pending'; // 'active' | 'pending' | 'archive'
 let slCatFilter      = 'all';   // 'all' | 'soil' | 'aggregate'
 let slMineFilter     = 'all';   // 'all' | 'mine'
@@ -19064,15 +19104,19 @@ function slSetAggMode(mode) {
 // ── Image handling ─────────────────────────────────────────────
 function slHandleImage(file) {
   if (!file) return;
+  const bad = ensureLabScanMime(file.type, file.name);
+  if (bad) { showToast(bad, 'error'); return; }
   const r = new FileReader();
-  r.onload = ev => applyLabScanDataUrl('sl', ev.target.result);
+  r.onload = ev => applyLabScanDataUrl('sl', ev.target.result, file.name);
   r.readAsDataURL(file);
 }
 
 function slHandleAggImage(file) {
   if (!file) return;
+  const bad = ensureLabScanMime(file.type, file.name);
+  if (bad) { showToast(bad, 'error'); return; }
   const r = new FileReader();
-  r.onload = ev => applyLabScanDataUrl('sl_agg', ev.target.result);
+  r.onload = ev => applyLabScanDataUrl('sl_agg', ev.target.result, file.name);
   r.readAsDataURL(file);
 }
 
@@ -19186,7 +19230,8 @@ async function slAnalyzeSoilPhoto() {
     st('⏳ Loading OCR engine…');
     const parsed = await LabFormOCR.readFieldControlSheet(
       slImageB64, slImageType, slCurrentSample.test_no,
-      (msg) => st(msg)
+      (msg) => st(msg),
+      slImageFileName
     );
     if (!parsed) throw new Error('Could not read lab form');
 
@@ -19196,8 +19241,10 @@ async function slAnalyzeSoilPhoto() {
     await slFinishLab(parsed);
 
   } catch(e) {
-    st('✗ Error: ' + e.message);
-    showToast('Scan error: ' + e.message, 'error');
+    const msg = formatScanError(e);
+    st('✗ Error: ' + msg);
+    showToast('Scan error: ' + msg, 'error');
+    console.error('slAnalyzeSoilPhoto:', e);
   }
   if (btn) btn.disabled = false;
 }
@@ -19364,7 +19411,8 @@ async function slAnalyzeAggPhoto() {
     const spec = AGG_TYPES[aggType];
     const parsed = await LabFormOCR.readAggregateSieveCard(
       slAggImageB64, slAggImageType, spec.sieves, SIEVE_LABELS,
-      (msg) => st(msg)
+      (msg) => st(msg),
+      slAggImageFileName
     );
     if (!parsed) throw new Error('Could not read sieve card');
 
@@ -19380,8 +19428,10 @@ async function slAnalyzeAggPhoto() {
     st('✓ Scan complete — review values above, then click Generate');
     showToast('Card scanned — review sieve values', 'success');
   } catch(e) {
-    st('✗ Error: ' + e.message);
-    showToast('Scan error: ' + e.message, 'error');
+    const msg = formatScanError(e);
+    st('✗ Error: ' + msg);
+    showToast('Scan error: ' + msg, 'error');
+    console.error('slAnalyzeSoilPhoto:', e);
   }
   if (btn) btn.disabled = false;
 }
