@@ -310,6 +310,7 @@ nav:not(#r18-nav), .nav-top-row { display: none !important; }
 .sl-queue-card.active { border-color: rgba(232,168,74,0.5); border-left: 3px solid; border-left-color: #e8a84a; background: var(--metal-subtle); background-size: 200% auto; box-shadow: var(--metal-glow-sm), inset 3px 0 0 #e8a84a; }
 .sl-queue-card.active .sl-qc-testno { color: #f5cc7a; text-shadow: 0 0 8px rgba(245,204,122,0.5); }
 .sl-queue-card.complete { border-left-color: var(--green2); }
+.sl-queue-card.corrupt { border-left-color: var(--red2); opacity: 1; }
 .sl-qc-top { display: flex; justify-content: space-between; align-items: center; margin-bottom: 3px; gap: 6px; }
 .sl-qc-testno { font-family: var(--mono); font-size: 12px; font-weight: 700; color: var(--accent2); }
 .sl-qc-contract { font-size: 11px; color: var(--text); margin-bottom: 3px; font-family: var(--mono); opacity: 0.85; }
@@ -318,6 +319,17 @@ nav:not(#r18-nav), .nav-top-row { display: none !important; }
 .sl-cat-tag.agg { background: rgba(200,167,67,0.15); color: var(--gold); }
 .sl-qc-loc { font-size: 10px; color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
 .sl-qc-date { font-family: var(--mono); font-size: 9px; color: var(--muted); margin-top: 1px; }
+.sl-qc-delete {
+  flex-shrink: 0; background: transparent; border: 1px solid rgba(248,113,113,0.35);
+  color: var(--red2); font-size: 12px; line-height: 1; padding: 2px 6px; border-radius: 4px;
+  cursor: pointer; opacity: 0.55; transition: opacity 0.15s, background 0.15s;
+}
+.sl-qc-delete:hover { opacity: 1; background: rgba(248,113,113,0.12); }
+.sl-broken-notice {
+  background: rgba(248,113,113,0.1); border: 1px solid rgba(248,113,113,0.4); border-radius: 8px;
+  padding: 14px 16px; margin-bottom: 14px; font-size: 12px; line-height: 1.55; color: var(--text);
+}
+.sl-broken-notice strong { color: var(--red2); font-family: var(--mono); font-size: 10px; letter-spacing: 1px; }
 .sl-empty { color: var(--muted); font-family: var(--sans); font-size: 11px; text-align: center; padding: 20px 10px; }
 .sl-empty-state { display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 40px; min-height: 65vh; }
 .sl-empty-icon { font-size: 44px; margin-bottom: 14px; opacity: 0.25; }
@@ -5733,6 +5745,12 @@ table.fc-borrow-tbl tr.fc-borrow-detail-row td{background:var(--surface);border-
           <!-- Entry inner scroll area -->
           <div class="sl-entry-inner">
 
+            <!-- Broken / empty lab data — cannot open report -->
+            <div class="sl-broken-notice" id="sl_broken_notice" style="display:none;">
+              <strong>⚠ NO LAB DATA</strong><br>
+              This sample has no saved lab results (it may have been corrupted). You can remove it from the queue below, or use the 🗑 button on the queue card.
+            </div>
+
             <!-- Already-complete notice -->
             <div class="sl-already-done" id="sl_already_done" style="display:none;">
               ✎ Editing a completed sample — submitting will update the existing report.
@@ -6532,7 +6550,7 @@ table.fc-borrow-tbl tr.fc-borrow-detail-row td{background:var(--surface);border-
 // GLOBALS
 // ══════════════════════════════════════════════
 let db = null;
-const APP_BUILD = '2026.07.07-approval-fetch-fresh';
+const APP_BUILD = '2026.07.07-soil-lab-queue-delete';
 const FC_CORE_ICON_SRC = 'docs/r18-reference/core-drill-icon-128.png';
 const BORELOG_ICON_SRC = 'docs/r18-reference/borelog-icon.webp';
 const BORELOG_PATH = 'docs/r18-reference/deldot-borelog.html';
@@ -17074,13 +17092,74 @@ function slReturnToSoilLabEdit() {
   slLoadSample(slCurrentSample.id, { edit: true });
 }
 
+function slCanDeleteFromQueue(s) {
+  if (!currentUser || !s) return false;
+  if (currentUser.role === 'admin') return true;
+  const corrupt = slIsCorruptSample(s);
+  const pending = !s.status || s.status === 'pending';
+  return pending || corrupt;
+}
+
+function slIsCorruptSample(s) {
+  if (!s) return false;
+  const locked = s.status === 'complete' || s.dist_status === 'pending_review';
+  return locked && !s.lab_data;
+}
+
+async function slQueueDeleteSample(id, ev) {
+  if (ev) { ev.stopPropagation(); ev.preventDefault(); }
+  let s = (allSamples || []).find(x => x.id === id);
+  if (!s) s = await fetchSample(id, { forceFresh: true });
+  if (!s) { showToast('Sample not found', 'error'); return; }
+  if (!slCanDeleteFromQueue(s)) {
+    showToast('You do not have permission to delete this sample', 'error');
+    return;
+  }
+  slCurrentSample = s;
+  slDeleteSample();
+}
+
+function slShowBrokenSamplePanel(sample) {
+  document.getElementById('sl_empty_state').style.display = 'none';
+  const content = document.getElementById('sl_lab_content');
+  content.style.display = 'flex';
+  content.style.flexDirection = 'column';
+  slSetMobileDetail(true);
+
+  document.getElementById('sl_b_testno').textContent     = sample.test_no;
+  document.getElementById('sl_b_contract').textContent   = sample.contract || '—';
+  document.getElementById('sl_b_location').textContent   = sample.location || '—';
+  document.getElementById('sl_b_material').textContent   = sample.material_type || '—';
+  document.getElementById('sl_b_date').textContent       = sample.date_sampled || '—';
+  document.getElementById('sl_b_sampled_by').textContent = sample.sampled_by || '—';
+
+  const badge = document.getElementById('sl_b_status_badge');
+  badge.className = `badge badge-${sample.status || 'pending'}`;
+  badge.textContent = (sample.status || 'PENDING').toUpperCase();
+
+  document.getElementById('sl_soil_entry').style.display = 'none';
+  document.getElementById('sl_agg_entry').style.display  = 'none';
+  const broken = document.getElementById('sl_broken_notice');
+  if (broken) broken.style.display = 'block';
+  const doneBanner = document.getElementById('sl_already_done');
+  if (doneBanner) doneBanner.style.display = 'none';
+
+  const rptBtn = document.getElementById('sl_view_report_btn');
+  if (rptBtn) rptBtn.style.display = 'none';
+  slUpdateDeleteButton();
+}
+
+function slHideBrokenNotice() {
+  const broken = document.getElementById('sl_broken_notice');
+  if (broken) broken.style.display = 'none';
+}
+
 function slUpdateDeleteButton() {
   const section = document.getElementById('sl_delete_section');
   if (!section) return;
-  // Any logged-in user on a pending sample gets the button.
-  // Concrete techs can't access soillab at all so no role whitelist needed.
-  const isPending = slCurrentSample && slCurrentSample.status !== 'complete';
-  section.style.display = (currentUser && isPending) ? 'block' : 'none';
+  const s = slCurrentSample;
+  const canDelete = s && slCanDeleteFromQueue(s);
+  section.style.display = canDelete ? 'block' : 'none';
 }
 
 function slDeleteSample() {
@@ -17114,6 +17193,7 @@ async function slConfirmDelete() {
 
   // Clear entry panel
   slCurrentSample = null;
+  slHideBrokenNotice();
   const emptyState = document.getElementById('sl_empty_state');
   const labContent = document.getElementById('sl_lab_content');
   if (emptyState) emptyState.style.display = '';
@@ -18391,12 +18471,19 @@ function slRenderQueue() {
     const isActive = slCurrentSample && slCurrentSample.id === s.id;
     const locText  = (s.location || s.material_type || '—').substring(0, 30);
     const openFn   = slStatusFilter === 'approval' ? `slOpenPendingReport('${s.id}')` : `slLoadSample('${s.id}')`;
-    return `<div class="sl-queue-card${isActive ? ' active' : ''}${isDone ? ' complete' : ''}"
+    const corrupt  = slIsCorruptSample(s);
+    const delBtn   = slCanDeleteFromQueue(s)
+      ? `<button type="button" class="sl-qc-delete" title="Remove from queue" onclick="slQueueDeleteSample('${s.id}', event)">🗑</button>`
+      : '';
+    return `<div class="sl-queue-card${isActive ? ' active' : ''}${isDone ? ' complete' : ''}${corrupt ? ' corrupt' : ''}"
                  onclick="${openFn}">
       <div class="sl-qc-top">
-        <span class="sl-qc-testno">${s.test_no}</span>
-        <span class="badge badge-${s.status || 'pending'}" style="font-size:8px;padding:1px 6px;">${(s.status||'pending').toUpperCase()}</span>
-        ${s.special_requests ? '<span style="background:rgba(255,80,80,0.18);color:var(--red2);font-family:var(--mono);font-size:8px;font-weight:700;padding:1px 6px;border-radius:3px;border:1px solid rgba(255,80,80,0.35);">⚠ REQ</span>' : ''}
+        <span class="sl-qc-testno">${s.test_no}${corrupt ? ' <span style="color:var(--red2);font-size:9px;">(empty)</span>' : ''}</span>
+        <span style="display:flex;align-items:center;gap:5px;">
+          <span class="badge badge-${s.status || 'pending'}" style="font-size:8px;padding:1px 6px;">${(s.status||'pending').toUpperCase()}</span>
+          ${s.special_requests ? '<span style="background:rgba(255,80,80,0.18);color:var(--red2);font-family:var(--mono);font-size:8px;font-weight:700;padding:1px 6px;border-radius:3px;border:1px solid rgba(255,80,80,0.35);">⚠ REQ</span>' : ''}
+          ${delBtn}
+        </span>
       </div>
       <div class="sl-qc-contract">${s.contract || '—'}</div>
       <div class="sl-qc-meta">
@@ -18757,6 +18844,7 @@ async function slOpenPendingReport(id) {
   slRenderQueue();
   if (!sample.lab_data) {
     showToast('No lab data on this sample — try refreshing the page', 'error');
+    slShowBrokenSamplePanel(sample);
     return;
   }
   await slViewReport();
@@ -18785,9 +18873,12 @@ async function slLoadSample(id, opts) {
       await slViewReport();
       return;
     }
-    showToast('Lab data not found — refresh the page or contact the lab tech', 'error');
+    showToast('No lab data on this sample — you can delete it from the queue', 'error');
+    slShowBrokenSamplePanel(sample);
     return;
   }
+
+  slHideBrokenNotice();
 
   // Show lab content
   document.getElementById('sl_empty_state').style.display  = 'none';
