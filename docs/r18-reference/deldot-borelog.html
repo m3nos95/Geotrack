@@ -4720,6 +4720,63 @@ async function handleGeoFiles(fileList) {
   $('geoGoBtn').style.display = 'inline-block';
 }
 
+function geoNormBoringName(name) {
+  return String(name || '').trim().toUpperCase().replace(/\s+/g, '');
+}
+
+function geoMdtForBoring(sampleIndex, boringName) {
+  const norm = geoNormBoringName(boringName);
+  if (!norm) return [];
+  return (sampleIndex || []).filter(e => geoNormBoringName(e.boring) === norm);
+}
+
+function geoPdArray(pd, ...keys) {
+  for (const k of keys) {
+    const v = pd?.[k];
+    if (v != null && String(v).trim() !== '') return splitPArray(v);
+  }
+  return [];
+}
+
+function geoBuildSampleNums(pd, mdtForBoring, mdtDepthMap) {
+  let sampNums = geoPdArray(pd, 'SAMP_NUM', 'SAMPLENUM', 'SAMPLE_NUM', 'SAMPLE_NO');
+  sampNums = sampNums.map(n => parseInt(n, 10)).filter(n => !isNaN(n) && n >= 0);
+
+  if (!sampNums.length && mdtForBoring.length) {
+    const fromMdt = [...new Set(mdtForBoring.map(e => e.sampleNo - 1).filter(n => n >= 0))];
+    if (fromMdt.length) sampNums = fromMdt;
+    else sampNums = [...new Set(mdtForBoring.map(e => e.sampleNo).filter(n => n > 0))];
+  }
+
+  if (!sampNums.length) {
+    const gdmids = geoPdArray(pd, 'GDMID', 'GDM_ID');
+    const depths = geoPdArray(pd, 'DEPTH');
+    const blows = geoPdArray(pd, 'BLOWS1');
+    const count = Math.max(gdmids.length, depths.length, blows.length);
+    if (count > 0) sampNums = Array.from({ length: count }, (_, i) => i + 1);
+  }
+
+  sampNums = [...new Set(sampNums)];
+  sampNums.sort((a, b) => {
+    const da = mdtDepthMap[a + 1];
+    const db = mdtDepthMap[b + 1];
+    if (isFinite(da) && isFinite(db)) return da - db;
+    if (isFinite(da)) return -1;
+    if (isFinite(db)) return 1;
+    return a - b;
+  });
+  return sampNums;
+}
+
+function geoSampleDepthTo(sNum, idx, pdDepths, mdtDepthMap, depthFrom, recovery) {
+  const fromMdt = mdtDepthMap[sNum + 1];
+  if (isFinite(fromMdt) && fromMdt > depthFrom) return fromMdt;
+  const fromPd = parseFloat(pdDepths[idx] ?? pdDepths[sNum - 1] ?? '');
+  if (isFinite(fromPd) && fromPd > depthFrom) return fromPd;
+  const recFt = Math.max((recovery ?? 24) / 12, 0.5);
+  return depthFrom + recFt;
+}
+
 function geoLog(type, msg){
   const log = $('geoLog');
   const cls = type === 'ok' ? 'gl-ok' : type === 'warn' ? 'gl-warn' : type === 'info' ? 'gl-info' : 'gl-err';
@@ -4757,7 +4814,7 @@ async function runGeoImport(){
     const sampleIndex = Object.values(sampleIndexMap);
 
     const mdtLookup = {};
-    gsEntries.forEach(e => { mdtLookup[`${e.boring}||${e.sampleNo}`] = e.fileIdx; });
+    gsEntries.forEach(e => { mdtLookup[`${geoNormBoringName(e.boring)}||${e.sampleNo}`] = e.fileIdx; });
     geoLog('ok', `✔ Index: ${gsEntries.length} sieve + ${limEntries.length} Atterberg entries`);
 
     // 2. Detect .$P$ files by CONTENT (not filename) — avoids Windows $ filename issues
@@ -4832,15 +4889,15 @@ async function runGeoImport(){
       const pd = boringDataMap[boringName] || {};
 
       // Parse per-sample arrays from .$P$
-      const pdDepths   = splitPArray(pd['DEPTH']        || '');
-      const pdSampNums = splitPArray(pd['SAMP_NUM']    || '');
-      const pdRec      = splitPArray(pd['SAMP_REC']    || '');
-      const pdBlows1   = splitPArray(pd['BLOWS1']      || '');
-      const pdBlows2   = splitPArray(pd['BLOWS2']      || '');
-      const pdBlows3   = splitPArray(pd['BLOWS3']      || '');
-      const pdBlows4   = splitPArray(pd['BLOWS4']      || '');
-      const pdGdmids   = splitPArray(pd['GDMID']       || '');
-      const pdAashto   = splitPArray(pd['AASHTO_CLASS']|| pd['AASHTO'] || '');
+      const pdDepths   = geoPdArray(pd, 'DEPTH');
+      const pdSampNums = geoPdArray(pd, 'SAMP_NUM', 'SAMPLENUM', 'SAMPLE_NUM', 'SAMPLE_NO');
+      const pdRec      = geoPdArray(pd, 'SAMP_REC', 'SAMPLE_REC', 'RECOVERY');
+      const pdBlows1   = geoPdArray(pd, 'BLOWS1');
+      const pdBlows2   = geoPdArray(pd, 'BLOWS2');
+      const pdBlows3   = geoPdArray(pd, 'BLOWS3');
+      const pdBlows4   = geoPdArray(pd, 'BLOWS4');
+      const pdGdmids   = geoPdArray(pd, 'GDMID', 'GDM_ID');
+      const pdAashto   = geoPdArray(pd, 'AASHTO_CLASS', 'AASHTO');
       const pdWdepth   = parseFloat(pd['WDEPTH1']      || '');
 
       // Parse GeoSystem descriptions (raw array, deepest-first).
@@ -4930,38 +4987,30 @@ async function runGeoImport(){
       // Determine sample list: prefer .$P$ SAMP_NUM, fall back to MDT.
       // Sort by MDT depthTo ascending so we always iterate shallowest → deepest.
       // .$P$ DEPTH = bottom depth (same as MDT depthTo); not used for interval calc.
-      const mdtForBoring = sampleIndex.filter(e => e.boring === boringName);
-      // MDT entry N holds the depthTo for GeoSystem sample N-1 (offset by 1).
-      // Use mdtDepthMap[sNum + 1] to get the correct bottom depth for GeoSystem sample sNum.
+      const mdtForBoring = geoMdtForBoring(sampleIndex, boringName);
       const mdtDepthMap  = {};
       mdtForBoring.forEach(e => { mdtDepthMap[e.sampleNo] = e.depthTo; });
 
-      let sampNums = pdSampNums.length
-        ? pdSampNums.map(n => parseInt(n)).filter(n => !isNaN(n))
-        : mdtForBoring.map(e => e.sampleNo - 1).filter(n => n > 0);
-
-      // Sort by MDT bottom depth ascending — use shifted key (sNum+1) for correct lookup.
-      sampNums.sort((a, b) => (mdtDepthMap[a + 1] ?? Infinity) - (mdtDepthMap[b + 1] ?? Infinity));
-
-
+      const sampNums = geoBuildSampleNums(pd, mdtForBoring, mdtDepthMap);
+      if (!sampNums.length) {
+        geoLog('warn', `  ⚠ ${boringName} — no samples found (check SAMP_NUM, GDMID, DEPTH, or GSCOMB.MDT)`);
+      }
 
       let prevDepthTo = 0;
-      const boringRawSamples = [];   // collect first, then renumber 1-based and save
+      const boringRawSamples = [];
 
-      for(const sNum of sampNums){
+      sampNums.forEach((sNum, idx) => {
         const sd = sampByNum[sNum] || {};
-        // MDT fallback for fileIdx if .$P$ GDMID missing
+        const boringKey = geoNormBoringName(boringName);
         const fileIdx = sd.gdmid != null
           ? sd.gdmid
-          : (mdtLookup[`${boringName}||${sNum}`] ?? null);
-        // depthFrom = running bottom of previous sample (always produces from < to)
+          : (mdtLookup[`${boringKey}||${sNum + 1}`]
+            ?? mdtLookup[`${boringKey}||${sNum}`]
+            ?? (pdGdmids[idx] != null ? parseInt(pdGdmids[idx], 10) : null));
         const depthFrom = prevDepthTo;
-        // recovery: .$P$ SAMP_REC has correct actual recovery; MDT always stores 24 (drive length)
-        const recovery  = sd.recovery ?? 24;
-        // depthTo: MDT entry sNum+1 holds the bottom depth for GeoSystem sample sNum
-        const depthTo   = mdtDepthMap[sNum + 1] ?? (depthFrom + (recovery / 12 || 2));
-        // Skip degenerate samples (zero or negative thickness) — e.g. GeoSystem header entry at 0
-        if(depthTo <= depthFrom){ continue; }
+        const recovery  = sd.recovery ?? mdtForBoring.find(e => e.sampleNo === sNum + 1)?.recovery ?? 24;
+        const depthTo   = geoSampleDepthTo(sNum, idx, pdDepths, mdtDepthMap, depthFrom, recovery);
+        if (depthTo <= depthFrom) return;
         prevDepthTo = depthTo;
 
         // Water level: mark this sample if boring water depth falls within its interval
@@ -5015,7 +5064,7 @@ async function runGeoImport(){
 
         processSample(s);
         boringRawSamples.push(s);
-      }
+      });
 
       // Sort by shallowest depth first, then assign sample_no 1, 2, 3… and save.
       // This guarantees sample #1 = surface regardless of .$P$ array order.
@@ -5087,16 +5136,19 @@ function readFileText(file){
 function parseGeoMDT(text){
   const entries = [];
   const lines = text.split(/\r?\n/).map(l => l.trim()).filter(l => l && l !== '-1');
-  for(const line of lines){
-    // e.g.  00000001,SB-1, 2 (4.0'/24 in.)
-    const m = line.match(/^(\d+),(.+?),\s*(\d+)\s*\(([0-9.]+)'\/([0-9.]+)\s*in\.\)/);
-    if(!m) continue;
+  for (const line of lines) {
+    // e.g. 00000001,SB-1, 2 (4.0'/24 in.) — tolerate spacing/quote variants
+    let m = line.match(/^(\d+)\s*,\s*(.+?)\s*,\s*(\d+)\s*\(\s*([0-9.]+)\s*['′]?\s*\/\s*([0-9.]+)\s*(?:in\.?)?\s*\)/i);
+    if (!m) {
+      m = line.match(/^(\d+)\s*,\s*(.+?)\s*,\s*(\d+)\s*\(\s*([0-9.]+)\s*\/\s*([0-9.]+)\s*\)/);
+    }
+    if (!m) continue;
     entries.push({
       fileIdx:  parseInt(m[1], 10),
       boring:   m[2].trim(),
       sampleNo: parseInt(m[3], 10),
       depthTo:  parseFloat(m[4]),
-      recovery: parseFloat(m[5])
+      recovery: parseFloat(m[5]),
     });
   }
   return entries;
