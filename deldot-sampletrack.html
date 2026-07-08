@@ -6515,7 +6515,7 @@ table.fc-borrow-tbl tr.fc-borrow-detail-row td{background:var(--surface);border-
 // GLOBALS
 // ══════════════════════════════════════════════
 let db = null;
-const APP_BUILD = '2026.07.08-geo-sync-fix';
+const APP_BUILD = '2026.07.08-borelog-ne-map';
 const FC_CORE_ICON_SRC = 'docs/r18-reference/core-drill-icon-128.png';
 const BORELOG_ICON_SRC = 'docs/r18-reference/borelog-icon.webp';
 const BORELOG_PATH = 'docs/r18-reference/deldot-borelog.html';
@@ -8686,6 +8686,20 @@ function statePlaneFromProfile(station, offset, frame) {
   return delawareNEToLatLng(n, e) || delawareNEToLatLng(e, n);
 }
 
+function borelogDirectNEToMap(northing, easting, b) {
+  const n = parseCoordNumber(northing);
+  const e = parseCoordNumber(easting);
+  if (isDelawareStatePlaneNE(n, e)) {
+    const fromNE = delawareNEToLatLng(n, e) || delawareNEToLatLng(e, n);
+    if (fromNE) return fromNE;
+  }
+  if (b) {
+    const fromExtract = extractBorelogStatePlaneCoords(b);
+    if (fromExtract) return fromExtract;
+  }
+  return null;
+}
+
 function resolveBorelogBoringCoords(b, frame, anchor) {
   if (!b) return null;
 
@@ -8693,29 +8707,21 @@ function resolveBorelogBoringCoords(b, frame, anchor) {
   if (explicitGps) return { ...explicitGps, _src: 'gps' };
 
   const { station, offset, northing, easting } = parseStationOffsetFields(b);
-  const isSP = isDelawareStatePlaneNE(northing, easting);
   const isProfile = isProfileGridNE(northing, easting);
   const polylineCandidate = isPolylineCandidateNE(northing, easting);
-  const rejected = isRejectedCorridorNE(northing, easting);
   const goodNE = isGoodDoverNE(northing, easting);
   const hasExplicitStation = /\d+\s*\+/.test(String(b.station_offset || ''))
     || String(b.station_offset || '').includes('/');
 
-  if (rejected) return null;
+  const directNE = borelogDirectNEToMap(northing, easting, b);
+  if (directNE) return { ...directNE, _src: 'ne' };
 
-  // 580k corridor: polyline only when no explicit GPS
   if (polylineCandidate) {
     const t = getPolylineT(frame, b);
     if (frame?.polyline && t != null) {
       const pt = interpolatePolyline(frame.waypoints, t);
       if (pt) return { ...pt, _src: 'polyline' };
     }
-    return null;
-  }
-
-  if (isSP && goodNE) {
-    const fromNE = delawareNEToLatLng(northing, easting) || delawareNEToLatLng(easting, northing);
-    if (fromNE) return { ...fromNE, _src: 'ne' };
   }
 
   if (frame && isFinite(station) && (frame.synthetic || (frame.fromGoodAnchors && !goodNE))) {
@@ -8740,11 +8746,6 @@ function resolveBorelogBoringCoords(b, frame, anchor) {
       const fromGrid = statePlaneFromProfile(easting, northing, frame);
       if (fromGrid) return { ...fromGrid, _src: 'profile' };
     }
-  }
-
-  if (isSP) {
-    const fromNE = extractBorelogStatePlaneCoords(b);
-    if (fromNE) return { ...fromNE, _src: 'ne' };
   }
 
   return null;
@@ -8835,7 +8836,9 @@ function getBorelogProjectAnchor(group, projectMeta) {
 }
 
 function isPlausibleBorelogCoord(b, coords, anchor) {
-  if (!coords || !anchor) return true;
+  if (!coords) return false;
+  if (b?._coordSrc === 'ne' && delawareBoundsOk(coords.lat, coords.lng)) return true;
+  if (!anchor) return true;
   if (b?._coordSrc === 'gps') {
     return coords.lat >= 38.4 && coords.lat <= 39.95
       && coords.lng >= -76.05 && coords.lng <= -74.4;
@@ -9072,6 +9075,7 @@ async function collectBorelogBoringsFromLocal(contract) {
 
 async function fetchBorelogBoringsForContract(contract) {
   await purgeStaleBorelogMapGhosts();
+  await migrateBorelogLocalStorageCoords();
   const raw = await getAuthoritativeBorelogStore();
   if (!Object.keys(raw.borings || {}).length) return [];
   const items = await collectBorelogBoringsFromLocal(contract);

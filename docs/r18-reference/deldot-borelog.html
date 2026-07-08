@@ -947,7 +947,7 @@ const DELDOT_LOGO = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAPAAAADwCAYAA
    - Storage wrapper abstracted for future Supabase port
    ========================================================================= */
 const STORE_KEY = 'deldot_borelog_v2';
-const BORELOG_BUILD = '2026.07.08-geo-sync-fix';
+const BORELOG_BUILD = '2026.07.08-borelog-ne-map';
 const MAP_MIGRATE_KEY = 'deldot_borelog_gps_migrated_v2';
 const STORE_TS_KEY = 'deldot_borelog_v2_ts';
 const DE_STATE_PLANE = '+proj=lcc +lat_1=38.43333333333334 +lat_2=39.83333333333333 +lat_0=38 +lon_0=-75.41666666666666 +x_0=200000.99998984026 +y_0=0 +ellps=GRS80 +units=us-ft +no_defs';
@@ -2642,6 +2642,20 @@ function parseStoredGpsLatLng(b) {
   return parsed;
 }
 
+function borelogDirectNEToMap(northing, easting, b) {
+  const n = parseCoordNumber(northing);
+  const e = parseCoordNumber(easting);
+  if (isDelawareStatePlaneNE(n, e)) {
+    const fromNE = delawareNEToLatLng(n, e) || delawareNEToLatLng(e, n);
+    if (fromNE) return fromNE;
+  }
+  if (b) {
+    const fromExtract = extractBorelogStatePlaneCoords(b);
+    if (fromExtract) return fromExtract;
+  }
+  return null;
+}
+
 function resolveBoringMapCoords(b, frame) {
   if (!b) return null;
 
@@ -2649,27 +2663,20 @@ function resolveBoringMapCoords(b, frame) {
   if (explicitGps) return explicitGps;
 
   const { station, offset, northing, easting } = parseStationOffsetFields(b);
-  const isSP = isDelawareStatePlaneNE(northing, easting);
   const isProfile = isProfileGridNE(northing, easting);
   const polylineCandidate = isPolylineCandidateNE(northing, easting);
-  const rejected = isRejectedCorridorNE(northing, easting);
   const goodNE = isGoodDoverNE(northing, easting);
   const hasExplicitStation = /\d+\s*\+/.test(String(b.station_offset || ''))
     || String(b.station_offset || '').includes('/');
 
-  if (rejected) return null;
+  const directNE = borelogDirectNEToMap(northing, easting, b);
+  if (directNE) return directNE;
 
   if (polylineCandidate) {
     const t = getPolylineT(frame, b);
     if (frame?.polyline && t != null) {
       return interpolatePolyline(frame.waypoints, t);
     }
-    return null;
-  }
-
-  if (isSP && goodNE) {
-    const fromNE = delawareNEToLatLng(northing, easting) || delawareNEToLatLng(easting, northing);
-    if (fromNE) return fromNE;
   }
 
   if (frame && isFinite(station) && (frame.synthetic || (frame.fromGoodAnchors && !goodNE))) {
@@ -2694,11 +2701,6 @@ function resolveBoringMapCoords(b, frame) {
       const fromGrid = statePlaneFromProfile(easting, northing, frame);
       if (fromGrid) return fromGrid;
     }
-  }
-
-  if (isSP) {
-    const fromNE = extractBorelogStatePlaneCoords(b);
-    if (fromNE) return fromNE;
   }
 
   return null;
