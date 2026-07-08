@@ -955,7 +955,7 @@ const DELDOT_LOGO = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAPAAAADwCAYAA
    - Storage wrapper abstracted for future Supabase port
    ========================================================================= */
 const STORE_KEY = 'deldot_borelog_v2';
-const BORELOG_BUILD = '2026.07.08-borelog-3d-fix';
+const BORELOG_BUILD = '2026.07.08-borelog-splash-fix';
 const MAP_MIGRATE_KEY = 'deldot_borelog_gps_migrated_v2';
 const STORE_TS_KEY = 'deldot_borelog_v2_ts';
 const DE_STATE_PLANE = '+proj=lcc +lat_1=38.43333333333334 +lat_2=39.83333333333333 +lat_0=38 +lon_0=-75.41666666666666 +x_0=200000.99998984026 +y_0=0 +ellps=GRS80 +units=us-ft +no_defs';
@@ -4999,7 +4999,8 @@ async function runGeoImport(){
       let prevDepthTo = 0;
       const boringRawSamples = [];
 
-      sampNums.forEach((sNum, idx) => {
+      for (let idx = 0; idx < sampNums.length; idx++) {
+        const sNum = sampNums[idx];
         const sd = sampByNum[sNum] || {};
         const boringKey = geoNormBoringName(boringName);
         const fileIdx = sd.gdmid != null
@@ -5010,7 +5011,7 @@ async function runGeoImport(){
         const depthFrom = prevDepthTo;
         const recovery  = sd.recovery ?? mdtForBoring.find(e => e.sampleNo === sNum + 1)?.recovery ?? 24;
         const depthTo   = geoSampleDepthTo(sNum, idx, pdDepths, mdtDepthMap, depthFrom, recovery);
-        if (depthTo <= depthFrom) return;
+        if (depthTo <= depthFrom) continue;
         prevDepthTo = depthTo;
 
         // Water level: mark this sample if boring water depth falls within its interval
@@ -5064,7 +5065,7 @@ async function runGeoImport(){
 
         processSample(s);
         boringRawSamples.push(s);
-      });
+      }
 
       // Sort by shallowest depth first, then assign sample_no 1, 2, 3… and save.
       // This guarantees sample #1 = surface regardless of .$P$ array order.
