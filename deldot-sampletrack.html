@@ -6515,7 +6515,7 @@ table.fc-borrow-tbl tr.fc-borrow-detail-row td{background:var(--surface);border-
 // GLOBALS
 // ══════════════════════════════════════════════
 let db = null;
-const APP_BUILD = '2026.07.08-map-dual-search';
+const APP_BUILD = '2026.07.08-geo-sync-fix';
 const FC_CORE_ICON_SRC = 'docs/r18-reference/core-drill-icon-128.png';
 const BORELOG_ICON_SRC = 'docs/r18-reference/borelog-icon.webp';
 const BORELOG_PATH = 'docs/r18-reference/deldot-borelog.html';
@@ -6787,6 +6787,7 @@ function _blRowToProject(r) {
     remarks: r.remarks || '',
     created_at: r.created_at,
     updated_at: r.updated_at,
+    _cloudSynced: true,
   };
 }
 
@@ -6798,6 +6799,7 @@ function _blRowToBoring(r) {
     ...(r.header_data || {}),
     created_at: r.created_at,
     updated_at: r.updated_at,
+    _cloudSynced: true,
   };
 }
 
@@ -6810,36 +6812,42 @@ function _blRowToSample(r) {
     ...(r.lab_data || {}),
     created_at: r.created_at,
     updated_at: r.updated_at,
+    _cloudSynced: true,
   };
 }
 
+function _blWasCloudSynced(entity) {
+  return !!(entity && entity._cloudSynced);
+}
+
 function _blProjectToRow(p) {
+  const { _cloudSynced, ...rest } = p;
   return {
-    id: p.id,
-    labtrak_project_id: p.labtrak_project_id || null,
-    contract: p.contract_no || '',
-    name: p.name,
-    federal_no: p.federal_no || '',
-    county: p.county || '',
-    route: p.route || '',
-    structure: p.structure || '',
-    location: p.location || '',
-    contractor: p.contractor || '',
-    rig: p.rig || '',
-    driller: p.driller || '',
-    logged_by: p.logged_by || '',
-    supervisor: p.supervisor || '',
-    reviewed_by: p.reviewed_by || '',
-    date_start: p.date_start || '',
-    date_end: p.date_end || '',
-    remarks: p.remarks || '',
-    updated_at: p.updated_at || new Date().toISOString(),
+    id: rest.id,
+    labtrak_project_id: rest.labtrak_project_id || null,
+    contract: rest.contract_no || '',
+    name: rest.name,
+    federal_no: rest.federal_no || '',
+    county: rest.county || '',
+    route: rest.route || '',
+    structure: rest.structure || '',
+    location: rest.location || '',
+    contractor: rest.contractor || '',
+    rig: rest.rig || '',
+    driller: rest.driller || '',
+    logged_by: rest.logged_by || '',
+    supervisor: rest.supervisor || '',
+    reviewed_by: rest.reviewed_by || '',
+    date_start: rest.date_start || '',
+    date_end: rest.date_end || '',
+    remarks: rest.remarks || '',
+    updated_at: rest.updated_at || new Date().toISOString(),
     deleted_at: null,
   };
 }
 
 function _blBoringToRow(b) {
-  const { id, project_id, boring_no, updated_at, created_at, ...header } = b;
+  const { id, project_id, boring_no, updated_at, created_at, _cloudSynced, ...header } = b;
   return {
     id, project_id, boring_no: boring_no || '',
     header_data: header,
@@ -6849,7 +6857,7 @@ function _blBoringToRow(b) {
 }
 
 function _blSampleToRow(s) {
-  const { id, boring_id, project_id, sample_no, updated_at, created_at, ...lab } = s;
+  const { id, boring_id, project_id, sample_no, updated_at, created_at, _cloudSynced, ...lab } = s;
   return {
     id, boring_id, project_id, sample_no: sample_no || 0,
     lab_data: lab,
@@ -6896,6 +6904,7 @@ async function _tombstoneBorelogBoringId(id) {
 async function _pruneBorelogMissingFromCloud(merged, cloudProjIds, cloudBorIds, cloudSampIds, pendingUpsert) {
   for (const id of Object.keys(merged.projects || {})) {
     if (cloudProjIds.has(id) || pendingUpsert.borelog_projects.has(id)) continue;
+    if (!_blWasCloudSynced(merged.projects[id])) continue;
     await _tombstoneBorelogProjectId(id);
     delete merged.projects[id];
     for (const bid of Object.keys(merged.borings || {})) {
@@ -6910,6 +6919,7 @@ async function _pruneBorelogMissingFromCloud(merged, cloudProjIds, cloudBorIds, 
   }
   for (const id of Object.keys(merged.borings || {})) {
     if (cloudBorIds.has(id) || pendingUpsert.borelog_borings.has(id)) continue;
+    if (!_blWasCloudSynced(merged.borings[id])) continue;
     await _tombstoneBorelogBoringId(id);
     delete merged.borings[id];
     Object.keys(merged.samples || {}).forEach(sid => {
@@ -6918,15 +6928,23 @@ async function _pruneBorelogMissingFromCloud(merged, cloudProjIds, cloudBorIds, 
   }
   Object.keys(merged.samples || {}).forEach(id => {
     if (cloudSampIds.has(id) || pendingUpsert.borelog_samples.has(id)) return;
+    if (!_blWasCloudSynced(merged.samples[id])) return;
     delete merged.samples[id];
   });
 }
 
-async function flushBorelogSyncQueueFromLabtrak() {
+let _labtrakBorelogFlushPromise = null;
+
+async function _flushBorelogSyncQueueFromLabtrakCore() {
   if (!db) return;
   let q = readBorelogSyncQueue();
   if (!q.length) return;
   const remaining = [];
+  const synced = {
+    borelog_projects: new Set(),
+    borelog_borings: new Set(),
+    borelog_samples: new Set(),
+  };
   for (const entry of q) {
     try {
       if (entry.op === 'delete') {
@@ -6941,6 +6959,7 @@ async function flushBorelogSyncQueueFromLabtrak() {
         else continue;
         const { error } = await db.from(entry.table).upsert(row, { onConflict: 'id' });
         if (error) throw error;
+        if (entry.table && entry.id && synced[entry.table]) synced[entry.table].add(entry.id);
       }
     } catch (e) {
       console.warn('borelog sync queue:', entry, e);
@@ -6948,6 +6967,21 @@ async function flushBorelogSyncQueueFromLabtrak() {
     }
   }
   try { localStorage.setItem(BORELOG_SYNC_QUEUE_KEY, JSON.stringify(remaining)); } catch (e) {}
+  if (synced.borelog_projects.size || synced.borelog_borings.size || synced.borelog_samples.size) {
+    const local = await getAuthoritativeBorelogStore();
+    synced.borelog_projects.forEach(id => { if (local.projects[id]) local.projects[id]._cloudSynced = true; });
+    synced.borelog_borings.forEach(id => { if (local.borings[id]) local.borings[id]._cloudSynced = true; });
+    synced.borelog_samples.forEach(id => { if (local.samples[id]) local.samples[id]._cloudSynced = true; });
+    await _writeBorelogKvToIdb(BORELOG_STORE_KEY, local);
+    invalidateBorelogStoreCache();
+    try { localStorage.setItem(BORELOG_STORE_TS_KEY, String(Date.now())); } catch {}
+  }
+}
+
+async function flushBorelogSyncQueueFromLabtrak() {
+  if (_labtrakBorelogFlushPromise) return _labtrakBorelogFlushPromise;
+  _labtrakBorelogFlushPromise = _flushBorelogSyncQueueFromLabtrakCore().finally(() => { _labtrakBorelogFlushPromise = null; });
+  return _labtrakBorelogFlushPromise;
 }
 
 async function pullAndMergeBorelogCloud() {
@@ -11252,6 +11286,7 @@ function runBackgroundSync() {
     .then(() => offlineSync())
     .then(() => flushSampleHistoryQueue())
     .then(() => flushConcreteSyncQueue())
+    .then(() => flushBorelogSyncQueueFromLabtrak().catch(e => console.warn('borelog flush:', e)))
     .then(() => pullAndMergeBorelogCloud().catch(e => console.warn('borelog pull:', e)))
     .then(() => flushBorelogSyncQueueFromLabtrak().catch(e => console.warn('borelog flush:', e)))
     .then(() => loadProjects())
@@ -11722,6 +11757,7 @@ async function connectSupabase(silent = false) {
     await flushSampleHistoryQueue();
     await pullAndMergeConcreteSets();
     await flushConcreteSyncQueue();
+    await flushBorelogSyncQueueFromLabtrak().catch(e => console.warn('borelog flush:', e));
     await pullAndMergeBorelogCloud().catch(e => console.warn('borelog pull:', e));
     await flushBorelogSyncQueueFromLabtrak().catch(e => console.warn('borelog flush:', e));
 
