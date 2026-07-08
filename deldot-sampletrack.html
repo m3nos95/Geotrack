@@ -1862,6 +1862,13 @@ nav:not(#r18-nav), .nav-top-row { display: none !important; }
   font-size: 8px; letter-spacing: 0.5px; color: var(--accent2);
   border: 1px solid rgba(217,138,56,0.35); border-radius: 4px; padding: 1px 5px; margin-top: 2px;
 }
+.map-road-search-item-tag.boring { background: rgba(34,211,238,0.15); color: #22d3ee; border-color: rgba(34,211,238,0.35); }
+.map-road-search-item-tag.contract { background: rgba(96,165,250,0.15); color: #60a5fa; border-color: rgba(96,165,250,0.35); }
+.map-road-search-item-tag.coords { background: rgba(52,211,153,0.15); color: #34d399; border-color: rgba(52,211,153,0.35); }
+.map-zoom-hint {
+  font-family: var(--mono); font-size: 9px; color: var(--accent2);
+  letter-spacing: 0.5px; white-space: nowrap;
+}
 .map-road-search-pin {
   width: 28px; height: 28px; font-size: 22px; line-height: 28px; text-align: center;
   filter: drop-shadow(0 2px 4px rgba(0,0,0,0.65)); cursor: default;
@@ -6386,7 +6393,7 @@ table.fc-borrow-tbl tr.fc-borrow-detail-row td{background:var(--surface);border-
           </div>
           <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
             <div class="map-road-search" id="labMapRoadSearchWrap">
-              <input type="search" id="labMapRoadSearch" placeholder="Search road or address…" autocomplete="off" aria-label="Search road or address" />
+              <input type="search" id="labMapRoadSearch" placeholder="Boring, contract, project, coords…" autocomplete="off" aria-label="Search map" />
               <button type="button" class="btn btn-ghost map-road-search-go" onclick="runMapRoadSearch('lab')">GO</button>
               <div class="map-road-search-results" id="labMapRoadSearchResults" style="display:none;" role="listbox"></div>
             </div>
@@ -6494,7 +6501,7 @@ table.fc-borrow-tbl tr.fc-borrow-detail-row td{background:var(--surface);border-
 // GLOBALS
 // ══════════════════════════════════════════════
 let db = null;
-const APP_BUILD = '2026.07.07-sync-deletions-fix';
+const APP_BUILD = '2026.07.08-map-search-zoom';
 const FC_CORE_ICON_SRC = 'docs/r18-reference/core-drill-icon-128.png';
 const BORELOG_ICON_SRC = 'docs/r18-reference/borelog-icon.webp';
 const BORELOG_PATH = 'docs/r18-reference/deldot-borelog.html';
@@ -7302,13 +7309,7 @@ function flyMapToGeocode(map, feature, which) {
 function renderMapRoadSearchResults(which, items) {
   const { results } = mapRoadSearchEls(which);
   if (!results || !items.length) return;
-  results.innerHTML = items.map((item, i) => `
-    <button type="button" class="map-road-search-item" data-idx="${i}">
-      <span class="map-road-search-item-label">${mapRoadEscape(item.label)}</span>
-      ${item.sub ? `<span class="map-road-search-item-sub">${mapRoadEscape(item.sub)}</span>` : ''}
-      ${item.kind === 'project' ? '<span class="map-road-search-item-tag">PROJECT ROAD</span>' : ''}
-    </button>
-  `).join('');
+  results.innerHTML = items.map((item, i) => renderMapSearchResultItem(item, i)).join('');
   results._items = items;
   results.style.display = 'block';
   results.querySelectorAll('.map-road-search-item').forEach(btn => {
@@ -7326,7 +7327,23 @@ async function selectMapRoadResult(which, item) {
   const { input } = mapRoadSearchEls(which);
   if (input && item.label) input.value = item.label;
 
+  if (item.coords && (item.kind === 'pin' || item.kind === 'borelog' || item.kind === 'coords' || item.key)) {
+    mapSearchClear(which);
+    applyMapSearch(which, input?.value || item.label, [item]);
+    return;
+  }
+
+  if (item.linkedKeys?.length) {
+    const catalog = mapSearchCatalogFor(which);
+    const linked = catalog.filter(c => item.linkedKeys.includes(c.key));
+    if (linked.length) {
+      applyMapSearch(which, input?.value || item.label, linked);
+      return;
+    }
+  }
+
   if (item.feature) {
+    mapSearchClear(which);
     flyMapToGeocode(map, item.feature, which);
     return;
   }
@@ -7334,6 +7351,7 @@ async function selectMapRoadResult(which, item) {
   try {
     const results = await geocodeRoadQuery(item.query || item.label);
     if (results.length && results[0].feature) {
+      mapSearchClear(which);
       flyMapToGeocode(map, results[0].feature, which);
     } else {
       showToast('Could not locate "' + item.label + '"', 'error');
@@ -7346,7 +7364,10 @@ async function selectMapRoadResult(which, item) {
 async function searchMapRoads(which, query) {
   const { input } = mapRoadSearchEls(which);
   const q = (query != null ? query : input?.value || '').trim();
-  if (!q) return;
+  if (!q) {
+    mapSearchClear(which);
+    return;
+  }
 
   const map = getMapForRoadSearch(which);
   if (!map) {
@@ -7354,7 +7375,8 @@ async function searchMapRoads(which, query) {
     return;
   }
 
-  const local = getLocalRoadSuggestions(q).map(item => ({ ...item, kind: 'project' }));
+  const catalogHits = searchMapCatalog(which, q);
+  const local = getLocalRoadSuggestions(q).map(item => ({ ...item, kind: 'project', tag: 'contract', tagLabel: 'ROAD' }));
   let geocoded = [];
   try {
     geocoded = await geocodeRoadQuery(q);
@@ -7362,10 +7384,41 @@ async function searchMapRoads(which, query) {
     console.warn('Geocode error', e);
   }
 
-  const combined = [...local, ...geocoded];
+  const pinHits = catalogHits.filter(h => h.kind === 'pin' || h.kind === 'borelog' || (h.key && h.key !== '__coord__'));
+  const projectHits = catalogHits.filter(h => h.kind === 'project');
+  const coordOnly = catalogHits.filter(h => h.flyOnly);
+
+  if (pinHits.length === 1 && !local.length && !geocoded.length && !projectHits.length) {
+    applyMapSearch(which, q, pinHits);
+    if (input) input.value = pinHits[0].label;
+    return;
+  }
+  if (projectHits.length === 1 && pinHits.length === 0 && !local.length && !geocoded.length) {
+    const p = projectHits[0];
+    const linked = mapSearchCatalogFor(which).filter(c => (p.linkedKeys || []).includes(c.key));
+    if (linked.length) {
+      applyMapSearch(which, q, linked);
+      if (input) input.value = p.label;
+      return;
+    }
+  }
+  if (coordOnly.length && pinHits.length === 0 && !local.length && !geocoded.length) {
+    mapSearchClear(which);
+    const c = coordOnly[0].coords;
+    map.flyTo({ center: [c.lng, c.lat], zoom: Math.max(MAP_PIN_MIN_ZOOM + 1, 15), duration: 900 });
+    showToast('Jumped to coordinates', 'info');
+    return;
+  }
+  if (pinHits.length > 1 && !local.length && !geocoded.length) {
+    applyMapSearch(which, q, pinHits);
+    return;
+  }
+
+  const combined = [...catalogHits.slice(0, 8), ...local, ...geocoded];
   if (!combined.length) {
     showToast('No matches found for "' + q + '"', 'error');
     hideMapRoadSearchResults(which);
+    mapSearchClear(which);
     return;
   }
   if (combined.length === 1) {
@@ -7393,14 +7446,20 @@ function initMapRoadSearch() {
         return;
       }
       debounce = setTimeout(() => {
-        const local = getLocalRoadSuggestions(val);
-        if (local.length) renderMapRoadSearchResults(which, local);
+        const val = input.value.trim();
+        if (val.length < 2) {
+          hideMapRoadSearchResults(which);
+          if (!val) mapSearchClear(which);
+          return;
+        }
+        const suggestions = getMapSearchSuggestions(which, val);
+        if (suggestions.length) renderMapRoadSearchResults(which, suggestions);
         else hideMapRoadSearchResults(which);
       }, 200);
     });
     input.addEventListener('keydown', e => {
       if (e.key === 'Enter') { e.preventDefault(); runMapRoadSearch(which); }
-      if (e.key === 'Escape') hideMapRoadSearchResults(which);
+      if (e.key === 'Escape') { hideMapRoadSearchResults(which); mapSearchClear(which); }
     });
   });
   if (initMapRoadSearch._docBound) return;
@@ -7411,6 +7470,261 @@ function initMapRoadSearch() {
       hideMapRoadSearchResults('project');
     }
   });
+}
+
+const MAP_PIN_MIN_ZOOM = 14;
+const mapSearchState = { lab: null, project: null };
+let projectMapMarkerByKey = {};
+let projectMapSearchCatalog = [];
+
+function mapSearchClear(which) {
+  mapSearchState[which] = null;
+  syncMapPinVisibility(which);
+}
+
+function bindMapPinZoomVisibility(map, which) {
+  if (!map || map._pinZoomBound) return;
+  map._pinZoomBound = true;
+  const sync = () => syncMapPinVisibility(which);
+  map.on('zoom', sync);
+  map.on('zoomend', sync);
+}
+
+function getMapMarkersForWhich(which) {
+  return which === 'lab' ? labMapMarkers : mapMarkers;
+}
+
+function syncMapPinVisibility(which) {
+  const map = getMapForRoadSearch(which);
+  if (!map) return;
+  const markers = getMapMarkersForWhich(which);
+  const zoom = map.getZoom();
+  const search = mapSearchState[which];
+  const searchActive = !!(search?.keys?.size);
+  const zoomOk = zoom >= MAP_PIN_MIN_ZOOM;
+
+  markers.forEach(marker => {
+    const el = marker.getElement();
+    if (!el) return;
+    const dimmed = el.dataset.dimmed === '1';
+    let show = false;
+    if (searchActive) {
+      show = zoomOk && marker._pinKey && search.keys.has(marker._pinKey);
+    } else if (!dimmed && zoomOk) {
+      show = true;
+    }
+    el.style.display = show ? '' : 'none';
+    el.style.pointerEvents = show ? '' : 'none';
+  });
+}
+
+function mapSearchBuildHay(layer, record) {
+  const parts = [];
+  if (layer === 'borelog') {
+    parts.push(record.boring_no, record.contract, record.projectName, record.location,
+      record.station_offset, record.station, record.offset, record.northing, record.easting,
+      record.gps_coordinates, record.reference, record.contractor);
+  } else if (layer === 'core_drill') {
+    parts.push(record.core_no, record.test_no, record.contract, record.station, record.layer_type, record.gps_coordinates);
+  } else if (layer === 'concrete') {
+    const set = record._set || record;
+    parts.push(set.id, set.contract, set.pourLocation, set.mixDesign, set.gps_coordinates);
+  } else {
+    parts.push(record.test_no, record.contract, record.location, record.material_type,
+      record.fa_project, record.road, record.gps_coordinates);
+  }
+  return parts.filter(Boolean).join(' ').toLowerCase();
+}
+
+function collectLabMapSearchCatalog() {
+  const out = [];
+  labMapEnumerateItems().forEach(({ layer, record, coords }) => {
+    if (!coords) return;
+    const key = labMapItemKey(layer, record);
+    out.push({
+      kind: 'pin',
+      key,
+      layer,
+      label: labMapAreaRecordLabel(layer, record),
+      sub: labMapAreaRecordSub(layer, record),
+      coords,
+      hay: mapSearchBuildHay(layer, record),
+      tag: layer === 'borelog' ? 'boring' : layer,
+      tagLabel: layer === 'borelog' ? 'BORING' : (LAB_MAP_LAYER_DEFS[layer]?.label || layer).toUpperCase(),
+    });
+  });
+  const pinsByContract = {};
+  out.forEach(item => {
+    const c = mapContractNorm(item.sub?.split('·')[0]?.trim() || item.record?.contract);
+    if (!c) return;
+    (pinsByContract[c] = pinsByContract[c] || []).push(item.key);
+  });
+  (allProjects || []).forEach(p => {
+    const hay = [p.contract, p.road, p.description, p.contractor, p.fa_project].filter(Boolean).join(' ').toLowerCase();
+    if (!hay) return;
+    const cNorm = mapContractNorm(p.contract);
+    out.push({
+      kind: 'project',
+      key: 'project:' + (p.id || p.contract),
+      label: p.road || p.description || p.contract || 'Project',
+      sub: [p.contract, p.contractor].filter(Boolean).join(' · '),
+      hay,
+      tag: 'contract',
+      tagLabel: 'PROJECT',
+      linkedKeys: pinsByContract[cNorm] || [],
+    });
+  });
+  return out;
+}
+
+function buildProjectMapSearchCatalog(samples, cores, conc, borings) {
+  const out = [];
+  const add = (layer, record, coords, label, sub) => {
+    if (!coords) return;
+    const key = labMapItemKey(layer, record);
+    out.push({
+      kind: 'pin', key, layer, label, sub, coords,
+      hay: mapSearchBuildHay(layer, record),
+      tag: layer === 'borelog' ? 'boring' : layer,
+      tagLabel: layer === 'borelog' ? 'BORING' : (LAB_MAP_LAYER_DEFS[layer]?.label || layer).toUpperCase(),
+      record,
+    });
+  };
+  (samples || []).forEach(s => {
+    const coords = parseGPS(s.gps_coordinates, true);
+    add('field_sample', s, coords, s.test_no || 'Sample', [s.contract, s.location].filter(Boolean).join(' · '));
+  });
+  (cores || []).forEach(c => {
+    const coords = parseGPS(c.gps_coordinates, true);
+    add('core_drill', c, coords, 'Core ' + (c.core_no || c.test_no || '—'), [c.contract, c.station].filter(Boolean).join(' · '));
+  });
+  (conc || []).forEach(cs => {
+    const set = typeof concreteRowToSet === 'function' ? concreteRowToSet(cs) : cs;
+    const coords = set?.gps_coordinates ? parseGPS(set.gps_coordinates, true) : null;
+    add('concrete', { ...cs, _set: set }, coords, set?.id || 'Concrete', [set?.contract, set?.pourLocation].filter(Boolean).join(' · '));
+  });
+  (borings || []).forEach(b => {
+    if (!b?.coords) return;
+    add('borelog', b, b.coords, 'Boring ' + (b.boring_no || '—'),
+      [b.contract, b.projectName, b.location].filter(Boolean).join(' · '));
+  });
+  return out;
+}
+
+function parseMapSearchCoords(q) {
+  const raw = (q || '').trim();
+  if (!raw) return null;
+  const gps = parseGPS(raw, true);
+  if (gps) return { ...gps, kind: 'gps' };
+  const ne = extractBorelogStatePlaneValues({ northing: raw, easting: '', gps_coordinates: raw });
+  if (isFinite(ne.northing) && isFinite(ne.easting) && ne.northing > 50000 && ne.easting > 50000) {
+    const pt = delawareNEToLatLng(ne.northing, ne.easting) || delawareNEToLatLng(ne.easting, ne.northing);
+    if (pt) return { ...pt, kind: 'ne' };
+  }
+  const nums = raw.split(/[,;\s]+/).map(parseCoordNumber).filter(n => isFinite(n));
+  if (nums.length >= 2 && nums[0] > 50000 && nums[1] > 50000) {
+    const pt = delawareNEToLatLng(nums[0], nums[1]) || delawareNEToLatLng(nums[1], nums[0]);
+    if (pt) return { ...pt, kind: 'ne' };
+  }
+  return null;
+}
+
+function mapSearchCatalogFor(which) {
+  return which === 'lab' ? collectLabMapSearchCatalog() : (projectMapSearchCatalog || []);
+}
+
+function searchMapCatalog(which, q) {
+  const needle = q.trim().toLowerCase();
+  if (!needle || needle.length < 1) return [];
+  const catalog = mapSearchCatalogFor(which);
+  const hits = catalog.filter(item => item.hay && item.hay.includes(needle));
+  const coord = parseMapSearchCoords(q);
+  if (coord) {
+    const near = catalog.filter(item => {
+      if (!item.coords) return false;
+      return coordsDistanceMeters(item.coords, coord) <= 400;
+    });
+    near.forEach(item => {
+      if (!hits.some(h => h.key === item.key)) hits.unshift(item);
+    });
+    if (!hits.length) {
+      hits.push({
+        kind: 'coords',
+        key: '__coord__',
+        label: coord.kind === 'ne' ? 'State plane coordinates' : 'Coordinates',
+        sub: coord.lat.toFixed(5) + ', ' + coord.lng.toFixed(5),
+        coords: coord,
+        hay: needle,
+        tag: 'coords',
+        tagLabel: 'COORDS',
+        flyOnly: true,
+      });
+    }
+  }
+  return hits;
+}
+
+function applyMapSearch(which, query, hits) {
+  const map = getMapForRoadSearch(which);
+  if (!map) return;
+  const keys = new Set();
+  const withCoords = [];
+  (hits || []).forEach(h => {
+    if (h.flyOnly && h.coords) {
+      withCoords.push(h);
+      return;
+    }
+    if (h.key && h.key !== '__coord__') keys.add(h.key);
+    (h.linkedKeys || []).forEach(k => keys.add(k));
+    if (h.coords) withCoords.push(h);
+  });
+  if (keys.size) {
+    mapSearchState[which] = { query, keys, hits };
+  } else if (withCoords.length) {
+    mapSearchState[which] = null;
+  } else {
+    mapSearchClear(which);
+    showToast('No map pins match "' + query + '"', 'error');
+    return;
+  }
+  if (withCoords.length) {
+    const bounds = new mapboxgl.LngLatBounds();
+    withCoords.forEach(h => bounds.extend([h.coords.lng, h.coords.lat]));
+    if (withCoords.length === 1) {
+      map.flyTo({ center: [withCoords[0].coords.lng, withCoords[0].coords.lat], zoom: Math.max(MAP_PIN_MIN_ZOOM + 1, 15), duration: 900 });
+    } else if (!bounds.isEmpty()) {
+      map.fitBounds(bounds, { padding: 80, maxZoom: 17, duration: 900 });
+    }
+  }
+  syncMapPinVisibility(which);
+  const n = keys.size;
+  if (n) showToast(n + ' pin' + (n === 1 ? '' : 's') + ' matched — zoom in to see pins', 'success');
+}
+
+function getMapSearchSuggestions(which, q) {
+  const needle = q.trim().toLowerCase();
+  if (!needle || needle.length < 2) return [];
+  const catalog = searchMapCatalog(which, q).slice(0, 8);
+  const roads = getLocalRoadSuggestions(q).map(item => ({ ...item, kind: 'project', tag: 'contract', tagLabel: 'ROAD' }));
+  const seen = new Set();
+  const out = [];
+  [...catalog, ...roads].forEach(item => {
+    const id = item.key || item.label;
+    if (seen.has(id)) return;
+    seen.add(id);
+    out.push(item);
+  });
+  return out.slice(0, 10);
+}
+
+function renderMapSearchResultItem(item, i) {
+  const tag = item.tagLabel || (item.kind === 'project' ? 'PROJECT' : '');
+  const tagCls = item.tag ? ' ' + item.tag : '';
+  return `<button type="button" class="map-road-search-item" data-idx="${i}">
+    <span class="map-road-search-item-label">${mapRoadEscape(item.label)}</span>
+    ${item.sub ? `<span class="map-road-search-item-sub">${mapRoadEscape(item.sub)}</span>` : ''}
+    ${tag ? `<span class="map-road-search-item-tag${tagCls}">${mapRoadEscape(tag)}</span>` : ''}
+  </button>`;
 }
 
 const MAP_CORE_DRILL_SELECT = 'id,test_no,contract,core_no,gps_coordinates,layer_type,thickness_in,station,lane,photo_data,date_drilled,field_test_id';
@@ -7459,6 +7773,7 @@ function plotCoreDrillMarker(core, bounds) {
     color: '#a855f7',
     symbol: '◇',
     isActive: false,
+    pinKey: labMapItemKey('core_drill', core),
     popupHtml: `
     <div class="map-popup-title">Core ${core.core_no || '—'}</div>
     <div class="map-popup-row"><span class="map-popup-label">Test:</span><span class="map-popup-val">${core.test_no||'—'}</span></div>
@@ -7531,6 +7846,7 @@ async function openProjectMap(contract, projectName, opts) {
     projectMap.addControl(new mapboxgl.NavigationControl(), 'top-right');
     projectMap.addControl(new mapboxgl.FullscreenControl(), 'top-right');
     setupMapPopupDismiss(projectMap, () => mapMarkers);
+    bindMapPinZoomVisibility(projectMap, 'project');
   }
 
   // Clear existing markers
@@ -7625,6 +7941,7 @@ async function openProjectMap(contract, projectName, opts) {
       color,
       symbol: s.test_category === 'aggregate' ? '◆' : '●',
       isActive: statusLabel === 'Pending',
+      pinKey: labMapItemKey(labMapClassifySample(s) || 'field_sample', s),
       popupHtml: `
       <div class="map-popup-title">${s.test_no}</div>
       <div class="map-popup-row"><span class="map-popup-label">Type:</span><span class="map-popup-val">${(s.test_category||'soil').toUpperCase()}</span></div>
@@ -7656,6 +7973,7 @@ async function openProjectMap(contract, projectName, opts) {
       color: '#60a5fa',
       symbol: '■',
       isActive: false,
+      pinKey: labMapItemKey('concrete', { ...cs, _set: set }),
       popupHtml: `
       <div class="map-popup-title">${set.id}</div>
       <div class="map-popup-row"><span class="map-popup-label">Mix Design:</span><span class="map-popup-val">${set.mixDesign||'—'}</span></div>
@@ -7679,14 +7997,16 @@ async function openProjectMap(contract, projectName, opts) {
 
   // ── BoreLog borings
   let borelogPinCount = 0;
+  let borelogBorings = [];
   if (contract) {
-    const borelogBorings = await fetchBorelogBoringsForContract(contract);
+    borelogBorings = await fetchBorelogBoringsForContract(contract);
     borelogBorings.forEach(b => {
       const marker = addLabTrakMapMarker(projectMap, {
         coords: b.coords,
         color: '#22d3ee',
         symbol: '▲',
         isActive: false,
+        pinKey: labMapItemKey('borelog', b),
         popupHtml: buildBorelogMapPopup(b),
         getSiblings: () => mapMarkers,
         popupLayer: document.getElementById('projectMapPopupLayer'),
@@ -7707,20 +8027,26 @@ async function openProjectMap(contract, projectName, opts) {
     return set?.gps_coordinates && parseGPS(set.gps_coordinates);
   }).length;
   if (samplePinCount > 0) subtitle += ' · ' + samplePinCount + ' field sample' + (samplePinCount !== 1 ? 's' : '');
+  subtitle += ' · zoom in to see pins';
   document.getElementById('mapOverlaySubtitle').textContent = subtitle;
+
+  projectMapSearchCatalog = buildProjectMapSearchCatalog(mapSamples, allCores, allConc, borelogBorings);
 
   // Fit map to pins
   if (pinCount > 0 && !bounds.isEmpty()) {
-    projectMap.fitBounds(bounds, { padding: 80, maxZoom: 19, duration: 1000 });
+    projectMap.fitBounds(bounds, { padding: 80, maxZoom: MAP_PIN_MIN_ZOOM - 1, duration: 1000 });
   } else {
     document.getElementById('mapOverlaySubtitle').textContent = 'No GPS coordinates found for this project';
   }
+
+  syncMapPinVisibility('project');
 
   // Resize map after overlay opens
   setTimeout(() => projectMap.resize(), 100);
 }
 
 function closeProjectMap() {
+  mapSearchClear('project');
   document.getElementById('mapOverlay').classList.remove('open');
 }
 
@@ -8742,7 +9068,7 @@ function wireMapMarkerPopup(marker, options) {
 function addLabTrakMapMarker(map, options) {
   const {
     coords, color, symbol, isActive, dimmed, popupHtml, popupOpts,
-    getSiblings, popupLayer,
+    getSiblings, popupLayer, pinKey,
   } = options;
   const el = createMarkerEl(color, symbol, !!isActive, !!dimmed);
   const popup = createMapPopup(popupHtml, popupOpts);
@@ -8750,6 +9076,7 @@ function addLabTrakMapMarker(map, options) {
     .setLngLat([coords.lng, coords.lat])
     .setPopup(popup)
     .addTo(map);
+  marker._pinKey = pinKey || '';
   wireMapMarkerPopup(marker, { getSiblings, popupLayer });
   return marker;
 }
@@ -8771,8 +9098,9 @@ function createMarkerEl(color, symbol, isActive, dimmed) {
     width: 36px; height: 36px;
     display: flex; align-items: center; justify-content: center;
     cursor: pointer;
-    ${dimmed ? 'opacity:0.18;pointer-events:none;' : ''}
+    ${dimmed ? 'opacity:0.18;' : ''}
   `;
+  if (dimmed) wrap.dataset.dimmed = '1';
 
   // Pulse rings (shown for active/pending markers or when isActive flag set)
   if (isActive) {
@@ -9153,7 +9481,7 @@ function labMapRenderAreaPanel() {
 function labMapFlyToAreaMatch(index) {
   const m = labMapAreaMatches[index];
   if (!m || !labMap) return;
-  labMap.flyTo({ center: [m.coords.lng, m.coords.lat], zoom: Math.max(labMap.getZoom(), 15), duration: 700 });
+  labMap.flyTo({ center: [m.coords.lng, m.coords.lat], zoom: Math.max(MAP_PIN_MIN_ZOOM + 1, 15), duration: 700 });
   const key = labMapItemKey(m.layer, m.record);
   const marker = labMapMarkerByKey[key];
   if (!marker) return;
@@ -9374,6 +9702,7 @@ function labMapPlotMarkers(preserveView) {
       isActive: !!isActive && !dimmed,
       dimmed,
       popupHtml,
+      pinKey: key,
       getSiblings: () => labMapMarkers,
       popupLayer,
     });
@@ -9420,17 +9749,24 @@ function labMapPlotMarkers(preserveView) {
       return n ? `${LAB_MAP_LAYER_DEFS[k].label}: ${n}` : '';
     }).filter(Boolean);
     let text = pinCount
-      ? `${pinCount} pin${pinCount === 1 ? '' : 's'} visible` + (parts.length ? ' · ' + parts.join(' · ') : '')
+      ? `${pinCount} pin${pinCount === 1 ? '' : 's'} loaded`
       : 'No GPS coordinates found in the program';
+    if (!mapSearchState.lab?.keys?.size && labMap && labMap.getZoom() < MAP_PIN_MIN_ZOOM) {
+      text += ' · zoom in to see pins';
+    }
+    if (mapSearchState.lab?.keys?.size) {
+      text += ' · search: ' + mapSearchState.lab.keys.size + ' shown';
+    }
     if (areaActive && labMapAreaMatchKeys.size) {
       text += ` · ${labMapAreaMatchKeys.size} in selected area`;
     }
     subtitle.textContent = text;
   }
 
-  if (!preserveView && pinCount > 0 && !bounds.isEmpty()) {
-    labMap.fitBounds(bounds, { padding: 70, maxZoom: 19, duration: 800 });
+  if (!preserveView && pinCount > 0 && !bounds.isEmpty() && !mapSearchState.lab?.keys?.size) {
+    labMap.fitBounds(bounds, { padding: 70, maxZoom: MAP_PIN_MIN_ZOOM - 1, duration: 800 });
   }
+  syncMapPinVisibility('lab');
 }
 
 async function labMapFetchData() {
@@ -9520,6 +9856,7 @@ async function labMapReload() {
     showToast('LabTrak Map is for administrators only', 'error');
     return;
   }
+  mapSearchClear('lab');
   const migrated = 0;
   const empty = document.getElementById('labMapEmpty');
   const subtitle = document.getElementById('labMapSubtitle');
@@ -9571,6 +9908,7 @@ function initLabMapView() {
     labMap.addControl(new mapboxgl.NavigationControl(), 'top-right');
     labMap.addControl(new mapboxgl.FullscreenControl(), 'top-right');
     setupMapPopupDismiss(labMap, () => labMapMarkers);
+    bindMapPinZoomVisibility(labMap, 'lab');
     labMap.on('load', () => {
       labMapInitDraw();
       labMapResizeSoon();
@@ -24713,7 +25051,7 @@ function openR18() {
         <div style="font-family:var(--mono);font-size:10px;color:var(--muted);margin-top:2px;" id="mapOverlaySubtitle"></div>
       </div>
       <div class="map-road-search" id="projectMapRoadSearchWrap">
-        <input type="search" id="projectMapRoadSearch" placeholder="Search road or address…" autocomplete="off" aria-label="Search road or address" />
+        <input type="search" id="projectMapRoadSearch" placeholder="Boring, contract, project, coords…" autocomplete="off" aria-label="Search map" />
         <button type="button" class="btn btn-ghost map-road-search-go" onclick="runMapRoadSearch('project')">GO</button>
         <div class="map-road-search-results" id="projectMapRoadSearchResults" style="display:none;" role="listbox"></div>
       </div>
