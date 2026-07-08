@@ -1829,17 +1829,23 @@ nav:not(#r18-nav), .nav-top-row { display: none !important; }
 }
 .map-style-btn.active { color: var(--accent2); border-color: rgba(217,138,56,0.5); background: rgba(217,138,56,0.12); }
 .map-style-btn:hover:not(.active) { border-color: rgba(255,255,255,0.18); color: var(--text); }
-.map-road-search {
-  position: relative; display: flex; align-items: center; gap: 6px;
-  flex: 1 1 220px; min-width: 180px; max-width: 380px;
+.map-search-pair {
+  display: flex; align-items: center; gap: 6px; flex-wrap: wrap;
+  flex: 1 1 420px; min-width: 0;
 }
-.map-road-search input[type="search"] {
+.map-road-search, .map-pin-search {
+  position: relative; display: flex; align-items: center; gap: 6px;
+  flex: 1 1 200px; min-width: 160px; max-width: 300px;
+}
+.map-road-search input[type="search"], .map-pin-search input[type="search"] {
   flex: 1; min-width: 0; padding: 6px 10px; border-radius: 6px;
   border: 1px solid var(--border); background: rgba(255,255,255,0.04);
   color: var(--text); font-family: var(--mono); font-size: 10px;
 }
-.map-road-search input[type="search"]::placeholder { color: var(--muted); opacity: 0.85; }
-.map-road-search input[type="search"]:focus {
+.map-road-search input[type="search"]::placeholder,
+.map-pin-search input[type="search"]::placeholder { color: var(--muted); opacity: 0.85; }
+.map-road-search input[type="search"]:focus,
+.map-pin-search input[type="search"]:focus {
   outline: none; border-color: rgba(217,138,56,0.45); background: rgba(255,255,255,0.06);
 }
 .map-road-search-go { font-size: 9px !important; padding: 5px 10px !important; letter-spacing: 0.5px; flex-shrink: 0; }
@@ -1865,6 +1871,7 @@ nav:not(#r18-nav), .nav-top-row { display: none !important; }
 .map-road-search-item-tag.boring { background: rgba(34,211,238,0.15); color: #22d3ee; border-color: rgba(34,211,238,0.35); }
 .map-road-search-item-tag.contract { background: rgba(96,165,250,0.15); color: #60a5fa; border-color: rgba(96,165,250,0.35); }
 .map-road-search-item-tag.coords { background: rgba(52,211,153,0.15); color: #34d399; border-color: rgba(52,211,153,0.35); }
+.map-road-search-item-tag.geocode { background: rgba(251,191,36,0.12); color: #fbbf24; border-color: rgba(251,191,36,0.35); }
 .map-zoom-hint {
   font-family: var(--mono); font-size: 9px; color: var(--accent2);
   letter-spacing: 0.5px; white-space: nowrap;
@@ -1875,7 +1882,7 @@ nav:not(#r18-nav), .nav-top-row { display: none !important; }
 }
 .labmap-float-header { flex-wrap: wrap; }
 #labmap-view .mapboxgl-ctrl-top-right { top: 62px; right: 10px; }
-#mapOverlay .map-road-search { max-width: 300px; }
+#mapOverlay .map-search-pair { max-width: 640px; flex: 1 1 100%; }
 @media (max-width: 768px) {
   .labmap-ui { padding: 8px; }
   .labmap-layers { width: min(210px, calc(100vw - 24px)); max-height: 42vh; }
@@ -6392,10 +6399,17 @@ table.fc-borrow-tbl tr.fc-borrow-detail-row td{background:var(--surface);border-
             <div class="labmap-subtitle" id="labMapSubtitle">All stored coordinates across the program</div>
           </div>
           <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
-            <div class="map-road-search" id="labMapRoadSearchWrap">
-              <input type="search" id="labMapRoadSearch" placeholder="Boring, contract, project, coords…" autocomplete="off" aria-label="Search map" />
-              <button type="button" class="btn btn-ghost map-road-search-go" onclick="runMapRoadSearch('lab')">GO</button>
-              <div class="map-road-search-results" id="labMapRoadSearchResults" style="display:none;" role="listbox"></div>
+            <div class="map-search-pair">
+              <div class="map-road-search" id="labMapRoadSearchWrap">
+                <input type="search" id="labMapRoadSearch" placeholder="Search road or address…" autocomplete="off" aria-label="Search road or address" />
+                <button type="button" class="btn btn-ghost map-road-search-go" onclick="runMapRoadSearch('lab')">GO</button>
+                <div class="map-road-search-results" id="labMapRoadSearchResults" style="display:none;" role="listbox"></div>
+              </div>
+              <div class="map-pin-search" id="labMapPinSearchWrap">
+                <input type="search" id="labMapPinSearch" placeholder="Boring, contract, coords…" autocomplete="off" aria-label="Search borings and pins" />
+                <button type="button" class="btn btn-ghost map-road-search-go" onclick="runMapPinSearch('lab')">GO</button>
+                <div class="map-road-search-results" id="labMapPinSearchResults" style="display:none;" role="listbox"></div>
+              </div>
             </div>
             <div class="map-style-toggle" id="labMapStyleToggle">
               <button type="button" class="map-style-btn" data-map-style="streets" onclick="labMapSetStyle('streets')">Streets</button>
@@ -6501,7 +6515,7 @@ table.fc-borrow-tbl tr.fc-borrow-detail-row td{background:var(--surface);border-
 // GLOBALS
 // ══════════════════════════════════════════════
 let db = null;
-const APP_BUILD = '2026.07.08-map-search-zoom';
+const APP_BUILD = '2026.07.08-map-dual-search';
 const FC_CORE_ICON_SRC = 'docs/r18-reference/core-drill-icon-128.png';
 const BORELOG_ICON_SRC = 'docs/r18-reference/borelog-icon.webp';
 const BORELOG_PATH = 'docs/r18-reference/deldot-borelog.html';
@@ -7023,6 +7037,7 @@ window.addEventListener('DOMContentLoaded', () => {
   if (typeof syncMobileNav === 'function') setTimeout(syncMobileNav, 100);
   if (typeof syncMapStyleButtons === 'function') syncMapStyleButtons();
   if (typeof initMapRoadSearch === 'function') initMapRoadSearch();
+  if (typeof initMapPinSearch === 'function') initMapPinSearch();
   loadLabSpecConfig();
   purgeStaleBorelogMapGhosts().catch(() => {});
   // Register service worker for offline support
@@ -7209,12 +7224,35 @@ function mapRoadSearchEls(which) {
   };
 }
 
+function mapPinSearchEls(which) {
+  const prefix = which === 'lab' ? 'labMap' : 'projectMap';
+  return {
+    input: document.getElementById(prefix + 'PinSearch'),
+    results: document.getElementById(prefix + 'PinSearchResults'),
+  };
+}
+
 function hideMapRoadSearchResults(which) {
   const { results } = mapRoadSearchEls(which);
   if (!results) return;
   results.style.display = 'none';
   results.innerHTML = '';
   delete results._items;
+}
+
+function hideMapPinSearchResults(which) {
+  const { results } = mapPinSearchEls(which);
+  if (!results) return;
+  results.style.display = 'none';
+  results.innerHTML = '';
+  delete results._items;
+}
+
+function clearMapRoadSearchMarker(which) {
+  if (mapRoadSearchMarker[which]) {
+    mapRoadSearchMarker[which].remove();
+    mapRoadSearchMarker[which] = null;
+  }
 }
 
 function getLocalRoadSuggestions(q) {
@@ -7281,6 +7319,8 @@ async function geocodeRoadQuery(query) {
     label: f.text || f.place_name,
     sub: f.place_name,
     feature: f,
+    tag: 'geocode',
+    tagLabel: 'ADDRESS',
   }));
 }
 
@@ -7309,11 +7349,30 @@ function flyMapToGeocode(map, feature, which) {
 function renderMapRoadSearchResults(which, items) {
   const { results } = mapRoadSearchEls(which);
   if (!results || !items.length) return;
-  results.innerHTML = items.map((item, i) => renderMapSearchResultItem(item, i)).join('');
+  results.innerHTML = items.map((item, i) => {
+    const tag = item.kind === 'geocode' ? 'ADDRESS' : (item.kind === 'project' ? 'PROJECT ROAD' : '');
+    const tagCls = item.kind === 'geocode' ? ' geocode' : (item.kind === 'project' ? ' contract' : '');
+    return `<button type="button" class="map-road-search-item" data-idx="${i}">
+      <span class="map-road-search-item-label">${mapRoadEscape(item.label)}</span>
+      ${item.sub ? `<span class="map-road-search-item-sub">${mapRoadEscape(item.sub)}</span>` : ''}
+      ${tag ? `<span class="map-road-search-item-tag${tagCls}">${mapRoadEscape(tag)}</span>` : ''}
+    </button>`;
+  }).join('');
   results._items = items;
   results.style.display = 'block';
   results.querySelectorAll('.map-road-search-item').forEach(btn => {
     btn.addEventListener('click', () => selectMapRoadResult(which, items[parseInt(btn.dataset.idx, 10)]));
+  });
+}
+
+function renderMapPinSearchResults(which, items) {
+  const { results } = mapPinSearchEls(which);
+  if (!results || !items.length) return;
+  results.innerHTML = items.map((item, i) => renderMapSearchResultItem(item, i)).join('');
+  results._items = items;
+  results.style.display = 'block';
+  results.querySelectorAll('.map-road-search-item').forEach(btn => {
+    btn.addEventListener('click', () => selectMapPinResult(which, items[parseInt(btn.dataset.idx, 10)]));
   });
 }
 
@@ -7324,11 +7383,39 @@ async function selectMapRoadResult(which, item) {
     return;
   }
   hideMapRoadSearchResults(which);
+  mapSearchClear(which);
   const { input } = mapRoadSearchEls(which);
   if (input && item.label) input.value = item.label;
 
+  if (item.feature) {
+    flyMapToGeocode(map, item.feature, which);
+    return;
+  }
+
+  try {
+    const results = await geocodeRoadQuery(item.query || item.label);
+    if (results.length && results[0].feature) {
+      flyMapToGeocode(map, results[0].feature, which);
+    } else {
+      showToast('Could not locate "' + item.label + '"', 'error');
+    }
+  } catch (e) {
+    showToast('Could not locate road', 'error');
+  }
+}
+
+async function selectMapPinResult(which, item) {
+  const map = getMapForRoadSearch(which);
+  if (!map) {
+    showToast('Map is still loading…', 'error');
+    return;
+  }
+  hideMapPinSearchResults(which);
+  clearMapRoadSearchMarker(which);
+  const { input } = mapPinSearchEls(which);
+  if (input && item.label) input.value = item.label;
+
   if (item.coords && (item.kind === 'pin' || item.kind === 'borelog' || item.kind === 'coords' || item.key)) {
-    mapSearchClear(which);
     applyMapSearch(which, input?.value || item.label, [item]);
     return;
   }
@@ -7342,27 +7429,44 @@ async function selectMapRoadResult(which, item) {
     }
   }
 
-  if (item.feature) {
-    mapSearchClear(which);
-    flyMapToGeocode(map, item.feature, which);
-    return;
-  }
-
-  try {
-    const results = await geocodeRoadQuery(item.query || item.label);
-    if (results.length && results[0].feature) {
-      mapSearchClear(which);
-      flyMapToGeocode(map, results[0].feature, which);
-    } else {
-      showToast('Could not locate "' + item.label + '"', 'error');
-    }
-  } catch (e) {
-    showToast('Could not locate road', 'error');
-  }
+  showToast('No map pins match "' + (item.label || '') + '"', 'error');
 }
 
 async function searchMapRoads(which, query) {
   const { input } = mapRoadSearchEls(which);
+  const q = (query != null ? query : input?.value || '').trim();
+  if (!q) return;
+
+  const map = getMapForRoadSearch(which);
+  if (!map) {
+    showToast('Map is still loading…', 'error');
+    return;
+  }
+
+  mapSearchClear(which);
+  const local = getLocalRoadSuggestions(q).map(item => ({ ...item, kind: 'project' }));
+  let geocoded = [];
+  try {
+    geocoded = await geocodeRoadQuery(q);
+  } catch (e) {
+    console.warn('Geocode error', e);
+  }
+
+  const combined = [...local, ...geocoded];
+  if (!combined.length) {
+    showToast('No matches found for "' + q + '"', 'error');
+    hideMapRoadSearchResults(which);
+    return;
+  }
+  if (combined.length === 1) {
+    await selectMapRoadResult(which, combined[0]);
+    return;
+  }
+  renderMapRoadSearchResults(which, combined);
+}
+
+async function searchMapPins(which, query) {
+  const { input } = mapPinSearchEls(which);
   const q = (query != null ? query : input?.value || '').trim();
   if (!q) {
     mapSearchClear(which);
@@ -7375,25 +7479,18 @@ async function searchMapRoads(which, query) {
     return;
   }
 
+  clearMapRoadSearchMarker(which);
   const catalogHits = searchMapCatalog(which, q);
-  const local = getLocalRoadSuggestions(q).map(item => ({ ...item, kind: 'project', tag: 'contract', tagLabel: 'ROAD' }));
-  let geocoded = [];
-  try {
-    geocoded = await geocodeRoadQuery(q);
-  } catch (e) {
-    console.warn('Geocode error', e);
-  }
-
   const pinHits = catalogHits.filter(h => h.kind === 'pin' || h.kind === 'borelog' || (h.key && h.key !== '__coord__'));
   const projectHits = catalogHits.filter(h => h.kind === 'project');
   const coordOnly = catalogHits.filter(h => h.flyOnly);
 
-  if (pinHits.length === 1 && !local.length && !geocoded.length && !projectHits.length) {
+  if (pinHits.length === 1 && !projectHits.length) {
     applyMapSearch(which, q, pinHits);
     if (input) input.value = pinHits[0].label;
     return;
   }
-  if (projectHits.length === 1 && pinHits.length === 0 && !local.length && !geocoded.length) {
+  if (projectHits.length === 1 && pinHits.length === 0) {
     const p = projectHits[0];
     const linked = mapSearchCatalogFor(which).filter(c => (p.linkedKeys || []).includes(c.key));
     if (linked.length) {
@@ -7402,34 +7499,38 @@ async function searchMapRoads(which, query) {
       return;
     }
   }
-  if (coordOnly.length && pinHits.length === 0 && !local.length && !geocoded.length) {
+  if (coordOnly.length && pinHits.length === 0) {
     mapSearchClear(which);
     const c = coordOnly[0].coords;
     map.flyTo({ center: [c.lng, c.lat], zoom: Math.max(MAP_PIN_MIN_ZOOM + 1, 15), duration: 900 });
     showToast('Jumped to coordinates', 'info');
     return;
   }
-  if (pinHits.length > 1 && !local.length && !geocoded.length) {
+  if (pinHits.length > 1) {
     applyMapSearch(which, q, pinHits);
     return;
   }
 
-  const combined = [...catalogHits.slice(0, 8), ...local, ...geocoded];
+  const combined = catalogHits.slice(0, 10);
   if (!combined.length) {
-    showToast('No matches found for "' + q + '"', 'error');
-    hideMapRoadSearchResults(which);
+    showToast('No pins match "' + q + '"', 'error');
+    hideMapPinSearchResults(which);
     mapSearchClear(which);
     return;
   }
   if (combined.length === 1) {
-    await selectMapRoadResult(which, combined[0]);
+    await selectMapPinResult(which, combined[0]);
     return;
   }
-  renderMapRoadSearchResults(which, combined);
+  renderMapPinSearchResults(which, combined);
 }
 
 function runMapRoadSearch(which) {
   searchMapRoads(which);
+}
+
+function runMapPinSearch(which) {
+  searchMapPins(which);
 }
 
 function initMapRoadSearch() {
@@ -7446,28 +7547,56 @@ function initMapRoadSearch() {
         return;
       }
       debounce = setTimeout(() => {
-        const val = input.value.trim();
-        if (val.length < 2) {
-          hideMapRoadSearchResults(which);
-          if (!val) mapSearchClear(which);
-          return;
-        }
-        const suggestions = getMapSearchSuggestions(which, val);
-        if (suggestions.length) renderMapRoadSearchResults(which, suggestions);
+        const local = getLocalRoadSuggestions(val);
+        if (local.length) renderMapRoadSearchResults(which, local);
         else hideMapRoadSearchResults(which);
       }, 200);
     });
     input.addEventListener('keydown', e => {
       if (e.key === 'Enter') { e.preventDefault(); runMapRoadSearch(which); }
-      if (e.key === 'Escape') { hideMapRoadSearchResults(which); mapSearchClear(which); }
+      if (e.key === 'Escape') hideMapRoadSearchResults(which);
     });
   });
-  if (initMapRoadSearch._docBound) return;
-  initMapRoadSearch._docBound = true;
+}
+
+function initMapPinSearch() {
+  ['lab', 'project'].forEach(which => {
+    const { input } = mapPinSearchEls(which);
+    if (!input || input._mapPinSearchBound) return;
+    input._mapPinSearchBound = true;
+    let debounce = null;
+    input.addEventListener('input', () => {
+      clearTimeout(debounce);
+      const val = input.value.trim();
+      if (val.length < 2) {
+        hideMapPinSearchResults(which);
+        return;
+      }
+      debounce = setTimeout(() => {
+        const val = input.value.trim();
+        if (val.length < 2) {
+          hideMapPinSearchResults(which);
+          if (!val) mapSearchClear(which);
+          return;
+        }
+        const suggestions = getMapPinSearchSuggestions(which, val);
+        if (suggestions.length) renderMapPinSearchResults(which, suggestions);
+        else hideMapPinSearchResults(which);
+      }, 200);
+    });
+    input.addEventListener('keydown', e => {
+      if (e.key === 'Enter') { e.preventDefault(); runMapPinSearch(which); }
+      if (e.key === 'Escape') { hideMapPinSearchResults(which); mapSearchClear(which); }
+    });
+  });
+  if (initMapPinSearch._docBound) return;
+  initMapPinSearch._docBound = true;
   document.addEventListener('click', e => {
-    if (!e.target.closest('.map-road-search')) {
+    if (!e.target.closest('.map-road-search') && !e.target.closest('.map-pin-search')) {
       hideMapRoadSearchResults('lab');
       hideMapRoadSearchResults('project');
+      hideMapPinSearchResults('lab');
+      hideMapPinSearchResults('project');
     }
   });
 }
@@ -7667,6 +7796,7 @@ function searchMapCatalog(which, q) {
 function applyMapSearch(which, query, hits) {
   const map = getMapForRoadSearch(which);
   if (!map) return;
+  clearMapRoadSearchMarker(which);
   const keys = new Set();
   const withCoords = [];
   (hits || []).forEach(h => {
@@ -7701,20 +7831,10 @@ function applyMapSearch(which, query, hits) {
   if (n) showToast(n + ' pin' + (n === 1 ? '' : 's') + ' matched — zoom in to see pins', 'success');
 }
 
-function getMapSearchSuggestions(which, q) {
+function getMapPinSearchSuggestions(which, q) {
   const needle = q.trim().toLowerCase();
   if (!needle || needle.length < 2) return [];
-  const catalog = searchMapCatalog(which, q).slice(0, 8);
-  const roads = getLocalRoadSuggestions(q).map(item => ({ ...item, kind: 'project', tag: 'contract', tagLabel: 'ROAD' }));
-  const seen = new Set();
-  const out = [];
-  [...catalog, ...roads].forEach(item => {
-    const id = item.key || item.label;
-    if (seen.has(id)) return;
-    seen.add(id);
-    out.push(item);
-  });
-  return out.slice(0, 10);
+  return searchMapCatalog(which, q).slice(0, 10);
 }
 
 function renderMapSearchResultItem(item, i) {
@@ -8047,6 +8167,7 @@ async function openProjectMap(contract, projectName, opts) {
 
 function closeProjectMap() {
   mapSearchClear('project');
+  clearMapRoadSearchMarker('project');
   document.getElementById('mapOverlay').classList.remove('open');
 }
 
@@ -25050,10 +25171,17 @@ function openR18() {
         <h3 id="mapOverlayTitle">Project Map</h3>
         <div style="font-family:var(--mono);font-size:10px;color:var(--muted);margin-top:2px;" id="mapOverlaySubtitle"></div>
       </div>
-      <div class="map-road-search" id="projectMapRoadSearchWrap">
-        <input type="search" id="projectMapRoadSearch" placeholder="Boring, contract, project, coords…" autocomplete="off" aria-label="Search map" />
-        <button type="button" class="btn btn-ghost map-road-search-go" onclick="runMapRoadSearch('project')">GO</button>
-        <div class="map-road-search-results" id="projectMapRoadSearchResults" style="display:none;" role="listbox"></div>
+      <div class="map-search-pair">
+        <div class="map-road-search" id="projectMapRoadSearchWrap">
+          <input type="search" id="projectMapRoadSearch" placeholder="Search road or address…" autocomplete="off" aria-label="Search road or address" />
+          <button type="button" class="btn btn-ghost map-road-search-go" onclick="runMapRoadSearch('project')">GO</button>
+          <div class="map-road-search-results" id="projectMapRoadSearchResults" style="display:none;" role="listbox"></div>
+        </div>
+        <div class="map-pin-search" id="projectMapPinSearchWrap">
+          <input type="search" id="projectMapPinSearch" placeholder="Boring, contract, coords…" autocomplete="off" aria-label="Search borings and pins" />
+          <button type="button" class="btn btn-ghost map-road-search-go" onclick="runMapPinSearch('project')">GO</button>
+          <div class="map-road-search-results" id="projectMapPinSearchResults" style="display:none;" role="listbox"></div>
+        </div>
       </div>
       <div class="map-legend">
         <div class="map-legend-item">
