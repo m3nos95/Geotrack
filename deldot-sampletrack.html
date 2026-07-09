@@ -3217,8 +3217,8 @@ table.fc-borrow-tbl tr.fc-borrow-detail-row td{background:var(--surface);border-
       </button>
       <div class="setup-collapse-body">
       <p style="font-family:var(--mono);font-size:10px;color:var(--muted);margin-bottom:14px;line-height:1.7;">
-        When a report is approved, LabTrak emails a <strong style="color:var(--text);">PDF attachment</strong> to each project's distribution list via your Gmail account.<br>
-        Gmail credentials are stored in Supabase (not in the browser). Deploy the <code style="background:var(--bg);padding:1px 5px;border-radius:3px;">send-report-email</code> edge function once — see below.
+        When a report is approved, LabTrak emails a <strong style="color:var(--text);">PDF attachment</strong> to each project's distribution list via your Gmail account when the edge function is deployed.<br>
+        If auto-send is unavailable, LabTrak falls back to opening your email client (Outlook, etc.) with recipients and report details pre-filled.
       </p>
       <div class="setup-field">
         <label>Gmail Address <span style="font-size:9px;color:var(--muted);font-weight:400;">(optional label — must match GMAIL_USER secret)</span></label>
@@ -6515,7 +6515,7 @@ table.fc-borrow-tbl tr.fc-borrow-detail-row td{background:var(--surface);border-
 // GLOBALS
 // ══════════════════════════════════════════════
 let db = null;
-const APP_BUILD = '2026.07.08-geo-import-samples';
+const APP_BUILD = '2026.07.09-email-mailto-fallback';
 const FC_CORE_ICON_SRC = 'docs/r18-reference/core-drill-icon-128.png';
 const BORELOG_ICON_SRC = 'docs/r18-reference/borelog-icon.webp';
 const BORELOG_PATH = 'docs/r18-reference/deldot-borelog.html';
@@ -10359,16 +10359,73 @@ function emailSendReady() {
   return !!db;
 }
 
-function formatEmailSendError(err) {
+function buildReportEmailBody(sample, proj, rptType, conform) {
+  const lines = [
+    `A ${rptType} report has been completed in DelDOT LabTrak.`,
+    '',
+    `Contract:        ${sample.contract || '—'}`,
+    `Road / Project:  ${proj?.road || '—'}`,
+    `Contractor:      ${proj?.contractor || sample.contractor || '—'}`,
+  ];
+  if (proj?.project_manager) lines.push(`Project Manager: ${proj.project_manager}`);
+  lines.push(
+    '',
+    `Test No:      ${sample.test_no || '—'}`,
+    `Date Sampled: ${sample.date_sampled || '—'}`,
+    `Date Tested:  ${sample.date_tested || new Date().toISOString().slice(0, 10)}`,
+    `Material:     ${sample.material_type || '—'}`,
+    `Location:     ${sample.location || '—'}`,
+    '',
+    `Result: ${conform}`,
+    '',
+    `Reported by:  ${sample.reported_by || '—'}`,
+    '',
+    '─────────────────────────────────────────',
+    'Automated notification from DelDOT LabTrak.',
+    'Open LabTrak to view the full report and print/save as PDF to attach.',
+    '(To enable automatic PDF attachment, deploy send-report-email in Supabase — see Settings.)'
+  );
+  return lines.join('\n');
+}
+
+function openReportMailto(dist, subject, body) {
+  const mailto = `mailto:${encodeURIComponent(dist)}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+  window.location.href = mailto;
+}
+
+async function parseInvokeError(err) {
   if (!err) return 'Email send failed';
-  const msg = err.message || String(err);
-  if (/GMAIL_USER|GMAIL_APP_PASSWORD|not configured/i.test(msg)) {
-    return 'Gmail not configured in Supabase — add GMAIL_USER and GMAIL_APP_PASSWORD secrets, then deploy send-report-email';
+  const ctx = err.context;
+  if (ctx) {
+    try {
+      const clone = typeof ctx.clone === 'function' ? ctx.clone() : ctx;
+      const body = await clone.json();
+      if (body?.error) return String(body.error);
+      if (body?.message) return String(body.message);
+    } catch { /* not JSON */ }
+    try {
+      const clone = typeof ctx.clone === 'function' ? ctx.clone() : ctx;
+      const text = await clone.text();
+      if (text?.trim()) return text.trim();
+    } catch { /* ignore */ }
   }
-  if (/not found|404|function/i.test(msg)) {
-    return 'send-report-email edge function not deployed — deploy from supabase/functions/send-report-email';
+  const msg = err.message || String(err);
+  if (/^Edge Function returned a non-2xx/i.test(msg)) {
+    return 'Edge function returned an error — check Supabase function logs';
   }
   return msg;
+}
+
+function formatEmailSendError(msg) {
+  if (!msg) return 'Email send failed';
+  const text = String(msg);
+  if (/GMAIL_USER|GMAIL_APP_PASSWORD|not configured/i.test(text)) {
+    return 'Gmail not configured in Supabase — add GMAIL_USER and GMAIL_APP_PASSWORD secrets, then deploy send-report-email';
+  }
+  if (/not found|404|requested function|does not exist/i.test(text) && !/non-2xx/i.test(text)) {
+    return 'send-report-email edge function not deployed — deploy from supabase/functions/send-report-email';
+  }
+  return text;
 }
 
 async function autoEmailReport(sample) {
@@ -10388,52 +10445,54 @@ async function autoEmailReport(sample) {
 
   const subject  = `LabTrak Report – ${sample.contract || 'Contract'} – ${sample.test_no || sample.id} – ${conform}`;
   const filename = `LabTrak_${(sample.test_no || sample.id).replace(/[^a-zA-Z0-9_-]/g,'_')}_${(sample.contract||'Report').replace(/[^a-zA-Z0-9_-]/g,'_')}.pdf`;
+  const bodyText = buildReportEmailBody(sample, proj, rptType, conform);
+  const toList   = dist.split(',').map(e => e.trim()).filter(Boolean);
 
-  if (!emailSendReady()) {
-    showToast('Cannot send email — not connected to Supabase', 'error');
-    return false;
-  }
-
-  showToast('Generating PDF…', 'info');
-  const pdfBase64 = await generateReportPdfBase64();
-  if (!pdfBase64) {
-    showToast('PDF generation failed — check console for details', 'error');
-    return false;
-  }
-
-  showToast('Sending email via Gmail…', 'info');
-  try {
-    const toList = dist.split(',').map(e => e.trim()).filter(Boolean);
-    const { data, error } = await db.functions.invoke('send-report-email', {
-      body: {
-        to:             toList.join(', '),
-        subject,
-        filename,
-        pdfBase64,
-        reportType:     rptType,
-        contract:       sample.contract       || '—',
-        testNo:         sample.test_no        || '—',
-        material:       sample.material_type  || '—',
-        location:       sample.location       || '—',
-        dateSampled:    sample.date_sampled   || '—',
-        dateTested:     sample.date_tested    || new Date().toISOString().slice(0, 10),
-        result:         conform,
-        reportedBy:     sample.reported_by    || '—',
-        road:           proj?.road            || '—',
-        contractor:     proj?.contractor      || sample.contractor || '—',
-        projectManager: proj?.project_manager || null,
+  if (emailSendReady()) {
+    showToast('Generating PDF…', 'info');
+    const pdfBase64 = await generateReportPdfBase64();
+    if (pdfBase64) {
+      showToast('Sending email via Gmail…', 'info');
+      try {
+        const { data, error } = await db.functions.invoke('send-report-email', {
+          body: {
+            to:             toList.join(', '),
+            subject,
+            filename,
+            pdfBase64,
+            reportType:     rptType,
+            contract:       sample.contract       || '—',
+            testNo:         sample.test_no        || '—',
+            material:       sample.material_type  || '—',
+            location:       sample.location       || '—',
+            dateSampled:    sample.date_sampled   || '—',
+            dateTested:     sample.date_tested    || new Date().toISOString().slice(0, 10),
+            result:         conform,
+            reportedBy:     sample.reported_by    || '—',
+            road:           proj?.road            || '—',
+            contractor:     proj?.contractor      || sample.contractor || '—',
+            projectManager: proj?.project_manager || null,
+          }
+        });
+        if (error) throw error;
+        if (data?.error) throw new Error(data.error);
+        const n = toList.length;
+        showToast(`Report emailed to ${n} recipient${n !== 1 ? 's' : ''} ✓`, 'success');
+        return true;
+      } catch (e) {
+        console.error('Email error:', e);
+        const parsed = await parseInvokeError(e);
+        console.warn('Gmail edge function failed:', formatEmailSendError(parsed));
+        showToast('Auto-send unavailable — opening your email client…', 'info');
       }
-    });
-    if (error) throw error;
-    if (data?.error) throw new Error(data.error);
-    const n = toList.length;
-    showToast(`Report emailed to ${n} recipient${n !== 1 ? 's' : ''} ✓`, 'success');
-    return true;
-  } catch (e) {
-    console.error('Email error:', e);
-    showToast('Email failed: ' + formatEmailSendError(e), 'error');
-    return false;
+    } else {
+      showToast('PDF generation failed — opening email client without attachment', 'info');
+    }
   }
+
+  openReportMailto(dist, subject, bodyText);
+  showToast('Email client opened ✓', 'success');
+  return true;
 }
 
 function emailCurrentReport() {
