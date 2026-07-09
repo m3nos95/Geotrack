@@ -455,11 +455,30 @@ nav{background:var(--surface);border-bottom:1px solid var(--border);box-shadow:0
 /* 3D site modal */
 #site3dModal{position:fixed;inset:0;background:rgba(0,0,0,0.92);z-index:2100;display:none;align-items:flex-start;justify-content:center;overflow-y:auto;padding:20px 12px;}
 #site3dModal.open{display:flex;}
-#site3dBox{background:var(--surface);border-radius:14px;width:100%;max-width:1100px;padding:20px 22px;box-sizing:border-box;}
+#site3dModal.site3d-fullscreen{padding:0;align-items:stretch;overflow:hidden;}
+#site3dBox{background:var(--surface);border-radius:14px;width:100%;max-width:1280px;padding:20px 22px;box-sizing:border-box;}
+#site3dModal.site3d-fullscreen #site3dBox{max-width:none;border-radius:0;min-height:100vh;display:flex;flex-direction:column;padding:12px 16px 14px;}
 #site3dBox h3{margin:0;font-size:16px;color:var(--text);}
-#site3dCanvas{width:100%;height:560px;border-radius:10px;border:1px solid var(--border);margin-top:12px;background:#0a1018;touch-action:none;}
-.site3d-toolbar{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-top:10px;}
-.site3d-toolbar label{font-size:11px;color:var(--muted);display:flex;align-items:center;gap:5px;cursor:pointer;}
+#site3dBody{display:flex;gap:12px;margin-top:12px;min-height:min(72vh,780px);}
+#site3dModal.site3d-fullscreen #site3dBody{flex:1;min-height:0;}
+#site3dCanvasWrap{flex:1;min-width:0;display:flex;flex-direction:column;}
+#site3dCanvas{width:100%;flex:1;min-height:420px;height:min(72vh,780px);border-radius:10px;border:1px solid var(--border);background:#0a1018;touch-action:none;cursor:grab;}
+#site3dCanvas:active{cursor:grabbing;}
+#site3dModal.site3d-fullscreen #site3dCanvas{height:100%;min-height:0;}
+#site3dInspector{width:268px;flex-shrink:0;background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:14px;font-size:11px;line-height:1.45;overflow-y:auto;max-height:min(72vh,780px);}
+#site3dModal.site3d-fullscreen #site3dInspector{max-height:none;}
+#site3dInspector.empty{color:var(--muted);display:flex;align-items:center;justify-content:center;text-align:center;}
+#site3dInspector h4{margin:0 0 8px;font-size:13px;color:var(--accent2);letter-spacing:0.5px;}
+#site3dInspector .si-row{margin-bottom:6px;}
+#site3dInspector .si-lbl{color:var(--muted);font-size:10px;text-transform:uppercase;letter-spacing:0.5px;}
+#site3dInspector .si-val{color:var(--text);}
+#site3dInspector .si-swatch{display:inline-block;width:10px;height:10px;border-radius:2px;vertical-align:middle;margin-right:5px;border:1px solid rgba(255,255,255,0.2);}
+#site3dInspector .si-actions{margin-top:12px;display:flex;gap:6px;flex-wrap:wrap;}
+.site3d-toolbar{display:flex;align-items:center;gap:8px 12px;flex-wrap:wrap;margin-top:10px;}
+.site3d-toolbar label{font-size:11px;color:var(--muted);display:flex;align-items:center;gap:5px;cursor:pointer;white-space:nowrap;}
+.site3d-toolbar .site3d-exag{display:flex;align-items:center;gap:6px;font-size:11px;color:var(--muted);}
+.site3d-toolbar .site3d-exag input[type=range]{width:88px;accent-color:var(--accent);}
+.site3d-toolbar .site3d-cam-btns{display:flex;gap:4px;}
 .site3d-legend{display:flex;flex-wrap:wrap;gap:10px 14px;margin-top:10px;font-size:10px;color:var(--muted);}
 .site3d-legend span{display:flex;align-items:center;gap:5px;}
 .site3d-legend i{display:inline-block;width:12px;height:12px;border-radius:2px;border:1px solid rgba(255,255,255,0.15);}
@@ -886,17 +905,38 @@ html.comfort-mode .hab-pulse{animation:none !important;box-shadow:none !importan
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px;gap:12px;flex-wrap:wrap;">
       <div>
         <h3>🏔 3D Site View</h3>
-        <div style="font-size:11px;color:var(--muted);margin-top:2px;">Topography from surface elevations · subsurface from sample intervals</div>
+        <div style="font-size:11px;color:var(--muted);margin-top:2px;">Click a boring collar or soil layer for details · drag to orbit</div>
       </div>
-      <button class="btn btn-ghost btn-sm" onclick="closeSite3DModal()">✕ CLOSE</button>
+      <div style="display:flex;gap:6px;flex-wrap:wrap;">
+        <button type="button" class="btn btn-ghost btn-sm" id="site3dFullscreenBtn" onclick="toggleSite3DFullscreen()">⛶ FULLSCREEN</button>
+        <button type="button" class="btn btn-ghost btn-sm" onclick="closeSite3DModal()">✕ CLOSE</button>
+      </div>
     </div>
     <div id="site3dWarn" class="site3d-warn" style="display:none;"></div>
-    <div id="site3dCanvas"></div>
+    <div id="site3dBody">
+      <div id="site3dCanvasWrap">
+        <div id="site3dCanvas"></div>
+      </div>
+      <div id="site3dInspector" class="empty">
+        Click a boring collar ring or colored soil interval to inspect logs and lab data.
+      </div>
+    </div>
     <div class="site3d-toolbar">
-      <label><input type="checkbox" id="site3dShowTopo" checked onchange="refreshSite3DOptions()"> Ground surface</label>
-      <label><input type="checkbox" id="site3dShowCols" checked onchange="refreshSite3DOptions()"> Boring columns</label>
+      <label><input type="checkbox" id="site3dShowTopo" checked onchange="refreshSite3DOptions()"> Ground</label>
+      <label><input type="checkbox" id="site3dShowWater" checked onchange="refreshSite3DOptions()"> Water table</label>
+      <label><input type="checkbox" id="site3dShowCols" checked onchange="refreshSite3DOptions()"> Columns</label>
       <label><input type="checkbox" id="site3dShowLabels" checked onchange="refreshSite3DOptions()"> Labels</label>
-      <span style="font-size:10px;color:var(--muted);margin-left:auto;">Drag to orbit · scroll to zoom · right-drag to pan</span>
+      <div class="site3d-exag">
+        <span>Vert. exag.</span>
+        <input type="range" id="site3dVertExag" min="1" max="8" step="0.5" value="2"
+          oninput="site3dSetVertExag(this.value)">
+        <span id="site3dExagVal">2×</span>
+      </div>
+      <div class="site3d-cam-btns">
+        <button type="button" class="btn btn-ghost btn-sm" onclick="site3dCameraPreset('plan')">PLAN</button>
+        <button type="button" class="btn btn-ghost btn-sm" onclick="site3dCameraPreset('iso')">ISO</button>
+        <button type="button" class="btn btn-ghost btn-sm" onclick="site3dCameraPreset('reset')">RESET</button>
+      </div>
     </div>
     <div class="site3d-legend" id="site3dLegend"></div>
   </div>
@@ -955,7 +995,7 @@ const DELDOT_LOGO = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAPAAAADwCAYAA
    - Storage wrapper abstracted for future Supabase port
    ========================================================================= */
 const STORE_KEY = 'deldot_borelog_v2';
-const BORELOG_BUILD = '2026.07.08-borelog-splash-fix';
+const BORELOG_BUILD = '2026.07.08-borelog-3d-v2';
 const MAP_MIGRATE_KEY = 'deldot_borelog_gps_migrated_v2';
 const STORE_TS_KEY = 'deldot_borelog_v2_ts';
 const DE_STATE_PLANE = '+proj=lcc +lat_1=38.43333333333334 +lat_2=39.83333333333333 +lat_0=38 +lon_0=-75.41666666666666 +x_0=200000.99998984026 +y_0=0 +ellps=GRS80 +units=us-ft +no_defs';
@@ -6166,22 +6206,40 @@ function buildSite3DModel(projectId) {
     const intervals = samples.map(s => {
       const top = site3dTopOf(s);
       const thick = site3dThickOf(s);
+      const desc = String(s.description_override || s.description || '').trim();
       return {
         top, bottom: top + thick,
         color: site3dSampleColor(s),
-        label: s.uscs || s.aashto || s.aashto_calc?.full || ''
+        label: s.uscs || s.aashto || s.aashto_calc?.full || '',
+        sampleId: s.id,
+        sampleNo: s.sample_no,
+        depthFrom: top,
+        depthTo: top + thick,
+        aashto: s.aashto || s.aashto_calc?.full || '',
+        uscs: s.uscs || s.uscs_calc?.symbol || '',
+        nValue: s.n_value,
+        blows: (s.blows || []).filter(Boolean).join(' / ') || '—',
+        desc: desc || '—',
+        recovery: s.recovery_in
       };
     });
+    const wlSamples = samples.filter(s => s.water_level);
+    const waterDepth = wlSamples.length
+      ? Math.min(...wlSamples.map(s => site3dTopOf(s)))
+      : null;
     const maxDepth = intervals.length
       ? Math.max(...intervals.map(i => i.bottom))
       : (parseFloat(b.total_depth) || 0);
     return {
       id: b.id,
       boring_no: b.boring_no || '(no #)',
+      location: b.location || '',
       lx, lz,
       surface,
       maxDepth,
-      intervals
+      intervals,
+      waterDepth,
+      waterElev: waterDepth != null && surface != null ? surface - waterDepth : null
     };
   });
 
@@ -6227,6 +6285,8 @@ function renderSite3DLegend() {
 
 async function openSite3DModal() {
   if (!currentProjectId) return;
+  $('site3dModal').classList.remove('site3d-fullscreen');
+  clearSite3DInspector();
   closeSite3DRenderer();
   const model = buildSite3DModel(currentProjectId);
   const warnEl = $('site3dWarn');
@@ -6247,11 +6307,15 @@ async function openSite3DModal() {
   closeSite3DRenderer();
   $('site3dCanvas').innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:100%;color:var(--muted);font-size:13px;">Loading 3D view…</div>';
 
+  const exagEl = $('site3dVertExag');
+  if (exagEl && !exagEl.dataset.touched) exagEl.value = '2';
+
   try {
     const THREE = await import('three');
     const { OrbitControls } = await import('three/addons/controls/OrbitControls.js');
     const { Delaunay } = await import('https://cdn.jsdelivr.net/npm/d3-delaunay@6/+esm');
     await initSite3DScene(THREE, OrbitControls, Delaunay, model);
+    site3dSetVertExag(exagEl ? exagEl.value : 2);
   } catch (err) {
     console.error(err);
     $('site3dCanvas').innerHTML = `<div style="display:flex;align-items:center;justify-content:center;height:100%;color:var(--red2);font-size:13px;padding:24px;text-align:center;">Could not load 3D engine: ${escape(String(err.message || err))}</div>`;
@@ -6285,12 +6349,16 @@ async function initSite3DScene(THREE, OrbitControls, Delaunay, model) {
   fill.position.set(-model.extent, model.extent, -model.extent);
   scene.add(fill);
 
+  const contentRoot = new THREE.Group();
+  scene.add(contentRoot);
+
   const groups = {
     topo: new THREE.Group(),
+    water: new THREE.Group(),
     cols: new THREE.Group(),
     labels: new THREE.Group()
   };
-  Object.values(groups).forEach(g => scene.add(g));
+  Object.values(groups).forEach(g => contentRoot.add(g));
 
   // Ground surface mesh (Delaunay triangulation of boring locations)
   const pts2d = model.columns.map(c => [c.lx, c.lz]);
@@ -6319,16 +6387,56 @@ async function initSite3DScene(THREE, OrbitControls, Delaunay, model) {
   const topoMesh = new THREE.Mesh(topoGeo, topoMat);
   groups.topo.add(topoMesh);
 
-  // Wireframe outline for terrain readability
   const topoWire = new THREE.LineSegments(
     new THREE.WireframeGeometry(topoGeo),
     new THREE.LineBasicMaterial({ color: 0x2a4a2c, transparent: true, opacity: 0.35 })
   );
   groups.topo.add(topoWire);
 
-  // Boring columns + labels
+  // Water table mesh (interpolated between borings with water observations)
+  const waterCols = model.columns.filter(c => c.waterElev != null);
+  if (waterCols.length >= 2) {
+    const wPts = waterCols.map(c => [c.lx, c.lz]);
+    const wDelaunay = Delaunay.from(wPts);
+    const wTri = wDelaunay.triangles;
+    const wGeo = new THREE.BufferGeometry();
+    const wVerts = [];
+    const wIdx = [];
+    for (let i = 0; i < waterCols.length; i++) {
+      wVerts.push(waterCols[i].lx, waterCols[i].waterElev, -waterCols[i].lz);
+    }
+    for (let i = 0; i < wTri.length; i += 3) {
+      wIdx.push(wTri[i], wTri[i + 1], wTri[i + 2]);
+    }
+    wGeo.setIndex(wIdx);
+    wGeo.setAttribute('position', new THREE.Float32BufferAttribute(wVerts, 3));
+    wGeo.computeVertexNormals();
+    const wMesh = new THREE.Mesh(wGeo, new THREE.MeshStandardMaterial({
+      color: 0x2a7ab8,
+      roughness: 0.35,
+      metalness: 0.1,
+      transparent: true,
+      opacity: 0.42,
+      side: THREE.DoubleSide,
+      depthWrite: false
+    }));
+    groups.water.add(wMesh);
+  } else if (waterCols.length === 1) {
+    const c = waterCols[0];
+    const wDisc = new THREE.Mesh(
+      new THREE.CircleGeometry(model.colRadius * 4, 24),
+      new THREE.MeshStandardMaterial({
+        color: 0x2a7ab8, transparent: true, opacity: 0.45, side: THREE.DoubleSide, depthWrite: false
+      })
+    );
+    wDisc.rotation.x = -Math.PI / 2;
+    wDisc.position.set(c.lx, c.waterElev, -c.lz);
+    groups.water.add(wDisc);
+  }
+
   const labelCanvas = document.createElement('canvas');
   const labelCtx = labelCanvas.getContext('2d');
+  const pickables = [];
 
   model.columns.forEach(col => {
     const r = model.colRadius;
@@ -6336,7 +6444,7 @@ async function initSite3DScene(THREE, OrbitControls, Delaunay, model) {
       const yTop = col.surface - iv.top;
       const yBot = col.surface - iv.bottom;
       const h = Math.max(0.5, yTop - yBot);
-      const geo = new THREE.CylinderGeometry(r, r, h, 10, 1, false);
+      const geo = new THREE.CylinderGeometry(r, r, h, 12, 1, false);
       const mat = new THREE.MeshStandardMaterial({
         color: new THREE.Color(iv.color),
         roughness: 0.82,
@@ -6344,18 +6452,25 @@ async function initSite3DScene(THREE, OrbitControls, Delaunay, model) {
       });
       const mesh = new THREE.Mesh(geo, mat);
       mesh.position.set(col.lx, yBot + h / 2, -col.lz);
+      mesh.userData = {
+        pickKind: 'interval',
+        boringId: col.id,
+        boringNo: col.boring_no,
+        interval: iv
+      };
       groups.cols.add(mesh);
+      pickables.push(mesh);
     });
 
-    // Surface marker ring
     const ringGeo = new THREE.RingGeometry(r * 1.2, r * 1.55, 24);
     const ringMat = new THREE.MeshBasicMaterial({ color: 0xffffff, side: THREE.DoubleSide, transparent: true, opacity: 0.7 });
     const ring = new THREE.Mesh(ringGeo, ringMat);
     ring.rotation.x = -Math.PI / 2;
     ring.position.set(col.lx, col.surface + 0.2, -col.lz);
+    ring.userData = { pickKind: 'boring', boringId: col.id, boringNo: col.boring_no };
     groups.labels.add(ring);
+    pickables.push(ring);
 
-    // Text sprite label
     const text = col.boring_no;
     labelCanvas.width = 256;
     labelCanvas.height = 64;
@@ -6374,26 +6489,44 @@ async function initSite3DScene(THREE, OrbitControls, Delaunay, model) {
     const labelScale = Math.max(8, model.extent * 0.06);
     sprite.scale.set(labelScale * 2.5, labelScale * 0.65, 1);
     sprite.position.set(col.lx, col.surface + labelScale * 0.5, -col.lz);
-    sprite.userData.isLabel = true;
+    sprite.userData = { pickKind: 'boring', boringId: col.id, boringNo: col.boring_no };
     groups.labels.add(sprite);
+    pickables.push(sprite);
   });
 
-  // Reference grid at min elevation
   const minElev = Math.min(...model.columns.map(c => c.surface - (c.maxDepth || 0)));
   const gridSize = model.extent * 1.4;
   const grid = new THREE.GridHelper(gridSize, 10, 0x2a3548, 0x1a2435);
   grid.position.y = minElev - 2;
-  scene.add(grid);
+  contentRoot.add(grid);
 
-  // Camera framing
   const cx = model.columns.reduce((s, c) => s + c.lx, 0) / model.columns.length;
   const cz = model.columns.reduce((s, c) => s + c.lz, 0) / model.columns.length;
   const cy = model.columns.reduce((s, c) => s + c.surface, 0) / model.columns.length;
   const depthSpan = Math.max(...model.columns.map(c => c.maxDepth || 0), 10);
-  const dist = model.extent * 1.6 + depthSpan * 0.4;
-  camera.position.set(cx + dist * 0.7, cy + dist * 0.55, -cz + dist * 0.7);
-  controls.target.set(cx, cy - depthSpan * 0.15, -cz);
+  const frameDist = model.extent * 1.6 + depthSpan * 0.4;
+
+  const homeCameraPos = new THREE.Vector3(cx + frameDist * 0.7, cy + frameDist * 0.55, -cz + frameDist * 0.7);
+  const homeCameraTarget = new THREE.Vector3(cx, cy - depthSpan * 0.15, -cz);
+  camera.position.copy(homeCameraPos);
+  controls.target.copy(homeCameraTarget);
   controls.update();
+
+  const raycaster = new THREE.Raycaster();
+  const pointer = new THREE.Vector2();
+
+  function onPointerDown(ev) {
+    if (!_site3dState || ev.button !== 0) return;
+    const rect = renderer.domElement.getBoundingClientRect();
+    pointer.x = ((ev.clientX - rect.left) / rect.width) * 2 - 1;
+    pointer.y = -((ev.clientY - rect.top) / rect.height) * 2 + 1;
+    raycaster.setFromCamera(pointer, camera);
+    const hits = raycaster.intersectObjects(pickables, false);
+    if (hits.length) site3dApplyPick(hits[0].object);
+    else clearSite3DSelection();
+  }
+
+  renderer.domElement.addEventListener('pointerdown', onPointerDown);
 
   let animId = null;
   function animate() {
@@ -6407,29 +6540,176 @@ async function initSite3DScene(THREE, OrbitControls, Delaunay, model) {
     if (!container.isConnected) return;
     const w = container.clientWidth;
     const h = container.clientHeight;
+    if (w < 2 || h < 2) return;
     camera.aspect = w / h;
     camera.updateProjectionMatrix();
     renderer.setSize(w, h);
   }
   window.addEventListener('resize', onResize);
 
-  _site3dState = { renderer, scene, camera, controls, groups, animId, onResize, container };
+  _site3dState = {
+    THREE,
+    renderer,
+    scene,
+    camera,
+    controls,
+    groups,
+    contentRoot,
+    pickables,
+    model,
+    animId,
+    onResize,
+    onPointerDown,
+    container,
+    vertExag: 2,
+    selectedMesh: null,
+    homeCameraPos,
+    homeCameraTarget,
+    modelCenter: { x: cx, y: cy, z: -cz },
+    depthSpan,
+    frameDist
+  };
   refreshSite3DOptions();
+}
+
+function toggleSite3DFullscreen() {
+  const modal = $('site3dModal');
+  if (!modal) return;
+  modal.classList.toggle('site3d-fullscreen');
+  const btn = $('site3dFullscreenBtn');
+  if (btn) btn.textContent = modal.classList.contains('site3d-fullscreen') ? '⊟ EXIT FULLSCREEN' : '⛶ FULLSCREEN';
+  setTimeout(() => _site3dState?.onResize?.(), 80);
+}
+
+function site3dSetVertExag(val) {
+  const ex = Math.max(1, Math.min(8, parseFloat(val) || 1));
+  const el = $('site3dVertExag');
+  if (el) el.dataset.touched = '1';
+  const lbl = $('site3dExagVal');
+  if (lbl) lbl.textContent = ex + '×';
+  if (!_site3dState) return;
+  _site3dState.vertExag = ex;
+  if (_site3dState.contentRoot) _site3dState.contentRoot.scale.y = ex;
+}
+
+function site3dCameraPreset(preset) {
+  const st = _site3dState;
+  if (!st) return;
+  const { camera, controls, modelCenter, depthSpan, frameDist, vertExag, homeCameraPos, homeCameraTarget } = st;
+  const ex = vertExag || 1;
+  const cx = modelCenter.x;
+  const cy = modelCenter.y * ex;
+  const cz = modelCenter.z;
+  const dSpan = depthSpan * ex;
+  const dist = frameDist;
+
+  if (preset === 'plan') {
+    camera.position.set(cx, cy + dist * 1.35, cz);
+    controls.target.set(cx, cy - dSpan * 0.25, cz);
+  } else if (preset === 'iso') {
+    camera.position.set(cx + dist * 0.72, cy + dist * 0.58, cz + dist * 0.72);
+    controls.target.set(cx, cy - dSpan * 0.15, cz);
+  } else {
+    camera.position.copy(homeCameraPos);
+    camera.position.y = homeCameraPos.y * (ex > 1 ? ex * 0.85 + 0.15 : 1);
+    controls.target.copy(homeCameraTarget);
+    controls.target.y = homeCameraTarget.y * (ex > 1 ? ex * 0.85 + 0.15 : 1);
+  }
+  controls.update();
+}
+
+function clearSite3DInspector() {
+  const el = $('site3dInspector');
+  if (!el) return;
+  el.className = 'empty';
+  el.innerHTML = 'Click a boring collar ring or colored soil interval to inspect logs and lab data.';
+}
+
+function clearSite3DSelection() {
+  clearSite3DInspector();
+  if (!_site3dState?.selectedMesh) return;
+  const mesh = _site3dState.selectedMesh;
+  if (mesh.material?.emissive) {
+    mesh.material.emissive.setHex(0x000000);
+    mesh.material.emissiveIntensity = 0;
+  }
+  _site3dState.selectedMesh = null;
+}
+
+function site3dApplyPick(obj) {
+  const st = _site3dState;
+  if (!st || !obj?.userData?.pickKind) return;
+  if (st.selectedMesh && st.selectedMesh !== obj && st.selectedMesh.material?.emissive) {
+    st.selectedMesh.material.emissive.setHex(0x000000);
+    st.selectedMesh.material.emissiveIntensity = 0;
+  }
+  st.selectedMesh = obj.material?.emissive ? obj : null;
+  if (obj.material?.emissive) {
+    obj.material.emissive.setHex(0x335577);
+    obj.material.emissiveIntensity = 0.45;
+  }
+  renderSite3DInspector(obj.userData);
+}
+
+function renderSite3DInspector(pick) {
+  const el = $('site3dInspector');
+  if (!el || !pick) return;
+  const col = (_site3dState?.model?.columns || []).find(c => c.id === pick.boringId);
+  if (!col) return;
+  el.className = '';
+
+  if (pick.pickKind === 'interval' && pick.interval) {
+    const iv = pick.interval;
+    el.innerHTML = `
+      <h4><span class="si-swatch" style="background:${escape(iv.color)}"></span>${escape(col.boring_no)} · Sample ${iv.sampleNo || '—'}</h4>
+      <div class="si-row"><div class="si-lbl">Depth</div><div class="si-val">${iv.depthFrom}' – ${iv.depthTo}'</div></div>
+      <div class="si-row"><div class="si-lbl">AASHTO</div><div class="si-val">${escape(iv.aashto || '—')}</div></div>
+      <div class="si-row"><div class="si-lbl">USCS</div><div class="si-val">${escape(iv.uscs || '—')}</div></div>
+      <div class="si-row"><div class="si-lbl">N-value</div><div class="si-val">${iv.nValue != null && iv.nValue !== '' ? escape(String(iv.nValue)) : '—'}</div></div>
+      <div class="si-row"><div class="si-lbl">Blows</div><div class="si-val">${escape(iv.blows)}</div></div>
+      <div class="si-row"><div class="si-lbl">Recovery</div><div class="si-val">${iv.recovery != null ? escape(String(iv.recovery)) + '"' : '—'}</div></div>
+      <div class="si-row"><div class="si-lbl">Description</div><div class="si-val">${escape(iv.desc)}</div></div>
+      ${col.waterDepth != null ? `<div class="si-row"><div class="si-lbl">Water @</div><div class="si-val">${col.waterDepth}'${col.waterElev != null ? ` (elev ${col.waterElev.toFixed(1)})` : ''}</div></div>` : ''}
+      <div class="si-actions">
+        <button type="button" class="btn btn-accent btn-sm" onclick="site3dNavigateToBoring('${pick.boringId}')">Open boring</button>
+      </div>`;
+    return;
+  }
+
+  el.innerHTML = `
+    <h4>⊙ ${escape(col.boring_no)}</h4>
+    <div class="si-row"><div class="si-lbl">Location</div><div class="si-val">${escape(col.location || '—')}</div></div>
+    <div class="si-row"><div class="si-lbl">Surface elev.</div><div class="si-val">${col.surface != null ? col.surface.toFixed(2) : '—'}</div></div>
+    <div class="si-row"><div class="si-lbl">Max depth</div><div class="si-val">${col.maxDepth ? col.maxDepth + "'" : '—'}</div></div>
+    <div class="si-row"><div class="si-lbl">Samples</div><div class="si-val">${col.intervals.length}</div></div>
+    ${col.waterDepth != null ? `<div class="si-row"><div class="si-lbl">Water @</div><div class="si-val">${col.waterDepth}'${col.waterElev != null ? ` (elev ${col.waterElev.toFixed(1)})` : ''}</div></div>` : ''}
+    <div class="si-actions">
+      <button type="button" class="btn btn-accent btn-sm" onclick="site3dNavigateToBoring('${pick.boringId}')">Open boring</button>
+    </div>`;
+}
+
+function site3dNavigateToBoring(boringId) {
+  closeSite3DModal();
+  if (currentProjectId && boringId) openBoring(boringId);
 }
 
 function refreshSite3DOptions() {
   if (!_site3dState) return;
   const { groups } = _site3dState;
   if (groups.topo) groups.topo.visible = $('site3dShowTopo')?.checked !== false;
+  if (groups.water) groups.water.visible = $('site3dShowWater')?.checked !== false;
   if (groups.cols) groups.cols.visible = $('site3dShowCols')?.checked !== false;
   if (groups.labels) groups.labels.visible = $('site3dShowLabels')?.checked !== false;
 }
 
 function closeSite3DRenderer() {
   if (!_site3dState) return;
-  const { renderer, animId, onResize, container, controls } = _site3dState;
+  const { renderer, animId, onResize, onPointerDown, container, controls } = _site3dState;
   if (animId) cancelAnimationFrame(animId);
   if (onResize) window.removeEventListener('resize', onResize);
+  if (renderer?.domElement && onPointerDown) {
+    renderer.domElement.removeEventListener('pointerdown', onPointerDown);
+  }
   if (controls) controls.dispose();
   if (renderer) {
     renderer.dispose();
@@ -6442,7 +6722,10 @@ function closeSite3DRenderer() {
 }
 
 function closeSite3DModal() {
-  $('site3dModal').classList.remove('open');
+  $('site3dModal')?.classList.remove('open', 'site3d-fullscreen');
+  const btn = $('site3dFullscreenBtn');
+  if (btn) btn.textContent = '⛶ FULLSCREEN';
+  clearSite3DSelection();
   closeSite3DRenderer();
 }
 
