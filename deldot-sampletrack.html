@@ -3235,7 +3235,7 @@ table.fc-borrow-tbl tr.fc-borrow-detail-row td{background:var(--surface);border-
                      padding:9px 20px;border-radius:var(--radius-sm);cursor:pointer;width:100%;">
         💾 SAVE EMAIL SETTINGS
       </button>
-      <button onclick="testGmailSettings()" type="button"
+      <button type="button" id="btnTestGmail" onclick="testGmailSettings()"
               style="background:var(--surface2);border:1px solid var(--border);color:var(--text);
                      font-family:var(--mono);font-size:10px;letter-spacing:1px;
                      padding:9px 20px;border-radius:var(--radius-sm);cursor:pointer;width:100%;margin-top:8px;">
@@ -6525,7 +6525,7 @@ table.fc-borrow-tbl tr.fc-borrow-detail-row td{background:var(--surface);border-
 // GLOBALS
 // ══════════════════════════════════════════════
 let db = null;
-const APP_BUILD = '2026.07.09-gmail-secrets-priority';
+const APP_BUILD = '2026.07.09-gmail-test-fix';
 const FC_CORE_ICON_SRC = 'docs/r18-reference/core-drill-icon-128.png';
 const BORELOG_ICON_SRC = 'docs/r18-reference/borelog-icon.webp';
 const BORELOG_PATH = 'docs/r18-reference/deldot-borelog.html';
@@ -10327,10 +10327,35 @@ async function deleteProject(id, contract, name) {
 }
 
 // ── Save email settings (admin) ────────────────────────────────
+const GMAIL_TEST_PDF_B64 = 'JVBERi0xLjQKJeLjz9MKMSAwIG9iago8PAovVHlwZSAvQ2F0YWxvZwovUGFnZXMgMiAwIFI+PgplbmRvYmoKMiAwIG9iago8PAovVHlwZSAvUGFnZXMKL0NvdW50IDEKL0tpZHMgWzMgMCBSXQo+PgplbmRvYmoKMyAwIG9iago8PAovVHlwZSAvUGFnZQovUGFyZW50IDIgMCBSCi9NZWRpYUJveCBbMCAwIDYxMiA3OTJdCi9Db250ZW50cyA0IDAgUgo+PgplbmRvYmoKNCAwIG9iago8PAovTGVuZ3RoIDQ0Cj4+CnN0cmVhbQpCVAovRjEgMjQgVGYKNzAgNzIwIFRkCihUZXN0KSBUagpFVAplbmRzdHJlYW0KZW5kb2JqCnhyZWYKMCA1CjAwMDAwMDAwMDAgNjU1MzUgZiAKMDAwMDAwMDAxNSAwMDAwMCBuIAowMDAwMDAwMDc0IDAwMDAwIG4gCjAwMDAwMDAxMjAgMDAwMDAgbiAKMDAwMDAwMDE5MyAwMDAwMCBuIAp0cmFpbGVyCjw8Ci9TaXplIDUKL1Jvb3QgMSAwIFIKPj4Kc3RhcnR4cmVmCjI5NAolJUVPRgo=';
+
+function readEmailFormCredentials() {
+  const userEl = document.getElementById('sl_gmail_user');
+  const passEl = document.getElementById('sl_gmail_app_password');
+  const user = (userEl?.value || localStorage.getItem('sl_gmail_from') || '').trim();
+  const typedPass = (passEl?.value || '').replace(/\s+/g, '');
+  const pass = typedPass || (localStorage.getItem('sl_gmail_app_password') || '').replace(/\s+/g, '');
+  return { user, pass, typedPass };
+}
+
+function ensureEmailSettingsVisible() {
+  const emailSect = document.getElementById('emailSettingsSection');
+  if (!emailSect || emailSect.style.display === 'none') return;
+  if (!emailSect.classList.contains('is-open')) {
+    const hdr = emailSect.querySelector('.setup-collapse-hdr');
+    if (hdr) toggleSetupSection(hdr);
+  }
+}
+
 function getGmailCredentials() {
-  const user = (localStorage.getItem('sl_gmail_from') || '').trim();
-  const pass = (localStorage.getItem('sl_gmail_app_password') || '').replace(/\s+/g, '');
-  return { user, pass };
+  return readEmailFormCredentials();
+}
+
+function setEmailSettingsStatus(msg, isErr) {
+  const el = document.getElementById('emailSettingsStatus');
+  if (!el) return;
+  el.style.color = isErr ? 'var(--red2)' : 'var(--green2)';
+  el.textContent = msg || '';
 }
 
 function isValidAppPassword(pass) {
@@ -10338,62 +10363,100 @@ function isValidAppPassword(pass) {
 }
 
 function gmailSendReady() {
-  const { user } = getGmailCredentials();
+  const { user } = readEmailFormCredentials();
   return !!(db && user);
 }
 
+function persistEmailCredentials(user, pass) {
+  if (user) localStorage.setItem('sl_gmail_from', user);
+  else localStorage.removeItem('sl_gmail_from');
+  if (pass) localStorage.setItem('sl_gmail_app_password', pass);
+  else localStorage.removeItem('sl_gmail_app_password');
+}
+
 function saveEmailSettings() {
-  const gmail = (document.getElementById('sl_gmail_user')?.value || '').trim();
-  const appPass = (document.getElementById('sl_gmail_app_password')?.value || '').replace(/\s+/g, '');
-  const statusEl = document.getElementById('emailSettingsStatus');
-  if (!gmail) {
-    localStorage.removeItem('sl_gmail_from');
-    localStorage.removeItem('sl_gmail_app_password');
-    if (statusEl) statusEl.textContent = '';
+  const { user, typedPass } = readEmailFormCredentials();
+  if (!user) {
+    persistEmailCredentials('', '');
+    setEmailSettingsStatus('');
     showToast('Gmail settings cleared', 'info');
     return;
   }
-  localStorage.setItem('sl_gmail_from', gmail);
-  if (appPass) {
-    if (!isValidAppPassword(appPass)) {
-      showToast('App password must be exactly 16 characters (not your regular Gmail password)', 'error');
-      return;
-    }
-    localStorage.setItem('sl_gmail_app_password', appPass);
-    if (statusEl) statusEl.textContent = '✓ Gmail configured: ' + gmail;
+  if (typedPass && !isValidAppPassword(typedPass)) {
+    setEmailSettingsStatus('⚠ App password should be 16 characters — saving anyway', true);
+  }
+  persistEmailCredentials(user, typedPass);
+  if (typedPass) {
+    setEmailSettingsStatus('✓ Saved: ' + user);
     showToast('Gmail settings saved ✓', 'success');
   } else {
-    localStorage.removeItem('sl_gmail_app_password');
-    if (statusEl) statusEl.textContent = '✓ ' + gmail + ' — using app password from Supabase secrets';
-    showToast('Address saved — will use Supabase GMAIL_APP_PASSWORD secret if set', 'success');
+    setEmailSettingsStatus('✓ Saved: ' + user + ' (password on Supabase server if configured)');
+    showToast('Gmail address saved ✓', 'success');
   }
 }
 
+function buildEmailAuthFields() {
+  const { user, typedPass } = readEmailFormCredentials();
+  const fields = {};
+  if (user) fields.gmailUser = user;
+  // Only send password from the form field — omit when blank so Supabase secrets are used
+  if (typedPass) fields.gmailAppPassword = typedPass;
+  return fields;
+}
+
+async function invokeSendReportEmail(body) {
+  if (!db) throw new Error('Not connected to Supabase');
+  if (!db.functions?.invoke) throw new Error('Supabase client too old — hard refresh LabTrak (Ctrl+Shift+R)');
+  const payload = { ...body, ...buildEmailAuthFields() };
+  const { data, error } = await db.functions.invoke('send-report-email', { body: payload });
+  if (error) throw error;
+  if (data?.error) throw new Error(data.error);
+  return data;
+}
+
 async function testGmailSettings() {
-  if (!db) { showToast('Connect to Supabase first', 'error'); return; }
-  const { user, pass } = getGmailCredentials();
-  if (!user) { showToast('Enter your Gmail address first', 'error'); return; }
-  showToast('Sending test email to ' + user + '…', 'info');
-  const body = {
-    to: user,
-    subject: 'LabTrak Gmail test',
-    filename: 'test.pdf',
-    pdfBase64: 'JVBERi0xLjQKJeLjz9MKMSAwIG9iago8PAovVHlwZSAvQ2F0YWxvZwovUGFnZXMgMiAwIFI+PgplbmRvYmoKMiAwIG9iago8PAovVHlwZSAvUGFnZXMKL0NvdW50IDEKL0tpZHMgWzMgMCBSXQo+PgplbmRvYmoKMyAwIG9iago8PAovVHlwZSAvUGFnZQovUGFyZW50IDIgMCBSCi9NZWRpYUJveCBbMCAwIDYxMiA3OTJdCi9Db250ZW50cyA0IDAgUgo+PgplbmRvYmoKNCAwIG9iago8PAovTGVuZ3RoIDQ0Cj4+CnN0cmVhbQpCVAovRjEgMjQgVGYKNzAgNzIwIFRkCihUZXN0KSBUagpFVAplbmRzdHJlYW0KZW5kb2JqCnhyZWYKMCA1CjAwMDAwMDAwMDAgNjU1MzUgZiAKMDAwMDAwMDAxNSAwMDAwMCBuIAowMDAwMDAwMDc0IDAwMDAwIG4gCjAwMDAwMDAxMjAgMDAwMDAgbiAKMDAwMDAwMDE5MyAwMDAwMCBuIAp0cmFpbGVyCjw8Ci9TaXplIDUKL1Jvb3QgMSAwIFIKPj4Kc3RhcnR4cmVmCjI5NAolJUVPRgo=',
-    gmailUser: user,
-    reportType: 'Test',
-    contract: '—', testNo: '—', material: '—', location: '—',
-    dateSampled: '—', dateTested: '—', result: 'TEST', reportedBy: 'LabTrak',
-    road: '—', contractor: '—',
-  };
-  if (isValidAppPassword(pass)) body.gmailAppPassword = pass;
+  ensureEmailSettingsVisible();
+  const btn = document.getElementById('btnTestGmail');
+  const { user, typedPass } = readEmailFormCredentials();
   try {
-    const { data, error } = await db.functions.invoke('send-report-email', { body });
-    if (error) throw error;
-    if (data?.error) throw new Error(data.error);
+    if (!db) {
+      setEmailSettingsStatus('Connect to Supabase first', true);
+      showToast('Connect to Supabase first', 'error');
+      return;
+    }
+    if (!user) {
+      setEmailSettingsStatus('Enter your Gmail address above', true);
+      showToast('Enter your Gmail address first', 'error');
+      return;
+    }
+    persistEmailCredentials(user, typedPass);
+    if (btn) { btn.disabled = true; btn.textContent = 'Sending…'; }
+    const credHint = typedPass
+      ? ''
+      : ' (using Supabase GMAIL_APP_PASSWORD secret if set)';
+    setEmailSettingsStatus('Sending test email to ' + user + '…' + credHint);
+    showToast('Sending test email…', 'info');
+
+    await invokeSendReportEmail({
+      to: user,
+      subject: 'LabTrak Gmail test',
+      filename: 'test.pdf',
+      pdfBase64: GMAIL_TEST_PDF_B64,
+      reportType: 'Test',
+      contract: '—', testNo: '—', material: '—', location: '—',
+      dateSampled: '—', dateTested: '—', result: 'TEST', reportedBy: 'LabTrak',
+      road: '—', contractor: '—',
+    });
+    setEmailSettingsStatus('✓ Test email sent to ' + user);
     showToast('Test email sent to ' + user + ' ✓', 'success');
   } catch (e) {
+    console.error('Gmail test error:', e);
     const parsed = await parseInvokeError(e);
-    showToast('Test failed: ' + formatEmailSendError(parsed), 'error');
+    const msg = formatEmailSendError(parsed);
+    setEmailSettingsStatus('✗ ' + msg, true);
+    showToast('Test failed: ' + msg, 'error');
+  } finally {
+    if (btn) { btn.disabled = false; btn.textContent = '✉ SEND TEST EMAIL'; }
   }
 }
 
@@ -10493,8 +10556,8 @@ function formatEmailSendError(msg) {
   if (/GMAIL_USER|GMAIL_APP_PASSWORD|not configured/i.test(text)) {
     return 'Gmail not configured — add address and app password in Settings → Auto-Email';
   }
-  if (/not found|404|requested function|does not exist/i.test(text) && !/non-2xx/i.test(text)) {
-    return 'send-report-email edge function not deployed — deploy from supabase/functions/send-report-email';
+  if (/not found|404|requested function|does not exist|failed to send a request/i.test(text) && !/non-2xx/i.test(text)) {
+    return 'send-report-email edge function not deployed. In Supabase Dashboard → Edge Functions → deploy send-report-email, or run: supabase functions deploy send-report-email';
   }
   return text;
 }
@@ -10517,10 +10580,10 @@ async function autoEmailReport(sample) {
   const subject  = `LabTrak Report – ${sample.contract || 'Contract'} – ${sample.test_no || sample.id} – ${conform}`;
   const filename = `LabTrak_${(sample.test_no || sample.id).replace(/[^a-zA-Z0-9_-]/g,'_')}_${(sample.contract||'Report').replace(/[^a-zA-Z0-9_-]/g,'_')}.pdf`;
   const toList   = dist.split(',').map(e => e.trim()).filter(Boolean);
-  const { user: gmailUser, pass: gmailAppPassword } = getGmailCredentials();
 
-  if (!gmailSendReady()) {
-    showToast('Gmail not configured — add your Gmail address in Settings → Auto-Email', 'error');
+  const gmailConfigured = gmailSendReady();
+  if (!gmailConfigured) {
+    showToast('Gmail not configured — enter address in Settings → Auto-Email', 'error');
     return false;
   }
 
@@ -10533,12 +10596,11 @@ async function autoEmailReport(sample) {
 
   showToast('Sending email via Gmail…', 'info');
   try {
-    const invokeBody = {
+    await invokeSendReportEmail({
       to:             toList.join(', '),
       subject,
       filename,
       pdfBase64,
-      gmailUser,
       reportType:     rptType,
       contract:       sample.contract       || '—',
       testNo:         sample.test_no        || '—',
@@ -10551,12 +10613,7 @@ async function autoEmailReport(sample) {
       road:           proj?.road            || '—',
       contractor:     proj?.contractor      || sample.contractor || '—',
       projectManager: proj?.project_manager || null,
-    };
-    if (isValidAppPassword(gmailAppPassword)) invokeBody.gmailAppPassword = gmailAppPassword;
-
-    const { data, error } = await db.functions.invoke('send-report-email', { body: invokeBody });
-    if (error) throw error;
-    if (data?.error) throw new Error(data.error);
+    });
     const n = toList.length;
     showToast(`Report emailed to ${n} recipient${n !== 1 ? 's' : ''} ✓`, 'success');
     return true;
@@ -12044,13 +12101,10 @@ function applyPermissionUnlockUI() {
     if (gmailEl) gmailEl.value = localStorage.getItem('sl_gmail_from') || '';
     const gmailPassEl = document.getElementById('sl_gmail_app_password');
     if (gmailPassEl) gmailPassEl.value = localStorage.getItem('sl_gmail_app_password') || '';
-    const statusEl = document.getElementById('emailSettingsStatus');
-    if (statusEl) {
-      const { user, pass } = getGmailCredentials();
-      if (user && pass) statusEl.textContent = '✓ Gmail configured: ' + user;
-      else if (user) statusEl.textContent = '✓ ' + user + ' — using app password from Supabase secrets';
-      else statusEl.textContent = '';
-    }
+    const { user, typedPass } = readEmailFormCredentials();
+    if (user && typedPass) setEmailSettingsStatus('✓ Gmail configured: ' + user);
+    else if (user) setEmailSettingsStatus('✓ ' + user + ' — enter app password or use Supabase secret');
+    else setEmailSettingsStatus('');
   }
 
   const mteamSect = document.getElementById('manageTeamsSection');
