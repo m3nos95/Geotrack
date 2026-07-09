@@ -78,16 +78,11 @@ Deno.serve(async (req) => {
     const payload: EmailRequest = await req.json();
     const bodyUser = payload.gmailUser?.trim() || "";
     const bodyPass = normalizeGmailPass(payload.gmailAppPassword || "");
-    // LabTrak Settings credentials take priority over Supabase secrets
-    let gmailUser: string;
-    let gmailPass: string;
-    if (bodyUser && bodyPass) {
-      gmailUser = bodyUser;
-      gmailPass = bodyPass;
-    } else {
-      gmailUser = (Deno.env.get("GMAIL_USER") || bodyUser || "").trim();
-      gmailPass = normalizeGmailPass(Deno.env.get("GMAIL_APP_PASSWORD") || bodyPass || "");
-    }
+    const envUser = (Deno.env.get("GMAIL_USER") || "").trim();
+    const envPass = normalizeGmailPass(Deno.env.get("GMAIL_APP_PASSWORD") || "");
+    // Supabase secrets (original working setup) take priority; LabTrak fills gaps
+    const gmailUser = envUser || bodyUser;
+    const gmailPass = envPass || bodyPass;
     if (!gmailUser || !gmailPass) {
       return jsonResponse({
         error:

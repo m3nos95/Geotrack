@@ -3225,7 +3225,7 @@ table.fc-borrow-tbl tr.fc-borrow-detail-row td{background:var(--surface);border-
         <input type="email" id="sl_gmail_user" placeholder="yourlab@gmail.com" autocomplete="off">
       </div>
       <div class="setup-field" style="margin-top:10px;">
-        <label>Gmail App Password <span style="font-size:9px;color:var(--muted);font-weight:400;">(16-char App Password — NOT your regular Gmail password)</span></label>
+        <label>Gmail App Password <span style="font-size:9px;color:var(--muted);font-weight:400;">(16 characters — leave blank if already in Supabase secrets)</span></label>
         <input type="password" id="sl_gmail_app_password" placeholder="xxxx xxxx xxxx xxxx" autocomplete="new-password">
       </div>
       <div id="emailSettingsStatus" style="font-family:var(--mono);font-size:10px;color:var(--green2);min-height:14px;margin:6px 0 10px;"></div>
@@ -3234,6 +3234,12 @@ table.fc-borrow-tbl tr.fc-borrow-detail-row td{background:var(--surface);border-
                      font-family:var(--mono);font-size:10px;letter-spacing:1px;
                      padding:9px 20px;border-radius:var(--radius-sm);cursor:pointer;width:100%;">
         💾 SAVE EMAIL SETTINGS
+      </button>
+      <button onclick="testGmailSettings()" type="button"
+              style="background:var(--surface2);border:1px solid var(--border);color:var(--text);
+                     font-family:var(--mono);font-size:10px;letter-spacing:1px;
+                     padding:9px 20px;border-radius:var(--radius-sm);cursor:pointer;width:100%;margin-top:8px;">
+        ✉ SEND TEST EMAIL
       </button>
       <div style="margin-top:14px;padding:12px;background:var(--bg);border:1px solid var(--border);border-radius:var(--radius-sm);">
         <div style="font-family:var(--mono);font-size:9px;color:var(--accent2);letter-spacing:1px;margin-bottom:8px;">EDGE FUNCTION SETUP (ONE-TIME)</div>
@@ -6519,7 +6525,7 @@ table.fc-borrow-tbl tr.fc-borrow-detail-row td{background:var(--surface);border-
 // GLOBALS
 // ══════════════════════════════════════════════
 let db = null;
-const APP_BUILD = '2026.07.09-gmail-cred-priority';
+const APP_BUILD = '2026.07.09-gmail-secrets-priority';
 const FC_CORE_ICON_SRC = 'docs/r18-reference/core-drill-icon-128.png';
 const BORELOG_ICON_SRC = 'docs/r18-reference/borelog-icon.webp';
 const BORELOG_PATH = 'docs/r18-reference/deldot-borelog.html';
@@ -10327,30 +10333,67 @@ function getGmailCredentials() {
   return { user, pass };
 }
 
+function isValidAppPassword(pass) {
+  return pass.replace(/\s+/g, '').length === 16;
+}
+
 function gmailSendReady() {
-  const { user, pass } = getGmailCredentials();
-  return !!(db && user && pass);
+  const { user } = getGmailCredentials();
+  return !!(db && user);
 }
 
 function saveEmailSettings() {
   const gmail = (document.getElementById('sl_gmail_user')?.value || '').trim();
   const appPass = (document.getElementById('sl_gmail_app_password')?.value || '').replace(/\s+/g, '');
   const statusEl = document.getElementById('emailSettingsStatus');
-  if (gmail && appPass) {
-    localStorage.setItem('sl_gmail_from', gmail);
-    localStorage.setItem('sl_gmail_app_password', appPass);
-    if (statusEl) statusEl.textContent = '✓ Gmail configured: ' + gmail;
-    showToast('Gmail settings saved ✓', 'success');
-  } else if (gmail && !appPass) {
-    localStorage.setItem('sl_gmail_from', gmail);
-    localStorage.removeItem('sl_gmail_app_password');
-    if (statusEl) statusEl.textContent = '⚠ Add app password to enable auto-send';
-    showToast('Saved address — add app password to send email', 'info');
-  } else {
+  if (!gmail) {
     localStorage.removeItem('sl_gmail_from');
     localStorage.removeItem('sl_gmail_app_password');
     if (statusEl) statusEl.textContent = '';
     showToast('Gmail settings cleared', 'info');
+    return;
+  }
+  localStorage.setItem('sl_gmail_from', gmail);
+  if (appPass) {
+    if (!isValidAppPassword(appPass)) {
+      showToast('App password must be exactly 16 characters (not your regular Gmail password)', 'error');
+      return;
+    }
+    localStorage.setItem('sl_gmail_app_password', appPass);
+    if (statusEl) statusEl.textContent = '✓ Gmail configured: ' + gmail;
+    showToast('Gmail settings saved ✓', 'success');
+  } else {
+    localStorage.removeItem('sl_gmail_app_password');
+    if (statusEl) statusEl.textContent = '✓ ' + gmail + ' — using app password from Supabase secrets';
+    showToast('Address saved — will use Supabase GMAIL_APP_PASSWORD secret if set', 'success');
+  }
+}
+
+async function testGmailSettings() {
+  if (!db) { showToast('Connect to Supabase first', 'error'); return; }
+  const { user, pass } = getGmailCredentials();
+  if (!user) { showToast('Enter your Gmail address first', 'error'); return; }
+  showToast('Sending test email to ' + user + '…', 'info');
+  const body = {
+    to: user,
+    subject: 'LabTrak Gmail test',
+    filename: 'test.pdf',
+    pdfBase64: 'JVBERi0xLjQKJeLjz9MKMSAwIG9iago8PAovVHlwZSAvQ2F0YWxvZwovUGFnZXMgMiAwIFI+PgplbmRvYmoKMiAwIG9iago8PAovVHlwZSAvUGFnZXMKL0NvdW50IDEKL0tpZHMgWzMgMCBSXQo+PgplbmRvYmoKMyAwIG9iago8PAovVHlwZSAvUGFnZQovUGFyZW50IDIgMCBSCi9NZWRpYUJveCBbMCAwIDYxMiA3OTJdCi9Db250ZW50cyA0IDAgUgo+PgplbmRvYmoKNCAwIG9iago8PAovTGVuZ3RoIDQ0Cj4+CnN0cmVhbQpCVAovRjEgMjQgVGYKNzAgNzIwIFRkCihUZXN0KSBUagpFVAplbmRzdHJlYW0KZW5kb2JqCnhyZWYKMCA1CjAwMDAwMDAwMDAgNjU1MzUgZiAKMDAwMDAwMDAxNSAwMDAwMCBuIAowMDAwMDAwMDc0IDAwMDAwIG4gCjAwMDAwMDAxMjAgMDAwMDAgbiAKMDAwMDAwMDE5MyAwMDAwMCBuIAp0cmFpbGVyCjw8Ci9TaXplIDUKL1Jvb3QgMSAwIFIKPj4Kc3RhcnR4cmVmCjI5NAolJUVPRgo=',
+    gmailUser: user,
+    reportType: 'Test',
+    contract: '—', testNo: '—', material: '—', location: '—',
+    dateSampled: '—', dateTested: '—', result: 'TEST', reportedBy: 'LabTrak',
+    road: '—', contractor: '—',
+  };
+  if (isValidAppPassword(pass)) body.gmailAppPassword = pass;
+  try {
+    const { data, error } = await db.functions.invoke('send-report-email', { body });
+    if (error) throw error;
+    if (data?.error) throw new Error(data.error);
+    showToast('Test email sent to ' + user + ' ✓', 'success');
+  } catch (e) {
+    const parsed = await parseInvokeError(e);
+    showToast('Test failed: ' + formatEmailSendError(parsed), 'error');
   }
 }
 
@@ -10441,8 +10484,11 @@ function formatEmailSendError(msg) {
   if (!msg) return 'Email send failed';
   const text = String(msg);
   if (/535|badcredentials|username and password not accepted|rejected the app password/i.test(text)) {
-    const { user } = getGmailCredentials();
-    return `Gmail rejected login for ${user || 'your account'}. Create a new App Password at myaccount.google.com → Security → App Passwords (16 characters, not your normal password). Re-enter it in Settings → Auto-Email and click Save.`;
+    const { user, pass } = getGmailCredentials();
+    const hint = pass
+      ? 'The saved app password may be wrong — it must be 16 characters from Google App Passwords, not your regular Gmail password.'
+      : 'Set GMAIL_APP_PASSWORD in Supabase Edge Function Secrets, or enter a 16-character App Password in Settings and Save.';
+    return `Gmail rejected login for ${user || 'your account'}. ${hint}`;
   }
   if (/GMAIL_USER|GMAIL_APP_PASSWORD|not configured/i.test(text)) {
     return 'Gmail not configured — add address and app password in Settings → Auto-Email';
@@ -10474,7 +10520,7 @@ async function autoEmailReport(sample) {
   const { user: gmailUser, pass: gmailAppPassword } = getGmailCredentials();
 
   if (!gmailSendReady()) {
-    showToast('Gmail not configured — add address and app password in Settings → Auto-Email', 'error');
+    showToast('Gmail not configured — add your Gmail address in Settings → Auto-Email', 'error');
     return false;
   }
 
@@ -10487,28 +10533,28 @@ async function autoEmailReport(sample) {
 
   showToast('Sending email via Gmail…', 'info');
   try {
-    const { data, error } = await db.functions.invoke('send-report-email', {
-      body: {
-        to:             toList.join(', '),
-        subject,
-        filename,
-        pdfBase64,
-        gmailUser,
-        gmailAppPassword,
-        reportType:     rptType,
-        contract:       sample.contract       || '—',
-        testNo:         sample.test_no        || '—',
-        material:       sample.material_type  || '—',
-        location:       sample.location       || '—',
-        dateSampled:    sample.date_sampled   || '—',
-        dateTested:     sample.date_tested    || new Date().toISOString().slice(0, 10),
-        result:         conform,
-        reportedBy:     sample.reported_by    || '—',
-        road:           proj?.road            || '—',
-        contractor:     proj?.contractor      || sample.contractor || '—',
-        projectManager: proj?.project_manager || null,
-      }
-    });
+    const invokeBody = {
+      to:             toList.join(', '),
+      subject,
+      filename,
+      pdfBase64,
+      gmailUser,
+      reportType:     rptType,
+      contract:       sample.contract       || '—',
+      testNo:         sample.test_no        || '—',
+      material:       sample.material_type  || '—',
+      location:       sample.location       || '—',
+      dateSampled:    sample.date_sampled   || '—',
+      dateTested:     sample.date_tested    || new Date().toISOString().slice(0, 10),
+      result:         conform,
+      reportedBy:     sample.reported_by    || '—',
+      road:           proj?.road            || '—',
+      contractor:     proj?.contractor      || sample.contractor || '—',
+      projectManager: proj?.project_manager || null,
+    };
+    if (isValidAppPassword(gmailAppPassword)) invokeBody.gmailAppPassword = gmailAppPassword;
+
+    const { data, error } = await db.functions.invoke('send-report-email', { body: invokeBody });
     if (error) throw error;
     if (data?.error) throw new Error(data.error);
     const n = toList.length;
@@ -12002,7 +12048,7 @@ function applyPermissionUnlockUI() {
     if (statusEl) {
       const { user, pass } = getGmailCredentials();
       if (user && pass) statusEl.textContent = '✓ Gmail configured: ' + user;
-      else if (user) statusEl.textContent = '⚠ Add app password to enable auto-send';
+      else if (user) statusEl.textContent = '✓ ' + user + ' — using app password from Supabase secrets';
       else statusEl.textContent = '';
     }
   }
