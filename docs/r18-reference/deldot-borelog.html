@@ -926,6 +926,14 @@ html.comfort-mode .hab-pulse{animation:none !important;box-shadow:none !importan
       <label><input type="checkbox" id="site3dShowWater" checked onchange="refreshSite3DOptions()"> Water table</label>
       <label><input type="checkbox" id="site3dShowCols" checked onchange="refreshSite3DOptions()"> Columns</label>
       <label><input type="checkbox" id="site3dShowLabels" checked onchange="refreshSite3DOptions()"> Labels</label>
+      <label><input type="checkbox" id="site3dShowAerial" checked onchange="site3dRefreshAerial()"> Aerial (NAIP)</label>
+      <label><input type="checkbox" id="site3dShowHydro" checked onchange="refreshSite3DOptions()"> Streams (NHD)</label>
+      <label>Ground
+        <select id="site3dGroundMode" onchange="site3dSetGroundMode(this.value)" disabled style="font-size:11px;padding:2px 6px;">
+          <option value="schematic">Schematic</option>
+          <option value="usgs">USGS 3DEP</option>
+        </select>
+      </label>
       <div class="site3d-exag">
         <span>Vert. exag.</span>
         <input type="range" id="site3dVertExag" min="1" max="8" step="0.5" value="2"
@@ -938,6 +946,7 @@ html.comfort-mode .hab-pulse{animation:none !important;box-shadow:none !importan
         <button type="button" class="btn btn-ghost btn-sm" onclick="site3dCameraPreset('reset')">RESET</button>
       </div>
     </div>
+    <div id="site3dGeoStatus" class="site3d-warn" style="display:none;margin-top:8px;"></div>
     <div class="site3d-legend" id="site3dLegend"></div>
   </div>
 </div>
@@ -995,7 +1004,7 @@ const DELDOT_LOGO = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAPAAAADwCAYAA
    - Storage wrapper abstracted for future Supabase port
    ========================================================================= */
 const STORE_KEY = 'deldot_borelog_v2';
-const BORELOG_BUILD = '2026.07.08-borelog-3d-v2';
+const BORELOG_BUILD = '2026.07.09-borelog-3d-geo';
 const MAP_MIGRATE_KEY = 'deldot_borelog_gps_migrated_v2';
 const STORE_TS_KEY = 'deldot_borelog_v2_ts';
 const DE_STATE_PLANE = '+proj=lcc +lat_1=38.43333333333334 +lat_2=39.83333333333333 +lat_0=38 +lon_0=-75.41666666666666 +x_0=200000.99998984026 +y_0=0 +ellps=GRS80 +units=us-ft +no_defs';
@@ -6143,6 +6152,154 @@ function site3dThickOf(s) {
   return Math.abs((parseFloat(s.depth_from) || 0) - (parseFloat(s.depth_to) || 0)) || 2;
 }
 
+const USGS_3DEP_URL = 'https://elevation.nationalmap.gov/arcgis/rest/services/3DEPElevation/ImageServer';
+const USGS_NAIP_URL = 'https://imagery.nationalmap.gov/arcgis/rest/services/USGSNAIPImagery/ImageServer';
+const USDA_SDA_URL = 'https://sdmdataaccess.sc.egov.usda.gov/Tabular/post.rest';
+const NHD_MAP_URL = 'https://hydro.nationalmap.gov/arcgis/rest/services/nhd/MapServer';
+const M_TO_FT = 3.280839895;
+
+function lngLatToWebMercator(lng, lat) {
+  const x = lng * 20037508.34 / 180;
+  const y = Math.log(Math.tan((90 + lat) * Math.PI / 360)) / (Math.PI / 180) * 20037508.34 / 180;
+  return { x, y };
+}
+
+function webMercatorToLngLat(x, y) {
+  const lng = (x / 20037508.34) * 180;
+  const lat = (180 / Math.PI) * (2 * Math.atan(Math.exp((y * Math.PI) / 20037508.34)) - Math.PI / 2);
+  return { lng, lat };
+}
+
+function site3dBuildGeoref(columns) {
+  const pts = columns.filter(c => isFinite(c.lat) && isFinite(c.lng));
+  if (!pts.length) return null;
+  const originLat = pts.reduce((s, c) => s + c.lat, 0) / pts.length;
+  const originLng = pts.reduce((s, c) => s + c.lng, 0) / pts.length;
+  const ftPerDegLat = 364000;
+  const ftPerDegLng = 364000 * Math.cos(originLat * Math.PI / 180);
+  return { originLat, originLng, ftPerDegLat, ftPerDegLng };
+}
+
+function site3dLngLatToLocal(lng, lat, georef) {
+  return {
+    lx: (lng - georef.originLng) * georef.ftPerDegLng,
+    lz: (lat - georef.originLat) * georef.ftPerDegLat
+  };
+}
+
+function site3dMercatorToLocal(x, y, georef) {
+  const ll = webMercatorToLngLat(x, y);
+  return site3dLngLatToLocal(ll.lng, ll.lat, georef);
+}
+
+function site3dBbox3857(columns, padM) {
+  const pad = padM || 120;
+  const pts = columns.filter(c => isFinite(c.lat) && isFinite(c.lng));
+  if (!pts.length) return null;
+  let xmin = Infinity, ymin = Infinity, xmax = -Infinity, ymax = -Infinity;
+  pts.forEach(c => {
+    const m = lngLatToWebMercator(c.lng, c.lat);
+    xmin = Math.min(xmin, m.x); xmax = Math.max(xmax, m.x);
+    ymin = Math.min(ymin, m.y); ymax = Math.max(ymax, m.y);
+  });
+  return {
+    xmin: xmin - pad, ymin: ymin - pad, xmax: xmax + pad, ymax: ymax + pad,
+    spatialReference: { wkid: 3857 }
+  };
+}
+
+function site3dPickSampleCount(extentFt) {
+  if (extentFt < 80) return 400;
+  if (extentFt < 250) return 900;
+  if (extentFt < 800) return 1600;
+  return 2500;
+}
+
+async function usgsIdentifyElevationFt(lat, lng) {
+  const m = lngLatToWebMercator(lng, lat);
+  const url = `${USGS_3DEP_URL}/identify?geometry=${encodeURIComponent(JSON.stringify(m))}&geometryType=esriGeometryPoint&sr=3857&returnGeometry=false&f=json`;
+  const res = await fetch(url);
+  if (!res.ok) throw new Error('USGS identify failed');
+  const data = await res.json();
+  const meters = parseFloat(data.value);
+  if (!isFinite(meters) || data.value === 'NoData') return null;
+  return meters * M_TO_FT;
+}
+
+async function usgsFetchDemGrid(bbox3857, sampleCount) {
+  const url = `${USGS_3DEP_URL}/getSamples?geometry=${encodeURIComponent(JSON.stringify(bbox3857))}&geometryType=esriGeometryEnvelope&sampleCount=${sampleCount}&returnFirstValueOnly=true&f=json`;
+  const res = await fetch(url);
+  if (!res.ok) throw new Error('USGS DEM grid failed');
+  const data = await res.json();
+  const samples = (data.samples || []).filter(s => s.value !== 'NoData' && isFinite(parseFloat(s.value)));
+  if (samples.length < 4) throw new Error('Insufficient USGS elevation samples');
+  const xs = [...new Set(samples.map(s => s.location.x.toFixed(1)))];
+  const ys = [...new Set(samples.map(s => s.location.y.toFixed(1)))];
+  const nx = xs.length;
+  const ny = ys.length;
+  if (nx * ny !== samples.length) {
+    const n = Math.round(Math.sqrt(samples.length));
+    return { samples, nx: n, ny: Math.ceil(samples.length / n) };
+  }
+  return { samples, nx, ny };
+}
+
+async function usgsFetchNaipImageUrl(bbox3857, size) {
+  const bbox = `${bbox3857.xmin},${bbox3857.ymin},${bbox3857.xmax},${bbox3857.ymax}`;
+  const sz = size || 512;
+  return `${USGS_NAIP_URL}/exportImage?bbox=${bbox}&bboxSR=3857&imageSR=3857&size=${sz},${sz}&format=jpg&f=image`;
+}
+
+async function usdaFetchSsuruoAt(lat, lng) {
+  const pt = `POINT(${lng} ${lat})`;
+  const query = `SELECT TOP 1 mu.musym, mu.muname, c.compname, c.comppct_r
+    FROM mapunit mu
+    INNER JOIN component c ON c.mukey = mu.mukey AND c.majcompflag = 'Yes'
+    WHERE mu.mukey IN (SELECT * FROM SDA_Get_Mukey_from_intersection_with_WktWgs84('${pt}'))`;
+  const res = await fetch(USDA_SDA_URL, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    body: new URLSearchParams({ query, format: 'JSON+COLUMNNAME' })
+  });
+  if (!res.ok) return null;
+  const data = await res.json();
+  const table = data.Table;
+  if (!table || table.length < 2) return null;
+  const headers = table[0];
+  const row = table[1];
+  const o = {};
+  headers.forEach((h, i) => { o[h] = row[i]; });
+  return {
+    symbol: o.musym || '',
+    mapUnit: o.muname || '',
+    component: o.compname || '',
+    pct: o.comppct_r
+  };
+}
+
+async function nhdFetchStreams(bbox3857) {
+  const url = `${NHD_MAP_URL}/6/query?geometry=${encodeURIComponent(JSON.stringify(bbox3857))}&geometryType=esriGeometryEnvelope&inSR=3857&outFields=GNIS_NAME,FTYPE&returnGeometry=true&outSR=3857&f=json`;
+  const res = await fetch(url);
+  if (!res.ok) return [];
+  const data = await res.json();
+  return data.features || [];
+}
+
+function site3dSetGeoStatus(msg, isErr) {
+  const el = $('site3dGeoStatus');
+  if (!el) return;
+  if (!msg) { el.style.display = 'none'; el.textContent = ''; return; }
+  el.style.display = '';
+  el.style.borderColor = isErr ? 'var(--red2)' : 'var(--border)';
+  el.style.color = isErr ? 'var(--red2)' : 'var(--muted)';
+  el.textContent = msg;
+}
+
+function site3dColSurface(col) {
+  if (_site3dState?.groundMode === 'usgs' && col.usgsSurface != null) return col.usgsSurface;
+  return col.surface;
+}
+
 function collectSitePlanPoints(borings, frame) {
   const raw = [];
   borings.forEach(b => {
@@ -6200,9 +6357,11 @@ function buildSite3DModel(projectId) {
   }
 
   const columns = planPts.map(({ b, lx, lz }) => {
+    const ll = resolveBoringMapCoords(b, frame);
     const samples = store.getSamples(b.id).slice().sort((a, c) => site3dTopOf(a) - site3dTopOf(c));
     let surface = parseFloat(String(b.surface_elev || '').replace(/,/g, ''));
-    if (!isFinite(surface)) surface = null;
+    const surfaceManual = isFinite(surface);
+    if (!surfaceManual) surface = null;
     const intervals = samples.map(s => {
       const top = site3dTopOf(s);
       const thick = site3dThickOf(s);
@@ -6235,13 +6394,20 @@ function buildSite3DModel(projectId) {
       boring_no: b.boring_no || '(no #)',
       location: b.location || '',
       lx, lz,
+      lat: ll ? ll.lat : null,
+      lng: ll ? ll.lng : null,
       surface,
+      surfaceManual,
+      usgsSurface: null,
+      ssurgo: null,
       maxDepth,
       intervals,
       waterDepth,
       waterElev: waterDepth != null && surface != null ? surface - waterDepth : null
     };
   });
+
+  const georef = site3dBuildGeoref(columns);
 
   const withSurf = columns.filter(c => c.surface != null);
   if (withSurf.length < 2) {
@@ -6269,7 +6435,7 @@ function buildSite3DModel(projectId) {
   );
   const colRadius = Math.max(1.5, extent * 0.015);
 
-  return { ok: true, columns, warnings, colRadius, extent };
+  return { ok: true, columns, warnings, colRadius, extent, georef, frame };
 }
 
 function renderSite3DLegend() {
@@ -6283,10 +6449,326 @@ function renderSite3DLegend() {
   ).join('');
 }
 
+function site3dClearGroup(group) {
+  while (group.children.length) {
+    const ch = group.children[0];
+    group.remove(ch);
+    if (ch.geometry) ch.geometry.dispose();
+    if (ch.material) {
+      if (Array.isArray(ch.material)) ch.material.forEach(m => m.dispose());
+      else ch.material.dispose();
+    }
+  }
+}
+
+function site3dBuildSchematicTopo(THREE, Delaunay, model, groups) {
+  site3dClearGroup(groups.topoSchematic);
+  const pts2d = model.columns.map(c => [c.lx, c.lz]);
+  const delaunay = Delaunay.from(pts2d);
+  const tri = delaunay.triangles;
+  const topoGeo = new THREE.BufferGeometry();
+  const vertices = [];
+  const indices = [];
+  for (let i = 0; i < model.columns.length; i++) {
+    const surf = site3dColSurface(model.columns[i]);
+    vertices.push(model.columns[i].lx, surf, -model.columns[i].lz);
+  }
+  for (let i = 0; i < tri.length; i += 3) {
+    indices.push(tri[i], tri[i + 1], tri[i + 2]);
+  }
+  topoGeo.setIndex(indices);
+  topoGeo.setAttribute('position', new THREE.Float32BufferAttribute(vertices, 3));
+  topoGeo.computeVertexNormals();
+  const topoMesh = new THREE.Mesh(topoGeo, new THREE.MeshStandardMaterial({
+    color: 0x3d6b40, roughness: 0.92, metalness: 0.02,
+    side: THREE.DoubleSide, transparent: true, opacity: 0.88
+  }));
+  groups.topoSchematic.add(topoMesh);
+  groups.topoSchematic.add(new THREE.LineSegments(
+    new THREE.WireframeGeometry(topoGeo),
+    new THREE.LineBasicMaterial({ color: 0x2a4a2c, transparent: true, opacity: 0.35 })
+  ));
+}
+
+function site3dBuildUsgsTopoMesh(THREE, demGrid, naipUrl, model, groups) {
+  site3dClearGroup(groups.topoUsgs);
+  const georef = model.georef;
+  if (!georef) return;
+  const { samples, nx, ny } = demGrid;
+  const verts = [];
+  const uvs = [];
+  const indices = [];
+  const xMin = samples[0].location.x;
+  const xMax = samples[samples.length - 1].location.x;
+  const yMin = samples[ny * (nx - 1)]?.location?.y ?? samples[0].location.y;
+  const yMax = samples[0].location.y;
+  const vtxIndex = new Array(nx * ny).fill(-1);
+
+  for (let j = 0; j < ny; j++) {
+    for (let i = 0; i < nx; i++) {
+      const s = samples[i + j * nx];
+      if (!s || s.value === 'NoData') continue;
+      const elevFt = parseFloat(s.value) * M_TO_FT;
+      if (!isFinite(elevFt)) continue;
+      const loc = site3dMercatorToLocal(s.location.x, s.location.y, georef);
+      vtxIndex[i + j * nx] = verts.length / 3;
+      verts.push(loc.lx, elevFt, -loc.lz);
+      const u = (s.location.x - xMin) / (xMax - xMin || 1);
+      const v = 1 - (s.location.y - yMin) / (yMax - yMin || 1);
+      uvs.push(u, v);
+    }
+  }
+  for (let j = 0; j < ny - 1; j++) {
+    for (let i = 0; i < nx - 1; i++) {
+      const a = vtxIndex[i + j * nx];
+      const b = vtxIndex[i + 1 + j * nx];
+      const c = vtxIndex[i + (j + 1) * nx];
+      const d = vtxIndex[i + 1 + (j + 1) * nx];
+      if (a < 0 || b < 0 || c < 0 || d < 0) continue;
+      indices.push(a, c, b, b, c, d);
+    }
+  }
+  if (!indices.length) return;
+  const geo = new THREE.BufferGeometry();
+  geo.setIndex(indices);
+  geo.setAttribute('position', new THREE.Float32BufferAttribute(verts, 3));
+  geo.setAttribute('uv', new THREE.Float32BufferAttribute(uvs, 2));
+  geo.computeVertexNormals();
+
+  const matOpts = {
+    roughness: 0.88, metalness: 0.03, side: THREE.DoubleSide
+  };
+  let mat;
+  if (naipUrl && $('site3dShowAerial')?.checked !== false) {
+    const loader = new THREE.TextureLoader();
+    loader.setCrossOrigin('anonymous');
+    const tex = loader.load(naipUrl);
+    tex.colorSpace = THREE.SRGBColorSpace;
+    mat = new THREE.MeshStandardMaterial({ ...matOpts, map: tex });
+    groups.topoUsgs.userData.naipMat = mat;
+  } else {
+    mat = new THREE.MeshStandardMaterial({ ...matOpts, color: 0x4a6b48 });
+  }
+  groups.topoUsgs.add(new THREE.Mesh(geo, mat));
+  groups.topoUsgs.add(new THREE.LineSegments(
+    new THREE.WireframeGeometry(geo),
+    new THREE.LineBasicMaterial({ color: 0x2a4a2c, transparent: true, opacity: 0.18 })
+  ));
+}
+
+function site3dBuildHydroGroup(THREE, features, model, groups) {
+  site3dClearGroup(groups.hydro);
+  const georef = model.georef;
+  if (!georef || !features.length) return;
+  const avgSurf = model.columns.reduce((s, c) => s + site3dColSurface(c), 0) / model.columns.length;
+  const mat = new THREE.LineBasicMaterial({ color: 0x3aa0e0, transparent: true, opacity: 0.85 });
+  features.forEach(f => {
+    const paths = f.geometry?.paths;
+    if (!paths) return;
+    paths.forEach(path => {
+      const pts = [];
+      path.forEach(([x, y]) => {
+        const loc = site3dMercatorToLocal(x, y, georef);
+        pts.push(loc.lx, avgSurf + 0.5, -loc.lz);
+      });
+      if (pts.length < 6) return;
+      const geo = new THREE.BufferGeometry();
+      geo.setAttribute('position', new THREE.Float32BufferAttribute(pts, 3));
+      const line = new THREE.Line(geo, mat);
+      line.userData.streamName = f.attributes?.GNIS_NAME || f.attributes?.gnis_name || '';
+      groups.hydro.add(line);
+    });
+  });
+}
+
+function site3dBuildColumnsAndLabels(THREE, Delaunay, model, groups, pickables) {
+  site3dClearGroup(groups.cols);
+  site3dClearGroup(groups.water);
+  site3dClearGroup(groups.labels);
+  pickables.length = 0;
+
+  const labelCanvas = document.createElement('canvas');
+  const labelCtx = labelCanvas.getContext('2d');
+
+  model.columns.forEach(col => {
+    const surf = site3dColSurface(col);
+    col.waterElev = col.waterDepth != null && surf != null ? surf - col.waterDepth : null;
+    const r = model.colRadius;
+    col.intervals.forEach(iv => {
+      const yTop = surf - iv.top;
+      const yBot = surf - iv.bottom;
+      const h = Math.max(0.5, yTop - yBot);
+      const geo = new THREE.CylinderGeometry(r, r, h, 12, 1, false);
+      const mat = new THREE.MeshStandardMaterial({
+        color: new THREE.Color(iv.color), roughness: 0.82, metalness: 0.04
+      });
+      const mesh = new THREE.Mesh(geo, mat);
+      mesh.position.set(col.lx, yBot + h / 2, -col.lz);
+      mesh.userData = { pickKind: 'interval', boringId: col.id, boringNo: col.boring_no, interval: iv };
+      groups.cols.add(mesh);
+      pickables.push(mesh);
+    });
+
+    const ring = new THREE.Mesh(
+      new THREE.RingGeometry(r * 1.2, r * 1.55, 24),
+      new THREE.MeshBasicMaterial({ color: 0xffffff, side: THREE.DoubleSide, transparent: true, opacity: 0.7 })
+    );
+    ring.rotation.x = -Math.PI / 2;
+    ring.position.set(col.lx, surf + 0.2, -col.lz);
+    ring.userData = { pickKind: 'boring', boringId: col.id, boringNo: col.boring_no };
+    groups.cols.add(ring);
+    pickables.push(ring);
+
+    labelCanvas.width = 256;
+    labelCanvas.height = 64;
+    labelCtx.clearRect(0, 0, 256, 64);
+    labelCtx.fillStyle = 'rgba(10,16,24,0.75)';
+    labelCtx.fillRect(0, 0, 256, 64);
+    labelCtx.fillStyle = '#e2ecf8';
+    labelCtx.font = 'bold 28px Arial,sans-serif';
+    labelCtx.textAlign = 'center';
+    labelCtx.textBaseline = 'middle';
+    labelCtx.fillText(col.boring_no, 128, 32);
+    const tex = new THREE.CanvasTexture(labelCanvas);
+    tex.needsUpdate = true;
+    const sprite = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex, transparent: true, depthTest: false }));
+    const labelScale = Math.max(8, model.extent * 0.06);
+    sprite.scale.set(labelScale * 2.5, labelScale * 0.65, 1);
+    sprite.position.set(col.lx, surf + labelScale * 0.5, -col.lz);
+    sprite.userData = { pickKind: 'boring', boringId: col.id, boringNo: col.boring_no };
+    groups.labels.add(sprite);
+    pickables.push(sprite);
+  });
+
+  const waterCols = model.columns.filter(c => c.waterElev != null);
+  if (waterCols.length >= 2) {
+    const wPts = waterCols.map(c => [c.lx, c.lz]);
+    const wDelaunay = Delaunay.from(wPts);
+    const wTri = wDelaunay.triangles;
+    const wVerts = [];
+    const wIdx = [];
+    for (let i = 0; i < waterCols.length; i++) {
+      wVerts.push(waterCols[i].lx, waterCols[i].waterElev, -waterCols[i].lz);
+    }
+    for (let i = 0; i < wTri.length; i += 3) {
+      wIdx.push(wTri[i], wTri[i + 1], wTri[i + 2]);
+    }
+    const wGeo = new THREE.BufferGeometry();
+    wGeo.setIndex(wIdx);
+    wGeo.setAttribute('position', new THREE.Float32BufferAttribute(wVerts, 3));
+    wGeo.computeVertexNormals();
+    groups.water.add(new THREE.Mesh(wGeo, new THREE.MeshStandardMaterial({
+      color: 0x2a7ab8, roughness: 0.35, metalness: 0.1,
+      transparent: true, opacity: 0.42, side: THREE.DoubleSide, depthWrite: false
+    })));
+  } else if (waterCols.length === 1) {
+    const c = waterCols[0];
+    const wDisc = new THREE.Mesh(
+      new THREE.CircleGeometry(model.colRadius * 4, 24),
+      new THREE.MeshStandardMaterial({
+        color: 0x2a7ab8, transparent: true, opacity: 0.45, side: THREE.DoubleSide, depthWrite: false
+      })
+    );
+    wDisc.rotation.x = -Math.PI / 2;
+    wDisc.position.set(c.lx, c.waterElev, -c.lz);
+    groups.water.add(wDisc);
+  }
+}
+
+async function site3dLoadGeospatialLayers() {
+  const st = _site3dState;
+  if (!st || !st.model?.georef) {
+    site3dSetGeoStatus('No WGS84 coordinates on borings — using schematic ground only.', true);
+    return;
+  }
+  site3dSetGeoStatus('Loading USGS 3DEP terrain, NAIP imagery, USDA SSURGO, and NHD streams…');
+  try {
+    const bbox = site3dBbox3857(st.model.columns, Math.max(80, st.model.extent * 0.35));
+    if (!bbox) throw new Error('Could not build site bounding box');
+
+    const sampleCount = site3dPickSampleCount(st.model.extent);
+    const colsLL = st.model.columns.filter(c => isFinite(c.lat) && isFinite(c.lng));
+
+    const [demGrid, naipUrl, streams, ...ssurgoRows] = await Promise.all([
+      usgsFetchDemGrid(bbox, sampleCount),
+      ($('site3dShowAerial')?.checked !== false) ? usgsFetchNaipImageUrl(bbox, 512) : null,
+      ($('site3dShowHydro')?.checked !== false) ? nhdFetchStreams(bbox) : [],
+      ...colsLL.map(c => usdaFetchSsuruoAt(c.lat, c.lng).catch(() => null))
+    ]);
+
+    const elevFt = await Promise.all(colsLL.map(c => usgsIdentifyElevationFt(c.lat, c.lng).catch(() => null)));
+    colsLL.forEach((c, i) => {
+      if (elevFt[i] != null) c.usgsSurface = elevFt[i];
+      if (ssurgoRows[i]) c.ssurgo = ssurgoRows[i];
+    });
+
+    st.usgsReady = true;
+    st.naipUrl = naipUrl;
+    st.demGrid = demGrid;
+    site3dBuildUsgsTopoMesh(st.THREE, demGrid, naipUrl, st.model, st.groups);
+    site3dBuildHydroGroup(st.THREE, streams, st.model, st.groups);
+    st.groups.topoUsgs.visible = false;
+
+    const groundSel = $('site3dGroundMode');
+    if (groundSel) {
+      groundSel.disabled = false;
+      groundSel.value = 'usgs';
+    }
+    st.groundMode = 'usgs';
+    site3dSetGroundMode('usgs');
+
+    const snapped = colsLL.filter(c => c.usgsSurface != null).length;
+    site3dSetGeoStatus(
+      `USGS 3DEP terrain loaded (${demGrid.nx}×${demGrid.ny} grid, NAVD88). ` +
+      `${snapped} collar${snapped === 1 ? '' : 's'} snapped to LiDAR. ` +
+      `SSURGO soil map units fetched for ${ssurgoRows.filter(Boolean).length} boring${ssurgoRows.filter(Boolean).length === 1 ? '' : 's'}.` +
+      (streams.length ? ` ${streams.length} NHD stream feature${streams.length === 1 ? '' : 's'}.` : '')
+    );
+  } catch (err) {
+    console.warn('site3d geospatial:', err);
+    site3dSetGeoStatus(`Federal geospatial layers unavailable (${err.message}) — schematic ground in use.`, true);
+  }
+}
+
+function site3dSetGroundMode(mode) {
+  const st = _site3dState;
+  if (!st) return;
+  st.groundMode = mode;
+  const useUsgs = mode === 'usgs' && st.usgsReady;
+  if (st.groups.topoSchematic) st.groups.topoSchematic.visible = !useUsgs && $('site3dShowTopo')?.checked !== false;
+  if (st.groups.topoUsgs) st.groups.topoUsgs.visible = useUsgs && $('site3dShowTopo')?.checked !== false;
+  if (useUsgs) {
+    site3dBuildColumnsAndLabels(st.THREE, st.Delaunay, st.model, st.groups, st.pickables);
+    const minElev = Math.min(...st.model.columns.map(c => site3dColSurface(c) - (c.maxDepth || 0)));
+    if (st.grid) st.grid.position.y = minElev - 2;
+    const cy = st.model.columns.reduce((s, c) => s + site3dColSurface(c), 0) / st.model.columns.length;
+    st.modelCenter.y = cy;
+  } else {
+    site3dBuildColumnsAndLabels(st.THREE, st.Delaunay, st.model, st.groups, st.pickables);
+    const cy = st.model.columns.reduce((s, c) => s + site3dColSurface(c), 0) / st.model.columns.length;
+    st.modelCenter.y = cy;
+    if (st.groups.topoSchematic) site3dBuildSchematicTopo(st.THREE, st.Delaunay, st.model, st.groups);
+  }
+}
+
+function site3dRefreshAerial() {
+  const st = _site3dState;
+  if (!st?.usgsReady || !st.demGrid) return;
+  const show = $('site3dShowAerial')?.checked !== false;
+  site3dBuildUsgsTopoMesh(st.THREE, st.demGrid, show ? st.naipUrl : null, st.model, st.groups);
+  if (st.groundMode === 'usgs') st.groups.topoUsgs.visible = $('site3dShowTopo')?.checked !== false;
+}
+
 async function openSite3DModal() {
   if (!currentProjectId) return;
   $('site3dModal').classList.remove('site3d-fullscreen');
   clearSite3DInspector();
+  site3dSetGeoStatus('');
+  const groundSel = $('site3dGroundMode');
+  if (groundSel) {
+    groundSel.disabled = true;
+    groundSel.value = 'schematic';
+  }
   closeSite3DRenderer();
   const model = buildSite3DModel(currentProjectId);
   const warnEl = $('site3dWarn');
@@ -6353,148 +6835,22 @@ async function initSite3DScene(THREE, OrbitControls, Delaunay, model) {
   scene.add(contentRoot);
 
   const groups = {
-    topo: new THREE.Group(),
+    topoSchematic: new THREE.Group(),
+    topoUsgs: new THREE.Group(),
+    hydro: new THREE.Group(),
     water: new THREE.Group(),
     cols: new THREE.Group(),
     labels: new THREE.Group()
   };
   Object.values(groups).forEach(g => contentRoot.add(g));
+  groups.topoUsgs.visible = false;
 
-  // Ground surface mesh (Delaunay triangulation of boring locations)
-  const pts2d = model.columns.map(c => [c.lx, c.lz]);
-  const delaunay = Delaunay.from(pts2d);
-  const tri = delaunay.triangles;
-  const topoGeo = new THREE.BufferGeometry();
-  const vertices = [];
-  const indices = [];
-  for (let i = 0; i < model.columns.length; i++) {
-    vertices.push(model.columns[i].lx, model.columns[i].surface, -model.columns[i].lz);
-  }
-  for (let i = 0; i < tri.length; i += 3) {
-    indices.push(tri[i], tri[i + 1], tri[i + 2]);
-  }
-  topoGeo.setIndex(indices);
-  topoGeo.setAttribute('position', new THREE.Float32BufferAttribute(vertices, 3));
-  topoGeo.computeVertexNormals();
-  const topoMat = new THREE.MeshStandardMaterial({
-    color: 0x3d6b40,
-    roughness: 0.92,
-    metalness: 0.02,
-    side: THREE.DoubleSide,
-    transparent: true,
-    opacity: 0.88
-  });
-  const topoMesh = new THREE.Mesh(topoGeo, topoMat);
-  groups.topo.add(topoMesh);
+  site3dBuildSchematicTopo(THREE, Delaunay, model, groups);
 
-  const topoWire = new THREE.LineSegments(
-    new THREE.WireframeGeometry(topoGeo),
-    new THREE.LineBasicMaterial({ color: 0x2a4a2c, transparent: true, opacity: 0.35 })
-  );
-  groups.topo.add(topoWire);
-
-  // Water table mesh (interpolated between borings with water observations)
-  const waterCols = model.columns.filter(c => c.waterElev != null);
-  if (waterCols.length >= 2) {
-    const wPts = waterCols.map(c => [c.lx, c.lz]);
-    const wDelaunay = Delaunay.from(wPts);
-    const wTri = wDelaunay.triangles;
-    const wGeo = new THREE.BufferGeometry();
-    const wVerts = [];
-    const wIdx = [];
-    for (let i = 0; i < waterCols.length; i++) {
-      wVerts.push(waterCols[i].lx, waterCols[i].waterElev, -waterCols[i].lz);
-    }
-    for (let i = 0; i < wTri.length; i += 3) {
-      wIdx.push(wTri[i], wTri[i + 1], wTri[i + 2]);
-    }
-    wGeo.setIndex(wIdx);
-    wGeo.setAttribute('position', new THREE.Float32BufferAttribute(wVerts, 3));
-    wGeo.computeVertexNormals();
-    const wMesh = new THREE.Mesh(wGeo, new THREE.MeshStandardMaterial({
-      color: 0x2a7ab8,
-      roughness: 0.35,
-      metalness: 0.1,
-      transparent: true,
-      opacity: 0.42,
-      side: THREE.DoubleSide,
-      depthWrite: false
-    }));
-    groups.water.add(wMesh);
-  } else if (waterCols.length === 1) {
-    const c = waterCols[0];
-    const wDisc = new THREE.Mesh(
-      new THREE.CircleGeometry(model.colRadius * 4, 24),
-      new THREE.MeshStandardMaterial({
-        color: 0x2a7ab8, transparent: true, opacity: 0.45, side: THREE.DoubleSide, depthWrite: false
-      })
-    );
-    wDisc.rotation.x = -Math.PI / 2;
-    wDisc.position.set(c.lx, c.waterElev, -c.lz);
-    groups.water.add(wDisc);
-  }
-
-  const labelCanvas = document.createElement('canvas');
-  const labelCtx = labelCanvas.getContext('2d');
   const pickables = [];
+  site3dBuildColumnsAndLabels(THREE, Delaunay, model, groups, pickables);
 
-  model.columns.forEach(col => {
-    const r = model.colRadius;
-    col.intervals.forEach(iv => {
-      const yTop = col.surface - iv.top;
-      const yBot = col.surface - iv.bottom;
-      const h = Math.max(0.5, yTop - yBot);
-      const geo = new THREE.CylinderGeometry(r, r, h, 12, 1, false);
-      const mat = new THREE.MeshStandardMaterial({
-        color: new THREE.Color(iv.color),
-        roughness: 0.82,
-        metalness: 0.04
-      });
-      const mesh = new THREE.Mesh(geo, mat);
-      mesh.position.set(col.lx, yBot + h / 2, -col.lz);
-      mesh.userData = {
-        pickKind: 'interval',
-        boringId: col.id,
-        boringNo: col.boring_no,
-        interval: iv
-      };
-      groups.cols.add(mesh);
-      pickables.push(mesh);
-    });
-
-    const ringGeo = new THREE.RingGeometry(r * 1.2, r * 1.55, 24);
-    const ringMat = new THREE.MeshBasicMaterial({ color: 0xffffff, side: THREE.DoubleSide, transparent: true, opacity: 0.7 });
-    const ring = new THREE.Mesh(ringGeo, ringMat);
-    ring.rotation.x = -Math.PI / 2;
-    ring.position.set(col.lx, col.surface + 0.2, -col.lz);
-    ring.userData = { pickKind: 'boring', boringId: col.id, boringNo: col.boring_no };
-    groups.cols.add(ring);
-    pickables.push(ring);
-
-    const text = col.boring_no;
-    labelCanvas.width = 256;
-    labelCanvas.height = 64;
-    labelCtx.clearRect(0, 0, 256, 64);
-    labelCtx.fillStyle = 'rgba(10,16,24,0.75)';
-    labelCtx.fillRect(0, 0, 256, 64);
-    labelCtx.fillStyle = '#e2ecf8';
-    labelCtx.font = 'bold 28px Arial,sans-serif';
-    labelCtx.textAlign = 'center';
-    labelCtx.textBaseline = 'middle';
-    labelCtx.fillText(text, 128, 32);
-    const tex = new THREE.CanvasTexture(labelCanvas);
-    tex.needsUpdate = true;
-    const spriteMat = new THREE.SpriteMaterial({ map: tex, transparent: true, depthTest: false });
-    const sprite = new THREE.Sprite(spriteMat);
-    const labelScale = Math.max(8, model.extent * 0.06);
-    sprite.scale.set(labelScale * 2.5, labelScale * 0.65, 1);
-    sprite.position.set(col.lx, col.surface + labelScale * 0.5, -col.lz);
-    sprite.userData = { pickKind: 'boring', boringId: col.id, boringNo: col.boring_no };
-    groups.labels.add(sprite);
-    pickables.push(sprite);
-  });
-
-  const minElev = Math.min(...model.columns.map(c => c.surface - (c.maxDepth || 0)));
+  const minElev = Math.min(...model.columns.map(c => site3dColSurface(c) - (c.maxDepth || 0)));
   const gridSize = model.extent * 1.4;
   const grid = new THREE.GridHelper(gridSize, 10, 0x2a3548, 0x1a2435);
   grid.position.y = minElev - 2;
@@ -6502,7 +6858,7 @@ async function initSite3DScene(THREE, OrbitControls, Delaunay, model) {
 
   const cx = model.columns.reduce((s, c) => s + c.lx, 0) / model.columns.length;
   const cz = model.columns.reduce((s, c) => s + c.lz, 0) / model.columns.length;
-  const cy = model.columns.reduce((s, c) => s + c.surface, 0) / model.columns.length;
+  const cy = model.columns.reduce((s, c) => s + site3dColSurface(c), 0) / model.columns.length;
   const depthSpan = Math.max(...model.columns.map(c => c.maxDepth || 0), 10);
   const frameDist = model.extent * 1.6 + depthSpan * 0.4;
 
@@ -6549,6 +6905,7 @@ async function initSite3DScene(THREE, OrbitControls, Delaunay, model) {
 
   _site3dState = {
     THREE,
+    Delaunay,
     renderer,
     scene,
     camera,
@@ -6557,11 +6914,14 @@ async function initSite3DScene(THREE, OrbitControls, Delaunay, model) {
     contentRoot,
     pickables,
     model,
+    grid,
     animId,
     onResize,
     onPointerDown,
     container,
     vertExag: 2,
+    groundMode: 'schematic',
+    usgsReady: false,
     selectedMesh: null,
     homeCameraPos,
     homeCameraTarget,
@@ -6570,6 +6930,7 @@ async function initSite3DScene(THREE, OrbitControls, Delaunay, model) {
     frameDist
   };
   refreshSite3DOptions();
+  site3dLoadGeospatialLayers();
 }
 
 function toggleSite3DFullscreen() {
@@ -6676,13 +7037,28 @@ function renderSite3DInspector(pick) {
     return;
   }
 
+  const surfFt = site3dColSurface(col);
+  const surfParts = [];
+  if (col.usgsSurface != null) surfParts.push(`${col.usgsSurface.toFixed(2)} NAVD88 (USGS 3DEP)`);
+  if (col.surfaceManual && col.surface != null) surfParts.push(`${col.surface.toFixed(2)} (boring log)`);
+  else if (col.usgsSurface == null && col.surface != null) surfParts.push(`${col.surface.toFixed(2)}`);
+  const ssurgo = col.ssurgo;
+  const ssurgoHtml = ssurgo ? `
+    <div class="si-row"><div class="si-lbl">SSURGO map unit</div><div class="si-val">${escape(ssurgo.mapUnit || '—')}${ssurgo.symbol ? ` (${escape(ssurgo.symbol)})` : ''}</div></div>
+    ${ssurgo.component ? `<div class="si-row"><div class="si-lbl">Major component</div><div class="si-val">${escape(ssurgo.component)}${ssurgo.pct != null ? ` · ${escape(String(ssurgo.pct))}%` : ''}</div></div>` : ''}` : '';
+  const coordHtml = isFinite(col.lat) && isFinite(col.lng)
+    ? `<div class="si-row"><div class="si-lbl">Lat / Lng</div><div class="si-val">${col.lat.toFixed(6)}, ${col.lng.toFixed(6)}</div></div>`
+    : '';
+
   el.innerHTML = `
     <h4>⊙ ${escape(col.boring_no)}</h4>
     <div class="si-row"><div class="si-lbl">Location</div><div class="si-val">${escape(col.location || '—')}</div></div>
-    <div class="si-row"><div class="si-lbl">Surface elev.</div><div class="si-val">${col.surface != null ? col.surface.toFixed(2) : '—'}</div></div>
+    ${coordHtml}
+    <div class="si-row"><div class="si-lbl">Surface elev.</div><div class="si-val">${surfParts.length ? surfParts.join(' · ') : '—'}</div></div>
     <div class="si-row"><div class="si-lbl">Max depth</div><div class="si-val">${col.maxDepth ? col.maxDepth + "'" : '—'}</div></div>
     <div class="si-row"><div class="si-lbl">Samples</div><div class="si-val">${col.intervals.length}</div></div>
-    ${col.waterDepth != null ? `<div class="si-row"><div class="si-lbl">Water @</div><div class="si-val">${col.waterDepth}'${col.waterElev != null ? ` (elev ${col.waterElev.toFixed(1)})` : ''}</div></div>` : ''}
+    ${ssurgoHtml}
+    ${col.waterDepth != null ? `<div class="si-row"><div class="si-lbl">Water @</div><div class="si-val">${col.waterDepth}'${surfFt != null ? ` (elev ${(surfFt - col.waterDepth).toFixed(1)})` : ''}</div></div>` : ''}
     <div class="si-actions">
       <button type="button" class="btn btn-accent btn-sm" onclick="site3dNavigateToBoring('${pick.boringId}')">Open boring</button>
     </div>`;
@@ -6695,8 +7071,12 @@ function site3dNavigateToBoring(boringId) {
 
 function refreshSite3DOptions() {
   if (!_site3dState) return;
-  const { groups } = _site3dState;
-  if (groups.topo) groups.topo.visible = $('site3dShowTopo')?.checked !== false;
+  const { groups, groundMode, usgsReady } = _site3dState;
+  const showTopo = $('site3dShowTopo')?.checked !== false;
+  const useUsgs = groundMode === 'usgs' && usgsReady;
+  if (groups.topoSchematic) groups.topoSchematic.visible = showTopo && !useUsgs;
+  if (groups.topoUsgs) groups.topoUsgs.visible = showTopo && useUsgs;
+  if (groups.hydro) groups.hydro.visible = $('site3dShowHydro')?.checked !== false;
   if (groups.water) groups.water.visible = $('site3dShowWater')?.checked !== false;
   if (groups.cols) groups.cols.visible = $('site3dShowCols')?.checked !== false;
   if (groups.labels) groups.labels.visible = $('site3dShowLabels')?.checked !== false;
@@ -6725,6 +7105,7 @@ function closeSite3DModal() {
   $('site3dModal')?.classList.remove('open', 'site3d-fullscreen');
   const btn = $('site3dFullscreenBtn');
   if (btn) btn.textContent = '⛶ FULLSCREEN';
+  site3dSetGeoStatus('');
   clearSite3DSelection();
   closeSite3DRenderer();
 }
