@@ -6468,7 +6468,7 @@ async function initSite3DScene(THREE, OrbitControls, Delaunay, model) {
     ring.rotation.x = -Math.PI / 2;
     ring.position.set(col.lx, col.surface + 0.2, -col.lz);
     ring.userData = { pickKind: 'boring', boringId: col.id, boringNo: col.boring_no };
-    groups.labels.add(ring);
+    groups.cols.add(ring);
     pickables.push(ring);
 
     const text = col.boring_no;
