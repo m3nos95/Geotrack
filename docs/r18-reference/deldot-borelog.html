@@ -908,6 +908,7 @@ html.comfort-mode .hab-pulse{animation:none !important;box-shadow:none !importan
         <div style="font-size:11px;color:var(--muted);margin-top:2px;">Click a boring collar or soil layer for details · drag to orbit</div>
       </div>
       <div style="display:flex;gap:6px;flex-wrap:wrap;">
+        <button type="button" class="btn btn-ghost btn-sm" onclick="site3dExportScreenshot()">📷 SNAPSHOT</button>
         <button type="button" class="btn btn-ghost btn-sm" id="site3dFullscreenBtn" onclick="toggleSite3DFullscreen()">⛶ FULLSCREEN</button>
         <button type="button" class="btn btn-ghost btn-sm" onclick="closeSite3DModal()">✕ CLOSE</button>
       </div>
@@ -928,6 +929,8 @@ html.comfort-mode .hab-pulse{animation:none !important;box-shadow:none !importan
       <label><input type="checkbox" id="site3dShowLabels" checked onchange="refreshSite3DOptions()"> Labels</label>
       <label><input type="checkbox" id="site3dShowAerial" checked onchange="site3dRefreshAerial()"> Aerial (NAIP)</label>
       <label><input type="checkbox" id="site3dShowHydro" checked onchange="refreshSite3DOptions()"> Streams (NHD)</label>
+      <label><input type="checkbox" id="site3dShowAlign" checked onchange="refreshSite3DOptions()"> Alignment</label>
+      <label><input type="checkbox" id="site3dShowSsuruo" checked onchange="refreshSite3DOptions()"> SSURGO</label>
       <label>Ground
         <select id="site3dGroundMode" onchange="site3dSetGroundMode(this.value)" disabled style="font-size:11px;padding:2px 6px;">
           <option value="schematic">Schematic</option>
@@ -1004,7 +1007,7 @@ const DELDOT_LOGO = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAPAAAADwCAYAA
    - Storage wrapper abstracted for future Supabase port
    ========================================================================= */
 const STORE_KEY = 'deldot_borelog_v2';
-const BORELOG_BUILD = '2026.07.09-borelog-3d-geo';
+const BORELOG_BUILD = '2026.07.09-borelog-3d-v3';
 const MAP_MIGRATE_KEY = 'deldot_borelog_gps_migrated_v2';
 const STORE_TS_KEY = 'deldot_borelog_v2_ts';
 const DE_STATE_PLANE = '+proj=lcc +lat_1=38.43333333333334 +lat_2=39.83333333333333 +lat_0=38 +lon_0=-75.41666666666666 +x_0=200000.99998984026 +y_0=0 +ellps=GRS80 +units=us-ft +no_defs';
@@ -6120,6 +6123,7 @@ ${placemarks}
 
 // ── 3D Site View ─────────────────────────────────────────────────────────────
 let _site3dState = null;
+const _site3dGeoCache = new Map();
 
 const USCS_3D_COLORS = {
   GW:'#c8a882', GP:'#d4b896', GM:'#b89868', GC:'#a88858',
@@ -6300,6 +6304,55 @@ function site3dColSurface(col) {
   return col.surface;
 }
 
+function site3dBboxKey(bbox) {
+  return [bbox.xmin, bbox.ymin, bbox.xmax, bbox.ymax].map(v => Math.round(v)).join('|');
+}
+
+function site3dSsuruoColor(symbol) {
+  const s = String(symbol || 'xx');
+  let h = 0;
+  for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) >>> 0;
+  const hue = h % 360;
+  return `hsl(${hue}, 42%, 38%)`;
+}
+
+function site3dSampleDemElevFt(x3857, y3857, demGrid) {
+  if (!demGrid?.samples?.length) return null;
+  let best = null;
+  let bestD = Infinity;
+  demGrid.samples.forEach(s => {
+    if (!s || s.value === 'NoData') return;
+    const elevFt = parseFloat(s.value) * M_TO_FT;
+    if (!isFinite(elevFt)) return;
+    const dx = s.location.x - x3857;
+    const dy = s.location.y - y3857;
+    const d2 = dx * dx + dy * dy;
+    if (d2 < bestD) { bestD = d2; best = elevFt; }
+  });
+  return best;
+}
+
+function site3dGroundElevAtLocal(lx, lz, model, st) {
+  const georef = model?.georef;
+  if (st?.groundMode === 'usgs' && st?.demGrid && georef) {
+    const lng = georef.originLng + lx / georef.ftPerDegLng;
+    const lat = georef.originLat + lz / georef.ftPerDegLat;
+    const m = lngLatToWebMercator(lng, lat);
+    const elev = site3dSampleDemElevFt(m.x, m.y, st.demGrid);
+    if (elev != null) return elev;
+  }
+  const cols = model?.columns || [];
+  if (!cols.length) return 100;
+  let sum = 0, wSum = 0;
+  cols.forEach(c => {
+    const d = Math.hypot(c.lx - lx, c.lz - lz);
+    const w = 1 / Math.max(d, 1);
+    sum += site3dColSurface(c) * w;
+    wSum += w;
+  });
+  return wSum ? sum / wSum : site3dColSurface(cols[0]);
+}
+
 function collectSitePlanPoints(borings, frame) {
   const raw = [];
   borings.forEach(b => {
@@ -6358,6 +6411,7 @@ function buildSite3DModel(projectId) {
 
   const columns = planPts.map(({ b, lx, lz }) => {
     const ll = resolveBoringMapCoords(b, frame);
+    const { station, offset } = parseStationOffsetFields(b);
     const samples = store.getSamples(b.id).slice().sort((a, c) => site3dTopOf(a) - site3dTopOf(c));
     let surface = parseFloat(String(b.surface_elev || '').replace(/,/g, ''));
     const surfaceManual = isFinite(surface);
@@ -6393,6 +6447,8 @@ function buildSite3DModel(projectId) {
       id: b.id,
       boring_no: b.boring_no || '(no #)',
       location: b.location || '',
+      station: isFinite(station) ? station : null,
+      offset: isFinite(offset) ? offset : null,
       lx, lz,
       lat: ll ? ll.lat : null,
       lng: ll ? ll.lng : null,
@@ -6455,8 +6511,11 @@ function site3dClearGroup(group) {
     group.remove(ch);
     if (ch.geometry) ch.geometry.dispose();
     if (ch.material) {
-      if (Array.isArray(ch.material)) ch.material.forEach(m => m.dispose());
-      else ch.material.dispose();
+      const mats = Array.isArray(ch.material) ? ch.material : [ch.material];
+      mats.forEach(m => {
+        if (m.map) m.map.dispose();
+        m.dispose();
+      });
     }
   }
 }
@@ -6556,29 +6615,97 @@ function site3dBuildUsgsTopoMesh(THREE, demGrid, naipUrl, model, groups) {
   ));
 }
 
-function site3dBuildHydroGroup(THREE, features, model, groups) {
+function site3dBuildHydroGroup(THREE, features, model, groups, st) {
   site3dClearGroup(groups.hydro);
   const georef = model.georef;
   if (!georef || !features.length) return;
-  const avgSurf = model.columns.reduce((s, c) => s + site3dColSurface(c), 0) / model.columns.length;
-  const mat = new THREE.LineBasicMaterial({ color: 0x3aa0e0, transparent: true, opacity: 0.85 });
+  const mat = new THREE.LineBasicMaterial({ color: 0x3aa0e0, transparent: true, opacity: 0.9 });
   features.forEach(f => {
     const paths = f.geometry?.paths;
     if (!paths) return;
+    const attrs = f.attributes || {};
+    const streamName = attrs.GNIS_NAME || attrs.gnis_name || attrs.FTYPE || attrs.ftype || '';
     paths.forEach(path => {
       const pts = [];
       path.forEach(([x, y]) => {
         const loc = site3dMercatorToLocal(x, y, georef);
-        pts.push(loc.lx, avgSurf + 0.5, -loc.lz);
+        const elev = site3dGroundElevAtLocal(loc.lx, loc.lz, model, st) + 0.8;
+        pts.push(loc.lx, elev, -loc.lz);
       });
       if (pts.length < 6) return;
       const geo = new THREE.BufferGeometry();
       geo.setAttribute('position', new THREE.Float32BufferAttribute(pts, 3));
       const line = new THREE.Line(geo, mat);
-      line.userData.streamName = f.attributes?.GNIS_NAME || f.attributes?.gnis_name || '';
+      line.userData = { pickKind: 'stream', streamName, ftype: attrs.FTYPE || attrs.ftype || '' };
       groups.hydro.add(line);
+      pickablesPush(st, line);
     });
   });
+}
+
+function pickablesPush(st, obj) {
+  if (st?.pickables && obj?.userData?.pickKind) st.pickables.push(obj);
+}
+
+function site3dBuildAlignmentGroup(THREE, model, groups, st) {
+  site3dClearGroup(groups.alignment);
+  const frame = model.frame;
+  const georef = model.georef;
+  if (!frame || !georef) return;
+  const pts = [];
+  const pushPt = (lng, lat) => {
+    const loc = site3dLngLatToLocal(lng, lat, georef);
+    const elev = site3dGroundElevAtLocal(loc.lx, loc.lz, model, st) + 0.4;
+    pts.push(loc.lx, elev, -loc.lz);
+  };
+  if (frame.polyline && frame.waypoints?.length) {
+    frame.waypoints.forEach(wp => pushPt(wp.lng, wp.lat));
+  } else if (isFinite(frame.originStation) && isFinite(frame.maxStation)) {
+    const steps = 48;
+    for (let i = 0; i <= steps; i++) {
+      const stn = frame.originStation + (frame.maxStation - frame.originStation) * (i / steps);
+      const ll = statePlaneFromProfile(stn, 0, frame);
+      if (ll) pushPt(ll.lng, ll.lat);
+    }
+  }
+  if (pts.length < 6) return;
+  const geo = new THREE.BufferGeometry();
+  geo.setAttribute('position', new THREE.Float32BufferAttribute(pts, 3));
+  const line = new THREE.Line(geo, new THREE.LineDashedMaterial({
+    color: 0xf0c040, dashSize: Math.max(3, model.extent * 0.04), gapSize: Math.max(2, model.extent * 0.025)
+  }));
+  line.computeLineDistances();
+  groups.alignment.add(line);
+}
+
+function site3dBuildSsuruoMarkers(THREE, model, groups) {
+  site3dClearGroup(groups.ssurgo);
+  const r = model.colRadius * 2.8;
+  model.columns.forEach(col => {
+    if (!col.ssurgo) return;
+    const surf = site3dColSurface(col);
+    const color = site3dSsuruoColor(col.ssurgo.symbol || col.ssurgo.mapUnit);
+    const disc = new THREE.Mesh(
+      new THREE.CircleGeometry(r, 24),
+      new THREE.MeshBasicMaterial({
+        color: new THREE.Color(color), transparent: true, opacity: 0.42, side: THREE.DoubleSide, depthWrite: false
+      })
+    );
+    disc.rotation.x = -Math.PI / 2;
+    disc.position.set(col.lx, surf + 0.15, -col.lz);
+    disc.userData = { pickKind: 'ssurgo', boringId: col.id, boringNo: col.boring_no };
+    groups.ssurgo.add(disc);
+    pickablesPush(_site3dState, disc);
+  });
+}
+
+function site3dRebuildOverlays() {
+  const st = _site3dState;
+  if (!st) return;
+  if (st.streamFeatures) site3dBuildHydroGroup(st.THREE, st.streamFeatures, st.model, st.groups, st);
+  site3dBuildAlignmentGroup(st.THREE, st.model, st.groups, st);
+  site3dBuildSsuruoMarkers(st.THREE, st.model, st.groups);
+  refreshSite3DOptions();
 }
 
 function site3dBuildColumnsAndLabels(THREE, Delaunay, model, groups, pickables) {
@@ -6679,6 +6806,7 @@ async function site3dLoadGeospatialLayers() {
   const st = _site3dState;
   if (!st || !st.model?.georef) {
     site3dSetGeoStatus('No WGS84 coordinates on borings — using schematic ground only.', true);
+    site3dRebuildOverlays();
     return;
   }
   site3dSetGeoStatus('Loading USGS 3DEP terrain, NAIP imagery, USDA SSURGO, and NHD streams…');
@@ -6686,47 +6814,68 @@ async function site3dLoadGeospatialLayers() {
     const bbox = site3dBbox3857(st.model.columns, Math.max(80, st.model.extent * 0.35));
     if (!bbox) throw new Error('Could not build site bounding box');
 
+    const cacheKey = site3dBboxKey(bbox);
+    const cached = _site3dGeoCache.get(cacheKey);
     const sampleCount = site3dPickSampleCount(st.model.extent);
     const colsLL = st.model.columns.filter(c => isFinite(c.lat) && isFinite(c.lng));
+    const wantAerial = $('site3dShowAerial')?.checked !== false;
+    const wantHydro = $('site3dShowHydro')?.checked !== false;
 
-    const [demGrid, naipUrl, streams, ...ssurgoRows] = await Promise.all([
-      usgsFetchDemGrid(bbox, sampleCount),
-      ($('site3dShowAerial')?.checked !== false) ? usgsFetchNaipImageUrl(bbox, 512) : null,
-      ($('site3dShowHydro')?.checked !== false) ? nhdFetchStreams(bbox) : [],
-      ...colsLL.map(c => usdaFetchSsuruoAt(c.lat, c.lng).catch(() => null))
-    ]);
-
-    const elevFt = await Promise.all(colsLL.map(c => usgsIdentifyElevationFt(c.lat, c.lng).catch(() => null)));
-    colsLL.forEach((c, i) => {
-      if (elevFt[i] != null) c.usgsSurface = elevFt[i];
-      if (ssurgoRows[i]) c.ssurgo = ssurgoRows[i];
-    });
+    let demGrid, naipUrl, streams, ssurgoRows;
+    if (cached) {
+      demGrid = cached.demGrid;
+      naipUrl = wantAerial ? cached.naipUrl : null;
+      streams = wantHydro ? (cached.streams || []) : [];
+      ssurgoRows = cached.ssurgoByCol || colsLL.map(() => null);
+      colsLL.forEach((c, i) => {
+        if (cached.ssurgoByCol?.[i]) c.ssurgo = cached.ssurgoByCol[i];
+        if (cached.elevFt?.[i] != null) c.usgsSurface = cached.elevFt[i];
+      });
+    } else {
+      const results = await Promise.all([
+        usgsFetchDemGrid(bbox, sampleCount),
+        wantAerial ? usgsFetchNaipImageUrl(bbox, 512) : null,
+        wantHydro ? nhdFetchStreams(bbox) : [],
+        ...colsLL.map(c => usdaFetchSsuruoAt(c.lat, c.lng).catch(() => null))
+      ]);
+      demGrid = results[0];
+      naipUrl = results[1];
+      streams = results[2] || [];
+      ssurgoRows = results.slice(3);
+      const elevFt = await Promise.all(colsLL.map(c => usgsIdentifyElevationFt(c.lat, c.lng).catch(() => null)));
+      colsLL.forEach((c, i) => {
+        if (elevFt[i] != null) c.usgsSurface = elevFt[i];
+        if (ssurgoRows[i]) c.ssurgo = ssurgoRows[i];
+      });
+      _site3dGeoCache.set(cacheKey, {
+        demGrid, naipUrl: results[1], streams, ssurgoByCol: ssurgoRows, elevFt
+      });
+    }
 
     st.usgsReady = true;
     st.naipUrl = naipUrl;
     st.demGrid = demGrid;
+    st.streamFeatures = streams;
     site3dBuildUsgsTopoMesh(st.THREE, demGrid, naipUrl, st.model, st.groups);
-    site3dBuildHydroGroup(st.THREE, streams, st.model, st.groups);
     st.groups.topoUsgs.visible = false;
 
     const groundSel = $('site3dGroundMode');
-    if (groundSel) {
-      groundSel.disabled = false;
-      groundSel.value = 'usgs';
-    }
-    st.groundMode = 'usgs';
-    site3dSetGroundMode('usgs');
+    if (groundSel) groundSel.disabled = false;
 
     const snapped = colsLL.filter(c => c.usgsSurface != null).length;
+    const cacheNote = cached ? ' (cached) ' : ' ';
     site3dSetGeoStatus(
-      `USGS 3DEP terrain loaded (${demGrid.nx}×${demGrid.ny} grid, NAVD88). ` +
+      `USGS 3DEP terrain loaded${cacheNote}(${demGrid.nx}×${demGrid.ny} grid, NAVD88). ` +
       `${snapped} collar${snapped === 1 ? '' : 's'} snapped to LiDAR. ` +
-      `SSURGO soil map units fetched for ${ssurgoRows.filter(Boolean).length} boring${ssurgoRows.filter(Boolean).length === 1 ? '' : 's'}.` +
-      (streams.length ? ` ${streams.length} NHD stream feature${streams.length === 1 ? '' : 's'}.` : '')
+      `SSURGO for ${ssurgoRows.filter(Boolean).length} boring${ssurgoRows.filter(Boolean).length === 1 ? '' : 's'}.` +
+      (streams.length ? ` ${streams.length} NHD stream${streams.length === 1 ? '' : 's'}.` : '') +
+      ' Switch ground mode to USGS 3DEP to drape terrain.'
     );
+    site3dRebuildOverlays();
   } catch (err) {
     console.warn('site3d geospatial:', err);
     site3dSetGeoStatus(`Federal geospatial layers unavailable (${err.message}) — schematic ground in use.`, true);
+    site3dRebuildOverlays();
   }
 }
 
@@ -6749,6 +6898,7 @@ function site3dSetGroundMode(mode) {
     st.modelCenter.y = cy;
     if (st.groups.topoSchematic) site3dBuildSchematicTopo(st.THREE, st.Delaunay, st.model, st.groups);
   }
+  site3dRebuildOverlays();
 }
 
 function site3dRefreshAerial() {
@@ -6775,7 +6925,7 @@ async function openSite3DModal() {
   if (!model.ok) {
     warnEl.style.display = '';
     warnEl.textContent = model.warnings[0];
-    $('site3dCanvas').innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:100%;color:var(--muted);font-size:13px;padding:24px;text-align:center;">Add coordinates and samples to at least two borings to build a 3D site model.</div>';
+    $('site3dCanvas').innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:100%;color:var(--muted);font-size:13px;padding:24px;text-align:center;">Add coordinates to at least two borings to build a 3D site model.</div>';
     $('site3dModal').classList.add('open');
     renderSite3DLegend();
     return;
@@ -6838,6 +6988,8 @@ async function initSite3DScene(THREE, OrbitControls, Delaunay, model) {
     topoSchematic: new THREE.Group(),
     topoUsgs: new THREE.Group(),
     hydro: new THREE.Group(),
+    alignment: new THREE.Group(),
+    ssurgo: new THREE.Group(),
     water: new THREE.Group(),
     cols: new THREE.Group(),
     labels: new THREE.Group()
@@ -6869,6 +7021,7 @@ async function initSite3DScene(THREE, OrbitControls, Delaunay, model) {
   controls.update();
 
   const raycaster = new THREE.Raycaster();
+  raycaster.params.Line = { threshold: Math.max(3, model.colRadius * 2.5) };
   const pointer = new THREE.Vector2();
 
   function onPointerDown(ev) {
@@ -6930,6 +7083,7 @@ async function initSite3DScene(THREE, OrbitControls, Delaunay, model) {
     frameDist
   };
   refreshSite3DOptions();
+  site3dRebuildOverlays();
   site3dLoadGeospatialLayers();
 }
 
@@ -6988,36 +7142,77 @@ function clearSite3DInspector() {
 
 function clearSite3DSelection() {
   clearSite3DInspector();
-  if (!_site3dState?.selectedMesh) return;
-  const mesh = _site3dState.selectedMesh;
-  if (mesh.material?.emissive) {
-    mesh.material.emissive.setHex(0x000000);
-    mesh.material.emissiveIntensity = 0;
+  const st = _site3dState;
+  if (!st?.selectedObj) return;
+  const obj = st.selectedObj;
+  if (obj.userData?._origEmissive && obj.material?.emissive) {
+    obj.material.emissive.copy(obj.userData._origEmissive);
+    obj.material.emissiveIntensity = obj.userData._origEmissiveInt ?? 0;
   }
-  _site3dState.selectedMesh = null;
+  if (obj.userData?._origColor && obj.material?.color) {
+    obj.material.color.copy(obj.userData._origColor);
+  }
+  if (obj.userData?._origOpacity != null && obj.material) {
+    obj.material.opacity = obj.userData._origOpacity;
+  }
+  if (obj.userData?._origScale) {
+    obj.scale.copy(obj.userData._origScale);
+  }
+  st.selectedObj = null;
+  st.selectedMesh = null;
+}
+
+function site3dHighlightPick(obj) {
+  if (obj.material?.emissive) {
+    if (!obj.userData._origEmissive) {
+      obj.userData._origEmissive = obj.material.emissive.clone();
+      obj.userData._origEmissiveInt = obj.material.emissiveIntensity;
+    }
+    obj.material.emissive.setHex(0x335577);
+    obj.material.emissiveIntensity = 0.45;
+    return;
+  }
+  if (obj.material?.color) {
+    if (!obj.userData._origColor) obj.userData._origColor = obj.material.color.clone();
+    obj.material.color.setHex(0x88ccff);
+    if (obj.material.opacity != null) {
+      if (obj.userData._origOpacity == null) obj.userData._origOpacity = obj.material.opacity;
+      obj.material.opacity = Math.min(1, obj.material.opacity + 0.25);
+    }
+    return;
+  }
+  if (obj.isSprite) {
+    if (!obj.userData._origScale) obj.userData._origScale = obj.scale.clone();
+    obj.scale.multiplyScalar(1.22);
+  }
 }
 
 function site3dApplyPick(obj) {
   const st = _site3dState;
   if (!st || !obj?.userData?.pickKind) return;
-  if (st.selectedMesh && st.selectedMesh !== obj && st.selectedMesh.material?.emissive) {
-    st.selectedMesh.material.emissive.setHex(0x000000);
-    st.selectedMesh.material.emissiveIntensity = 0;
-  }
+  if (st.selectedObj && st.selectedObj !== obj) clearSite3DSelection();
+  st.selectedObj = obj;
   st.selectedMesh = obj.material?.emissive ? obj : null;
-  if (obj.material?.emissive) {
-    obj.material.emissive.setHex(0x335577);
-    obj.material.emissiveIntensity = 0.45;
-  }
+  site3dHighlightPick(obj);
   renderSite3DInspector(obj.userData);
 }
 
 function renderSite3DInspector(pick) {
   const el = $('site3dInspector');
   if (!el || !pick) return;
-  const col = (_site3dState?.model?.columns || []).find(c => c.id === pick.boringId);
-  if (!col) return;
   el.className = '';
+
+  if (pick.pickKind === 'stream') {
+    el.innerHTML = `
+      <h4>〰 Stream (NHD)</h4>
+      <div class="si-row"><div class="si-lbl">Name</div><div class="si-val">${escape(pick.streamName || 'Unnamed')}</div></div>
+      ${pick.ftype ? `<div class="si-row"><div class="si-lbl">Feature type</div><div class="si-val">${escape(String(pick.ftype))}</div></div>` : ''}
+      <div class="si-row"><div class="si-lbl">Source</div><div class="si-val">USGS National Hydrography Dataset</div></div>`;
+    return;
+  }
+
+  const col = (_site3dState?.model?.columns || []).find(c => c.id === pick.boringId);
+  if (!col && pick.pickKind !== 'stream') return;
 
   if (pick.pickKind === 'interval' && pick.interval) {
     const iv = pick.interval;
@@ -7049,11 +7244,15 @@ function renderSite3DInspector(pick) {
   const coordHtml = isFinite(col.lat) && isFinite(col.lng)
     ? `<div class="si-row"><div class="si-lbl">Lat / Lng</div><div class="si-val">${col.lat.toFixed(6)}, ${col.lng.toFixed(6)}</div></div>`
     : '';
+  const stationHtml = col.station != null
+    ? `<div class="si-row"><div class="si-lbl">Station</div><div class="si-val">${col.station.toFixed(1)}${col.offset != null ? ` · offset ${col.offset.toFixed(1)}'` : ''}</div></div>`
+    : '';
 
   el.innerHTML = `
     <h4>⊙ ${escape(col.boring_no)}</h4>
     <div class="si-row"><div class="si-lbl">Location</div><div class="si-val">${escape(col.location || '—')}</div></div>
     ${coordHtml}
+    ${stationHtml}
     <div class="si-row"><div class="si-lbl">Surface elev.</div><div class="si-val">${surfParts.length ? surfParts.join(' · ') : '—'}</div></div>
     <div class="si-row"><div class="si-lbl">Max depth</div><div class="si-val">${col.maxDepth ? col.maxDepth + "'" : '—'}</div></div>
     <div class="si-row"><div class="si-lbl">Samples</div><div class="si-val">${col.intervals.length}</div></div>
@@ -7077,9 +7276,24 @@ function refreshSite3DOptions() {
   if (groups.topoSchematic) groups.topoSchematic.visible = showTopo && !useUsgs;
   if (groups.topoUsgs) groups.topoUsgs.visible = showTopo && useUsgs;
   if (groups.hydro) groups.hydro.visible = $('site3dShowHydro')?.checked !== false;
+  if (groups.alignment) groups.alignment.visible = $('site3dShowAlign')?.checked !== false;
+  if (groups.ssurgo) groups.ssurgo.visible = $('site3dShowSsuruo')?.checked !== false;
   if (groups.water) groups.water.visible = $('site3dShowWater')?.checked !== false;
   if (groups.cols) groups.cols.visible = $('site3dShowCols')?.checked !== false;
   if (groups.labels) groups.labels.visible = $('site3dShowLabels')?.checked !== false;
+}
+
+function site3dExportScreenshot() {
+  const st = _site3dState;
+  if (!st?.renderer?.domElement) return;
+  st.renderer.render(st.scene, st.camera);
+  const url = st.renderer.domElement.toDataURL('image/png');
+  const proj = currentProjectId ? store.getProject(currentProjectId) : null;
+  const slug = (proj?.name || 'site').replace(/[^\w.-]+/g, '_').slice(0, 40);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `${slug}-3d-${new Date().toISOString().slice(0, 10)}.png`;
+  a.click();
 }
 
 function closeSite3DRenderer() {
