@@ -65,6 +65,10 @@ function jsonResponse(body: Record<string, unknown>, status = 200): Response {
   });
 }
 
+function normalizeGmailPass(pass: string): string {
+  return pass.replace(/\s+/g, "");
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers: corsHeaders });
@@ -72,8 +76,18 @@ Deno.serve(async (req) => {
 
   try {
     const payload: EmailRequest = await req.json();
-    const gmailUser = (Deno.env.get("GMAIL_USER") || payload.gmailUser || "").trim();
-    const gmailPass = (Deno.env.get("GMAIL_APP_PASSWORD") || payload.gmailAppPassword || "").trim();
+    const bodyUser = payload.gmailUser?.trim() || "";
+    const bodyPass = normalizeGmailPass(payload.gmailAppPassword || "");
+    // LabTrak Settings credentials take priority over Supabase secrets
+    let gmailUser: string;
+    let gmailPass: string;
+    if (bodyUser && bodyPass) {
+      gmailUser = bodyUser;
+      gmailPass = bodyPass;
+    } else {
+      gmailUser = (Deno.env.get("GMAIL_USER") || bodyUser || "").trim();
+      gmailPass = normalizeGmailPass(Deno.env.get("GMAIL_APP_PASSWORD") || bodyPass || "");
+    }
     if (!gmailUser || !gmailPass) {
       return jsonResponse({
         error:
@@ -127,7 +141,11 @@ Deno.serve(async (req) => {
     return jsonResponse({ ok: true, sent: recipients.length });
   } catch (e) {
     console.error("send-report-email error:", e);
-    const message = e instanceof Error ? e.message : String(e);
+    let message = e instanceof Error ? e.message : String(e);
+    if (/535|badcredentials|username and password not accepted/i.test(message)) {
+      message =
+        "Gmail rejected the app password. Generate a new App Password at myaccount.google.com → Security → App Passwords (not your normal Gmail password), then save it in LabTrak Settings → Auto-Email.";
+    }
     return jsonResponse({ error: message }, 500);
   }
 });
