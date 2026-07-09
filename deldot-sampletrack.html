@@ -3225,7 +3225,7 @@ table.fc-borrow-tbl tr.fc-borrow-detail-row td{background:var(--surface);border-
         <input type="email" id="sl_gmail_user" placeholder="yourlab@gmail.com" autocomplete="off">
       </div>
       <div class="setup-field" style="margin-top:10px;">
-        <label>Gmail App Password <span style="font-size:9px;color:var(--muted);font-weight:400;">(16 characters from Google → Security → App Passwords)</span></label>
+        <label>Gmail App Password <span style="font-size:9px;color:var(--muted);font-weight:400;">(16-char App Password — NOT your regular Gmail password)</span></label>
         <input type="password" id="sl_gmail_app_password" placeholder="xxxx xxxx xxxx xxxx" autocomplete="new-password">
       </div>
       <div id="emailSettingsStatus" style="font-family:var(--mono);font-size:10px;color:var(--green2);min-height:14px;margin:6px 0 10px;"></div>
@@ -6519,7 +6519,7 @@ table.fc-borrow-tbl tr.fc-borrow-detail-row td{background:var(--surface);border-
 // GLOBALS
 // ══════════════════════════════════════════════
 let db = null;
-const APP_BUILD = '2026.07.09-gmail-settings-fix';
+const APP_BUILD = '2026.07.09-gmail-cred-priority';
 const FC_CORE_ICON_SRC = 'docs/r18-reference/core-drill-icon-128.png';
 const BORELOG_ICON_SRC = 'docs/r18-reference/borelog-icon.webp';
 const BORELOG_PATH = 'docs/r18-reference/deldot-borelog.html';
@@ -10440,8 +10440,12 @@ async function parseInvokeError(err) {
 function formatEmailSendError(msg) {
   if (!msg) return 'Email send failed';
   const text = String(msg);
+  if (/535|badcredentials|username and password not accepted|rejected the app password/i.test(text)) {
+    const { user } = getGmailCredentials();
+    return `Gmail rejected login for ${user || 'your account'}. Create a new App Password at myaccount.google.com → Security → App Passwords (16 characters, not your normal password). Re-enter it in Settings → Auto-Email and click Save.`;
+  }
   if (/GMAIL_USER|GMAIL_APP_PASSWORD|not configured/i.test(text)) {
-    return 'Gmail not configured in Supabase — add GMAIL_USER and GMAIL_APP_PASSWORD secrets, then deploy send-report-email';
+    return 'Gmail not configured — add address and app password in Settings → Auto-Email';
   }
   if (/not found|404|requested function|does not exist/i.test(text) && !/non-2xx/i.test(text)) {
     return 'send-report-email edge function not deployed — deploy from supabase/functions/send-report-email';
