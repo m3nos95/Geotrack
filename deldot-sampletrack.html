@@ -3217,12 +3217,16 @@ table.fc-borrow-tbl tr.fc-borrow-detail-row td{background:var(--surface);border-
       </button>
       <div class="setup-collapse-body">
       <p style="font-family:var(--mono);font-size:10px;color:var(--muted);margin-bottom:14px;line-height:1.7;">
-        When a report is approved, LabTrak emails a <strong style="color:var(--text);">PDF attachment</strong> to each project's distribution list via your Gmail account when the edge function is deployed.<br>
-        If auto-send is unavailable, LabTrak falls back to opening your email client (Outlook, etc.) with recipients and report details pre-filled.
+        When a report is approved, LabTrak emails a <strong style="color:var(--text);">PDF attachment</strong> to each project's distribution list from your Gmail account.<br>
+        Enter your Gmail address and a Google App Password below, then deploy the <code style="background:var(--bg);padding:1px 5px;border-radius:3px;">send-report-email</code> edge function once.
       </p>
       <div class="setup-field">
-        <label>Gmail Address <span style="font-size:9px;color:var(--muted);font-weight:400;">(optional label — must match GMAIL_USER secret)</span></label>
+        <label>Gmail Address</label>
         <input type="email" id="sl_gmail_user" placeholder="yourlab@gmail.com" autocomplete="off">
+      </div>
+      <div class="setup-field" style="margin-top:10px;">
+        <label>Gmail App Password <span style="font-size:9px;color:var(--muted);font-weight:400;">(16 characters from Google → Security → App Passwords)</span></label>
+        <input type="password" id="sl_gmail_app_password" placeholder="xxxx xxxx xxxx xxxx" autocomplete="new-password">
       </div>
       <div id="emailSettingsStatus" style="font-family:var(--mono);font-size:10px;color:var(--green2);min-height:14px;margin:6px 0 10px;"></div>
       <button onclick="saveEmailSettings()"
@@ -6515,7 +6519,7 @@ table.fc-borrow-tbl tr.fc-borrow-detail-row td{background:var(--surface);border-
 // GLOBALS
 // ══════════════════════════════════════════════
 let db = null;
-const APP_BUILD = '2026.07.09-email-mailto-fallback';
+const APP_BUILD = '2026.07.09-gmail-settings-fix';
 const FC_CORE_ICON_SRC = 'docs/r18-reference/core-drill-icon-128.png';
 const BORELOG_ICON_SRC = 'docs/r18-reference/borelog-icon.webp';
 const BORELOG_PATH = 'docs/r18-reference/deldot-borelog.html';
@@ -10317,18 +10321,36 @@ async function deleteProject(id, contract, name) {
 }
 
 // ── Save email settings (admin) ────────────────────────────────
+function getGmailCredentials() {
+  const user = (localStorage.getItem('sl_gmail_from') || '').trim();
+  const pass = (localStorage.getItem('sl_gmail_app_password') || '').replace(/\s+/g, '');
+  return { user, pass };
+}
+
+function gmailSendReady() {
+  const { user, pass } = getGmailCredentials();
+  return !!(db && user && pass);
+}
+
 function saveEmailSettings() {
   const gmail = (document.getElementById('sl_gmail_user')?.value || '').trim();
-  if (gmail) {
+  const appPass = (document.getElementById('sl_gmail_app_password')?.value || '').replace(/\s+/g, '');
+  const statusEl = document.getElementById('emailSettingsStatus');
+  if (gmail && appPass) {
     localStorage.setItem('sl_gmail_from', gmail);
-    const statusEl = document.getElementById('emailSettingsStatus');
-    if (statusEl) statusEl.textContent = '✓ Configured: ' + gmail;
-    showToast('Email settings saved ✓', 'success');
+    localStorage.setItem('sl_gmail_app_password', appPass);
+    if (statusEl) statusEl.textContent = '✓ Gmail configured: ' + gmail;
+    showToast('Gmail settings saved ✓', 'success');
+  } else if (gmail && !appPass) {
+    localStorage.setItem('sl_gmail_from', gmail);
+    localStorage.removeItem('sl_gmail_app_password');
+    if (statusEl) statusEl.textContent = '⚠ Add app password to enable auto-send';
+    showToast('Saved address — add app password to send email', 'info');
   } else {
     localStorage.removeItem('sl_gmail_from');
-    const statusEl = document.getElementById('emailSettingsStatus');
+    localStorage.removeItem('sl_gmail_app_password');
     if (statusEl) statusEl.textContent = '';
-    showToast('Gmail address cleared', 'info');
+    showToast('Gmail settings cleared', 'info');
   }
 }
 
@@ -10355,9 +10377,6 @@ async function generateReportPdfBase64() {
 }
 
 // ── Auto-email report to project distribution list ─────────────
-function emailSendReady() {
-  return !!db;
-}
 
 function buildReportEmailBody(sample, proj, rptType, conform) {
   const lines = [
@@ -10383,7 +10402,7 @@ function buildReportEmailBody(sample, proj, rptType, conform) {
     '─────────────────────────────────────────',
     'Automated notification from DelDOT LabTrak.',
     'Open LabTrak to view the full report and print/save as PDF to attach.',
-    '(To enable automatic PDF attachment, deploy send-report-email in Supabase — see Settings.)'
+    '(Configure Gmail in Settings → Auto-Email for automatic PDF attachment.)'
   );
   return lines.join('\n');
 }
@@ -10397,15 +10416,17 @@ async function parseInvokeError(err) {
   if (!err) return 'Email send failed';
   const ctx = err.context;
   if (ctx) {
+    const readBody = (fn) => {
+      const r = typeof ctx.clone === 'function' ? ctx.clone() : ctx;
+      return fn(r);
+    };
     try {
-      const clone = typeof ctx.clone === 'function' ? ctx.clone() : ctx;
-      const body = await clone.json();
+      const body = await readBody(r => r.json());
       if (body?.error) return String(body.error);
       if (body?.message) return String(body.message);
     } catch { /* not JSON */ }
     try {
-      const clone = typeof ctx.clone === 'function' ? ctx.clone() : ctx;
-      const text = await clone.text();
+      const text = await readBody(r => r.text());
       if (text?.trim()) return text.trim();
     } catch { /* ignore */ }
   }
@@ -10445,54 +10466,56 @@ async function autoEmailReport(sample) {
 
   const subject  = `LabTrak Report – ${sample.contract || 'Contract'} – ${sample.test_no || sample.id} – ${conform}`;
   const filename = `LabTrak_${(sample.test_no || sample.id).replace(/[^a-zA-Z0-9_-]/g,'_')}_${(sample.contract||'Report').replace(/[^a-zA-Z0-9_-]/g,'_')}.pdf`;
-  const bodyText = buildReportEmailBody(sample, proj, rptType, conform);
   const toList   = dist.split(',').map(e => e.trim()).filter(Boolean);
+  const { user: gmailUser, pass: gmailAppPassword } = getGmailCredentials();
 
-  if (emailSendReady()) {
-    showToast('Generating PDF…', 'info');
-    const pdfBase64 = await generateReportPdfBase64();
-    if (pdfBase64) {
-      showToast('Sending email via Gmail…', 'info');
-      try {
-        const { data, error } = await db.functions.invoke('send-report-email', {
-          body: {
-            to:             toList.join(', '),
-            subject,
-            filename,
-            pdfBase64,
-            reportType:     rptType,
-            contract:       sample.contract       || '—',
-            testNo:         sample.test_no        || '—',
-            material:       sample.material_type  || '—',
-            location:       sample.location       || '—',
-            dateSampled:    sample.date_sampled   || '—',
-            dateTested:     sample.date_tested    || new Date().toISOString().slice(0, 10),
-            result:         conform,
-            reportedBy:     sample.reported_by    || '—',
-            road:           proj?.road            || '—',
-            contractor:     proj?.contractor      || sample.contractor || '—',
-            projectManager: proj?.project_manager || null,
-          }
-        });
-        if (error) throw error;
-        if (data?.error) throw new Error(data.error);
-        const n = toList.length;
-        showToast(`Report emailed to ${n} recipient${n !== 1 ? 's' : ''} ✓`, 'success');
-        return true;
-      } catch (e) {
-        console.error('Email error:', e);
-        const parsed = await parseInvokeError(e);
-        console.warn('Gmail edge function failed:', formatEmailSendError(parsed));
-        showToast('Auto-send unavailable — opening your email client…', 'info');
-      }
-    } else {
-      showToast('PDF generation failed — opening email client without attachment', 'info');
-    }
+  if (!gmailSendReady()) {
+    showToast('Gmail not configured — add address and app password in Settings → Auto-Email', 'error');
+    return false;
   }
 
-  openReportMailto(dist, subject, bodyText);
-  showToast('Email client opened ✓', 'success');
-  return true;
+  showToast('Generating PDF…', 'info');
+  const pdfBase64 = await generateReportPdfBase64();
+  if (!pdfBase64) {
+    showToast('PDF generation failed — check console for details', 'error');
+    return false;
+  }
+
+  showToast('Sending email via Gmail…', 'info');
+  try {
+    const { data, error } = await db.functions.invoke('send-report-email', {
+      body: {
+        to:             toList.join(', '),
+        subject,
+        filename,
+        pdfBase64,
+        gmailUser,
+        gmailAppPassword,
+        reportType:     rptType,
+        contract:       sample.contract       || '—',
+        testNo:         sample.test_no        || '—',
+        material:       sample.material_type  || '—',
+        location:       sample.location       || '—',
+        dateSampled:    sample.date_sampled   || '—',
+        dateTested:     sample.date_tested    || new Date().toISOString().slice(0, 10),
+        result:         conform,
+        reportedBy:     sample.reported_by    || '—',
+        road:           proj?.road            || '—',
+        contractor:     proj?.contractor      || sample.contractor || '—',
+        projectManager: proj?.project_manager || null,
+      }
+    });
+    if (error) throw error;
+    if (data?.error) throw new Error(data.error);
+    const n = toList.length;
+    showToast(`Report emailed to ${n} recipient${n !== 1 ? 's' : ''} ✓`, 'success');
+    return true;
+  } catch (e) {
+    console.error('Email error:', e);
+    const parsed = await parseInvokeError(e);
+    showToast('Email failed: ' + formatEmailSendError(parsed), 'error');
+    return false;
+  }
 }
 
 function emailCurrentReport() {
@@ -10574,7 +10597,7 @@ function refreshReportEmailBtn(sample) {
   const isApprover = canApproveReports() && canApproveThisReport(sample);
 
   // Resend button after approval (or manual send when connected)
-  if (btn) btn.style.display = (hasDist && isApproved && emailSendReady()) ? '' : 'none';
+  if (btn) btn.style.display = (hasDist && isApproved && gmailSendReady()) ? '' : 'none';
 
   // Approve/Reject: approvers only, only when pending
   if (appBtn) appBtn.style.display = (isPending && isApprover) ? '' : 'none';
@@ -11969,8 +11992,15 @@ function applyPermissionUnlockUI() {
     emailSect.style.display = 'block';
     const gmailEl = document.getElementById('sl_gmail_user');
     if (gmailEl) gmailEl.value = localStorage.getItem('sl_gmail_from') || '';
+    const gmailPassEl = document.getElementById('sl_gmail_app_password');
+    if (gmailPassEl) gmailPassEl.value = localStorage.getItem('sl_gmail_app_password') || '';
     const statusEl = document.getElementById('emailSettingsStatus');
-    if (statusEl) { const s = localStorage.getItem('sl_gmail_from'); statusEl.textContent = s ? '✓ Configured: ' + s : ''; }
+    if (statusEl) {
+      const { user, pass } = getGmailCredentials();
+      if (user && pass) statusEl.textContent = '✓ Gmail configured: ' + user;
+      else if (user) statusEl.textContent = '⚠ Add app password to enable auto-send';
+      else statusEl.textContent = '';
+    }
   }
 
   const mteamSect = document.getElementById('manageTeamsSection');

@@ -12,6 +12,8 @@ interface EmailRequest {
   subject: string;
   filename?: string;
   pdfBase64: string;
+  gmailUser?: string;
+  gmailAppPassword?: string;
   reportType?: string;
   contract?: string;
   testNo?: string;
@@ -69,16 +71,16 @@ Deno.serve(async (req) => {
   }
 
   try {
-    const gmailUser = Deno.env.get("GMAIL_USER");
-    const gmailPass = Deno.env.get("GMAIL_APP_PASSWORD");
+    const payload: EmailRequest = await req.json();
+    const gmailUser = (Deno.env.get("GMAIL_USER") || payload.gmailUser || "").trim();
+    const gmailPass = (Deno.env.get("GMAIL_APP_PASSWORD") || payload.gmailAppPassword || "").trim();
     if (!gmailUser || !gmailPass) {
       return jsonResponse({
         error:
-          "Gmail not configured. Set GMAIL_USER and GMAIL_APP_PASSWORD in Supabase Edge Function secrets.",
+          "Gmail not configured. Add your Gmail address and app password in LabTrak Settings → Auto-Email, or set GMAIL_USER and GMAIL_APP_PASSWORD in Supabase Edge Function secrets.",
       }, 500);
     }
 
-    const payload: EmailRequest = await req.json();
     const { to, subject, filename, pdfBase64 } = payload;
     if (!to?.trim() || !subject?.trim() || !pdfBase64?.trim()) {
       return jsonResponse({
