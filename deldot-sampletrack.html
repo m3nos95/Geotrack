@@ -2068,6 +2068,85 @@ body { font-family: var(--sans); font-size: 13.5px; line-height: 1.5; letter-spa
 .btn-comfort-mode:hover { color: var(--text); border-color: var(--accent2); background: rgba(196,124,42,0.1); }
 .btn-comfort-mode.active { color: var(--green2); border-color: rgba(46,204,120,0.4); background: rgba(46,204,120,0.1); }
 
+/* ── Concrete Guided Mode (optional coach) ── */
+.concrete-guide-toggle {
+  display: inline-flex; align-items: center; gap: 8px;
+  font-family: var(--sans); font-size: 13px; font-weight: 600; color: var(--text);
+  background: var(--surface2); border: 1px solid var(--border); border-radius: var(--radius-sm);
+  padding: 8px 12px; cursor: pointer; transition: border-color 0.15s, background 0.15s;
+}
+.concrete-guide-toggle:hover { border-color: var(--accent2); }
+.concrete-guide-toggle.on {
+  background: rgba(196,124,42,0.12); border-color: rgba(196,124,42,0.45); color: var(--accent2);
+}
+.concrete-guide-toggle .guide-dot {
+  width: 8px; height: 8px; border-radius: 50%; background: var(--muted); flex-shrink: 0;
+}
+.concrete-guide-toggle.on .guide-dot { background: var(--accent2); box-shadow: 0 0 0 3px rgba(196,124,42,0.2); }
+#concreteGuideDock {
+  display: none; position: fixed; left: 12px; right: 12px; bottom: 12px; z-index: 9200;
+  max-width: 720px; margin: 0 auto;
+  background: var(--panel); border: 1px solid var(--border); border-radius: 12px;
+  box-shadow: 0 12px 40px rgba(0,0,0,0.35); padding: 14px 16px 12px;
+}
+#concreteGuideDock.visible { display: block; }
+body.concrete-guide-on #concreteGuideDock.visible { animation: guideDockIn 0.25s ease; }
+@keyframes guideDockIn {
+  from { opacity: 0; transform: translateY(12px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.cg-dock-top { display: flex; align-items: flex-start; gap: 12px; margin-bottom: 8px; }
+.cg-dock-badge {
+  flex-shrink: 0; font-family: var(--sans); font-size: 11px; font-weight: 700;
+  letter-spacing: 0.02em; color: var(--accent2); background: rgba(196,124,42,0.12);
+  border: 1px solid rgba(196,124,42,0.3); border-radius: 6px; padding: 4px 8px; margin-top: 2px;
+}
+.cg-dock-copy { flex: 1; min-width: 0; }
+.cg-dock-title {
+  font-family: var(--sans); font-size: 16px; font-weight: 700; color: var(--text);
+  line-height: 1.25; margin: 0 0 4px;
+}
+.cg-dock-body {
+  font-family: var(--sans); font-size: 14px; color: var(--muted); line-height: 1.45; margin: 0;
+}
+.cg-dock-actions {
+  display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-top: 12px;
+}
+.cg-btn {
+  font-family: var(--sans); font-size: 13px; font-weight: 600; border-radius: 8px;
+  padding: 9px 14px; cursor: pointer; border: 1px solid var(--border); background: var(--surface2); color: var(--text);
+}
+.cg-btn:hover { border-color: var(--accent2); }
+.cg-btn.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+.cg-btn.primary:hover { filter: brightness(1.05); }
+.cg-btn.ghost { background: transparent; color: var(--muted); }
+.cg-btn:disabled { opacity: 0.4; cursor: default; }
+.cg-progress {
+  flex: 1; min-width: 80px; height: 4px; background: var(--bg); border-radius: 99px; overflow: hidden;
+}
+.cg-progress > span {
+  display: block; height: 100%; background: var(--accent2); border-radius: 99px; transition: width 0.25s ease;
+}
+.concrete-guide-pulse {
+  outline: 3px solid rgba(196,124,42,0.85) !important;
+  outline-offset: 3px;
+  animation: concreteGuidePulse 1.4s ease-in-out infinite;
+  position: relative; z-index: 2;
+}
+@keyframes concreteGuidePulse {
+  0%, 100% { outline-color: rgba(196,124,42,0.85); }
+  50% { outline-color: rgba(196,124,42,0.25); }
+}
+body.concrete-guide-on #concrete-view,
+body.concrete-guide-on #conchub-view { padding-bottom: 150px; }
+@media (max-width: 720px) {
+  #concreteGuideDock { left: 8px; right: 8px; bottom: 8px; padding: 12px; }
+  .cg-dock-title { font-size: 15px; }
+  .cg-dock-body { font-size: 13px; }
+  body.concrete-guide-on #concrete-view,
+  body.concrete-guide-on #conchub-view { padding-bottom: 180px; }
+}
+
 .user-badge {
   background: rgba(255,255,255,0.04);
   border: 1px solid rgba(255,255,255,0.08);
@@ -3370,6 +3449,14 @@ table.fc-borrow-tbl tr.fc-borrow-detail-row td{background:var(--surface);border-
       </p>
       <button type="button" class="tour-help-launch" onclick="startLabTrakTour()">Full app tour (all modules)</button>
       <button type="button" class="tour-help-launch" style="margin-top:8px;background:transparent;border-color:var(--border);color:var(--muted);" onclick="startContextHelp()">Help for this screen (?)</button>
+      <div class="comfort-mode-control" id="concreteGuidedModeControl" style="margin-top:12px;">
+        <div class="comfort-mode-copy">
+          <div class="comfort-mode-title">Concrete Guided Mode</div>
+          <div class="comfort-mode-desc">Optional step-by-step coach for the Concrete module. Normal screens stay the same when this is off.</div>
+        </div>
+        <button type="button" class="comfort-switch" id="concreteGuidedModeSwitch" onclick="toggleConcreteGuidedMode()"
+                role="switch" aria-label="Concrete Guided Mode" aria-pressed="false"></button>
+      </div>
       </div>
     </div>
 
@@ -5209,19 +5296,26 @@ table.fc-borrow-tbl tr.fc-borrow-detail-row td{background:var(--surface);border-
      ══════════════════════════════════════════════════════════════ -->
 <div class="view" id="concrete-view">
   <div class="page-wide">
-    <div class="lab-mode-tabs" data-tour="concrete-tabs" style="margin-bottom:20px;">
-      <button class="lab-mode-tab active" id="ctab-intake"   onclick="switchConcreteTab('intake')">⊕ INTAKE</button>
-      <button class="lab-mode-tab"        id="ctab-log"      onclick="switchConcreteTab('log')">📋 CYLINDER LOG</button>
-      <button class="lab-mode-tab"        id="ctab-schedule" onclick="switchConcreteTab('schedule')">📅 BREAK SCHEDULE</button>
-      <button class="lab-mode-tab"        id="ctab-break"    onclick="switchConcreteTab('break')">🔨 BREAK ENTRY</button>
-      <button class="lab-mode-tab"        id="ctab-report"   onclick="switchConcreteTab('report')">🖨 REPORT</button>
+    <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:12px;">
+      <div class="lab-mode-tabs" data-tour="concrete-tabs" data-guide="concrete-tabs" style="margin-bottom:0;flex:1;min-width:240px;">
+        <button class="lab-mode-tab active" id="ctab-intake"   onclick="switchConcreteTab('intake')">⊕ INTAKE</button>
+        <button class="lab-mode-tab"        id="ctab-log"      onclick="switchConcreteTab('log')">📋 CYLINDER LOG</button>
+        <button class="lab-mode-tab"        id="ctab-schedule" onclick="switchConcreteTab('schedule')">📅 BREAK SCHEDULE</button>
+        <button class="lab-mode-tab"        id="ctab-break"    onclick="switchConcreteTab('break')">🔨 BREAK ENTRY</button>
+        <button class="lab-mode-tab"        id="ctab-report"   onclick="switchConcreteTab('report')">🖨 REPORT</button>
+      </div>
+      <button type="button" class="concrete-guide-toggle" id="btnConcreteGuidedTabs" onclick="toggleConcreteGuidedMode()"
+              title="Turn Guided Mode on or off">
+        <span class="guide-dot" aria-hidden="true"></span>
+        <span class="guide-toggle-label">Guided Mode</span>
+      </button>
     </div>
 
     <!-- ── INTAKE ── -->
     <div id="csub-intake">
       <div class="card">
         <div class="card-title">New Concrete Set — Field Intake</div>
-        <div class="form-grid three" style="margin-bottom:12px;">
+        <div class="form-grid three" style="margin-bottom:12px;" data-guide="intake-job">
           <div class="form-group">
             <label>Set ID <span style="color:var(--muted);font-size:9px;">(auto-assigned if blank)</span></label>
             <input type="text" id="ci_set_id" placeholder="e.g. CON-26-001" style="color:var(--accent2);font-weight:600;" autocomplete="off">
@@ -5232,7 +5326,7 @@ table.fc-borrow-tbl tr.fc-borrow-detail-row td{background:var(--surface);border-
           <div class="form-group"><label>Concrete Supplier</label><input type="text" id="ci_supplier" placeholder="Eastern Concrete"></div>
           <div class="form-group"><label>Mix Design / Class</label><input type="text" id="ci_mix_design" placeholder="Class A — 4000 psi"></div>
           <div class="form-group span2"><label>Pour Location / Structure</label><input type="text" id="ci_pour_location" placeholder="Bridge Deck Span 3, Sta. 42+50 to 44+00"></div>
-          <div class="form-group">
+          <div class="form-group" data-guide="intake-gps">
             <label>GPS Coordinates <span style="color:var(--muted);font-size:9px;">(auto-capture)</span></label>
             <div style="display:flex;gap:6px;align-items:center;">
               <input type="text" id="ci_gps" placeholder="Tap to capture location" readonly style="flex:1;cursor:pointer;font-size:11px;" onclick="captureConcreteGPS()">
@@ -5248,6 +5342,7 @@ table.fc-borrow-tbl tr.fc-borrow-detail-row td{background:var(--surface);border-
         </div>
 
         <!-- Fresh Properties -->
+        <div data-guide="intake-fresh">
         <div class="manual-section-title" style="margin-top:6px;">Fresh Concrete Properties (AASHTO T 119 / T 152 / T 121 / T 309)</div>
         <div class="form-grid" style="grid-template-columns:repeat(5,1fr); margin-bottom:12px;">
           <div class="form-group">
@@ -5271,8 +5366,10 @@ table.fc-borrow-tbl tr.fc-borrow-detail-row td{background:var(--surface);border-
             <input type="number" id="ci_amb_temp" step="1" min="-20" max="120" placeholder="68">
           </div>
         </div>
+        </div><!-- /data-guide intake-fresh -->
 
         <!-- Cylinder Setup -->
+        <div data-guide="intake-cylinders">
         <div class="manual-section-title">Cylinder Setup (AASHTO T 22)</div>
         <div class="form-grid" style="margin-bottom:14px;">
           <div class="form-group">
@@ -5312,6 +5409,7 @@ table.fc-borrow-tbl tr.fc-borrow-detail-row td{background:var(--surface);border-
         <div style="margin-bottom:14px;">
           <button type="button" onclick="addCustomAgeRow()" style="background:none;border:1px dashed var(--border);color:var(--accent);padding:5px 14px;border-radius:var(--radius);cursor:pointer;font-size:11px;font-family:var(--mono);">+ Add Custom Break Age (e.g. 3-day, 5-day, 10-day)</button>
         </div>
+        </div><!-- /data-guide intake-cylinders -->
 
         <div class="form-group" style="margin-bottom:14px;">
           <label>Remarks</label>
@@ -5387,7 +5485,7 @@ table.fc-borrow-tbl tr.fc-borrow-detail-row td{background:var(--surface);border-
           </div>
         </div>
 
-        <div class="btn-row">
+        <div class="btn-row" data-guide="intake-create">
           <button class="btn btn-success" onclick="submitConcreteIntake()">✓ CREATE SET &amp; LOG CYLINDERS</button>
           <button class="btn btn-ghost" onclick="clearConcreteIntakeForm()">CLEAR</button>
         </div>
@@ -5395,7 +5493,7 @@ table.fc-borrow-tbl tr.fc-borrow-detail-row td{background:var(--surface);border-
     </div>
 
     <!-- ── CYLINDER LOG ── -->
-    <div id="csub-log" style="display:none;">
+    <div id="csub-log" style="display:none;" data-guide="cylinder-log">
       <div class="card" style="margin-bottom:10px;">
         <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
           <input type="text" id="clog-search" placeholder="Search contract, set ID, location…" oninput="renderConcreteLog()"
@@ -5413,7 +5511,7 @@ table.fc-borrow-tbl tr.fc-borrow-detail-row td{background:var(--surface);border-
     </div>
 
     <!-- ── BREAK SCHEDULE ── -->
-    <div id="csub-schedule" style="display:none;">
+    <div id="csub-schedule" style="display:none;" data-guide="break-schedule">
       <div class="card" style="margin-bottom:12px;padding:14px 16px;">
         <div style="display:flex;gap:20px;flex-wrap:wrap;" id="csched-summary"></div>
       </div>
@@ -5427,7 +5525,7 @@ table.fc-borrow-tbl tr.fc-borrow-detail-row td{background:var(--surface);border-
     </div>
 
     <!-- ── BREAK ENTRY ── -->
-    <div id="csub-break" style="display:none;">
+    <div id="csub-break" style="display:none;" data-guide="break-entry">
       <div class="card">
         <div class="card-title">Cylinder Break Entry — AASHTO T 22</div>
         <div class="form-grid" style="margin-bottom:12px;">
@@ -5631,7 +5729,7 @@ table.fc-borrow-tbl tr.fc-borrow-detail-row td{background:var(--surface);border-
     </div>
 
     <!-- ── REPORT ── -->
-    <div id="csub-report" style="display:none;">
+    <div id="csub-report" style="display:none;" data-guide="concrete-report">
       <div class="report-toolbar" style="flex-wrap:wrap;gap:8px;">
         <select id="crpt-set-select" onchange="renderBothConcreteReports(this.value)"
           style="background:var(--panel);border:1px solid var(--border);color:var(--text);padding:8px 12px;border-radius:var(--radius);font-size:13px;outline:none;min-width:280px;">
@@ -6281,7 +6379,7 @@ table.fc-borrow-tbl tr.fc-borrow-detail-row td{background:var(--surface);border-
   <!-- ── CONCRETE HUB ── -->
   <div class="view" id="conchub-view">
     <div class="hub-wrap">
-      <div class="hub-header" data-tour="conchub-header">
+      <div class="hub-header" data-tour="conchub-header" data-guide="conchub-home">
         <div>
           <div class="hub-greet" id="chub_greet">Good morning</div>
           <div class="hub-date-line" id="chub_date">—</div>
@@ -6316,10 +6414,15 @@ table.fc-borrow-tbl tr.fc-borrow-detail-row td{background:var(--surface);border-
         </div>
       </div>
 
-      <div class="hub-actions">
-        <button class="hub-action-btn primary" onclick="switchView('concrete');switchConcreteTab('intake')">＋ NEW POUR</button>
+      <div class="hub-actions" data-guide="conchub-actions">
+        <button class="hub-action-btn primary" data-guide="new-pour" onclick="switchView('concrete');switchConcreteTab('intake')">＋ NEW POUR</button>
         <button class="hub-action-btn" onclick="switchView('concrete');switchConcreteTab('schedule')">📅 BREAK SCHEDULE</button>
         <button class="hub-action-btn" onclick="switchView('concrete');switchConcreteTab('break')">✏️ BREAK ENTRY</button>
+        <button type="button" class="concrete-guide-toggle" id="btnConcreteGuidedHub" onclick="toggleConcreteGuidedMode()"
+                title="Turn Guided Mode on or off">
+          <span class="guide-dot" aria-hidden="true"></span>
+          <span class="guide-toggle-label">Guided Mode</span>
+        </button>
       </div>
 
       <div class="hub-two-col">
@@ -6525,7 +6628,7 @@ table.fc-borrow-tbl tr.fc-borrow-detail-row td{background:var(--surface);border-
 // GLOBALS
 // ══════════════════════════════════════════════
 let db = null;
-const APP_BUILD = '2026.07.09-gmail-secrets-priority';
+const APP_BUILD = '2026.07.16-concrete-guided';
 const FC_CORE_ICON_SRC = 'docs/r18-reference/core-drill-icon-128.png';
 const BORELOG_ICON_SRC = 'docs/r18-reference/borelog-icon.webp';
 const BORELOG_PATH = 'docs/r18-reference/deldot-borelog.html';
@@ -7076,6 +7179,7 @@ let scannedSample = null;
 window.addEventListener('DOMContentLoaded', () => {
   initAppSkin();
   initComfortMode();
+  initConcreteGuidedMode();
   initKonamiCode();
   if (checkAppBuildUpdate()) return;
   if (typeof syncMobileNav === 'function') setTimeout(syncMobileNav, 100);
@@ -11608,6 +11712,282 @@ function initComfortMode() {
   applyComfortVisuals();
 }
 
+// ══════════════════════════════════════════════
+// CONCRETE GUIDED MODE — optional coach (off by default)
+// ══════════════════════════════════════════════
+const CONCRETE_GUIDED_KEY = 'labtrak_concrete_guided';
+const CONCRETE_GUIDE_STEP_KEY = 'labtrak_concrete_guide_step';
+let _concreteGuideIndex = 0;
+let _concreteGuidePulseEl = null;
+
+const CONCRETE_GUIDE_STEPS = [
+  {
+    id: 'welcome',
+    view: 'conchub',
+    guide: 'conchub-home',
+    title: 'Welcome — Concrete Guided Mode',
+    body: 'This coach walks you through a pour from start to finish in plain steps. The program still works the same when Guided Mode is off — turn it on only when you want help.'
+  },
+  {
+    id: 'new-pour',
+    view: 'conchub',
+    guide: 'new-pour',
+    title: 'Start a new pour',
+    body: 'When you are at the job site ready to cast cylinders, tap NEW POUR. That opens the Intake form where you enter the pour information.'
+  },
+  {
+    id: 'job-info',
+    view: 'concrete',
+    tab: 'intake',
+    guide: 'intake-job',
+    title: 'Enter the job information',
+    body: 'Fill in the Contract Number first — many fields fill in for you. Add the pour location, contractor, supplier, and mix. Cast date and time are usually already set to today.'
+  },
+  {
+    id: 'gps',
+    view: 'concrete',
+    tab: 'intake',
+    guide: 'intake-gps',
+    title: 'Capture your location',
+    body: 'Tap the pin button to save GPS. This puts the set on the project map so others can find where the pour happened.'
+  },
+  {
+    id: 'fresh',
+    view: 'concrete',
+    tab: 'intake',
+    guide: 'intake-fresh',
+    title: 'Record fresh concrete tests',
+    body: 'Enter the field test results: slump, air content, unit weight, and temperatures. Use the numbers from your gauges — leave a field blank only if you did not run that test.'
+  },
+  {
+    id: 'cylinders',
+    view: 'concrete',
+    tab: 'intake',
+    guide: 'intake-cylinders',
+    title: 'Set up the cylinders',
+    body: 'Enter the required strength (f\'c) from the mix design. Then choose how many cylinders for each break age. Most pours use 2 at 7 days and 2 at 28 days.'
+  },
+  {
+    id: 'create',
+    view: 'concrete',
+    tab: 'intake',
+    guide: 'intake-create',
+    title: 'Save the set',
+    body: 'When everything looks right, tap CREATE SET & LOG CYLINDERS. LabTrak saves the set and builds a break schedule for each cylinder.'
+  },
+  {
+    id: 'log',
+    view: 'concrete',
+    tab: 'log',
+    guide: 'cylinder-log',
+    title: 'Find your sets in the Cylinder Log',
+    body: 'Every set you create shows up here. Search by contract, set ID, or location. Open a set later for breaks or reports.'
+  },
+  {
+    id: 'schedule',
+    view: 'concrete',
+    tab: 'schedule',
+    guide: 'break-schedule',
+    title: 'Check the Break Schedule',
+    body: 'This list shows what is overdue, due today, and coming up. Check it each morning so you do not miss a break age.'
+  },
+  {
+    id: 'break',
+    view: 'concrete',
+    tab: 'break',
+    guide: 'break-entry',
+    title: 'Record a cylinder break',
+    body: 'Pick the set and cylinder, enter the load from the machine (lbf), choose the fracture pattern that matches the break, then tap RECORD BREAK. Strength (psi) is calculated for you.'
+  },
+  {
+    id: 'report',
+    view: 'concrete',
+    tab: 'report',
+    guide: 'concrete-report',
+    title: 'Print the report',
+    body: 'Select a set to fill out the DMP-15 and DMF-13 forms. Review the numbers, then print or save as PDF.'
+  },
+  {
+    id: 'done',
+    view: 'conchub',
+    guide: 'conchub-home',
+    title: 'You are ready',
+    body: 'That is the full concrete workflow. Turn Guided Mode off anytime — the screens stay the same. Tap ? at the top for help on any single screen.'
+  }
+];
+
+function isConcreteGuidedMode() {
+  try { return localStorage.getItem(CONCRETE_GUIDED_KEY) === '1'; } catch { return false; }
+}
+
+function loadConcreteGuideIndex() {
+  try {
+    const n = parseInt(localStorage.getItem(CONCRETE_GUIDE_STEP_KEY) || '0', 10);
+    if (isNaN(n) || n < 0) return 0;
+    return Math.min(n, CONCRETE_GUIDE_STEPS.length - 1);
+  } catch { return 0; }
+}
+
+function saveConcreteGuideIndex(i) {
+  _concreteGuideIndex = i;
+  try { localStorage.setItem(CONCRETE_GUIDE_STEP_KEY, String(i)); } catch {}
+}
+
+function concreteGuideClearPulse() {
+  if (_concreteGuidePulseEl) {
+    _concreteGuidePulseEl.classList.remove('concrete-guide-pulse');
+    _concreteGuidePulseEl = null;
+  }
+  document.querySelectorAll('.concrete-guide-pulse').forEach(el => el.classList.remove('concrete-guide-pulse'));
+}
+
+function concreteGuideFindTarget(step) {
+  if (!step || !step.guide) return null;
+  return document.querySelector('[data-guide="' + step.guide + '"]');
+}
+
+function concreteGuideGoToStepView(step) {
+  if (!step) return;
+  if (step.view && typeof switchView === 'function' && typeof getActiveViewName === 'function') {
+    if (getActiveViewName() !== step.view) switchView(step.view);
+  } else if (step.view && typeof switchView === 'function') {
+    switchView(step.view);
+  }
+  if (step.view === 'concrete' && step.tab && typeof switchConcreteTab === 'function') {
+    if (typeof activeConcSubTab === 'undefined' || activeConcSubTab !== step.tab) {
+      switchConcreteTab(step.tab, { skipHistory: true });
+    }
+  }
+}
+
+function concreteGuideShowTarget() {
+  if (!isConcreteGuidedMode()) return;
+  const step = CONCRETE_GUIDE_STEPS[_concreteGuideIndex];
+  if (!step) return;
+  concreteGuideGoToStepView(step);
+  setTimeout(() => {
+    const el = concreteGuideFindTarget(step);
+    concreteGuideClearPulse();
+    if (!el) return;
+    try { el.scrollIntoView({ behavior: 'smooth', block: 'center', inline: 'nearest' }); } catch {}
+    el.classList.add('concrete-guide-pulse');
+    _concreteGuidePulseEl = el;
+  }, step.view === 'concrete' ? 280 : 120);
+}
+
+function updateConcreteGuidedModeUI() {
+  const on = isConcreteGuidedMode();
+  document.body.classList.toggle('concrete-guide-on', on);
+  const sw = document.getElementById('concreteGuidedModeSwitch');
+  if (sw) {
+    sw.classList.toggle('on', on);
+    sw.setAttribute('aria-pressed', on ? 'true' : 'false');
+  }
+  document.querySelectorAll('.concrete-guide-toggle').forEach(btn => {
+    btn.classList.toggle('on', on);
+    btn.setAttribute('aria-pressed', on ? 'true' : 'false');
+    const label = btn.querySelector('.guide-toggle-label');
+    if (label) label.textContent = on ? 'Guided Mode On' : 'Guided Mode';
+  });
+  const dock = document.getElementById('concreteGuideDock');
+  if (!dock) return;
+  const view = typeof getActiveViewName === 'function' ? getActiveViewName() : '';
+  const onConcrete = view === 'concrete' || view === 'conchub';
+  if (on && onConcrete) {
+    dock.classList.add('visible');
+    renderConcreteGuideDock();
+  } else {
+    dock.classList.remove('visible');
+    concreteGuideClearPulse();
+  }
+}
+
+function renderConcreteGuideDock() {
+  const step = CONCRETE_GUIDE_STEPS[_concreteGuideIndex] || CONCRETE_GUIDE_STEPS[0];
+  const total = CONCRETE_GUIDE_STEPS.length;
+  const n = _concreteGuideIndex + 1;
+  const badge = document.getElementById('cgStepBadge');
+  const title = document.getElementById('cgStepTitle');
+  const body = document.getElementById('cgStepBody');
+  const back = document.getElementById('cgBackBtn');
+  const next = document.getElementById('cgNextBtn');
+  const bar = document.getElementById('cgProgressBar');
+  if (badge) badge.textContent = 'Step ' + n + ' of ' + total;
+  if (title) title.textContent = step.title || '';
+  if (body) body.textContent = step.body || '';
+  if (back) back.disabled = _concreteGuideIndex <= 0;
+  if (next) next.textContent = _concreteGuideIndex >= total - 1 ? 'Finish' : 'Next';
+  if (bar) bar.style.width = Math.round((n / total) * 100) + '%';
+}
+
+function setConcreteGuidedMode(on, opts) {
+  opts = opts || {};
+  try { localStorage.setItem(CONCRETE_GUIDED_KEY, on ? '1' : '0'); } catch {}
+  if (on) {
+    if (!opts.keepStep) saveConcreteGuideIndex(0);
+    else saveConcreteGuideIndex(loadConcreteGuideIndex());
+  } else {
+    concreteGuideClearPulse();
+  }
+  updateConcreteGuidedModeUI();
+  if (on) {
+    const step = CONCRETE_GUIDE_STEPS[_concreteGuideIndex];
+    concreteGuideGoToStepView(step);
+    setTimeout(concreteGuideShowTarget, 200);
+    if (typeof showToast === 'function') showToast('Guided Mode on — follow the steps at the bottom', 'success');
+  } else if (typeof showToast === 'function' && !opts.silent) {
+    showToast('Guided Mode off — normal Concrete screens', 'info');
+  }
+}
+
+function toggleConcreteGuidedMode() {
+  const turningOn = !isConcreteGuidedMode();
+  setConcreteGuidedMode(turningOn, { keepStep: false });
+}
+
+function concreteGuideNext() {
+  if (!isConcreteGuidedMode()) return;
+  if (_concreteGuideIndex >= CONCRETE_GUIDE_STEPS.length - 1) {
+    setConcreteGuidedMode(false, { silent: true });
+    if (typeof showToast === 'function') showToast('Guided Mode finished — you can turn it back on anytime', 'success');
+    return;
+  }
+  saveConcreteGuideIndex(_concreteGuideIndex + 1);
+  updateConcreteGuidedModeUI();
+  concreteGuideShowTarget();
+}
+
+function concreteGuidePrev() {
+  if (!isConcreteGuidedMode() || _concreteGuideIndex <= 0) return;
+  saveConcreteGuideIndex(_concreteGuideIndex - 1);
+  updateConcreteGuidedModeUI();
+  concreteGuideShowTarget();
+}
+
+function concreteGuideOnViewChange() {
+  if (!isConcreteGuidedMode()) {
+    updateConcreteGuidedModeUI();
+    return;
+  }
+  updateConcreteGuidedModeUI();
+}
+
+function concreteGuideAdvanceTo(stepId) {
+  if (!isConcreteGuidedMode()) return;
+  const idx = CONCRETE_GUIDE_STEPS.findIndex(s => s.id === stepId);
+  if (idx < 0) return;
+  if (idx > _concreteGuideIndex) {
+    saveConcreteGuideIndex(idx);
+    updateConcreteGuidedModeUI();
+    setTimeout(concreteGuideShowTarget, 200);
+  }
+}
+
+function initConcreteGuidedMode() {
+  _concreteGuideIndex = loadConcreteGuideIndex();
+  updateConcreteGuidedModeUI();
+}
+
 function renderSkinPicker() {
   const grid = document.getElementById('skinPickerGrid');
   if (!grid) return;
@@ -12132,6 +12512,7 @@ function switchView(name, opts) {
       const el = document.getElementById('ci_contract');
       if (el && !el.value) { el.value = currentProjectFilter; autoFillFromProject(currentProjectFilter); }
     }
+    if (typeof concreteGuideOnViewChange === 'function') concreteGuideOnViewChange();
   }
   if (name === 'soillab') { void loadSoilLab(); }
   if (name !== 'soillab') stopSlTestScanner();
@@ -12151,7 +12532,12 @@ function switchView(name, opts) {
       _loadHubNotes('lab').then(function(){ renderHubCal('lab'); });
     })();
   }
-  if (name === 'conchub')  { refreshConcreteSetsIfConnected(); renderConcreteHub(); _loadHubNotes('concrete').then(function(){ renderHubCal('concrete'); }); }
+  if (name === 'conchub')  {
+    refreshConcreteSetsIfConnected();
+    renderConcreteHub();
+    _loadHubNotes('concrete').then(function(){ renderHubCal('concrete'); });
+    if (typeof concreteGuideOnViewChange === 'function') concreteGuideOnViewChange();
+  }
   if (name === 'r18')     { if (typeof r18Init === 'function') r18Init(); }
   if (name === 'labmap')  { initLabMapView(); }
   // Reset scroll after browser has laid out the newly visible view
@@ -12160,6 +12546,7 @@ function switchView(name, opts) {
     const v = document.getElementById(name + '-view');
     if (v) v.scrollTop = 0;
   });
+  if (typeof updateConcreteGuidedModeUI === 'function') updateConcreteGuidedModeUI();
 }
 
 // ══════════════════════════════════════════════
@@ -24259,6 +24646,14 @@ function switchConcreteTab(tab, opts) {
   if (tab === 'schedule') renderBreakSchedule();
   if (tab === 'break')    populateBreakSetSelect();
   if (tab === 'report')   populateReportSetSelect();
+  if (typeof concreteGuideOnViewChange === 'function') concreteGuideOnViewChange();
+  if (typeof isConcreteGuidedMode === 'function' && isConcreteGuidedMode() && typeof concreteGuideAdvanceTo === 'function') {
+    if (tab === 'intake') concreteGuideAdvanceTo('job-info');
+    else if (tab === 'log') concreteGuideAdvanceTo('log');
+    else if (tab === 'schedule') concreteGuideAdvanceTo('schedule');
+    else if (tab === 'break') concreteGuideAdvanceTo('break');
+    else if (tab === 'report') concreteGuideAdvanceTo('report');
+  }
 }
 
 // ══════════════════════════════════════════════════════════════
@@ -24409,6 +24804,7 @@ function submitConcreteIntake() {
   showToast(`Set ${newSet.id} created — ${cylinders.length} cylinders logged ✓`, 'success');
   clearConcreteIntakeForm();
   switchConcreteTab('log');
+  if (typeof concreteGuideAdvanceTo === 'function') concreteGuideAdvanceTo('log');
 }
 
 // ══════════════════════════════════════════════════════════════
@@ -24659,6 +25055,7 @@ function submitBreakEntry() {
   showToast(`${cylId}: ${strength.toLocaleString()} psi — ${pass ? 'PASS ✓' : 'FAIL ✗'}`, pass ? 'success' : 'error');
   clearBreakForm();
   populateBreakSetSelect();
+  if (typeof concreteGuideAdvanceTo === 'function') concreteGuideAdvanceTo('report');
 }
 
 function clearBreakForm() {
@@ -27371,6 +27768,24 @@ window.r18_renderTabs = renderTabs;
 <!-- ══════════════════════════════════════════════════════════════
      GUIDED TOUR — spotlight walkthrough (always available)
      ══════════════════════════════════════════════════════════════ -->
+<!-- Concrete Guided Mode coach (optional — off by default) -->
+<div id="concreteGuideDock" role="region" aria-label="Concrete guided mode" aria-live="polite">
+  <div class="cg-dock-top">
+    <div class="cg-dock-badge" id="cgStepBadge">Step 1 of 1</div>
+    <div class="cg-dock-copy">
+      <h3 class="cg-dock-title" id="cgStepTitle">Guided Mode</h3>
+      <p class="cg-dock-body" id="cgStepBody">Turn on Guided Mode from the Concrete Hub when you want step-by-step help.</p>
+    </div>
+  </div>
+  <div class="cg-dock-actions">
+    <button type="button" class="cg-btn ghost" id="cgExitBtn" onclick="setConcreteGuidedMode(false)">Turn off</button>
+    <button type="button" class="cg-btn" id="cgBackBtn" onclick="concreteGuidePrev()">Back</button>
+    <div class="cg-progress" aria-hidden="true"><span id="cgProgressBar" style="width:0%"></span></div>
+    <button type="button" class="cg-btn" id="cgShowBtn" onclick="concreteGuideShowTarget()">Show me</button>
+    <button type="button" class="cg-btn primary" id="cgNextBtn" onclick="concreteGuideNext()">Next</button>
+  </div>
+</div>
+
 <div id="tourOverlay" aria-hidden="true">
   <svg id="tourMaskSvg" class="tour-mask-svg" aria-hidden="true">
     <defs>
