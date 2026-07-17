@@ -4517,7 +4517,7 @@ table.fc-borrow-tbl tr.fc-borrow-detail-row td{background:var(--surface);border-
               <div><div class="lbl">OPTIMUM MOISTURE</div><div class="val" id="pr_opt_moist">—</div></div>
               <div><div class="lbl">STATUS</div><div class="val" id="pr_status_lbl" style="font-size:14px;color:var(--muted);">Draft</div></div>
             </div>
-            <div class="fc-foc-chart-box"><svg id="prCurveSvg" width="640" height="360" viewBox="0 0 640 360"></svg></div>
+            <div class="fc-foc-chart-box"><svg id="prCurveSvg" width="640" height="400" viewBox="0 0 640 400"></svg></div>
             <div class="btn-row" style="margin-top:12px;flex-wrap:wrap;gap:8px;">
               <button type="button" class="btn btn-primary" onclick="fcProctorSave(false)">💾 SAVE DRAFT</button>
               <button type="button" class="btn btn-success" onclick="fcProctorSave(true)">✓ MARK COMPLETE</button>
@@ -6903,7 +6903,7 @@ table.fc-borrow-tbl tr.fc-borrow-detail-row td{background:var(--surface);border-
 // GLOBALS
 // ══════════════════════════════════════════════
 let db = null;
-const APP_BUILD = '2026.07.17-foc-multi';
+const APP_BUILD = '2026.07.17-proctor-smooth';
 const FC_CORE_ICON_SRC = 'docs/r18-reference/core-drill-icon-128.png';
 const BORELOG_ICON_SRC = 'docs/r18-reference/borelog-icon.webp';
 const BORELOG_PATH = 'docs/r18-reference/deldot-borelog.html';
@@ -22061,27 +22061,118 @@ function fcWetDensityAtMoisture(maxDry, optMoist, moisture) {
   return peak - k * Math.pow(moisture - optMoist, 2);
 }
 
-/** Interpolate dry density from real proctor points; fall back to wet-parabola model. */
-function fcDryDensityAtMoisture(points, maxDry, optMoist, moisture) {
+/**
+ * Natural cubic spline through (x,y) points — used for smooth Proctor curves.
+ * Returns { xs, ys, a, b, c, d } segment coeffs, or null.
+ */
+function fcCubicSplineFit(xs, ys) {
+  const n = xs.length;
+  if (n < 2) return null;
+  if (n === 2) {
+    const b0 = (ys[1] - ys[0]) / (xs[1] - xs[0]);
+    return { xs, ys, a: ys.slice(), b: [b0], c: [0], d: [0] };
+  }
+  const h = [];
+  for (let i = 0; i < n - 1; i++) h.push(xs[i + 1] - xs[i]);
+  // Solve for second derivatives m[0..n-1], natural: m0 = mn = 0
+  const size = n - 2;
+  const A = Array.from({ length: size }, () => Array(size).fill(0));
+  const rhs = Array(size).fill(0);
+  for (let i = 0; i < size; i++) {
+    const ii = i + 1;
+    if (i > 0) A[i][i - 1] = h[ii - 1];
+    A[i][i] = 2 * (h[ii - 1] + h[ii]);
+    if (i < size - 1) A[i][i + 1] = h[ii];
+    rhs[i] = 6 * ((ys[ii + 1] - ys[ii]) / h[ii] - (ys[ii] - ys[ii - 1]) / h[ii - 1]);
+  }
+  // Thomas algorithm for tridiagonal
+  const cPrime = Array(size).fill(0);
+  const dPrime = Array(size).fill(0);
+  let denom = A[0][0];
+  cPrime[0] = (size > 1 ? A[0][1] : 0) / denom;
+  dPrime[0] = rhs[0] / denom;
+  for (let i = 1; i < size; i++) {
+    denom = A[i][i] - A[i][i - 1] * cPrime[i - 1];
+    cPrime[i] = (i < size - 1 ? A[i][i + 1] : 0) / denom;
+    dPrime[i] = (rhs[i] - A[i][i - 1] * dPrime[i - 1]) / denom;
+  }
+  const mInterior = Array(size).fill(0);
+  mInterior[size - 1] = dPrime[size - 1];
+  for (let i = size - 2; i >= 0; i--) mInterior[i] = dPrime[i] - cPrime[i] * mInterior[i + 1];
+  const m = [0].concat(mInterior, [0]);
+
+  const a = ys.slice(0, n - 1);
+  const b = [], c = [], d = [];
+  for (let i = 0; i < n - 1; i++) {
+    b.push((ys[i + 1] - ys[i]) / h[i] - (h[i] * (2 * m[i] + m[i + 1])) / 6);
+    c.push(m[i] / 2);
+    d.push((m[i + 1] - m[i]) / (6 * h[i]));
+  }
+  return { xs, ys, a, b, c, d };
+}
+
+function fcCubicSplineEval(spline, x) {
+  if (!spline) return null;
+  const { xs, a, b, c, d } = spline;
+  const nSeg = a.length;
+  if (x <= xs[0]) {
+    const dx = x - xs[0];
+    return a[0] + b[0] * dx + c[0] * dx * dx + d[0] * dx * dx * dx;
+  }
+  if (x >= xs[xs.length - 1]) {
+    const i = nSeg - 1;
+    const dx = x - xs[i];
+    return a[i] + b[i] * dx + c[i] * dx * dx + d[i] * dx * dx * dx;
+  }
+  let i = 0;
+  for (let k = 0; k < nSeg; k++) {
+    if (x >= xs[k] && x <= xs[k + 1]) { i = k; break; }
+  }
+  const dx = x - xs[i];
+  return a[i] + b[i] * dx + c[i] * dx * dx + d[i] * dx * dx * dx;
+}
+
+/** Build smooth moisture→dry-density samples through lab points (+ optional peak pin). */
+function fcProctorSmoothSamples(points, opts) {
+  opts = opts || {};
   const pts = (points || [])
-    .map(p => ({ m: parseFloat(p.moisture), d: parseFloat(p.dryDensity) }))
+    .map(p => ({ m: parseFloat(p.moisture != null ? p.moisture : p.m), d: parseFloat(p.dryDensity != null ? p.dryDensity : p.d) }))
     .filter(p => !isNaN(p.m) && !isNaN(p.d) && p.d > 0)
     .sort((a, b) => a.m - b.m);
-  // Pin computed peak so spine ends at max dry / OMC
-  if (maxDry != null && optMoist != null && !pts.some(p => Math.abs(p.m - optMoist) < 0.05)) {
-    pts.push({ m: optMoist, d: maxDry });
-    pts.sort((a, b) => a.m - b.m);
+  // Deduplicate moistures
+  const uniq = [];
+  pts.forEach(p => {
+    if (!uniq.length || Math.abs(uniq[uniq.length - 1].m - p.m) > 1e-6) uniq.push(p);
+    else uniq[uniq.length - 1] = p;
+  });
+  if (opts.maxDry != null && opts.optMoist != null && !uniq.some(p => Math.abs(p.m - opts.optMoist) < 0.05)) {
+    uniq.push({ m: opts.optMoist, d: opts.maxDry });
+    uniq.sort((a, b) => a.m - b.m);
   }
-  if (pts.length >= 2) {
-    if (moisture <= pts[0].m) return pts[0].d;
-    if (moisture >= pts[pts.length - 1].m) return pts[pts.length - 1].d;
-    for (let i = 0; i < pts.length - 1; i++) {
-      const a = pts[i], b = pts[i + 1];
-      if (moisture >= a.m && moisture <= b.m) {
-        const t = (moisture - a.m) / Math.max(1e-9, b.m - a.m);
-        return a.d + t * (b.d - a.d);
-      }
-    }
+  if (uniq.length < 2) return { points: uniq, samples: uniq.slice(), spline: null };
+  const xs = uniq.map(p => p.m);
+  const ys = uniq.map(p => p.d);
+  const spline = fcCubicSplineFit(xs, ys);
+  const step = opts.step != null ? opts.step : 0.05;
+  const x0 = opts.xMin != null ? opts.xMin : xs[0];
+  const x1 = opts.xMax != null ? opts.xMax : xs[xs.length - 1];
+  const samples = [];
+  for (let m = x0; m <= x1 + 1e-9; m += step) {
+    const d = fcCubicSplineEval(spline, m);
+    if (d != null && !isNaN(d)) samples.push({ m, d });
+  }
+  // ensure exact endpoint
+  const dEnd = fcCubicSplineEval(spline, x1);
+  if (samples.length && Math.abs(samples[samples.length - 1].m - x1) > 1e-6) samples.push({ m: x1, d: dEnd });
+  return { points: uniq, samples, spline };
+}
+
+/** Interpolate dry density from real proctor points (smooth spline); fall back to wet-parabola model. */
+function fcDryDensityAtMoisture(points, maxDry, optMoist, moisture) {
+  const fitted = fcProctorSmoothSamples(points, { maxDry, optMoist, step: 0.25 });
+  if (fitted.spline) {
+    const d = fcCubicSplineEval(fitted.spline, moisture);
+    if (d != null && !isNaN(d)) return d;
   }
   if (maxDry != null && optMoist != null) {
     const wet = fcWetDensityAtMoisture(maxDry, optMoist, moisture);
@@ -22463,6 +22554,42 @@ function fcProctorComputePoint(raw, meta) {
   };
 }
 
+function fcProctorQuadraticFit(pts) {
+  // Least-squares y = a x^2 + b x + c
+  const n = pts.length;
+  if (n < 3) return null;
+  let Sx=0, Sx2=0, Sx3=0, Sx4=0, Sy=0, Sxy=0, Sx2y=0;
+  pts.forEach(p => {
+    const x = p.moisture, y = p.dryDensity;
+    const x2 = x * x;
+    Sx += x; Sx2 += x2; Sx3 += x2 * x; Sx4 += x2 * x2;
+    Sy += y; Sxy += x * y; Sx2y += x2 * y;
+  });
+  // Solve 3x3 normal equations
+  const A = [
+    [Sx4, Sx3, Sx2],
+    [Sx3, Sx2, Sx],
+    [Sx2, Sx, n],
+  ];
+  const B = [Sx2y, Sxy, Sy];
+  // Gauss-Jordan
+  const M = A.map((row, i) => row.concat([B[i]]));
+  for (let col = 0; col < 3; col++) {
+    let piv = col;
+    for (let r = col + 1; r < 3; r++) if (Math.abs(M[r][col]) > Math.abs(M[piv][col])) piv = r;
+    if (Math.abs(M[piv][col]) < 1e-12) return null;
+    if (piv !== col) { const tmp = M[col]; M[col] = M[piv]; M[piv] = tmp; }
+    const div = M[col][col];
+    for (let c = col; c < 4; c++) M[col][c] /= div;
+    for (let r = 0; r < 3; r++) {
+      if (r === col) continue;
+      const f = M[r][col];
+      for (let c = col; c < 4; c++) M[r][c] -= f * M[col][c];
+    }
+  }
+  return { a: M[0][3], b: M[1][3], c: M[2][3] };
+}
+
 function fcProctorComputePeak(points) {
   const pts = (points || [])
     .map(p => ({
@@ -22472,11 +22599,14 @@ function fcProctorComputePeak(points) {
     }))
     .filter(p => !isNaN(p.moisture) && !isNaN(p.dryDensity) && p.dryDensity > 0)
     .sort((a, b) => a.moisture - b.moisture);
-  if (!pts.length) return { maxDry: null, optMoist: null, points: pts };
+  if (!pts.length) return { maxDry: null, optMoist: null, points: pts, fit: null };
   let peakIdx = 0;
   pts.forEach((p, i) => { if (p.dryDensity > pts[peakIdx].dryDensity) peakIdx = i; });
   let maxDry = pts[peakIdx].dryDensity;
   let optMoist = pts[peakIdx].moisture;
+  let fit = null;
+
+  // 1) Exact parabola through peak ± neighbors (standard Proctor peak fit)
   if (peakIdx > 0 && peakIdx < pts.length - 1) {
     const p0 = pts[peakIdx - 1], p1 = pts[peakIdx], p2 = pts[peakIdx + 1];
     const x1 = p0.moisture, y1 = p0.dryDensity;
@@ -22492,14 +22622,31 @@ function fcProctorComputePeak(points) {
         if (vertex >= x1 && vertex <= x3) {
           optMoist = vertex;
           maxDry = a * vertex * vertex + b * vertex + c2;
+          fit = { a, b, c: c2, method: '3-point' };
         }
       }
     }
   }
+
+  // 2) If 3-point unavailable, take max of smooth cubic spline through points
+  if (!fit && pts.length >= 3) {
+    const smooth = fcProctorSmoothSamples(pts, { step: 0.02 });
+    if (smooth.samples && smooth.samples.length) {
+      let best = smooth.samples[0];
+      smooth.samples.forEach(s => { if (s.d > best.d) best = s; });
+      if (best && best.d >= pts[peakIdx].dryDensity - 0.05) {
+        optMoist = best.m;
+        maxDry = best.d;
+        fit = { method: 'spline-max' };
+      }
+    }
+  }
+
   return {
     maxDry: Math.round(maxDry * 10) / 10,
     optMoist: Math.round(optMoist * 10) / 10,
     points: pts,
+    fit,
   };
 }
 
@@ -22622,65 +22769,98 @@ function fcProctorDrawChart(peak, meta) {
   const svg = document.getElementById('prCurveSvg');
   if (!svg) return;
   const pts = peak?.points || [];
-  const W = 640, H = 360, ml = 50, mr = 16, mt = 16, mb = 40;
+  const W = 640, H = 400, ml = 54, mr = 18, mt = 28, mb = 44;
   const plotW = W - ml - mr, plotH = H - mt - mb;
-  let xMin = 4, xMax = 24, yMin = 90, yMax = 140;
+  let xMin = 2.5, xMax = 17.5, yMin = 105, yMax = 130;
   if (pts.length) {
     const ms = pts.map(p => p.moisture);
     const ds = pts.map(p => p.dryDensity);
-    xMin = Math.max(0, Math.floor(Math.min(...ms) - 2));
-    xMax = Math.ceil(Math.max(...ms) + 2);
-    yMin = Math.max(70, Math.floor(Math.min(...ds) - 4));
-    yMax = Math.ceil(Math.max(...ds) + 4);
+    if (peak?.maxDry != null) ds.push(peak.maxDry);
+    if (peak?.optMoist != null) ms.push(peak.optMoist);
+    const m0 = Math.min(...ms), m1 = Math.max(...ms);
+    const d0 = Math.min(...ds), d1 = Math.max(...ds);
+    // Report-style padding
+    xMin = Math.max(0, Math.floor((m0 - 2.5) * 2) / 2);
+    xMax = Math.ceil((m1 + 2.5) * 2) / 2;
+    yMin = Math.floor((d0 - 5) / 5) * 5;
+    yMax = Math.ceil((d1 + 5) / 5) * 5;
+    if (yMax - yMin < 20) { yMin -= 5; yMax += 5; }
   }
   const zavGs = meta?.zavGs || meta?.soilGs;
   const xScale = m => ml + ((m - xMin) / Math.max(0.1, xMax - xMin)) * plotW;
   const yScale = d => mt + plotH - ((d - yMin) / Math.max(0.1, yMax - yMin)) * plotH;
   let g = '';
-  for (let m = xMin; m <= xMax; m += 2) {
-    g += `<line x1="${xScale(m)}" y1="${mt}" x2="${xScale(m)}" y2="${mt+plotH}" stroke="#e2e8f0"/>`;
-    g += `<text x="${xScale(m)}" y="${H-12}" font-size="9" fill="#64748b" text-anchor="middle">${m}</text>`;
+  // Plot frame
+  g += `<rect x="${ml}" y="${mt}" width="${plotW}" height="${plotH}" fill="#ffffff" stroke="#94a3b8" stroke-width="1"/>`;
+  // Minor + major grid
+  const xStepMinor = (xMax - xMin) <= 20 ? 0.5 : 1;
+  const xStepMajor = (xMax - xMin) <= 20 ? 2.5 : 2;
+  for (let m = xMin; m <= xMax + 1e-9; m += xStepMinor) {
+    const x = xScale(m);
+    const major = Math.abs((m - xMin) / xStepMajor - Math.round((m - xMin) / xStepMajor)) < 1e-6;
+    g += `<line x1="${x}" y1="${mt}" x2="${x}" y2="${mt+plotH}" stroke="${major ? '#cbd5e1' : '#eef2f7'}" stroke-width="${major ? 1 : 0.6}"/>`;
+    if (major) g += `<text x="${x}" y="${H-14}" font-size="10" fill="#334155" text-anchor="middle">${Number(m.toFixed(1))}</text>`;
   }
-  for (let d = yMin; d <= yMax; d += 5) {
-    g += `<line x1="${ml}" y1="${yScale(d)}" x2="${ml+plotW}" y2="${yScale(d)}" stroke="#e2e8f0"/>`;
-    g += `<text x="${ml-6}" y="${yScale(d)+3}" font-size="9" fill="#64748b" text-anchor="end">${d}</text>`;
+  for (let d = yMin; d <= yMax + 1e-9; d += 1) {
+    const y = yScale(d);
+    const major = Math.abs(d % 5) < 1e-6 || Math.abs(d % 5 - 5) < 1e-6;
+    g += `<line x1="${ml}" y1="${y}" x2="${ml+plotW}" y2="${y}" stroke="${major ? '#cbd5e1' : '#eef2f7'}" stroke-width="${major ? 1 : 0.6}"/>`;
+    if (major) g += `<text x="${ml-6}" y="${y+3}" font-size="10" fill="#334155" text-anchor="end">${d}</text>`;
   }
-  g += `<text x="${ml+plotW/2}" y="${H-26}" font-size="10" fill="#334155" text-anchor="middle">Moisture (%)</text>`;
-  g += `<text x="14" y="${mt+plotH/2}" font-size="10" fill="#334155" text-anchor="middle" transform="rotate(-90 14 ${mt+plotH/2})">Dry Density (pcf)</text>`;
+  g += `<text x="${ml+plotW/2}" y="${H-2}" font-size="11" fill="#0f172a" text-anchor="middle">Water content, %</text>`;
+  g += `<text x="14" y="${mt+plotH/2}" font-size="11" fill="#0f172a" text-anchor="middle" transform="rotate(-90 14 ${mt+plotH/2})">Dry density, pcf</text>`;
 
   // Zero air voids curve
   if (zavGs && zavGs > 1) {
     const zavPts = [];
-    for (let m = xMin; m <= xMax + 0.001; m += 0.25) {
+    for (let m = xMin; m <= xMax + 0.001; m += 0.1) {
       const d = (zavGs * 62.4) / (1 + (m / 100) * zavGs);
-      if (d >= yMin && d <= yMax + 20) zavPts.push(`${xScale(m).toFixed(1)},${yScale(d).toFixed(1)}`);
+      if (d >= yMin - 2 && d <= yMax + 2) zavPts.push(`${xScale(m).toFixed(2)},${yScale(d).toFixed(2)}`);
     }
     if (zavPts.length > 1) {
-      g += `<path d="M ${zavPts.join(' L ')}" fill="none" stroke="#94a3b8" stroke-width="1.4" stroke-dasharray="5 4"/>`;
-      g += `<text x="${ml+plotW-4}" y="${mt+12}" font-size="9" fill="#64748b" text-anchor="end">ZAV (Gs ${zavGs})</text>`;
+      g += `<path d="M ${zavPts.join(' L ')}" fill="none" stroke="#94a3b8" stroke-width="1.2" stroke-dasharray="4 3"/>`;
+      g += `<text x="${ml+plotW-6}" y="${mt+14}" font-size="9" fill="#64748b" text-anchor="end">ZAV</text>`;
     }
   }
 
+  // Smooth cubic-spline Proctor curve through lab points
   if (pts.length >= 2) {
-    const path = pts.map(p => `${xScale(p.moisture).toFixed(1)},${yScale(p.dryDensity).toFixed(1)}`).join(' L ');
-    g += `<path d="M ${path}" fill="none" stroke="#2563eb" stroke-width="2"/>`;
-  }
-  if (peak?.maxDry != null && peak?.optMoist != null) {
-    const spine = fcCurveSpineRange(peak.optMoist);
-    const spinePts = [];
-    for (let m = spine.min; m <= spine.max + 0.001; m += 0.1) {
-      const dry = fcDryDensityAtMoisture(pts, peak.maxDry, peak.optMoist, m);
-      if (dry == null) continue;
-      spinePts.push(`${xScale(m).toFixed(1)},${yScale(dry).toFixed(1)}`);
-    }
-    if (spinePts.length > 1) {
-      g += `<path d="M ${spinePts.join(' L ')}" fill="none" stroke="#c47c2a" stroke-width="3" stroke-linecap="round"/>`;
+    const smooth = fcProctorSmoothSamples(pts, {
+      maxDry: peak?.maxDry,
+      optMoist: peak?.optMoist,
+      step: 0.05,
+    });
+    if (smooth.samples.length > 1) {
+      const path = smooth.samples.map(s => `${xScale(s.m).toFixed(2)},${yScale(s.d).toFixed(2)}`).join(' L ');
+      g += `<path d="M ${path}" fill="none" stroke="#0f172a" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>`;
     }
   }
+
+  // Lab points — open circles like a report
   pts.forEach(p => {
-    g += `<circle cx="${xScale(p.moisture)}" cy="${yScale(p.dryDensity)}" r="4.5" fill="#2563eb" stroke="#fff" stroke-width="1.5"/>`;
+    g += `<circle cx="${xScale(p.moisture)}" cy="${yScale(p.dryDensity)}" r="4" fill="#ffffff" stroke="#0f172a" stroke-width="1.6"/>`;
   });
+
+  // Peak callout
+  if (peak?.maxDry != null && peak?.optMoist != null && pts.length >= 2) {
+    const px = xScale(peak.optMoist);
+    const py = yScale(peak.maxDry);
+    g += `<circle cx="${px}" cy="${py}" r="3" fill="#c47c2a" stroke="#fff" stroke-width="1"/>`;
+    const label = `${peak.optMoist.toFixed(1)}%, ${peak.maxDry.toFixed(1)} pcf`;
+    const boxW = Math.max(118, label.length * 6.2);
+    const boxH = 20;
+    let bx = px - boxW / 2;
+    let by = py - 28;
+    if (bx < ml + 2) bx = ml + 2;
+    if (bx + boxW > ml + plotW - 2) bx = ml + plotW - boxW - 2;
+    if (by < mt + 2) by = py + 12;
+    g += `<rect x="${bx}" y="${by}" width="${boxW}" height="${boxH}" rx="3" fill="#ffffff" stroke="#0f172a" stroke-width="1"/>`;
+    g += `<text x="${bx + boxW / 2}" y="${by + 14}" font-size="11" fill="#0f172a" text-anchor="middle" font-family="ui-sans-serif,system-ui,sans-serif">${label}</text>`;
+  }
+
   svg.innerHTML = g;
+  svg.setAttribute('viewBox', `0 0 ${W} ${H}`);
+  svg.setAttribute('height', String(H));
 }
 
 function fcProctorNew() {
@@ -23200,12 +23380,14 @@ function fcFocDrawFamilyChart(family) {
   const colors = ['#c47c2a', '#2563eb', '#16a34a', '#dc2626', '#7c3aed', '#0891b2', '#ca8a04', '#db2777'];
   const spineSeries = curves.map((c, idx) => {
     const spine = fcCurveSpineRange(c.optMoist);
-    const samples = [];
-    for (let m = spine.min; m <= spine.max + 0.001; m += 0.08) {
-      const dry = fcDryDensityAtMoisture(c.points, c.maxDry, c.optMoist, m);
-      if (dry == null) continue;
-      samples.push({ m, d: dry });
-    }
+    const fitted = fcProctorSmoothSamples(c.points || [], {
+      maxDry: c.maxDry,
+      optMoist: c.optMoist,
+      xMin: spine.min,
+      xMax: spine.max,
+      step: 0.05,
+    });
+    const samples = (fitted.samples || []).map(s => ({ m: s.m, d: s.d }));
     return { c, idx, spine, samples, color: colors[idx % colors.length] };
   });
   if (spineSeries.length) {
