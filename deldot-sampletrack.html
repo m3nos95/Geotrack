@@ -2791,6 +2791,33 @@ table.fc-borrow-tbl tr.fc-borrow-detail-row td{background:var(--surface);border-
 .fc-curve-table button.active { border-color: var(--accent2); background: rgba(217,138,56,0.12); color: var(--accent2); }
 .fc-curve-table button:hover { border-color: var(--accent2); }
 .fc-curve-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
+.fc-lib-toolbar { display:flex; gap:10px; align-items:center; flex-wrap:wrap; margin-bottom:14px; }
+.fc-proctor-layout { display:grid; grid-template-columns:280px 1fr; gap:14px; }
+@media (max-width:900px){ .fc-proctor-layout { grid-template-columns:1fr; } }
+.fc-proctor-list { max-height:70vh; overflow:auto; }
+.fc-proctor-item {
+  display:block; width:100%; text-align:left; background:var(--panel); border:1px solid var(--border);
+  border-radius:8px; padding:10px 12px; margin-bottom:8px; cursor:pointer; color:var(--text);
+  font-family:var(--mono); font-size:11px;
+}
+.fc-proctor-item.active { border-color:var(--accent2); background:rgba(196,124,42,0.1); }
+.fc-proctor-item .meta { color:var(--muted); font-size:10px; margin-top:4px; }
+.fc-badge { display:inline-block; font-size:9px; letter-spacing:0.5px; padding:2px 6px; border-radius:4px; }
+.fc-badge.complete { background:rgba(46,204,120,0.15); color:var(--green2); }
+.fc-badge.draft { background:rgba(255,255,255,0.06); color:var(--muted); }
+.fc-points-tbl { width:100%; border-collapse:collapse; font-family:var(--mono); font-size:11px; }
+.fc-points-tbl th { text-align:left; color:var(--muted); font-size:9px; letter-spacing:1px; padding:6px 4px; border-bottom:1px solid var(--border); }
+.fc-points-tbl td { padding:4px; border-bottom:1px solid var(--border); }
+.fc-points-tbl input { width:100%; background:var(--bg); border:1px solid var(--border); color:var(--text); border-radius:4px; padding:6px 8px; font-family:var(--mono); font-size:12px; }
+.fc-result-strip { display:flex; gap:16px; flex-wrap:wrap; margin:12px 0; padding:12px; background:var(--panel); border:1px solid var(--border); border-radius:8px; }
+.fc-result-strip .val { font-family:var(--mono); font-size:18px; font-weight:700; color:var(--accent2); }
+.fc-result-strip .lbl { font-family:var(--mono); font-size:9px; color:var(--muted); letter-spacing:1px; }
+.fc-foc-chart-box { background:#f8fafc; border:1px solid #cbd5e1; border-radius:8px; padding:8px; overflow-x:auto; margin:12px 0; }
+.fc-foc-chart-box svg { display:block; min-width:640px; }
+#fcAddFamilyModal { display:none; position:fixed; inset:0; z-index:940; background:rgba(0,0,0,0.75); align-items:center; justify-content:center; padding:16px; }
+#fcAddFamilyModal.open { display:flex; }
+.fc-add-family-panel { background:var(--surface); border:1px solid var(--border); border-radius:12px; padding:18px; width:min(440px,100%); }
+
 .fc-borrow-detail-inner{padding:4px 8px 12px;}
 .fc-borrow-detail-title{font-family:var(--mono);font-size:10px;letter-spacing:1.5px;color:var(--muted);padding:10px 0 6px;}
 .fc-borrow-detail-chip-row{display:flex;flex-wrap:wrap;gap:6px;}
@@ -4346,6 +4373,100 @@ table.fc-borrow-tbl tr.fc-borrow-detail-row td{background:var(--surface);border-
         <div style="display:flex;gap:7px;align-items:center;flex-wrap:wrap;">
           <div id="fc_session_checklist" style="display:flex;gap:6px;margin-right:8px;"></div>
           <button onclick="clearFC_Session()" style="background:transparent;border:1px solid var(--border);color:var(--muted);padding:5px 10px;border-radius:var(--radius-sm);font-family:var(--mono);font-size:9px;cursor:pointer;letter-spacing:1px;" title="End this test session">✕ END SESSION</button>
+        </div>
+      </div>
+
+      <!-- ══ MODULE MODE: Field Event / Proctor / Family of Curves ══ -->
+      <div class="lab-mode-tabs" id="fcModuleModeTabs" data-guide="fc-modules" style="margin-bottom:16px;">
+        <button type="button" class="lab-mode-tab active" id="fcmode-event" onclick="fcSetModuleMode('event')">⚡ FIELD EVENT</button>
+        <button type="button" class="lab-mode-tab" id="fcmode-proctor" onclick="fcSetModuleMode('proctor')">📊 PROCTOR</button>
+        <button type="button" class="lab-mode-tab" id="fcmode-foc" onclick="fcSetModuleMode('foc')">📈 FAMILY OF CURVES</button>
+      </div>
+
+      <!-- ══ PROCTOR LIBRARY ══ -->
+      <div id="fc_proctor_state" data-guide="fc-proctor" style="display:none;">
+        <div class="fc-lib-toolbar">
+          <div style="font-family:var(--display);font-size:18px;font-weight:700;color:var(--text);">Proctor Tests</div>
+          <div style="flex:1"></div>
+          <button type="button" class="btn btn-primary" onclick="fcProctorNew()">+ NEW PROCTOR</button>
+        </div>
+        <p style="font-family:var(--sans);font-size:13px;color:var(--muted);margin:-4px 0 14px;line-height:1.45;">
+          Enter a full moisture–density curve. When you mark it complete, you can add it to a Family of Curves.
+        </p>
+        <div class="fc-proctor-layout">
+          <div class="card fc-proctor-list" id="fcProctorList"><div class="hub-empty">No proctors yet.</div></div>
+          <div class="card" id="fcProctorEditor">
+            <div class="card-title">Proctor Entry</div>
+            <div class="form-grid" style="margin-bottom:12px;">
+              <div class="form-group"><label>Name / ID</label><input type="text" id="pr_name" placeholder="Borrow A — Station 12+50"></div>
+              <div class="form-group"><label>Contract</label><input type="text" id="pr_contract" placeholder="T201109502"></div>
+              <div class="form-group"><label>Material</label><input type="text" id="pr_material" placeholder="209C / Select Borrow"></div>
+              <div class="form-group"><label>Source / Location</label><input type="text" id="pr_source" placeholder="Pit / stockpile"></div>
+              <div class="form-group"><label>Date</label><input type="date" id="pr_date"></div>
+              <div class="form-group"><label>Technician</label><input type="text" id="pr_tech" placeholder="Mills"></div>
+            </div>
+            <div class="manual-section-title">Curve Points</div>
+            <p style="font-family:var(--mono);font-size:10px;color:var(--muted);margin:0 0 8px;line-height:1.5;">
+              Enter moisture (%) and dry density (pcf). Wet density is optional — if entered with moisture, dry density fills in.
+            </p>
+            <table class="fc-points-tbl">
+              <thead><tr><th>#</th><th>Moisture %</th><th>Wet dens. (pcf)</th><th>Dry dens. (pcf)</th><th></th></tr></thead>
+              <tbody id="pr_points_body"></tbody>
+            </table>
+            <div style="margin:8px 0 12px;">
+              <button type="button" class="btn btn-ghost" onclick="fcProctorAddPoint()">+ Add point</button>
+              <button type="button" class="btn btn-ghost" onclick="fcProctorRecalc()">↻ Recalculate</button>
+            </div>
+            <div class="fc-result-strip">
+              <div><div class="lbl">MAX DRY DENSITY</div><div class="val" id="pr_max_dry">—</div></div>
+              <div><div class="lbl">OPTIMUM MOISTURE</div><div class="val" id="pr_opt_moist">—</div></div>
+              <div><div class="lbl">STATUS</div><div class="val" id="pr_status_lbl" style="font-size:14px;color:var(--muted);">Draft</div></div>
+            </div>
+            <div class="fc-foc-chart-box"><svg id="prCurveSvg" width="640" height="320" viewBox="0 0 640 320"></svg></div>
+            <div class="btn-row" style="margin-top:12px;flex-wrap:wrap;gap:8px;">
+              <button type="button" class="btn btn-primary" onclick="fcProctorSave(false)">💾 SAVE DRAFT</button>
+              <button type="button" class="btn btn-success" onclick="fcProctorSave(true)">✓ MARK COMPLETE</button>
+              <button type="button" class="btn btn-ghost" onclick="fcProctorDelete()" style="color:var(--red2);">Delete</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ══ FAMILY OF CURVES LIBRARY ══ -->
+      <div id="fc_foc_state" data-guide="fc-foc" style="display:none;">
+        <div class="fc-lib-toolbar">
+          <div style="font-family:var(--display);font-size:18px;font-weight:700;color:var(--text);">Family of Curves</div>
+          <div style="flex:1"></div>
+          <button type="button" class="btn btn-primary" onclick="fcFocNewFamily()">+ NEW FAMILY</button>
+        </div>
+        <p style="font-family:var(--sans);font-size:13px;color:var(--muted);margin:-4px 0 14px;line-height:1.45;">
+          Families are built from your completed proctors. Charts show only the <strong>80%–100%</strong> portion of each curve (dry of optimum to optimum).
+        </p>
+        <div class="fc-proctor-layout">
+          <div class="card fc-proctor-list" id="fcFocFamilyList"><div class="hub-empty">No families yet.</div></div>
+          <div class="card" id="fcFocFamilyDetail">
+            <div class="card-title" id="fcFocDetailTitle">Select or create a family</div>
+            <div class="form-grid" id="fcFocDetailMeta" style="display:none;margin-bottom:12px;">
+              <div class="form-group"><label>Family name</label><input type="text" id="foc_name" onchange="fcFocSaveMeta()"></div>
+              <div class="form-group"><label>Contract</label><input type="text" id="foc_contract" onchange="fcFocSaveMeta()"></div>
+              <div class="form-group"><label>Material</label><input type="text" id="foc_material" onchange="fcFocSaveMeta()"></div>
+              <div class="form-group"><label>Notes</label><input type="text" id="foc_notes" onchange="fcFocSaveMeta()"></div>
+            </div>
+            <div class="fc-foc-chart-box" id="fcFocChartWrap" style="display:none;">
+              <div style="font-family:var(--mono);font-size:10px;color:#64748b;margin-bottom:6px;">80%–100% of optimum moisture (spine only)</div>
+              <svg id="fcFocFamilySvg" width="640" height="400" viewBox="0 0 640 400"></svg>
+            </div>
+            <div id="fcFocCurvesTable" style="display:none;margin-top:12px;"></div>
+            <div id="fcFocAddRow" style="display:none;margin-top:14px;padding-top:12px;border-top:1px solid var(--border);">
+              <div style="font-family:var(--mono);font-size:9px;letter-spacing:1px;color:var(--muted);margin-bottom:8px;">ADD COMPLETED PROCTOR</div>
+              <div style="display:flex;gap:8px;flex-wrap:wrap;">
+                <select id="foc_add_proctor" class="form-input" style="flex:1;min-width:180px;"></select>
+                <button type="button" class="btn btn-primary" onclick="fcFocAddSelectedProctor()">Add to family</button>
+                <button type="button" class="btn btn-ghost" onclick="fcFocDeleteFamily()" style="color:var(--red2);">Delete family</button>
+              </div>
+            </div>
+            <div id="fcFocEmptyHint" class="hub-empty" style="padding:28px;">Create a family, then add completed proctors. Each proctor becomes one curve on the spine chart.</div>
+          </div>
         </div>
       </div>
 
@@ -6227,6 +6348,8 @@ table.fc-borrow-tbl tr.fc-borrow-detail-row td{background:var(--surface);border-
         <button class="hub-action-btn" onclick="switchView('scan')">📷 SCAN QR</button>
         <button class="hub-action-btn" onclick="switchView('fieldcontrol')">⚖️ LB-68</button>
         <button class="hub-action-btn" onclick="switchView('fieldcontrol')">☢️ NUCLEAR</button>
+        <button class="hub-action-btn" data-guide="hub-proctor" onclick="fcOpenProctorFromHub()">📊 PROCTOR</button>
+        <button class="hub-action-btn" data-guide="hub-foc" onclick="fcOpenFocFromHub()">📈 FAMILY OF CURVES</button>
         <button type="button" class="concrete-guide-toggle" id="btnFieldGuidedHub" onclick="toggleFieldGuidedMode()"
                 title="Turn Guided Mode on or off">
           <span class="guide-dot" aria-hidden="true"></span>
@@ -6631,6 +6754,26 @@ table.fc-borrow-tbl tr.fc-borrow-detail-row td{background:var(--surface);border-
     <div style="display:flex;gap:10px;justify-content:flex-end;">
       <button class="btn btn-ghost" onclick="slHideDeleteModal()" style="font-size:11px;">Cancel</button>
       <button class="btn" onclick="slConfirmDelete()" style="background:var(--red);border:1px solid var(--red2);color:#fff;font-size:11px;letter-spacing:0.5px;">🗑 Delete</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── ADD PROCTOR TO FAMILY PROMPT ── -->
+<div id="fcAddFamilyModal" onclick="if(event.target===this)fcCloseAddFamilyModal()">
+  <div class="fc-add-family-panel" role="dialog" aria-label="Add to Family of Curves">
+    <div style="font-family:var(--display);font-size:18px;font-weight:700;margin-bottom:6px;">Add to Family of Curves?</div>
+    <p id="fcAddFamilyMsg" style="font-family:var(--sans);font-size:13px;color:var(--muted);line-height:1.45;margin:0 0 14px;">This proctor is complete. Add it to a family?</p>
+    <div class="form-group" style="margin-bottom:10px;">
+      <label>Existing family</label>
+      <select id="fcAddFamilySelect" class="form-input"><option value="">— Select family —</option></select>
+    </div>
+    <div class="form-group" style="margin-bottom:14px;">
+      <label>Or new family name</label>
+      <input type="text" id="fcAddFamilyNewName" class="form-input" placeholder="e.g. Contract T201 — Borrow Area">
+    </div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;">
+      <button type="button" class="btn btn-success" onclick="fcConfirmAddToFamily()">Add to family</button>
+      <button type="button" class="btn btn-ghost" onclick="fcCloseAddFamilyModal()">Not now</button>
     </div>
   </div>
 </div>
@@ -12175,9 +12318,34 @@ const FIELD_GUIDE_STEPS = [
   {
     id: 'sessions',
     view: 'fieldcontrol',
+    moduleMode: 'event',
     guide: 'fc-sessions',
     title: 'Resume or end a session',
     body: 'Open Field Sessions lists work still in progress. Use END SESSION on the amber banner when you are finished. You can also resume by test number.'
+  },
+  {
+    id: 'modules',
+    view: 'fieldcontrol',
+    moduleMode: 'event',
+    guide: 'fc-modules',
+    title: 'Field Event, Proctor, Family of Curves',
+    body: 'At the top of Field Control, switch between Field Event (density/lab work), Proctor (full moisture–density curve), and Family of Curves (group completed proctors).'
+  },
+  {
+    id: 'proctor',
+    view: 'fieldcontrol',
+    moduleMode: 'proctor',
+    guide: 'fc-proctor',
+    title: 'Enter a full Proctor',
+    body: 'Add moisture and density points for the curve. Recalculate shows max dry density and optimum moisture. Save a draft anytime, then Mark Complete when the curve is finished.'
+  },
+  {
+    id: 'foc',
+    view: 'fieldcontrol',
+    moduleMode: 'foc',
+    guide: 'fc-foc',
+    title: 'Build a Family of Curves',
+    body: 'When you complete a proctor, LabTrak asks if you want to add it to a family. The Family screen charts only the 80%–100% spine of each proctor — you do not need the old T-99 curve numbers for this library.'
   },
   {
     id: 'borrow',
@@ -12191,7 +12359,7 @@ const FIELD_GUIDE_STEPS = [
     view: 'fieldhub',
     guide: 'fieldhub-home',
     title: 'You are ready',
-    body: 'That is the Field Control workflow. Turn Guided Mode off anytime — the screens stay the same. Tap ? at the top for help on any single screen.'
+    body: 'That covers field events, Proctor, and Family of Curves. Turn Guided Mode off anytime — the screens stay the same. Tap ? at the top for help on any single screen.'
   }
 ];
 
@@ -12230,6 +12398,12 @@ function fieldGuideGoToStepView(step) {
     if (getActiveViewName() !== step.view) switchView(step.view);
   } else if (step.view && typeof switchView === 'function') {
     switchView(step.view);
+  }
+  if (step.view === 'fieldcontrol' && typeof fcSetModuleMode === 'function') {
+    const mode = step.moduleMode || 'event';
+    if (typeof _fcModuleMode === 'undefined' || _fcModuleMode !== mode) {
+      fcSetModuleMode(mode);
+    }
   }
   if (step.view === 'fieldcontrol' && step.tab && typeof switchFCTab === 'function') {
     const active = document.getElementById('fc_active_state');
@@ -21788,6 +21962,35 @@ function fcWetDensityAtMoisture(maxDry, optMoist, moisture) {
   return peak - k * Math.pow(moisture - optMoist, 2);
 }
 
+/** Interpolate dry density from real proctor points; fall back to wet-parabola model. */
+function fcDryDensityAtMoisture(points, maxDry, optMoist, moisture) {
+  const pts = (points || [])
+    .map(p => ({ m: parseFloat(p.moisture), d: parseFloat(p.dryDensity) }))
+    .filter(p => !isNaN(p.m) && !isNaN(p.d) && p.d > 0)
+    .sort((a, b) => a.m - b.m);
+  // Pin computed peak so spine ends at max dry / OMC
+  if (maxDry != null && optMoist != null && !pts.some(p => Math.abs(p.m - optMoist) < 0.05)) {
+    pts.push({ m: optMoist, d: maxDry });
+    pts.sort((a, b) => a.m - b.m);
+  }
+  if (pts.length >= 2) {
+    if (moisture <= pts[0].m) return pts[0].d;
+    if (moisture >= pts[pts.length - 1].m) return pts[pts.length - 1].d;
+    for (let i = 0; i < pts.length - 1; i++) {
+      const a = pts[i], b = pts[i + 1];
+      if (moisture >= a.m && moisture <= b.m) {
+        const t = (moisture - a.m) / Math.max(1e-9, b.m - a.m);
+        return a.d + t * (b.d - a.d);
+      }
+    }
+  }
+  if (maxDry != null && optMoist != null) {
+    const wet = fcWetDensityAtMoisture(maxDry, optMoist, moisture);
+    return wet / (1 + moisture / 100);
+  }
+  return null;
+}
+
 function fcScoreCurveForPoint(curve, wet, moist) {
   if (!fcIsMoistureOnSpine(moist, curve.optMoist)) return Infinity;
   const predicted = fcWetDensityAtMoisture(curve.maxDry, curve.optMoist, moist);
@@ -21996,6 +22199,685 @@ function fcRenderCurveChart() {
     }).join('');
   }
 }
+
+
+// ══════════════════════════════════════════════════════════════
+// PROCTOR + FAMILY OF CURVES (user-created, Field Control)
+// ══════════════════════════════════════════════════════════════
+const FC_PROCTORS_KEY = 'labtrak_proctors_v1';
+const FC_FOC_FAMILIES_KEY = 'labtrak_curve_families_v1';
+let _fcModuleMode = 'event'; // event | proctor | foc
+let _fcProctorEditId = null;
+let _fcFocEditId = null;
+let _fcPendingFamilyProctorId = null;
+
+function fcUid() {
+  try {
+    if (crypto && crypto.randomUUID) return crypto.randomUUID();
+  } catch (e) {}
+  return 'id_' + Date.now().toString(36) + '_' + Math.random().toString(36).slice(2, 9);
+}
+
+function fcLoadProctors() {
+  try { return JSON.parse(localStorage.getItem(FC_PROCTORS_KEY) || '[]'); } catch { return []; }
+}
+function fcSaveProctors(list) {
+  localStorage.setItem(FC_PROCTORS_KEY, JSON.stringify(list || []));
+}
+function fcLoadFamilies() {
+  try { return JSON.parse(localStorage.getItem(FC_FOC_FAMILIES_KEY) || '[]'); } catch { return []; }
+}
+function fcSaveFamilies(list) {
+  localStorage.setItem(FC_FOC_FAMILIES_KEY, JSON.stringify(list || []));
+}
+
+function fcOpenProctorFromHub() {
+  switchView('fieldcontrol');
+  setTimeout(() => fcSetModuleMode('proctor'), 80);
+}
+function fcOpenFocFromHub() {
+  switchView('fieldcontrol');
+  setTimeout(() => fcSetModuleMode('foc'), 80);
+}
+
+function fcSetModuleMode(mode) {
+  _fcModuleMode = mode || 'event';
+  ['event', 'proctor', 'foc'].forEach(m => {
+    const btn = document.getElementById('fcmode-' + m);
+    if (btn) btn.classList.toggle('active', m === _fcModuleMode);
+  });
+  const proctorEl = document.getElementById('fc_proctor_state');
+  const focEl = document.getElementById('fc_foc_state');
+  const startEl = document.getElementById('fc_start_state');
+  const activeEl = document.getElementById('fc_active_state');
+  const densWrap = document.getElementById('fc_density_records');
+
+  const showLib = _fcModuleMode !== 'event';
+  if (proctorEl) proctorEl.style.display = _fcModuleMode === 'proctor' ? '' : 'none';
+  if (focEl) focEl.style.display = _fcModuleMode === 'foc' ? '' : 'none';
+
+  if (showLib) {
+    if (startEl) startEl.style.display = 'none';
+    if (activeEl) activeEl.style.display = 'none';
+    const banner = document.getElementById('fc_session_banner');
+    if (banner) banner.style.display = 'none';
+    if (densWrap) densWrap.style.display = 'none';
+  } else {
+    if (densWrap) densWrap.style.display = '';
+    // restore event UI via init logic light
+    if (activeFC_testNo && activeFC_sessionId) {
+      if (startEl) startEl.style.display = 'none';
+      if (activeEl) activeEl.style.display = '';
+      const banner = document.getElementById('fc_session_banner');
+      if (banner) banner.style.display = 'flex';
+    } else {
+      if (startEl) startEl.style.display = '';
+      if (activeEl) activeEl.style.display = 'none';
+    }
+  }
+
+  if (_fcModuleMode === 'proctor') {
+    fcRenderProctorList();
+    if (!_fcProctorEditId) fcProctorNew();
+    else fcProctorLoad(_fcProctorEditId);
+  }
+  if (_fcModuleMode === 'foc') {
+    fcRenderFocFamilyList();
+    fcRenderFocDetail();
+  }
+}
+
+function fcProctorComputePeak(points) {
+  const pts = (points || [])
+    .map(p => ({
+      moisture: parseFloat(p.moisture),
+      dryDensity: parseFloat(p.dryDensity),
+      wetDensity: parseFloat(p.wetDensity),
+    }))
+    .filter(p => !isNaN(p.moisture) && !isNaN(p.dryDensity) && p.dryDensity > 0)
+    .sort((a, b) => a.moisture - b.moisture);
+  if (!pts.length) return { maxDry: null, optMoist: null, points: pts };
+  let peakIdx = 0;
+  pts.forEach((p, i) => { if (p.dryDensity > pts[peakIdx].dryDensity) peakIdx = i; });
+  let maxDry = pts[peakIdx].dryDensity;
+  let optMoist = pts[peakIdx].moisture;
+  // Parabola through peak and neighbors when available
+  if (peakIdx > 0 && peakIdx < pts.length - 1) {
+    const p0 = pts[peakIdx - 1], p1 = pts[peakIdx], p2 = pts[peakIdx + 1];
+    const x1 = p0.moisture, y1 = p0.dryDensity;
+    const x2 = p1.moisture, y2 = p1.dryDensity;
+    const x3 = p2.moisture, y3 = p2.dryDensity;
+    const denom = (x1 - x2) * (x1 - x3) * (x2 - x3);
+    if (denom) {
+      const a = (x3 * (y2 - y1) + x2 * (y1 - y3) + x1 * (y3 - y2)) / denom;
+      const b = (x3 * x3 * (y1 - y2) + x2 * x2 * (y3 - y1) + x1 * x1 * (y2 - y3)) / denom;
+      if (a < 0) {
+        const vertex = -b / (2 * a);
+        const c = (-x3 * (x2 * x2) * (y1 - y2) - (x2 * (x1 * x1) * (y3 - y1) + x1 * (x3 * x3) * (y2 - y3))) / ((x1 - x2) * (x1 - x3) * (x2 - x3));
+        // recompute c properly for y = a x^2 + b x + c
+        const c2 = y1 - a * x1 * x1 - b * x1;
+        if (vertex >= x1 && vertex <= x3) {
+          optMoist = vertex;
+          maxDry = a * vertex * vertex + b * vertex + c2;
+        }
+      }
+    }
+  }
+  return {
+    maxDry: Math.round(maxDry * 10) / 10,
+    optMoist: Math.round(optMoist * 10) / 10,
+    points: pts,
+  };
+}
+
+function fcProctorReadPointsFromForm() {
+  const rows = document.querySelectorAll('#pr_points_body tr');
+  const points = [];
+  rows.forEach(row => {
+    const m = parseFloat(row.querySelector('.pr-m')?.value);
+    const w = parseFloat(row.querySelector('.pr-w')?.value);
+    let d = parseFloat(row.querySelector('.pr-d')?.value);
+    if (!isNaN(w) && !isNaN(m) && (isNaN(d) || d <= 0) && m > -100) {
+      d = w / (1 + m / 100);
+      const dEl = row.querySelector('.pr-d');
+      if (dEl && !dEl.value) dEl.value = d.toFixed(1);
+    }
+    if (!isNaN(m) || !isNaN(d) || !isNaN(w)) {
+      points.push({
+        moisture: isNaN(m) ? null : m,
+        wetDensity: isNaN(w) ? null : w,
+        dryDensity: isNaN(d) ? null : Math.round(d * 10) / 10,
+      });
+    }
+  });
+  return points;
+}
+
+function fcProctorAddPoint(prefill) {
+  const body = document.getElementById('pr_points_body');
+  if (!body) return;
+  const n = body.children.length + 1;
+  const tr = document.createElement('tr');
+  tr.innerHTML =
+    `<td style="color:var(--muted);">${n}</td>` +
+    `<td><input class="pr-m" type="number" step="0.1" value="${prefill?.moisture ?? ''}" oninput="fcProctorOnPointInput(this)"></td>` +
+    `<td><input class="pr-w" type="number" step="0.1" value="${prefill?.wetDensity ?? ''}" oninput="fcProctorOnPointInput(this)"></td>` +
+    `<td><input class="pr-d" type="number" step="0.1" value="${prefill?.dryDensity ?? ''}" oninput="fcProctorOnPointInput(this)"></td>` +
+    `<td><button type="button" class="btn btn-ghost" style="padding:4px 8px;font-size:10px;" onclick="this.closest('tr').remove();fcProctorRenumber();fcProctorRecalc();">✕</button></td>`;
+  body.appendChild(tr);
+}
+
+function fcProctorRenumber() {
+  document.querySelectorAll('#pr_points_body tr').forEach((tr, i) => {
+    const td = tr.querySelector('td');
+    if (td) td.textContent = String(i + 1);
+  });
+}
+
+function fcProctorOnPointInput(el) {
+  const row = el?.closest('tr');
+  if (!row) return;
+  const m = parseFloat(row.querySelector('.pr-m')?.value);
+  const w = parseFloat(row.querySelector('.pr-w')?.value);
+  const dEl = row.querySelector('.pr-d');
+  if (el.classList.contains('pr-w') || el.classList.contains('pr-m')) {
+    if (!isNaN(w) && !isNaN(m) && dEl && (!dEl.value || dEl.dataset.auto === '1')) {
+      dEl.value = (w / (1 + m / 100)).toFixed(1);
+      dEl.dataset.auto = '1';
+    }
+  }
+  if (el.classList.contains('pr-d')) dEl.dataset.auto = '0';
+  fcProctorRecalc();
+}
+
+function fcProctorRecalc() {
+  const peak = fcProctorComputePeak(fcProctorReadPointsFromForm());
+  const maxEl = document.getElementById('pr_max_dry');
+  const optEl = document.getElementById('pr_opt_moist');
+  if (maxEl) maxEl.textContent = peak.maxDry != null ? peak.maxDry.toFixed(1) + ' pcf' : '—';
+  if (optEl) optEl.textContent = peak.optMoist != null ? peak.optMoist.toFixed(1) + ' %' : '—';
+  fcProctorDrawChart(peak);
+  return peak;
+}
+
+function fcProctorDrawChart(peak) {
+  const svg = document.getElementById('prCurveSvg');
+  if (!svg) return;
+  const pts = peak?.points || [];
+  const W = 640, H = 320, ml = 50, mr = 16, mt = 16, mb = 36;
+  const plotW = W - ml - mr, plotH = H - mt - mb;
+  let xMin = 4, xMax = 24, yMin = 90, yMax = 140;
+  if (pts.length) {
+    const ms = pts.map(p => p.moisture);
+    const ds = pts.map(p => p.dryDensity);
+    xMin = Math.max(0, Math.floor(Math.min(...ms) - 2));
+    xMax = Math.ceil(Math.max(...ms) + 2);
+    yMin = Math.max(70, Math.floor(Math.min(...ds) - 4));
+    yMax = Math.ceil(Math.max(...ds) + 4);
+  }
+  const xScale = m => ml + ((m - xMin) / Math.max(0.1, xMax - xMin)) * plotW;
+  const yScale = d => mt + plotH - ((d - yMin) / Math.max(0.1, yMax - yMin)) * plotH;
+  let g = '';
+  for (let m = xMin; m <= xMax; m += 2) {
+    g += `<line x1="${xScale(m)}" y1="${mt}" x2="${xScale(m)}" y2="${mt+plotH}" stroke="#e2e8f0"/>`;
+    g += `<text x="${xScale(m)}" y="${H-10}" font-size="9" fill="#64748b" text-anchor="middle">${m}</text>`;
+  }
+  for (let d = yMin; d <= yMax; d += 5) {
+    g += `<line x1="${ml}" y1="${yScale(d)}" x2="${ml+plotW}" y2="${yScale(d)}" stroke="#e2e8f0"/>`;
+    g += `<text x="${ml-6}" y="${yScale(d)+3}" font-size="9" fill="#64748b" text-anchor="end">${d}</text>`;
+  }
+  g += `<text x="${ml+plotW/2}" y="${H-22}" font-size="10" fill="#334155" text-anchor="middle">Moisture (%)</text>`;
+  g += `<text x="14" y="${mt+plotH/2}" font-size="10" fill="#334155" text-anchor="middle" transform="rotate(-90 14 ${mt+plotH/2})">Dry Density (pcf)</text>`;
+  if (pts.length >= 2) {
+    const path = pts.map(p => `${xScale(p.moisture).toFixed(1)},${yScale(p.dryDensity).toFixed(1)}`).join(' L ');
+    g += `<path d="M ${path}" fill="none" stroke="#94a3b8" stroke-width="1.6"/>`;
+  }
+  // spine 80-100% of optimum moisture
+  if (peak?.maxDry != null && peak?.optMoist != null) {
+    const spine = fcCurveSpineRange(peak.optMoist);
+    const spinePts = [];
+    for (let m = spine.min; m <= spine.max + 0.001; m += 0.1) {
+      const dry = fcDryDensityAtMoisture(pts, peak.maxDry, peak.optMoist, m);
+      if (dry == null) continue;
+      spinePts.push(`${xScale(m).toFixed(1)},${yScale(dry).toFixed(1)}`);
+    }
+    if (spinePts.length > 1) {
+      g += `<path d="M ${spinePts.join(' L ')}" fill="none" stroke="#c47c2a" stroke-width="3" stroke-linecap="round"/>`;
+      g += `<text x="${xScale(peak.optMoist)}" y="${yScale(peak.maxDry)-8}" font-size="10" fill="#c47c2a" text-anchor="middle">80–100% spine</text>`;
+    }
+  }
+  pts.forEach(p => {
+    g += `<circle cx="${xScale(p.moisture)}" cy="${yScale(p.dryDensity)}" r="4.5" fill="#2563eb" stroke="#fff" stroke-width="1.5"/>`;
+  });
+  svg.innerHTML = g;
+}
+
+function fcProctorNew() {
+  _fcProctorEditId = null;
+  const set = (id, v) => { const el = document.getElementById(id); if (el) el.value = v || ''; };
+  set('pr_name', '');
+  set('pr_contract', '');
+  set('pr_material', '');
+  set('pr_source', '');
+  set('pr_date', new Date().toISOString().slice(0, 10));
+  set('pr_tech', '');
+  if (typeof _autoFillTech === 'function') {
+    // reuse tech autofill into pr_tech if possible
+    const tech = document.getElementById('fc_s_tech')?.value || document.getElementById('pr_tech')?.value || '';
+    if (!document.getElementById('pr_tech')?.value && currentUser?.name) {
+      const parts = String(currentUser.name).trim().split(/\s+/);
+      set('pr_tech', parts[parts.length - 1] || currentUser.name);
+    } else if (tech) set('pr_tech', tech);
+  }
+  const body = document.getElementById('pr_points_body');
+  if (body) body.innerHTML = '';
+  for (let i = 0; i < 5; i++) fcProctorAddPoint();
+  const st = document.getElementById('pr_status_lbl');
+  if (st) { st.textContent = 'Draft'; st.style.color = 'var(--muted)'; }
+  fcProctorRecalc();
+  fcRenderProctorList();
+}
+
+function fcRenderProctorList() {
+  const el = document.getElementById('fcProctorList');
+  if (!el) return;
+  const list = fcLoadProctors().slice().sort((a, b) => (b.updatedAt || '').localeCompare(a.updatedAt || ''));
+  if (!list.length) {
+    el.innerHTML = '<div class="hub-empty">No proctors yet. Tap New Proctor.</div>';
+    return;
+  }
+  el.innerHTML = list.map(p => {
+    const active = p.id === _fcProctorEditId ? ' active' : '';
+    const badge = p.status === 'complete'
+      ? '<span class="fc-badge complete">COMPLETE</span>'
+      : '<span class="fc-badge draft">DRAFT</span>';
+    const peak = (p.maxDry != null) ? `${p.maxDry} pcf @ ${p.optMoist}%` : 'Incomplete curve';
+    return `<button type="button" class="fc-proctor-item${active}" onclick="fcProctorLoad('${p.id}')">` +
+      `<div style="display:flex;justify-content:space-between;gap:8px;align-items:center;"><strong>${(p.name || 'Untitled').replace(/</g,'&lt;')}</strong>${badge}</div>` +
+      `<div class="meta">${peak}<br>${(p.contract || '—')} · ${(p.material || '—')}</div></button>`;
+  }).join('');
+}
+
+function fcProctorLoad(id) {
+  const p = fcLoadProctors().find(x => x.id === id);
+  if (!p) return;
+  _fcProctorEditId = id;
+  const set = (i, v) => { const el = document.getElementById(i); if (el) el.value = v ?? ''; };
+  set('pr_name', p.name);
+  set('pr_contract', p.contract);
+  set('pr_material', p.material);
+  set('pr_source', p.source);
+  set('pr_date', p.date);
+  set('pr_tech', p.tech);
+  const body = document.getElementById('pr_points_body');
+  if (body) body.innerHTML = '';
+  (p.points && p.points.length ? p.points : [{}, {}, {}, {}, {}]).forEach(pt => fcProctorAddPoint(pt));
+  const st = document.getElementById('pr_status_lbl');
+  if (st) {
+    st.textContent = p.status === 'complete' ? 'Complete' : 'Draft';
+    st.style.color = p.status === 'complete' ? 'var(--green2)' : 'var(--muted)';
+  }
+  fcProctorRecalc();
+  fcRenderProctorList();
+}
+
+function fcProctorSave(markComplete) {
+  const name = (document.getElementById('pr_name')?.value || '').trim();
+  if (!name) { showToast('Enter a proctor name / ID', 'error'); return; }
+  const points = fcProctorReadPointsFromForm();
+  const peak = fcProctorComputePeak(points);
+  if (markComplete) {
+    if (peak.maxDry == null || peak.optMoist == null || peak.points.length < 3) {
+      showToast('Need at least 3 moisture/dry-density points to complete', 'error');
+      return;
+    }
+  }
+  const list = fcLoadProctors();
+  const now = new Date().toISOString();
+  let row = list.find(x => x.id === _fcProctorEditId);
+  const payload = {
+    id: row?.id || fcUid(),
+    name,
+    contract: (document.getElementById('pr_contract')?.value || '').trim(),
+    material: (document.getElementById('pr_material')?.value || '').trim(),
+    source: (document.getElementById('pr_source')?.value || '').trim(),
+    date: document.getElementById('pr_date')?.value || now.slice(0, 10),
+    tech: (document.getElementById('pr_tech')?.value || '').trim(),
+    points,
+    maxDry: peak.maxDry,
+    optMoist: peak.optMoist,
+    status: markComplete ? 'complete' : (row?.status === 'complete' ? 'complete' : 'draft'),
+    familyId: row?.familyId || null,
+    createdAt: row?.createdAt || now,
+    updatedAt: now,
+  };
+  if (row) Object.assign(row, payload);
+  else list.unshift(payload);
+  fcSaveProctors(list);
+  _fcProctorEditId = payload.id;
+  fcRenderProctorList();
+  fcProctorLoad(payload.id);
+  showToast(markComplete ? 'Proctor marked complete ✓' : 'Proctor draft saved ✓', 'success');
+  if (markComplete) fcPromptAddToFamily(payload.id);
+}
+
+function fcProctorDelete() {
+  if (!_fcProctorEditId) { fcProctorNew(); return; }
+  if (!confirm('Delete this proctor?')) return;
+  const id = _fcProctorEditId;
+  fcSaveProctors(fcLoadProctors().filter(p => p.id !== id));
+  // detach from families
+  const families = fcLoadFamilies();
+  families.forEach(f => {
+    f.curves = (f.curves || []).filter(c => c.proctorId !== id);
+  });
+  fcSaveFamilies(families);
+  _fcProctorEditId = null;
+  fcProctorNew();
+  showToast('Proctor deleted', 'info');
+}
+
+function fcPromptAddToFamily(proctorId) {
+  _fcPendingFamilyProctorId = proctorId;
+  const p = fcLoadProctors().find(x => x.id === proctorId);
+  const msg = document.getElementById('fcAddFamilyMsg');
+  if (msg && p) {
+    msg.textContent = `“${p.name}” is complete (${p.maxDry} pcf @ ${p.optMoist}%). Add it to a Family of Curves?`;
+  }
+  const sel = document.getElementById('fcAddFamilySelect');
+  if (sel) {
+    const families = fcLoadFamilies();
+    sel.innerHTML = '<option value="">— Select family —</option>' +
+      families.map(f => `<option value="${f.id}">${(f.name || 'Untitled').replace(/</g,'&lt;')}</option>`).join('');
+  }
+  const nn = document.getElementById('fcAddFamilyNewName');
+  if (nn) nn.value = p ? `${p.contract || 'Family'} — ${p.material || p.name}` : '';
+  const modal = document.getElementById('fcAddFamilyModal');
+  if (modal) modal.classList.add('open');
+}
+
+function fcCloseAddFamilyModal() {
+  _fcPendingFamilyProctorId = null;
+  document.getElementById('fcAddFamilyModal')?.classList.remove('open');
+}
+
+function fcConfirmAddToFamily() {
+  const proctorId = _fcPendingFamilyProctorId;
+  if (!proctorId) { fcCloseAddFamilyModal(); return; }
+  const p = fcLoadProctors().find(x => x.id === proctorId);
+  if (!p) { fcCloseAddFamilyModal(); return; }
+  let familyId = document.getElementById('fcAddFamilySelect')?.value || '';
+  const newName = (document.getElementById('fcAddFamilyNewName')?.value || '').trim();
+  const families = fcLoadFamilies();
+  let family = families.find(f => f.id === familyId);
+  if (!family) {
+    if (!newName && !familyId) { showToast('Select a family or enter a new name', 'error'); return; }
+    family = {
+      id: fcUid(),
+      name: newName || (p.contract ? (p.contract + ' Family') : 'New Family'),
+      contract: p.contract || '',
+      material: p.material || '',
+      notes: '',
+      curves: [],
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    };
+    families.unshift(family);
+  }
+  if ((family.curves || []).some(c => c.proctorId === p.id)) {
+    showToast('That proctor is already in this family', 'info');
+  } else {
+    family.curves = family.curves || [];
+    family.curves.push({
+      id: fcUid(),
+      proctorId: p.id,
+      label: p.name,
+      maxDry: p.maxDry,
+      optMoist: p.optMoist,
+      points: p.points || [],
+    });
+    family.updatedAt = new Date().toISOString();
+  }
+  // link proctor
+  const proctors = fcLoadProctors();
+  const pr = proctors.find(x => x.id === p.id);
+  if (pr) { pr.familyId = family.id; pr.updatedAt = new Date().toISOString(); }
+  fcSaveProctors(proctors);
+  fcSaveFamilies(families);
+  fcCloseAddFamilyModal();
+  showToast('Added to Family of Curves ✓', 'success');
+  _fcFocEditId = family.id;
+  fcSetModuleMode('foc');
+}
+
+function fcFocNewFamily() {
+  const name = prompt('Family name:', 'New Family of Curves');
+  if (name == null) return;
+  const trimmed = name.trim();
+  if (!trimmed) return;
+  const families = fcLoadFamilies();
+  const family = {
+    id: fcUid(),
+    name: trimmed,
+    contract: '',
+    material: '',
+    notes: '',
+    curves: [],
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+  };
+  families.unshift(family);
+  fcSaveFamilies(families);
+  _fcFocEditId = family.id;
+  fcRenderFocFamilyList();
+  fcRenderFocDetail();
+}
+
+function fcRenderFocFamilyList() {
+  const el = document.getElementById('fcFocFamilyList');
+  if (!el) return;
+  const list = fcLoadFamilies().slice().sort((a, b) => (b.updatedAt || '').localeCompare(a.updatedAt || ''));
+  if (!list.length) {
+    el.innerHTML = '<div class="hub-empty">No families yet. Create one, or complete a proctor and add it.</div>';
+    return;
+  }
+  el.innerHTML = list.map(f => {
+    const active = f.id === _fcFocEditId ? ' active' : '';
+    const n = (f.curves || []).length;
+    return `<button type="button" class="fc-proctor-item${active}" onclick="_fcFocEditId='${f.id}';fcRenderFocFamilyList();fcRenderFocDetail();">` +
+      `<strong>${(f.name || 'Untitled').replace(/</g,'&lt;')}</strong>` +
+      `<div class="meta">${n} curve${n === 1 ? '' : 's'} · ${(f.contract || '—')} · ${(f.material || '—')}</div></button>`;
+  }).join('');
+}
+
+function fcRenderFocDetail() {
+  const family = fcLoadFamilies().find(f => f.id === _fcFocEditId);
+  const title = document.getElementById('fcFocDetailTitle');
+  const meta = document.getElementById('fcFocDetailMeta');
+  const chart = document.getElementById('fcFocChartWrap');
+  const table = document.getElementById('fcFocCurvesTable');
+  const addRow = document.getElementById('fcFocAddRow');
+  const empty = document.getElementById('fcFocEmptyHint');
+  if (!family) {
+    if (title) title.textContent = 'Select or create a family';
+    if (meta) meta.style.display = 'none';
+    if (chart) chart.style.display = 'none';
+    if (table) { table.style.display = 'none'; table.innerHTML = ''; }
+    if (addRow) addRow.style.display = 'none';
+    if (empty) empty.style.display = '';
+    return;
+  }
+  if (title) title.textContent = family.name || 'Family';
+  if (meta) meta.style.display = '';
+  if (chart) chart.style.display = '';
+  if (table) table.style.display = '';
+  if (addRow) addRow.style.display = '';
+  if (empty) empty.style.display = 'none';
+  const set = (id, v) => { const el = document.getElementById(id); if (el) el.value = v || ''; };
+  set('foc_name', family.name);
+  set('foc_contract', family.contract);
+  set('foc_material', family.material);
+  set('foc_notes', family.notes);
+  // available proctors
+  const sel = document.getElementById('foc_add_proctor');
+  if (sel) {
+    const used = new Set((family.curves || []).map(c => c.proctorId));
+    const avail = fcLoadProctors().filter(p => p.status === 'complete' && !used.has(p.id));
+    sel.innerHTML = avail.length
+      ? avail.map(p => `<option value="${p.id}">${(p.name || 'Proctor').replace(/</g,'&lt;')} — ${p.maxDry} pcf @ ${p.optMoist}%</option>`).join('')
+      : '<option value="">No completed proctors available</option>';
+  }
+  if (table) {
+    const curves = family.curves || [];
+    if (!curves.length) {
+      table.innerHTML = '<div class="hub-empty" style="padding:16px;">No curves yet — add a completed proctor below.</div>';
+    } else {
+      table.innerHTML = `<div style="font-family:var(--mono);font-size:9px;letter-spacing:1px;color:var(--muted);margin-bottom:8px;">CURVES IN THIS FAMILY</div>` +
+        curves.map(c =>
+          `<div style="display:flex;justify-content:space-between;gap:10px;align-items:center;padding:8px 0;border-bottom:1px solid var(--border);font-family:var(--mono);font-size:11px;">` +
+          `<div><strong>${(c.label || 'Curve').replace(/</g,'&lt;')}</strong><div style="color:var(--muted);margin-top:2px;">${c.maxDry} pcf @ ${c.optMoist}% · spine ${ (c.optMoist*0.8).toFixed(1) }–${c.optMoist}%</div></div>` +
+          `<button type="button" class="btn btn-ghost" style="color:var(--red2);font-size:10px;" onclick="fcFocRemoveCurve('${c.id}')">Remove</button></div>`
+        ).join('');
+    }
+  }
+  fcFocDrawFamilyChart(family);
+}
+
+function fcFocSaveMeta() {
+  const families = fcLoadFamilies();
+  const family = families.find(f => f.id === _fcFocEditId);
+  if (!family) return;
+  family.name = (document.getElementById('foc_name')?.value || '').trim() || family.name;
+  family.contract = (document.getElementById('foc_contract')?.value || '').trim();
+  family.material = (document.getElementById('foc_material')?.value || '').trim();
+  family.notes = (document.getElementById('foc_notes')?.value || '').trim();
+  family.updatedAt = new Date().toISOString();
+  fcSaveFamilies(families);
+  fcRenderFocFamilyList();
+}
+
+function fcFocAddSelectedProctor() {
+  const pid = document.getElementById('foc_add_proctor')?.value;
+  if (!pid) { showToast('No completed proctor selected', 'error'); return; }
+  const p = fcLoadProctors().find(x => x.id === pid);
+  const families = fcLoadFamilies();
+  const family = families.find(f => f.id === _fcFocEditId);
+  if (!p || !family) return;
+  family.curves = family.curves || [];
+  if (family.curves.some(c => c.proctorId === p.id)) {
+    showToast('Already in this family', 'info'); return;
+  }
+  family.curves.push({
+    id: fcUid(), proctorId: p.id, label: p.name,
+    maxDry: p.maxDry, optMoist: p.optMoist, points: p.points || [],
+  });
+  family.updatedAt = new Date().toISOString();
+  p.familyId = family.id;
+  const proctors = fcLoadProctors();
+  const pr = proctors.find(x => x.id === p.id);
+  if (pr) pr.familyId = family.id;
+  fcSaveProctors(proctors);
+  fcSaveFamilies(families);
+  fcRenderFocFamilyList();
+  fcRenderFocDetail();
+  showToast('Proctor added to family ✓', 'success');
+}
+
+function fcFocRemoveCurve(curveId) {
+  const families = fcLoadFamilies();
+  const family = families.find(f => f.id === _fcFocEditId);
+  if (!family) return;
+  const removed = (family.curves || []).find(c => c.id === curveId);
+  family.curves = (family.curves || []).filter(c => c.id !== curveId);
+  family.updatedAt = new Date().toISOString();
+  if (removed?.proctorId) {
+    const proctors = fcLoadProctors();
+    const pr = proctors.find(p => p.id === removed.proctorId);
+    if (pr && pr.familyId === family.id) pr.familyId = null;
+    fcSaveProctors(proctors);
+  }
+  fcSaveFamilies(families);
+  fcRenderFocDetail();
+  fcRenderFocFamilyList();
+}
+
+function fcFocDeleteFamily() {
+  if (!_fcFocEditId) return;
+  if (!confirm('Delete this family of curves? Proctors are kept.')) return;
+  const id = _fcFocEditId;
+  fcSaveFamilies(fcLoadFamilies().filter(f => f.id !== id));
+  const proctors = fcLoadProctors();
+  proctors.forEach(p => { if (p.familyId === id) p.familyId = null; });
+  fcSaveProctors(proctors);
+  _fcFocEditId = null;
+  fcRenderFocFamilyList();
+  fcRenderFocDetail();
+  showToast('Family deleted', 'info');
+}
+
+function fcFocDrawFamilyChart(family) {
+  const svg = document.getElementById('fcFocFamilySvg');
+  if (!svg) return;
+  const curves = family?.curves || [];
+  const W = 640, H = 400, ml = 54, mr = 16, mt = 22, mb = 42;
+  const plotW = W - ml - mr, plotH = H - mt - mb;
+  let xMin = 4, xMax = 28, yMin = 95, yMax = 140;
+  // Build spine polylines first so axis ranges match 80–100% only
+  const colors = ['#c47c2a', '#2563eb', '#16a34a', '#dc2626', '#7c3aed', '#0891b2', '#ca8a04', '#db2777'];
+  const spineSeries = curves.map((c, idx) => {
+    const spine = fcCurveSpineRange(c.optMoist);
+    const samples = [];
+    for (let m = spine.min; m <= spine.max + 0.001; m += 0.08) {
+      const dry = fcDryDensityAtMoisture(c.points, c.maxDry, c.optMoist, m);
+      if (dry == null) continue;
+      samples.push({ m, d: dry });
+    }
+    return { c, idx, spine, samples, color: colors[idx % colors.length] };
+  });
+  if (spineSeries.length) {
+    const ms = [];
+    const ds = [];
+    spineSeries.forEach(s => {
+      ms.push(s.spine.min, s.spine.max);
+      s.samples.forEach(pt => ds.push(pt.d));
+      if (s.c.maxDry != null) ds.push(s.c.maxDry);
+    });
+    if (ms.length) {
+      xMin = Math.max(0, Math.floor(Math.min(...ms) - 1));
+      xMax = Math.ceil(Math.max(...ms) + 1);
+    }
+    if (ds.length) {
+      yMin = Math.max(70, Math.floor(Math.min(...ds) - 2));
+      yMax = Math.ceil(Math.max(...ds) + 2);
+    }
+  }
+  const xScale = m => ml + ((m - xMin) / Math.max(0.1, xMax - xMin)) * plotW;
+  const yScale = d => mt + plotH - ((d - yMin) / Math.max(0.1, yMax - yMin)) * plotH;
+  let g = '';
+  for (let m = Math.ceil(xMin); m <= xMax; m += 2) {
+    g += `<line x1="${xScale(m)}" y1="${mt}" x2="${xScale(m)}" y2="${mt+plotH}" stroke="#e2e8f0"/>`;
+    g += `<text x="${xScale(m)}" y="${H-10}" font-size="9" fill="#64748b" text-anchor="middle">${m}</text>`;
+  }
+  for (let d = yMin; d <= yMax; d += 5) {
+    g += `<line x1="${ml}" y1="${yScale(d)}" x2="${ml+plotW}" y2="${yScale(d)}" stroke="#e2e8f0"/>`;
+    g += `<text x="${ml-6}" y="${yScale(d)+3}" font-size="9" fill="#64748b" text-anchor="end">${d}</text>`;
+  }
+  g += `<text x="${ml+plotW/2}" y="${H-24}" font-size="10" fill="#334155" text-anchor="middle">Moisture Content (%) — 80% to 100% of OMC</text>`;
+  g += `<text x="14" y="${mt+plotH/2}" font-size="10" fill="#334155" text-anchor="middle" transform="rotate(-90 14 ${mt+plotH/2})">Dry Density (pcf)</text>`;
+  spineSeries.forEach(s => {
+    const pts = s.samples.map(pt => `${xScale(pt.m).toFixed(1)},${yScale(pt.d).toFixed(1)}`);
+    if (pts.length > 1) {
+      g += `<path d="M ${pts.join(' L ')}" fill="none" stroke="${s.color}" stroke-width="2.4" stroke-linecap="round"/>`;
+      const peakY = s.c.maxDry != null ? yScale(s.c.maxDry) : yScale(s.samples[s.samples.length-1].d);
+      g += `<text x="${xScale(s.c.optMoist)}" y="${peakY - 6}" font-size="9" fill="${s.color}" text-anchor="middle">${s.idx + 1}</text>`;
+    }
+  });
+  if (!curves.length) {
+    g += `<text x="${W/2}" y="${H/2}" font-size="12" fill="#94a3b8" text-anchor="middle">Add completed proctors to plot the 80–100% spine</text>`;
+  }
+  svg.innerHTML = g;
+}
+
 
 // ══════════════════════════════════════════════════════════════
 // FIELD CONTROL MODULE
@@ -22287,6 +23169,10 @@ function initFC_View() {
   const startEl  = document.getElementById('fc_start_state');
   const activeEl = document.getElementById('fc_active_state');
   if (!startEl || !activeEl) return;
+  if (typeof _fcModuleMode === 'string' && _fcModuleMode !== 'event') {
+    fcSetModuleMode(_fcModuleMode);
+    return;
+  }
   const today = new Date().toISOString().split('T')[0];
   const dateEl = document.getElementById('fc_s_date');
   if (dateEl) dateEl.value = today;
