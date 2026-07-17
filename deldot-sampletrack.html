@@ -4554,10 +4554,13 @@ table.fc-borrow-tbl tr.fc-borrow-detail-row td{background:var(--surface);border-
             <div id="fcFocCurvesTable" style="display:none;margin-top:12px;"></div>
             <div id="fcFocAddRow" style="display:none;margin-top:14px;padding-top:12px;border-top:1px solid var(--border);">
               <div style="font-family:var(--mono);font-size:9px;letter-spacing:1px;color:var(--muted);margin-bottom:8px;">ADD COMPLETED PROCTOR</div>
-              <div style="display:flex;gap:8px;flex-wrap:wrap;">
+              <p style="font-family:var(--sans);font-size:12px;color:var(--muted);margin:0 0 8px;line-height:1.4;">Pick another completed proctor to add as a curve. Existing curves stay in the family.</p>
+              <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
                 <select id="foc_add_proctor" class="form-input" style="flex:1;min-width:180px;"></select>
-                <button type="button" class="btn btn-primary" onclick="fcFocAddSelectedProctor()">Add to family</button>
-                <button type="button" class="btn btn-ghost" onclick="fcFocDeleteFamily()" style="color:var(--red2);">Delete family</button>
+                <button type="button" class="btn btn-primary" onclick="fcFocAddSelectedProctor()">Add curve to family</button>
+              </div>
+              <div style="margin-top:14px;">
+                <button type="button" class="btn btn-ghost" onclick="fcFocDeleteFamily()" style="color:var(--red2);font-size:11px;">Delete this family…</button>
               </div>
             </div>
             <div id="fcFocEmptyHint" class="hub-empty" style="padding:28px;">Create a family, then add completed proctors. Each proctor becomes one curve on the spine chart.</div>
@@ -6859,12 +6862,13 @@ table.fc-borrow-tbl tr.fc-borrow-detail-row td{background:var(--surface);border-
     <div style="font-family:var(--display);font-size:18px;font-weight:700;margin-bottom:6px;">Add to Family of Curves?</div>
     <p id="fcAddFamilyMsg" style="font-family:var(--sans);font-size:13px;color:var(--muted);line-height:1.45;margin:0 0 14px;">This proctor is complete. Add it to a family?</p>
     <div class="form-group" style="margin-bottom:10px;">
-      <label>Existing family</label>
-      <select id="fcAddFamilySelect" class="form-input"><option value="">— Select family —</option></select>
+      <label>Add to existing family</label>
+      <select id="fcAddFamilySelect" class="form-input" onchange="fcAddFamilySelectChanged()"><option value="">— Select family —</option></select>
     </div>
     <div class="form-group" style="margin-bottom:14px;">
-      <label>Or new family name</label>
-      <input type="text" id="fcAddFamilyNewName" class="form-input" placeholder="e.g. Contract T201 — Borrow Area">
+      <label>Or create new family</label>
+      <input type="text" id="fcAddFamilyNewName" class="form-input" placeholder="Only if you need a new family" oninput="fcAddFamilyNameChanged()">
+      <div style="font-family:var(--mono);font-size:10px;color:var(--muted);margin-top:6px;">If a family is selected above, this proctor is added to that family (not a new one).</div>
     </div>
     <div style="display:flex;gap:8px;flex-wrap:wrap;">
       <button type="button" class="btn btn-success" onclick="fcConfirmAddToFamily()">Add to family</button>
@@ -6899,7 +6903,7 @@ table.fc-borrow-tbl tr.fc-borrow-detail-row td{background:var(--surface);border-
 // GLOBALS
 // ══════════════════════════════════════════════
 let db = null;
-const APP_BUILD = '2026.07.17-proctor-sheet';
+const APP_BUILD = '2026.07.17-foc-multi';
 const FC_CORE_ICON_SRC = 'docs/r18-reference/core-drill-icon-128.png';
 const BORELOG_ICON_SRC = 'docs/r18-reference/borelog-icon.webp';
 const BORELOG_PATH = 'docs/r18-reference/deldot-borelog.html';
@@ -22874,6 +22878,64 @@ function fcProctorDelete() {
   showToast('Proctor deleted', 'info');
 }
 
+function fcFocCurveFromProctor(p) {
+  return {
+    id: fcUid(),
+    proctorId: p.id,
+    label: p.name,
+    maxDry: p.maxDry,
+    optMoist: p.optMoist,
+    points: p.points || [],
+  };
+}
+
+/** Prefer live proctor data so family charts stay in sync after edits. */
+function fcFocResolveCurve(c) {
+  if (!c) return c;
+  const p = (fcLoadProctors() || []).find(x => x.id === c.proctorId);
+  if (!p) return c;
+  return {
+    ...c,
+    label: p.name || c.label,
+    maxDry: p.maxDry != null ? p.maxDry : c.maxDry,
+    optMoist: p.optMoist != null ? p.optMoist : c.optMoist,
+    points: (p.points && p.points.length) ? p.points : (c.points || []),
+  };
+}
+
+function fcFocAddProctorToFamily(families, family, p) {
+  if (!family || !p) return { added: false, reason: 'missing' };
+  family.curves = family.curves || [];
+  if (family.curves.some(c => c.proctorId === p.id)) {
+    return { added: false, reason: 'duplicate' };
+  }
+  family.curves.push(fcFocCurveFromProctor(p));
+  family.updatedAt = new Date().toISOString();
+  return { added: true, reason: 'ok' };
+}
+
+function fcFocLinkProctor(proctorId, familyId) {
+  const proctors = fcLoadProctors();
+  const pr = proctors.find(x => x.id === proctorId);
+  if (pr) {
+    pr.familyId = familyId;
+    pr.updatedAt = new Date().toISOString();
+    fcSaveProctors(proctors);
+  }
+}
+
+function fcAddFamilySelectChanged() {
+  const sel = document.getElementById('fcAddFamilySelect');
+  const nn = document.getElementById('fcAddFamilyNewName');
+  if (sel && sel.value && nn) nn.value = '';
+}
+
+function fcAddFamilyNameChanged() {
+  const sel = document.getElementById('fcAddFamilySelect');
+  const nn = document.getElementById('fcAddFamilyNewName');
+  if (sel && nn && String(nn.value || '').trim()) sel.value = '';
+}
+
 function fcPromptAddToFamily(proctorId) {
   _fcPendingFamilyProctorId = proctorId;
   const p = fcLoadProctors().find(x => x.id === proctorId);
@@ -22881,14 +22943,24 @@ function fcPromptAddToFamily(proctorId) {
   if (msg && p) {
     msg.textContent = `“${p.name}” is complete (${p.maxDry} pcf @ ${p.optMoist}%). Add it to a Family of Curves?`;
   }
+  const families = fcLoadFamilies().slice().sort((a, b) => (b.updatedAt || '').localeCompare(a.updatedAt || ''));
   const sel = document.getElementById('fcAddFamilySelect');
   if (sel) {
-    const families = fcLoadFamilies();
     sel.innerHTML = '<option value="">— Select family —</option>' +
-      families.map(f => `<option value="${f.id}">${(f.name || 'Untitled').replace(/</g,'&lt;')}</option>`).join('');
+      families.map(f => {
+        const n = (f.curves || []).length;
+        return `<option value="${f.id}">${(f.name || 'Untitled').replace(/</g,'&lt;')} (${n} curve${n === 1 ? '' : 's'})</option>`;
+      }).join('');
   }
   const nn = document.getElementById('fcAddFamilyNewName');
-  if (nn) nn.value = p ? `${p.contract || 'Family'} — ${p.material || p.name}` : '';
+  // If families already exist, pre-select the newest so a second proctor APPENDS
+  // instead of silently creating another one-curve family.
+  if (families.length) {
+    if (sel) sel.value = families[0].id;
+    if (nn) nn.value = '';
+  } else if (nn) {
+    nn.value = p ? `${p.contract || 'Family'} — ${p.material || p.name}` : '';
+  }
   const modal = document.getElementById('fcAddFamilyModal');
   if (modal) modal.classList.add('open');
 }
@@ -22903,12 +22975,22 @@ function fcConfirmAddToFamily() {
   if (!proctorId) { fcCloseAddFamilyModal(); return; }
   const p = fcLoadProctors().find(x => x.id === proctorId);
   if (!p) { fcCloseAddFamilyModal(); return; }
-  let familyId = document.getElementById('fcAddFamilySelect')?.value || '';
+  const familyId = document.getElementById('fcAddFamilySelect')?.value || '';
   const newName = (document.getElementById('fcAddFamilyNewName')?.value || '').trim();
   const families = fcLoadFamilies();
-  let family = families.find(f => f.id === familyId);
+
+  let family = null;
+  if (familyId) family = families.find(f => f.id === familyId) || null;
+  // Match by name so typing an existing family name appends instead of duplicating
+  if (!family && newName) {
+    const key = newName.toLowerCase();
+    family = families.find(f => (f.name || '').trim().toLowerCase() === key) || null;
+  }
   if (!family) {
-    if (!newName && !familyId) { showToast('Select a family or enter a new name', 'error'); return; }
+    if (!newName && !familyId) {
+      showToast('Select an existing family or enter a new family name', 'error');
+      return;
+    }
     family = {
       id: fcUid(),
       name: newName || (p.contract ? (p.contract + ' Family') : 'New Family'),
@@ -22921,28 +23003,18 @@ function fcConfirmAddToFamily() {
     };
     families.unshift(family);
   }
-  if ((family.curves || []).some(c => c.proctorId === p.id)) {
+
+  const result = fcFocAddProctorToFamily(families, family, p);
+  if (result.reason === 'duplicate') {
     showToast('That proctor is already in this family', 'info');
-  } else {
-    family.curves = family.curves || [];
-    family.curves.push({
-      id: fcUid(),
-      proctorId: p.id,
-      label: p.name,
-      maxDry: p.maxDry,
-      optMoist: p.optMoist,
-      points: p.points || [],
-    });
-    family.updatedAt = new Date().toISOString();
   }
-  // link proctor
-  const proctors = fcLoadProctors();
-  const pr = proctors.find(x => x.id === p.id);
-  if (pr) { pr.familyId = family.id; pr.updatedAt = new Date().toISOString(); }
-  fcSaveProctors(proctors);
+  fcFocLinkProctor(p.id, family.id);
   fcSaveFamilies(families);
   fcCloseAddFamilyModal();
-  showToast('Added to Family of Curves ✓', 'success');
+  const n = (family.curves || []).length;
+  showToast(result.added
+    ? `Added to “${family.name}” (${n} curve${n === 1 ? '' : 's'}) ✓`
+    : `Opened “${family.name}” (${n} curve${n === 1 ? '' : 's'})`, 'success');
   _fcFocEditId = family.id;
   fcSetModuleMode('foc');
 }
@@ -23025,19 +23097,23 @@ function fcRenderFocDetail() {
       : '<option value="">No completed proctors available</option>';
   }
   if (table) {
-    const curves = family.curves || [];
+    const curves = (family.curves || []).map(fcFocResolveCurve);
     if (!curves.length) {
       table.innerHTML = '<div class="hub-empty" style="padding:16px;">No curves yet — add a completed proctor below.</div>';
     } else {
-      table.innerHTML = `<div style="font-family:var(--mono);font-size:9px;letter-spacing:1px;color:var(--muted);margin-bottom:8px;">CURVES IN THIS FAMILY</div>` +
-        curves.map(c =>
-          `<div style="display:flex;justify-content:space-between;gap:10px;align-items:center;padding:8px 0;border-bottom:1px solid var(--border);font-family:var(--mono);font-size:11px;">` +
-          `<div><strong>${(c.label || 'Curve').replace(/</g,'&lt;')}</strong><div style="color:var(--muted);margin-top:2px;">${c.maxDry} pcf @ ${c.optMoist}% · spine ${ (c.optMoist*0.8).toFixed(1) }–${c.optMoist}%</div></div>` +
-          `<button type="button" class="btn btn-ghost" style="color:var(--red2);font-size:10px;" onclick="fcFocRemoveCurve('${c.id}')">Remove</button></div>`
-        ).join('');
+      table.innerHTML = `<div style="font-family:var(--mono);font-size:9px;letter-spacing:1px;color:var(--muted);margin-bottom:8px;">CURVES IN THIS FAMILY (${curves.length})</div>` +
+        curves.map((c, idx) => {
+          const om = parseFloat(c.optMoist);
+          const spineTxt = (!isNaN(om))
+            ? ` · spine ${(om * 0.8).toFixed(1)}–${om}%`
+            : '';
+          return `<div style="display:flex;justify-content:space-between;gap:10px;align-items:center;padding:8px 0;border-bottom:1px solid var(--border);font-family:var(--mono);font-size:11px;">` +
+            `<div><strong>${idx + 1}. ${(c.label || 'Curve').replace(/</g,'&lt;')}</strong><div style="color:var(--muted);margin-top:2px;">${c.maxDry != null ? c.maxDry : '—'} pcf @ ${c.optMoist != null ? c.optMoist : '—'}%${spineTxt}</div></div>` +
+            `<button type="button" class="btn btn-ghost" style="color:var(--red2);font-size:10px;" onclick="fcFocRemoveCurve('${c.id}')">Remove</button></div>`;
+        }).join('');
     }
   }
-  fcFocDrawFamilyChart(family);
+  fcFocDrawFamilyChart({ ...family, curves: (family.curves || []).map(fcFocResolveCurve) });
 }
 
 function fcFocSaveMeta() {
@@ -23059,25 +23135,26 @@ function fcFocAddSelectedProctor() {
   const p = fcLoadProctors().find(x => x.id === pid);
   const families = fcLoadFamilies();
   const family = families.find(f => f.id === _fcFocEditId);
-  if (!p || !family) return;
-  family.curves = family.curves || [];
-  if (family.curves.some(c => c.proctorId === p.id)) {
-    showToast('Already in this family', 'info'); return;
+  if (!p || !family) {
+    showToast('Select a family first', 'error');
+    return;
   }
-  family.curves.push({
-    id: fcUid(), proctorId: p.id, label: p.name,
-    maxDry: p.maxDry, optMoist: p.optMoist, points: p.points || [],
-  });
-  family.updatedAt = new Date().toISOString();
-  p.familyId = family.id;
-  const proctors = fcLoadProctors();
-  const pr = proctors.find(x => x.id === p.id);
-  if (pr) pr.familyId = family.id;
-  fcSaveProctors(proctors);
+  const result = fcFocAddProctorToFamily(families, family, p);
+  if (result.reason === 'duplicate') {
+    showToast('Already in this family', 'info');
+    return;
+  }
+  if (!result.added) {
+    showToast('Could not add proctor', 'error');
+    return;
+  }
+  fcFocLinkProctor(p.id, family.id);
   fcSaveFamilies(families);
+  _fcFocEditId = family.id;
   fcRenderFocFamilyList();
   fcRenderFocDetail();
-  showToast('Proctor added to family ✓', 'success');
+  const n = (family.curves || []).length;
+  showToast(`Curve added — family now has ${n} curve${n === 1 ? '' : 's'} ✓`, 'success');
 }
 
 function fcFocRemoveCurve(curveId) {
