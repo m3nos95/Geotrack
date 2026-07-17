@@ -2809,6 +2809,31 @@ table.fc-borrow-tbl tr.fc-borrow-detail-row td{background:var(--surface);border-
 .fc-points-tbl th { text-align:left; color:var(--muted); font-size:9px; letter-spacing:1px; padding:6px 4px; border-bottom:1px solid var(--border); }
 .fc-points-tbl td { padding:4px; border-bottom:1px solid var(--border); }
 .fc-points-tbl input { width:100%; background:var(--bg); border:1px solid var(--border); color:var(--text); border-radius:4px; padding:6px 8px; font-family:var(--mono); font-size:12px; }
+.pr-sheet { background:#f8fafc; border:1px solid #cbd5e1; border-radius:10px; padding:14px 16px; color:#0f172a; }
+.pr-sheet .pr-sec-title { font-family:var(--sans); font-size:14px; font-weight:700; color:#0f172a; margin:0 0 10px; }
+.pr-sheet .pr-sec { margin-bottom:16px; }
+.pr-sheet .pr-sec:last-child { margin-bottom:0; }
+.pr-sheet label { display:block; font-family:var(--sans); font-size:12px; color:#334155; margin-bottom:4px; }
+.pr-sheet input[type="text"], .pr-sheet input[type="number"], .pr-sheet input[type="date"], .pr-sheet select {
+  width:100%; background:#fff; border:1px solid #94a3b8; border-radius:4px; padding:7px 8px;
+  font-family:var(--mono); font-size:12px; color:#0f172a;
+}
+.pr-sheet .pr-check { display:flex; gap:8px; align-items:flex-start; font-family:var(--sans); font-size:12px; color:#334155; margin-top:8px; }
+.pr-sheet .pr-check input { margin-top:2px; width:auto; }
+.pr-meta-grid { display:grid; grid-template-columns:1fr 1fr; gap:10px 16px; }
+@media (max-width:700px){ .pr-meta-grid { grid-template-columns:1fr; } }
+.pr-data-wrap { overflow-x:auto; }
+.pr-data-tbl { width:100%; min-width:720px; border-collapse:collapse; font-family:var(--sans); font-size:12px; color:#0f172a; }
+.pr-data-tbl th, .pr-data-tbl td { border-bottom:1px solid #e2e8f0; padding:5px 4px; text-align:center; vertical-align:middle; }
+.pr-data-tbl th { font-weight:600; color:#334155; font-size:11px; }
+.pr-data-tbl td.pr-row-lbl { text-align:left; white-space:nowrap; padding-right:10px; font-weight:500; color:#1e293b; min-width:170px; }
+.pr-data-tbl input { width:72px; background:#fff; border:1px solid #94a3b8; border-radius:3px; padding:5px 4px; text-align:center; font-family:var(--mono); font-size:12px; color:#0f172a; }
+.pr-data-tbl .pr-calc { font-family:var(--mono); font-size:12px; font-weight:600; color:#0f172a; min-height:28px; display:flex; align-items:center; justify-content:center; }
+.pr-data-tbl tr.pr-sep td { border-bottom:2px solid #94a3b8; padding-top:2px; padding-bottom:2px; }
+.pr-note { font-family:var(--sans); font-size:12px; font-weight:700; color:#0f172a; margin:10px 0 0; }
+.pr-lab-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:10px; margin-bottom:12px; }
+@media (max-width:900px){ .pr-lab-grid { grid-template-columns:1fr 1fr; } }
+@media (max-width:600px){ .pr-lab-grid { grid-template-columns:1fr; } }
 .fc-result-strip { display:flex; gap:16px; flex-wrap:wrap; margin:12px 0; padding:12px; background:var(--panel); border:1px solid var(--border); border-radius:8px; }
 .fc-result-strip .val { font-family:var(--mono); font-size:18px; font-weight:700; color:var(--accent2); }
 .fc-result-strip .lbl { font-family:var(--mono); font-size:9px; color:var(--muted); letter-spacing:1px; }
@@ -4397,7 +4422,7 @@ table.fc-borrow-tbl tr.fc-borrow-detail-row td{background:var(--surface);border-
           <div class="card fc-proctor-list" id="fcProctorList"><div class="hub-empty">No proctors yet.</div></div>
           <div class="card" id="fcProctorEditor">
             <div class="card-title">Proctor Entry</div>
-            <div class="form-grid" style="margin-bottom:12px;">
+            <div class="pr-lab-grid">
               <div class="form-group"><label>Name / ID</label><input type="text" id="pr_name" placeholder="Borrow A — Station 12+50"></div>
               <div class="form-group"><label>Contract</label><input type="text" id="pr_contract" placeholder="T201109502"></div>
               <div class="form-group"><label>Material</label><input type="text" id="pr_material" placeholder="209C / Select Borrow"></div>
@@ -4405,16 +4430,86 @@ table.fc-borrow-tbl tr.fc-borrow-detail-row td{background:var(--surface);border-
               <div class="form-group"><label>Date</label><input type="date" id="pr_date"></div>
               <div class="form-group"><label>Technician</label><input type="text" id="pr_tech" placeholder="Mills"></div>
             </div>
-            <div class="manual-section-title">Curve Points</div>
-            <p style="font-family:var(--mono);font-size:10px;color:var(--muted);margin:0 0 8px;line-height:1.5;">
-              Enter moisture (%) and dry density (pcf). Wet density is optional — if entered with moisture, dry density fills in.
-            </p>
-            <table class="fc-points-tbl">
-              <thead><tr><th>#</th><th>Moisture %</th><th>Wet dens. (pcf)</th><th>Dry dens. (pcf)</th><th></th></tr></thead>
-              <tbody id="pr_points_body"></tbody>
-            </table>
-            <div style="margin:8px 0 12px;">
-              <button type="button" class="btn btn-ghost" onclick="fcProctorAddPoint()">+ Add point</button>
+
+            <div class="pr-sheet">
+              <div class="pr-sec">
+                <div class="pr-sec-title">Test Specifics</div>
+                <div class="pr-meta-grid">
+                  <div>
+                    <label for="pr_curve_no">Curve number</label>
+                    <input type="text" id="pr_curve_no" placeholder="e.g. 12">
+                  </div>
+                  <div>
+                    <label for="pr_spec">Test specification</label>
+                    <select id="pr_spec" onchange="fcProctorOnSpecChange()">
+                      <option value="AASHTO T 99 Method A">AASHTO T 99 Method A</option>
+                      <option value="AASHTO T 99 Method B">AASHTO T 99 Method B</option>
+                      <option value="AASHTO T 99 Method C" selected>AASHTO T 99 Method C Standard</option>
+                      <option value="AASHTO T 99 Method D">AASHTO T 99 Method D</option>
+                      <option value="AASHTO T 180 Method A">AASHTO T 180 Method A</option>
+                      <option value="AASHTO T 180 Method B">AASHTO T 180 Method B</option>
+                      <option value="AASHTO T 180 Method C">AASHTO T 180 Method C</option>
+                      <option value="AASHTO T 180 Method D">AASHTO T 180 Method D</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label for="pr_gs">Soil specific gravity</label>
+                    <input type="number" id="pr_gs" step="0.01" placeholder="2.65" oninput="fcProctorRecalc()">
+                  </div>
+                  <div>
+                    <label for="pr_zav_gs">ZAV curve specific gravity</label>
+                    <input type="number" id="pr_zav_gs" step="0.01" placeholder="2.65" oninput="fcProctorRecalc()">
+                  </div>
+                </div>
+                <label class="pr-check">
+                  <input type="checkbox" id="pr_oversize_ratio" onchange="fcProctorRecalc()">
+                  <span>Oversize percentage determined by coarse/fine dry mass ratio</span>
+                </label>
+              </div>
+
+              <div class="pr-sec">
+                <div class="pr-sec-title">Sieve Percentages</div>
+                <div class="pr-meta-grid">
+                  <div>
+                    <label for="pr_pct_oversize">Percent oversize (% larger than 3/4 in. sieve)</label>
+                    <input type="number" id="pr_pct_oversize" step="0.1" value="0" oninput="fcProctorRecalc()">
+                  </div>
+                  <div>
+                    <label for="pr_pct_200">Percent smaller than the #200 sieve</label>
+                    <input type="number" id="pr_pct_200" step="0.1" oninput="fcProctorRecalc()">
+                  </div>
+                </div>
+              </div>
+
+              <div class="pr-sec">
+                <div class="pr-sec-title">Oversize Correction</div>
+                <div class="pr-meta-grid">
+                  <div>
+                    <label for="pr_bulk_sg">Bulk specific gravity</label>
+                    <input type="number" id="pr_bulk_sg" step="0.01" placeholder="2.60" oninput="fcProctorRecalc()">
+                  </div>
+                </div>
+              </div>
+
+              <div class="pr-sec">
+                <div class="pr-sec-title">Test Data</div>
+                <p style="font-family:var(--sans);font-size:12px;color:#64748b;margin:0 0 8px;">Enter mold and moisture-can weights. Wet density, moisture, and corrected dry density calculate automatically.</p>
+                <div class="pr-data-wrap">
+                  <table class="pr-data-tbl" id="prDataTable">
+                    <thead>
+                      <tr>
+                        <th class="pr-row-lbl" style="text-align:left;">Point No.</th>
+                        <th>1</th><th>2</th><th>3</th><th>4</th><th>5</th><th>6</th>
+                      </tr>
+                    </thead>
+                    <tbody id="pr_points_body"></tbody>
+                  </table>
+                </div>
+                <p class="pr-note">Note: Dry density results are reported with applied oversize correction.</p>
+              </div>
+            </div>
+
+            <div style="margin:12px 0 0;display:flex;gap:8px;flex-wrap:wrap;">
               <button type="button" class="btn btn-ghost" onclick="fcProctorRecalc()">↻ Recalculate</button>
             </div>
             <div class="fc-result-strip">
@@ -4422,7 +4517,7 @@ table.fc-borrow-tbl tr.fc-borrow-detail-row td{background:var(--surface);border-
               <div><div class="lbl">OPTIMUM MOISTURE</div><div class="val" id="pr_opt_moist">—</div></div>
               <div><div class="lbl">STATUS</div><div class="val" id="pr_status_lbl" style="font-size:14px;color:var(--muted);">Draft</div></div>
             </div>
-            <div class="fc-foc-chart-box"><svg id="prCurveSvg" width="640" height="320" viewBox="0 0 640 320"></svg></div>
+            <div class="fc-foc-chart-box"><svg id="prCurveSvg" width="640" height="360" viewBox="0 0 640 360"></svg></div>
             <div class="btn-row" style="margin-top:12px;flex-wrap:wrap;gap:8px;">
               <button type="button" class="btn btn-primary" onclick="fcProctorSave(false)">💾 SAVE DRAFT</button>
               <button type="button" class="btn btn-success" onclick="fcProctorSave(true)">✓ MARK COMPLETE</button>
@@ -6804,7 +6899,7 @@ table.fc-borrow-tbl tr.fc-borrow-detail-row td{background:var(--surface);border-
 // GLOBALS
 // ══════════════════════════════════════════════
 let db = null;
-const APP_BUILD = '2026.07.17-field-guided';
+const APP_BUILD = '2026.07.17-proctor-sheet';
 const FC_CORE_ICON_SRC = 'docs/r18-reference/core-drill-icon-128.png';
 const BORELOG_ICON_SRC = 'docs/r18-reference/borelog-icon.webp';
 const BORELOG_PATH = 'docs/r18-reference/deldot-borelog.html';
@@ -12337,7 +12432,7 @@ const FIELD_GUIDE_STEPS = [
     moduleMode: 'proctor',
     guide: 'fc-proctor',
     title: 'Enter a full Proctor',
-    body: 'Add moisture and density points for the curve. Recalculate shows max dry density and optimum moisture. Save a draft anytime, then Mark Complete when the curve is finished.'
+    body: 'Fill the Proctor worksheet: mold weights, mold volume, and moisture-can weights. Wet density, moisture, and corrected dry density calculate automatically. Mark Complete when the curve is finished.'
   },
   {
     id: 'foc',
@@ -22208,6 +22303,7 @@ const FC_PROCTORS_KEY = 'labtrak_proctors_v1';
 const FC_FOC_FAMILIES_KEY = 'labtrak_curve_families_v1';
 let _fcModuleMode = 'event'; // event | proctor | foc
 let _fcProctorEditId = null;
+let _fcProctorLoadedPoints = [];
 let _fcFocEditId = null;
 let _fcPendingFamilyProctorId = null;
 
@@ -22287,6 +22383,82 @@ function fcSetModuleMode(mode) {
   }
 }
 
+function fcProctorNum(v) {
+  const n = parseFloat(v);
+  return isNaN(n) ? null : n;
+}
+function fcProctorRound(n, d) {
+  if (n == null || isNaN(n)) return null;
+  const f = Math.pow(10, d);
+  return Math.round(n * f) / f;
+}
+
+/** Default mold volume (cu.ft.) by AASHTO method letter. */
+function fcProctorDefaultMoldVolume(spec) {
+  const s = String(spec || '');
+  // Methods A/B use 4" mold (~1/30); C/D use 6" mold (~0.075)
+  if (/Method\s*[CD]/i.test(s)) return 0.075;
+  return 0.0333;
+}
+
+function fcProctorOnSpecChange() {
+  const vol = fcProctorDefaultMoldVolume(document.getElementById('pr_spec')?.value);
+  document.querySelectorAll('#pr_points_body .pr-vol').forEach(inp => {
+    if (!inp.value) inp.value = String(vol);
+  });
+  fcProctorRecalc();
+}
+
+/**
+ * Corrected dry density (pcf) per AASHTO T 224 / ASTM D4718 oversize correction.
+ * Pc = percent oversize by dry mass; Gm = bulk SG of oversize; γw = 62.4 pcf.
+ */
+function fcProctorCorrectDryDensity(dryFine, pctOversize, bulkSg) {
+  const df = fcProctorNum(dryFine);
+  if (df == null) return null;
+  const pc = fcProctorNum(pctOversize) || 0;
+  const gm = fcProctorNum(bulkSg);
+  if (pc <= 0 || gm == null || gm <= 0) return fcProctorRound(df, 1);
+  const gammaW = 62.4;
+  const corr = (100 * df) / (100 - pc + (df * pc) / (gm * gammaW));
+  return fcProctorRound(corr, 1);
+}
+
+function fcProctorComputePoint(raw, meta) {
+  const moldSoil = fcProctorNum(raw.moldSoil);
+  const mold = fcProctorNum(raw.mold);
+  const vol = fcProctorNum(raw.moldVolume);
+  const wtWet = fcProctorNum(raw.wtWetTare);
+  const wtDry = fcProctorNum(raw.wtDryTare);
+  const tare = fcProctorNum(raw.tare);
+
+  let wetDensity = null;
+  if (moldSoil != null && mold != null && vol != null && vol > 0) {
+    wetDensity = fcProctorRound((moldSoil - mold) / vol, 1);
+  }
+
+  let moisture = null;
+  if (wtWet != null && wtDry != null && tare != null) {
+    const drySoil = wtDry - tare;
+    if (drySoil > 0) moisture = fcProctorRound(((wtWet - wtDry) / drySoil) * 100, 1);
+  }
+
+  let dryFine = null;
+  if (wetDensity != null && moisture != null) {
+    dryFine = wetDensity / (1 + moisture / 100);
+  }
+
+  const dryDensity = fcProctorCorrectDryDensity(dryFine, meta.pctOversize, meta.bulkSg);
+
+  return {
+    moldSoil, mold, moldVolume: vol,
+    wtWetTare: wtWet, wtDryTare: wtDry, tare,
+    wetDensity, moisture,
+    dryFine: fcProctorRound(dryFine, 1),
+    dryDensity,
+  };
+}
+
 function fcProctorComputePeak(points) {
   const pts = (points || [])
     .map(p => ({
@@ -22301,7 +22473,6 @@ function fcProctorComputePeak(points) {
   pts.forEach((p, i) => { if (p.dryDensity > pts[peakIdx].dryDensity) peakIdx = i; });
   let maxDry = pts[peakIdx].dryDensity;
   let optMoist = pts[peakIdx].moisture;
-  // Parabola through peak and neighbors when available
   if (peakIdx > 0 && peakIdx < pts.length - 1) {
     const p0 = pts[peakIdx - 1], p1 = pts[peakIdx], p2 = pts[peakIdx + 1];
     const x1 = p0.moisture, y1 = p0.dryDensity;
@@ -22313,8 +22484,6 @@ function fcProctorComputePeak(points) {
       const b = (x3 * x3 * (y1 - y2) + x2 * x2 * (y3 - y1) + x1 * x1 * (y2 - y3)) / denom;
       if (a < 0) {
         const vertex = -b / (2 * a);
-        const c = (-x3 * (x2 * x2) * (y1 - y2) - (x2 * (x1 * x1) * (y3 - y1) + x1 * (x3 * x3) * (y2 - y3))) / ((x1 - x2) * (x1 - x3) * (x2 - x3));
-        // recompute c properly for y = a x^2 + b x + c
         const c2 = y1 - a * x1 * x1 - b * x1;
         if (vertex >= x1 && vertex <= x3) {
           optMoist = vertex;
@@ -22330,81 +22499,126 @@ function fcProctorComputePeak(points) {
   };
 }
 
+function fcProctorMetaFromForm() {
+  return {
+    curveNo: (document.getElementById('pr_curve_no')?.value || '').trim(),
+    spec: document.getElementById('pr_spec')?.value || '',
+    soilGs: fcProctorNum(document.getElementById('pr_gs')?.value),
+    zavGs: fcProctorNum(document.getElementById('pr_zav_gs')?.value),
+    oversizeByRatio: !!document.getElementById('pr_oversize_ratio')?.checked,
+    pctOversize: fcProctorNum(document.getElementById('pr_pct_oversize')?.value) || 0,
+    pct200: fcProctorNum(document.getElementById('pr_pct_200')?.value),
+    bulkSg: fcProctorNum(document.getElementById('pr_bulk_sg')?.value),
+  };
+}
+
 function fcProctorReadPointsFromForm() {
-  const rows = document.querySelectorAll('#pr_points_body tr');
+  const meta = fcProctorMetaFromForm();
   const points = [];
-  rows.forEach(row => {
-    const m = parseFloat(row.querySelector('.pr-m')?.value);
-    const w = parseFloat(row.querySelector('.pr-w')?.value);
-    let d = parseFloat(row.querySelector('.pr-d')?.value);
-    if (!isNaN(w) && !isNaN(m) && (isNaN(d) || d <= 0) && m > -100) {
-      d = w / (1 + m / 100);
-      const dEl = row.querySelector('.pr-d');
-      if (dEl && !dEl.value) dEl.value = d.toFixed(1);
+  for (let i = 0; i < 6; i++) {
+    const raw = {
+      moldSoil: document.getElementById('pr_ms_' + i)?.value,
+      mold: document.getElementById('pr_m_' + i)?.value,
+      moldVolume: document.getElementById('pr_vol_' + i)?.value,
+      wtWetTare: document.getElementById('pr_ww_' + i)?.value,
+      wtDryTare: document.getElementById('pr_wd_' + i)?.value,
+      tare: document.getElementById('pr_t_' + i)?.value,
+    };
+    const hasWeights = ['moldSoil','mold','wtWetTare','wtDryTare','tare'].some(k => String(raw[k] || '').trim() !== '');
+    if (!hasWeights) {
+      const prev = (_fcProctorLoadedPoints || [])[i] || {};
+      if (prev.moisture != null && prev.dryDensity != null) {
+        points.push({
+          pointNo: i + 1,
+          moldSoil: null, mold: null, moldVolume: fcProctorNum(raw.moldVolume),
+          wtWetTare: null, wtDryTare: null, tare: null,
+          wetDensity: prev.wetDensity ?? null,
+          moisture: prev.moisture,
+          dryFine: prev.dryFine ?? null,
+          dryDensity: prev.dryDensity,
+          legacy: true,
+        });
+      } else {
+        points.push({ pointNo: i + 1, moldVolume: fcProctorNum(raw.moldVolume) });
+      }
+      continue;
     }
-    if (!isNaN(m) || !isNaN(d) || !isNaN(w)) {
-      points.push({
-        moisture: isNaN(m) ? null : m,
-        wetDensity: isNaN(w) ? null : w,
-        dryDensity: isNaN(d) ? null : Math.round(d * 10) / 10,
-      });
-    }
-  });
+    const calc = fcProctorComputePoint(raw, meta);
+    points.push({ pointNo: i + 1, ...calc });
+  }
   return points;
 }
 
-function fcProctorAddPoint(prefill) {
+function fcProctorRenderGrid(points, defaults) {
   const body = document.getElementById('pr_points_body');
   if (!body) return;
-  const n = body.children.length + 1;
-  const tr = document.createElement('tr');
-  tr.innerHTML =
-    `<td style="color:var(--muted);">${n}</td>` +
-    `<td><input class="pr-m" type="number" step="0.1" value="${prefill?.moisture ?? ''}" oninput="fcProctorOnPointInput(this)"></td>` +
-    `<td><input class="pr-w" type="number" step="0.1" value="${prefill?.wetDensity ?? ''}" oninput="fcProctorOnPointInput(this)"></td>` +
-    `<td><input class="pr-d" type="number" step="0.1" value="${prefill?.dryDensity ?? ''}" oninput="fcProctorOnPointInput(this)"></td>` +
-    `<td><button type="button" class="btn btn-ghost" style="padding:4px 8px;font-size:10px;" onclick="this.closest('tr').remove();fcProctorRenumber();fcProctorRecalc();">✕</button></td>`;
-  body.appendChild(tr);
-}
+  const defVol = defaults?.moldVolume != null ? defaults.moldVolume : fcProctorDefaultMoldVolume(document.getElementById('pr_spec')?.value);
+  const pts = [];
+  for (let i = 0; i < 6; i++) pts.push((points && points[i]) || {});
 
-function fcProctorRenumber() {
-  document.querySelectorAll('#pr_points_body tr').forEach((tr, i) => {
-    const td = tr.querySelector('td');
-    if (td) td.textContent = String(i + 1);
-  });
-}
-
-function fcProctorOnPointInput(el) {
-  const row = el?.closest('tr');
-  if (!row) return;
-  const m = parseFloat(row.querySelector('.pr-m')?.value);
-  const w = parseFloat(row.querySelector('.pr-w')?.value);
-  const dEl = row.querySelector('.pr-d');
-  if (el.classList.contains('pr-w') || el.classList.contains('pr-m')) {
-    if (!isNaN(w) && !isNaN(m) && dEl && (!dEl.value || dEl.dataset.auto === '1')) {
-      dEl.value = (w / (1 + m / 100)).toFixed(1);
-      dEl.dataset.auto = '1';
+  const inputRow = (label, cls, key, step) => {
+    let cells = `<td class="pr-row-lbl">${label}</td>`;
+    for (let i = 0; i < 6; i++) {
+      let val = pts[i][key];
+      if ((val == null || val === '') && key === 'moldVolume') val = defVol;
+      const v = (val == null || val === '') ? '' : val;
+      cells += `<td><input id="pr_${cls}_${i}" class="pr-${cls}" type="number" step="${step}" value="${v}" oninput="fcProctorRecalc()"></td>`;
     }
+    return `<tr>${cells}</tr>`;
+  };
+  const calcRow = (label, cls) => {
+    let cells = `<td class="pr-row-lbl">${label}</td>`;
+    for (let i = 0; i < 6; i++) {
+      cells += `<td><div class="pr-calc" id="pr_${cls}_${i}">—</div></td>`;
+    }
+    return `<tr>${cells}</tr>`;
+  };
+
+  body.innerHTML =
+    inputRow('Wt. mold + soil (lbs.)', 'ms', 'moldSoil', '0.01') +
+    inputRow('Wt. mold (lbs.)', 'm', 'mold', '0.01') +
+    inputRow('Mold volume (cu. ft.)', 'vol', 'moldVolume', '0.0001') +
+    calcRow('Wet density (pcf)', 'wet') +
+    `<tr class="pr-sep"><td colspan="7"></td></tr>` +
+    inputRow('Wt. w+t (gms.)', 'ww', 'wtWetTare', '0.01') +
+    inputRow('Wt. d+t (gms.)', 'wd', 'wtDryTare', '0.01') +
+    inputRow('Tare (gms.)', 't', 'tare', '0.01') +
+    calcRow('Moisture (%)', 'moist') +
+    calcRow('Corr. dry density (pcf)', 'dry');
+}
+
+function fcProctorUpdateCalcCells(points) {
+  for (let i = 0; i < 6; i++) {
+    const pt = points[i] || {};
+    const set = (id, v, suffix) => {
+      const el = document.getElementById(id);
+      if (!el) return;
+      el.textContent = (v == null || isNaN(v)) ? '—' : (Number(v).toFixed(1) + (suffix || ''));
+    };
+    set('pr_wet_' + i, pt.wetDensity);
+    set('pr_moist_' + i, pt.moisture);
+    set('pr_dry_' + i, pt.dryDensity);
   }
-  if (el.classList.contains('pr-d')) dEl.dataset.auto = '0';
-  fcProctorRecalc();
 }
 
 function fcProctorRecalc() {
-  const peak = fcProctorComputePeak(fcProctorReadPointsFromForm());
+  const points = fcProctorReadPointsFromForm();
+  fcProctorUpdateCalcCells(points);
+  const peak = fcProctorComputePeak(points);
   const maxEl = document.getElementById('pr_max_dry');
   const optEl = document.getElementById('pr_opt_moist');
   if (maxEl) maxEl.textContent = peak.maxDry != null ? peak.maxDry.toFixed(1) + ' pcf' : '—';
   if (optEl) optEl.textContent = peak.optMoist != null ? peak.optMoist.toFixed(1) + ' %' : '—';
-  fcProctorDrawChart(peak);
-  return peak;
+  const meta = fcProctorMetaFromForm();
+  fcProctorDrawChart(peak, meta);
+  return { points, peak, meta };
 }
 
-function fcProctorDrawChart(peak) {
+function fcProctorDrawChart(peak, meta) {
   const svg = document.getElementById('prCurveSvg');
   if (!svg) return;
   const pts = peak?.points || [];
-  const W = 640, H = 320, ml = 50, mr = 16, mt = 16, mb = 36;
+  const W = 640, H = 360, ml = 50, mr = 16, mt = 16, mb = 40;
   const plotW = W - ml - mr, plotH = H - mt - mb;
   let xMin = 4, xMax = 24, yMin = 90, yMax = 140;
   if (pts.length) {
@@ -22415,24 +22629,38 @@ function fcProctorDrawChart(peak) {
     yMin = Math.max(70, Math.floor(Math.min(...ds) - 4));
     yMax = Math.ceil(Math.max(...ds) + 4);
   }
+  const zavGs = meta?.zavGs || meta?.soilGs;
   const xScale = m => ml + ((m - xMin) / Math.max(0.1, xMax - xMin)) * plotW;
   const yScale = d => mt + plotH - ((d - yMin) / Math.max(0.1, yMax - yMin)) * plotH;
   let g = '';
   for (let m = xMin; m <= xMax; m += 2) {
     g += `<line x1="${xScale(m)}" y1="${mt}" x2="${xScale(m)}" y2="${mt+plotH}" stroke="#e2e8f0"/>`;
-    g += `<text x="${xScale(m)}" y="${H-10}" font-size="9" fill="#64748b" text-anchor="middle">${m}</text>`;
+    g += `<text x="${xScale(m)}" y="${H-12}" font-size="9" fill="#64748b" text-anchor="middle">${m}</text>`;
   }
   for (let d = yMin; d <= yMax; d += 5) {
     g += `<line x1="${ml}" y1="${yScale(d)}" x2="${ml+plotW}" y2="${yScale(d)}" stroke="#e2e8f0"/>`;
     g += `<text x="${ml-6}" y="${yScale(d)+3}" font-size="9" fill="#64748b" text-anchor="end">${d}</text>`;
   }
-  g += `<text x="${ml+plotW/2}" y="${H-22}" font-size="10" fill="#334155" text-anchor="middle">Moisture (%)</text>`;
+  g += `<text x="${ml+plotW/2}" y="${H-26}" font-size="10" fill="#334155" text-anchor="middle">Moisture (%)</text>`;
   g += `<text x="14" y="${mt+plotH/2}" font-size="10" fill="#334155" text-anchor="middle" transform="rotate(-90 14 ${mt+plotH/2})">Dry Density (pcf)</text>`;
+
+  // Zero air voids curve
+  if (zavGs && zavGs > 1) {
+    const zavPts = [];
+    for (let m = xMin; m <= xMax + 0.001; m += 0.25) {
+      const d = (zavGs * 62.4) / (1 + (m / 100) * zavGs);
+      if (d >= yMin && d <= yMax + 20) zavPts.push(`${xScale(m).toFixed(1)},${yScale(d).toFixed(1)}`);
+    }
+    if (zavPts.length > 1) {
+      g += `<path d="M ${zavPts.join(' L ')}" fill="none" stroke="#94a3b8" stroke-width="1.4" stroke-dasharray="5 4"/>`;
+      g += `<text x="${ml+plotW-4}" y="${mt+12}" font-size="9" fill="#64748b" text-anchor="end">ZAV (Gs ${zavGs})</text>`;
+    }
+  }
+
   if (pts.length >= 2) {
     const path = pts.map(p => `${xScale(p.moisture).toFixed(1)},${yScale(p.dryDensity).toFixed(1)}`).join(' L ');
-    g += `<path d="M ${path}" fill="none" stroke="#94a3b8" stroke-width="1.6"/>`;
+    g += `<path d="M ${path}" fill="none" stroke="#2563eb" stroke-width="2"/>`;
   }
-  // spine 80-100% of optimum moisture
   if (peak?.maxDry != null && peak?.optMoist != null) {
     const spine = fcCurveSpineRange(peak.optMoist);
     const spinePts = [];
@@ -22443,7 +22671,6 @@ function fcProctorDrawChart(peak) {
     }
     if (spinePts.length > 1) {
       g += `<path d="M ${spinePts.join(' L ')}" fill="none" stroke="#c47c2a" stroke-width="3" stroke-linecap="round"/>`;
-      g += `<text x="${xScale(peak.optMoist)}" y="${yScale(peak.maxDry)-8}" font-size="10" fill="#c47c2a" text-anchor="middle">80–100% spine</text>`;
     }
   }
   pts.forEach(p => {
@@ -22454,24 +22681,28 @@ function fcProctorDrawChart(peak) {
 
 function fcProctorNew() {
   _fcProctorEditId = null;
+  _fcProctorLoadedPoints = [];
   const set = (id, v) => { const el = document.getElementById(id); if (el) el.value = v || ''; };
+  const setCheck = (id, on) => { const el = document.getElementById(id); if (el) el.checked = !!on; };
   set('pr_name', '');
   set('pr_contract', '');
   set('pr_material', '');
   set('pr_source', '');
   set('pr_date', new Date().toISOString().slice(0, 10));
   set('pr_tech', '');
-  if (typeof _autoFillTech === 'function') {
-    // reuse tech autofill into pr_tech if possible
-    const tech = document.getElementById('fc_s_tech')?.value || document.getElementById('pr_tech')?.value || '';
-    if (!document.getElementById('pr_tech')?.value && currentUser?.name) {
-      const parts = String(currentUser.name).trim().split(/\s+/);
-      set('pr_tech', parts[parts.length - 1] || currentUser.name);
-    } else if (tech) set('pr_tech', tech);
+  set('pr_curve_no', '');
+  set('pr_spec', 'AASHTO T 99 Method C');
+  set('pr_gs', '');
+  set('pr_zav_gs', '');
+  setCheck('pr_oversize_ratio', false);
+  set('pr_pct_oversize', '0');
+  set('pr_pct_200', '');
+  set('pr_bulk_sg', '');
+  if (typeof currentUser !== 'undefined' && currentUser?.name) {
+    const parts = String(currentUser.name).trim().split(/\s+/);
+    set('pr_tech', parts[parts.length - 1] || currentUser.name);
   }
-  const body = document.getElementById('pr_points_body');
-  if (body) body.innerHTML = '';
-  for (let i = 0; i < 5; i++) fcProctorAddPoint();
+  fcProctorRenderGrid([], { moldVolume: fcProctorDefaultMoldVolume('AASHTO T 99 Method C') });
   const st = document.getElementById('pr_status_lbl');
   if (st) { st.textContent = 'Draft'; st.style.color = 'var(--muted)'; }
   fcProctorRecalc();
@@ -22492,9 +22723,10 @@ function fcRenderProctorList() {
       ? '<span class="fc-badge complete">COMPLETE</span>'
       : '<span class="fc-badge draft">DRAFT</span>';
     const peak = (p.maxDry != null) ? `${p.maxDry} pcf @ ${p.optMoist}%` : 'Incomplete curve';
+    const curve = p.curveNo ? `Curve ${p.curveNo} · ` : '';
     return `<button type="button" class="fc-proctor-item${active}" onclick="fcProctorLoad('${p.id}')">` +
       `<div style="display:flex;justify-content:space-between;gap:8px;align-items:center;"><strong>${(p.name || 'Untitled').replace(/</g,'&lt;')}</strong>${badge}</div>` +
-      `<div class="meta">${peak}<br>${(p.contract || '—')} · ${(p.material || '—')}</div></button>`;
+      `<div class="meta">${curve}${peak}<br>${(p.spec || 'Proctor')} · ${(p.contract || '—')}</div></button>`;
   }).join('');
 }
 
@@ -22502,33 +22734,90 @@ function fcProctorLoad(id) {
   const p = fcLoadProctors().find(x => x.id === id);
   if (!p) return;
   _fcProctorEditId = id;
+  _fcProctorLoadedPoints = (p.points || []).slice(0, 6);
   const set = (i, v) => { const el = document.getElementById(i); if (el) el.value = v ?? ''; };
+  const setCheck = (i, on) => { const el = document.getElementById(i); if (el) el.checked = !!on; };
   set('pr_name', p.name);
   set('pr_contract', p.contract);
   set('pr_material', p.material);
   set('pr_source', p.source);
   set('pr_date', p.date);
   set('pr_tech', p.tech);
-  const body = document.getElementById('pr_points_body');
-  if (body) body.innerHTML = '';
-  (p.points && p.points.length ? p.points : [{}, {}, {}, {}, {}]).forEach(pt => fcProctorAddPoint(pt));
+  set('pr_curve_no', p.curveNo || '');
+  set('pr_spec', p.spec || 'AASHTO T 99 Method C');
+  set('pr_gs', p.soilGs != null ? p.soilGs : '');
+  set('pr_zav_gs', p.zavGs != null ? p.zavGs : '');
+  setCheck('pr_oversize_ratio', !!p.oversizeByRatio);
+  set('pr_pct_oversize', p.pctOversize != null ? p.pctOversize : 0);
+  set('pr_pct_200', p.pct200 != null ? p.pct200 : '');
+  set('pr_bulk_sg', p.bulkSg != null ? p.bulkSg : '');
+  // Migrate legacy moisture/wet/dry-only points into new grid shape
+  const pts = (p.points || []).map(pt => {
+    if (pt && (pt.moldSoil != null || pt.wtWetTare != null || pt.mold != null)) return pt;
+    return {
+      moldSoil: null, mold: null, moldVolume: null,
+      wtWetTare: null, wtDryTare: null, tare: null,
+      wetDensity: pt?.wetDensity ?? null,
+      moisture: pt?.moisture ?? null,
+      dryDensity: pt?.dryDensity ?? null,
+      // keep direct values visible via calc cells after one recalc path:
+      _legacy: true,
+    };
+  });
+  fcProctorRenderGrid(pts, { moldVolume: fcProctorDefaultMoldVolume(p.spec) });
+  // If legacy-only points, seed moisture/wet/dry into calc display by writing synthetic raw? 
+  // Better: for legacy, put moisture/dry into a compatibility fill after render.
+  pts.forEach((pt, i) => {
+    if (!pt || !pt._legacy) return;
+    // no raw weights — leave inputs blank; show legacy results in calc cells after recalc won't have them.
+    // Store on dataset for display pass:
+  });
   const st = document.getElementById('pr_status_lbl');
   if (st) {
     st.textContent = p.status === 'complete' ? 'Complete' : 'Draft';
     st.style.color = p.status === 'complete' ? 'var(--green2)' : 'var(--muted)';
   }
-  fcProctorRecalc();
+  const result = fcProctorRecalc();
+  // Overlay legacy computed values when no raw weights exist
+  pts.forEach((pt, i) => {
+    if (!pt || (pt.moldSoil != null || pt.wtWetTare != null)) return;
+    if (pt.wetDensity != null) {
+      const el = document.getElementById('pr_wet_' + i);
+      if (el) el.textContent = Number(pt.wetDensity).toFixed(1);
+    }
+    if (pt.moisture != null) {
+      const el = document.getElementById('pr_moist_' + i);
+      if (el) el.textContent = Number(pt.moisture).toFixed(1);
+    }
+    if (pt.dryDensity != null) {
+      const el = document.getElementById('pr_dry_' + i);
+      if (el) el.textContent = Number(pt.dryDensity).toFixed(1);
+    }
+  });
+  // If all legacy, draw chart from stored peak points
+  if (pts.some(pt => pt && pt._legacy && pt.dryDensity != null)) {
+    const legacyPts = pts.filter(pt => pt && pt.moisture != null && pt.dryDensity != null)
+      .map(pt => ({ moisture: pt.moisture, dryDensity: pt.dryDensity, wetDensity: pt.wetDensity }));
+    if (legacyPts.length) {
+      const peak = fcProctorComputePeak(legacyPts);
+      const maxEl = document.getElementById('pr_max_dry');
+      const optEl = document.getElementById('pr_opt_moist');
+      if (maxEl && peak.maxDry != null) maxEl.textContent = peak.maxDry.toFixed(1) + ' pcf';
+      if (optEl && peak.optMoist != null) optEl.textContent = peak.optMoist.toFixed(1) + ' %';
+      fcProctorDrawChart(peak, fcProctorMetaFromForm());
+    }
+  }
   fcRenderProctorList();
 }
 
 function fcProctorSave(markComplete) {
   const name = (document.getElementById('pr_name')?.value || '').trim();
   if (!name) { showToast('Enter a proctor name / ID', 'error'); return; }
-  const points = fcProctorReadPointsFromForm();
-  const peak = fcProctorComputePeak(points);
+  const { points, peak, meta } = fcProctorRecalc();
+  const usable = points.filter(p => p.moisture != null && p.dryDensity != null);
   if (markComplete) {
-    if (peak.maxDry == null || peak.optMoist == null || peak.points.length < 3) {
-      showToast('Need at least 3 moisture/dry-density points to complete', 'error');
+    if (peak.maxDry == null || peak.optMoist == null || usable.length < 3) {
+      showToast('Need at least 3 completed points (mold + moisture cans) to complete', 'error');
       return;
     }
   }
@@ -22543,6 +22832,14 @@ function fcProctorSave(markComplete) {
     source: (document.getElementById('pr_source')?.value || '').trim(),
     date: document.getElementById('pr_date')?.value || now.slice(0, 10),
     tech: (document.getElementById('pr_tech')?.value || '').trim(),
+    curveNo: meta.curveNo,
+    spec: meta.spec,
+    soilGs: meta.soilGs,
+    zavGs: meta.zavGs,
+    oversizeByRatio: meta.oversizeByRatio,
+    pctOversize: meta.pctOversize,
+    pct200: meta.pct200,
+    bulkSg: meta.bulkSg,
     points,
     maxDry: peak.maxDry,
     optMoist: peak.optMoist,
@@ -22555,6 +22852,7 @@ function fcProctorSave(markComplete) {
   else list.unshift(payload);
   fcSaveProctors(list);
   _fcProctorEditId = payload.id;
+  _fcProctorLoadedPoints = payload.points || [];
   fcRenderProctorList();
   fcProctorLoad(payload.id);
   showToast(markComplete ? 'Proctor marked complete ✓' : 'Proctor draft saved ✓', 'success');
@@ -22566,7 +22864,6 @@ function fcProctorDelete() {
   if (!confirm('Delete this proctor?')) return;
   const id = _fcProctorEditId;
   fcSaveProctors(fcLoadProctors().filter(p => p.id !== id));
-  // detach from families
   const families = fcLoadFamilies();
   families.forEach(f => {
     f.curves = (f.curves || []).filter(c => c.proctorId !== id);
