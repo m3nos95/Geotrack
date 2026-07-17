@@ -5457,13 +5457,13 @@ table.fc-borrow-tbl tr.fc-borrow-detail-row td{background:var(--surface);border-
 
             <div class="manual-section-title">Materials Used</div>
             <div style="display:grid;grid-template-columns:1fr 80px 1fr 80px;gap:8px;margin-bottom:10px;align-items:end;">
-              <div class="form-group"><label>Cement 1 Brand</label><input type="text" id="ci_cement1" placeholder="RIVERSIDE"></div>
+              <div class="form-group" data-guide="intake-materials-cement"><label>Cement 1 Brand</label><input type="text" id="ci_cement1" placeholder="RIVERSIDE"></div>
               <div class="form-group"><label>%</label><input type="number" id="ci_cement1_pct" placeholder="75" min="0" max="100"></div>
               <div class="form-group"><label>Cement 2 Brand</label><input type="text" id="ci_cement2" placeholder="EARTHCEM"></div>
               <div class="form-group"><label>%</label><input type="number" id="ci_cement2_pct" placeholder="25" min="0" max="100"></div>
               <div class="form-group"><label>Cement 3 Brand</label><input type="text" id="ci_cement3" placeholder=""></div>
               <div class="form-group"><label>%</label><input type="number" id="ci_cement3_pct" placeholder="0" min="0" max="100"></div>
-              <div class="form-group"><label>Admix 1 Brand</label><input type="text" id="ci_admix1" placeholder="2020"></div>
+              <div class="form-group" data-guide="intake-materials-admix"><label>Admix 1 Brand</label><input type="text" id="ci_admix1" placeholder="2020"></div>
               <div class="form-group"><label>Oz/Sk</label><input type="number" id="ci_admix1_oz" placeholder="4.7" step="0.01"></div>
               <div class="form-group"><label>Admix 2 Brand</label><input type="text" id="ci_admix2" placeholder=""></div>
               <div class="form-group"><label>Oz/Sk</label><input type="number" id="ci_admix2_oz" placeholder="" step="0.01"></div>
@@ -5475,7 +5475,7 @@ table.fc-borrow-tbl tr.fc-borrow-detail-row td{background:var(--surface);border-
               <div class="form-group"><label>Oz/Sk</label><input type="number" id="ci_aea_oz" placeholder="0.37" step="0.01"></div>
             </div>
             <div class="form-grid three" style="margin-bottom:0;">
-              <div class="form-group"><label>Water Source</label><input type="text" id="ci_water" placeholder="CITY OF WILMINGTON"></div>
+              <div class="form-group" data-guide="intake-materials-aggregate"><label>Water Source</label><input type="text" id="ci_water" placeholder="CITY OF WILMINGTON"></div>
               <div class="form-group"><label>Fine Agg</label><input type="text" id="ci_fine_agg" placeholder="ESSG YORK SAND"></div>
               <div class="form-group"><label>Coarse Agg</label><input type="text" id="ci_coarse_agg" placeholder="EAST PETERSBURG"></div>
               <div class="form-group"><label>Fibers (Lbs/CY)</label><input type="text" id="ci_fibers" placeholder=""></div>
@@ -6628,7 +6628,7 @@ table.fc-borrow-tbl tr.fc-borrow-detail-row td{background:var(--surface);border-
 // GLOBALS
 // ══════════════════════════════════════════════
 let db = null;
-const APP_BUILD = '2026.07.16-concrete-guided';
+const APP_BUILD = '2026.07.17-concrete-guide-no-showme';
 const FC_CORE_ICON_SRC = 'docs/r18-reference/core-drill-icon-128.png';
 const BORELOG_ICON_SRC = 'docs/r18-reference/borelog-icon.webp';
 const BORELOG_PATH = 'docs/r18-reference/deldot-borelog.html';
@@ -11760,6 +11760,30 @@ const CONCRETE_GUIDE_STEPS = [
     body: 'Enter the field test results: slump, air content, unit weight, and temperatures. Use the numbers from your gauges — leave a field blank only if you did not run that test.'
   },
   {
+    id: 'materials-cement',
+    view: 'concrete',
+    tab: 'intake',
+    guide: 'intake-materials-cement',
+    title: 'Record cement brand + %',
+    body: 'Enter Cement 1/2/3 brand names and the % for each. Make sure the % totals 100.'
+  },
+  {
+    id: 'materials-admix',
+    view: 'concrete',
+    tab: 'intake',
+    guide: 'intake-materials-admix',
+    title: 'Record admixtures + AEA',
+    body: 'Enter Admix 1–4 brand names and Oz/Sk for each. Also enter the AEA Brand and Oz/Sk.'
+  },
+  {
+    id: 'materials-aggregate',
+    view: 'concrete',
+    tab: 'intake',
+    guide: 'intake-materials-aggregate',
+    title: 'Record aggregates + plant details',
+    body: 'Enter the Water Source, Fine Agg, Coarse Agg, Fibers, Plant / Supplier details, and the GGBFS correction factor.'
+  },
+  {
     id: 'cylinders',
     view: 'concrete',
     tab: 'intake',
@@ -11860,11 +11884,29 @@ function concreteGuideGoToStepView(step) {
   }
 }
 
+function concreteGuideEnsureDmp15Expanded() {
+  try {
+    const intake = document.getElementById('csub-intake');
+    if (!intake) return;
+    // The DMP-15 / DMF-13 section starts collapsed with display:none, so open it before highlighting material fields.
+    const hdr = Array.from(intake.querySelectorAll('div')).find(el => {
+      const t = (el.textContent || '').trim();
+      return t.includes('DMP-15 / DMF-13 Extended Fields') && el.getAttribute('onclick');
+    });
+    if (!hdr) return;
+    const sib = hdr.nextElementSibling;
+    if (!sib) return;
+    const isHidden = sib.style.display === 'none' || getComputedStyle(sib).display === 'none';
+    if (isHidden) hdr.click();
+  } catch {}
+}
+
 function concreteGuideShowTarget() {
   if (!isConcreteGuidedMode()) return;
   const step = CONCRETE_GUIDE_STEPS[_concreteGuideIndex];
   if (!step) return;
   concreteGuideGoToStepView(step);
+  if (step.guide && step.guide.startsWith('intake-materials-')) concreteGuideEnsureDmp15Expanded();
   setTimeout(() => {
     const el = concreteGuideFindTarget(step);
     concreteGuideClearPulse();
@@ -27781,7 +27823,6 @@ window.r18_renderTabs = renderTabs;
     <button type="button" class="cg-btn ghost" id="cgExitBtn" onclick="setConcreteGuidedMode(false)">Turn off</button>
     <button type="button" class="cg-btn" id="cgBackBtn" onclick="concreteGuidePrev()">Back</button>
     <div class="cg-progress" aria-hidden="true"><span id="cgProgressBar" style="width:0%"></span></div>
-    <button type="button" class="cg-btn" id="cgShowBtn" onclick="concreteGuideShowTarget()">Show me</button>
     <button type="button" class="cg-btn primary" id="cgNextBtn" onclick="concreteGuideNext()">Next</button>
   </div>
 </div>
