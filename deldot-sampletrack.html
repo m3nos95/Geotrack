@@ -2160,6 +2160,40 @@ body.field-guide-on #fieldhub-view { padding-bottom: 150px; }
   body.field-guide-on #fieldhub-view { padding-bottom: 180px; }
 }
 
+/* Guided Mode voice-to-text */
+.cg-btn.voice {
+  background: rgba(196,124,42,0.12); border-color: rgba(196,124,42,0.45); color: var(--accent2);
+  min-width: 108px;
+}
+.cg-btn.voice.listening {
+  background: rgba(220,38,38,0.18); border-color: rgba(220,38,38,0.55); color: #fca5a5;
+  animation: guideVoicePulse 1s ease-in-out infinite;
+}
+@keyframes guideVoicePulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(220,38,38,0.35); }
+  50% { box-shadow: 0 0 0 6px rgba(220,38,38,0); }
+}
+.guide-voice-fab {
+  position: absolute; z-index: 9300;
+  display: none; align-items: center; gap: 6px;
+  font-family: var(--sans); font-size: 13px; font-weight: 700;
+  background: var(--accent); color: #fff; border: none; border-radius: 999px;
+  padding: 8px 12px; cursor: pointer;
+  box-shadow: 0 6px 18px rgba(0,0,0,0.35);
+}
+.guide-voice-fab.visible { display: inline-flex; }
+.guide-voice-fab.listening { background: #dc2626; animation: guideVoicePulse 1s ease-in-out infinite; }
+.guide-voice-hint {
+  font-family: var(--sans); font-size: 12px; color: var(--muted); margin: 6px 0 0;
+  display: none;
+}
+body.concrete-guide-on .guide-voice-hint,
+body.field-guide-on .guide-voice-hint { display: block; }
+.guide-voice-status {
+  font-family: var(--sans); font-size: 12px; font-weight: 600; color: var(--accent2);
+  min-height: 16px; margin-top: 4px;
+}
+
 .user-badge {
   background: rgba(255,255,255,0.04);
   border: 1px solid rgba(255,255,255,0.08);
@@ -6899,7 +6933,7 @@ table.fc-borrow-tbl tr.fc-borrow-detail-row td{background:var(--surface);border-
 // GLOBALS
 // ══════════════════════════════════════════════
 let db = null;
-const APP_BUILD = '2026.07.17-fieldhub-declutter';
+const APP_BUILD = '2026.07.17-guided-voice';
 const FC_CORE_ICON_SRC = 'docs/r18-reference/core-drill-icon-128.png';
 const BORELOG_ICON_SRC = 'docs/r18-reference/borelog-icon.webp';
 const BORELOG_PATH = 'docs/r18-reference/deldot-borelog.html';
@@ -7452,6 +7486,7 @@ window.addEventListener('DOMContentLoaded', () => {
   initComfortMode();
   initConcreteGuidedMode();
   initFieldGuidedMode();
+  initGuideVoice();
   initKonamiCode();
   if (checkAppBuildUpdate()) return;
   if (typeof syncMobileNav === 'function') setTimeout(syncMobileNav, 100);
@@ -11985,6 +12020,350 @@ function initComfortMode() {
 }
 
 // ══════════════════════════════════════════════
+// ══════════════════════════════════════════════
+// GUIDED MODE VOICE-TO-TEXT (Web Speech API)
+// ══════════════════════════════════════════════
+let _guideVoiceRec = null;
+let _guideVoiceListening = false;
+let _guideVoiceTarget = null;
+let _guideVoiceFabEl = null;
+
+const GUIDE_VOICE_WORDS = {
+  zero: 0, oh: 0, one: 1, two: 2, three: 3, four: 4, five: 5,
+  six: 6, seven: 7, eight: 8, nine: 9, ten: 10, eleven: 11, twelve: 12,
+  thirteen: 13, fourteen: 14, fifteen: 15, sixteen: 16, seventeen: 17,
+  eighteen: 18, nineteen: 19, twenty: 20, thirty: 30, forty: 40,
+  fifty: 50, sixty: 60, seventy: 70, eighty: 80, ninety: 90,
+  hundred: 100, half: 0.5,
+};
+
+function isAnyGuidedModeOn() {
+  return (typeof isConcreteGuidedMode === 'function' && isConcreteGuidedMode())
+    || (typeof isFieldGuidedMode === 'function' && isFieldGuidedMode());
+}
+
+function guideVoiceSupported() {
+  return !!(window.SpeechRecognition || window.webkitSpeechRecognition);
+}
+
+function guideVoiceSetStatus(msg) {
+  ['cgVoiceStatus', 'fgVoiceStatus'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.textContent = msg || '';
+  });
+}
+
+function guideVoiceUpdateButtons() {
+  const label = _guideVoiceListening ? '⏹ Stop' : '🎤 Speak';
+  ['cgVoiceBtn', 'fgVoiceBtn'].forEach(id => {
+    const btn = document.getElementById(id);
+    if (!btn) return;
+    btn.textContent = label;
+    btn.classList.toggle('listening', _guideVoiceListening);
+    btn.disabled = !guideVoiceSupported() && !_guideVoiceListening;
+    if (!guideVoiceSupported()) {
+      btn.title = 'Voice input needs Chrome, Edge, or Safari';
+    }
+  });
+  const fab = document.getElementById('guideVoiceFab');
+  if (fab) {
+    fab.textContent = _guideVoiceListening ? '⏹ Listening…' : '🎤 Speak';
+    fab.classList.toggle('listening', _guideVoiceListening);
+  }
+}
+
+function guideVoiceIsFillable(el) {
+  if (!el || el.disabled || el.readOnly) return false;
+  const tag = (el.tagName || '').toLowerCase();
+  if (tag === 'textarea') return true;
+  if (tag === 'select') return true;
+  if (tag !== 'input') return false;
+  const type = (el.type || 'text').toLowerCase();
+  return !['button', 'submit', 'checkbox', 'radio', 'file', 'hidden', 'color', 'range'].includes(type);
+}
+
+function guideVoiceFindTarget() {
+  const active = document.activeElement;
+  if (guideVoiceIsFillable(active)) return active;
+  if (_guideVoiceTarget && guideVoiceIsFillable(_guideVoiceTarget) && document.body.contains(_guideVoiceTarget)) {
+    return _guideVoiceTarget;
+  }
+  // Prefer first fillable input inside the pulsing guide target
+  const pulse = document.querySelector('.concrete-guide-pulse');
+  if (pulse) {
+    if (guideVoiceIsFillable(pulse)) return pulse;
+    const nested = pulse.querySelector('input:not([type=hidden]):not([type=checkbox]):not([type=radio]), textarea, select');
+    if (guideVoiceIsFillable(nested)) return nested;
+  }
+  return null;
+}
+
+function guideVoiceParseNumber(spoken) {
+  let s = String(spoken || '').toLowerCase().trim();
+  s = s.replace(/[^a-z0-9.\s\-]/g, ' ').replace(/\s+/g, ' ').trim();
+  if (!s) return null;
+
+  // Digits already present: "4", "4.5", "slump 4", "4 inches"
+  const digit = s.match(/-?\d+(?:\.\d+)?/);
+  if (digit && !/[a-z]/.test(s.replace(digit[0], '').replace(/\b(inch|inches|percent|degrees?|pcf|point|and|a|the|is|was|slump|air|temp|temperature|number|value)\b/g, '').trim())) {
+    return digit[0];
+  }
+  if (digit && /^\s*-?\d+(?:\.\d+)?\s*(?:inch|inches|percent|%|degrees?|pcf)?\s*$/.test(s)) {
+    return digit[0];
+  }
+
+  // Word numbers: "four", "four point five", "four and a half"
+  s = s.replace(/\binch(?:es)?\b|\bpercent\b|\bdegrees?\b|\bpcf\b|\bpercent\b/g, ' ').replace(/\s+/g, ' ').trim();
+  if (s.includes('point')) {
+    const [left, right] = s.split('point').map(x => x.trim());
+    const whole = guideVoiceWordsToInt(left);
+    const frac = guideVoiceWordsToInt(right);
+    if (whole != null && frac != null) return String(whole) + '.' + String(frac);
+  }
+  if (/\band a half\b|\bhalf\b/.test(s)) {
+    const base = guideVoiceWordsToInt(s.replace(/\band a half\b|\bhalf\b/g, ' ').trim());
+    if (base != null) return String(base + 0.5);
+  }
+  const n = guideVoiceWordsToInt(s);
+  return n != null ? String(n) : null;
+}
+
+function guideVoiceWordsToInt(phrase) {
+  const parts = String(phrase || '').toLowerCase().trim().split(/\s+/).filter(Boolean);
+  if (!parts.length) return null;
+  let total = 0;
+  let current = 0;
+  let saw = false;
+  for (const w of parts) {
+    if (!(w in GUIDE_VOICE_WORDS)) {
+      if (/^\d+$/.test(w)) { current += parseInt(w, 10); saw = true; continue; }
+      continue;
+    }
+    const val = GUIDE_VOICE_WORDS[w];
+    saw = true;
+    if (val === 100) {
+      current = (current || 1) * 100;
+    } else if (val < 1) {
+      // half handled elsewhere
+    } else {
+      current += val;
+    }
+  }
+  total += current;
+  return saw ? total : null;
+}
+
+function guideVoiceNormalizeText(spoken) {
+  let s = String(spoken || '').trim();
+  s = s.replace(/\s+/g, ' ');
+  // Strip trailing punctuation
+  s = s.replace(/[.,!?]+$/g, '');
+  return s;
+}
+
+function guideVoiceApplyToInput(el, spoken) {
+  if (!el || spoken == null) return false;
+  const tag = (el.tagName || '').toLowerCase();
+  const type = (el.type || 'text').toLowerCase();
+  let value = guideVoiceNormalizeText(spoken);
+
+  if (tag === 'select') {
+    const low = value.toLowerCase();
+    const opts = Array.from(el.options || []);
+    let match = opts.find(o => String(o.text).toLowerCase() === low || String(o.value).toLowerCase() === low);
+    if (!match) match = opts.find(o => String(o.text).toLowerCase().includes(low) || String(o.value).toLowerCase().includes(low));
+    // number match for cylinder diameter etc.
+    const num = guideVoiceParseNumber(spoken);
+    if (!match && num != null) {
+      match = opts.find(o => String(o.value) === num || String(o.text).startsWith(num));
+    }
+    if (!match) return false;
+    el.value = match.value;
+  } else if (type === 'number' || type === 'range') {
+    const num = guideVoiceParseNumber(spoken);
+    if (num == null) return false;
+    el.value = num;
+  } else if (type === 'date') {
+    // keep simple: accept YYYY-MM-DD if spoken as digits
+    const m = value.match(/(\d{4})[-/](\d{1,2})[-/](\d{1,2})/);
+    if (!m) return false;
+    el.value = m[1] + '-' + m[2].padStart(2, '0') + '-' + m[3].padStart(2, '0');
+  } else {
+    // text — prefer parsed number if the placeholder/label looks numeric, else raw text
+    const num = guideVoiceParseNumber(spoken);
+    const looksNumeric = /slump|air|temp|weight|moisture|density|pcf|%|station|depth|thick/i.test(
+      (el.id || '') + ' ' + (el.name || '') + ' ' + (el.placeholder || '') + ' ' + (el.closest('.form-group')?.querySelector('label')?.textContent || '')
+    );
+    el.value = (looksNumeric && num != null) ? num : value;
+  }
+
+  el.dispatchEvent(new Event('input', { bubbles: true }));
+  el.dispatchEvent(new Event('change', { bubbles: true }));
+  try { el.focus({ preventScroll: true }); } catch { try { el.focus(); } catch {} }
+  return true;
+}
+
+function guideVoicePositionFab(el) {
+  const fab = document.getElementById('guideVoiceFab');
+  if (!fab || !el || !isAnyGuidedModeOn()) {
+    if (fab) fab.classList.remove('visible');
+    return;
+  }
+  if (!guideVoiceSupported()) {
+    fab.classList.remove('visible');
+    return;
+  }
+  const r = el.getBoundingClientRect();
+  if (r.width < 2 || r.height < 2) {
+    fab.classList.remove('visible');
+    return;
+  }
+  fab.classList.add('visible');
+  const top = Math.max(8, window.scrollY + r.top - 40);
+  let left = window.scrollX + r.right - 110;
+  left = Math.max(8, Math.min(left, window.scrollX + window.innerWidth - 120));
+  fab.style.top = top + 'px';
+  fab.style.left = left + 'px';
+}
+
+function guideVoiceHideFab() {
+  const fab = document.getElementById('guideVoiceFab');
+  if (fab) fab.classList.remove('visible');
+}
+
+function guideVoiceOnFocusIn(e) {
+  if (!isAnyGuidedModeOn()) return;
+  const el = e.target;
+  if (!guideVoiceIsFillable(el)) return;
+  _guideVoiceTarget = el;
+  guideVoicePositionFab(el);
+  const label = el.closest('.form-group')?.querySelector('label')?.textContent?.trim()
+    || el.getAttribute('aria-label')
+    || el.placeholder
+    || 'this field';
+  guideVoiceSetStatus('Selected: ' + label.replace(/\s+/g, ' ') + ' — tap Speak and say the value');
+}
+
+function guideVoiceStop() {
+  _guideVoiceListening = false;
+  try { if (_guideVoiceRec) _guideVoiceRec.stop(); } catch {}
+  guideVoiceUpdateButtons();
+}
+
+function guideVoiceToggle() {
+  if (_guideVoiceListening) {
+    guideVoiceStop();
+    guideVoiceSetStatus('Listening stopped');
+    return;
+  }
+  guideVoiceStart();
+}
+
+function guideVoiceStart() {
+  if (!isAnyGuidedModeOn()) {
+    if (typeof showToast === 'function') showToast('Turn on Guided Mode to use Speak', 'info');
+    return;
+  }
+  if (!guideVoiceSupported()) {
+    guideVoiceSetStatus('Voice needs Chrome, Edge, or Safari on this device');
+    if (typeof showToast === 'function') showToast('Voice input not supported in this browser', 'error');
+    return;
+  }
+  const target = guideVoiceFindTarget();
+  if (!target) {
+    guideVoiceSetStatus('Tap a field first (for example Slump), then Speak');
+    if (typeof showToast === 'function') showToast('Tap a field first, then Speak', 'info');
+    return;
+  }
+  _guideVoiceTarget = target;
+  try { target.focus({ preventScroll: true }); } catch { try { target.focus(); } catch {} }
+  guideVoicePositionFab(target);
+
+  const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+  try { if (_guideVoiceRec) _guideVoiceRec.abort(); } catch {}
+  const rec = new SR();
+  _guideVoiceRec = rec;
+  rec.lang = 'en-US';
+  rec.interimResults = false;
+  rec.maxAlternatives = 3;
+  rec.continuous = false;
+
+  rec.onstart = () => {
+    _guideVoiceListening = true;
+    guideVoiceUpdateButtons();
+    guideVoiceSetStatus('Listening… say the value now');
+  };
+  rec.onerror = (ev) => {
+    _guideVoiceListening = false;
+    guideVoiceUpdateButtons();
+    const err = ev?.error || 'error';
+    if (err === 'not-allowed' || err === 'service-not-allowed') {
+      guideVoiceSetStatus('Microphone blocked — allow mic access and try again');
+      if (typeof showToast === 'function') showToast('Allow microphone access to use Speak', 'error');
+    } else if (err === 'no-speech') {
+      guideVoiceSetStatus('Didn’t hear anything — tap Speak and try again');
+    } else {
+      guideVoiceSetStatus('Voice error — try again');
+    }
+  };
+  rec.onend = () => {
+    _guideVoiceListening = false;
+    guideVoiceUpdateButtons();
+  };
+  rec.onresult = (ev) => {
+    const alts = [];
+    for (let i = 0; i < ev.results.length; i++) {
+      for (let j = 0; j < ev.results[i].length; j++) {
+        alts.push(ev.results[i][j].transcript);
+      }
+    }
+    const spoken = (alts[0] || '').trim();
+    if (!spoken) {
+      guideVoiceSetStatus('Didn’t catch that — tap Speak and try again');
+      return;
+    }
+    const el = _guideVoiceTarget || guideVoiceFindTarget();
+    const ok = guideVoiceApplyToInput(el, spoken);
+    if (ok) {
+      guideVoiceSetStatus('Entered: “' + (el.value || spoken) + '”');
+      if (typeof showToast === 'function') showToast('Got it: ' + (el.value || spoken), 'success');
+      guideVoicePositionFab(el);
+    } else {
+      guideVoiceSetStatus('Heard “' + spoken + '” — could not fill that field, try again');
+      if (typeof showToast === 'function') showToast('Heard “' + spoken + '” — try saying just the number', 'info');
+    }
+  };
+
+  try {
+    rec.start();
+  } catch (e) {
+    _guideVoiceListening = false;
+    guideVoiceUpdateButtons();
+    guideVoiceSetStatus('Could not start microphone');
+  }
+}
+
+function initGuideVoice() {
+  guideVoiceUpdateButtons();
+  document.addEventListener('focusin', guideVoiceOnFocusIn, true);
+  window.addEventListener('scroll', () => {
+    if (_guideVoiceTarget && isAnyGuidedModeOn()) guideVoicePositionFab(_guideVoiceTarget);
+  }, true);
+  window.addEventListener('resize', () => {
+    if (_guideVoiceTarget && isAnyGuidedModeOn()) guideVoicePositionFab(_guideVoiceTarget);
+  });
+  // Hide fab when guided mode turns off
+  const obs = new MutationObserver(() => {
+    if (!isAnyGuidedModeOn()) {
+      guideVoiceStop();
+      guideVoiceHideFab();
+      guideVoiceSetStatus('');
+    }
+    guideVoiceUpdateButtons();
+  });
+  obs.observe(document.body, { attributes: true, attributeFilter: ['class'] });
+}
+
 // CONCRETE GUIDED MODE — optional coach (off by default)
 // ══════════════════════════════════════════════
 const CONCRETE_GUIDED_KEY = 'labtrak_concrete_guided';
@@ -11998,7 +12377,7 @@ const CONCRETE_GUIDE_STEPS = [
     view: 'conchub',
     guide: 'conchub-home',
     title: 'Welcome — Concrete Guided Mode',
-    body: 'This coach walks you through a pour from start to finish in plain steps. The program still works the same when Guided Mode is off — turn it on only when you want help.'
+    body: 'This coach walks you through a pour from start to finish in plain steps. Tap a field, then Speak, and say the value (for example “four” for slump). The program still works the same when Guided Mode is off.'
   },
   {
     id: 'new-pour',
@@ -29605,6 +29984,8 @@ window.r18_renderTabs = renderTabs;
 <!-- ══════════════════════════════════════════════════════════════
      GUIDED TOUR — spotlight walkthrough (always available)
      ══════════════════════════════════════════════════════════════ -->
+<button type="button" id="guideVoiceFab" class="guide-voice-fab" onclick="guideVoiceToggle()" aria-label="Speak value into field">🎤 Speak</button>
+
 <!-- Concrete Guided Mode coach (optional — off by default) -->
 <div id="concreteGuideDock" role="region" aria-label="Concrete guided mode" aria-live="polite">
   <div class="cg-dock-top">
@@ -29614,9 +29995,12 @@ window.r18_renderTabs = renderTabs;
       <p class="cg-dock-body" id="cgStepBody">Turn on Guided Mode from the Concrete Hub when you want step-by-step help.</p>
     </div>
   </div>
+  <p class="guide-voice-hint">Tip: tap a field (like Slump), then <b>Speak</b> and say the number — e.g. “four” or “4.5”.</p>
+  <div class="guide-voice-status" id="cgVoiceStatus" aria-live="polite"></div>
   <div class="cg-dock-actions">
     <button type="button" class="cg-btn ghost" id="cgExitBtn" onclick="setConcreteGuidedMode(false)">Turn off</button>
     <button type="button" class="cg-btn" id="cgBackBtn" onclick="concreteGuidePrev()">Back</button>
+    <button type="button" class="cg-btn voice" id="cgVoiceBtn" onclick="guideVoiceToggle()">🎤 Speak</button>
     <div class="cg-progress" aria-hidden="true"><span id="cgProgressBar" style="width:0%"></span></div>
     <button type="button" class="cg-btn primary" id="cgNextBtn" onclick="concreteGuideNext()">Next</button>
   </div>
@@ -29631,9 +30015,12 @@ window.r18_renderTabs = renderTabs;
       <p class="cg-dock-body" id="fgStepBody">Turn on Guided Mode from the Field Hub when you want step-by-step help.</p>
     </div>
   </div>
+  <p class="guide-voice-hint">Tip: tap a field, then <b>Speak</b> and say the value — e.g. “four” or “station twelve fifty”.</p>
+  <div class="guide-voice-status" id="fgVoiceStatus" aria-live="polite"></div>
   <div class="cg-dock-actions">
     <button type="button" class="cg-btn ghost" id="fgExitBtn" onclick="setFieldGuidedMode(false)">Turn off</button>
     <button type="button" class="cg-btn" id="fgBackBtn" onclick="fieldGuidePrev()">Back</button>
+    <button type="button" class="cg-btn voice" id="fgVoiceBtn" onclick="guideVoiceToggle()">🎤 Speak</button>
     <div class="cg-progress" aria-hidden="true"><span id="fgProgressBar" style="width:0%"></span></div>
     <button type="button" class="cg-btn primary" id="fgNextBtn" onclick="fieldGuideNext()">Next</button>
   </div>
