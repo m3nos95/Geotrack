@@ -20878,7 +20878,7 @@ table.list td{padding:5px 8px;border-bottom:1px solid rgba(46,58,72,.5);font-fam
 </head>
 <body>
 <div id="hdr">
-  <h1><b>GEO REPORT CENTER</b><span class="badge">v0.3</span></h1>
+  <h1><b>GEO REPORT CENTER</b><span class="badge">v0.4</span></h1>
   <button class="tab on" data-p="map">Map</button>
   <button class="tab" data-p="refs">Reference data</button>
   <button class="tab" data-p="jobs">Jobs</button>
@@ -20905,6 +20905,12 @@ table.list td{padding:5px 8px;border-bottom:1px solid rgba(46,58,72,.5);font-fam
       <div class="sec" id="layerSec" style="max-height:160px;overflow-y:auto">
         <h3>Loaded layers <span id="layerCount" style="color:var(--amber);font-family:var(--mono)"></span></h3>
         <div id="layerList"><div class="hint">Open project folder to load refs/.</div></div>
+      </div>
+      <div class="sec">
+        <h3>Phase 2 hydro grids</h3>
+        <label class="layerRow" style="margin:0"><input type="checkbox" id="hydroOnline" checked>
+          <span class="nm">Sample DGS depth-to-water &amp; WT elevation online</span></label>
+        <div class="hint" style="margin-top:4px">Uses FirstMap rasters (Coastal Plain). Piedmont is usually NoData — Section 3 falls back to “not encountered.” Needs internet.</div>
       </div>
       <div id="qBody"><div class="hint">No query yet.</div></div>
     </div>
@@ -20996,7 +21002,7 @@ table.list td{padding:5px 8px;border-bottom:1px solid rgba(46,58,72,.5);font-fam
         <div id="poleRows"></div>
         <div id="repPreview"><h3>Site layer preview</h3><div class="hint">Select a job with mapped borings to preview Sections 2 &amp; 4 from loaded reference layers.</div></div>
         <button class="btn" id="genReport" style="margin-top:14px;border-color:var(--amber);color:var(--amber);font-weight:600;padding:9px 16px">Generate .docx draft</button>
-        <div class="hint" style="margin-top:8px">Yellow-highlighted fields need engineer input. Section 8 stays with the PE — the Computed Observations annex holds strata, N, and pole cases. Section 3 (groundwater / DGIR) is still manual until depth-to-water rasters are wired.</div>
+        <div class="hint" style="margin-top:8px">Yellow-highlighted fields need engineer input. Section 8 stays with the PE — the Computed Observations annex holds strata, N, and pole cases. Section 3.2 is filled from FirstMap depth-to-water grids when online sampling is on; Section 3.1 (HA atlas) still needs engineer citation.</div>
       </div>
       <div class="card" style="display:none">
         <h2>notes</h2>
@@ -21035,6 +21041,11 @@ const KIND_LABEL={
 const KIND_ORDER=['geology_piedmont','geology_surficial','geology_offshore','recharge','wrpa','soils','quad','boundary','layer'];
 const PROP_PREFER=['NAME','SYMBOL','AGE','DESCRIPTION','RECHARGE','CLASS','POTENTIAL','QUADID','CENTLAT','CENTLONG',
   'MUNAME','MUSYM','AREASYMBOL','DRAINAGECL','HYDGRP','TAXORDER','TAXSUBORDER','FLOODFREQCL','HYDRIC','ZONE','TYPE','LABEL','FEATURE','UNIT'];
+const HYDRO_SERVICES={
+  dtw:'https://enterprise.firstmap.delaware.gov/arcgis/rest/services/Geology/DGS_DepthToWater/MapServer',
+  wte:'https://enterprise.firstmap.delaware.gov/arcgis/rest/services/Geology/DGS_WaterTableElevation/MapServer'
+};
+let lastHydro=null;
 const $=id=>document.getElementById(id);
 function toast(m){const t=$('toast');t.textContent=m;t.style.display='block';clearTimeout(t._h);t._h=setTimeout(()=>t.style.display='none',4000);}
 function esc(x){return String(x).replace(/&/g,'&amp;').replace(/</g,'&lt;');}
@@ -21166,7 +21177,96 @@ function distFt(lat1,lon1,lat2,lon2){
   const dy=(lat2-lat1)*364000, dx=(lon2-lon1)*364000*Math.cos(lat1*Math.PI/180);
   return Math.sqrt(dx*dx+dy*dy);
 }
-function runPointQuery(lat,lng){
+function parseHydroPixel(attrs){
+  if(!attrs)return null;
+  const v=attrs['Classify.Pixel Value']??attrs['Pixel Value']??attrs['PIXEL VALUE']??attrs['value']??attrs['Value'];
+  if(v==null||String(v).trim()===''||/nodata/i.test(String(v)))return null;
+  const n=Number(v);
+  return Number.isFinite(n)?n:null;
+}
+async function identifyHydroService(serviceUrl, lon, lat){
+  const pad=0.05;
+  const qs=new URLSearchParams({
+    geometry:`${lon},${lat}`,
+    geometryType:'esriGeometryPoint',
+    sr:'4326',
+    layers:'all',
+    tolerance:'3',
+    mapExtent:`${lon-pad},${lat-pad},${lon+pad},${lat+pad}`,
+    imageDisplay:'800,800,96',
+    returnGeometry:'false',
+    f:'json'
+  });
+  const r=await fetch(`${serviceUrl}/identify?${qs}`);
+  if(!r.ok)throw new Error('HTTP '+r.status);
+  const d=await r.json();
+  const out={dry:null,normal:null,wet:null};
+  (d.results||[]).forEach(res=>{
+    const ft=parseHydroPixel(res.attributes||{});
+    const name=(res.layerName||'').toLowerCase();
+    if(/dry/.test(name))out.dry=ft;
+    else if(/normal/.test(name))out.normal=ft;
+    else if(/wet/.test(name))out.wet=ft;
+  });
+  return out;
+}
+function hydroHasValue(block){
+  return block&&(block.dry!=null||block.normal!=null||block.wet!=null);
+}
+function fmtFt(v){return v==null?'—':(Number.isInteger(v)?v:Number(v).toFixed(1))+' ft';}
+function formatHydroHTML(H){
+  if(!H)return '';
+  if(H.error)return `<h3 style="margin-top:12px">DGS water-table grids</h3><div class="hint warn">${esc(H.error)}</div>`;
+  const dtwOk=hydroHasValue(H.dtw), wteOk=hydroHasValue(H.wte);
+  let h=`<h3 style="margin-top:12px">DGS water-table grids (FirstMap)</h3>`;
+  if(!dtwOk&&!wteOk){
+    h+=`<div class="hint warn">NoData at this point — typical for Piedmont / outside Coastal Plain coverage. Section 3.2 will say grids were not encountered.</div>`;
+    return h;
+  }
+  h+=`<div class="hint" style="margin-bottom:4px">1-ft vertical resolution · Andres MLR method · Coastal Plain (DP05-01/03/04)</div>`;
+  if(dtwOk){
+    h+=`<div class="hint" style="margin:4px 0 2px">Depth to water</div><table class="kv">`;
+    h+=`<tr><td>Dry</td><td>${fmtFt(H.dtw.dry)}</td></tr>`;
+    h+=`<tr><td>Normal</td><td>${fmtFt(H.dtw.normal)}</td></tr>`;
+    h+=`<tr><td>Wet</td><td>${fmtFt(H.dtw.wet)}</td></tr></table>`;
+  }
+  if(wteOk){
+    h+=`<div class="hint" style="margin:4px 0 2px">Water-table elevation (NAVD 88)</div><table class="kv">`;
+    h+=`<tr><td>Dry</td><td>${fmtFt(H.wte.dry)}</td></tr>`;
+    h+=`<tr><td>Normal</td><td>${fmtFt(H.wte.normal)}</td></tr>`;
+    h+=`<tr><td>Wet</td><td>${fmtFt(H.wte.wet)}</td></tr></table>`;
+  }
+  return h;
+}
+async function sampleHydro(lat, lon){
+  if($('hydroOnline')&&!$('hydroOnline').checked){
+    return {skipped:true,dtw:{dry:null,normal:null,wet:null},wte:{dry:null,normal:null,wet:null},lat,lon};
+  }
+  try{
+    const [dtw,wte]=await Promise.all([
+      identifyHydroService(HYDRO_SERVICES.dtw, lon, lat),
+      identifyHydroService(HYDRO_SERVICES.wte, lon, lat)
+    ]);
+    return {dtw,wte,lat,lon};
+  }catch(e){
+    return {dtw:{dry:null,normal:null,wet:null},wte:{dry:null,normal:null,wet:null},lat,lon,error:'Hydro raster sample failed: '+e.message+' (need internet / FirstMap)'};
+  }
+}
+function hydroSectionText(H){
+  if(!H||H.skipped)return {dtwText:null,wteText:null,available:false,skipped:!!(H&&H.skipped)};
+  if(H.error)return {dtwText:null,wteText:null,available:false,error:H.error};
+  const dtwOk=hydroHasValue(H.dtw), wteOk=hydroHasValue(H.wte);
+  if(!dtwOk&&!wteOk)return {dtwText:null,wteText:null,available:false};
+  let dtwText=null, wteText=null;
+  if(dtwOk){
+    dtwText=`According to Delaware Geological Survey digital depth-to-water mapping (FirstMap / DGS Digital Data Products DP05-01, DP05-03, and DP05-04; Andres multiple-linear-regression method; 30-m grid, 1-ft vertical resolution), estimated depth to water at the site reference point is approximately ${fmtFt(H.dtw.dry)} under dry conditions, ${fmtFt(H.dtw.normal)} under normal conditions, and ${fmtFt(H.dtw.wet)} under wet conditions.`;
+  }
+  if(wteOk){
+    wteText=`Corresponding water-table elevation estimates (NAVD 88) are approximately ${fmtFt(H.wte.dry)} (dry), ${fmtFt(H.wte.normal)} (normal), and ${fmtFt(H.wte.wet)} (wet).`;
+  }
+  return {dtwText,wteText,available:true};
+}
+async function runPointQuery(lat,lng){
   lastQuery={lat,lng};
   const radFt=+$('radius').value;
   if(qMarker)map.removeLayer(qMarker);
@@ -21211,10 +21311,19 @@ function runPointQuery(lat,lng){
     if(n.t==='boring')h+=`<div class="nearrow"><span>◉ ${esc(n.r.b)} <span class="d">${esc(n.r.job)}</span></span><span class="d">${Math.round(n.d)} ft · ${n.r.s.length} samp</span></div>`;
     else h+=`<div class="nearrow"><span>▪ ${esc(n.p.name)} <span class="d">core</span></span><span class="d">${Math.round(n.d)} ft</span></div>`;
   });
-  $('qBody').innerHTML=h;
+  $('qBody').innerHTML=h+`<div id="hydroBox"><div class="hint" style="margin-top:12px">Sampling DGS water-table grids…</div></div>`;
+  const hydro=await sampleHydro(lat,lng);
+  lastHydro=hydro;
+  const box=$('hydroBox');
+  if(box){
+    if(hydro.skipped) box.innerHTML=`<h3 style="margin-top:12px">DGS water-table grids</h3><div class="hint">Online sampling is off.</div>`;
+    else box.innerHTML=formatHydroHTML(hydro);
+  }
+  if(typeof refreshReportPreview==='function')refreshReportPreview();
 }
 map.on('click',e=>runPointQuery(e.latlng.lat,e.latlng.lng));
 $('radius').oninput=function(){$('radLbl').textContent=this.value+' ft'; if(lastQuery)runPointQuery(lastQuery.lat,lastQuery.lng);};
+$('hydroOnline')&&($('hydroOnline').onchange=function(){ if(lastQuery)runPointQuery(lastQuery.lat,lastQuery.lng); if(typeof refreshReportPreview==='function')refreshReportPreview(); });
 
 /* ---------- reference layer ingest ---------- */
 function detectKind(name,gj){
@@ -21585,7 +21694,7 @@ function siteLayerSummary(lat,lon){
   });
   return {geoName,geoSource,rechClass,wrpaNotes,soilName,quadName,countyName,hitCount:hits.length};
 }
-function refreshReportPreview(){
+async function refreshReportPreview(){
   const box=$('repPreview'); if(!box)return;
   const job=$('repJob')&&$('repJob').value;
   if(!job){box.innerHTML='<h3>Site layer preview</h3><div class="hint">Select a job with mapped borings to preview Sections 2 &amp; 4.</div>';return;}
@@ -21598,11 +21707,21 @@ function refreshReportPreview(){
   html+=`<div style="margin-top:6px"><b>§2 Geology:</b> ${S.geoName?esc(S.geoName)+' <span class="hint">('+esc(S.geoSource)+')</span>':'<span class="hint warn">none — enable Piedmont/Surficial</span>'}</div>`;
   if(S.quadName)html+=`<div><b>Quad:</b> ${esc(S.quadName)}</div>`;
   if(S.countyName)html+=`<div><b>County:</b> ${esc(S.countyName)}</div>`;
+  html+=`<div id="repHydroPrev"><b>§3.2 DTW:</b> <span class="hint">sampling…</span></div>`;
   if(S.rechClass)html+=`<div><b>§4 Recharge:</b> ${esc(S.rechClass)}</div>`;
   else if(S.wrpaNotes.length)html+=`<div><b>§4 WRPA:</b> ${esc(S.wrpaNotes.join('; '))}</div>`;
   else html+=`<div><b>§4 Hydrologic:</b> <span class="hint warn">no recharge / WRPA hit</span></div>`;
   if(S.soilName)html+=`<div><b>Soils:</b> ${esc(S.soilName)}</div>`;
   box.innerHTML=html;
+  const hydro=await sampleHydro(cLat,cLon);
+  lastHydro=hydro;
+  const hp=$('repHydroPrev');
+  if(!hp)return;
+  if(hydro.skipped){hp.innerHTML=`<b>§3.2 DTW:</b> <span class="hint">online sampling off</span>`;return;}
+  if(hydro.error){hp.innerHTML=`<b>§3.2 DTW:</b> <span class="hint warn">${esc(hydro.error)}</span>`;return;}
+  if(!hydroHasValue(hydro.dtw)){hp.innerHTML=`<b>§3.2 DTW:</b> <span class="hint warn">NoData (Piedmont / outside Coastal Plain)</span>`;return;}
+  hp.innerHTML=`<b>§3.2 DTW:</b> dry ${esc(fmtFt(hydro.dtw.dry))} · normal ${esc(fmtFt(hydro.dtw.normal))} · wet ${esc(fmtFt(hydro.dtw.wet))}`+
+    (hydroHasValue(hydro.wte)?`<div><b>WT elev:</b> dry ${esc(fmtFt(hydro.wte.dry))} · normal ${esc(fmtFt(hydro.wte.normal))} · wet ${esc(fmtFt(hydro.wte.wet))} NAVD88</div>`:'');
 }
 $('repJob')&&($('repJob').onchange=()=>{refreshPoleBorings();refreshReportPreview();});
 $('addPole').onclick=()=>{
@@ -21689,7 +21808,12 @@ async function generateReport(){
     else{ base=prow.cases[sc.caseNum-1]; if(base==='*'){star=true;base=null;note='Table IV-11: consultation with DelDOT Geotechnical and Bridge Sections required';} }
     poles.push({b,loc,type,len,an,sc,prow,base,star,note});
   });
-  await buildDocx({job,meta,borings,stats,geoName,geoDesc,geoSource,geoSymbol,rechClass,wrpaNotes,soilName,quadName,countyName,poles,cLat,cLon});
+  let hydro=null;
+  if(cLat!=null){
+    hydro=await sampleHydro(cLat,cLon);
+    lastHydro=hydro;
+  }
+  await buildDocx({job,meta,borings,stats,geoName,geoDesc,geoSource,geoSymbol,rechClass,wrpaNotes,soilName,quadName,countyName,poles,cLat,cLon,hydro});
   toast('Report .docx downloaded — review highlighted fields; Section 8 is yours.');
 }
 
@@ -21743,12 +21867,27 @@ async function buildDocx(R){
   }
   // Section 3
   body.push(H('3','Ground Water Background'));
+  const haHint=R.quadName
+    ? `[HISTORICAL: cite the USGS Hydrologic Atlas for the ${R.quadName} quadrangle (Adams & Boggess series) with measured depth range, or state "The Water-Table and Surface-Drainage were not encountered for this site."]`
+    : '[HISTORICAL: cite the USGS Hydrologic Atlas for this quadrangle (Adams & Boggess series) with measured depth range, or state "The Water-Table and Surface-Drainage were not encountered for this site."]';
   body.push(new D.Paragraph({spacing:{after:60},children:[
     new D.TextRun({text:'3.1\t',size:22,font:'Times New Roman'}),
-    HL('[HISTORICAL: cite the USGS Hydrologic Atlas for this quadrangle (Adams & Boggess series) with measured depth range, or state "The Water-Table and Surface-Drainage were not encountered for this site."]')]}));
-  body.push(new D.Paragraph({spacing:{after:120},children:[
-    new D.TextRun({text:'3.2\t',size:22,font:'Times New Roman'}),
-    HL('[DGIR: current depth-to-water range at the site from the Delaware Geologic Information Resource, or "not encountered for this site."]')]}));
+    HL(haHint)]}));
+  const HS=hydroSectionText(R.hydro);
+  if(HS.available){
+    body.push(new D.Paragraph({spacing:{after:HS.wteText?60:120},children:[
+      new D.TextRun({text:'3.2\t',size:22,font:'Times New Roman'}),
+      new D.TextRun({text:HS.dtwText,size:22,font:'Times New Roman'})]}));
+    if(HS.wteText) body.push(P(HS.wteText));
+  } else if(HS.skipped){
+    body.push(new D.Paragraph({spacing:{after:120},children:[
+      new D.TextRun({text:'3.2\t',size:22,font:'Times New Roman'}),
+      HL('[Online DGS depth-to-water sampling was off — enable it on the Map tab, or state that depth-to-water grids were not encountered for this site.]')]}));
+  } else {
+    body.push(new D.Paragraph({spacing:{after:120},children:[
+      new D.TextRun({text:'3.2\t',size:22,font:'Times New Roman'}),
+      new D.TextRun({text:'The Delaware Geological Survey digital depth-to-water and water-table elevation grids (Coastal Plain coverage) were not encountered for this site.',size:22,font:'Times New Roman'})]}));
+  }
   // Section 4
   body.push(H('4','Hydrologic Background'));
   if(R.rechClass){
