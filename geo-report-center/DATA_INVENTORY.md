@@ -174,8 +174,10 @@ HA-60 St. Georges, HA-64 Newark, HA-79 Wilmington, HA-101 Ellendale, HA-102 Milt
 
 | Done | Service | Layers | Type | Notes |
 |------|---------|--------|------|-------|
-| [ ] | `Geology/DGS_DepthToWater/MapServer` | 0 Dry, 1 Normal, 2 Wet | Raster | Coastal Plain; Piedmont often NoData |
-| [ ] | `Geology/DGS_WaterTableElevation/MapServer` | 0 Dry, 1 Normal, 2 Wet | Raster | Same |
+| [x] | `Geology/DGS_DepthToWater/MapServer` | 0 Dry, 1 Normal, 2 Wet | Raster | **App v0.4+ samples online** via Identify (no local download required) |
+| [x] | `Geology/DGS_WaterTableElevation/MapServer` | 0 Dry, 1 Normal, 2 Wet | Raster | Same; elevations NAVD 88 |
+
+**App behavior (v0.4):** Map tab checkbox “Sample DGS depth-to-water & WT elevation online” (default on). Click or report generation calls FirstMap Identify; `Classify.Pixel Value` is feet (1-ft resolution). Piedmont → NoData → Section 3.2 “not encountered.” Section 3.1 (HA atlas) stays engineer-cited.
 
 Directories:  
 https://enterprise.firstmap.delaware.gov/arcgis/rest/services/Geology/DGS_DepthToWater/MapServer  
@@ -186,7 +188,7 @@ https://enterprise.firstmap.delaware.gov/arcgis/rest/services/Geology/DGS_WaterT
 https://enterprise.firstmap.delaware.gov/arcgis/rest/services/Geology/DGS_DepthToWater/MapServer/identify?geometry={LON},{LAT}&geometryType=esriGeometryPoint&sr=4326&layers=all&tolerance=1&mapExtent={LON-0.05},{LAT-0.05},{LON+0.05},{LAT+0.05}&imageDisplay=800,800,96&returnGeometry=false&f=json
 ```
 
-Offline county products (optional downloads from DGS):  
+Offline county products (optional — only if you want files on disk; app does not need them):  
 - Sussex DP 05-01 — https://www.dgs.udel.edu/datasets/digital-water-table-data-sussex-county-delaware-digital-data-product-no-05-01  
 - Kent DP 05-03 — https://www.dgs.udel.edu/datasets/digital-water-table-data-kent-county-delaware-digital-data-product-no-05-03  
 - NCC DP 05-04 (excl. Piedmont) — https://www.dgs.udel.edu/datasets/digital-water-table-data-new-castle-county-delaware-digial-data-product-no-05-04  
@@ -305,13 +307,11 @@ FirstMap folder browsers:
 
 ---
 
-# Recommended next 3 actions (this week)
+# Recommended next 3 actions
 
-1. Run `download-all-refs.ps1` (or manually grab Piedmont + Offshore + Quads + Counties).  
-2. Drop new JSON into Reference data; re-click Hockessin.  
-3. Keep pouring `*.GEO.zip` into `geo-zips\` and re-run the importer.
-
-Then we extend the app for depth-to-water sampling + Site refs (quad → HA/GM links).
+1. Install **Geo_Report_Center.html v0.4** — click Dover (expect DTW feet) and Hockessin (expect NoData).  
+2. Keep pouring `*.GEO.zip` into `geo-zips\` and re-run the importer.  
+3. Optional: Phase 3 HUC12 watersheds, or build `citations/ha_atlas_index.csv` for Section 3.1.
 
 ---
 
