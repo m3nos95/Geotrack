@@ -92,6 +92,30 @@ def num(v) -> float | None:
         return None
 
 
+def sample_label(v, fallback_idx: int):
+    """Preserve rock-core IDs like R-1; fall back to slot index."""
+    if v is None or str(v).strip() == "":
+        return fallback_idx
+    s = str(v).strip()
+    try:
+        return int(s)
+    except ValueError:
+        return s
+
+
+def lab_lookup_key(label) -> int | None:
+    """Map sample label to LIMCOMB/GSCOMB numeric sample # when possible."""
+    if label is None:
+        return None
+    if isinstance(label, int):
+        return label
+    s = str(label).strip()
+    try:
+        return int(s)
+    except ValueError:
+        return None  # R-1 rock cores usually have no LIM/GS rows
+
+
 def parse_lim(path: Path) -> dict:
     if not path.exists():
         return {}
@@ -201,12 +225,24 @@ def parse_geo_folder(root: Path, job: str) -> list[dict]:
 
         east = f.get("EAST")
         north = f.get("NORTH")
-        e = float(east[0] if isinstance(east, list) else east)
-        n = float(north[0] if isinstance(north, list) else north)
+        if not east or not north:
+            print(f"  skip {boring}: missing EAST/NORTH", file=sys.stderr)
+            continue
+        try:
+            e = float(east[0] if isinstance(east, list) else east)
+            n = float(north[0] if isinstance(north, list) else north)
+        except (TypeError, ValueError) as ex:
+            print(f"  skip {boring}: bad coordinates ({ex})", file=sys.stderr)
+            continue
         lat, lon = sp_to_ll(e, n)
 
         bb = f.get("BBOTTOM")
-        eob = float(bb[0] if isinstance(bb, list) else bb) if bb else None
+        eob = None
+        if bb:
+            try:
+                eob = float(bb[0] if isinstance(bb, list) else bb)
+            except (TypeError, ValueError):
+                eob = None
 
         depth_m = indexed_dict(f.get("DEPTH", []))
         sn_m = indexed_dict(f.get("SAMP_NUM", []))
@@ -234,6 +270,12 @@ def parse_geo_folder(root: Path, job: str) -> list[dict]:
                 continue
             desc = desc_m.get(idx, "")
             if desc.lower().startswith("end boring"):
+                # use end-boring depth as EOB when BBOTTOM missing
+                if eob is None:
+                    try:
+                        eob = float(depth_m.get(idx)) if depth_m.get(idx) is not None else None
+                    except (TypeError, ValueError):
+                        pass
                 continue
 
             blows = [b1_m.get(idx), b2_m.get(idx), b3_m.get(idx), b4_m.get(idx)]
@@ -244,8 +286,10 @@ def parse_geo_folder(root: Path, job: str) -> list[dict]:
             except (TypeError, ValueError):
                 n_val = None
 
-            lim_rec = lim_samples.get(int(sn_m.get(idx, idx)))
-            gs_rec = gs_samples.get(int(sn_m.get(idx, idx)))
+            label = sample_label(sn_m.get(idx), idx)
+            sn_key = lab_lookup_key(label)
+            lim_rec = lim_samples.get(sn_key) if sn_key is not None else None
+            gs_rec = gs_samples.get(sn_key) if sn_key is not None else None
             lab_lim = parse_lim(root / f"{lim_rec['fid']}.LIM") if lim_rec else {}
             lab_gs = parse_gs(root / f"{gs_rec['fid']}.GS") if gs_rec else {}
 
@@ -257,7 +301,7 @@ def parse_geo_folder(root: Path, job: str) -> list[dict]:
 
             samples.append(
                 {
-                    "num": int(sn_m.get(idx, idx)),
+                    "num": label,
                     "d": depth,
                     "desc": desc,
                     "ll": lab_lim.get("ll"),
@@ -273,6 +317,11 @@ def parse_geo_folder(root: Path, job: str) -> list[dict]:
             )
 
         samples.sort(key=lambda s: (s["d"] is None, s["d"] or 0))
+        if eob is None and samples:
+            # deepest sample / rock run as fallback EOB
+            depths = [s["d"] for s in samples if s["d"] is not None]
+            if depths:
+                eob = max(depths)
 
         borings.append(
             {
@@ -292,7 +341,12 @@ def parse_geo_folder(root: Path, job: str) -> list[dict]:
 
 def job_from_zip(name: str) -> str:
     base = Path(name).name
+    # Normal: T202101501B.GEO.zip
     m = re.match(r"(.+?)\.GEO\.zip$", base, re.I)
+    if m:
+        return m.group(1)
+    # Uploaded / renamed: T202101501B.GEO_xxxx.zip or T202101501B.GEO.zip.bak
+    m = re.match(r"(.+?)\.GEO(?:[._].*)?\.zip$", base, re.I)
     if m:
         return m.group(1)
     return Path(base).stem.replace(".GEO", "")
@@ -310,6 +364,14 @@ def import_zip(zip_path: Path) -> tuple[str, list[dict]]:
         if not geo_dirs:
             raise ValueError(f"No .GEO folder inside {zip_path.name}")
         geo_dir = geo_dirs[0]
+        # Prefer folder name when zip was renamed (e.g. upload suffixes)
+        folder_job = geo_dir.name
+        if folder_job.upper().endswith(".GEO"):
+            folder_job = folder_job[:-4]
+        if folder_job and (job.startswith(folder_job) or len(job) > len(folder_job) + 5):
+            job = folder_job
+        elif re.match(r"^T\d+", folder_job, re.I):
+            job = folder_job
         return job, parse_geo_folder(geo_dir, job)
 
 

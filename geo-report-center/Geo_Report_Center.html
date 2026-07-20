@@ -20938,7 +20938,7 @@ table.list td{padding:5px 8px;border-bottom:1px solid rgba(46,58,72,.5);font-fam
         <div style="margin-top:10px;display:flex;gap:8px">
           <button class="btn" id="exportDb">Export database JSON</button>
         </div>
-        <div class="hint" style="margin-top:8px">Borings load from <code>db.json</code> in your project folder (built by <code>import-geo-zips.py</code> from your <code>*.GEO.zip</code> files). Re-open the project folder after importing to refresh. Map clicks use all loaded reference layers (geology, recharge, WRPA, soils, quads).</div>
+        <div class="hint" style="margin-top:8px">Borings come from <code>db.json</code> — you cannot drop a <code>*.GEO.zip</code> on the map. Put zips in <code>geo-zips\</code>, run <code>import-geo-zips.bat</code> (or <code>python import-geo-zips.py .\geo-zips .\db.json --merge</code>), then click <b>Open project folder</b> again to refresh.</div>
       </div>
     </div>
   </div>
