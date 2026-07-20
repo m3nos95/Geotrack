@@ -21484,7 +21484,8 @@ function parseSummaryRows(rows){
     });
     const n=(Number.isInteger(blows[1])&&Number.isInteger(blows[2]))?blows[1]+blows[2]:null;
     let snum;const sf=parseFloat(sn);snum=isNaN(sf)?String(sn).trim():Math.round(sf);
-    out[cur].s.push({num:snum,d:num(g('DEPTH')),desc,ll:str(g('LL')),pi:str(g('PI')),nm:num(g('NM')),
+    const sk=(()=>{const u=String(snum).toUpperCase(); if(/^R[\-_ ]?\d+/.test(u))return 'rock_core'; if(/^U[\-_ ]?\d+/.test(u))return 'shelby'; return Number.isFinite(+snum)?'split_spoon':'other';})();
+    out[cur].s.push({num:snum,kind:sk,d:num(g('DEPTH')),desc,ll:str(g('LL')),pi:str(g('PI')),nm:num(g('NM')),
       uscs:str(g('USCS')),aashto:str(g('AASHTO')),p10:num(g('PER10')),p200:num(g('PER200')),blows,n});
   }
   return out;

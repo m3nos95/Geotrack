@@ -93,7 +93,7 @@ def num(v) -> float | None:
 
 
 def sample_label(v, fallback_idx: int):
-    """Preserve rock-core IDs like R-1; fall back to slot index."""
+    """Preserve non-numeric IDs (R-1 rock core, U-1 Shelby tube); fall back to slot index."""
     if v is None or str(v).strip() == "":
         return fallback_idx
     s = str(v).strip()
@@ -113,7 +113,22 @@ def lab_lookup_key(label) -> int | None:
     try:
         return int(s)
     except ValueError:
-        return None  # R-1 rock cores usually have no LIM/GS rows
+        # R-# rock cores / U-# Shelby tubes usually have no LIM/GS index rows
+        return None
+
+
+def sample_kind(label) -> str:
+    """Classify GEOSYSTEM sample ID for reports / UI (SPT, Shelby, rock core)."""
+    s = str(label).strip().upper()
+    if re.match(r"^R[\-_ ]?\d+", s):
+        return "rock_core"
+    if re.match(r"^U[\-_ ]?\d+", s):
+        return "shelby"
+    try:
+        int(s)
+        return "split_spoon"
+    except ValueError:
+        return "other"
 
 
 def parse_lim(path: Path) -> dict:
@@ -302,6 +317,7 @@ def parse_geo_folder(root: Path, job: str) -> list[dict]:
             samples.append(
                 {
                     "num": label,
+                    "kind": sample_kind(label),
                     "d": depth,
                     "desc": desc,
                     "ll": lab_lim.get("ll"),
