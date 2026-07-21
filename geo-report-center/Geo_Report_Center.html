@@ -20893,7 +20893,7 @@ table.list td{padding:5px 8px;border-bottom:1px solid rgba(46,58,72,.5);font-fam
 </head>
 <body>
 <div id="hdr">
-  <h1><b>GEO REPORT CENTER</b><span class="badge">v0.6.1</span></h1>
+  <h1><b>GEO REPORT CENTER</b><span class="badge">v0.7</span></h1>
   <button class="tab on" data-p="map">Map</button>
   <button class="tab" data-p="refs">Reference data</button>
   <button class="tab" data-p="jobs">Jobs</button>
@@ -20950,10 +20950,11 @@ table.list td{padding:5px 8px;border-bottom:1px solid rgba(46,58,72,.5);font-fam
       <div class="card">
         <h2>Boring database</h2>
         <div id="dbInfo" class="hint"></div>
-        <div style="margin-top:10px;display:flex;gap:8px">
+        <div style="margin-top:10px;display:flex;gap:8px;flex-wrap:wrap">
           <button class="btn" id="exportDb">Export database JSON</button>
+          <button class="btn" id="purgeOutsideDE">Remove borings outside Delaware</button>
         </div>
-        <div class="hint" style="margin-top:8px">Borings come from <code>db.json</code> — you cannot drop a <code>*.GEO.zip</code> on the map. Put zips in <code>geo-zips\</code>, run <code>import-geo-zips.bat</code> (or <code>python import-geo-zips.py .\geo-zips .\db.json --merge</code>), then click <b>Open project folder</b> again to refresh.</div>
+        <div class="hint" style="margin-top:8px">Borings come from <code>db.json</code>. Use <b>Remove borings outside Delaware</b> for bad out-of-state points, or open a boring on the map and click <b>Delete boring</b>. Changes save to <code>db.json</code>.</div>
       </div>
     </div>
   </div>
@@ -21172,6 +21173,62 @@ async function saveDb(){
   renderAll();
 }
 
+/* ---------- Delaware bounds / delete ---------- */
+const DE_RING=[[-75.789,39.720],[-75.750,39.839],[-75.550,39.830],[-75.400,39.750],[-75.200,39.550],[-75.080,39.300],[-75.040,38.900],[-75.070,38.451],[-75.300,38.451],[-75.550,38.500],[-75.720,38.700],[-75.789,39.000],[-75.789,39.720]];
+function pointInRing(lon,lat,ring){
+  let inside=false;
+  for(let i=0,j=ring.length-1;i<ring.length;j=i++){
+    const xi=ring[i][0], yi=ring[i][1], xj=ring[j][0], yj=ring[j][1];
+    if(((yi>lat)!==(yj>lat)) && (lon < (xj-xi)*(lat-yi)/(yj-yi)+xi)) inside=!inside;
+  }
+  return inside;
+}
+function inDelaware(lat,lon){
+  if(lat==null||lon==null||!Number.isFinite(lat)||!Number.isFinite(lon)) return false;
+  const bounds=refs.filter(R=>R.on!==false && (R.kind==='boundary'||/count(y|ies)|delaware|boundar/i.test(R.name||'')));
+  if(bounds.length){
+    const pt=[lon,lat];
+    for(const R of bounds){
+      for(const f of R.features||[]){
+        if(typeof pipFeature==='function' && pipFeature(pt,f.geometry)) return true;
+      }
+    }
+    return false;
+  }
+  if(lat<38.40||lat>39.90||lon<-75.85||lon>-74.95) return false;
+  return pointInRing(lon,lat,DE_RING);
+}
+async function deleteBoring(job,b){
+  const before=db.borings.length;
+  db.borings=db.borings.filter(r=>!(r.job===job&&r.b===b));
+  if(db.borings.length===before){toast('Boring not found');return false;}
+  await saveDb();
+  toast(`Deleted ${b} (${job}). Database now ${db.borings.length} borings.`);
+  if(lastQuery) runPointQuery(lastQuery.lat,lastQuery.lng);
+  return true;
+}
+async function confirmDeleteBoring(job,b){
+  if(!confirm('Delete boring '+b+' from job '+job+'?\n\nRemoves it from db.json (keep a backup if unsure).')) return;
+  await deleteBoring(job,b);
+}
+async function purgeOutsideDelaware(){
+  const bad=db.borings.filter(r=>r.lat!=null&&r.lon!=null&&!inDelaware(r.lat,r.lon));
+  const unmapped=db.borings.filter(r=>r.lat==null||r.lon==null);
+  if(!bad.length){
+    toast('No mapped borings outside Delaware'+(unmapped.length?` (${unmapped.length} unmapped kept)`:''));
+    return;
+  }
+  const sample=bad.slice(0,8).map(r=>`${r.job}/${r.b} (${Number(r.lat).toFixed(3)}, ${Number(r.lon).toFixed(3)})`).join('\n');
+  const msg=`Remove ${bad.length} boring(s) mapped outside Delaware?\n\nExamples:\n${sample}`+(bad.length>8?'\n…':'')+`\n\nUnmapped (${unmapped.length}) are kept. Saves db.json.`;
+  if(!confirm(msg)) return;
+  const drop=new Set(bad.map(r=>r.job+'||'+r.b));
+  db.borings=db.borings.filter(r=>!drop.has(r.job+'||'+r.b));
+  await saveDb();
+  toast(`Removed ${bad.length} out-of-state boring(s). ${db.borings.length} remain.`);
+}
+window.deleteBoring=deleteBoring;
+window.confirmDeleteBoring=confirmDeleteBoring;
+
 /* ---------- map ---------- */
 const map=L.map('map',{zoomControl:true});
 map.zoomControl.setPosition('bottomleft');
@@ -21385,13 +21442,17 @@ function formatBoringLabHTML(r, distFt){
   const ns=r.s||[];
   const nm=ns.map(s=>s.nm).filter(v=>v!=null);
   const nvals=ns.map(s=>s.n).filter(v=>v!=null);
+  const outside=(r.lat!=null&&r.lon!=null&&typeof inDelaware==='function'&&!inDelaware(r.lat,r.lon));
   let meta=`${esc(r.job)} · ${ns.length} samples`;
   if(r.eob!=null) meta+=` · EOB ${esc(r.eob)} ft`;
   if(r.lat!=null) meta+=` · ${r.lat.toFixed(5)}, ${r.lon.toFixed(5)}`;
   if(distFt!=null) meta+=` · ${Math.round(distFt)} ft away`;
   if(nm.length) meta+=` · NM ${Math.min(...nm)}–${Math.max(...nm)}%`;
   if(nvals.length) meta+=` · N ${Math.min(...nvals)}–${Math.max(...nvals)}`;
+  if(outside) meta+=` · OUTSIDE DE`;
   let h=`<div class="labMeta">${meta}</div>`;
+  h+=`<div style="margin:4px 0 8px"><button type="button" class="btn" data-del-job="${esc(r.job)}" data-del-b="${esc(r.b)}" style="border-color:var(--red);color:var(--red);padding:3px 8px" onclick="event.stopPropagation();confirmDeleteBoring(this.dataset.delJob,this.dataset.delB)">Delete boring</button></div>`;
+  if(outside) h+=`<div class="hint warn">Coordinates fall outside Delaware — likely bad data.</div>`;
   if(!ns.length){h+=`<div class="hint">No samples in database for this boring.</div>`;return h;}
   h+=`<table class="lab"><thead><tr>
     <th>#</th><th>D</th><th>N</th><th>NM</th><th>LL</th><th>PI</th><th>P10</th><th>P200</th><th>AASHTO</th><th>Desc</th>
@@ -21567,6 +21628,7 @@ wireDrop('dropRef','fileRef',files=>{
 });
 
 /* seed pack removed — use import-geo-zips.py + db.json */
+$('purgeOutsideDE')&&($('purgeOutsideDE').onclick=()=>purgeOutsideDelaware());
 $('exportDb').onclick=()=>{
   const a=document.createElement('a');
   a.href=URL.createObjectURL(new Blob([JSON.stringify(db)],{type:'application/json'}));
