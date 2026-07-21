@@ -20880,13 +20880,20 @@ table.list th{font-family:var(--mono);font-size:10px;text-transform:uppercase;co
 table.list td{padding:5px 8px;border-bottom:1px solid rgba(46,58,72,.5);font-family:var(--mono)}
 #toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:var(--panel2);border:1px solid var(--amber);
   color:var(--text);padding:9px 16px;border-radius:6px;z-index:3000;display:none;font-size:13px;max-width:80vw}
+#splash{position:fixed;inset:0;z-index:5000;background:rgba(8,12,18,.82);display:flex;align-items:center;justify-content:center;padding:24px}
+#splash.hidden{display:none}
+#splash .box{max-width:520px;width:100%;background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:22px 24px;box-shadow:0 12px 40px rgba(0,0,0,.45)}
+#splash h2{font-size:15px;letter-spacing:.06em;text-transform:uppercase;color:var(--amber);margin:0 0 12px}
+#splash p{font-size:13px;line-height:1.55;color:var(--text);margin:0 0 10px}
+#splash .note{font-size:11.5px;color:var(--dim);line-height:1.5;margin:0 0 16px}
+#splash .btnrow{display:flex;justify-content:flex-end;gap:8px}
 .leaflet-container{background:#0d1117}
 .leaflet-tooltip.btip{background:var(--ink);border:1px solid var(--line);color:var(--text);font-family:var(--mono);font-size:11px;border-radius:4px}
 </style>
 </head>
 <body>
 <div id="hdr">
-  <h1><b>GEO REPORT CENTER</b><span class="badge">v0.5</span></h1>
+  <h1><b>GEO REPORT CENTER</b><span class="badge">v0.5.1</span></h1>
   <button class="tab on" data-p="map">Map</button>
   <button class="tab" data-p="refs">Reference data</button>
   <button class="tab" data-p="jobs">Jobs</button>
@@ -21025,6 +21032,15 @@ table.list td{padding:5px 8px;border-bottom:1px solid rgba(46,58,72,.5);font-fam
   </div>
 </main>
 <div id="toast"></div>
+<div id="splash" role="dialog" aria-modal="true" aria-labelledby="splashTitle">
+  <div class="box">
+    <h2 id="splashTitle">Informational use only</h2>
+    <p>Geo Report Center compiles historic boring records and public reference mapping to support site reconnaissance and draft documentation.</p>
+    <p>This tool <b>does not replace</b> project-specific subsurface exploration, laboratory testing, engineering judgment, or applicable DelDOT design standards and requirements.</p>
+    <p class="note">Outputs (including map queries and draft .docx reports) are for informational and supplemental use. A licensed professional engineer remains responsible for interpretation, recommendations, and sealed documents.</p>
+    <div class="btnrow"><button class="btn" id="splashAck" style="border-color:var(--amber);color:var(--amber);font-weight:600;padding:8px 14px">I understand — continue</button></div>
+  </div>
+</div>
 
 <script>
 const SEED = null; /* DelDOT seed pack removed — use GEO.zip → db.json */
@@ -21057,6 +21073,15 @@ let lastHydro=null;
 const $=id=>document.getElementById(id);
 function toast(m){const t=$('toast');t.textContent=m;t.style.display='block';clearTimeout(t._h);t._h=setTimeout(()=>t.style.display='none',4000);}
 function esc(x){return String(x).replace(/&/g,'&amp;').replace(/</g,'&lt;');}
+
+/* ---------- splash disclaimer ---------- */
+(function(){
+  const el=$('splash'), btn=$('splashAck');
+  if(!el||!btn)return;
+  // Show every page load (liability). sessionStorage can be used later if PE prefers once-per-session.
+  btn.onclick=()=>{el.classList.add('hidden');};
+  btn.focus();
+})();
 
 /* ---------- tabs ---------- */
 document.querySelectorAll('.tab').forEach(b=>b.onclick=()=>{
