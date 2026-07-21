@@ -20837,7 +20837,7 @@ main{position:absolute;top:44px;left:0;right:0;bottom:0}
 #map{position:absolute;inset:0}
 
 /* map side panel */
-#qPanel{position:absolute;top:10px;right:10px;bottom:10px;width:330px;z-index:1000;background:var(--panel);border:1px solid var(--line);
+#qPanel{position:absolute;top:10px;right:10px;bottom:10px;width:380px;z-index:1000;background:var(--panel);border:1px solid var(--line);
   border-radius:8px;display:flex;flex-direction:column;overflow:hidden}
 #qPanel .sec{padding:10px 12px;border-bottom:1px solid var(--line)}
 #qPanel h3{font-size:11px;text-transform:uppercase;letter-spacing:.07em;color:var(--dim);margin-bottom:6px}
@@ -20853,8 +20853,16 @@ main{position:absolute;top:44px;left:0;right:0;bottom:0}
 #repPreview{margin-top:12px;padding:10px;background:var(--ink);border:1px solid var(--line);border-radius:6px;font-size:12px;line-height:1.55}
 #repPreview h3{font-size:11px;text-transform:uppercase;letter-spacing:.07em;color:var(--amber);margin-bottom:6px}
 .nearrow{padding:5px 8px;border-radius:5px;cursor:pointer;display:flex;justify-content:space-between;font-family:var(--mono);font-size:12px}
-.nearrow:hover{background:var(--panel2)}
+.nearrow:hover,.nearrow.open{background:var(--panel2)}
 .nearrow .d{color:var(--dim);font-size:10.5px}
+.labWrap{margin:0 0 8px;padding:0 4px 8px;border-bottom:1px solid rgba(46,58,72,.5)}
+.labMeta{font-size:11px;color:var(--dim);margin:2px 0 6px;line-height:1.45}
+table.lab{width:100%;border-collapse:collapse;font-size:10.5px;font-family:var(--mono)}
+table.lab th{text-align:left;color:var(--dim);font-weight:500;padding:2px 3px;border-bottom:1px solid var(--line);white-space:nowrap}
+table.lab td{padding:2px 3px;border-bottom:1px solid rgba(46,58,72,.35);vertical-align:top}
+table.lab tr:hover td{background:rgba(232,163,61,.08)}
+table.lab .desc{max-width:140px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:var(--text)}
+.kindtag{font-size:9px;color:var(--amber);margin-left:4px}
 input[type=range]{width:140px;accent-color:var(--amber)}
 .hint{font-size:11px;color:var(--dim)}
 .hint.warn{color:var(--amber)} .hint.err{color:var(--red)} .hint.good{color:var(--green)}
@@ -20878,7 +20886,7 @@ table.list td{padding:5px 8px;border-bottom:1px solid rgba(46,58,72,.5);font-fam
 </head>
 <body>
 <div id="hdr">
-  <h1><b>GEO REPORT CENTER</b><span class="badge">v0.4</span></h1>
+  <h1><b>GEO REPORT CENTER</b><span class="badge">v0.5</span></h1>
   <button class="tab on" data-p="map">Map</button>
   <button class="tab" data-p="refs">Reference data</button>
   <button class="tab" data-p="jobs">Jobs</button>
@@ -20895,7 +20903,7 @@ table.list td{padding:5px 8px;border-bottom:1px solid rgba(46,58,72,.5);font-fam
     <div id="qPanel">
       <div class="sec">
         <h3>Point query</h3>
-        <div class="hint">Click the map for geology (Piedmont preferred over Surficial), recharge / WRPA, soils, quad, and nearby borings. Toggle layers below to include or exclude them from queries and reports.</div>
+        <div class="hint">Click the map for geology, recharge / WRPA, soils, and nearby borings. Click a boring row (or map marker) to open the lab table (NM, LL, PI, P10, P200, N). Toggle layers below for queries and reports.</div>
       </div>
       <div class="sec">
         <h3>Search radius <span id="radLbl" style="color:var(--amber);font-family:var(--mono)">1500 ft</span></h3>
@@ -21116,9 +21124,13 @@ function drawBorings(){
   boringLayer.clearLayers();
   db.borings.forEach(r=>{
     if(r.lat==null)return;
-    L.circleMarker([r.lat,r.lon],{radius:4,color:'rgba(15,20,26,.9)',weight:1,fillColor:'#69a5d6',fillOpacity:.85})
+    const m=L.circleMarker([r.lat,r.lon],{radius:4,color:'rgba(15,20,26,.9)',weight:1,fillColor:'#69a5d6',fillOpacity:.85})
       .bindTooltip(`${r.b} · ${r.job}`,{className:'btip',direction:'top'})
       .addTo(boringLayer);
+    m.on('click',e=>{
+      L.DomEvent.stop(e);
+      runPointQuery(r.lat,r.lon,{focusJob:r.job,focusB:r.b});
+    });
   });
   db.cores.forEach(p=>{
     L.circleMarker([p.lat,p.lon],{radius:3.5,color:'rgba(15,20,26,.9)',weight:1,fillColor:'#e8a33d',fillOpacity:.85})
@@ -21266,7 +21278,74 @@ function hydroSectionText(H){
   }
   return {dtwText,wteText,available:true};
 }
-async function runPointQuery(lat,lng){
+function findBoring(job,b){
+  return db.borings.find(r=>r.job===job&&r.b===b)||null;
+}
+function labCell(v){
+  if(v==null||v==='')return '—';
+  return esc(v);
+}
+function formatBlows(blows){
+  if(!blows||!blows.length)return '—';
+  const parts=blows.map(x=>x==null?'':String(x));
+  if(parts.every(p=>p===''))return '—';
+  return esc(parts.join('-'));
+}
+function formatBoringLabHTML(r, distFt){
+  if(!r)return '<div class="hint">Boring not found.</div>';
+  const ns=r.s||[];
+  const nm=ns.map(s=>s.nm).filter(v=>v!=null);
+  const nvals=ns.map(s=>s.n).filter(v=>v!=null);
+  let meta=`${esc(r.job)} · ${ns.length} samples`;
+  if(r.eob!=null) meta+=` · EOB ${esc(r.eob)} ft`;
+  if(r.lat!=null) meta+=` · ${r.lat.toFixed(5)}, ${r.lon.toFixed(5)}`;
+  if(distFt!=null) meta+=` · ${Math.round(distFt)} ft away`;
+  if(nm.length) meta+=` · NM ${Math.min(...nm)}–${Math.max(...nm)}%`;
+  if(nvals.length) meta+=` · N ${Math.min(...nvals)}–${Math.max(...nvals)}`;
+  let h=`<div class="labMeta">${meta}</div>`;
+  if(!ns.length){h+=`<div class="hint">No samples in database for this boring.</div>`;return h;}
+  h+=`<table class="lab"><thead><tr>
+    <th>#</th><th>D</th><th>N</th><th>NM</th><th>LL</th><th>PI</th><th>P10</th><th>P200</th><th>AASHTO</th><th>Desc</th>
+  </tr></thead><tbody>`;
+  ns.forEach(s=>{
+    const kind=s.kind||'';
+    const kindLbl=kind==='rock_core'?'rock':kind==='shelby'?'U':'';
+    const num=s.num!=null?s.num:'';
+    const blowTxt=(s.blows&&s.blows.some(x=>x!=null))?('Blows '+s.blows.map(x=>x==null?'':x).join('-')):'';
+    const tip=[blowTxt,s.desc].filter(Boolean).join(' · ').replace(/"/g,"'");
+    h+=`<tr title="${esc(tip)}">
+      <td>${labCell(num)}${kindLbl?`<span class="kindtag">${kindLbl}</span>`:''}</td>
+      <td>${labCell(s.d)}</td>
+      <td>${labCell(s.n)}</td>
+      <td>${labCell(s.nm)}</td>
+      <td>${labCell(s.ll)}</td>
+      <td>${labCell(s.pi)}</td>
+      <td>${labCell(s.p10)}</td>
+      <td>${labCell(s.p200)}</td>
+      <td>${labCell(s.aashto)}</td>
+      <td class="desc">${labCell(s.desc)}</td>
+    </tr>`;
+  });
+  h+='</tbody></table>';
+  const hasLab=ns.some(s=>s.nm!=null||s.ll!=null||s.pi!=null||s.p10!=null||s.p200!=null);
+  if(!hasLab) h+=`<div class="hint warn" style="margin-top:4px">No NM/LL/PI/grain-size on these samples (common for rock cores / empty LIM).</div>`;
+  return h;
+}
+function toggleBoringLab(el){
+  const wrap=el.nextElementSibling;
+  if(!wrap||!wrap.classList.contains('labWrap'))return;
+  const open=wrap.style.display!=='none';
+  // close others
+  document.querySelectorAll('#qBody .labWrap').forEach(w=>{w.style.display='none';});
+  document.querySelectorAll('#qBody .nearrow.open').forEach(x=>x.classList.remove('open'));
+  if(open){wrap.style.display='none';return;}
+  el.classList.add('open');
+  wrap.style.display='block';
+  wrap.scrollIntoView({block:'nearest'});
+}
+window.toggleBoringLab=toggleBoringLab;
+async function runPointQuery(lat,lng,opts){
+  opts=opts||{};
   lastQuery={lat,lng};
   const radFt=+$('radius').value;
   if(qMarker)map.removeLayer(qMarker);
@@ -21307,10 +21386,26 @@ async function runPointQuery(lat,lng){
   });
   h+=`<h3 style="margin-top:12px">Historical data within ${radFt} ft — ${near.length} found</h3>`;
   if(!near.length)h+=`<div class="hint">Nothing in the database within radius.</div>`;
+  else h+=`<div class="hint" style="margin-bottom:4px">Click a boring row to open NM / LL / PI / P10 / P200 / N.</div>`;
+  let focusKey=opts.focusJob&&opts.focusB?`${opts.focusJob}||${opts.focusB}`:null;
   near.slice(0,60).forEach(n=>{
-    if(n.t==='boring')h+=`<div class="nearrow"><span>◉ ${esc(n.r.b)} <span class="d">${esc(n.r.job)}</span></span><span class="d">${Math.round(n.d)} ft · ${n.r.s.length} samp</span></div>`;
-    else h+=`<div class="nearrow"><span>▪ ${esc(n.p.name)} <span class="d">core</span></span><span class="d">${Math.round(n.d)} ft</span></div>`;
+    if(n.t==='boring'){
+      const key=`${n.r.job}||${n.r.b}`;
+      const open=focusKey===key;
+      h+=`<div class="nearrow${open?' open':''}" onclick="toggleBoringLab(this)"><span>◉ ${esc(n.r.b)} <span class="d">${esc(n.r.job)}</span></span><span class="d">${Math.round(n.d)} ft · ${n.r.s.length} samp</span></div>`;
+      h+=`<div class="labWrap" style="display:${open?'block':'none'}">${formatBoringLabHTML(n.r,n.d)}</div>`;
+    } else {
+      h+=`<div class="nearrow"><span>▪ ${esc(n.p.name)} <span class="d">core</span></span><span class="d">${Math.round(n.d)} ft</span></div>`;
+    }
   });
+  if(opts.focusJob&&opts.focusB&&!near.some(n=>n.t==='boring'&&n.r.job===opts.focusJob&&n.r.b===opts.focusB)){
+    const r=findBoring(opts.focusJob,opts.focusB);
+    if(r){
+      h+=`<h3 style="margin-top:12px">Selected boring</h3>`;
+      h+=`<div class="nearrow open" onclick="toggleBoringLab(this)"><span>◉ ${esc(r.b)} <span class="d">${esc(r.job)}</span></span><span class="d">${(r.s||[]).length} samp</span></div>`;
+      h+=`<div class="labWrap" style="display:block">${formatBoringLabHTML(r,null)}</div>`;
+    }
+  }
   $('qBody').innerHTML=h+`<div id="hydroBox"><div class="hint" style="margin-top:12px">Sampling DGS water-table grids…</div></div>`;
   const hydro=await sampleHydro(lat,lng);
   lastHydro=hydro;
