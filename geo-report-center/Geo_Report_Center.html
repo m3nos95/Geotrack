@@ -20893,7 +20893,7 @@ table.list td{padding:5px 8px;border-bottom:1px solid rgba(46,58,72,.5);font-fam
 </head>
 <body>
 <div id="hdr">
-  <h1><b>GEO REPORT CENTER</b><span class="badge">v0.7</span></h1>
+  <h1><b>GEO REPORT CENTER</b><span class="badge">v0.8</span></h1>
   <button class="tab on" data-p="map">Map</button>
   <button class="tab" data-p="refs">Reference data</button>
   <button class="tab" data-p="jobs">Jobs</button>
@@ -20953,8 +20953,9 @@ table.list td{padding:5px 8px;border-bottom:1px solid rgba(46,58,72,.5);font-fam
         <div style="margin-top:10px;display:flex;gap:8px;flex-wrap:wrap">
           <button class="btn" id="exportDb">Export database JSON</button>
           <button class="btn" id="purgeOutsideDE">Remove borings outside Delaware</button>
+          <button class="btn" id="buildFeatureStore">Export feature store (CSV)</button>
         </div>
-        <div class="hint" style="margin-top:8px">Borings come from <code>db.json</code>. Use <b>Remove borings outside Delaware</b> for bad out-of-state points, or open a boring on the map and click <b>Delete boring</b>. Changes save to <code>db.json</code>.</div>
+        <div class="hint" style="margin-top:8px">Borings come from <code>db.json</code>. <b>Export feature store</b> joins each mapped boring to geology / soils (HYDGRP) / recharge / lab stats and a <i>screening</i> infiltration band (slow in-browser for thousands — or run <code>build-feature-store.bat</code>). Map clicks also show the infil estimate at that point.</div>
       </div>
     </div>
   </div>
@@ -21424,6 +21425,107 @@ function hydroSectionText(H){
   }
   return {dtwText,wteText,available:true};
 }
+
+/* ---------- feature store / screening infiltration ---------- */
+function fsProp(props,cands){
+  if(!props)return null;
+  const keys=Object.keys(props);
+  for(const c of cands){const k=keys.find(k=>k.toLowerCase()===c.toLowerCase());if(k&&props[k]!=null&&String(props[k]).trim())return String(props[k]).trim();}
+  return null;
+}
+const INFIL_BANDS={A:[0.30,0.60,'high — typically sands/gravels'],B:[0.15,0.30,'moderate — sandy loams'],C:[0.05,0.15,'slow — silty / finer soils'],D:[0.00,0.05,'very slow — clay / high water table']};
+function hydgrpLetter(raw){
+  if(!raw)return null;
+  const m=String(raw).toUpperCase().match(/\b([ABCD])(?:\s*\/\s*[ABCD])?\b/);
+  return m?m[1]:null;
+}
+function labStatsFromSamples(samples){
+  const ss=samples||[];
+  const p200s=[], nms=[], aash=[], nUpper=[], nAll=[];
+  ss.forEach(s=>{
+    if(s.p200!=null&&!isNaN(+s.p200))p200s.push(+s.p200);
+    if(s.nm!=null&&!isNaN(+s.nm))nms.push(+s.nm);
+    if(s.aashto)aash.push(String(s.aashto));
+    if(s.n!=null){nAll.push(+s.n); if(s.d!=null&&+s.d<=5)nUpper.push(+s.n);}
+  });
+  const bases=aash.map(a=>{const m=String(a).toUpperCase().replace(/\s+/g,'').match(/A-\d(?:-\d)?/);return m?m[0]:a.toUpperCase();});
+  let dom=null; if(bases.length){const c={};bases.forEach(b=>c[b]=(c[b]||0)+1);dom=Object.keys(c).sort((a,b)=>c[b]-c[a])[0];}
+  p200s.sort((a,b)=>a-b);
+  return{
+    n_samples:ss.length,
+    p200_median:p200s.length?Math.round(p200s[Math.floor(p200s.length/2)]*10)/10:null,
+    nm_min:nms.length?Math.min(...nms):null, nm_max:nms.length?Math.max(...nms):null,
+    n_min_upper5:nUpper.length?Math.min(...nUpper):null,
+    aashto_dom:dom
+  };
+}
+function infilFromHydgrp(hydgrp, p200med, aashto){
+  const letter=hydgrpLetter(hydgrp);
+  if(!letter||!INFIL_BANDS[letter])return{min:null,max:null,note:'no HYDGRP — load soils refs or run feature store',confidence:'none'};
+  let[lo,hi,note]=INFIL_BANDS[letter];
+  let conf='map_only', adj=[];
+  if(p200med!=null){
+    conf='map+lab';
+    if(p200med>=50){hi=Math.min(hi,(lo+hi)/2);adj.push('P200 med '+p200med+'% → lower end');}
+    else if(p200med<=15){lo=Math.max(lo,(lo+hi)/2);adj.push('P200 med '+p200med+'% → higher end');}
+  }
+  if(aashto){
+    const au=String(aashto).toUpperCase();
+    if(/^A-1|^A-3/.test(au)){lo=Math.max(lo,INFIL_BANDS.B[0]);adj.push('AASHTO '+aashto+' coarser');}
+    if(/^A-6|^A-7/.test(au)){hi=Math.min(hi,INFIL_BANDS.C[1]);adj.push('AASHTO '+aashto+' finer');}
+  }
+  if(hydgrp&&String(hydgrp).includes('/')){adj.push('dual HYDGRP '+hydgrp);conf='low';}
+  return{min:+lo.toFixed(3),max:+hi.toFixed(3),note:note+(adj.length?'; '+adj.join('; '):''),confidence:conf,hydgrp:letter};
+}
+function enrichFromHits(hits, samples){
+  const lab=labStatsFromSamples(samples);
+  let soilName=null, hydgrp=null, drain=null, geoName=null, geoKind=null, rech=null, wrpa=[];
+  const geoHits=hits.filter(H=>/^geology_/.test(H.kind||''));
+  const order={geology_piedmont:0,geology_surficial:1,geology_offshore:2};
+  geoHits.sort((a,b)=>(order[a.kind]??9)-(order[b.kind]??9));
+  if(geoHits.length){
+    geoKind=geoHits[0].kind;
+    geoName=fsProp(geoHits[0].props,['NAME','UNIT_NAME','GEO_UNIT','FEATURE','UNIT','LABEL']);
+  }
+  hits.forEach(H=>{
+    const k=H.kind||'';
+    if(k==='recharge'&&!rech)rech=fsProp(H.props,['RECHARGE','CLASS','POTENTIAL','NAME']);
+    if(k==='wrpa'){const L=fsProp(H.props,['NAME','LABEL','FEATURE','TYPE','ZONE'])||H.layer; if(L&&!wrpa.includes(L))wrpa.push(L);}
+    if(k==='soils'&&!soilName){
+      soilName=fsProp(H.props,['MUNAME','MUSYM','NAME']);
+      hydgrp=fsProp(H.props,['HYDGRP','HYDROGROUP','HSG']);
+      drain=fsProp(H.props,['DRAINAGECL','DRAINAGE']);
+    }
+  });
+  // nearest boring lab if no samples passed
+  const infil=infilFromHydgrp(hydgrp, lab.p200_median, lab.aashto_dom);
+  return{soilName,hydgrp,drain,geoName,geoKind,rech,wrpa,lab,infil};
+}
+function formatInfilHTML(E){
+  let h=`<h3 style="margin-top:12px">Screening infiltration</h3>`;
+  h+=`<div class="hint warn" style="margin-bottom:4px">Informational only — does not replace site infiltration testing or PE design.</div>`;
+  if(E.soilName||E.hydgrp) h+=`<div class="hint">Soils: ${esc(E.soilName||'—')}${E.hydgrp?' · HYDGRP '+esc(E.hydgrp):''}${E.drain?' · drainage '+esc(E.drain):''}</div>`;
+  else h+=`<div class="hint warn">No soils / HYDGRP at this point — load soils refs.</div>`;
+  if(E.geoName) h+=`<div class="hint">Geology: ${esc(E.geoName)}${E.geoKind?' ('+esc(E.geoKind)+')':''}</div>`;
+  if(E.rech) h+=`<div class="hint">Recharge class: ${esc(E.rech)}</div>`;
+  else if(E.wrpa&&E.wrpa.length) h+=`<div class="hint">WRPA: ${esc(E.wrpa.join('; '))}</div>`;
+  if(E.lab&&E.lab.p200_median!=null) h+=`<div class="hint">Nearest/selected lab: P200 med ${E.lab.p200_median}%${E.lab.aashto_dom?' · '+esc(E.lab.aashto_dom):''}</div>`;
+  if(E.infil.min!=null) h+=`<div style="margin-top:6px"><b>${E.infil.min}–${E.infil.max} in/hr</b> <span class="hint">(${esc(E.infil.confidence)})</span><div class="hint">${esc(E.infil.note)}</div></div>`;
+  else h+=`<div class="hint warn">${esc(E.infil.note)}</div>`;
+  return h;
+}
+function nearestBoringLab(lat,lon,maxFt){
+  maxFt=maxFt||500;
+  let best=null, bestD=1e99;
+  db.borings.forEach(r=>{
+    if(r.lat==null)return;
+    const d=distFt(lat,lon,r.lat,r.lon);
+    if(d<bestD){bestD=d;best=r;}
+  });
+  if(!best||bestD>maxFt)return {samples:[],dist:null,boring:null};
+  return {samples:best.s||[],dist:bestD,boring:best};
+}
+
 function findBoring(job,b){
   return db.borings.find(r=>r.job===job&&r.b===b)||null;
 }
@@ -21556,6 +21658,13 @@ async function runPointQuery(lat,lng,opts){
       h+=`<div class="labWrap" style="display:block">${formatBoringLabHTML(r,null)}</div>`;
     }
   }
+  // screening infiltration from soils HYDGRP + nearest boring lab within 500 ft
+  const nearLab=nearestBoringLab(lat,lng,500);
+  const E=enrichFromHits(hits, nearLab.samples);
+  if(nearLab.boring) E.lab._from=`${nearLab.boring.b} @ ${Math.round(nearLab.dist)} ft`;
+  h+=formatInfilHTML(E);
+  if(nearLab.boring) h+=`<div class="hint">Lab adjustment from ${esc(nearLab.boring.b)} (${esc(nearLab.boring.job)}) · ${Math.round(nearLab.dist)} ft</div>`;
+
   $('qBody').innerHTML=h+`<div id="hydroBox"><div class="hint" style="margin-top:12px">Sampling DGS water-table grids…</div></div>`;
   const hydro=await sampleHydro(lat,lng);
   lastHydro=hydro;
@@ -21629,6 +21738,43 @@ wireDrop('dropRef','fileRef',files=>{
 
 /* seed pack removed — use import-geo-zips.py + db.json */
 $('purgeOutsideDE')&&($('purgeOutsideDE').onclick=()=>purgeOutsideDelaware());
+
+$('buildFeatureStore')&&($('buildFeatureStore').onclick=async ()=>{
+  const pts=db.borings.filter(r=>r.lat!=null&&r.lon!=null);
+  if(!pts.length){toast('No mapped borings');return;}
+  if(!confirm('Build feature-store.csv for '+pts.length+' mapped borings?\n\nUses loaded refs (geology/soils/recharge). May take a while. For fastest build, use build-feature-store.bat.'))return;
+  toast('Building feature store… 0/'+pts.length, 60000);
+  const rows=[];
+  const cols=['job','boring','lat','lon','eob','geology_kind','geology','recharge','wrpa','soil_name','soil_hydgrp','soil_drainage','p200_median','aashto_dom','n_min_upper5','infil_min_in_hr','infil_max_in_hr','infil_confidence','infil_note'];
+  let i=0;
+  function csvEsc(v){if(v==null)return ''; const s=String(v); return /[",\n]/.test(s)?'"'+s.replace(/"/g,'""')+'"':s;}
+  async function step(){
+    const end=Math.min(i+40, pts.length);
+    for(;i<end;i++){
+      const r=pts[i];
+      const hits=queryRefs(r.lat,r.lon);
+      const E=enrichFromHits(hits, r.s||[]);
+      rows.push({
+        job:r.job,boring:r.b,lat:r.lat,lon:r.lon,eob:r.eob,
+        geology_kind:E.geoKind,geology:E.geoName,recharge:E.rech,wrpa:(E.wrpa||[]).join('; '),
+        soil_name:E.soilName,soil_hydgrp:E.hydgrp,soil_drainage:E.drain,
+        p200_median:E.lab.p200_median,aashto_dom:E.lab.aashto_dom,n_min_upper5:E.lab.n_min_upper5,
+        infil_min_in_hr:E.infil.min,infil_max_in_hr:E.infil.max,infil_confidence:E.infil.confidence,infil_note:E.infil.note
+      });
+    }
+    toast(`Building feature store… ${i}/${pts.length}`, 60000);
+    if(i<pts.length){ await new Promise(r=>setTimeout(r,0)); return step(); }
+    const lines=[cols.join(',')].concat(rows.map(row=>cols.map(c=>csvEsc(row[c])).join(',')));
+    const blob=new Blob([lines.join('\n')],{type:'text/csv'});
+    const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download='feature-store.csv'; a.click();
+    if(dirHandle){
+      try{ await writeFile('feature-store.csv', lines.join('\n')); toast('Saved feature-store.csv to project folder + download'); }
+      catch(e){ toast('Downloaded feature-store.csv (folder save failed: '+e.message+')'); }
+    } else toast('Downloaded feature-store.csv');
+  }
+  step();
+});
+
 $('exportDb').onclick=()=>{
   const a=document.createElement('a');
   a.href=URL.createObjectURL(new Blob([JSON.stringify(db)],{type:'application/json'}));
