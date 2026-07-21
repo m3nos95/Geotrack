@@ -190,7 +190,11 @@ def parse_gs(path: Path) -> dict:
 
 
 def parse_mdt(path: Path) -> dict[str, list[dict]]:
-    """file_id -> list irrelevant; group by boring name."""
+    """Parse LIMCOMB.MDT / GSCOMB.MDT: file_id,boring, sample# (depth'/…).
+
+    Older or incomplete GEOSYSTEM exports sometimes have only 2 comma fields
+    (or no depth). Skip those lines instead of failing the whole job.
+    """
     by_boring: dict[str, list[dict]] = {}
     if not path.exists():
         return by_boring
@@ -198,7 +202,13 @@ def parse_mdt(path: Path) -> dict[str, list[dict]]:
         line = line.strip()
         if not line or line == "-1":
             continue
-        fid, boring, rest = line.split(",", 2)
+        parts = line.split(",", 2)
+        if len(parts) < 3:
+            # e.g. "0,BO-1" without sample/depth — cannot link a LIM/GS file
+            continue
+        fid, boring, rest = parts
+        if not boring.strip():
+            continue
         fid = fid.zfill(8)
         m = re.match(r"\s*(\d+)\s*\(([\d.]+)", rest)
         if not m:
