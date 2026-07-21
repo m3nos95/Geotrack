@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Compact + repair db.json so the browser can load it (same as repair-db.py).
+"""Repair / compact db.json so the browser can load it.
 
 Fixes common import issues:
   - Python NaN / Infinity tokens (invalid in browser JSON.parse)

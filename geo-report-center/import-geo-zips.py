@@ -455,8 +455,19 @@ def main():
             print(f"ERR {zp.name}: {e}", file=sys.stderr)
 
     db_path.parent.mkdir(parents=True, exist_ok=True)
-    # Compact JSON — indent=2 doubles file size and can break browser load at a few thousand borings
-    payload = json.dumps(db, separators=(",", ":"), ensure_ascii=False)
+    # Compact + strict JSON — never emit NaN/Infinity (browsers reject those)
+    def _clean(o):
+        if isinstance(o, float):
+            if o != o or o in (float("inf"), float("-inf")):  # NaN / Inf
+                return None
+            return o
+        if isinstance(o, list):
+            return [_clean(x) for x in o]
+        if isinstance(o, dict):
+            return {k: _clean(v) for k, v in o.items()}
+        return o
+
+    payload = json.dumps(_clean(db), separators=(",", ":"), ensure_ascii=False, allow_nan=False)
     db_path.write_text(payload, encoding="utf-8")
     mb = len(payload.encode("utf-8")) / (1024 * 1024)
     print(f"\nWrote {db_path} ({mb:.1f} MB compact)")

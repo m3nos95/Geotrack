@@ -20893,7 +20893,7 @@ table.list td{padding:5px 8px;border-bottom:1px solid rgba(46,58,72,.5);font-fam
 </head>
 <body>
 <div id="hdr">
-  <h1><b>GEO REPORT CENTER</b><span class="badge">v0.6</span></h1>
+  <h1><b>GEO REPORT CENTER</b><span class="badge">v0.6.1</span></h1>
   <button class="tab on" data-p="map">Map</button>
   <button class="tab" data-p="refs">Reference data</button>
   <button class="tab" data-p="jobs">Jobs</button>
@@ -21071,7 +21071,8 @@ const HYDRO_SERVICES={
 };
 let lastHydro=null;
 const $=id=>document.getElementById(id);
-function toast(m){const t=$('toast');t.textContent=m;t.style.display='block';clearTimeout(t._h);t._h=setTimeout(()=>t.style.display='none',4000);}
+function toast(m, ms){const t=$('toast');t.textContent=m;t.style.display='block';clearTimeout(t._h);t._h=setTimeout(()=>t.style.display='none', ms||4000);}
+function toastErr(m){toast(m, 20000); const h=$('hdrStats'); if(h) h.textContent='LOAD ERROR — see message at bottom';}
 function esc(x){return String(x).replace(/&/g,'&amp;').replace(/</g,'&lt;');}
 
 /* ---------- splash disclaimer ---------- */
@@ -21131,10 +21132,12 @@ async function loadProject(){
       const mb=meta.size/(1024*1024);
       if(mb>5) toast(`Reading db.json (${mb.toFixed(1)} MB)…`);
       try{
-        const raw=JSON.parse(meta.text);
+        // Python json.dumps can emit NaN/Infinity — invalid for browser JSON.parse
+        const cleaned=meta.text.replace(/\b-?Infinity\b|\bNaN\b/g,'null');
+        const raw=JSON.parse(cleaned);
         db=normalizeDb(raw);
       }catch(e){
-        toast('db.json unreadable: '+e.message+' — re-run import-geo-zips.bat with the latest importer (compact JSON).');
+        toastErr('db.json invalid: '+e.message+' — run repair-db.bat in your project folder, then Open project folder again.');
         console.error(e);
         db={borings:[],cores:[],jobs:{}};
       }
@@ -21161,7 +21164,7 @@ async function loadProject(){
     }
   }catch(e){
     console.error(e);
-    toast('Project load failed: '+e.message);
+    toastErr('Project load failed: '+e.message);
   }
 }
 async function saveDb(){
