@@ -20893,7 +20893,7 @@ table.list td{padding:5px 8px;border-bottom:1px solid rgba(46,58,72,.5);font-fam
 </head>
 <body>
 <div id="hdr">
-  <h1><b>GEO REPORT CENTER</b><span class="badge">v0.5.1</span></h1>
+  <h1><b>GEO REPORT CENTER</b><span class="badge">v0.6</span></h1>
   <button class="tab on" data-p="map">Map</button>
   <button class="tab" data-p="refs">Reference data</button>
   <button class="tab" data-p="jobs">Jobs</button>
@@ -21104,30 +21104,68 @@ $('openProj').onclick = async ()=>{
 async function readFileIf(name){
   try{const fh=await dirHandle.getFileHandle(name);return await (await fh.getFile()).text();}catch(_){return null;}
 }
+async function readFileMeta(name){
+  try{const fh=await dirHandle.getFileHandle(name);const f=await fh.getFile();return {text:await f.text(), size:f.size, name:f.name};}
+  catch(_){return null;}
+}
 async function writeFile(name, text){
   const fh=await dirHandle.getFileHandle(name,{create:true});
   const w=await fh.createWritable(); await w.write(text); await w.close();
 }
+function normalizeDb(raw){
+  if(!raw||typeof raw!=='object') throw new Error('db.json root must be an object with a borings array');
+  const out={borings:Array.isArray(raw.borings)?raw.borings:[], cores:Array.isArray(raw.cores)?raw.cores:[], jobs:raw.jobs&&typeof raw.jobs==='object'?raw.jobs:{}};
+  // Coerce string lat/lon if any
+  out.borings.forEach(r=>{
+    if(r.lat!=null&&typeof r.lat!=='number'){const n=Number(r.lat); r.lat=Number.isFinite(n)?n:null;}
+    if(r.lon!=null&&typeof r.lon!=='number'){const n=Number(r.lon); r.lon=Number.isFinite(n)?n:null;}
+    if(!Array.isArray(r.s)) r.s=[];
+  });
+  return out;
+}
 async function loadProject(){
-  const dbTxt = await readFileIf('db.json');
-  if(dbTxt){ try{db=JSON.parse(dbTxt);}catch(e){toast('db.json unreadable: '+e.message);} }
-  refs=[];
+  toast('Loading project…');
   try{
-    const refDir = await dirHandle.getDirectoryHandle('refs',{create:true});
-    for await (const [name,h] of refDir.entries()){
-      if(h.kind==='file'&&/\.(geo)?json$/i.test(name)){
-        try{
-          const gj=JSON.parse(await (await h.getFile()).text());
-          addRefLayer(name, gj, false);
-        }catch(e){}
+    const meta=await readFileMeta('db.json');
+    if(meta){
+      const mb=meta.size/(1024*1024);
+      if(mb>5) toast(`Reading db.json (${mb.toFixed(1)} MB)…`);
+      try{
+        const raw=JSON.parse(meta.text);
+        db=normalizeDb(raw);
+      }catch(e){
+        toast('db.json unreadable: '+e.message+' — re-run import-geo-zips.bat with the latest importer (compact JSON).');
+        console.error(e);
+        db={borings:[],cores:[],jobs:{}};
       }
+    } else {
+      db={borings:[],cores:[],jobs:{}};
     }
-  }catch(e){}
-  renderAll();
-  toast(`Project loaded — ${db.borings.length} borings, ${refs.length} reference layer(s)`);
+    refs=[];
+    try{
+      const refDir = await dirHandle.getDirectoryHandle('refs',{create:true});
+      for await (const [name,h] of refDir.entries()){
+        if(h.kind==='file'&&/\.(geo)?json$/i.test(name)){
+          try{
+            const gj=JSON.parse(await (await h.getFile()).text());
+            addRefLayer(name, gj, false);
+          }catch(e){ console.warn('ref skip', name, e); }
+        }
+      }
+    }catch(e){ console.warn('refs load', e); }
+    renderAll();
+    const mapped=db.borings.filter(r=>r.lat!=null&&r.lon!=null).length;
+    toast(`Project loaded — ${db.borings.length} borings (${mapped} mapped), ${refs.length} reference layer(s)`);
+    if(db.borings.length && !mapped){
+      toast('db.json has borings but none with lat/lon — check import logs for missing EAST/NORTH');
+    }
+  }catch(e){
+    console.error(e);
+    toast('Project load failed: '+e.message);
+  }
 }
 async function saveDb(){
-  if(dirHandle){ await writeFile('db.json', JSON.stringify(db)); }
+  if(dirHandle){ await writeFile('db.json', JSON.stringify(db)); } // compact by default
   renderAll();
 }
 
@@ -21142,26 +21180,49 @@ $('basemapToggle').onclick=function(){onSat=!onSat;
   else{map.removeLayer(sat);osm.addTo(map);this.textContent='Satellite';}};
 map.setView([39.15,-75.5],9);
 
+const boringCanvas=L.canvas({padding:0.5});
 let boringLayer=L.layerGroup().addTo(map);
 let qMarker=null, qCircle=null;
+let _drawToken=0;
 
 function drawBorings(){
+  const token=++_drawToken;
   boringLayer.clearLayers();
-  db.borings.forEach(r=>{
-    if(r.lat==null)return;
-    const m=L.circleMarker([r.lat,r.lon],{radius:4,color:'rgba(15,20,26,.9)',weight:1,fillColor:'#69a5d6',fillOpacity:.85})
-      .bindTooltip(`${r.b} · ${r.job}`,{className:'btip',direction:'top'})
-      .addTo(boringLayer);
-    m.on('click',e=>{
-      L.DomEvent.stop(e);
-      runPointQuery(r.lat,r.lon,{focusJob:r.job,focusB:r.b});
+  const pts=db.borings.filter(r=>r.lat!=null&&r.lon!=null&&Number.isFinite(r.lat)&&Number.isFinite(r.lon));
+  const cores=(db.cores||[]).filter(p=>p.lat!=null&&p.lon!=null);
+  // Canvas markers scale to thousands; draw in chunks so the UI stays responsive
+  const CHUNK=400;
+  let i=0;
+  function step(){
+    if(token!==_drawToken)return;
+    const end=Math.min(i+CHUNK, pts.length);
+    for(;i<end;i++){
+      const r=pts[i];
+      const m=L.circleMarker([r.lat,r.lon],{
+        radius:3.5,color:'rgba(15,20,26,.85)',weight:1,fillColor:'#69a5d6',fillOpacity:.85,
+        renderer:boringCanvas
+      }).bindTooltip(`${r.b} · ${r.job}`,{className:'btip',direction:'top',sticky:true})
+        .addTo(boringLayer);
+      m.on('click',e=>{
+        L.DomEvent.stop(e);
+        runPointQuery(r.lat,r.lon,{focusJob:r.job,focusB:r.b});
+      });
+    }
+    if(i<pts.length){ requestAnimationFrame(step); return; }
+    cores.forEach(p=>{
+      L.circleMarker([p.lat,p.lon],{
+        radius:3,color:'rgba(15,20,26,.85)',weight:1,fillColor:'#e8a33d',fillOpacity:.85,
+        renderer:boringCanvas
+      }).bindTooltip(p.name,{className:'btip',direction:'top'}).addTo(boringLayer);
     });
-  });
-  db.cores.forEach(p=>{
-    L.circleMarker([p.lat,p.lon],{radius:3.5,color:'rgba(15,20,26,.9)',weight:1,fillColor:'#e8a33d',fillOpacity:.85})
-      .bindTooltip(p.name,{className:'btip',direction:'top'})
-      .addTo(boringLayer);
-  });
+    if(pts.length){
+      try{
+        const bounds=L.latLngBounds(pts.map(r=>[r.lat,r.lon]));
+        if(bounds.isValid()) map.fitBounds(bounds.pad(0.08),{maxZoom:12});
+      }catch(_){}
+    }
+  }
+  if(pts.length||cores.length) requestAnimationFrame(step);
 }
 
 /* ---------- point-in-polygon ---------- */

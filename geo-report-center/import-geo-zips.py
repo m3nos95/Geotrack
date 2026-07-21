@@ -455,10 +455,19 @@ def main():
             print(f"ERR {zp.name}: {e}", file=sys.stderr)
 
     db_path.parent.mkdir(parents=True, exist_ok=True)
-    db_path.write_text(json.dumps(db, indent=2), encoding="utf-8")
-    print(f"\nWrote {db_path}")
+    # Compact JSON — indent=2 doubles file size and can break browser load at a few thousand borings
+    payload = json.dumps(db, separators=(",", ":"), ensure_ascii=False)
+    db_path.write_text(payload, encoding="utf-8")
+    mb = len(payload.encode("utf-8")) / (1024 * 1024)
+    print(f"\nWrote {db_path} ({mb:.1f} MB compact)")
     print(f"Total this run: {total_b} borings, {total_s} samples across {len(zips) - len(errors)} projects")
     print(f"Database now: {len(db['borings'])} borings")
+    if mb > 40:
+        print(
+            "NOTE: Large db.json — use the latest Geo_Report_Center.html (canvas markers). "
+            "If the map stays empty, re-open the project folder and wait for the load toast.",
+            file=sys.stderr,
+        )
     if errors:
         print(f"Errors: {len(errors)}", file=sys.stderr)
         sys.exit(2)
