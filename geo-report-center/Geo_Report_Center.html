@@ -20893,7 +20893,7 @@ table.list td{padding:5px 8px;border-bottom:1px solid rgba(46,58,72,.5);font-fam
 </head>
 <body>
 <div id="hdr">
-  <h1><b>GEO REPORT CENTER</b><span class="badge">v0.8</span></h1>
+  <h1><b>GEO REPORT CENTER</b><span class="badge">v0.9</span></h1>
   <button class="tab on" data-p="map">Map</button>
   <button class="tab" data-p="refs">Reference data</button>
   <button class="tab" data-p="jobs">Jobs</button>
@@ -20925,7 +20925,9 @@ table.list td{padding:5px 8px;border-bottom:1px solid rgba(46,58,72,.5);font-fam
         <h3>Phase 2 hydro grids</h3>
         <label class="layerRow" style="margin:0"><input type="checkbox" id="hydroOnline" checked>
           <span class="nm">Sample DGS depth-to-water &amp; WT elevation online</span></label>
-        <div class="hint" style="margin-top:4px">Uses FirstMap rasters (Coastal Plain). Piedmont is usually NoData — Section 3 falls back to “not encountered.” Needs internet.</div>
+        <label class="layerRow" style="margin:6px 0 0"><input type="checkbox" id="climateBlend" checked>
+          <span class="nm">Climate blender (season + recent precip → current WT estimate)</span></label>
+        <div class="hint" style="margin-top:4px">FirstMap DGS dry/normal/wet grids (Coastal Plain). Blender weights them with Open-Meteo 30-day precip vs 10-yr normals + season for a <b>current</b> DTW/WTE estimate — screening only, not measured WT. Piedmont is usually NoData. Needs internet.</div>
       </div>
       <div id="qBody"><div class="hint">No query yet.</div></div>
     </div>
@@ -21019,7 +21021,7 @@ table.list td{padding:5px 8px;border-bottom:1px solid rgba(46,58,72,.5);font-fam
         <div id="poleRows"></div>
         <div id="repPreview"><h3>Site layer preview</h3><div class="hint">Select a job with mapped borings to preview Sections 2 &amp; 4 from loaded reference layers.</div></div>
         <button class="btn" id="genReport" style="margin-top:14px;border-color:var(--amber);color:var(--amber);font-weight:600;padding:9px 16px">Generate .docx draft</button>
-        <div class="hint" style="margin-top:8px">Yellow-highlighted fields need engineer input. Section 8 stays with the PE — the Computed Observations annex holds strata, N, and pole cases. Section 3.2 is filled from FirstMap depth-to-water grids when online sampling is on; Section 3.1 (HA atlas) still needs engineer citation.</div>
+        <div class="hint" style="margin-top:8px">Yellow-highlighted fields need engineer input. Section 8 stays with the PE — the Computed Observations annex holds strata, N, and pole cases. Section 3.2 is filled from FirstMap depth-to-water grids (and optional climate-blended current estimate) when online sampling is on; Section 3.1 (HA atlas) still needs engineer citation.</div>
       </div>
       <div class="card" style="display:none">
         <h2>notes</h2>
@@ -21071,7 +21073,10 @@ const HYDRO_SERVICES={
   dtw:'https://enterprise.firstmap.delaware.gov/arcgis/rest/services/Geology/DGS_DepthToWater/MapServer',
   wte:'https://enterprise.firstmap.delaware.gov/arcgis/rest/services/Geology/DGS_WaterTableElevation/MapServer'
 };
+const CLIMATE_FORECAST='https://api.open-meteo.com/v1/forecast';
+const CLIMATE_ARCHIVE='https://archive-api.open-meteo.com/v1/archive';
 let lastHydro=null;
+const _climateMem=new Map(); /* session cache: rounded lat/lon + month → climate result */
 const $=id=>document.getElementById(id);
 function toast(m, ms){const t=$('toast');t.textContent=m;t.style.display='block';clearTimeout(t._h);t._h=setTimeout(()=>t.style.display='none', ms||4000);}
 function toastErr(m){toast(m, 20000); const h=$('hdrStats'); if(h) h.textContent='LOAD ERROR — see message at bottom';}
@@ -21373,6 +21378,106 @@ function hydroHasValue(block){
   return block&&(block.dry!=null||block.normal!=null||block.wet!=null);
 }
 function fmtFt(v){return v==null?'—':(Number.isInteger(v)?v:Number(v).toFixed(1))+' ft';}
+function fmtPct(v){return v==null?'—':(100*v).toFixed(0)+'%';}
+function climateCacheKey(lat,lon){
+  const now=new Date();
+  return `${lat.toFixed(2)}_${lon.toFixed(2)}_${now.getUTCFullYear()}-${now.getUTCMonth()+1}`;
+}
+function seasonalNudge(month){
+  if(month>=3&&month<=5)return{dry:-0.15,normal:0,wet:0.15};   /* spring → wetter */
+  if(month>=8&&month<=10)return{dry:0.15,normal:0,wet:-0.15};  /* late summer/fall → drier */
+  return{dry:0,normal:0,wet:0};
+}
+function climateWeightsFromRatio(ratio, month){
+  let base;
+  if(!(ratio>0)||!Number.isFinite(ratio)) base={dry:0.15,normal:0.70,wet:0.15};
+  else if(ratio<0.7) base={dry:0.70,normal:0.25,wet:0.05};
+  else if(ratio>1.3) base={dry:0.05,normal:0.25,wet:0.70};
+  else base={dry:0.15,normal:0.70,wet:0.15};
+  const n=seasonalNudge(month);
+  let dry=Math.max(0.01,base.dry+n.dry), normal=Math.max(0.01,base.normal+n.normal), wet=Math.max(0.01,base.wet+n.wet);
+  const s=dry+normal+wet;
+  return{dry:dry/s,normal:normal/s,wet:wet/s};
+}
+function blendHydroScenarios(block, w){
+  if(!block||!w)return null;
+  let sum=0,wsum=0;
+  for(const k of['dry','normal','wet']){
+    if(block[k]!=null&&Number.isFinite(+block[k])&&w[k]>0){sum+=(+block[k])*w[k];wsum+=w[k];}
+  }
+  return wsum>0?Math.round((sum/wsum)*10)/10:null;
+}
+function ymdUTC(y,m,d){return `${y}-${String(m).padStart(2,'0')}-${String(d).padStart(2,'0')}`;}
+function addDaysYMD(ymd, days){
+  const[y,m,d]=ymd.split('-').map(Number);
+  const dt=new Date(Date.UTC(y,m-1,d));
+  dt.setUTCDate(dt.getUTCDate()+days);
+  return ymdUTC(dt.getUTCFullYear(),dt.getUTCMonth()+1,dt.getUTCDate());
+}
+async function sampleClimate(lat, lon){
+  const key=climateCacheKey(lat,lon);
+  if(_climateMem.has(key))return _climateMem.get(key);
+  try{
+    const ssKey='grc_climate_'+key;
+    try{const cached=sessionStorage.getItem(ssKey);if(cached){const o=JSON.parse(cached);_climateMem.set(key,o);return o;}}catch(_){}
+
+    const fUrl=`${CLIMATE_FORECAST}?latitude=${lat}&longitude=${lon}&past_days=30&forecast_days=1&daily=precipitation_sum&timezone=America%2FNew_York`;
+    const f=await fetch(fUrl).then(r=>{if(!r.ok)throw new Error('forecast HTTP '+r.status);return r.json();});
+    const fTimes=f.daily&&f.daily.time||[];
+    const fPrecip=f.daily&&f.daily.precipitation_sum||[];
+    if(fTimes.length<30)throw new Error('forecast returned <30 days');
+    /* Prefer last 30 complete days ending yesterday (exclude today if present as forecast). */
+    let endIdx=fTimes.length-1;
+    const todayNY=new Date().toLocaleDateString('en-CA',{timeZone:'America/New_York'});
+    if(fTimes[endIdx]===todayNY)endIdx--;
+    const startIdx=Math.max(0,endIdx-29);
+    let recentSum=0;
+    for(let i=startIdx;i<=endIdx;i++)recentSum+=(fPrecip[i]==null?0:+fPrecip[i]);
+    const winStart=fTimes[startIdx], winEnd=fTimes[endIdx];
+    const[,em]=winEnd.split('-').map(Number);
+    const smd=winStart.slice(5), emd=winEnd.slice(5); /* MM-DD */
+    const endYear=+winEnd.slice(0,4);
+    const y0=endYear-10, y1=endYear-1;
+    const archStart=`${y0}-${smd}`, archEnd=`${y1}-${emd}`;
+    const aUrl=`${CLIMATE_ARCHIVE}?latitude=${lat}&longitude=${lon}&start_date=${archStart}&end_date=${archEnd}&daily=precipitation_sum&timezone=America%2FNew_York`;
+    const a=await fetch(aUrl).then(r=>{if(!r.ok)throw new Error('archive HTTP '+r.status);return r.json();});
+    const aTimes=a.daily&&a.daily.time||[];
+    const aPrecip=a.daily&&a.daily.precipitation_sum||[];
+    const pmap=new Map();
+    aTimes.forEach((t,i)=>pmap.set(t,aPrecip[i]==null?0:+aPrecip[i]));
+    const yearSums=[];
+    for(let y=y0;y<=y1;y++){
+      let s=0,ok=0;
+      let cur=`${y}-${smd}`;
+      for(let i=0;i<30;i++){
+        if(pmap.has(cur)){s+=pmap.get(cur);ok++;}
+        cur=addDaysYMD(cur,1);
+      }
+      if(ok>=25)yearSums.push(s);
+    }
+    if(!yearSums.length)throw new Error('no climatology years available');
+    const climo=yearSums.reduce((a,b)=>a+b,0)/yearSums.length;
+    const ratio=climo>0?recentSum/climo:1;
+    const weights=climateWeightsFromRatio(ratio, em);
+    const out={
+      recent_mm:Math.round(recentSum*10)/10,
+      climo_mm:Math.round(climo*10)/10,
+      precip_ratio:Math.round(ratio*100)/100,
+      window_start:winStart,
+      window_end:winEnd,
+      climo_years:yearSums.length,
+      weights,
+      source:'Open-Meteo forecast + archive (America/New_York)'
+    };
+    _climateMem.set(key,out);
+    try{sessionStorage.setItem(ssKey,JSON.stringify(out));}catch(_){}
+    return out;
+  }catch(e){
+    const err={error:'Climate sample failed: '+e.message};
+    _climateMem.set(key,err);
+    return err;
+  }
+}
 function formatHydroHTML(H){
   if(!H)return '';
   if(H.error)return `<h3 style="margin-top:12px">DGS water-table grids</h3><div class="hint warn">${esc(H.error)}</div>`;
@@ -21395,18 +21500,43 @@ function formatHydroHTML(H){
     h+=`<tr><td>Normal</td><td>${fmtFt(H.wte.normal)}</td></tr>`;
     h+=`<tr><td>Wet</td><td>${fmtFt(H.wte.wet)}</td></tr></table>`;
   }
+  if(H.climate&&H.climate.error){
+    h+=`<div class="hint warn" style="margin-top:8px">${esc(H.climate.error)}</div>`;
+  }else if(H.dtw_now!=null||H.wte_now!=null){
+    const C=H.climate||{};
+    const w=C.weights||{};
+    h+=`<h3 style="margin-top:12px">Climate-blended current estimate</h3>`;
+    h+=`<div class="hint" style="margin-bottom:4px">Screening only — weights DGS dry/normal/wet by season + 30-day precip vs 10-yr normals (Open-Meteo). Not measured WT.</div>`;
+    h+=`<table class="kv">`;
+    if(H.dtw_now!=null)h+=`<tr><td>DTW now</td><td><b>${fmtFt(H.dtw_now)}</b></td></tr>`;
+    if(H.wte_now!=null)h+=`<tr><td>WT elev now</td><td><b>${fmtFt(H.wte_now)}</b> NAVD88</td></tr>`;
+    h+=`<tr><td>Weights</td><td>dry ${fmtPct(w.dry)} · normal ${fmtPct(w.normal)} · wet ${fmtPct(w.wet)}</td></tr>`;
+    if(C.precip_ratio!=null)h+=`<tr><td>Precip ratio</td><td>${C.precip_ratio}× (${C.recent_mm} mm / ${C.climo_mm} mm climo · ${C.window_start}→${C.window_end})</td></tr>`;
+    h+=`</table>`;
+  }else if(H.climate===null){
+    h+=`<div class="hint" style="margin-top:8px">Climate blender off — showing static DGS regimes only.</div>`;
+  }
   return h;
 }
 async function sampleHydro(lat, lon){
   if($('hydroOnline')&&!$('hydroOnline').checked){
     return {skipped:true,dtw:{dry:null,normal:null,wet:null},wte:{dry:null,normal:null,wet:null},lat,lon};
   }
+  const blendOn=!$('climateBlend')||$('climateBlend').checked;
   try{
-    const [dtw,wte]=await Promise.all([
+    const tasks=[
       identifyHydroService(HYDRO_SERVICES.dtw, lon, lat),
       identifyHydroService(HYDRO_SERVICES.wte, lon, lat)
-    ]);
-    return {dtw,wte,lat,lon};
+    ];
+    if(blendOn)tasks.push(sampleClimate(lat, lon));
+    const results=await Promise.all(tasks);
+    const dtw=results[0], wte=results[1], climate=blendOn?results[2]:null;
+    const out={dtw,wte,lat,lon,climate};
+    if(climate&&!climate.error&&climate.weights){
+      out.dtw_now=blendHydroScenarios(dtw, climate.weights);
+      out.wte_now=blendHydroScenarios(wte, climate.weights);
+    }
+    return out;
   }catch(e){
     return {dtw:{dry:null,normal:null,wet:null},wte:{dry:null,normal:null,wet:null},lat,lon,error:'Hydro raster sample failed: '+e.message+' (need internet / FirstMap)'};
   }
@@ -21419,9 +21549,16 @@ function hydroSectionText(H){
   let dtwText=null, wteText=null;
   if(dtwOk){
     dtwText=`According to Delaware Geological Survey digital depth-to-water mapping (FirstMap / DGS Digital Data Products DP05-01, DP05-03, and DP05-04; Andres multiple-linear-regression method; 30-m grid, 1-ft vertical resolution), estimated depth to water at the site reference point is approximately ${fmtFt(H.dtw.dry)} under dry conditions, ${fmtFt(H.dtw.normal)} under normal conditions, and ${fmtFt(H.dtw.wet)} under wet conditions.`;
+    if(H.dtw_now!=null&&H.climate&&!H.climate.error){
+      const C=H.climate, w=C.weights||{};
+      dtwText+=` A climate-conditioned current estimate of approximately ${fmtFt(H.dtw_now)} was derived by weighting those dry/normal/wet surfaces (${fmtPct(w.dry)} / ${fmtPct(w.normal)} / ${fmtPct(w.wet)}) using season and recent 30-day precipitation (${C.recent_mm} mm) versus the 10-year mean for the same calendar window (${C.climo_mm} mm; precip ratio ${C.precip_ratio}×; Open-Meteo). This is a screening estimate only and is not a substitute for measured water levels.`;
+    }
   }
   if(wteOk){
     wteText=`Corresponding water-table elevation estimates (NAVD 88) are approximately ${fmtFt(H.wte.dry)} (dry), ${fmtFt(H.wte.normal)} (normal), and ${fmtFt(H.wte.wet)} (wet).`;
+    if(H.wte_now!=null&&H.climate&&!H.climate.error){
+      wteText+=` Climate-conditioned current water-table elevation is approximately ${fmtFt(H.wte_now)} NAVD 88.`;
+    }
   }
   return {dtwText,wteText,available:true};
 }
@@ -21678,6 +21815,7 @@ async function runPointQuery(lat,lng,opts){
 map.on('click',e=>runPointQuery(e.latlng.lat,e.latlng.lng));
 $('radius').oninput=function(){$('radLbl').textContent=this.value+' ft'; if(lastQuery)runPointQuery(lastQuery.lat,lastQuery.lng);};
 $('hydroOnline')&&($('hydroOnline').onchange=function(){ if(lastQuery)runPointQuery(lastQuery.lat,lastQuery.lng); if(typeof refreshReportPreview==='function')refreshReportPreview(); });
+$('climateBlend')&&($('climateBlend').onchange=function(){ if(lastQuery)runPointQuery(lastQuery.lat,lastQuery.lng); if(typeof refreshReportPreview==='function')refreshReportPreview(); });
 
 /* ---------- reference layer ingest ---------- */
 function detectKind(name,gj){
@@ -22113,8 +22251,17 @@ async function refreshReportPreview(){
   if(hydro.skipped){hp.innerHTML=`<b>§3.2 DTW:</b> <span class="hint">online sampling off</span>`;return;}
   if(hydro.error){hp.innerHTML=`<b>§3.2 DTW:</b> <span class="hint warn">${esc(hydro.error)}</span>`;return;}
   if(!hydroHasValue(hydro.dtw)){hp.innerHTML=`<b>§3.2 DTW:</b> <span class="hint warn">NoData (Piedmont / outside Coastal Plain)</span>`;return;}
-  hp.innerHTML=`<b>§3.2 DTW:</b> dry ${esc(fmtFt(hydro.dtw.dry))} · normal ${esc(fmtFt(hydro.dtw.normal))} · wet ${esc(fmtFt(hydro.dtw.wet))}`+
-    (hydroHasValue(hydro.wte)?`<div><b>WT elev:</b> dry ${esc(fmtFt(hydro.wte.dry))} · normal ${esc(fmtFt(hydro.wte.normal))} · wet ${esc(fmtFt(hydro.wte.wet))} NAVD88</div>`:'');
+  let line=`<b>§3.2 DTW:</b> dry ${esc(fmtFt(hydro.dtw.dry))} · normal ${esc(fmtFt(hydro.dtw.normal))} · wet ${esc(fmtFt(hydro.dtw.wet))}`;
+  if(hydro.dtw_now!=null){
+    const C=hydro.climate||{}, w=C.weights||{};
+    line+=` · <b>now ${esc(fmtFt(hydro.dtw_now))}</b>`;
+    if(C.precip_ratio!=null)line+=` <span class="hint">(ratio ${C.precip_ratio}× · w ${fmtPct(w.dry)}/${fmtPct(w.normal)}/${fmtPct(w.wet)})</span>`;
+  }else if(hydro.climate&&hydro.climate.error){
+    line+=` <span class="hint warn">· climate: ${esc(hydro.climate.error)}</span>`;
+  }
+  hp.innerHTML=line+
+    (hydroHasValue(hydro.wte)?`<div><b>WT elev:</b> dry ${esc(fmtFt(hydro.wte.dry))} · normal ${esc(fmtFt(hydro.wte.normal))} · wet ${esc(fmtFt(hydro.wte.wet))}`+
+      (hydro.wte_now!=null?` · <b>now ${esc(fmtFt(hydro.wte_now))}</b>`:'')+` NAVD88</div>`:'');
 }
 $('repJob')&&($('repJob').onchange=()=>{refreshPoleBorings();refreshReportPreview();});
 $('addPole').onclick=()=>{
