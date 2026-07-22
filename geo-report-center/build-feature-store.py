@@ -24,13 +24,13 @@ import re
 import sys
 from pathlib import Path
 
-# Screening infiltration bands (in/hr) by NRCS hydrologic soil group.
-# Informational only — not a design value.
+# Borehole-scale screening bands (in/hr) by NRCS hydrologic soil group.
+# Calibrated toward DE Coastal Plain field tests — NOT ASTM / DNREC design rates.
 INFIL_BANDS = {
-    "A": (0.30, 0.60, "high — typically sands/gravels"),
-    "B": (0.15, 0.30, "moderate — sandy loams"),
-    "C": (0.05, 0.15, "slow — silty / finer soils"),
-    "D": (0.00, 0.05, "very slow — clay / high water table"),
+    "A": (5.0, 30.0, "HYDGRP A — sands/gravels (borehole-scale screening)"),
+    "B": (1.5, 12.0, "HYDGRP B — sandy loams"),
+    "C": (0.3, 3.0, "HYDGRP C — silty / finer"),
+    "D": (0.05, 0.8, "HYDGRP D — clay / restricted drainage"),
 }
 
 
