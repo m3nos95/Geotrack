@@ -20890,64 +20890,68 @@ table.list td{padding:5px 8px;border-bottom:1px solid rgba(46,58,72,.5);font-fam
 .leaflet-container{background:#0d1117}
 .leaflet-tooltip.btip{background:var(--ink);border:1px solid var(--line);color:var(--text);font-family:var(--mono);font-size:11px;border-radius:4px}
 
-/* ===== Site analysis HUD (map-overlaid) ===== */
-#page-map.hud-open #qPanel{width:300px;bottom:auto;max-height:min(48vh,420px)}
-#page-map.hud-open #qBody{display:none}
-#page-map.hud-open #layerSec{max-height:90px}
-#page-map.hud-open #qPanel .sec:last-of-type{display:none} /* hide long hydro help while HUD open */
-#siteHud{position:absolute;inset:0;z-index:850;pointer-events:none;opacity:0;visibility:hidden;transition:opacity .35s ease,visibility .35s}
+/* ===== Immersive site HUD (VR-style, low-scroll) ===== */
+#page-map.hud-open #qPanel{display:none !important}
+#siteHud{position:absolute;inset:0;z-index:850;pointer-events:none;opacity:0;visibility:hidden;transition:opacity .4s ease,visibility .4s}
 #siteHud.on{opacity:1;visibility:visible}
-#siteHud .hud-vignette{position:absolute;inset:0;background:radial-gradient(ellipse at center,transparent 35%,rgba(8,12,18,.55) 100%);pointer-events:none}
-#siteHud .hud-frame{position:absolute;inset:14px;border:1px solid rgba(232,163,61,.18);border-radius:4px;pointer-events:none}
-#siteHud .hud-frame:before,#siteHud .hud-frame:after{content:'';position:absolute;width:22px;height:22px;border-color:var(--amber);border-style:solid}
+#siteHud .hud-vignette{position:absolute;inset:0;background:radial-gradient(ellipse at center,rgba(8,12,18,.05) 20%,rgba(8,12,18,.72) 100%);pointer-events:none}
+#siteHud .hud-frame{position:absolute;inset:12px;border:1px solid rgba(232,163,61,.22);pointer-events:none}
+#siteHud .hud-frame:before,#siteHud .hud-frame:after,#siteHud .hud-corner-tr,#siteHud .hud-corner-bl{content:'';position:absolute;width:28px;height:28px;border-color:var(--amber);border-style:solid;pointer-events:none}
 #siteHud .hud-frame:before{top:-1px;left:-1px;border-width:2px 0 0 2px}
 #siteHud .hud-frame:after{bottom:-1px;right:-1px;border-width:0 2px 2px 0}
-#siteHud .hud-corner-tr,#siteHud .hud-corner-bl{position:absolute;width:22px;height:22px;border-color:var(--amber);border-style:solid;pointer-events:none}
-#siteHud .hud-corner-tr{top:13px;right:13px;border-width:2px 2px 0 0}
-#siteHud .hud-corner-bl{bottom:13px;left:13px;border-width:0 0 2px 2px}
-#siteHud .hud-close{pointer-events:auto;position:absolute;top:22px;right:330px;z-index:5;background:rgba(18,24,31,.9);border:1px solid var(--amber);color:var(--amber);font-family:var(--mono);font-size:12px;padding:6px 12px;border-radius:4px;cursor:pointer;letter-spacing:.06em;text-transform:uppercase}
-#siteHud .hud-close:hover{background:rgba(232,163,61,.15)}
-#page-map:not(.hud-open) #siteHud .hud-close{right:22px}
-#siteHud .hud-panel{pointer-events:auto;position:absolute;background:rgba(18,24,31,.88);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);border:1px solid rgba(105,165,214,.28);border-radius:6px;padding:10px 12px;box-shadow:0 8px 32px rgba(0,0,0,.45);max-width:min(340px,32vw);animation:hudIn .45s ease both;overflow:auto;max-height:min(42vh,380px)}
-#siteHud .hud-panel h4{margin:0 0 8px;font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:var(--amber);font-family:var(--mono);display:flex;align-items:center;gap:8px}
-#siteHud .hud-panel h4 .tag{font-size:9px;color:var(--dim);border:1px solid var(--line);padding:1px 5px;border-radius:3px;letter-spacing:.04em}
-#siteHud .hud-tl{top:22px;left:22px;animation-delay:.05s}
-#siteHud .hud-tr{top:22px;right:330px;animation-delay:.12s}
-#siteHud .hud-bl{bottom:72px;left:22px;animation-delay:.18s;max-width:min(420px,40vw)}
-#siteHud .hud-br{bottom:72px;right:330px;animation-delay:.24s;max-width:min(380px,36vw);max-height:min(52vh,460px)}
-#page-map:not(.hud-open) #siteHud .hud-tr,#page-map:not(.hud-open) #siteHud .hud-br{right:22px}
-@keyframes hudIn{from{opacity:0;transform:translateY(10px) scale(.98)}to{opacity:1;transform:none}}
-#siteHud .hud-metric-row{display:flex;flex-wrap:wrap;gap:8px;margin-top:6px}
-#siteHud .hud-chip{flex:1 1 90px;min-width:88px;background:rgba(34,44,56,.9);border:1px solid var(--line);border-radius:5px;padding:8px 9px}
-#siteHud .hud-chip .lbl{font-size:9px;letter-spacing:.1em;text-transform:uppercase;color:var(--dim);font-family:var(--mono)}
-#siteHud .hud-chip .val{font-size:16px;font-weight:600;color:var(--text);margin-top:3px;font-family:var(--mono);line-height:1.15}
-#siteHud .hud-chip .sub{font-size:10px;color:var(--dim);margin-top:2px}
-#siteHud .hud-chip.accent{border-color:rgba(232,163,61,.45)}
+#siteHud .hud-corner-tr{top:11px;right:11px;border-width:2px 2px 0 0}
+#siteHud .hud-corner-bl{bottom:11px;left:11px;border-width:0 0 2px 2px}
+#siteHud .hud-close{pointer-events:auto;position:absolute;top:20px;right:20px;z-index:8;background:rgba(18,24,31,.92);border:1px solid var(--amber);color:var(--amber);font-family:var(--mono);font-size:11px;padding:8px 14px;cursor:pointer;letter-spacing:.1em;text-transform:uppercase}
+#siteHud .hud-close:hover{background:rgba(232,163,61,.16)}
+#siteHud .hud-exitbar{pointer-events:auto;position:absolute;top:20px;left:20px;z-index:8;display:flex;gap:8px;align-items:center}
+#siteHud .hud-pill{background:rgba(18,24,31,.9);border:1px solid rgba(105,165,214,.4);color:var(--text);font-family:var(--mono);font-size:10px;padding:7px 10px;letter-spacing:.08em;text-transform:uppercase}
+#siteHud .hud-pill b{color:var(--amber)}
+/* Floating callouts — no tall scroll panels */
+#siteHud .hud-panel{pointer-events:auto;position:absolute;background:linear-gradient(160deg,rgba(22,30,40,.92),rgba(12,16,22,.88));backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);border:1px solid rgba(232,163,61,.4);padding:12px 14px;box-shadow:0 0 0 1px rgba(105,165,214,.12),0 16px 40px rgba(0,0,0,.55);max-width:min(280px,30vw);animation:hudIn .5s cubic-bezier(.2,.8,.2,1) both;overflow:hidden;cursor:pointer;transition:border-color .2s,transform .2s}
+#siteHud .hud-panel:hover{border-color:var(--amber);transform:translateY(-2px)}
+#siteHud .hud-panel.on{border-color:var(--amber);box-shadow:0 0 0 1px rgba(232,163,61,.35),0 18px 44px rgba(0,0,0,.6)}
+#siteHud .hud-panel h4{margin:0 0 6px;font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--amber);font-family:var(--mono)}
+#siteHud .hud-panel .big{font-family:var(--mono);font-size:22px;font-weight:700;color:var(--text);line-height:1.1;margin:2px 0 4px}
+#siteHud .hud-panel .big.amber{color:var(--amber)}
+#siteHud .hud-panel .big.blue{color:var(--blue)}
+#siteHud .hud-panel .sub{font-size:11px;color:var(--dim);line-height:1.35}
+#siteHud .hud-panel .tap{margin-top:8px;font-family:var(--mono);font-size:9px;letter-spacing:.12em;text-transform:uppercase;color:rgba(232,163,61,.75)}
+#siteHud .hud-tl{top:64px;left:20px;animation-delay:.05s}
+#siteHud .hud-tr{top:64px;right:20px;animation-delay:.12s}
+#siteHud .hud-bl{bottom:78px;left:20px;animation-delay:.18s}
+#siteHud .hud-br{bottom:78px;right:20px;animation-delay:.24s;max-width:min(320px,34vw)}
+@keyframes hudIn{from{opacity:0;transform:translateY(14px) scale(.96)}to{opacity:1;transform:none}}
+#siteHud .hud-metric-row{display:flex;flex-wrap:wrap;gap:6px;margin-top:4px}
+#siteHud .hud-chip{flex:1 1 70px;min-width:70px;background:rgba(34,44,56,.85);border:1px solid var(--line);padding:6px 7px}
+#siteHud .hud-chip .lbl{font-size:8px;letter-spacing:.1em;text-transform:uppercase;color:var(--dim);font-family:var(--mono)}
+#siteHud .hud-chip .val{font-size:14px;font-weight:700;color:var(--text);margin-top:2px;font-family:var(--mono)}
+#siteHud .hud-chip.accent{border-color:rgba(232,163,61,.5)}
 #siteHud .hud-chip.accent .val{color:var(--amber)}
-#siteHud .hud-tabs{pointer-events:auto;position:absolute;left:50%;bottom:18px;transform:translateX(-50%);display:flex;gap:6px;z-index:6;animation:hudIn .4s ease .2s both}
-#siteHud .hud-tab{background:rgba(18,24,31,.92);border:1px solid var(--line);color:var(--dim);font-family:var(--mono);font-size:11px;letter-spacing:.08em;text-transform:uppercase;padding:8px 14px;border-radius:20px;cursor:pointer}
+/* Bottom focus chips — one detail at a time */
+#siteHud .hud-tabs{pointer-events:auto;position:absolute;left:50%;bottom:16px;transform:translateX(-50%);display:flex;gap:6px;z-index:8;animation:hudIn .45s ease .15s both;flex-wrap:wrap;justify-content:center;max-width:92vw}
+#siteHud .hud-tab{background:rgba(18,24,31,.92);border:1px solid var(--line);color:var(--dim);font-family:var(--mono);font-size:10px;letter-spacing:.1em;text-transform:uppercase;padding:9px 13px;cursor:pointer}
 #siteHud .hud-tab:hover{border-color:var(--blue);color:var(--text)}
-#siteHud .hud-tab.on{border-color:var(--amber);color:var(--amber);background:rgba(232,163,61,.1)}
-#siteHud .hud-drawer{pointer-events:auto;position:absolute;left:50%;bottom:58px;transform:translateX(-50%);width:min(920px,78vw);max-height:38vh;overflow:auto;background:rgba(18,24,31,.94);backdrop-filter:blur(14px);border:1px solid rgba(105,165,214,.35);border-radius:8px;padding:12px 14px;display:none;z-index:5;box-shadow:0 12px 40px rgba(0,0,0,.5)}
-#siteHud .hud-drawer.open{display:block;animation:hudIn .3s ease}
-#siteHud .hud-scan{position:absolute;left:50%;top:50%;width:120px;height:120px;margin:-60px 0 0 -60px;border:1px solid rgba(232,163,61,.35);border-radius:50%;pointer-events:none;animation:hudPulse 2.2s ease-out infinite}
-#siteHud .hud-scan:after{content:'';position:absolute;inset:18px;border:1px dashed rgba(105,165,214,.4);border-radius:50%}
-@keyframes hudPulse{0%{transform:scale(.55);opacity:.9}70%{transform:scale(1.35);opacity:0}100%{transform:scale(1.35);opacity:0}}
-#siteHud .hud-coords{pointer-events:none;position:absolute;left:50%;top:50%;transform:translate(-50%,-78px);font-family:var(--mono);font-size:11px;color:var(--amber);letter-spacing:.04em;text-shadow:0 1px 4px #000;white-space:nowrap}
+#siteHud .hud-tab.on{border-color:var(--amber);color:var(--amber);background:rgba(232,163,61,.12)}
+/* Slim detail sheet — capped height, one topic */
+#siteHud .hud-drawer{pointer-events:auto;position:absolute;left:50%;bottom:62px;transform:translateX(-50%);width:min(720px,86vw);max-height:34vh;overflow:auto;background:rgba(12,16,22,.96);backdrop-filter:blur(16px);border:1px solid rgba(232,163,61,.35);padding:12px 14px;display:none;z-index:7;box-shadow:0 20px 50px rgba(0,0,0,.55)}
+#siteHud .hud-drawer.open{display:block;animation:hudIn .28s ease}
+#siteHud .hud-drawer h4{margin:0 0 8px;color:var(--amber);font-size:11px;letter-spacing:.12em;text-transform:uppercase;font-family:var(--mono)}
+#siteHud .hud-scan{position:absolute;left:50%;top:50%;width:140px;height:140px;margin:-70px 0 0 -70px;border:1px solid rgba(232,163,61,.4);border-radius:50%;pointer-events:none;animation:hudPulse 2s ease-out infinite}
+#siteHud .hud-scan:after{content:'';position:absolute;inset:22px;border:1px dashed rgba(105,165,214,.45);border-radius:50%}
+@keyframes hudPulse{0%{transform:scale(.5);opacity:.95}70%{transform:scale(1.4);opacity:0}100%{opacity:0}}
+#siteHud .hud-coords{pointer-events:none;position:absolute;left:50%;top:50%;transform:translate(-50%,-92px);font-family:var(--mono);font-size:12px;color:var(--amber);letter-spacing:.08em;text-shadow:0 2px 8px #000;white-space:nowrap}
 #siteHud .mini-kv{width:100%;border-collapse:collapse;font-size:11px}
-#siteHud .mini-kv td{padding:2px 4px;border-bottom:1px solid rgba(46,58,72,.45);vertical-align:top}
+#siteHud .mini-kv td{padding:3px 5px;border-bottom:1px solid rgba(46,58,72,.45)}
 #siteHud .mini-kv td:first-child{color:var(--dim);font-family:var(--mono);white-space:nowrap;width:1%}
-@media (max-width:1100px){
-  #siteHud .hud-panel{max-width:46vw}
-  #siteHud .hud-tr,#siteHud .hud-br,#siteHud .hud-close{right:16px}
-  #page-map.hud-open #qPanel{display:none}
+@media (max-width:900px){
+  #siteHud .hud-panel{max-width:44vw;padding:10px}
+  #siteHud .hud-panel .big{font-size:18px}
 }
-
 </style>
 </head>
 <body>
 <div id="hdr">
-  <h1><b>GEO REPORT CENTER</b><span class="badge">v0.17</span></h1>
+  <h1><b>GEO REPORT CENTER</b><span class="badge">v0.18</span></h1>
   <button class="tab on" data-p="map">Map</button>
   <button class="tab" data-p="refs">Reference data</button>
   <button class="tab" data-p="jobs">Jobs</button>
@@ -20968,14 +20972,17 @@ table.list td{padding:5px 8px;border-bottom:1px solid rgba(46,58,72,.5);font-fam
       <div class="hud-corner-bl"></div>
       <div class="hud-scan"></div>
       <div class="hud-coords" id="hudCoords"></div>
-      <button type="button" class="hud-close" id="hudClose" title="Close site analysis">Close ✕</button>
-      <div class="hud-panel hud-tl" id="hudTL"></div>
-      <div class="hud-panel hud-tr" id="hudTR"></div>
-      <div class="hud-panel hud-bl" id="hudBL"></div>
-      <div class="hud-panel hud-br" id="hudBR"></div>
+      <div class="hud-exitbar">
+        <span class="hud-pill">Immersive · <b id="hudNeighborPill">—</b></span>
+      </div>
+      <button type="button" class="hud-close" id="hudClose" title="Exit immersive">Exit ✕</button>
+      <div class="hud-panel hud-tl" id="hudTL" data-hud="site"></div>
+      <div class="hud-panel hud-tr" id="hudTR" data-hud="estimate"></div>
+      <div class="hud-panel hud-bl" id="hudBL" data-hud="class"></div>
+      <div class="hud-panel hud-br" id="hudBR" data-hud="column"></div>
       <div class="hud-drawer" id="hudDrawer"></div>
       <div class="hud-tabs" id="hudTabs">
-        <button type="button" class="hud-tab on" data-hud="overview">Overview</button>
+        <button type="button" class="hud-tab on" data-hud="overview">Scene</button>
         <button type="button" class="hud-tab" data-hud="column">Column</button>
         <button type="button" class="hud-tab" data-hud="layers">Layers</button>
         <button type="button" class="hud-tab" data-hud="borings">Borings</button>
@@ -20985,7 +20992,7 @@ table.list td{padding:5px 8px;border-bottom:1px solid rgba(46,58,72,.5);font-fam
     <div id="qPanel">
       <div class="sec">
         <h3>Point query</h3>
-        <div class="hint">Click the map to <b>zoom in</b> and open the <b>site analysis HUD</b>. Estimates use nearby borings within the search radius (default 500 ft lateral — denser clusters = better). Soil column depth stays 0–50 ft. Point layers: nearest within 500 ft.</div>
+        <div class="hint">Click the map for <b>immersive mode</b>: auto-zoom + floating popups (no long sidebar scroll). Estimates use borings within the lateral radius (default 500 ft). Column depth 0–50 ft. Toggle Immersive HUD off for classic sidebar.</div>
       </div>
       <div class="sec">
         <h3>Search radius <span id="radLbl" style="color:var(--amber);font-family:var(--mono)">500 ft</span></h3>
@@ -21004,6 +21011,8 @@ table.list td{padding:5px 8px;border-bottom:1px solid rgba(46,58,72,.5);font-fam
           <span class="nm">Sample DGS unconfined aquifer (Sussex) online</span></label>
         <label class="layerRow" style="margin:6px 0 0"><input type="checkbox" id="climateBlend" checked>
           <span class="nm">Climate blender (season + recent precip → current WT estimate)</span></label>
+        <label class="layerRow" style="margin:6px 0 0"><input type="checkbox" id="immersiveMode" checked>
+          <span class="nm">Immersive HUD (zoom + floating popups — less scrolling)</span></label>
         <div class="hint" style="margin-top:4px">FirstMap DGS dry/normal/wet grids (Coastal Plain) + Sussex unconfined aquifer T/thickness/base. Blender weights DTW with Open-Meteo precip vs 10-yr normals + season — screening only. Piedmont DTW is usually NoData. Needs internet. Run <code>download-all-refs.bat</code> for the full polygon/point pack.</div>
       </div>
       <div id="qBody"><div class="hint">No query yet.</div></div>
@@ -21977,7 +21986,7 @@ function formatInfilHTML(E){
   return h;
 }
 
-/* ---------- prediction / site profile engine (v0.17) ---------- */
+/* ---------- prediction / site profile engine (v0.18) ---------- */
 const PROFILE_RADIUS_FT=500; /* lateral — estimate from borings within a few hundred ft */
 const PROFILE_K=16; /* denser clusters → more samples → better estimate */
 function parseDnrecNumber(raw){
@@ -22789,11 +22798,13 @@ async function runPointQuery(lat,lng,opts){
   const radFt=+$('radius').value;
   if(qMarker)map.removeLayer(qMarker);
   if(qCircle)map.removeLayer(qCircle);
-  qMarker=L.circleMarker([lat,lng],{radius:7,color:'#fff',weight:2,fillColor:'#e8a33d',fillOpacity:1}).addTo(map);
-  qCircle=L.circle([lat,lng],{radius:radFt*0.3048,color:'#e8a33d',weight:1.2,fillColor:'#e8a33d',fillOpacity:0.04,dashArray:'4 4'}).addTo(map);
+  qMarker=L.circleMarker([lat,lng],{radius:8,color:'#fff',weight:2,fillColor:'#e8a33d',fillOpacity:1}).addTo(map);
+  qCircle=L.circle([lat,lng],{radius:radFt*0.3048,color:'#e8a33d',weight:1.2,fillColor:'#e8a33d',fillOpacity:0.05,dashArray:'5 5'}).addTo(map);
+
+  const immersive=!$('immersiveMode')||$('immersiveMode').checked;
   try{
-    const z=Math.max(map.getZoom(), 16);
-    map.flyTo([lat,lng], z, {duration:0.85, easeLinearity:0.25});
+    const z=immersive?Math.max(map.getZoom(),17):Math.max(map.getZoom(),15);
+    map.flyTo([lat,lng], z, {duration:immersive?1.05:0.7, easeLinearity:0.2});
   }catch(_){ map.setView([lat,lng], Math.max(map.getZoom(),16)); }
 
   const hits=queryRefs(lat,lng);
@@ -22802,26 +22813,45 @@ async function runPointQuery(lat,lng,opts){
   db.cores.forEach(p=>{ const d=distFt(lat,lng,p.lat,p.lon); if(d<=radFt)near.push({t:'core',p,d}); });
   near.sort((a,b)=>a.d-b.d);
 
-  const nearLab=nearestBoringLab(lat,lng,PROFILE_RADIUS_FT);
+  const nearLab=nearestBoringLab(lat,lng,radFt);
   const E=enrichFromHits(hits, nearLab.samples);
   if(nearLab.boring) E.lab._from=`${nearLab.boring.b} @ ${Math.round(nearLab.dist)} ft`;
-  const profile=buildSiteProfile(lat,lng,hits);
+  const profile=buildSiteProfile(lat,lng,hits,radFt);
   lastProfile=profile;
 
   const ctx={lat,lng,radFt,hits,near,nearLab,E,profile,hydro:null,opts};
   lastHudCtx=ctx;
-  openSiteHud(ctx);
 
-  const onCount=refs.filter(R=>R.on!==false).length;
-  $('qBody').innerHTML=`<div class="hint good">Site analysis HUD is open on the map.</div>
-    <div class="hint">${lat.toFixed(5)}, ${lng.toFixed(5)} · ${onCount}/${refs.length} layers · ${near.length} boring(s) in radius</div>
-    <div class="hint">Bottom tabs: Column / Layers / Borings / Hydro. Press Esc or <b>Close ✕</b> to dismiss.</div>`;
+  if(immersive){
+    openSiteHud(ctx);
+    $('qBody').innerHTML=`<div class="hint good">Immersive HUD open on map.</div>
+      <div class="hint">${lat.toFixed(5)}, ${lng.toFixed(5)} · ${near.length} boring(s) in ${radFt} ft</div>
+      <div class="hint">Tap a floating card or bottom chip for details. <b>Exit ✕</b> or Esc to leave.</div>`;
+  } else {
+    closeSiteHud();
+    const P=profile, a=P.classes&&P.classes.aashto_loc, u=P.classes&&P.classes.uscs_loc;
+    let h=`<h3>At ${lat.toFixed(5)}, ${lng.toFixed(5)}</h3>`;
+    h+=`<div class="hint">${near.length} boring(s) · radius ${radFt} ft</div>`;
+    h+=`<table class="kv">`;
+    h+=`<tr><td>Design infil</td><td><b>${P.infil&&P.infil.design_inhr!=null?P.infil.design_inhr+' in/hr':'—'}</b></td></tr>`;
+    h+=`<tr><td>Subgrade</td><td>${P.subgrade&&P.subgrade.label?esc(P.subgrade.label):'—'}</td></tr>`;
+    h+=`<tr><td>AASHTO / USCS</td><td>${a&&a.value?esc(a.value):'—'} · ${u&&u.value?esc(u.value):'—'}</td></tr>`;
+    h+=`</table>`;
+    h+=`<div class="hint" style="margin-top:8px">Enable <b>Immersive HUD</b> for floating map popups.</div>`;
+    h+=`<div id="hydroBox"></div>`;
+    $('qBody').innerHTML=h;
+  }
 
   const hydro=await sampleHydro(lat,lng);
   lastHydro=hydro;
   if(lastHudCtx&&lastHudCtx.lat===lat&&lastHudCtx.lng===lng){
     lastHudCtx.hydro=hydro;
-    if(hudTab==='hydro') renderHudDrawer(lastHudCtx);
+    if(immersive&&hudTab==='hydro') renderHudDrawer(lastHudCtx);
+    const box=$('hydroBox');
+    if(box&&!immersive){
+      if(hydro.skipped) box.innerHTML=`<div class="hint">Hydro sampling off.</div>`;
+      else box.innerHTML=formatHydroHTML(hydro);
+    }
   }
   if(typeof refreshReportPreview==='function')refreshReportPreview();
 }
@@ -22837,8 +22867,12 @@ function closeSiteHud(){
   const dr=$('hudDrawer'); if(dr) dr.classList.remove('open');
   hudTab='overview';
   document.querySelectorAll('#hudTabs .hud-tab').forEach(b=>b.classList.toggle('on', b.dataset.hud==='overview'));
+  document.querySelectorAll('#siteHud .hud-panel').forEach(p=>p.classList.remove('on'));
 }
 function openSiteHud(ctx){
+  hudTab='overview';
+  document.querySelectorAll('#hudTabs .hud-tab').forEach(b=>b.classList.toggle('on', b.dataset.hud==='overview'));
+  document.querySelectorAll('#siteHud .hud-panel').forEach(p=>p.classList.remove('on'));
   const page=document.getElementById('page-map');
   if(page) page.classList.add('hud-open');
   const hud=$('siteHud');
@@ -22846,13 +22880,18 @@ function openSiteHud(ctx){
   hud.classList.add('on');
   const coords=$('hudCoords');
   if(coords) coords.textContent=`TARGET  ${ctx.lat.toFixed(5)}°N  ${Math.abs(ctx.lng).toFixed(5)}°W`;
+  const pill=$('hudNeighborPill');
+  if(pill){
+    const P=ctx.profile||{};
+    pill.textContent=`${P.n_neighbors||0} borings / ${P.radius_ft||ctx.radFt} ft`;
+  }
   renderHudPanels(ctx);
-  renderHudDrawer(ctx);
   const dr=$('hudDrawer');
-  if(dr){ if(hudTab==='overview') dr.classList.remove('open'); else dr.classList.add('open'); }
+  if(dr){ dr.classList.remove('open'); dr.innerHTML=''; }
+  try{ map.invalidateSize(); }catch(_){}
 }
-function hudChip(lbl, val, sub, accent){
-  return `<div class="hud-chip${accent?' accent':''}"><div class="lbl">${esc(lbl)}</div><div class="val">${val!=null&&val!==''?val:'—'}</div>${sub?`<div class="sub">${sub}</div>`:''}</div>`;
+function hudChip(lbl, val, accent){
+  return `<div class="hud-chip${accent?' accent':''}"><div class="lbl">${esc(lbl)}</div><div class="val">${val!=null&&val!==''?val:'—'}</div></div>`;
 }
 function renderHudPanels(ctx){
   const P=ctx.profile||{}, E=ctx.E||{}, N=E.nrcs||null;
@@ -22861,127 +22900,173 @@ function renderHudPanels(ctx){
   const aVal=aLoc?(aLoc.value||(typeof aLoc==='string'?aLoc:null)):null;
   const uVal=uLoc?(uLoc.value||(typeof uLoc==='string'?uLoc:null)):null;
 
-  let tl=`<h4>Site context <span class="tag">map units</span></h4><table class="mini-kv">`;
-  if(E.geoName) tl+=`<tr><td>Geology</td><td>${esc(E.geoName)}</td></tr>`;
-  if(E.soilName) tl+=`<tr><td>Soils</td><td>${esc(E.soilName)}${E.soilSym?' · '+esc(E.soilSym):''}</td></tr>`;
-  if(E.hydgrp) tl+=`<tr><td>HYDGRP</td><td>${esc(E.hydgrp)}${E.drain?' · '+esc(E.drain):''}</td></tr>`;
-  if(E.rech) tl+=`<tr><td>Recharge</td><td>${esc(E.rech)}</td></tr>`;
-  else if(E.wrpa&&E.wrpa.length) tl+=`<tr><td>WRPA</td><td>${esc(E.wrpa.join('; '))}</td></tr>`;
-  if(N){
-    if(N.aashto||N.uscs) tl+=`<tr><td>NRCS class</td><td>${N.aashto?esc(N.aashto):'—'}${N.uscs?' · '+esc(N.uscs):''}</td></tr>`;
-    if(N.ksat_in_hr!=null) tl+=`<tr><td>NRCS Ksat</td><td>${N.ksat_in_hr} in/hr</td></tr>`;
-    if(N.resdept_ft!=null) tl+=`<tr><td>Restrictive</td><td>~${N.resdept_ft} ft${N.reskind?' '+esc(N.reskind):''}</td></tr>`;
-  }
-  if(E.gmz) tl+=`<tr><td>GMZ</td><td>${esc(E.gmz)}</td></tr>`;
-  if(E.flood) tl+=`<tr><td>Flood</td><td>${esc(E.flood)}</td></tr>`;
-  if(E.wetland) tl+=`<tr><td>Wetland</td><td>${esc(E.wetland)}</td></tr>`;
-  tl+=`</table>`;
-  if(!E.geoName&&!E.soilName) tl+=`<div class="hint warn">Load soils / geology refs for mapunit context.</div>`;
+  /* TL — site identity (short) */
+  let tl=`<h4>Site</h4>`;
+  tl+=`<div class="big">${E.soilSym?esc(E.soilSym):(E.hydgrp?esc(E.hydgrp):'—')}</div>`;
+  tl+=`<div class="sub">${E.soilName?esc(E.soilName):'Load soils refs'}${E.hydgrp?' · HYDGRP '+esc(E.hydgrp):''}</div>`;
+  if(E.geoName) tl+=`<div class="sub" style="margin-top:4px">${esc(E.geoName)}</div>`;
+  else if(E.rech) tl+=`<div class="sub" style="margin-top:4px">Recharge ${esc(E.rech)}</div>`;
+  if(N&&N.ksat_in_hr!=null) tl+=`<div class="sub">NRCS Ksat ≈ ${N.ksat_in_hr} in/hr</div>`;
+  tl+=`<div class="tap">Tap · geology / NRCS</div>`;
   $('hudTL').innerHTML=tl;
 
-  let tr=`<h4>Estimate <span class="tag">screening</span></h4><div class="hud-metric-row">`;
-  tr+=hudChip('Design infil', P.infil&&P.infil.design_inhr!=null?(P.infil.design_inhr+' in/hr'):null, '÷ FoS 2.5', true);
-  tr+=hudChip('Subgrade', P.subgrade&&P.subgrade.label, P.subgrade&&P.subgrade.detail?esc(P.subgrade.detail):'M 57 / M 145');
-  tr+=hudChip('Borrow', P.borrow&&P.borrow.top_ft!=null?(P.borrow.top_ft+' ft'):null, P.borrow&&P.borrow.thickness_ft!=null?('~'+P.borrow.thickness_ft+' ft thick'):'depth to good');
-  tr+=hudChip('AASHTO', aVal?esc(aVal):null, aLoc&&aLoc.from_nrcs?'NRCS prior':(aLoc&&aLoc.confidence_pct!=null?(aLoc.confidence_pct+'% IDW'):'≤15 ft'));
-  tr+=hudChip('USCS', uVal?esc(uVal):null, uLoc&&uLoc.from_nrcs?'NRCS prior':(uLoc&&uLoc.confidence_pct!=null?(uLoc.confidence_pct+'% IDW'):'≤15 ft'), true);
+  /* TR — headline estimates */
+  let tr=`<h4>Estimate</h4>`;
+  tr+=`<div class="big amber">${P.infil&&P.infil.design_inhr!=null?P.infil.design_inhr+' in/hr':'—'}</div>`;
+  tr+=`<div class="sub">Design infil ÷ FoS 2.5</div>`;
+  tr+=`<div class="hud-metric-row">`;
+  tr+=hudChip('Subgrade', P.subgrade&&P.subgrade.label);
+  tr+=hudChip('Borrow', P.borrow&&P.borrow.top_ft!=null?(P.borrow.top_ft+' ft'):null, true);
   tr+=`</div>`;
-  tr+=`<div class="hint" style="margin-top:8px">${P.n_neighbors||0} neighbor boring(s)`+(P.nearest_ft!=null?` · nearest ${P.nearest_ft} ft`:'')+` · column 0–${CLASS_COL_DEPTH_FT} ft</div>`;
+  tr+=`<div class="tap">Tap · rates / borrow</div>`;
   $('hudTR').innerHTML=tr;
 
-  let bl=`<h4>Location class <span class="tag">≤15 ft IDW</span></h4>`;
+  /* BL — class */
+  let bl=`<h4>Class ≤15 ft</h4>`;
   bl+=`<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">`;
-  bl+=`<div style="border:1px solid var(--line);border-radius:5px;padding:8px"><div class="hint">AASHTO</div><div style="font-size:20px;font-family:var(--mono);color:var(--amber)"><b>${aVal?esc(aVal):'—'}</b></div></div>`;
-  bl+=`<div style="border:1px solid var(--line);border-radius:5px;padding:8px"><div class="hint">USCS</div><div style="font-size:20px;font-family:var(--mono);color:var(--blue)"><b>${uVal?esc(uVal):'—'}</b></div></div>`;
+  bl+=`<div><div class="sub">AASHTO</div><div class="big amber">${aVal?esc(aVal):'—'}</div></div>`;
+  bl+=`<div><div class="sub">USCS</div><div class="big blue">${uVal?esc(uVal):'—'}</div></div>`;
   bl+=`</div>`;
-  if(P.class_column){
-    const Ca=P.class_column.aashto||[], Cu=P.class_column.uscs||[];
-    if(Ca.length) bl+=`<div class="hint" style="margin-top:8px"><b>0–${CLASS_COL_DEPTH_FT} ft AASHTO:</b> ${Ca.slice(0,5).map(s=>esc(s.label)+' '+s.pct+'%').join(' · ')}</div>`;
-    if(Cu.length) bl+=`<div class="hint"><b>0–${CLASS_COL_DEPTH_FT} ft USCS:</b> ${Cu.slice(0,5).map(s=>esc(s.label)+' '+s.pct+'%').join(' · ')}</div>`;
-  }
+  bl+=`<div class="sub" style="margin-top:6px">${P.n_neighbors||0} neighbors · ${P.radius_ft||ctx.radFt} ft</div>`;
+  bl+=`<div class="tap">Tap · mix %</div>`;
   $('hudBL').innerHTML=bl;
 
-  let br=`<h4>Column stick <span class="tag">0–${CLASS_COL_DEPTH_FT} ft</span></h4>`;
-  br+=`<div class="hint" style="margin-bottom:6px">Depth-ordered IDW · screening only</div>`;
+  /* BR — stick only (visual, not a novel) */
+  let br=`<h4>Column 0–${CLASS_COL_DEPTH_FT} ft</h4>`;
   if(P.class_column){
-    br+=`<div style="display:flex;gap:10px;flex-wrap:wrap;align-items:flex-start">`;
-    br+=`<div><div class="hint"><b>AASHTO</b></div>${svgStickProfile(P.class_column.aashto_stick,P.class_column.depth_ft,'AASHTO')}</div>`;
-    br+=`<div><div class="hint"><b>USCS</b></div>${svgStickProfile(P.class_column.uscs_stick,P.class_column.depth_ft,'USCS')}</div>`;
+    br+=`<div style="display:flex;gap:8px;align-items:flex-start">`;
+    br+=`<div>${svgStickProfile(P.class_column.aashto_stick,P.class_column.depth_ft,'AASHTO')}</div>`;
+    br+=`<div>${svgStickProfile(P.class_column.uscs_stick,P.class_column.depth_ft,'USCS')}</div>`;
     br+=`</div>`;
-  } else br+=`<div class="hint warn">No column data</div>`;
+  } else br+=`<div class="sub">No column yet</div>`;
+  br+=`<div class="tap">Tap · pies / detail</div>`;
   $('hudBR').innerHTML=br;
 }
 function renderHudDrawer(ctx){
   const dr=$('hudDrawer'); if(!dr)return;
-  const P=ctx.profile||{}, E=ctx.E||{}, tab=hudTab;
+  const P=ctx.profile||{}, E=ctx.E||{}, N=E.nrcs||null, tab=hudTab;
+  document.querySelectorAll('#siteHud .hud-panel').forEach(p=>{
+    const match=p.dataset.hud===tab || (tab==='site'&&p.id==='hudTL') || (tab==='estimate'&&p.id==='hudTR') || (tab==='class'&&p.id==='hudBL') || (tab==='column'&&p.id==='hudBR');
+    p.classList.toggle('on', !!match && tab!=='overview');
+  });
   if(tab==='overview'){ dr.classList.remove('open'); dr.innerHTML=''; return; }
   dr.classList.add('open');
   let h='';
-  if(tab==='column'){
-    h+=`<h4 style="margin:0 0 8px;color:var(--amber);font-size:11px;letter-spacing:.1em;text-transform:uppercase">Soil column 0–${CLASS_COL_DEPTH_FT} ft</h4>`;
+
+  if(tab==='site'){
+    h+=`<h4>Site context</h4><table class="mini-kv">`;
+    if(E.geoName) h+=`<tr><td>Geology</td><td>${esc(E.geoName)}</td></tr>`;
+    if(E.soilName) h+=`<tr><td>Soils</td><td>${esc(E.soilName)}${E.soilSym?' · '+esc(E.soilSym):''}</td></tr>`;
+    if(E.hydgrp) h+=`<tr><td>HYDGRP</td><td>${esc(E.hydgrp)}${E.drain?' · '+esc(E.drain):''}</td></tr>`;
+    if(E.rech) h+=`<tr><td>Recharge</td><td>${esc(E.rech)}</td></tr>`;
+    if(N){
+      if(N.aashto||N.uscs) h+=`<tr><td>NRCS</td><td>${N.aashto?esc(N.aashto):'—'}${N.uscs?' · '+esc(N.uscs):''}</td></tr>`;
+      if(N.ksat_in_hr!=null) h+=`<tr><td>Ksat</td><td>${N.ksat_in_hr} in/hr</td></tr>`;
+      if(N.resdept_ft!=null) h+=`<tr><td>Restrictive</td><td>~${N.resdept_ft} ft</td></tr>`;
+      if(N.floodfreq) h+=`<tr><td>Flood</td><td>${esc(N.floodfreq)}</td></tr>`;
+    }
+    if(E.gmz) h+=`<tr><td>GMZ</td><td>${esc(E.gmz)}</td></tr>`;
+    if(E.flood) h+=`<tr><td>FEMA</td><td>${esc(E.flood)}</td></tr>`;
+    if(E.wetland) h+=`<tr><td>Wetland</td><td>${esc(E.wetland)}</td></tr>`;
+    h+=`</table>`;
+  } else if(tab==='estimate'){
+    h+=`<h4>Screening estimates</h4><table class="mini-kv">`;
+    if(P.infil){
+      if(P.infil.est_inhr!=null) h+=`<tr><td>Est. infil</td><td>${P.infil.est_inhr} in/hr</td></tr>`;
+      if(P.infil.design_inhr!=null) h+=`<tr><td>Design ÷${P.infil.fos||2.5}</td><td><b>${P.infil.design_inhr} in/hr</b></td></tr>`;
+      if(P.infil.note) h+=`<tr><td>Note</td><td>${esc(P.infil.note)}</td></tr>`;
+    }
+    if(P.subgrade&&P.subgrade.label) h+=`<tr><td>Subgrade</td><td>${esc(P.subgrade.label)}${P.subgrade.detail?' · '+esc(P.subgrade.detail):''}</td></tr>`;
+    if(P.borrow&&P.borrow.top_ft!=null) h+=`<tr><td>Borrow</td><td>${P.borrow.top_ft} ft`+(P.borrow.thickness_ft!=null?` · ~${P.borrow.thickness_ft} ft thick`:'')+`</td></tr>`;
+    h+=`</table><div class="hint" style="margin-top:6px">Screening only — not sealed design values.</div>`;
+  } else if(tab==='class'){
+    const a=P.classes&&P.classes.aashto_loc, u=P.classes&&P.classes.uscs_loc;
+    h+=`<h4>Location class (≤15 ft depth)</h4><table class="mini-kv">`;
+    h+=`<tr><td>AASHTO</td><td><b>${a&&a.value?esc(a.value):'—'}</b>${a&&a.confidence_pct!=null?' · '+a.confidence_pct+'% IDW':''}</td></tr>`;
+    h+=`<tr><td>USCS</td><td><b>${u&&u.value?esc(u.value):'—'}</b>${u&&u.confidence_pct!=null?' · '+u.confidence_pct+'% IDW':''}</td></tr>`;
+    h+=`<tr><td>Support</td><td>${P.n_neighbors||0} borings within ${P.radius_ft||ctx.radFt} ft</td></tr>`;
+    h+=`</table>`;
     if(P.class_column){
-      h+=`<div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">`;
-      h+=`<div><div class="hint"><b>AASHTO</b></div>${svgPieChart(P.class_column.aashto,'AASHTO',P.class_column.aashto_stick,P.class_column.depth_ft)}</div>`;
-      h+=`<div><div class="hint"><b>USCS</b></div>${svgPieChart(P.class_column.uscs,'USCS',P.class_column.uscs_stick,P.class_column.depth_ft)}</div>`;
+      const Ca=P.class_column.aashto||[], Cu=P.class_column.uscs||[];
+      if(Ca.length) h+=`<div class="hint" style="margin-top:8px"><b>0–${CLASS_COL_DEPTH_FT} ft AASHTO:</b> ${Ca.slice(0,6).map(s=>esc(s.label)+' '+s.pct+'%').join(' · ')}</div>`;
+      if(Cu.length) h+=`<div class="hint"><b>0–${CLASS_COL_DEPTH_FT} ft USCS:</b> ${Cu.slice(0,6).map(s=>esc(s.label)+' '+s.pct+'%').join(' · ')}</div>`;
+    }
+  } else if(tab==='column'){
+    h+=`<h4>Soil column 0–${CLASS_COL_DEPTH_FT} ft</h4>`;
+    if(P.class_column){
+      h+=`<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">`;
+      h+=`<div><div class="hint"><b>AASHTO</b></div>${svgPieChart(P.class_column.aashto,'AASHTO',null,P.class_column.depth_ft)}</div>`;
+      h+=`<div><div class="hint"><b>USCS</b></div>${svgPieChart(P.class_column.uscs,'USCS',null,P.class_column.depth_ft)}</div>`;
       h+=`</div>`;
-    } else h+=`<div class="hint warn">No column estimate</div>`;
-    h+=formatProfileHTML(P);
+      h+=`<div class="hint" style="margin-top:6px">Sticks are on the map card · pies show mix % · IDW from neighbors</div>`;
+    } else h+=`<div class="hint warn">No column data</div>`;
   } else if(tab==='layers'){
-    h+=`<h4 style="margin:0 0 8px;color:var(--amber);font-size:11px;letter-spacing:.1em;text-transform:uppercase">Reference hits</h4>`;
+    h+=`<h4>Key layer hits</h4>`;
+    const want=['geology_piedmont','geology_surficial','soils','recharge','wrpa','gmz','flood','wetland','septic_boring'];
     const grouped={};
-    (ctx.hits||[]).forEach(H=>{ const kind=H.kind||'layer'; (grouped[kind]=grouped[kind]||[]).push(H); });
-    if(!(ctx.hits||[]).length) h+=`<div class="hint">No reference polygons at this point.</div>`;
-    KIND_ORDER.forEach(kind=>{
+    (ctx.hits||[]).forEach(H=>{ const k=H.kind||'layer'; (grouped[k]=grouped[k]||[]).push(H); });
+    let n=0;
+    want.forEach(kind=>{
       const list=grouped[kind]; if(!list||!list.length)return;
-      h+=`<div style="margin-top:10px"><b>${esc(KIND_LABEL[kind]||kind)}</b></div>`;
-      list.forEach(H=>{
-        h+=`<div class="hint">${esc(H.layer)}</div><table class="mini-kv">`;
-        const props=H.props||{}, keys=[];
-        PROP_PREFER.forEach(k=>{const hit=Object.keys(props).find(x=>x.toLowerCase()===k.toLowerCase()); if(hit&&props[hit]!=null&&String(props[hit]).trim()!=='')keys.push(hit);});
-        Object.keys(props).forEach(k=>{ if(!keys.includes(k)&&props[k]!=null&&String(props[k]).trim()!==''&&keys.length<12)keys.push(k);});
-        keys.slice(0,12).forEach(k=>h+=`<tr><td>${esc(k)}</td><td>${esc(props[k])}</td></tr>`);
-        h+=`</table>`;
-      });
+      const H=list[0];
+      const props=H.props||{};
+      let label=fsProp(props,['NAME','SOILNAME','MUNAME','RECHARGE','SITENAME','FLD_ZONE','WETLAND_TYPE','PercRate'])||H.layer;
+      h+=`<div class="hint" style="margin-top:6px"><b>${esc(KIND_LABEL[kind]||kind)}</b> — ${esc(label)}</div>`;
+      n++;
     });
-    h+=formatInfilHTML(E);
+    if(!n) h+=`<div class="hint">No key layers at this point.</div>`;
+    h+=`<div class="hint" style="margin-top:8px">${(ctx.hits||[]).length} total hit(s)</div>`;
   } else if(tab==='borings'){
-    h+=`<h4 style="margin:0 0 8px;color:var(--amber);font-size:11px;letter-spacing:.1em;text-transform:uppercase">Borings within ${ctx.radFt} ft — ${(ctx.near||[]).length}</h4>`;
-    if(!(ctx.near||[]).length) h+=`<div class="hint">Nothing in radius.</div>`;
-    const focusKey=ctx.opts&&ctx.opts.focusJob&&ctx.opts.focusB?`${ctx.opts.focusJob}||${ctx.opts.focusB}`:null;
-    (ctx.near||[]).slice(0,40).forEach(n=>{
-      if(n.t==='boring'){
-        const key=`${n.r.job}||${n.r.b}`;
-        const open=focusKey===key;
-        h+=`<div class="nearrow${open?' open':''}" onclick="toggleBoringLab(this)"><span>◉ ${esc(n.r.b)} <span class="d">${esc(n.r.job)}</span></span><span class="d">${Math.round(n.d)} ft · ${(n.r.s||[]).length} samp</span></div>`;
-        h+=`<div class="labWrap" style="display:${open?'block':'none'}">${formatBoringLabHTML(n.r,n.d)}</div>`;
-      } else {
-        h+=`<div class="nearrow"><span>▪ ${esc(n.p.name)} <span class="d">core</span></span><span class="d">${Math.round(n.d)} ft</span></div>`;
-      }
+    const list=(ctx.near||[]).filter(n=>n.t==='boring').slice(0,12);
+    h+=`<h4>Nearest borings · ${list.length} shown</h4>`;
+    if(!list.length) h+=`<div class="hint">None within ${ctx.radFt} ft — widen estimate radius.</div>`;
+    list.forEach(n=>{
+      h+=`<div class="nearrow" onclick="toggleBoringLab(this)"><span>◉ ${esc(n.r.b)} <span class="d">${esc(n.r.job)}</span></span><span class="d">${Math.round(n.d)} ft</span></div>`;
+      h+=`<div class="labWrap" style="display:none">${formatBoringLabHTML(n.r,n.d)}</div>`;
     });
   } else if(tab==='hydro'){
-    h+=`<h4 style="margin:0 0 8px;color:var(--amber);font-size:11px;letter-spacing:.1em;text-transform:uppercase">Hydro / climate</h4>`;
-    if(!ctx.hydro) h+=`<div class="hint">Sampling DGS water-table grids…</div>`;
-    else if(ctx.hydro.skipped) h+=`<div class="hint">Online sampling is off.</div>`;
-    else h+=formatHydroHTML(ctx.hydro);
+    h+=`<h4>Hydro / climate</h4>`;
+    if(!ctx.hydro) h+=`<div class="hint">Sampling…</div>`;
+    else if(ctx.hydro.skipped) h+=`<div class="hint">Online sampling off.</div>`;
+    else {
+      const H=ctx.hydro;
+      h+=`<table class="mini-kv">`;
+      if(H.dtw) h+=`<tr><td>DTW</td><td>dry ${esc(fmtFt(H.dtw.dry))} · normal ${esc(fmtFt(H.dtw.normal))} · wet ${esc(fmtFt(H.dtw.wet))}</td></tr>`;
+      if(H.dtw_now!=null) h+=`<tr><td>DTW now</td><td><b>${esc(fmtFt(H.dtw_now))}</b></td></tr>`;
+      if(H.wte) h+=`<tr><td>WT elev</td><td>dry ${esc(fmtFt(H.wte.dry))} · normal ${esc(fmtFt(H.wte.normal))} · wet ${esc(fmtFt(H.wte.wet))}</td></tr>`;
+      h+=`</table>`;
+    }
   }
   dr.innerHTML=h;
+}
+
+function setHudTab(tab){
+  hudTab=tab||'overview';
+  document.querySelectorAll('#hudTabs .hud-tab').forEach(b=>b.classList.toggle('on', b.dataset.hud===hudTab));
+  if(lastHudCtx) renderHudDrawer(lastHudCtx);
+  const dr=$('hudDrawer');
+  if(dr){ if(hudTab==='overview') dr.classList.remove('open'); else dr.classList.add('open'); }
 }
 
 (function wireHud(){
   const close=$('hudClose');
   if(close) close.onclick=()=>closeSiteHud();
   document.querySelectorAll('#hudTabs .hud-tab').forEach(btn=>{
-    btn.onclick=()=>{
-      hudTab=btn.dataset.hud||'overview';
-      document.querySelectorAll('#hudTabs .hud-tab').forEach(b=>b.classList.toggle('on', b===btn));
-      if(lastHudCtx) renderHudDrawer(lastHudCtx);
-      const dr=$('hudDrawer');
-      if(dr){ if(hudTab==='overview') dr.classList.remove('open'); else dr.classList.add('open'); }
+    btn.onclick=()=>setHudTab(btn.dataset.hud||'overview');
+  });
+  ['hudTL','hudTR','hudBL','hudBR'].forEach(id=>{
+    const el=$(id);
+    if(!el)return;
+    el.onclick=()=>{
+      const t=el.dataset.hud||'overview';
+      setHudTab(hudTab===t?'overview':t);
     };
   });
   document.addEventListener('keydown',e=>{
     if(e.key==='Escape'&&$('siteHud')&&$('siteHud').classList.contains('on')) closeSiteHud();
   });
+  const imm=$('immersiveMode');
+  if(imm) imm.onchange=function(){ if(lastQuery) runPointQuery(lastQuery.lat,lastQuery.lng); };
 })();
 
 map.on('click',e=>runPointQuery(e.latlng.lat,e.latlng.lng));
