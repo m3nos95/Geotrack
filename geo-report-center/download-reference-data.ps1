@@ -1,4 +1,4 @@
-# DelDOT Geo Report Center — download statewide reference GeoJSON (run once on your PC)
+# DelDOT GeoTrak — download statewide reference GeoJSON (run once on your PC)
 # Usage: right-click → Run with PowerShell, or:  .\download-reference-data.ps1
 # Saves geology_*.json and recharge_*.json into .\refs\
 
@@ -39,5 +39,5 @@ Get-PagedGeoJson -BaseUrl "https://enterprise.firstmap.delaware.gov/arcgis/rest/
 Write-Host "`n=== Groundwater recharge potential (Kent & Sussex) ==="
 Get-PagedGeoJson -BaseUrl "https://enterprise.firstmap.delaware.gov/arcgis/rest/services/Geology/DGS_GroundwaterRechargePotential/FeatureServer/0/query?where=1%3D1&outFields=*&f=geojson" -Prefix "recharge"
 
-Write-Host "`nFinished. Drop all files from refs\ into Geo Report Center → Reference data tab."
+Write-Host "`nFinished. Drop all files from refs\ into DelDOT GeoTrak → Reference data tab."
 Write-Host "Or leave them in refs\ and use Open project folder on this same folder.`n"

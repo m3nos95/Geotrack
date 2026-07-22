@@ -162,7 +162,7 @@ def download_layer(refs: Path, prefix: str, service: str, layer: int, server: st
 
 
 def main() -> int:
-    ap = argparse.ArgumentParser(description="Download Delaware FirstMap/DNREC refs for Geo Report Center")
+    ap = argparse.ArgumentParser(description="Download Delaware FirstMap/DNREC refs for DelDOT GeoTrak")
     ap.add_argument("--core", action="store_true", help="Core geology/recharge/quads only")
     ap.add_argument("--all", action="store_true", help="Full pack + wells + LULC + DEN (very large)")
     ap.add_argument("--include-wells", action="store_true", help="Add ~174k non-public wells")

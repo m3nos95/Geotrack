@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Bulk-import GEOSYSTEM *.GEO.zip archives into Geo Report Center db.json
+Bulk-import GEOSYSTEM *.GEO.zip archives into DelDOT GeoTrak db.json
 
 Usage (Windows / Mac / Linux):
   python import-geo-zips.py "C:\\path\\to\\folder\\with\\zips" "C:\\Ultimate Geo Program\\db.json"

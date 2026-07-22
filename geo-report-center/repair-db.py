@@ -76,7 +76,7 @@ def main() -> int:
         return 1
 
     if not isinstance(data, dict) or not isinstance(data.get("borings"), list):
-        print("Not a Geo Report Center db.json (need { borings: [...] })", file=sys.stderr)
+        print("Not a DelDOT GeoTrak db.json (need { borings: [...] })", file=sys.stderr)
         return 1
 
     data = scrub_obj(data)

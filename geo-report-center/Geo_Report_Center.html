@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>DelDOT Geo Report Center</title>
+<title>DelDOT GeoTrak</title>
 <style>/* required styles */
 
 .leaflet-pane,
@@ -20977,7 +20977,7 @@ table.list td{padding:5px 8px;border-bottom:1px solid rgba(46,58,72,.5);font-fam
 </head>
 <body>
 <div id="hdr">
-  <h1><b>GEO REPORT CENTER</b><span class="badge">v0.24</span></h1>
+  <h1><b>DelDOT</b> GeoTrak<span class="badge">v0.25</span></h1>
   <button class="tab on" data-p="map">Map</button>
   <button class="tab" data-p="refs">Reference data</button>
   <button class="tab" data-p="jobs">Jobs</button>
@@ -21150,7 +21150,7 @@ table.list td{padding:5px 8px;border-bottom:1px solid rgba(46,58,72,.5);font-fam
 <div id="splash" role="dialog" aria-modal="true" aria-labelledby="splashTitle">
   <div class="box">
     <h2 id="splashTitle">Informational use only</h2>
-    <p>Geo Report Center compiles historic boring records and public reference mapping to support site reconnaissance and draft documentation.</p>
+    <p>DelDOT GeoTrak compiles historic boring records and public reference mapping to support site reconnaissance and draft documentation.</p>
     <p>This tool <b>does not replace</b> project-specific subsurface exploration, laboratory testing, engineering judgment, or applicable DelDOT design standards and requirements.</p>
     <p class="note">Outputs (including map queries and draft .docx reports) are for informational and supplemental use. A licensed professional engineer remains responsible for interpretation, recommendations, and sealed documents.</p>
     <div class="btnrow"><button class="btn" id="splashAck" style="border-color:var(--amber);color:var(--amber);font-weight:600;padding:8px 14px">I understand — continue</button></div>
@@ -22156,7 +22156,7 @@ function formatInfilHTML(E){
   return h;
 }
 
-/* ---------- prediction / site profile engine (v0.24) ---------- */
+/* ---------- prediction / site profile engine (v0.25) ---------- */
 const PROFILE_RADIUS_FT=500; /* lateral — estimate from borings within a few hundred ft */
 const PROFILE_K=16; /* denser clusters → more samples → better estimate */
 function parseDnrecNumber(raw){
@@ -24231,7 +24231,7 @@ async function buildDnrecSoilDocx(R){
 
   body.push(H('7','Borehole / test-pit logs'));
   body.push(new D.Paragraph({spacing:{after:120},children:[HL('[Attach full logs meeting Appendix 1 §IV item 7: project name; data collector; date; method; air temp & precip; elevation vs benchmark; visual soil profile; samples; instability; SPT if used; SHWT indicators (mottling); free water; bedrock; observations; standards.]')]}));
-  body.push(P('Summary index data from the Geo Report Center boring database are provided in the annex; replace with sealed field logs for submittal.'));
+  body.push(P('Summary index data from the DelDOT GeoTrak boring database are provided in the annex; replace with sealed field logs for submittal.'));
 
   body.push(H('8','Field permeability testing'));
   body.push(P('Field permeability testing shall follow ASTM D5126. Single-ring or double-ring infiltrometers are preferred. Cased borehole permeameter (min. 4-in casing) is allowable only with prior Department/Delegated Agency approval when pits are unsafe or constrained; results from undersized rings are treated as equivalent to cased borehole, including the factor of safety of 2.5 for determining the design infiltration rate (Appendix 1 §II.A.4).'));
@@ -24270,7 +24270,7 @@ async function buildDnrecSoilDocx(R){
   }
 
   body.push(H('13','Limitations'));
-  body.push(P('This draft was assembled by Geo Report Center from historic boring records, public reference mapping, and optional online hydro/climate sampling. It is an informational work product to support preparation of an Appendix 1–compliant Soil Investigation Report. It does not constitute a sealed geotechnical recommendation. Field explorations, ASTM D5126 permeability testing, SHWT determination, and Delaware PE/PG certification remain the responsibility of the licensed professional.'));
+  body.push(P('This draft was assembled by DelDOT GeoTrak from historic boring records, public reference mapping, and optional online hydro/climate sampling. It is an informational work product to support preparation of an Appendix 1–compliant Soil Investigation Report. It does not constitute a sealed geotechnical recommendation. Field explorations, ASTM D5126 permeability testing, SHWT determination, and Delaware PE/PG certification remain the responsibility of the licensed professional.'));
   body.push(P('Confirmatory infiltration testing after construction shall be no less than 150% of the approved design rate (Appendix 1 §II.B), and hand augers shall confirm no limiting layer within 2 ft of the practice bottom unless redesign is submitted.'));
 
   body.push(new D.Paragraph({pageBreakBefore:true,spacing:{after:160},children:[new D.TextRun({text:'APPENDICES CHECKLIST (Appendix 1 §IV)',bold:true,size:24,font:'Times New Roman'})]}));

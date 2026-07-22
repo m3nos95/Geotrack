@@ -1,4 +1,4 @@
-# Download Delaware FirstMap / DNREC reference GeoJSON for Geo Report Center
+# Download Delaware FirstMap / DNREC reference GeoJSON for DelDOT GeoTrak
 # Run from Ultimate Geo Program folder:
 #   powershell -ExecutionPolicy Bypass -File .\download-all-refs.ps1
 #   powershell -ExecutionPolicy Bypass -File .\download-all-refs.ps1 -All
@@ -149,5 +149,5 @@ foreach ($j in $jobs) {
   Get-PagedGeoJson -ServicePath $j.s -LayerId $j.i -Prefix $j.p -Server $srv
 }
 
-Write-Host "`nDone. Open Geo Report Center → Open project folder (refs auto-load)."
+Write-Host "`nDone. Open DelDOT GeoTrak → Open project folder (refs auto-load)."
 Write-Host "Rasters (DTW/WTE/unconfined aquifer) sample online — no download needed.`n"
