@@ -20951,7 +20951,7 @@ table.list td{padding:5px 8px;border-bottom:1px solid rgba(46,58,72,.5);font-fam
 </head>
 <body>
 <div id="hdr">
-  <h1><b>GEO REPORT CENTER</b><span class="badge">v0.19</span></h1>
+  <h1><b>GEO REPORT CENTER</b><span class="badge">v0.20</span></h1>
   <button class="tab on" data-p="map">Map</button>
   <button class="tab" data-p="refs">Reference data</button>
   <button class="tab" data-p="jobs">Jobs</button>
@@ -21793,8 +21793,15 @@ function fsProp(props,cands){
   return null;
 }
 const INFIL_BANDS={A:[0.30,0.60,'high — typically sands/gravels'],B:[0.15,0.30,'moderate — sandy loams'],C:[0.05,0.15,'slow — silty / finer soils'],D:[0.00,0.05,'very slow — clay / high water table']};
-/* DNREC BMP App. 1 §II.A.4 — FoS 2.5 for Cased Borehole (and undersized rings treated as equivalent). */
+/* DNREC BMP App. 1 (Eff. Feb 2019 / Updated 2019.10.01) §II.A.4:
+   FoS 2.5 applies ONLY to Cased Borehole Permeameter and to undersized rings
+   treated as equivalent. Preferred full-size single/double-ring (ASTM D5126)
+   design rates come from field-verified steady-state — Appendix 1 does not
+   prescribe FoS 2.5 for those preferred ring methods.
+   Our ÷2.5 on map/AASHTO/septic screening estimates is an illustrative
+   borehole-path planning number, NOT an approved DNREC design rate. */
 const DNREC_BOREHOLE_FOS=2.5;
+const DNREC_SEP_FT=2; /* §II.A.3 — min separation to limiting layer / groundwater */
 function hydgrpLetter(raw){
   if(!raw)return null;
   const m=String(raw).toUpperCase().match(/\b([ABCD])(?:\s*\/\s*[ABCD])?\b/);
@@ -21944,21 +21951,48 @@ function infilFromHydgrp(hydgrp, p200med, aashto, ksatInHr){
   return{min,max,...d,note:note+(adj.length?'; '+adj.join('; '):''),confidence:conf,hydgrp:letter||null,ksat_in_hr:ksatInHr!=null?+ksatInHr:null,aashto:aashto?aashtoBase(aashto):null};
 }
 function applyHydroLimitToInfil(P, hydro){
-  if(!P||!P.infil||P.infil.est_inhr==null||!hydro||hydro.skipped)return P;
-  const dtw=hydro.dtw_now!=null?+hydro.dtw_now:(hydro.dtw&&hydro.dtw.normal!=null?+hydro.dtw.normal:null);
-  if(dtw==null||!Number.isFinite(dtw))return P;
-  let factor=1, note=null;
-  if(dtw<2){ factor=0.35; note='shallow DTW '+dtw+' ft — strong WT cap'; }
-  else if(dtw<4){ factor=0.55; note='DTW '+dtw+' ft — WT reduces unsaturated zone'; }
-  else if(dtw<6){ factor=0.75; note='DTW '+dtw+' ft — mild WT cap'; }
-  P.infil.dtw_ft=dtw;
+  /* Align with Appendix 1 §II.A.3 (≥2 ft to GW/limiting layer) and §I.B SHWT screening.
+     Material screening rate is kept; separation failure is flagged — we do not invent
+     a DNREC design rate from map/AASHTO alone. */
+  if(!P||!P.infil||!hydro||hydro.skipped)return P;
+  const dtwWet=hydro.dtw&&hydro.dtw.wet!=null?+hydro.dtw.wet:null;
+  const dtwNorm=hydro.dtw&&hydro.dtw.normal!=null?+hydro.dtw.normal:null;
+  const dtwNow=hydro.dtw_now!=null?+hydro.dtw_now:null;
+  /* Prefer wet-season / SHWT proxy for separation screening (Dec 1–May 15 peak). */
+  const dtwSep=[dtwWet, dtwNow, dtwNorm].find(v=>v!=null&&Number.isFinite(v));
+  if(dtwSep==null)return P;
+  P.infil.dtw_ft=dtwSep;
+  P.infil.dtw_wet_ft=dtwWet;
+  P.infil.dtw_normal_ft=dtwNorm;
+  P.infil.dtw_now_ft=dtwNow;
   if(hydro.wte&&hydro.wte.normal!=null) P.infil.wte_navd=hydro.wte.normal;
-  if(factor>=0.999){ P.infil.wt_factor=1; return P; }
+  P.infil.separation_ft_req=DNREC_SEP_FT;
+  const sepOk=dtwSep>=DNREC_SEP_FT;
+  P.infil.separation_ok=sepOk;
+  if(P.infil.est_inhr==null){
+    if(!sepOk) P.infil.note=(P.infil.note?P.infil.note+'; ':'')+'DTW '+dtwSep+' ft < '+DNREC_SEP_FT+' ft — App.1 §II.A.3 separation not met (screening)';
+    return P;
+  }
   if(P.infil.est_inhr_uncapped==null) P.infil.est_inhr_uncapped=P.infil.est_inhr;
-  P.infil.wt_factor=factor;
-  P.infil.est_inhr=Math.round(P.infil.est_inhr_uncapped*factor*1000)/1000;
+  if(!sepOk){
+    /* Keep material screening estimate; do not publish an illustrative design rate when separation fails. */
+    P.infil.wt_factor=0;
+    P.infil.design_inhr=null;
+    P.infil.feasible=false;
+    const note='DTW '+dtwSep+' ft < '+DNREC_SEP_FT+' ft — App.1 §II.A.3 separation to GW not met (infiltration BMP at grade unlikely without underdrain / redesign)';
+    if(!(P.infil.note||'').includes('§II.A.3')) P.infil.note=(P.infil.note?P.infil.note+'; ':'')+note;
+    return P;
+  }
+  P.infil.feasible=true;
+  P.infil.wt_factor=1;
+  /* Near the 2-ft floor: mounding may be required (§I.B.2) — caution only, do not silently slash the rate. */
+  if(dtwSep<4){
+    const note='DTW '+dtwSep+' ft meets ≥'+DNREC_SEP_FT+' ft but is near SHWT — mounding analysis may apply (App.1 §I.B.2)';
+    if(!(P.infil.note||'').includes('mounding')) P.infil.note=(P.infil.note?P.infil.note+'; ':'')+note;
+  }
+  /* Restore illustrative borehole-path design from uncapped material screening */
+  P.infil.est_inhr=P.infil.est_inhr_uncapped;
   P.infil.design_inhr=Math.round((P.infil.est_inhr/DNREC_BOREHOLE_FOS)*1000)/1000;
-  if(note&&!(P.infil.note||'').includes('WT')) P.infil.note=(P.infil.note?P.infil.note+'; ':'')+note;
   return P;
 }
 function lookupNrcs(mukey){
@@ -22053,11 +22087,11 @@ function formatInfilHTML(E){
   if(E.lab&&E.lab.p200_median!=null) h+=`<div class="hint">Nearest/selected lab: P200 med ${E.lab.p200_median}%${E.lab.aashto_dom?' · '+esc(E.lab.aashto_dom):''}${E.lab.uscs_dom?' · '+esc(E.lab.uscs_dom):''}</div>`;
   if(E.infil.min!=null){
     h+=`<div style="margin-top:6px"><b>Estimated ${E.infil.min}–${E.infil.max} in/hr</b> <span class="hint">(${esc(E.infil.confidence)})</span><div class="hint">${esc(E.infil.note)}</div></div>`;
-    h+=`<div style="margin-top:8px"><b>Design rate (÷ ${E.infil.fos} FoS)</b> <span class="hint">DNREC App. 1 borehole / undersized-ring FoS</span></div>`;
+    h+=`<div style="margin-top:8px"><b>Illustrative design (÷ ${E.infil.fos} FoS)</b> <span class="hint">App.1 §II.A.4 borehole / undersized-ring only — preferred rings use field steady-state</span></div>`;
     h+=`<div><b>${E.infil.design_min}–${E.infil.design_max} in/hr</b>`;
     if(E.infil.design_mid!=null) h+=` <span class="hint">· mid ${E.infil.design_mid} in/hr</span>`;
     h+=`</div>`;
-    h+=`<div class="hint warn" style="margin-top:4px">Applies FoS 2.5 to the screening estimate as if it were a cased-borehole field rate. Preferred DNREC methods are full-size single/double-ring infiltrometers; design for submittal must use field-verified steady-state rates.</div>`;
+    h+=`<div class="hint warn" style="margin-top:4px">Appendix 1 (Eff. Feb 2019): design infiltration requires ASTM D5126 field tests. FoS 2.5 applies to cased borehole / undersized rings only. Full-size single/double-ring preferred. Screening AASHTO/HYDGRP/septic ≠ approved design rate. Separation to GW/limiting layer ≥2 ft (§II.A.3). Construction confirmatory rate ≥150% of approved design (§II.B).</div>`;
   } else h+=`<div class="hint warn">${esc(E.infil.note)}</div>`;
   const notes=[];
   if(E.septicPerc!=null) notes.push(`Nearest DNREC septic PercRate ${esc(E.septicPerc)}${E.septicDist!=null?' @ '+Math.round(E.septicDist)+' ft':''}`);
@@ -22075,7 +22109,7 @@ function formatInfilHTML(E){
   return h;
 }
 
-/* ---------- prediction / site profile engine (v0.19) ---------- */
+/* ---------- prediction / site profile engine (v0.20) ---------- */
 const PROFILE_RADIUS_FT=500; /* lateral — estimate from borings within a few hundred ft */
 const PROFILE_K=16; /* denser clusters → more samples → better estimate */
 function parseDnrecNumber(raw){
@@ -22628,7 +22662,7 @@ function buildSiteProfile(lat, lon, hits, radiusFt){
     parts.push({v:(aashtoInfil.min+aashtoInfil.max)/2, w, src:'AASHTO '+(aashtoInfil.aashto||aashtoEst)});
   }
   if(percIdw!=null){
-    parts.push({v:percIdw, w:1.1, src:'septic IDW'});
+    parts.push({v:percIdw, w:1.1, src:'septic PercRate IDW (not App.1 ASTM)'});
   }
   let infilBlend=null, infilNote='';
   if(parts.length){
@@ -22789,7 +22823,8 @@ function formatProfileHTML(P){
   if(P.infil.septic_mpi_idw!=null)h+=`<tr><td>Septic perc (IDW)</td><td>${P.infil.septic_mpi_idw} min/in ≈ ${P.infil.septic_inhr_idw} in/hr <span class="hint">(${P.infil.septic_n} pts)</span></td></tr>`;
   if(P.infil.est_inhr!=null)h+=`<tr><td>Est. rate</td><td><b>${P.infil.est_inhr} in/hr</b> <span class="hint">${esc(P.infil.note)}</span></td></tr>`;
   if(P.infil.est_inhr_uncapped!=null&&P.infil.wt_factor!=null&&P.infil.wt_factor<1)h+=`<tr><td>Before WT cap</td><td>${P.infil.est_inhr_uncapped} in/hr <span class="hint">DTW ${P.infil.dtw_ft} ft · ×${P.infil.wt_factor}</span></td></tr>`;
-  if(P.infil.design_inhr!=null)h+=`<tr><td>Design ÷${P.infil.fos}</td><td><b>${P.infil.design_inhr} in/hr</b></td></tr>`;
+  if(P.infil.separation_ok===false)h+=`<tr><td>App.1 separation</td><td><span class="hint warn">DTW ${P.infil.dtw_ft} ft &lt; ${P.infil.separation_ft_req||2} ft — §II.A.3 not met</span></td></tr>`;
+  if(P.infil.design_inhr!=null)h+=`<tr><td>Illustrative ÷${P.infil.fos}</td><td><b>${P.infil.design_inhr} in/hr</b> <span class="hint">borehole FoS planning only</span></td></tr>`;
   if(P.infil.est_inhr==null)h+=`<tr><td colspan="2"><span class="hint warn">Insufficient HYDGRP / AASHTO / septic data</span></td></tr>`;
   h+=`</table>`;
 
@@ -23041,8 +23076,8 @@ function renderHudPanels(ctx){
 
   /* TR — headline estimates */
   let tr=`<h4>Estimate</h4>`;
-  tr+=`<div class="big amber">${P.infil&&P.infil.design_inhr!=null?P.infil.design_inhr+' in/hr':'—'}</div>`;
-  tr+=`<div class="sub">Design infil ÷ FoS 2.5</div>`;
+  tr+=`<div class="big amber">${P.infil&&P.infil.design_inhr!=null?P.infil.design_inhr+' in/hr':(P.infil&&P.infil.separation_ok===false?'SEP <2′':'—')}</div>`;
+  tr+=`<div class="sub">${P.infil&&P.infil.design_inhr!=null?'Illustrative ÷2.5 borehole FoS · screening':(P.infil&&P.infil.separation_ok===false?'App.1 §II.A.3 separation fail':(P.infil&&P.infil.est_inhr!=null?('Screening '+P.infil.est_inhr+' in/hr'):'No infil estimate'))}</div>`;
   tr+=`<div class="hud-metric-row">`;
   tr+=hudChip('Subgrade', P.subgrade&&P.subgrade.label);
   tr+=hudChip('Borrow', P.borrow&&P.borrow.top_ft!=null?(P.borrow.top_ft+' ft'):null, true);
@@ -23101,10 +23136,11 @@ function renderHudDrawer(ctx){
   } else if(tab==='estimate'){
     h+=`<h4>Screening estimates</h4><table class="mini-kv">`;
     if(P.infil){
-      if(P.infil.est_inhr!=null) h+=`<tr><td>Est. infil</td><td>${P.infil.est_inhr} in/hr</td></tr>`;
-      if(P.infil.design_inhr!=null) h+=`<tr><td>Design ÷${P.infil.fos||2.5}</td><td><b>${P.infil.design_inhr} in/hr</b></td></tr>`;
+      if(P.infil.est_inhr!=null) h+=`<tr><td>Screening est.</td><td>${P.infil.est_inhr} in/hr <span class="hint">material / map / septic — not ASTM</span></td></tr>`;
+      if(P.infil.design_inhr!=null) h+=`<tr><td>Illustrative ÷${P.infil.fos||2.5}</td><td><b>${P.infil.design_inhr} in/hr</b> <span class="hint">App.1 borehole FoS only</span></td></tr>`;
+      else if(P.infil.separation_ok===false) h+=`<tr><td>Illustrative design</td><td><span class="hint warn">withheld — &lt;${P.infil.separation_ft_req||2} ft to GW (§II.A.3)</span></td></tr>`;
       if(P.infil.aashto) h+=`<tr><td>AASHTO driver</td><td>${esc(P.infil.aashto)}${P.infil.upper20&&P.infil.upper20.good_ft!=null?' · '+P.infil.upper20.good_ft+' ft granular 0–20′':''}</td></tr>`;
-      if(P.infil.dtw_ft!=null) h+=`<tr><td>DTW used</td><td>${P.infil.dtw_ft} ft${P.infil.wt_factor!=null&&P.infil.wt_factor<1?' · cap ×'+P.infil.wt_factor:''}${P.infil.wte_navd!=null?' · WTE ~'+P.infil.wte_navd+' ft NAVD':''}</td></tr>`;
+      if(P.infil.dtw_ft!=null) h+=`<tr><td>DTW (sep. check)</td><td>${P.infil.dtw_ft} ft${P.infil.separation_ok===false?' · FAIL ≥'+ (P.infil.separation_ft_req||2)+' ft':(P.infil.separation_ok?' · OK ≥'+(P.infil.separation_ft_req||2)+' ft':'')}${P.infil.wte_navd!=null?' · WTE ~'+P.infil.wte_navd+' ft NAVD':''}</td></tr>`;
       if(P.infil.note) h+=`<tr><td>Note</td><td>${esc(P.infil.note)}</td></tr>`;
     }
     if(P.subgrade&&P.subgrade.label) h+=`<tr><td>Subgrade</td><td>${esc(P.subgrade.label)}${P.subgrade.detail?' · '+esc(P.subgrade.detail):''}</td></tr>`;
