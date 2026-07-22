@@ -253,6 +253,32 @@ def hydgrp_letter(raw: str | None) -> str | None:
     return m.group(1)
 
 
+# DNREC BMP Appendix 1 §II.A.4 — FoS 2.5 for cased borehole / undersized rings
+DNREC_BOREHOLE_FOS = 2.5
+
+
+def apply_dnrec_design_fos(lo: float | None, hi: float | None) -> dict:
+    if lo is None and hi is None:
+        return {
+            "infil_design_min_in_hr": None,
+            "infil_design_max_in_hr": None,
+            "infil_design_mid_in_hr": None,
+            "infil_fos": DNREC_BOREHOLE_FOS,
+        }
+    dlo = None if lo is None else round(lo / DNREC_BOREHOLE_FOS, 3)
+    dhi = None if hi is None else round(hi / DNREC_BOREHOLE_FOS, 3)
+    if lo is not None and hi is not None:
+        mid = round(((lo + hi) / 2) / DNREC_BOREHOLE_FOS, 3)
+    else:
+        mid = dlo if dlo is not None else dhi
+    return {
+        "infil_design_min_in_hr": dlo,
+        "infil_design_max_in_hr": dhi,
+        "infil_design_mid_in_hr": mid,
+        "infil_fos": DNREC_BOREHOLE_FOS,
+    }
+
+
 def infil_from_hydgrp(hydgrp: str | None, p200_median: float | None, aashto: str | None) -> dict:
     letter = hydgrp_letter(hydgrp)
     if not letter or letter not in INFIL_BANDS:
@@ -261,6 +287,7 @@ def infil_from_hydgrp(hydgrp: str | None, p200_median: float | None, aashto: str
             "infil_max_in_hr": None,
             "infil_note": "no HYDGRP — cannot estimate from soils map",
             "infil_confidence": "none",
+            **apply_dnrec_design_fos(None, None),
         }
     lo, hi, note = INFIL_BANDS[letter]
     conf = "map_only"
@@ -284,11 +311,13 @@ def infil_from_hydgrp(hydgrp: str | None, p200_median: float | None, aashto: str
     if "/" in (hydgrp or ""):
         adj.append(f"dual HYDGRP {hydgrp} — drained letter {letter} used")
         conf = "low"
+    lo_r, hi_r = round(lo, 3), round(hi, 3)
     return {
-        "infil_min_in_hr": round(lo, 3),
-        "infil_max_in_hr": round(hi, 3),
+        "infil_min_in_hr": lo_r,
+        "infil_max_in_hr": hi_r,
         "infil_note": note + (("; " + "; ".join(adj)) if adj else ""),
         "infil_confidence": conf,
+        **apply_dnrec_design_fos(lo_r, hi_r),
     }
 
 

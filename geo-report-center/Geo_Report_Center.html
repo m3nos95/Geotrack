@@ -20893,7 +20893,7 @@ table.list td{padding:5px 8px;border-bottom:1px solid rgba(46,58,72,.5);font-fam
 </head>
 <body>
 <div id="hdr">
-  <h1><b>GEO REPORT CENTER</b><span class="badge">v0.9</span></h1>
+  <h1><b>GEO REPORT CENTER</b><span class="badge">v0.10</span></h1>
   <button class="tab on" data-p="map">Map</button>
   <button class="tab" data-p="refs">Reference data</button>
   <button class="tab" data-p="jobs">Jobs</button>
@@ -20957,7 +20957,7 @@ table.list td{padding:5px 8px;border-bottom:1px solid rgba(46,58,72,.5);font-fam
           <button class="btn" id="purgeOutsideDE">Remove borings outside Delaware</button>
           <button class="btn" id="buildFeatureStore">Export feature store (CSV)</button>
         </div>
-        <div class="hint" style="margin-top:8px">Borings come from <code>db.json</code>. <b>Export feature store</b> joins each mapped boring to geology / soils (HYDGRP) / recharge / lab stats and a <i>screening</i> infiltration band (slow in-browser for thousands — or run <code>build-feature-store.bat</code>). Map clicks also show the infil estimate at that point.</div>
+        <div class="hint" style="margin-top:8px">Borings come from <code>db.json</code>. <b>Export feature store</b> joins each mapped boring to geology / soils (HYDGRP) / recharge / lab stats, a <i>screening</i> infiltration band, and a DNREC borehole FoS 2.5 <i>design-rate</i> band (est ÷ 2.5). Map clicks show the same. Screening ≠ field-verified ASTM rate.</div>
       </div>
     </div>
   </div>
@@ -21021,7 +21021,8 @@ table.list td{padding:5px 8px;border-bottom:1px solid rgba(46,58,72,.5);font-fam
         <div id="poleRows"></div>
         <div id="repPreview"><h3>Site layer preview</h3><div class="hint">Select a job with mapped borings to preview Sections 2 &amp; 4 from loaded reference layers.</div></div>
         <button class="btn" id="genReport" style="margin-top:14px;border-color:var(--amber);color:var(--amber);font-weight:600;padding:9px 16px">Generate .docx draft</button>
-        <div class="hint" style="margin-top:8px">Yellow-highlighted fields need engineer input. Section 8 stays with the PE — the Computed Observations annex holds strata, N, and pole cases. Section 3.2 is filled from FirstMap depth-to-water grids (and optional climate-blended current estimate) when online sampling is on; Section 3.1 (HA atlas) still needs engineer citation.</div>
+        <button class="btn" id="genDnrecSoil" style="margin-top:14px;margin-left:8px;padding:9px 16px">Generate DNREC Soil Investigation draft</button>
+        <div class="hint" style="margin-top:8px">Yellow-highlighted fields need engineer input. Section 8 stays with the PE — the Computed Observations annex holds strata, N, and pole cases. Section 3.2 is filled from FirstMap depth-to-water grids (and optional climate-blended current estimate) when online sampling is on; Section 3.1 (HA atlas) still needs engineer citation. The DNREC draft follows BMP Appendix 1 §IV structure — screening rates with FoS 2.5 are labeled; field ASTM tests / PE seal still required for submittal.</div>
       </div>
       <div class="card" style="display:none">
         <h2>notes</h2>
@@ -21571,6 +21572,8 @@ function fsProp(props,cands){
   return null;
 }
 const INFIL_BANDS={A:[0.30,0.60,'high — typically sands/gravels'],B:[0.15,0.30,'moderate — sandy loams'],C:[0.05,0.15,'slow — silty / finer soils'],D:[0.00,0.05,'very slow — clay / high water table']};
+/* DNREC BMP App. 1 §II.A.4 — FoS 2.5 for Cased Borehole (and undersized rings treated as equivalent). */
+const DNREC_BOREHOLE_FOS=2.5;
 function hydgrpLetter(raw){
   if(!raw)return null;
   const m=String(raw).toUpperCase().match(/\b([ABCD])(?:\s*\/\s*[ABCD])?\b/);
@@ -21596,9 +21599,19 @@ function labStatsFromSamples(samples){
     aashto_dom:dom
   };
 }
+function applyDnrecDesignFos(min, max){
+  if(min==null&&max==null)return{design_min:null,design_max:null,design_mid:null,fos:DNREC_BOREHOLE_FOS};
+  const lo=min==null?null:+(min/DNREC_BOREHOLE_FOS).toFixed(3);
+  const hi=max==null?null:+(max/DNREC_BOREHOLE_FOS).toFixed(3);
+  let mid=null;
+  if(min!=null&&max!=null) mid=+(((min+max)/2)/DNREC_BOREHOLE_FOS).toFixed(3);
+  else if(min!=null) mid=lo;
+  else mid=hi;
+  return{design_min:lo,design_max:hi,design_mid:mid,fos:DNREC_BOREHOLE_FOS};
+}
 function infilFromHydgrp(hydgrp, p200med, aashto){
   const letter=hydgrpLetter(hydgrp);
-  if(!letter||!INFIL_BANDS[letter])return{min:null,max:null,note:'no HYDGRP — load soils refs or run feature store',confidence:'none'};
+  if(!letter||!INFIL_BANDS[letter])return{min:null,max:null,design_min:null,design_max:null,design_mid:null,fos:DNREC_BOREHOLE_FOS,note:'no HYDGRP — load soils refs or run feature store',confidence:'none'};
   let[lo,hi,note]=INFIL_BANDS[letter];
   let conf='map_only', adj=[];
   if(p200med!=null){
@@ -21612,7 +21625,9 @@ function infilFromHydgrp(hydgrp, p200med, aashto){
     if(/^A-6|^A-7/.test(au)){hi=Math.min(hi,INFIL_BANDS.C[1]);adj.push('AASHTO '+aashto+' finer');}
   }
   if(hydgrp&&String(hydgrp).includes('/')){adj.push('dual HYDGRP '+hydgrp);conf='low';}
-  return{min:+lo.toFixed(3),max:+hi.toFixed(3),note:note+(adj.length?'; '+adj.join('; '):''),confidence:conf,hydgrp:letter};
+  const min=+lo.toFixed(3), max=+hi.toFixed(3);
+  const d=applyDnrecDesignFos(min,max);
+  return{min,max,...d,note:note+(adj.length?'; '+adj.join('; '):''),confidence:conf,hydgrp:letter};
 }
 function enrichFromHits(hits, samples){
   const lab=labStatsFromSamples(samples);
@@ -21634,21 +21649,26 @@ function enrichFromHits(hits, samples){
       drain=fsProp(H.props,['DRAINAGECL','DRAINAGE']);
     }
   });
-  // nearest boring lab if no samples passed
   const infil=infilFromHydgrp(hydgrp, lab.p200_median, lab.aashto_dom);
   return{soilName,hydgrp,drain,geoName,geoKind,rech,wrpa,lab,infil};
 }
 function formatInfilHTML(E){
   let h=`<h3 style="margin-top:12px">Screening infiltration</h3>`;
-  h+=`<div class="hint warn" style="margin-bottom:4px">Informational only — does not replace site infiltration testing or PE design.</div>`;
+  h+=`<div class="hint warn" style="margin-bottom:4px">Informational only — does not replace DNREC field permeability testing (ASTM D5126) or PE design.</div>`;
   if(E.soilName||E.hydgrp) h+=`<div class="hint">Soils: ${esc(E.soilName||'—')}${E.hydgrp?' · HYDGRP '+esc(E.hydgrp):''}${E.drain?' · drainage '+esc(E.drain):''}</div>`;
   else h+=`<div class="hint warn">No soils / HYDGRP at this point — load soils refs.</div>`;
   if(E.geoName) h+=`<div class="hint">Geology: ${esc(E.geoName)}${E.geoKind?' ('+esc(E.geoKind)+')':''}</div>`;
   if(E.rech) h+=`<div class="hint">Recharge class: ${esc(E.rech)}</div>`;
   else if(E.wrpa&&E.wrpa.length) h+=`<div class="hint">WRPA: ${esc(E.wrpa.join('; '))}</div>`;
   if(E.lab&&E.lab.p200_median!=null) h+=`<div class="hint">Nearest/selected lab: P200 med ${E.lab.p200_median}%${E.lab.aashto_dom?' · '+esc(E.lab.aashto_dom):''}</div>`;
-  if(E.infil.min!=null) h+=`<div style="margin-top:6px"><b>${E.infil.min}–${E.infil.max} in/hr</b> <span class="hint">(${esc(E.infil.confidence)})</span><div class="hint">${esc(E.infil.note)}</div></div>`;
-  else h+=`<div class="hint warn">${esc(E.infil.note)}</div>`;
+  if(E.infil.min!=null){
+    h+=`<div style="margin-top:6px"><b>Estimated ${E.infil.min}–${E.infil.max} in/hr</b> <span class="hint">(${esc(E.infil.confidence)})</span><div class="hint">${esc(E.infil.note)}</div></div>`;
+    h+=`<div style="margin-top:8px"><b>Design rate (÷ ${E.infil.fos} FoS)</b> <span class="hint">DNREC App. 1 borehole / undersized-ring FoS</span></div>`;
+    h+=`<div><b>${E.infil.design_min}–${E.infil.design_max} in/hr</b>`;
+    if(E.infil.design_mid!=null) h+=` <span class="hint">· mid ${E.infil.design_mid} in/hr</span>`;
+    h+=`</div>`;
+    h+=`<div class="hint warn" style="margin-top:4px">Applies FoS 2.5 to the screening estimate as if it were a cased-borehole field rate. Preferred DNREC methods are full-size single/double-ring infiltrometers; design for submittal must use field-verified steady-state rates.</div>`;
+  } else h+=`<div class="hint warn">${esc(E.infil.note)}</div>`;
   return h;
 }
 function nearestBoringLab(lat,lon,maxFt){
@@ -21883,7 +21903,7 @@ $('buildFeatureStore')&&($('buildFeatureStore').onclick=async ()=>{
   if(!confirm('Build feature-store.csv for '+pts.length+' mapped borings?\n\nUses loaded refs (geology/soils/recharge). May take a while. For fastest build, use build-feature-store.bat.'))return;
   toast('Building feature store… 0/'+pts.length, 60000);
   const rows=[];
-  const cols=['job','boring','lat','lon','eob','geology_kind','geology','recharge','wrpa','soil_name','soil_hydgrp','soil_drainage','p200_median','aashto_dom','n_min_upper5','infil_min_in_hr','infil_max_in_hr','infil_confidence','infil_note'];
+  const cols=['job','boring','lat','lon','eob','geology_kind','geology','recharge','wrpa','soil_name','soil_hydgrp','soil_drainage','p200_median','aashto_dom','n_min_upper5','infil_min_in_hr','infil_max_in_hr','infil_design_min_in_hr','infil_design_max_in_hr','infil_design_mid_in_hr','infil_fos','infil_confidence','infil_note'];
   let i=0;
   function csvEsc(v){if(v==null)return ''; const s=String(v); return /[",\n]/.test(s)?'"'+s.replace(/"/g,'""')+'"':s;}
   async function step(){
@@ -21897,7 +21917,9 @@ $('buildFeatureStore')&&($('buildFeatureStore').onclick=async ()=>{
         geology_kind:E.geoKind,geology:E.geoName,recharge:E.rech,wrpa:(E.wrpa||[]).join('; '),
         soil_name:E.soilName,soil_hydgrp:E.hydgrp,soil_drainage:E.drain,
         p200_median:E.lab.p200_median,aashto_dom:E.lab.aashto_dom,n_min_upper5:E.lab.n_min_upper5,
-        infil_min_in_hr:E.infil.min,infil_max_in_hr:E.infil.max,infil_confidence:E.infil.confidence,infil_note:E.infil.note
+        infil_min_in_hr:E.infil.min,infil_max_in_hr:E.infil.max,
+        infil_design_min_in_hr:E.infil.design_min,infil_design_max_in_hr:E.infil.design_max,infil_design_mid_in_hr:E.infil.design_mid,
+        infil_fos:E.infil.fos,infil_confidence:E.infil.confidence,infil_note:E.infil.note
       });
     }
     toast(`Building feature store… ${i}/${pts.length}`, 60000);
@@ -22243,6 +22265,17 @@ async function refreshReportPreview(){
   else if(S.wrpaNotes.length)html+=`<div><b>§4 WRPA:</b> ${esc(S.wrpaNotes.join('; '))}</div>`;
   else html+=`<div><b>§4 Hydrologic:</b> <span class="hint warn">no recharge / WRPA hit</span></div>`;
   if(S.soilName)html+=`<div><b>Soils:</b> ${esc(S.soilName)}</div>`;
+  const hitsPrev=queryRefs(cLat,cLon);
+  const labN=nearestBoringLab(cLat,cLon,500);
+  const Eprev=enrichFromHits(hitsPrev, labN.samples);
+  if(Eprev.infil&&Eprev.infil.min!=null){
+    html+=`<div id="repInfilPrev"><b>Infil screening:</b> ${Eprev.infil.min}–${Eprev.infil.max} in/hr`+
+      ` → <b>design ÷${Eprev.infil.fos}: ${Eprev.infil.design_min}–${Eprev.infil.design_max} in/hr</b>`+
+      (Eprev.infil.design_mid!=null?` <span class="hint">(mid ${Eprev.infil.design_mid})</span>`:'')+
+      ` <span class="hint">· ${esc(Eprev.infil.confidence)} · not field-verified</span></div>`;
+  } else {
+    html+=`<div id="repInfilPrev"><b>Infil screening:</b> <span class="hint warn">${esc((Eprev.infil&&Eprev.infil.note)||'no estimate')}</span></div>`;
+  }
   box.innerHTML=html;
   const hydro=await sampleHydro(cLat,cLon);
   lastHydro=hydro;
@@ -22283,6 +22316,10 @@ $('genReport').onclick=async ()=>{
   try{ await generateReport(); }
   catch(e){ console.error(e); toast('Generate failed: '+e.message); }
 };
+$('genDnrecSoil')&&($('genDnrecSoil').onclick=async ()=>{
+  try{ await generateDnrecSoilReport(); }
+  catch(e){ console.error(e); toast('DNREC draft failed: '+e.message); }
+});
 async function generateReport(){
   const job=$('repJob').value;
   if(!job){toast('Import a job first');return;}
@@ -22502,6 +22539,171 @@ async function buildDocx(R){
   const a=document.createElement('a');
   a.href=URL.createObjectURL(blob);
   a.download=(R.meta.contract||R.job).replace(/[^\w-]+/g,'_')+'_Geo_Report_DRAFT.docx';
+  a.click();
+}
+
+/* ---------- DNREC BMP Appendix 1 Soil Investigation draft ---------- */
+async function generateDnrecSoilReport(){
+  const job=$('repJob').value;
+  if(!job){toast('Select a job');return;}
+  const borings=db.borings.filter(r=>r.job===job);
+  if(!borings.length){toast('No borings for job');return;}
+  const mapped=borings.filter(r=>r.lat!=null);
+  const cLat=mapped.length?mapped.reduce((a,r)=>a+r.lat,0)/mapped.length:null;
+  const cLon=mapped.length?mapped.reduce((a,r)=>a+r.lon,0)/mapped.length:null;
+  const meta=db.jobs&&db.jobs[job]?db.jobs[job]:{contract:$('jobContract')?$('jobContract').value:''};
+  let S={geoName:null,geoSource:null,rechClass:null,wrpaNotes:[],soilName:null,quadName:null,countyName:null};
+  let E={soilName:null,hydgrp:null,drain:null,geoName:null,rech:null,wrpa:[],lab:{},infil:{min:null}};
+  let hydro=null;
+  if(cLat!=null){
+    S=siteLayerSummary(cLat,cLon);
+    const hits=queryRefs(cLat,cLon);
+    const labN=nearestBoringLab(cLat,cLon,500);
+    E=enrichFromHits(hits, labN.samples.length?labN.samples:(borings[0].s||[]));
+    hydro=await sampleHydro(cLat,cLon);
+    lastHydro=hydro;
+  }
+  await buildDnrecSoilDocx({job,meta,borings,mapped,cLat,cLon,S,E,hydro});
+  toast('DNREC Soil Investigation draft downloaded');
+}
+async function buildDnrecSoilDocx(R){
+  const D=docx;
+  const P=(text,opts={})=>new D.Paragraph({children:[new D.TextRun({text,size:22,font:'Times New Roman',...opts})],spacing:{after:120},...(opts.par||{})});
+  const HL=(text)=>new D.TextRun({text,size:22,font:'Times New Roman',highlight:'yellow'});
+  const H=(num,title)=>new D.Paragraph({spacing:{before:220,after:120},children:[new D.TextRun({text:num+'.\t'+title,bold:true,size:22,font:'Times New Roman'})]});
+  const body=[];
+  body.push(new D.Paragraph({alignment:D.AlignmentType.CENTER,spacing:{after:80},children:[new D.TextRun({text:'DNREC SOIL INVESTIGATION REPORT — DRAFT',bold:true,size:28,font:'Times New Roman'})]}));
+  body.push(new D.Paragraph({alignment:D.AlignmentType.CENTER,spacing:{after:160},children:[new D.TextRun({text:'BMP Standards & Specifications, Appendix 1 (Eff. Feb 2019)',size:20,font:'Times New Roman',italics:true})]}));
+  body.push(new D.Paragraph({spacing:{after:160},children:[
+    HL('[DRAFT / SCREENING WORK PRODUCT — Not for DNREC submittal until field permeability tests, SHWT determination, PE/PG seal, and Appendix 1 completeness are satisfied.]')]}));
+
+  body.push(H('1','Certification'));
+  body.push(new D.Paragraph({spacing:{after:120},children:[
+    new D.TextRun({text:'This report shall be signed, sealed, and dated by a Delaware-licensed Professional Engineer or Professional Geologist per Appendix 1 §IV. ',size:22,font:'Times New Roman'}),
+    HL('[PE/PG NAME, LICENSE #, SEAL, DATE]')]}));
+
+  body.push(H('2','Project description / background'));
+  body.push(P(`Project name: ${R.job}. Contract / project number: ${R.meta.contract||'[CONTRACT #]'}.`));
+  body.push(new D.Paragraph({spacing:{after:120},children:[
+    new D.TextRun({text:'Proposed infiltrating practice(s): ',size:22,font:'Times New Roman'}),
+    HL('[e.g. bioretention / infiltration basin / trench — size, impervious DA, bottom elevation]')]}));
+  body.push(new D.Paragraph({spacing:{after:120},children:[
+    new D.TextRun({text:'Purpose of investigation: evaluate soils and infiltration feasibility for stormwater BMP design under DNREC Post Construction Stormwater BMP Standards & Specs (Article 3.06.2) and Appendix 1 Soil Investigation Procedures.',size:22,font:'Times New Roman'})]}));
+
+  body.push(H('3','Site surface conditions and current use'));
+  body.push(new D.Paragraph({spacing:{after:120},children:[HL('[Describe topography, ground cover, current land use, drainage patterns, and any site constraints affecting test-pit access.]')]}));
+  if(R.cLat!=null) body.push(P(`Site reference point (boring centroid): ${R.cLat.toFixed(5)}, ${R.cLon.toFixed(5)}.`));
+
+  body.push(H('4','Regional and site geology'));
+  if(R.S.geoName){
+    body.push(P(`Mapped geology at the site reference point: ${R.S.geoName}${R.S.geoSource?' (source: '+R.S.geoSource+')':''}.${R.S.quadName?' Quadrangle: '+R.S.quadName+'.':''}${R.S.countyName?' County: '+R.S.countyName+'.':''}`));
+  } else {
+    body.push(new D.Paragraph({spacing:{after:120},children:[HL('[Load Piedmont/Surficial geology refs or cite published geologic mapping.]')]}));
+  }
+  body.push(new D.Paragraph({spacing:{after:120},children:[HL('[Discuss site-specific geologic conditions relative to regional setting; note Cockeysville Formation, acidic soils, WRPAs, contamination, landfills, or GW management zones if applicable.]')]}));
+
+  body.push(H('5','Existing site data (screening)'));
+  body.push(P('Appendix 1 §II.A.2 requires screening for feasibility using topography, NRCS soils, depth to groundwater/SHWT, and nearest DGS well history. On-site data are recommended for larger projects. Screening does not replace field permeability testing used for design.'));
+  if(R.E.soilName||R.S.soilName){
+    body.push(P(`Mapped NRCS / FirstMap soil unit: ${R.E.soilName||R.S.soilName}${R.E.hydgrp?' · HYDGRP '+R.E.hydgrp:''}${R.E.drain?' · drainage '+R.E.drain:''}.`));
+  } else {
+    body.push(new D.Paragraph({spacing:{after:120},children:[HL('[Cite Web Soil Survey / loaded soils layer HYDGRP and drainage class.]')]}));
+  }
+  if(R.S.rechClass) body.push(P(`DGS ground-water recharge potential class: ${R.S.rechClass}.`));
+  else if(R.S.wrpaNotes&&R.S.wrpaNotes.length) body.push(P(`WRPA / hydro protection notes: ${R.S.wrpaNotes.join('; ')}.`));
+  const HS=hydroSectionText(R.hydro);
+  if(HS.available){
+    body.push(P(HS.dtwText));
+    if(HS.wteText) body.push(P(HS.wteText));
+  } else {
+    body.push(new D.Paragraph({spacing:{after:120},children:[HL('[Cite DGS depth-to-water / nearest DGS well hydrograph / SHWT indicators. Enable online hydro sampling on the Map tab when Coastal Plain coverage exists.]')]}));
+  }
+  if(R.E.infil&&R.E.infil.min!=null){
+    body.push(P(`Screening infiltration estimate from HYDGRP${R.E.lab&&R.E.lab.p200_median!=null?' + lab (P200 med '+R.E.lab.p200_median+'%)':''}: ${R.E.infil.min}–${R.E.infil.max} in/hr (${R.E.infil.confidence}). ${R.E.infil.note}.`));
+    body.push(P(`Illustrative design-rate band applying DNREC Appendix 1 §II.A.4 cased-borehole factor of safety ${R.E.infil.fos}: estimated rate ÷ ${R.E.infil.fos} → ${R.E.infil.design_min}–${R.E.infil.design_max} in/hr (midpoint ${R.E.infil.design_mid} in/hr). This FoS application to a map/lab screening estimate is for planning only; the approved design infiltration rate must be based on field-verified steady-state testing.`));
+  }
+
+  body.push(H('6','Field exploration summary'));
+  body.push(P(`Database borings associated with this job: ${R.borings.length} total, ${R.mapped.length} with coordinates. Characterization explorations for infiltrating BMPs should prefer test pits; minimum counts and depths follow Appendix 1 §I.A (to limiting layer or ≥3 ft below proposed facility bottom).`));
+  body.push(new D.Paragraph({spacing:{after:120},children:[
+    new D.TextRun({text:'Exploration methods / equipment: ',size:22,font:'Times New Roman'}),
+    HL('[test pits / SPT borings / hand augers — ASTM standards used; dates; weather; significant prior precip]')]}));
+  body.push(new D.Paragraph({spacing:{after:60},children:[new D.TextRun({text:'Boring / exploration inventory',bold:true,size:22,font:'Times New Roman'})]}));
+  R.borings.slice(0,40).forEach(r=>{
+    body.push(P(`${r.b}${r.eob!=null?' · EOB '+r.eob+' ft':''}${r.lat!=null?' · '+(+r.lat).toFixed(5)+', '+(+r.lon).toFixed(5):' · [unmapped]'}`));
+  });
+  if(R.borings.length>40) body.push(P(`… and ${R.borings.length-40} additional boring(s) in the project database.`));
+
+  body.push(H('7','Borehole / test-pit logs'));
+  body.push(new D.Paragraph({spacing:{after:120},children:[HL('[Attach full logs meeting Appendix 1 §IV item 7: project name; data collector; date; method; air temp & precip; elevation vs benchmark; visual soil profile; samples; instability; SPT if used; SHWT indicators (mottling); free water; bedrock; observations; standards.]')]}));
+  body.push(P('Summary index data from the Geo Report Center boring database are provided in the annex; replace with sealed field logs for submittal.'));
+
+  body.push(H('8','Field permeability testing'));
+  body.push(P('Field permeability testing shall follow ASTM D5126. Single-ring or double-ring infiltrometers are preferred. Cased borehole permeameter (min. 4-in casing) is allowable only with prior Department/Delegated Agency approval when pits are unsafe or constrained; results from undersized rings are treated as equivalent to cased borehole, including the factor of safety of 2.5 for determining the design infiltration rate (Appendix 1 §II.A.4).'));
+  body.push(P('Separation to a limiting layer (bedrock or groundwater) shall be at least two (2) feet. The field-verified infiltration rate is the final steady-state reading (intersection of a horizontal line with the lowest point of the infiltration-rate graph). Saturation period (1 hour or 12 in drop) is logged but not used in the rate.'));
+  body.push(new D.Paragraph({spacing:{after:120},children:[HL('[TEST LOGS: method; depths; saturation; period readings; consistency basis; infiltration-rate graph with steady-state; field-verified rate (in/hr); if borehole/undersized ring → design rate = field ÷ 2.5; confirmatory construction testing must be ≥150% of approved design rate.]')]}));
+  body.push(new D.Paragraph({spacing:{after:120},children:[
+    new D.TextRun({text:'Minimum test counts by practice type are tabulated in Appendix 1 §II.A.5. Practice type for this project: ',size:22,font:'Times New Roman'}),
+    HL('[bioretention / basin / trench / subsurface — enter required minimum tests]')]}));
+
+  body.push(H('9','Seasonal high water table (SHWT)'));
+  body.push(P('SHWT is the shallowest depth of regional water-table saturation for a continuous period of at least 21 days under normal precipitation (historically Dec 1–May 15). Evidence includes redoximorphic features and direct saturation. Practices without underdrain within 2 ft of SHWT may require mounding analysis (Table 1 of the parent standards — not reproduced here).'));
+  body.push(new D.Paragraph({spacing:{after:120},children:[HL('[SHWT depth (ft bgs); method (redox / piezometer wet-season average); correlation to nearest DGS well; mounding analysis if required.]')]}));
+
+  body.push(H('10','Groundwater conditions'));
+  body.push(new D.Paragraph({spacing:{after:120},children:[HL('[Confined aquifers, artesian, perched, seasonal variation, influences, direction/gradient if known; free water observed during exploration.]')]}));
+
+  body.push(H('11','Laboratory testing summary'));
+  const labs=R.borings.flatMap(r=>r.s||[]);
+  const labAll=labStatsFromSamples(labs);
+  if(labAll.n_samples){
+    let t=`Index testing from ${labAll.n_samples} sample(s) in the job database: `;
+    if(labAll.nm_min!=null) t+=`natural moisture ${labAll.nm_min}–${labAll.nm_max}%; `;
+    if(labAll.p200_median!=null) t+=`P200 median ${labAll.p200_median}%; `;
+    if(labAll.aashto_dom) t+=`dominant AASHTO ${labAll.aashto_dom}. `;
+    t+='Attach full lab reports for submittal.';
+    body.push(P(t));
+  } else {
+    body.push(new D.Paragraph({spacing:{after:120},children:[HL('[Summarize grain-size, Atterberg, moisture, and any permeability lab tests.]')]}));
+  }
+
+  body.push(H('12','Conclusions and recommendations'));
+  body.push(new D.Paragraph({spacing:{after:120},children:[HL('[PE/PG: feasibility for infiltration; recommended design infiltration rate from field tests; facility bottom elevation vs SHWT/limiting layer; underdrain vs infiltration; construction confirmatory testing notes.]')]}));
+  if(R.E.infil&&R.E.infil.design_mid!=null){
+    body.push(P(`For planning only, the screening-based illustrative design midpoint (est ÷ ${R.E.infil.fos}) is approximately ${R.E.infil.design_mid} in/hr. Do not use this value as the approved design rate without field verification.`));
+  }
+
+  body.push(H('13','Limitations'));
+  body.push(P('This draft was assembled by Geo Report Center from historic boring records, public reference mapping, and optional online hydro/climate sampling. It is an informational work product to support preparation of an Appendix 1–compliant Soil Investigation Report. It does not constitute a sealed geotechnical recommendation. Field explorations, ASTM D5126 permeability testing, SHWT determination, and Delaware PE/PG certification remain the responsibility of the licensed professional.'));
+  body.push(P('Confirmatory infiltration testing after construction shall be no less than 150% of the approved design rate (Appendix 1 §II.B), and hand augers shall confirm no limiting layer within 2 ft of the practice bottom unless redesign is submitted.'));
+
+  body.push(new D.Paragraph({pageBreakBefore:true,spacing:{after:160},children:[new D.TextRun({text:'APPENDICES CHECKLIST (Appendix 1 §IV)',bold:true,size:24,font:'Times New Roman'})]}));
+  ['Boring / test-pit location plan','Geologic / soils profiles','Exploration logs','Infiltration test data sheets and rate graphs','Laboratory data','Instrumentation / piezometer records (if used)','Special provisions / construction notes'].forEach((t,i)=>{
+    body.push(new D.Paragraph({spacing:{after:60},children:[
+      new D.TextRun({text:`${i+1}. ${t} — `,size:22,font:'Times New Roman'}),
+      HL('[attach]')]}));
+  });
+
+  body.push(new D.Paragraph({pageBreakBefore:true,children:[new D.TextRun({text:'WORKING ANNEX — DATABASE / SCREENING SUMMARY (remove or replace before issuing)',bold:true,size:22,font:'Times New Roman',highlight:'yellow'})],spacing:{after:160}}));
+  if(R.E.infil&&R.E.infil.min!=null){
+    body.push(P(`Screening infil ${R.E.infil.min}–${R.E.infil.max} in/hr → FoS ${R.E.infil.fos} design band ${R.E.infil.design_min}–${R.E.infil.design_max} in/hr (mid ${R.E.infil.design_mid}).`));
+  }
+  R.borings.forEach(r=>{
+    const an=analyzeBoring(r);
+    body.push(new D.Paragraph({spacing:{before:120,after:40},children:[new D.TextRun({text:r.b+(r.eob?` (EOB ${r.eob} ft)`:''),bold:true,size:22,font:'Times New Roman'})]}));
+    if(an.upper) body.push(P(`Upper 5 ft: ${an.upper.cond} ${an.upper.type}, min N=${an.upper.minN}.`));
+    if(an.lower) body.push(P(`5–25 ft: ${an.lower.cond} ${an.lower.type}, min N=${an.lower.minN}.`));
+  });
+
+  const doc=new D.Document({sections:[{properties:{page:{margin:{top:720,bottom:720,left:1080,right:1080}}},
+    footers:{default:new D.Footer({children:[new D.Paragraph({alignment:D.AlignmentType.RIGHT,children:[
+      new D.TextRun({text:'DNREC Soil Investigation DRAFT | Page ',size:18,font:'Times New Roman'}),
+      new D.TextRun({children:[D.PageNumber.CURRENT],size:18,font:'Times New Roman'})]})]})},
+    children:body}]});
+  const blob=await D.Packer.toBlob(doc);
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(blob);
+  a.download=(R.meta.contract||R.job).replace(/[^\w-]+/g,'_')+'_DNREC_Soil_Investigation_DRAFT.docx';
   a.click();
 }
 refreshJobSelects();
