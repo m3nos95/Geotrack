@@ -21902,13 +21902,85 @@ function borrowDepthInBoring(r){
   const bot=(last!=null?last+2:first+2);
   return {has:true, top:first, bot, thickness:Math.max(0, bot-first)};
 }
+/* AASHTO M 57 (embankment/subgrade materials) uses M 145 classification + Group Index for relative subgrade quality. */
+function aashtoGroupIndex(p200, ll, pi, group){
+  const F=p200==null?null:Math.round(+p200);
+  const LL=ll==null?null:Math.round(+ll);
+  const PI=pi==null?null:Math.round(+pi);
+  const g=aashtoBase(group)||'';
+  if(F==null)return null;
+  /* Nonplastic / missing Atterbergs → GI 0 for granular groups that don't need them */
+  if((LL==null||PI==null)&&(/^A-1/.test(g)||g==='A-3'||/^A-2-4/.test(g)||/^A-2-5/.test(g)))return 0;
+  if(LL==null||PI==null)return null;
+  let gi;
+  if(/^A-2-6/.test(g)||/^A-2-7/.test(g)){
+    gi=0.01*Math.max(F-15,0)*Math.max(PI-10,0);
+  }else{
+    gi=Math.max(F-35,0)*(0.2+0.005*Math.max(LL-40,0))+0.01*Math.max(F-15,0)*Math.max(PI-10,0);
+  }
+  gi=Math.round(gi);
+  return gi<0?0:gi;
+}
+function m145SubgradeBand(group){
+  const g=aashtoBase(group)||'';
+  if(!g)return null;
+  /* M 145 Table — general rating as a subgrade (basis for M 57 material evaluation) */
+  if(/^A-1/.test(g)||g==='A-3'||/^A-2-4/.test(g)||/^A-2-5/.test(g))return 'excellent to good';
+  if(/^A-2-6/.test(g)||/^A-2-7/.test(g)||/^A-4/.test(g)||/^A-5/.test(g)||/^A-6/.test(g)||/^A-7/.test(g))return 'fair to poor';
+  return null;
+}
+function m57SubgradeRating(group, gi){
+  const g=aashtoBase(group)||'';
+  const band=m145SubgradeBand(g);
+  if(!g)return {rating:null, band:null, score:null, detail:null};
+  let rating, score;
+  if(/^A-1/.test(g)||g==='A-3'){ rating='Excellent'; score=5; }
+  else if(/^A-2-4/.test(g)||/^A-2-5/.test(g)){ rating='Good'; score=4; }
+  else if(/^A-2-6/.test(g)||/^A-2-7/.test(g)||/^A-4/.test(g)||/^A-5/.test(g)){ rating='Fair'; score=3; }
+  else if(/^A-6/.test(g)){ rating='Poor'; score=2; }
+  else if(/^A-7/.test(g)){ rating='Poor'; score=2; }
+  else { rating=band||'Unrated'; score=null; }
+  /* Refine with Group Index when available (M 145 §7 — GI 0 good … GI ≥20 very poor) */
+  if(gi!=null){
+    if(gi>=20){ rating='Very poor'; score=1; }
+    else if(gi>=10&&score!=null&&score>2){ rating='Poor'; score=2; }
+    else if(gi>=5&&score!=null&&score>3){ rating='Fair'; score=3; }
+  }
+  const detail=gi!=null?`${g}(${gi})`:g;
+  return {rating, band, score, detail, group:g, gi};
+}
 function subgradeFromBoring(r){
-  if(typeof analyzeBoring!=='function')return null;
-  const an=analyzeBoring(r);
-  if(!an||!an.upper)return null;
-  const u=an.upper;
-  const score={ 'very poor':1, 'poor':2, 'medium':3 }[u.cond]||null;
-  return {cond:u.cond, type:u.type, minN:u.minN, score, aashto:u.govern&&u.govern.aashto};
+  const ss=(r.s||[]).filter(s=>s.d!=null&&s.d<=5&&s.aashto);
+  if(!ss.length){
+    /* fall back to any classified samples in upper 10 ft */
+    const alt=(r.s||[]).filter(s=>s.d!=null&&s.d<=10&&s.aashto);
+    if(!alt.length)return null;
+    return subgradeFromSamples(alt);
+  }
+  return subgradeFromSamples(ss);
+}
+function subgradeFromSamples(ss){
+  const bases=ss.map(s=>aashtoBase(s.aashto)).filter(Boolean);
+  const maj=majorityVote(bases);
+  if(!maj)return null;
+  const group=maj.value;
+  const p200s=ss.map(s=>s.p200).filter(v=>v!=null&&!isNaN(+v)).map(Number).sort((a,b)=>a-b);
+  const lls=ss.map(s=>s.ll).filter(v=>v!=null&&!isNaN(+v)).map(Number);
+  const pis=ss.map(s=>s.pi).filter(v=>v!=null&&!isNaN(+v)).map(Number);
+  const p200=p200s.length?p200s[Math.floor(p200s.length/2)]:null;
+  const ll=lls.length?lls.reduce((a,b)=>a+b,0)/lls.length:null;
+  const pi=pis.length?pis.reduce((a,b)=>a+b,0)/pis.length:null;
+  const gi=aashtoGroupIndex(p200, ll, pi, group);
+  const R=m57SubgradeRating(group, gi);
+  const nvals=ss.map(s=>s.n).filter(v=>v!=null).map(Number);
+  return {
+    group:R.group, gi:R.gi, detail:R.detail, rating:R.rating, band:R.band, score:R.score,
+    p200:p200!=null?Math.round(p200*10)/10:null,
+    ll:ll!=null?Math.round(ll*10)/10:null,
+    pi:pi!=null?Math.round(pi*10)/10:null,
+    minN:nvals.length?Math.min(...nvals):null,
+    n_samples:ss.length
+  };
 }
 function uscsFromSample(s){
   if(s&&s.uscs)return String(s.uscs).toUpperCase().trim();
@@ -21962,23 +22034,31 @@ function buildSiteProfile(lat, lon, hits){
     infilNote='IDW septic perc→in/hr only (no HYDGRP)';
   }
   const designBlend=infilBlend!=null?Math.round((infilBlend/DNREC_BOREHOLE_FOS)*1000)/1000:null;
-  /* subgrade */
-  const sgPairs=[], sgConds=[], sgTypes=[], sgAash=[];
+  /* subgrade — AASHTO M 57 / M 145 (not DelDOT N chart) */
+  const sgScores=[], sgGis=[], sgNs=[], sgRatings=[], sgGroups=[], sgDetails=[];
   neighbors.forEach(({r,d})=>{
     const sg=subgradeFromBoring(r);
-    if(!sg)return;
-    if(sg.minN!=null)sgPairs.push({v:sg.minN,d});
-    if(sg.cond)sgConds.push(sg.cond);
-    if(sg.type)sgTypes.push(sg.type);
-    if(sg.aashto)sgAash.push(aashtoBase(sg.aashto)||sg.aashto);
+    if(!sg||!sg.rating)return;
+    if(sg.score!=null)sgScores.push({v:sg.score,d});
+    if(sg.gi!=null)sgGis.push({v:sg.gi,d});
+    if(sg.minN!=null)sgNs.push({v:sg.minN,d});
+    sgRatings.push(sg.rating);
+    if(sg.group)sgGroups.push(sg.group);
+    if(sg.detail)sgDetails.push(sg.detail);
   });
-  const nIdw=idwMean(sgPairs,2);
-  const condMaj=majorityVote(sgConds);
-  const typeMaj=majorityVote(sgTypes);
-  let subgradeLabel=null;
-  if(condMaj){
-    subgradeLabel=condMaj.value==='medium'?'Fair–Good (medium)':(condMaj.value==='poor'?'Poor':'Very poor');
+  const scoreIdw=idwMean(sgScores,2);
+  const giIdw=idwMean(sgGis,2);
+  const nIdw=idwMean(sgNs,2);
+  const ratingMaj=majorityVote(sgRatings);
+  const groupMaj=majorityVote(sgGroups);
+  let subgradeLabel=ratingMaj?ratingMaj.value:null;
+  /* If IDW score available, map back to rating for consistency */
+  if(scoreIdw!=null){
+    const s=Math.round(scoreIdw);
+    subgradeLabel=({5:'Excellent',4:'Good',3:'Fair',2:'Poor',1:'Very poor'})[s]||subgradeLabel;
   }
+  const band=groupMaj?m145SubgradeBand(groupMaj.value):null;
+  const detailMaj=majorityVote(sgDetails);
   /* borrow */
   const borrowPairs=[], borrowTh=[];
   let borrowHits=0, borrowMiss=0;
@@ -22007,10 +22087,16 @@ function buildSiteProfile(lat, lon, hits){
       septic_inhr_idw:percIdw, est_inhr:infilBlend, design_inhr:designBlend, note:infilNote, fos:DNREC_BOREHOLE_FOS
     },
     subgrade:{
+      rating:subgradeLabel,
+      label:subgradeLabel,
+      band,
+      group:groupMaj&&groupMaj.value,
+      detail:detailMaj&&detailMaj.value,
+      gi_idw:giIdw!=null?Math.round(giIdw):null,
+      score_idw:scoreIdw!=null?Math.round(scoreIdw*10)/10:null,
       n_idw:nIdw!=null?Math.round(nIdw*10)/10:null,
-      cond:condMaj&&condMaj.value, type:typeMaj&&typeMaj.value,
-      aashto:majorityVote(sgAash)&&majorityVote(sgAash).value,
-      label:subgradeLabel, support:sgPairs.length
+      support:sgRatings.length,
+      standard:'AASHTO M 57 / M 145'
     },
     borrow:{
       top_ft:borrowTop!=null?Math.round(borrowTop*10)/10:null,
@@ -22044,10 +22130,10 @@ function formatProfileHTML(P){
   if(P.infil.est_inhr==null)h+=`<tr><td colspan="2"><span class="hint warn">Insufficient HYDGRP / septic data</span></td></tr>`;
   h+=`</table>`;
 
-  h+=`<div class="hint" style="margin:8px 0 2px"><b>Subgrade (upper 5 ft, DelDOT N chart)</b></div><table class="kv">`;
-  h+=`<tr><td>Condition</td><td>${P.subgrade.label?`<b>${esc(P.subgrade.label)}</b>`:'—'}${P.subgrade.cond?` <span class="hint">(${esc(P.subgrade.cond)} ${esc(P.subgrade.type||'')})</span>`:''}</td></tr>`;
-  h+=`<tr><td>N (IDW)</td><td>${P.subgrade.n_idw!=null?P.subgrade.n_idw:'—'} <span class="hint">${P.subgrade.support||0} boring(s)</span></td></tr>`;
-  h+=`<tr><td>Governing AASHTO</td><td>${P.subgrade.aashto?esc(P.subgrade.aashto):'—'}</td></tr></table>`;
+  h+=`<div class="hint" style="margin:8px 0 2px"><b>Subgrade (AASHTO M 57 / M 145)</b></div><table class="kv">`;
+  h+=`<tr><td>Rating</td><td>${P.subgrade.label?`<b>${esc(P.subgrade.label)}</b>`:'—'}${P.subgrade.band?` <span class="hint">(${esc(P.subgrade.band)})</span>`:''}</td></tr>`;
+  h+=`<tr><td>Classification</td><td>${P.subgrade.detail?esc(P.subgrade.detail):(P.subgrade.group?esc(P.subgrade.group):'—')}${P.subgrade.gi_idw!=null?` <span class="hint">· GI≈${P.subgrade.gi_idw}</span>`:''}</td></tr>`;
+  h+=`<tr><td>Support</td><td>${P.subgrade.support||0} boring(s) ≤5 ft samples`+(P.subgrade.n_idw!=null?` · N IDW ${P.subgrade.n_idw} (supplemental)`:'')+`</td></tr></table>`;
 
   h+=`<div class="hint" style="margin:8px 0 2px"><b>Borrow</b></div><table class="kv">`;
   if(P.borrow.top_ft!=null){
@@ -22716,7 +22802,7 @@ async function refreshReportPreview(){
   } else {
     html+=`<div id="repInfilPrev"><b>Infil:</b> <span class="hint warn">no estimate</span></div>`;
   }
-  if(Pref.subgrade.label) html+=`<div><b>Subgrade:</b> ${esc(Pref.subgrade.label)}${Pref.subgrade.n_idw!=null?' · N≈'+Pref.subgrade.n_idw:''}</div>`;
+  if(Pref.subgrade.label) html+=`<div><b>Subgrade (M 57/M 145):</b> ${esc(Pref.subgrade.label)}${Pref.subgrade.detail?' · '+esc(Pref.subgrade.detail):''}${Pref.subgrade.gi_idw!=null?' · GI≈'+Pref.subgrade.gi_idw:''}</div>`;
   if(Pref.borrow.top_ft!=null) html+=`<div><b>Borrow:</b> ~${Pref.borrow.top_ft} ft`+(Pref.borrow.thickness_ft!=null?` · ~${Pref.borrow.thickness_ft} ft thick`:'')+`</div>`;
   if(Pref.classes.aashto) html+=`<div><b>AASHTO (near-surface):</b> ${esc(Pref.classes.aashto.value)}</div>`;
   box.innerHTML=html;
