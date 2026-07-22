@@ -309,10 +309,44 @@ FirstMap folder browsers:
 
 # Recommended next 3 actions
 
-1. Install **Geo_Report_Center.html v0.4** — click Dover (expect DTW feet) and Hockessin (expect NoData).  
-2. Keep pouring `*.GEO.zip` into `geo-zips\` and re-run the importer.  
-3. Optional: Phase 3 HUC12 watersheds, or build `citations/ha_atlas_index.csv` for Section 3.1.
+1. Install **Geo_Report_Center.html v0.11** (full layer pack + DNREC FoS + climate blender).  
+2. Run **`download-all-refs.bat`** (or `python download-all-refs.py`) overnight — fills `refs\` with geology, soils, WRPA, wetlands, flood, tax ditches, DNREC septic borings / GMZ / wellheads, coastal, roads, etc. Use `--all` for wells + LULC + DEN (~hundreds of thousands of points).  
+3. Open project folder in the app → Map click → confirm septic PercRate / GMZ / wetlands appear with geology & soils.
 
 ---
 
-*Last verified against FirstMap REST: 2026-07-20*
+# FULL PACK (v0.11) — `download-all-refs.py`
+
+Default download (no flags) pulls **recommended full pack**. Optional:
+
+| Flag | Adds |
+|------|------|
+| `--core` | Geology + recharge + quads/counties only |
+| `--include-wells` | ~174k DNREC non-public wells |
+| `--include-lulc` | 2022 land use / land cover |
+| `--include-den` | ~163k DEN facility points |
+| `--all` | Full pack + wells + LULC + DEN |
+| `--list` | Print catalog |
+
+**Online-only rasters** (no GeoJSON download — app Identify):
+
+- `Geology/DGS_DepthToWater/MapServer`
+- `Geology/DGS_WaterTableElevation/MapServer`
+- `Geology/DGS_UnconfinedAquifer/MapServer` (Sussex T / thickness / base)
+
+**DNREC Planning & Engineering** (`PlanningCadastre/DE_DNREC_Planning_and_Engineering`):
+
+| Prefix | Layer | ~Count |
+|--------|-------|--------|
+| `dnrec_septic_site_evals` | 0 | 71k |
+| `dnrec_septic_soil_borings` | 1 | 112k (has PercRate) |
+| `dnrec_wellhead_protection` | 2 | 1.2k |
+| `dnrec_soil_feasibility` | 3 | 579 |
+| `dnrec_gmz` | 4 | 95 |
+| `dnrec_sussex_landfills` | 5 | 18 |
+
+Point layers query **nearest within 500 ft** on map click. Polygons use point-in-polygon. Lines (tax ditches / rivers / roads) use nearest vertex within 200 ft.
+
+---
+
+*Last verified against FirstMap REST: 2026-07-22*

@@ -113,6 +113,42 @@ def detect_kind(name: str, gj: dict) -> str:
         return "geology_surficial"
     if "geol" in n and not re.search(r"soil|wrpa|recharge", n):
         return "geology_surficial"
+    if re.search(r"dnrec_gmz|gmz|groundwater_management", n):
+        return "gmz"
+    if re.search(r"wellhead_protection|dnrec_wellhead", n):
+        return "wellhead"
+    if re.search(r"septic_soil_boring|septic_boring", n) or "percrate" in keys:
+        return "septic_boring"
+    if re.search(r"septic_site_eval|site_eval", n):
+        return "septic_eval"
+    if re.search(r"soil_feasibility|feasibility", n):
+        return "feasibility"
+    if "septic_permit" in n:
+        return "septic_permit"
+    if re.search(r"nonpublic_well|dda_gw|monitor", n) or "dgsid" in keys or "welltype" in keys:
+        return "well"
+    if "wetland" in n:
+        return "wetland"
+    if re.search(r"flood_fema|dfirm", n) or ("flood" in n and "wrpa_flood" not in n and "floodplain" not in n):
+        return "flood"
+    if "taxditch" in n:
+        return "taxditch"
+    if re.search(r"watershed|huc12", n):
+        return "watershed"
+    if re.search(r"hydro_river|hydro_lake|tidal_buffer", n):
+        return "hydrography"
+    if re.search(r"coastal|inundation", n):
+        return "coastal"
+    if re.search(r"lulc|land.?use", n):
+        return "lulc"
+    if "irrigated" in n:
+        return "irrigated"
+    if re.search(r"roads_|bridge", n):
+        return "road"
+    if re.search(r"assets_|lightpost|overhead_sign", n):
+        return "asset"
+    if re.search(r"landfill|biosolid|ust|lust|rcra|rs_sites|industrial_storm|sussex_landfill", n):
+        return "env_site"
     if re.search(r"recharge_ks|recharge", n) and "wrpa" not in n:
         return "recharge"
     if re.search(r"wrpa|cockeysville|wellhead|erosion|floodplain|class_b|class_c|hoops|newark", n):

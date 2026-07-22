@@ -20893,7 +20893,7 @@ table.list td{padding:5px 8px;border-bottom:1px solid rgba(46,58,72,.5);font-fam
 </head>
 <body>
 <div id="hdr">
-  <h1><b>GEO REPORT CENTER</b><span class="badge">v0.10</span></h1>
+  <h1><b>GEO REPORT CENTER</b><span class="badge">v0.11</span></h1>
   <button class="tab on" data-p="map">Map</button>
   <button class="tab" data-p="refs">Reference data</button>
   <button class="tab" data-p="jobs">Jobs</button>
@@ -20910,7 +20910,7 @@ table.list td{padding:5px 8px;border-bottom:1px solid rgba(46,58,72,.5);font-fam
     <div id="qPanel">
       <div class="sec">
         <h3>Point query</h3>
-        <div class="hint">Click the map for geology, recharge / WRPA, soils, and nearby borings. Click a boring row (or map marker) to open the lab table (NM, LL, PI, P10, P200, N). Toggle layers below for queries and reports.</div>
+        <div class="hint">Click the map for geology, recharge / WRPA, soils, DNREC constraints, wetlands/flood, and nearby borings. Click a boring row (or map marker) to open lab tables. Point layers (septic borings, wells) return nearest within 500 ft. Toggle layers below.</div>
       </div>
       <div class="sec">
         <h3>Search radius <span id="radLbl" style="color:var(--amber);font-family:var(--mono)">1500 ft</span></h3>
@@ -20925,9 +20925,11 @@ table.list td{padding:5px 8px;border-bottom:1px solid rgba(46,58,72,.5);font-fam
         <h3>Phase 2 hydro grids</h3>
         <label class="layerRow" style="margin:0"><input type="checkbox" id="hydroOnline" checked>
           <span class="nm">Sample DGS depth-to-water &amp; WT elevation online</span></label>
+        <label class="layerRow" style="margin:6px 0 0"><input type="checkbox" id="aquiferOnline" checked>
+          <span class="nm">Sample DGS unconfined aquifer (Sussex) online</span></label>
         <label class="layerRow" style="margin:6px 0 0"><input type="checkbox" id="climateBlend" checked>
           <span class="nm">Climate blender (season + recent precip → current WT estimate)</span></label>
-        <div class="hint" style="margin-top:4px">FirstMap DGS dry/normal/wet grids (Coastal Plain). Blender weights them with Open-Meteo 30-day precip vs 10-yr normals + season for a <b>current</b> DTW/WTE estimate — screening only, not measured WT. Piedmont is usually NoData. Needs internet.</div>
+        <div class="hint" style="margin-top:4px">FirstMap DGS dry/normal/wet grids (Coastal Plain) + Sussex unconfined aquifer T/thickness/base. Blender weights DTW with Open-Meteo precip vs 10-yr normals + season — screening only. Piedmont DTW is usually NoData. Needs internet. Run <code>download-all-refs.bat</code> for the full polygon/point pack.</div>
       </div>
       <div id="qBody"><div class="hint">No query yet.</div></div>
     </div>
@@ -20938,7 +20940,7 @@ table.list td{padding:5px 8px;border-bottom:1px solid rgba(46,58,72,.5);font-fam
     <div class="wrap">
       <div class="card">
         <h2>Reference layers</h2>
-        <div class="hint" style="margin-bottom:10px">Drop FirstMap GeoJSON here (geology, recharge K/S, WRPA, soils, quads, counties). Paged exports with the same base name merge automatically. Empty files are skipped. Layers are saved under <code>refs/</code> and used for map clicks and report Sections 2 &amp; 4.</div>
+        <div class="hint" style="margin-bottom:10px">Drop FirstMap / DNREC GeoJSON here, or run <code>download-all-refs.bat</code> into <code>refs/</code> then Open project folder. Pack includes geology, soils, WRPA, wetlands, flood, tax ditches, DNREC septic borings / GMZ / wellheads, coastal, roads, and more. Paged files with the same base name merge. Empty files are skipped.</div>
         <div class="drop" id="dropRef">Drop GeoJSON file(s) here (or click)</div>
         <input type="file" id="fileRef" accept=".json,.geojson" multiple style="display:none">
         <div style="margin-top:10px;display:flex;gap:8px;flex-wrap:wrap">
@@ -21063,16 +21065,39 @@ const KIND_LABEL={
   recharge:'Recharge Potential (Kent/Sussex)',
   wrpa:'NCC WRPA / Hydro Protection',
   soils:'Soils',
+  wetland:'Wetlands',
+  flood:'FEMA Flood',
+  taxditch:'Tax Ditch',
+  watershed:'Watershed (HUC12)',
+  hydrography:'Hydrography',
+  gmz:'Groundwater Management Zone',
+  wellhead:'Wellhead Protection',
+  septic_boring:'DNREC Septic Soil Boring',
+  septic_eval:'DNREC Septic Site Eval',
+  feasibility:'DNREC Soil Feasibility',
+  septic_permit:'DNREC Septic Permit',
+  env_site:'DNREC / Env. Site',
+  well:'Well / Monitoring',
+  coastal:'Coastal Zone / Inundation',
+  lulc:'Land Use / Land Cover',
+  irrigated:'Irrigated Area',
+  road:'Road / Bridge',
+  asset:'DelDOT Asset',
   quad:'USGS Quadrangle',
   boundary:'Boundary',
   layer:'Reference layer'
 };
-const KIND_ORDER=['geology_piedmont','geology_surficial','geology_offshore','recharge','wrpa','soils','quad','boundary','layer'];
+const KIND_ORDER=['geology_piedmont','geology_surficial','geology_offshore','recharge','wrpa','soils',
+  'septic_boring','septic_eval','feasibility','gmz','wellhead','wetland','flood','taxditch','watershed',
+  'hydrography','coastal','well','env_site','septic_permit','irrigated','lulc','road','asset','quad','boundary','layer'];
 const PROP_PREFER=['NAME','SYMBOL','AGE','DESCRIPTION','RECHARGE','CLASS','POTENTIAL','QUADID','CENTLAT','CENTLONG',
-  'MUNAME','MUSYM','AREASYMBOL','DRAINAGECL','HYDGRP','TAXORDER','TAXSUBORDER','FLOODFREQCL','HYDRIC','ZONE','TYPE','LABEL','FEATURE','UNIT'];
+  'MUNAME','MUSYM','AREASYMBOL','DRAINAGECL','HYDGRP','TAXORDER','TAXSUBORDER','FLOODFREQCL','HYDRIC','ZONE','TYPE','LABEL','FEATURE','UNIT',
+  'PercRate','PercRateMethod','DepthtoLZ','LZReason','Profile','FLD_ZONE','ZONE_SUBTY','SFHA_TF','HUC12','HU_12_NAME','WETLAND_TYPE',
+  'SITENAME','PROGRAM','RESTRICTIO','MAXGW','STATUS','WellType','PermitNumber','DGSid','TotalDepthActual','Formation'];
 const HYDRO_SERVICES={
   dtw:'https://enterprise.firstmap.delaware.gov/arcgis/rest/services/Geology/DGS_DepthToWater/MapServer',
-  wte:'https://enterprise.firstmap.delaware.gov/arcgis/rest/services/Geology/DGS_WaterTableElevation/MapServer'
+  wte:'https://enterprise.firstmap.delaware.gov/arcgis/rest/services/Geology/DGS_WaterTableElevation/MapServer',
+  aquifer:'https://enterprise.firstmap.delaware.gov/arcgis/rest/services/Geology/DGS_UnconfinedAquifer/MapServer'
 };
 const CLIMATE_FORECAST='https://api.open-meteo.com/v1/forecast';
 const CLIMATE_ARCHIVE='https://archive-api.open-meteo.com/v1/archive';
@@ -21317,14 +21342,66 @@ function pipFeature(pt,geom){
   }
   return false;
 }
+function featurePointCoords(geom){
+  if(!geom)return null;
+  if(geom.type==='Point')return geom.coordinates;
+  if(geom.type==='MultiPoint'&&geom.coordinates&&geom.coordinates[0])return geom.coordinates[0];
+  return null;
+}
+function nearLineFt(lat,lon,geom,maxFt){
+  if(!geom)return null;
+  let best=null;
+  const scan=cs=>{
+    if(!cs||!cs.length)return;
+    if(typeof cs[0]==='number'){ /* single coord — skip */ return; }
+    if(typeof cs[0][0]==='number'){
+      for(const c of cs){
+        const d=distFt(lat,lon,c[1],c[0]);
+        if(d<=maxFt&&(best==null||d<best))best=d;
+      }
+      return;
+    }
+    cs.forEach(scan);
+  };
+  if(geom.type==='LineString')scan(geom.coordinates);
+  else if(geom.type==='MultiLineString')(geom.coordinates||[]).forEach(scan);
+  return best;
+}
+const POINT_KINDS=new Set(['septic_boring','septic_eval','well','env_site','septic_permit','asset']);
+const LINE_KINDS=new Set(['taxditch','hydrography','road']);
 function queryRefs(lat,lon){
   const pt=[lon,lat], out=[];
+  const pointRadiusFt=500, lineRadiusFt=200;
   refs.forEach(R=>{
     if(R.on===false)return;
+    const kind=R.kind||'layer';
+    if(POINT_KINDS.has(kind)||R.gtype==='point'){
+      const near=[];
+      for(const f of R.features){
+        const c=featurePointCoords(f.geometry);
+        if(!c)continue;
+        const d=distFt(lat,lon,c[1],c[0]);
+        if(d<=pointRadiusFt)near.push({f,d});
+      }
+      near.sort((a,b)=>a.d-b.d);
+      near.slice(0,5).forEach(({f,d})=>{
+        out.push({layer:R.name,kind,props:Object.assign({},f.properties||{},{_dist_ft:Math.round(d)}),dist:d});
+      });
+      return;
+    }
+    if(LINE_KINDS.has(kind)||R.gtype==='line'){
+      let best=null, bestF=null;
+      for(const f of R.features){
+        const d=nearLineFt(lat,lon,f.geometry,lineRadiusFt);
+        if(d!=null&&(best==null||d<best)){best=d;bestF=f;}
+      }
+      if(bestF) out.push({layer:R.name,kind,props:Object.assign({},bestF.properties||{},{_dist_ft:Math.round(best)}),dist:best});
+      return;
+    }
     for(const f of R.features){
       const bb=f._bb;
       if(bb&&(lon<bb[0]||lon>bb[2]||lat<bb[1]||lat>bb[3]))continue;
-      if(pipFeature(pt,f.geometry)){out.push({layer:R.name,kind:R.kind,props:f.properties||{}});break;}
+      if(pipFeature(pt,f.geometry)){out.push({layer:R.name,kind,props:f.properties||{}});break;}
     }
   });
   return out;
@@ -21332,6 +21409,7 @@ function queryRefs(lat,lon){
 function bboxOf(geom){
   let x0=1e9,y0=1e9,x1=-1e9,y1=-1e9;
   const scan=cs=>cs.forEach(c=>{if(Array.isArray(c[0]))scan(c);else{if(c[0]<x0)x0=c[0];if(c[0]>x1)x1=c[0];if(c[1]<y0)y0=c[1];if(c[1]>y1)y1=c[1];}});
+  if(geom.type==='Point'){const c=geom.coordinates;return [c[0],c[1],c[0],c[1]];}
   scan(geom.coordinates);
   return [x0,y0,x1,y1];
 }
@@ -21375,8 +21453,37 @@ async function identifyHydroService(serviceUrl, lon, lat){
   });
   return out;
 }
+async function identifyAquiferService(lon, lat){
+  const pad=0.05;
+  const qs=new URLSearchParams({
+    geometry:`${lon},${lat}`,
+    geometryType:'esriGeometryPoint',
+    sr:'4326',
+    layers:'all',
+    tolerance:'3',
+    mapExtent:`${lon-pad},${lat-pad},${lon+pad},${lat+pad}`,
+    imageDisplay:'800,800,96',
+    returnGeometry:'false',
+    f:'json'
+  });
+  const r=await fetch(`${HYDRO_SERVICES.aquifer}/identify?${qs}`);
+  if(!r.ok)throw new Error('HTTP '+r.status);
+  const d=await r.json();
+  const out={transmissivity:null,thickness:null,base:null};
+  (d.results||[]).forEach(res=>{
+    const v=parseHydroPixel(res.attributes||{});
+    const name=(res.layerName||'').toLowerCase();
+    if(/transmiss/.test(name))out.transmissivity=v;
+    else if(/thick/.test(name))out.thickness=v;
+    else if(/base/.test(name))out.base=v;
+  });
+  return out;
+}
 function hydroHasValue(block){
   return block&&(block.dry!=null||block.normal!=null||block.wet!=null);
+}
+function aquiferHasValue(A){
+  return A&&(A.transmissivity!=null||A.thickness!=null||A.base!=null);
 }
 function fmtFt(v){return v==null?'—':(Number.isInteger(v)?v:Number(v).toFixed(1))+' ft';}
 function fmtPct(v){return v==null?'—':(100*v).toFixed(0)+'%';}
@@ -21483,23 +21590,25 @@ function formatHydroHTML(H){
   if(!H)return '';
   if(H.error)return `<h3 style="margin-top:12px">DGS water-table grids</h3><div class="hint warn">${esc(H.error)}</div>`;
   const dtwOk=hydroHasValue(H.dtw), wteOk=hydroHasValue(H.wte);
-  let h=`<h3 style="margin-top:12px">DGS water-table grids (FirstMap)</h3>`;
-  if(!dtwOk&&!wteOk){
+  let h='';
+  if(dtwOk||wteOk){
+    h+=`<h3 style="margin-top:12px">DGS water-table grids (FirstMap)</h3>`;
+    h+=`<div class="hint" style="margin-bottom:4px">1-ft vertical resolution · Andres MLR method · Coastal Plain (DP05-01/03/04)</div>`;
+    if(dtwOk){
+      h+=`<div class="hint" style="margin:4px 0 2px">Depth to water</div><table class="kv">`;
+      h+=`<tr><td>Dry</td><td>${fmtFt(H.dtw.dry)}</td></tr>`;
+      h+=`<tr><td>Normal</td><td>${fmtFt(H.dtw.normal)}</td></tr>`;
+      h+=`<tr><td>Wet</td><td>${fmtFt(H.dtw.wet)}</td></tr></table>`;
+    }
+    if(wteOk){
+      h+=`<div class="hint" style="margin:4px 0 2px">Water-table elevation (NAVD 88)</div><table class="kv">`;
+      h+=`<tr><td>Dry</td><td>${fmtFt(H.wte.dry)}</td></tr>`;
+      h+=`<tr><td>Normal</td><td>${fmtFt(H.wte.normal)}</td></tr>`;
+      h+=`<tr><td>Wet</td><td>${fmtFt(H.wte.wet)}</td></tr></table>`;
+    }
+  } else {
+    h+=`<h3 style="margin-top:12px">DGS water-table grids (FirstMap)</h3>`;
     h+=`<div class="hint warn">NoData at this point — typical for Piedmont / outside Coastal Plain coverage. Section 3.2 will say grids were not encountered.</div>`;
-    return h;
-  }
-  h+=`<div class="hint" style="margin-bottom:4px">1-ft vertical resolution · Andres MLR method · Coastal Plain (DP05-01/03/04)</div>`;
-  if(dtwOk){
-    h+=`<div class="hint" style="margin:4px 0 2px">Depth to water</div><table class="kv">`;
-    h+=`<tr><td>Dry</td><td>${fmtFt(H.dtw.dry)}</td></tr>`;
-    h+=`<tr><td>Normal</td><td>${fmtFt(H.dtw.normal)}</td></tr>`;
-    h+=`<tr><td>Wet</td><td>${fmtFt(H.dtw.wet)}</td></tr></table>`;
-  }
-  if(wteOk){
-    h+=`<div class="hint" style="margin:4px 0 2px">Water-table elevation (NAVD 88)</div><table class="kv">`;
-    h+=`<tr><td>Dry</td><td>${fmtFt(H.wte.dry)}</td></tr>`;
-    h+=`<tr><td>Normal</td><td>${fmtFt(H.wte.normal)}</td></tr>`;
-    h+=`<tr><td>Wet</td><td>${fmtFt(H.wte.wet)}</td></tr></table>`;
   }
   if(H.climate&&H.climate.error){
     h+=`<div class="hint warn" style="margin-top:8px">${esc(H.climate.error)}</div>`;
@@ -21517,25 +21626,46 @@ function formatHydroHTML(H){
   }else if(H.climate===null){
     h+=`<div class="hint" style="margin-top:8px">Climate blender off — showing static DGS regimes only.</div>`;
   }
+  if(H.aquifer&&aquiferHasValue(H.aquifer)){
+    const A=H.aquifer;
+    h+=`<h3 style="margin-top:12px">DGS unconfined aquifer (Sussex)</h3>`;
+    h+=`<div class="hint" style="margin-bottom:4px">Columbia aquifer grids · Andres &amp; Klingbeil · FirstMap</div><table class="kv">`;
+    if(A.thickness!=null)h+=`<tr><td>Thickness</td><td>${fmtFt(A.thickness)}</td></tr>`;
+    if(A.base!=null)h+=`<tr><td>Base elevation</td><td>${fmtFt(A.base)} NAVD88</td></tr>`;
+    if(A.transmissivity!=null)h+=`<tr><td>Transmissivity</td><td>${esc(A.transmissivity)} <span class="hint">(map units)</span></td></tr>`;
+    h+=`</table>`;
+  }else if(H.aquifer&&H.aquifer.error){
+    h+=`<div class="hint warn" style="margin-top:8px">Aquifer sample: ${esc(H.aquifer.error)}</div>`;
+  }
   return h;
 }
 async function sampleHydro(lat, lon){
-  if($('hydroOnline')&&!$('hydroOnline').checked){
+  const hydroOn=!$('hydroOnline')||$('hydroOnline').checked;
+  const aqOn=!$('aquiferOnline')||$('aquiferOnline').checked;
+  if(!hydroOn&&!aqOn){
     return {skipped:true,dtw:{dry:null,normal:null,wet:null},wte:{dry:null,normal:null,wet:null},lat,lon};
   }
-  const blendOn=!$('climateBlend')||$('climateBlend').checked;
+  const blendOn=hydroOn&&(!$('climateBlend')||$('climateBlend').checked);
   try{
-    const tasks=[
-      identifyHydroService(HYDRO_SERVICES.dtw, lon, lat),
-      identifyHydroService(HYDRO_SERVICES.wte, lon, lat)
-    ];
-    if(blendOn)tasks.push(sampleClimate(lat, lon));
+    const tasks=[];
+    const idx={};
+    if(hydroOn){
+      idx.dtw=tasks.length; tasks.push(identifyHydroService(HYDRO_SERVICES.dtw, lon, lat));
+      idx.wte=tasks.length; tasks.push(identifyHydroService(HYDRO_SERVICES.wte, lon, lat));
+    }
+    if(aqOn){ idx.aq=tasks.length; tasks.push(identifyAquiferService(lon, lat).catch(e=>({error:e.message}))); }
+    if(blendOn){ idx.climate=tasks.length; tasks.push(sampleClimate(lat, lon)); }
     const results=await Promise.all(tasks);
-    const dtw=results[0], wte=results[1], climate=blendOn?results[2]:null;
-    const out={dtw,wte,lat,lon,climate};
-    if(climate&&!climate.error&&climate.weights){
-      out.dtw_now=blendHydroScenarios(dtw, climate.weights);
-      out.wte_now=blendHydroScenarios(wte, climate.weights);
+    const out={
+      dtw:hydroOn?results[idx.dtw]:{dry:null,normal:null,wet:null},
+      wte:hydroOn?results[idx.wte]:{dry:null,normal:null,wet:null},
+      aquifer:aqOn?results[idx.aq]:null,
+      lat,lon,
+      climate:blendOn?results[idx.climate]:null
+    };
+    if(out.climate&&!out.climate.error&&out.climate.weights){
+      out.dtw_now=blendHydroScenarios(out.dtw, out.climate.weights);
+      out.wte_now=blendHydroScenarios(out.wte, out.climate.weights);
     }
     return out;
   }catch(e){
@@ -21632,6 +21762,8 @@ function infilFromHydgrp(hydgrp, p200med, aashto){
 function enrichFromHits(hits, samples){
   const lab=labStatsFromSamples(samples);
   let soilName=null, hydgrp=null, drain=null, geoName=null, geoKind=null, rech=null, wrpa=[];
+  let wetland=null, flood=null, gmz=null, wellhead=null, watershed=null, coastal=null;
+  let septicPerc=null, septicDist=null, feasibility=null;
   const geoHits=hits.filter(H=>/^geology_/.test(H.kind||''));
   const order={geology_piedmont:0,geology_surficial:1,geology_offshore:2};
   geoHits.sort((a,b)=>(order[a.kind]??9)-(order[b.kind]??9));
@@ -21648,9 +21780,23 @@ function enrichFromHits(hits, samples){
       hydgrp=fsProp(H.props,['HYDGRP','HYDROGROUP','HSG']);
       drain=fsProp(H.props,['DRAINAGECL','DRAINAGE']);
     }
+    if(k==='wetland'&&!wetland)wetland=fsProp(H.props,['WETLAND_TYPE','TYPE','NAME','CLASS'])||H.layer;
+    if(k==='flood'&&!flood)flood=fsProp(H.props,['FLD_ZONE','ZONE_SUBTY','ZONE','SFHA_TF'])||H.layer;
+    if(k==='gmz'&&!gmz)gmz=fsProp(H.props,['SITENAME','ZONE','TYPE','PROGRAM','STATUS'])||H.layer;
+    if(k==='wellhead'&&!wellhead)wellhead=fsProp(H.props,['NAME','LABEL','TYPE'])||H.layer;
+    if(k==='watershed'&&!watershed)watershed=fsProp(H.props,['HU_12_NAME','NAME','HUC12'])||H.layer;
+    if(k==='coastal'&&!coastal)coastal=H.layer;
+    if(k==='feasibility'&&!feasibility)feasibility=fsProp(H.props,['NAME','STATUS','TYPE'])||H.layer;
+    if(k==='septic_boring'){
+      const pr=fsProp(H.props,['PercRate','PERCRATE']);
+      const d=H.dist!=null?H.dist:(H.props&&H.props._dist_ft);
+      if(pr!=null&&(septicPerc==null||(d!=null&&septicDist!=null&&d<septicDist)||septicDist==null)){
+        septicPerc=pr; septicDist=d;
+      }
+    }
   });
   const infil=infilFromHydgrp(hydgrp, lab.p200_median, lab.aashto_dom);
-  return{soilName,hydgrp,drain,geoName,geoKind,rech,wrpa,lab,infil};
+  return{soilName,hydgrp,drain,geoName,geoKind,rech,wrpa,lab,infil,wetland,flood,gmz,wellhead,watershed,coastal,septicPerc,septicDist,feasibility};
 }
 function formatInfilHTML(E){
   let h=`<h3 style="margin-top:12px">Screening infiltration</h3>`;
@@ -21669,6 +21815,19 @@ function formatInfilHTML(E){
     h+=`</div>`;
     h+=`<div class="hint warn" style="margin-top:4px">Applies FoS 2.5 to the screening estimate as if it were a cased-borehole field rate. Preferred DNREC methods are full-size single/double-ring infiltrometers; design for submittal must use field-verified steady-state rates.</div>`;
   } else h+=`<div class="hint warn">${esc(E.infil.note)}</div>`;
+  const notes=[];
+  if(E.septicPerc!=null) notes.push(`Nearest DNREC septic PercRate ${esc(E.septicPerc)}${E.septicDist!=null?' @ '+Math.round(E.septicDist)+' ft':''}`);
+  if(E.gmz) notes.push('GMZ: '+esc(E.gmz));
+  if(E.wellhead) notes.push('Wellhead: '+esc(E.wellhead));
+  if(E.wetland) notes.push('Wetland: '+esc(E.wetland));
+  if(E.flood) notes.push('Flood: '+esc(E.flood));
+  if(E.watershed) notes.push('HUC12: '+esc(E.watershed));
+  if(E.coastal) notes.push('Coastal: '+esc(E.coastal));
+  if(E.feasibility) notes.push('Feasibility study: '+esc(E.feasibility));
+  if(notes.length){
+    h+=`<h3 style="margin-top:12px">Site constraints (loaded refs)</h3>`;
+    notes.forEach(n=>h+=`<div class="hint">${n}</div>`);
+  }
   return h;
 }
 function nearestBoringLab(lat,lon,maxFt){
@@ -21835,6 +21994,7 @@ async function runPointQuery(lat,lng,opts){
 map.on('click',e=>runPointQuery(e.latlng.lat,e.latlng.lng));
 $('radius').oninput=function(){$('radLbl').textContent=this.value+' ft'; if(lastQuery)runPointQuery(lastQuery.lat,lastQuery.lng);};
 $('hydroOnline')&&($('hydroOnline').onchange=function(){ if(lastQuery)runPointQuery(lastQuery.lat,lastQuery.lng); if(typeof refreshReportPreview==='function')refreshReportPreview(); });
+$('aquiferOnline')&&($('aquiferOnline').onchange=function(){ if(lastQuery)runPointQuery(lastQuery.lat,lastQuery.lng); if(typeof refreshReportPreview==='function')refreshReportPreview(); });
 $('climateBlend')&&($('climateBlend').onchange=function(){ if(lastQuery)runPointQuery(lastQuery.lat,lastQuery.lng); if(typeof refreshReportPreview==='function')refreshReportPreview(); });
 
 /* ---------- reference layer ingest ---------- */
@@ -21850,6 +22010,24 @@ function detectKind(name,gj){
     if(/offshore/.test(n))return 'geology_offshore';
     return 'geology_surficial';
   }
+  if(/dnrec_gmz|gmz|groundwater_management|exclusion.?zone/.test(n))return 'gmz';
+  if(/wellhead_protection|dnrec_wellhead/.test(n))return 'wellhead';
+  if(/septic_soil_boring|septic_boring/.test(n) || keys.includes('percrate'))return 'septic_boring';
+  if(/septic_site_eval|site_eval/.test(n))return 'septic_eval';
+  if(/soil_feasibility|feasibility/.test(n))return 'feasibility';
+  if(/septic_permit/.test(n))return 'septic_permit';
+  if(/nonpublic_well|dda_gw|monitor/.test(n) || keys.includes('dgsid')||keys.includes('welltype'))return 'well';
+  if(/wetland/.test(n))return 'wetland';
+  if(/flood_fema|dfirm|flood/.test(n) && !/wrpa_flood|floodplain/.test(n))return 'flood';
+  if(/taxditch/.test(n))return 'taxditch';
+  if(/watershed|huc12/.test(n))return 'watershed';
+  if(/hydro_river|hydro_lake|tidal_buffer/.test(n))return 'hydrography';
+  if(/coastal|inundation/.test(n))return 'coastal';
+  if(/lulc|land.?use/.test(n))return 'lulc';
+  if(/irrigated/.test(n))return 'irrigated';
+  if(/roads_|bridge/.test(n))return 'road';
+  if(/assets_|lightpost|overhead_sign/.test(n))return 'asset';
+  if(/landfill|biosolid|ust|lust|rcra|rs_sites|industrial_storm|env_site|sussex_landfill/.test(n))return 'env_site';
   if(/recharge_ks|recharge(?!.*wrpa)/.test(n) || ((('recharge' in p)||('RECHARGE' in p)) && !/wrpa|soil/.test(n) && !keys.some(k=>/muname|areasymbol|musym/.test(k)))){
     if(/wrpa/.test(n))return 'wrpa';
     return 'recharge';
@@ -21861,15 +22039,28 @@ function detectKind(name,gj){
   if('RECHARGE' in p||'recharge' in p)return 'recharge';
   return 'layer';
 }
+function geomTypeOf(gj){
+  const t=((gj.features&&gj.features[0]&&gj.features[0].geometry)||{}).type||'';
+  if(/Point/.test(t))return 'point';
+  if(/Line/.test(t))return 'line';
+  return 'poly';
+}
 function addRefLayer(name, gj, save){
   if(!gj||gj.type!=='FeatureCollection'||!Array.isArray(gj.features)){toast(name+': not a GeoJSON FeatureCollection');return;}
-  const feats=gj.features.filter(f=>f.geometry&&(f.geometry.type==='Polygon'||f.geometry.type==='MultiPolygon'));
-  if(!feats.length){toast(name+': skipped (no polygon features)');return;}
+  const kind=detectKind(name,gj);
+  const gtype=geomTypeOf(gj);
+  const okType=g=>({
+    poly: g&&(g.type==='Polygon'||g.type==='MultiPolygon'),
+    point: g&&(g.type==='Point'||g.type==='MultiPoint'),
+    line: g&&(g.type==='LineString'||g.type==='MultiLineString')
+  }[gtype]);
+  const feats=gj.features.filter(f=>okType(f.geometry));
+  if(!feats.length){toast(name+': skipped (no usable '+gtype+' features)');return;}
   feats.forEach(f=>f._bb=bboxOf(f.geometry));
   const base=name.replace(/[_-]?\d+\.(geo)?json$/i,'').replace(/\.(geo)?json$/i,'');
   let R=refs.find(x=>x.base===base);
   if(R){R.features=R.features.concat(feats);R.count=R.features.length;}
-  else{R={name:base,base,features:feats,count:feats.length,kind:detectKind(name,gj),on:true};refs.push(R);}
+  else{R={name:base,base,features:feats,count:feats.length,kind,gtype,on:true};refs.push(R);}
   if(save&&dirHandle){
     dirHandle.getDirectoryHandle('refs',{create:true}).then(rd=>
       rd.getFileHandle(name.replace(/[^\w.-]+/g,'_'),{create:true}).then(fh=>fh.createWritable()).then(w=>{w.write(JSON.stringify(gj));return w.close();})
@@ -21903,7 +22094,7 @@ $('buildFeatureStore')&&($('buildFeatureStore').onclick=async ()=>{
   if(!confirm('Build feature-store.csv for '+pts.length+' mapped borings?\n\nUses loaded refs (geology/soils/recharge). May take a while. For fastest build, use build-feature-store.bat.'))return;
   toast('Building feature store… 0/'+pts.length, 60000);
   const rows=[];
-  const cols=['job','boring','lat','lon','eob','geology_kind','geology','recharge','wrpa','soil_name','soil_hydgrp','soil_drainage','p200_median','aashto_dom','n_min_upper5','infil_min_in_hr','infil_max_in_hr','infil_design_min_in_hr','infil_design_max_in_hr','infil_design_mid_in_hr','infil_fos','infil_confidence','infil_note'];
+  const cols=['job','boring','lat','lon','eob','geology_kind','geology','recharge','wrpa','soil_name','soil_hydgrp','soil_drainage','p200_median','aashto_dom','n_min_upper5','infil_min_in_hr','infil_max_in_hr','infil_design_min_in_hr','infil_design_max_in_hr','infil_design_mid_in_hr','infil_fos','infil_confidence','infil_note','septic_perc','septic_dist_ft','gmz','wellhead','wetland','flood','watershed'];
   let i=0;
   function csvEsc(v){if(v==null)return ''; const s=String(v); return /[",\n]/.test(s)?'"'+s.replace(/"/g,'""')+'"':s;}
   async function step(){
@@ -21919,7 +22110,9 @@ $('buildFeatureStore')&&($('buildFeatureStore').onclick=async ()=>{
         p200_median:E.lab.p200_median,aashto_dom:E.lab.aashto_dom,n_min_upper5:E.lab.n_min_upper5,
         infil_min_in_hr:E.infil.min,infil_max_in_hr:E.infil.max,
         infil_design_min_in_hr:E.infil.design_min,infil_design_max_in_hr:E.infil.design_max,infil_design_mid_in_hr:E.infil.design_mid,
-        infil_fos:E.infil.fos,infil_confidence:E.infil.confidence,infil_note:E.infil.note
+        infil_fos:E.infil.fos,infil_confidence:E.infil.confidence,infil_note:E.infil.note,
+        septic_perc:E.septicPerc,septic_dist_ft:E.septicDist!=null?Math.round(E.septicDist):null,
+        gmz:E.gmz,wellhead:E.wellhead,wetland:E.wetland,flood:E.flood,watershed:E.watershed
       });
     }
     toast(`Building feature store… ${i}/${pts.length}`, 60000);
@@ -21968,7 +22161,7 @@ function renderAll(){
   const ns=db.borings.reduce((a,r)=>a+r.s.length,0);
   const kinds={};
   refs.forEach(R=>{kinds[R.kind]=(kinds[R.kind]||0)+1;});
-  const kindBits=['geology_piedmont','geology_surficial','recharge','wrpa','soils','quad'].filter(k=>kinds[k]).map(k=>`${kinds[k]} ${k.replace(/geology_/,'')}`);
+  const kindBits=['geology_piedmont','geology_surficial','recharge','wrpa','soils','septic_boring','gmz','wetland','flood','quad'].filter(k=>kinds[k]).map(k=>`${kinds[k]} ${k.replace(/geology_/,'')}`);
   $('hdrStats').textContent=`${db.borings.length} borings · ${ns} samples · ${refs.length} ref layers`+(kindBits.length?' · '+kindBits.join(', '):'');
   $('dbInfo').textContent=db.borings.length?
     `${db.borings.length} borings / ${ns} samples across ${new Set(db.borings.map(r=>r.job)).size} project(s); ${db.cores.length} pavement cores.`:
