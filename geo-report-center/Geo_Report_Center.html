@@ -20973,11 +20973,43 @@ table.list td{padding:5px 8px;border-bottom:1px solid rgba(46,58,72,.5);font-fam
   #siteHud .hud-deck{top:auto;left:10px;right:10px;bottom:12px;width:auto;max-height:42vh}
   #siteHud .hud-badges{display:none}
 }
+
+/* ===== Subsurface mode — full-screen soil column ===== */
+#subsurfaceMode{position:absolute;inset:0;z-index:900;display:none;pointer-events:auto;
+  background:radial-gradient(ellipse at 50% 18%,rgba(30,48,58,.35),rgba(6,10,14,.96) 55%);
+  backdrop-filter:blur(6px);animation:hudIn .4s ease}
+#subsurfaceMode.on{display:flex;flex-direction:column}
+#subsurfaceMode .ss-top{display:flex;align-items:center;gap:12px;padding:14px 18px;border-bottom:1px solid rgba(61,207,191,.25)}
+#subsurfaceMode .ss-top h2{margin:0;font-family:var(--display);font-size:22px;font-weight:700;letter-spacing:.02em}
+#subsurfaceMode .ss-top .ss-meta{font-family:var(--mono);font-size:11px;color:var(--dim);letter-spacing:.06em}
+#subsurfaceMode .ss-top .ss-meta b{color:var(--cyan)}
+#subsurfaceMode .ss-close{margin-left:auto;background:rgba(12,18,26,.92);border:1px solid var(--amber);color:var(--amber);font-family:var(--mono);font-size:11px;padding:8px 14px;cursor:pointer;letter-spacing:.12em;text-transform:uppercase}
+#subsurfaceMode .ss-close:hover{background:rgba(240,168,74,.14)}
+#subsurfaceMode .ss-body{flex:1;display:flex;align-items:stretch;justify-content:center;gap:24px;padding:18px 20px 24px;overflow:auto;min-height:0}
+#subsurfaceMode .ss-stage{flex:1;display:flex;align-items:center;justify-content:center;min-width:0}
+#subsurfaceMode .ss-side{width:min(280px,28vw);display:flex;flex-direction:column;gap:10px}
+#subsurfaceMode .ss-card{padding:12px 14px;border:1px solid rgba(61,207,191,.28);background:rgba(10,16,22,.88)}
+#subsurfaceMode .ss-card .lbl{font-family:var(--mono);font-size:9px;letter-spacing:.14em;text-transform:uppercase;color:var(--cyan)}
+#subsurfaceMode .ss-card .val{font-family:var(--display);font-size:22px;font-weight:700;color:var(--text);margin-top:4px}
+#subsurfaceMode .ss-card .val.amber{color:var(--amber)}
+#subsurfaceMode .ss-card .val.cyan{color:var(--cyan)}
+#subsurfaceMode .ss-card .sub{font-size:11px;color:var(--dim);margin-top:4px;line-height:1.35}
+#subsurfaceMode .ss-hint{font-size:11px;color:var(--dim);line-height:1.4}
+#subsurfaceMode .stick-hit{cursor:pointer;display:inline-block;border:1px solid transparent;padding:2px;transition:border-color .15s,transform .15s}
+#subsurfaceMode .stick-hit:hover,#siteHud .stick-hit:hover{border-color:rgba(61,207,191,.55);transform:scale(1.02)}
+#siteHud .stick-hit{cursor:pointer;display:inline-block;border:1px solid transparent;padding:2px;border-radius:2px}
+#siteHud .ss-enter{display:inline-block;margin-top:10px;font-family:var(--mono);font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:var(--cyan);border:1px solid rgba(61,207,191,.45);background:rgba(61,207,191,.08);padding:8px 12px;cursor:pointer}
+#siteHud .ss-enter:hover{background:rgba(61,207,191,.16)}
+@media (max-width:900px){
+  #subsurfaceMode .ss-body{flex-direction:column;align-items:center}
+  #subsurfaceMode .ss-side{width:100%;flex-direction:row;flex-wrap:wrap}
+  #subsurfaceMode .ss-card{flex:1 1 140px}
+}
 </style>
 </head>
 <body>
 <div id="hdr">
-  <h1><b>DelDOT</b> GeoTrak<span class="badge">v0.25</span></h1>
+  <h1><b>DelDOT</b> GeoTrak<span class="badge">v0.26</span></h1>
   <button class="tab on" data-p="map">Map</button>
   <button class="tab" data-p="refs">Reference data</button>
   <button class="tab" data-p="jobs">Jobs</button>
@@ -21012,6 +21044,17 @@ table.list td{padding:5px 8px;border-bottom:1px solid rgba(46,58,72,.5);font-fam
         </div>
         <div class="hud-deck-body" id="hudDrawer"></div>
       </section>
+    </div>
+    <div id="subsurfaceMode" aria-live="polite">
+      <div class="ss-top">
+        <h2>Subsurface</h2>
+        <span class="ss-meta" id="ssMeta">—</span>
+        <button type="button" class="ss-close" id="ssClose">Back ✕</button>
+      </div>
+      <div class="ss-body">
+        <div class="ss-stage" id="ssStage"></div>
+        <aside class="ss-side" id="ssSide"></aside>
+      </div>
     </div>
     <div id="qPanel">
       <div class="sec">
@@ -22156,7 +22199,7 @@ function formatInfilHTML(E){
   return h;
 }
 
-/* ---------- prediction / site profile engine (v0.25) ---------- */
+/* ---------- prediction / site profile engine (v0.26) ---------- */
 const PROFILE_RADIUS_FT=500; /* lateral — estimate from borings within a few hundred ft */
 const PROFILE_K=16; /* denser clusters → more samples → better estimate */
 function parseDnrecNumber(raw){
@@ -22610,11 +22653,158 @@ function svgStickProfile(layers, maxDepth, title){
     ticks+=`<text x="${COL_X+COL_W+8}" y="${y+3}" fill="#c7ccd1" font-size="9">${ft}</text>`;
   }
   ticks+=`<text x="${COL_X+COL_W/2}" y="${H-1}" text-anchor="middle" fill="#8b929a" font-size="8">ft</text>`;
-  return `<div style="text-align:center">
+  const inner=`<div style="text-align:center">
     <div class="hint" style="margin-bottom:2px">Stick 0–${maxDepth}</div>
     <svg width="100" height="${H}" viewBox="0 0 100 ${H}" aria-label="${esc(title)} stick profile">${rects}${ticks}</svg>
   </div>`;
+  return wrapStickHit(inner);
 }
+function hydroProfileLevels(hydro, infil){
+  /* Derive ground-surface elev (NAVD) and GWT depths for subsurface view. */
+  const out={gs_navd:null, dtw:null, wte:null, scenario:null, dtw_dry:null, dtw_normal:null, dtw_wet:null, wte_dry:null, wte_normal:null, wte_wet:null};
+  if(!hydro||hydro.skipped){
+    if(infil&&infil.dtw_ft!=null){ out.dtw=+infil.dtw_ft; out.scenario='profile'; }
+    if(infil&&infil.wte_navd!=null){ out.wte=+infil.wte_navd; }
+    if(out.dtw!=null&&out.wte!=null) out.gs_navd=Math.round((out.wte+out.dtw)*10)/10;
+    return out;
+  }
+  out.dtw_dry=hydro.dtw&&hydro.dtw.dry!=null?+hydro.dtw.dry:null;
+  out.dtw_normal=hydro.dtw&&hydro.dtw.normal!=null?+hydro.dtw.normal:null;
+  out.dtw_wet=hydro.dtw&&hydro.dtw.wet!=null?+hydro.dtw.wet:null;
+  out.wte_dry=hydro.wte&&hydro.wte.dry!=null?+hydro.wte.dry:null;
+  out.wte_normal=hydro.wte&&hydro.wte.normal!=null?+hydro.wte.normal:null;
+  out.wte_wet=hydro.wte&&hydro.wte.wet!=null?+hydro.wte.wet:null;
+  if(hydro.dtw_now!=null&&hydro.wte_now!=null){
+    out.dtw=+hydro.dtw_now; out.wte=+hydro.wte_now; out.scenario='now';
+  }else if(out.dtw_normal!=null&&out.wte_normal!=null){
+    out.dtw=out.dtw_normal; out.wte=out.wte_normal; out.scenario='normal';
+  }else if(hydro.dtw_now!=null){
+    out.dtw=+hydro.dtw_now; out.scenario='now';
+    out.wte=out.wte_normal!=null?out.wte_normal:out.wte_wet;
+  }else if(out.dtw_normal!=null){
+    out.dtw=out.dtw_normal; out.wte=out.wte_normal; out.scenario='normal';
+  }else if(out.dtw_wet!=null){
+    out.dtw=out.dtw_wet; out.wte=out.wte_wet; out.scenario='wet';
+  }
+  if(out.dtw!=null&&out.wte!=null) out.gs_navd=Math.round((out.wte+out.dtw)*10)/10;
+  else if(infil&&infil.dtw_ft!=null&&infil.wte_navd!=null){
+    out.dtw=+infil.dtw_ft; out.wte=+infil.wte_navd;
+    out.gs_navd=Math.round((out.wte+out.dtw)*10)/10;
+    out.scenario=out.scenario||'profile';
+  }
+  return out;
+}
+function wrapStickHit(svgHtml){
+  return `<div class="stick-hit" onclick="openSubsurfaceMode()" title="Open Subsurface mode">${svgHtml}</div>`;
+}
+function svgSubsurfaceDual(ctx){
+  const P=ctx.profile||{}, C=P.class_column, hydro=ctx.hydro, levels=hydroProfileLevels(hydro, P.infil);
+  const maxDepth=C&&C.depth_ft!=null?C.depth_ft:CLASS_COL_DEPTH_FT;
+  const aLayers=(C&&C.aashto_stick)||[], uLayers=(C&&C.uscs_stick)||[];
+  const W=520, H=Math.min(620, Math.max(420, Math.round(maxDepth*9))), TOP=48, BOT=H-36, plotH=BOT-TOP;
+  const yAt=ft=>TOP+(ft/maxDepth)*plotH;
+  const elevAt=ft=>levels.gs_navd!=null?Math.round((levels.gs_navd-ft)*10)/10:null;
+  const axL=54, gap=28, colW=56;
+  const aX=axL+36, uX=aX+colW+gap;
+  const axR=uX+colW+10;
+  function drawStick(layers, x){
+    let s='';
+    const order=[];
+    layers.forEach(L=>{ if(L.label&&!order.includes(L.label))order.push(L.label); });
+    layers.forEach(L=>{
+      if(!L.label)return;
+      const y1=yAt(L.top), y2=yAt(L.bot), h=Math.max(1,y2-y1);
+      const col=pieColor(order.indexOf(L.label), L.label);
+      s+=`<rect x="${x}" y="${y1}" width="${colW}" height="${h}" fill="${col}" stroke="#0a0e14" stroke-width="0.8"/>`;
+      if(h>=16) s+=`<text x="${x+colW/2}" y="${y1+h/2+4}" text-anchor="middle" fill="#111" font-size="${h>=28?12:9}" font-weight="700">${esc(L.label)}</text>`;
+      else if(h>=10) s+=`<text x="${x+colW/2}" y="${y1+h/2+3}" text-anchor="middle" fill="#111" font-size="8">${esc(L.label.length>6?L.label.slice(0,5)+'…':L.label)}</text>`;
+    });
+    s+=`<rect x="${x}" y="${TOP}" width="${colW}" height="${plotH}" fill="none" stroke="rgba(232,238,244,.55)" stroke-width="1.4"/>`;
+    return s;
+  }
+  let g='';
+  /* sky / ground band */
+  g+=`<rect x="0" y="0" width="${W}" height="${TOP}" fill="rgba(61,207,191,.06)"/>`;
+  g+=`<line x1="${axL}" y1="${TOP}" x2="${axR+70}" y2="${TOP}" stroke="#f0a84a" stroke-width="2.5"/>`;
+  g+=`<text x="${axL}" y="${TOP-14}" fill="#f0a84a" font-size="12" font-weight="700" font-family="IBM Plex Mono,monospace">GROUND SURFACE</text>`;
+  if(levels.gs_navd!=null){
+    g+=`<text x="${axR+8}" y="${TOP-14}" fill="#3dcfbf" font-size="13" font-weight="700" font-family="IBM Plex Mono,monospace">${levels.gs_navd} ft NAVD88</text>`;
+  } else {
+    g+=`<text x="${axR+8}" y="${TOP-14}" fill="#8a9aab" font-size="11" font-family="IBM Plex Mono,monospace">elev unknown</text>`;
+  }
+  g+=drawStick(aLayers, aX);
+  g+=drawStick(uLayers, uX);
+  g+=`<text x="${aX+colW/2}" y="${TOP-28}" text-anchor="middle" fill="#f0a84a" font-size="11" letter-spacing="1" font-family="IBM Plex Mono,monospace">AASHTO</text>`;
+  g+=`<text x="${uX+colW/2}" y="${TOP-28}" text-anchor="middle" fill="#5eb0e0" font-size="11" letter-spacing="1" font-family="IBM Plex Mono,monospace">USCS</text>`;
+
+  /* depth + elev ticks */
+  const tickStep=maxDepth>40?10:5;
+  for(let ft=0;ft<=maxDepth;ft+=tickStep){
+    const y=yAt(ft);
+    g+=`<line x1="${axL-6}" y1="${y}" x2="${axL}" y2="${y}" stroke="#8a9aab" stroke-width="1"/>`;
+    g+=`<text x="${axL-10}" y="${y+3}" text-anchor="end" fill="#8a9aab" font-size="10" font-family="IBM Plex Mono,monospace">${ft}</text>`;
+    const el=elevAt(ft);
+    if(el!=null){
+      g+=`<line x1="${axR}" y1="${y}" x2="${axR+6}" y2="${y}" stroke="#3dcfbf" stroke-width="1"/>`;
+      g+=`<text x="${axR+10}" y="${y+3}" fill="#3dcfbf" font-size="10" font-family="IBM Plex Mono,monospace">${el}</text>`;
+    }
+  }
+  g+=`<text x="${axL-10}" y="${BOT+20}" text-anchor="end" fill="#8a9aab" font-size="9" font-family="IBM Plex Mono,monospace">ft bgs</text>`;
+  if(levels.gs_navd!=null) g+=`<text x="${axR+10}" y="${BOT+20}" fill="#3dcfbf" font-size="9" font-family="IBM Plex Mono,monospace">ft NAVD88</text>`;
+
+  function gwtLine(dtw, label, solid){
+    if(dtw==null||!(dtw>=0)||dtw>maxDepth)return '';
+    const y=yAt(dtw);
+    const dash=solid?'':'6 5';
+    const col=solid?'#5eb0e0':'rgba(94,176,224,.55)';
+    let s=`<line x1="${axL}" y1="${y}" x2="${axR}" y2="${y}" stroke="${col}" stroke-width="${solid?2.4:1.4}" stroke-dasharray="${dash}"/>`;
+    s+=`<circle cx="${aX-8}" cy="${y}" r="4" fill="${col}"/>`;
+    const wte=levels.gs_navd!=null?Math.round((levels.gs_navd-dtw)*10)/10:null;
+    s+=`<text x="${axR+8}" y="${y-6}" fill="${col}" font-size="11" font-weight="700" font-family="IBM Plex Mono,monospace">${esc(label)}</text>`;
+    s+=`<text x="${axR+8}" y="${y+8}" fill="${col}" font-size="10" font-family="IBM Plex Mono,monospace">${dtw} ft bgs${wte!=null?' · '+wte+' NAVD':''}</text>`;
+    return s;
+  }
+  /* faint dry/wet envelopes then primary */
+  g+=gwtLine(levels.dtw_dry, 'GWT dry', false);
+  g+=gwtLine(levels.dtw_wet, 'GWT wet', false);
+  g+=gwtLine(levels.dtw, levels.scenario==='now'?'GWT now':('GWT '+(levels.scenario||'')), true);
+
+  if(!aLayers.length&&!uLayers.length){
+    g+=`<text x="${W/2}" y="${H/2}" text-anchor="middle" fill="#e06c6c" font-size="14">No column stick data in radius</text>`;
+  }
+  return `<svg width="100%" height="${H}" viewBox="0 0 ${W} ${H}" style="max-width:560px;filter:drop-shadow(0 12px 28px rgba(0,0,0,.45))" aria-label="Subsurface profile">${g}</svg>`;
+}
+function renderSubsurface(ctx){
+  const stage=$('ssStage'), side=$('ssSide'), meta=$('ssMeta');
+  if(!stage||!ctx)return;
+  const P=ctx.profile||{}, levels=hydroProfileLevels(ctx.hydro, P.infil);
+  if(meta) meta.innerHTML=`TARGET <b>${ctx.lat.toFixed(5)}°N ${Math.abs(ctx.lng).toFixed(5)}°W</b> · column 0–${(P.class_column&&P.class_column.depth_ft)||CLASS_COL_DEPTH_FT} ft`;
+  stage.innerHTML=svgSubsurfaceDual(ctx);
+  let h='';
+  h+=`<div class="ss-card"><div class="lbl">Est. ground elev</div><div class="val amber">${levels.gs_navd!=null?levels.gs_navd+' ft':'—'}</div><div class="sub">${levels.gs_navd!=null?'NAVD 88 · GS ≈ WTE + DTW ('+esc(levels.scenario||'')+')':'Need DGS DTW + WTE to estimate GS'}</div></div>`;
+  h+=`<div class="ss-card"><div class="lbl">Est. GWT</div><div class="val cyan">${levels.dtw!=null?levels.dtw+' ft bgs':'—'}</div><div class="sub">${levels.wte!=null?'WTE '+levels.wte+' ft NAVD88':''}${levels.scenario?' · '+esc(levels.scenario):''}</div></div>`;
+  if(levels.dtw_dry!=null||levels.dtw_wet!=null){
+    h+=`<div class="ss-card"><div class="lbl">GWT envelope</div><div class="val" style="font-size:15px">dry ${levels.dtw_dry!=null?levels.dtw_dry+'′':'—'} · wet ${levels.dtw_wet!=null?levels.dtw_wet+'′':'—'}</div><div class="sub">Dashed lines on profile · DGS grids</div></div>`;
+  }
+  const a=P.classes&&P.classes.aashto_loc&&P.classes.aashto_loc.value;
+  const u=P.classes&&P.classes.uscs_loc&&P.classes.uscs_loc.value;
+  h+=`<div class="ss-card"><div class="lbl">Near-surface class</div><div class="val" style="font-size:18px">${esc(a||'—')} <span style="color:var(--blue)">${esc(u||'')}</span></div><div class="sub">≤15 ft · sticks show 0–${CLASS_COL_DEPTH_FT} ft IDW</div></div>`;
+  h+=`<div class="ss-hint">Screening profile from neighbor borings + DGS water-table grids. Not a logged boring. Esc or Back to return.</div>`;
+  if(side) side.innerHTML=h;
+}
+function openSubsurfaceMode(ctx){
+  ctx=ctx||lastHudCtx;
+  if(!ctx)return;
+  const el=$('subsurfaceMode'); if(!el)return;
+  renderSubsurface(ctx);
+  el.classList.add('on');
+}
+function closeSubsurfaceMode(){
+  const el=$('subsurfaceMode'); if(el) el.classList.remove('on');
+}
+window.openSubsurfaceMode=openSubsurfaceMode;
+window.closeSubsurfaceMode=closeSubsurfaceMode;
+
 function svgPieChart(slices, title, stickLayers, maxDepth){
   if(!slices||!slices.length)return `<div class="hint warn">No ${esc(title)} data in 0–${CLASS_COL_DEPTH_FT} ft neighbors.</div>`;
   const R=54, CX=60, CY=60;
@@ -23037,6 +23227,7 @@ async function runPointQuery(lat,lng,opts){
     if(immersive){
       renderHudRail(lastHudCtx);
       renderHudDrawer(lastHudCtx);
+      if($('subsurfaceMode')&&$('subsurfaceMode').classList.contains('on')) renderSubsurface(lastHudCtx);
     }
     const box=$('hydroBox');
     if(box&&!immersive){
@@ -23056,6 +23247,7 @@ let lastHudCtx=null;
 let hudTab='overview';
 
 function closeSiteHud(){
+  closeSubsurfaceMode();
   const hud=$('siteHud');
   if(hud) hud.classList.remove('on');
   const page=document.getElementById('page-map');
@@ -23150,7 +23342,7 @@ function renderHudRail(ctx){
     {id:'estimate', cls:'infil', k:'Infil', v:P.infil&&P.infil.design_inhr!=null?(P.infil.design_inhr+''):(P.infil&&P.infil.est_inhr!=null?(P.infil.est_inhr+''):'—'), s:P.infil&&P.infil.design_inhr!=null?'illustrative ÷2.5 in/hr':(P.infil&&P.infil.est_inhr!=null?'screening in/hr':'no estimate')},
     {id:'septic', cls:'septic', k:'Septic', v:septicV, s:septicS},
     {id:'class', cls:'', k:'Class', v:aDisp.head, s:aDisp.sub||((u?u+' · ':'')+classSourceLabel(P.classes&&P.classes.aashto_loc))},
-    {id:'column', cls:'', k:'Column', v:'0–'+CLASS_COL_DEPTH_FT+'′', s:P.class_column?'AASHTO / USCS sticks':'no column'},
+    {id:'column', cls:'', k:'Column', v:'0–'+CLASS_COL_DEPTH_FT+'′', s:P.class_column?'tap stick · Subsurface':'no column'},
     {id:'layers', cls:'', k:'Layers', v:String(hitN), s:'geology · soils · flood · more'},
     {id:'borings', cls:'', k:'Borings', v:String(boringN), s:'within '+ (P.radius_ft||ctx.radFt)+' ft'},
     {id:'hydro', cls:'', k:'Hydro', v:hydroV, s:hydroS}
@@ -23193,6 +23385,7 @@ function renderHudDrawer(ctx){
       h+=`<div>${svgStickProfile(P.class_column.aashto_stick,P.class_column.depth_ft,'AASHTO')}</div>`;
       h+=`<div>${svgStickProfile(P.class_column.uscs_stick,P.class_column.depth_ft,'USCS')}</div>`;
       h+=`</div>`;
+      h+=`<button type="button" class="ss-enter" onclick="openSubsurfaceMode()">Enter Subsurface mode →</button>`;
     }
   } else if(tab==='site'){
     h+=`<table class="mini-kv">`;
@@ -23273,10 +23466,12 @@ function renderHudDrawer(ctx){
     }
   } else if(tab==='column'){
     if(P.class_column){
-      h+=`<div style="display:flex;gap:12px;flex-wrap:wrap;margin-bottom:10px">`;
+      h+=`<button type="button" class="ss-enter" onclick="openSubsurfaceMode()">Enter Subsurface mode →</button>`;
+      h+=`<div style="display:flex;gap:12px;flex-wrap:wrap;margin:10px 0">`;
       h+=`<div>${svgStickProfile(P.class_column.aashto_stick,P.class_column.depth_ft,'AASHTO')}</div>`;
       h+=`<div>${svgStickProfile(P.class_column.uscs_stick,P.class_column.depth_ft,'USCS')}</div>`;
       h+=`</div>`;
+      h+=`<div class="hint">Click a stick (or the button) for full-screen profile with GS elev + GWT.</div>`;
       h+=`<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">`;
       h+=`<div>${svgPieChart(P.class_column.aashto,'AASHTO',null,P.class_column.depth_ft)}</div>`;
       h+=`<div>${svgPieChart(P.class_column.uscs,'USCS',null,P.class_column.depth_ft)}</div>`;
@@ -23353,9 +23548,13 @@ function setHudTab(tab){
 
 (function wireHud(){
   const close=$('hudClose');
-  if(close) close.onclick=()=>closeSiteHud();
+  if(close) close.onclick=()=>{ closeSubsurfaceMode(); closeSiteHud(); };
+  const ssClose=$('ssClose');
+  if(ssClose) ssClose.onclick=()=>closeSubsurfaceMode();
   document.addEventListener('keydown',e=>{
-    if(e.key==='Escape'&&$('siteHud')&&$('siteHud').classList.contains('on')) closeSiteHud();
+    if(e.key!=='Escape')return;
+    if($('subsurfaceMode')&&$('subsurfaceMode').classList.contains('on')){ closeSubsurfaceMode(); return; }
+    if($('siteHud')&&$('siteHud').classList.contains('on')) closeSiteHud();
   });
   const imm=$('immersiveMode');
   if(imm) imm.onchange=function(){ if(lastQuery) runPointQuery(lastQuery.lat,lastQuery.lng); };
