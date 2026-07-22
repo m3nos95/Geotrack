@@ -20977,7 +20977,7 @@ table.list td{padding:5px 8px;border-bottom:1px solid rgba(46,58,72,.5);font-fam
 </head>
 <body>
 <div id="hdr">
-  <h1><b>GEO REPORT CENTER</b><span class="badge">v0.23</span></h1>
+  <h1><b>GEO REPORT CENTER</b><span class="badge">v0.24</span></h1>
   <button class="tab on" data-p="map">Map</button>
   <button class="tab" data-p="refs">Reference data</button>
   <button class="tab" data-p="jobs">Jobs</button>
@@ -22102,7 +22102,9 @@ function enrichFromHits(hits, samples){
       }
     }
   });
-  const aashtoPrior=(lab&&lab.aashto_dom)||(nrcs&&nrcs.aashto)||null;
+  const aashtoPriorRaw=(lab&&lab.aashto_dom)||(nrcs&&nrcs.aashto)||null;
+  /* Do not use NRCS A-8 / PT organic eng tags as HYDGRP infil nudges */
+  const aashtoPrior=(aashtoPriorRaw&&isOrganicEngClass(aashtoPriorRaw, nrcs&&nrcs.uscs)&&!(lab&&lab.aashto_dom))?null:aashtoPriorRaw;
   const ksat=nrcs&&nrcs.ksat_in_hr!=null?+nrcs.ksat_in_hr:null;
   const infil=infilFromHydgrp(hydgrp, lab.p200_median, aashtoPrior, ksat);
   return{soilName,soilSym,soilKey,hydgrp,drain,nrcs,geoName,geoKind,rech,wrpa,lab,infil,wetland,flood,gmz,wellhead,watershed,coastal,septicPerc,septicDist,feasibility};
@@ -22154,7 +22156,7 @@ function formatInfilHTML(E){
   return h;
 }
 
-/* ---------- prediction / site profile engine (v0.23) ---------- */
+/* ---------- prediction / site profile engine (v0.24) ---------- */
 const PROFILE_RADIUS_FT=500; /* lateral — estimate from borings within a few hundred ft */
 const PROFILE_K=16; /* denser clusters → more samples → better estimate */
 function parseDnrecNumber(raw){
@@ -22376,6 +22378,34 @@ function uscsSource(s){
   if(estimateUscsFromLab(s))return 'estimated';
   return null;
 }
+/* AASHTO M 145 highway groups are A-1…A-7 only. NRCS Soil Data Access often tags
+   hydric / organic mapunits as "A-8" + USCS PT (peat). That is an NRCS engineering
+   interpretation label — NOT a standard M 145 group from a lab sample. */
+function isOrganicEngClass(aashto, uscs){
+  const a=String(aashto||'').toUpperCase().replace(/\s+/g,'');
+  const u=String(uscs||'').toUpperCase().replace(/\s+/g,'');
+  return a==='A-8'||a==='A8'||u==='PT'||/^OL|^OH/.test(u);
+}
+function classSourceLabel(loc){
+  if(!loc)return '';
+  if(loc.from_nrcs){
+    if(isOrganicEngClass(loc.value, null)||(loc.mix&&loc.mix[0]&&isOrganicEngClass(loc.mix[0].label)))
+      return 'NRCS mapunit eng class (organic) — not AASHTO M 145 from borings';
+    return 'NRCS mapunit prior — no ≤15 ft boring class samples';
+  }
+  return '≤15 ft IDW from neighbor borings';
+}
+function displayAashtoValue(loc, uscsLoc){
+  if(!loc||!loc.value)return {head:'—', sub:''};
+  const v=String(loc.value);
+  const organic=isOrganicEngClass(v, uscsLoc&&uscsLoc.value);
+  if(loc.from_nrcs&&organic){
+    return {head:v, sub:'NRCS organic tag (PT/peat eng.) · not highway M 145'};
+  }
+  if(loc.from_nrcs) return {head:v, sub:'NRCS mapunit · not from borings'};
+  return {head:v, sub:classSourceLabel(loc)};
+}
+
 /* IDW location estimate: majority USCS/AASHTO per boring (≤maxDepth), then distance-weighted across neighbors. */
 function estimateLocationClass(neighbors, kind, maxDepth){
   maxDepth=maxDepth==null?15:maxDepth;
@@ -22640,13 +22670,14 @@ function buildSiteProfile(lat, lon, hits, radiusFt){
   /* Mapunit prior from NRCS when neighbor borings lack classification */
   if(E.nrcs){
     if(!classes.aashto_loc&&E.nrcs.aashto){
-      classes.aashto_loc={value:aashtoBase(E.nrcs.aashto)||String(E.nrcs.aashto), support:0, sample_n:0, confidence_pct:100, mix:[{label:aashtoBase(E.nrcs.aashto)||E.nrcs.aashto,pct:100}], sources:{stored:0,estimated:0,mapunit:1}, depth_ft:15, estimated_share:0, from_nrcs:true};
-      if(!classes.aashto) classes.aashto={value:classes.aashto_loc.value, count:1, n:1, tally:{}};
+      const av=aashtoBase(E.nrcs.aashto)||String(E.nrcs.aashto);
+      classes.aashto_loc={value:av, support:0, sample_n:0, confidence_pct:null, mix:[{label:av,pct:100}], sources:{stored:0,estimated:0,mapunit:1}, depth_ft:null, estimated_share:0, from_nrcs:true, organic:isOrganicEngClass(av, E.nrcs.uscs)};
+      if(!classes.aashto) classes.aashto={value:av, count:1, n:1, tally:{}, from_nrcs:true};
     }
     if(!classes.uscs_loc&&E.nrcs.uscs){
       const u=normalizeClassKey('uscs', E.nrcs.uscs);
-      classes.uscs_loc={value:u, support:0, sample_n:0, confidence_pct:100, mix:[{label:u,pct:100}], sources:{stored:0,estimated:0,mapunit:1}, depth_ft:15, estimated_share:0, from_nrcs:true};
-      if(!classes.uscs) classes.uscs={value:u, count:1, n:1, tally:{}};
+      classes.uscs_loc={value:u, support:0, sample_n:0, confidence_pct:null, mix:[{label:u,pct:100}], sources:{stored:0,estimated:0,mapunit:1}, depth_ft:null, estimated_share:0, from_nrcs:true, organic:isOrganicEngClass(E.nrcs.aashto, u)};
+      if(!classes.uscs) classes.uscs={value:u, count:1, n:1, tally:{}, from_nrcs:true};
     }
   }
   const classCol=estimateClassColumn(neighbors, CLASS_COL_DEPTH_FT);
@@ -22655,9 +22686,10 @@ function buildSiteProfile(lat, lon, hits, radiusFt){
   const percIdw=idwMean(septic.map(p=>({v:p.inhr,d:p.d})), 2);
   const mpiIdw=idwMean(septic.map(p=>({v:p.mpi,d:p.d})), 2);
   const upperA=upperStickDominant(classCol&&classCol.aashto_stick, 20);
-  const aashtoEst=(upperA&&upperA.pct>=40?upperA.group:null)
-    ||(classes.aashto_loc&&classes.aashto_loc.value)
-    ||(E.lab&&E.lab.aashto_dom)
+  const aashtoLocOk=classes.aashto_loc&&classes.aashto_loc.value&&!(classes.aashto_loc.from_nrcs&&isOrganicEngClass(classes.aashto_loc.value, classes.uscs_loc&&classes.uscs_loc.value));
+  const aashtoEst=(upperA&&upperA.pct>=40&&!isOrganicEngClass(upperA.group)?upperA.group:null)
+    ||(aashtoLocOk?classes.aashto_loc.value:null)
+    ||(E.lab&&E.lab.aashto_dom&&!isOrganicEngClass(E.lab.aashto_dom)?E.lab.aashto_dom:null)
     ||null;
   const aashtoInfil=aashtoEst?infilFromAashto(aashtoEst,{
     p200med:E.lab&&E.lab.p200_median,
@@ -23080,7 +23112,10 @@ function renderHudBadges(ctx){
   let h='';
   if(P.infil&&P.infil.design_inhr!=null) h+=`<span class="hud-badge">Design<em>${P.infil.design_inhr}</em></span>`;
   else if(P.infil&&P.infil.est_inhr!=null) h+=`<span class="hud-badge">Screen<em>${P.infil.est_inhr}</em></span>`;
-  if(a) h+=`<span class="hud-badge">AASHTO<em>${esc(a)}</em></span>`;
+  if(a){
+    const organic=P.classes&&P.classes.aashto_loc&&(P.classes.aashto_loc.from_nrcs||P.classes.aashto_loc.organic)&&isOrganicEngClass(a, P.classes.uscs_loc&&P.classes.uscs_loc.value);
+    h+=`<span class="hud-badge${organic?' warn':''}">${organic?'NRCS org.':'AASHTO'}<em>${esc(a)}</em></span>`;
+  }
   if(sep.n>0||sep.nearMpi!=null){
     const v=sep.inhr!=null?sep.inhr:(sep.nearInhr!=null?sep.nearInhr:null);
     h+=`<span class="hud-badge cyan">Septic<em>${v!=null?v+' in/hr':(sep.n+' pts')}</em></span>`;
@@ -23092,8 +23127,9 @@ function renderHudBadges(ctx){
 function renderHudRail(ctx){
   const rail=$('hudRail'); if(!rail)return;
   const P=ctx.profile||{}, E=ctx.E||{}, sep=septicSummary(ctx);
-  const a=P.classes&&P.classes.aashto_loc&&P.classes.aashto_loc.value;
-  const u=P.classes&&P.classes.uscs_loc&&P.classes.uscs_loc.value;
+  const aLoc=P.classes&&P.classes.aashto_loc, uLoc=P.classes&&P.classes.uscs_loc;
+  const a=aLoc&&aLoc.value, u=uLoc&&uLoc.value;
+  const aDisp=displayAashtoValue(aLoc, uLoc);
   const hitN=(ctx.hits||[]).length;
   const boringN=(ctx.near||[]).filter(n=>n.t==='boring').length;
   let hydroV='—', hydroS='DGS sample';
@@ -23113,7 +23149,7 @@ function renderHudRail(ctx){
     {id:'site', cls:'', k:'Site', v:E.soilSym||E.hydgrp||'—', s:(E.soilName||'soils')+(E.geoName?' · '+E.geoName:'')},
     {id:'estimate', cls:'infil', k:'Infil', v:P.infil&&P.infil.design_inhr!=null?(P.infil.design_inhr+''):(P.infil&&P.infil.est_inhr!=null?(P.infil.est_inhr+''):'—'), s:P.infil&&P.infil.design_inhr!=null?'illustrative ÷2.5 in/hr':(P.infil&&P.infil.est_inhr!=null?'screening in/hr':'no estimate')},
     {id:'septic', cls:'septic', k:'Septic', v:septicV, s:septicS},
-    {id:'class', cls:'', k:'Class', v:a||'—', s:(u?u+' · ':'')+'≤15 ft IDW'},
+    {id:'class', cls:'', k:'Class', v:aDisp.head, s:aDisp.sub||((u?u+' · ':'')+classSourceLabel(P.classes&&P.classes.aashto_loc))},
     {id:'column', cls:'', k:'Column', v:'0–'+CLASS_COL_DEPTH_FT+'′', s:P.class_column?'AASHTO / USCS sticks':'no column'},
     {id:'layers', cls:'', k:'Layers', v:String(hitN), s:'geology · soils · flood · more'},
     {id:'borings', cls:'', k:'Borings', v:String(boringN), s:'within '+ (P.radius_ft||ctx.radFt)+' ft'},
@@ -23143,7 +23179,9 @@ function renderHudDrawer(ctx){
     h+=`<div class="brief-grid">`;
     h+=`<div class="brief-cell"><div class="lbl">Illustrative design</div><div class="val amber">${P.infil&&P.infil.design_inhr!=null?P.infil.design_inhr+' in/hr':'—'}</div><div class="sub">÷ FoS 2.5 borehole path · screening</div></div>`;
     h+=`<div class="brief-cell"><div class="lbl">Screening est.</div><div class="val">${P.infil&&P.infil.est_inhr!=null?P.infil.est_inhr+' in/hr':'—'}</div><div class="sub">${P.infil&&P.infil.note?esc(P.infil.note).slice(0,90):'—'}</div></div>`;
-    h+=`<div class="brief-cell"><div class="lbl">AASHTO / USCS</div><div class="val amber">${esc((P.classes&&P.classes.aashto_loc&&P.classes.aashto_loc.value)||'—')}</div><div class="sub">${esc((P.classes&&P.classes.uscs_loc&&P.classes.uscs_loc.value)||'')}</div></div>`;
+    const aBr=displayAashtoValue(P.classes&&P.classes.aashto_loc, P.classes&&P.classes.uscs_loc);
+    const uBr=(P.classes&&P.classes.uscs_loc&&P.classes.uscs_loc.value)||'';
+    h+=`<div class="brief-cell"><div class="lbl">AASHTO / USCS</div><div class="val amber">${esc(aBr.head)}</div><div class="sub">${esc(uBr)}${aBr.sub?' · '+esc(aBr.sub):''}</div></div>`;
     h+=`<div class="brief-cell"><div class="lbl">DNREC septic</div><div class="val cyan">${sep.inhr!=null?sep.inhr+' in/hr':(sep.nearInhr!=null?sep.nearInhr+' in/hr':'—')}</div><div class="sub">${sep.n?sep.n+' pts IDW':(sep.nearMpi!=null?'nearest '+sep.nearMpi+' min/in':'none nearby')}</div></div>`;
     h+=`<div class="brief-cell"><div class="lbl">Soils / HYDGRP</div><div class="val">${esc(E.soilSym||'—')}</div><div class="sub">${esc(E.hydgrp||'')}${E.soilName?' · '+esc(E.soilName):''}</div></div>`;
     h+=`<div class="brief-cell"><div class="lbl">Hydro DTW</div><div class="val cyan">${P.infil&&P.infil.dtw_ft!=null?P.infil.dtw_ft+' ft':(ctx.hydro&&ctx.hydro.dtw&&ctx.hydro.dtw.normal!=null?fmtFt(ctx.hydro.dtw.normal):'—')}</div><div class="sub">${P.infil&&P.infil.separation_ok===false?'§II.A.3 separation fail':(P.infil&&P.infil.wte_navd!=null?'WTE ~'+P.infil.wte_navd+' NAVD':'DGS grids')}</div></div>`;
@@ -23216,11 +23254,18 @@ function renderHudDrawer(ctx){
     if(E.feasibility) h+=`<div class="hint" style="margin-top:8px">Feasibility: ${esc(E.feasibility)}</div>`;
   } else if(tab==='class'){
     const a=P.classes&&P.classes.aashto_loc, u=P.classes&&P.classes.uscs_loc;
+    const aDisp=displayAashtoValue(a,u);
     h+=`<table class="mini-kv">`;
     h+=`<tr><td>AASHTO</td><td><b>${a&&a.value?esc(a.value):'—'}</b>${a&&a.confidence_pct!=null?' · '+a.confidence_pct+'% IDW':''}</td></tr>`;
     h+=`<tr><td>USCS</td><td><b>${u&&u.value?esc(u.value):'—'}</b>${u&&u.confidence_pct!=null?' · '+u.confidence_pct+'% IDW':''}</td></tr>`;
-    h+=`<tr><td>Support</td><td>${P.n_neighbors||0} borings within ${P.radius_ft||ctx.radFt} ft</td></tr>`;
+    h+=`<tr><td>Source</td><td>${esc(aDisp.sub||classSourceLabel(a)||'—')}</td></tr>`;
+    h+=`<tr><td>Support</td><td>${a&&a.from_nrcs?'0 boring class samples (mapunit fallback)':((P.n_neighbors||0)+' borings within '+(P.radius_ft||ctx.radFt)+' ft')}</td></tr>`;
     h+=`</table>`;
+    if(a&&a.from_nrcs&&isOrganicEngClass(a.value, u&&u.value)){
+      h+=`<div class="hint warn" style="margin-top:8px"><b>A-8 / PT</b> here is the NRCS Soil Data Access engineering tag for this soil mapunit (FacA Fallsington often gets it). Official AASHTO M 145 highway groups are <b>A-1 through A-7 only</b>. A-8 means “organic / peat-like eng. class” in NRCS tables — it is <b>not</b> a lab classification of the ground surface from your GEO borings. Prefer neighbor boring AASHTO in Class / Column when samples exist.</div>`;
+    } else if(a&&!a.from_nrcs){
+      h+=`<div class="hint" style="margin-top:8px">Near-surface class = IDW vote of AASHTO/USCS samples in the top 15 ft of neighbor borings. Column (0–50 ft) can differ with depth.</div>`;
+    }
     if(P.class_column){
       const Ca=P.class_column.aashto||[], Cu=P.class_column.uscs||[];
       if(Ca.length) h+=`<div class="hint" style="margin-top:8px"><b>0–${CLASS_COL_DEPTH_FT} ft AASHTO:</b> ${Ca.slice(0,8).map(s=>esc(s.label)+' '+s.pct+'%').join(' · ')}</div>`;
