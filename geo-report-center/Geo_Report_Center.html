@@ -20951,7 +20951,7 @@ table.list td{padding:5px 8px;border-bottom:1px solid rgba(46,58,72,.5);font-fam
 </head>
 <body>
 <div id="hdr">
-  <h1><b>GEO REPORT CENTER</b><span class="badge">v0.18</span></h1>
+  <h1><b>GEO REPORT CENTER</b><span class="badge">v0.19</span></h1>
   <button class="tab on" data-p="map">Map</button>
   <button class="tab" data-p="refs">Reference data</button>
   <button class="tab" data-p="jobs">Jobs</button>
@@ -20992,7 +20992,7 @@ table.list td{padding:5px 8px;border-bottom:1px solid rgba(46,58,72,.5);font-fam
     <div id="qPanel">
       <div class="sec">
         <h3>Point query</h3>
-        <div class="hint">Click the map for <b>immersive mode</b>: auto-zoom + floating popups (no long sidebar scroll). Estimates use borings within the lateral radius (default 500 ft). Column depth 0–50 ft. Toggle Immersive HUD off for classic sidebar.</div>
+        <div class="hint">Click the map for <b>immersive mode</b>: auto-zoom + floating popups (no long sidebar scroll). Infil from AASHTO column / HYDGRP / septic (DNREC optional). WT depth can cap rates. Lateral radius default 500 ft; column 0–50 ft. Toggle Immersive HUD off for classic sidebar.</div>
       </div>
       <div class="sec">
         <h3>Search radius <span id="radLbl" style="color:var(--amber);font-family:var(--mono)">500 ft</span></h3>
@@ -21833,10 +21833,75 @@ function applyDnrecDesignFos(min, max){
   else mid=hi;
   return{design_min:lo,design_max:hi,design_mid:mid,fos:DNREC_BOREHOLE_FOS};
 }
+/* Screening AASHTO → infil bands (in/hr). Granular A-1/A-3 support excellent rates even without DNREC septic. */
+const INFIL_AASHTO_BANDS=[
+  {re:/^A-1-A/, lo:0.40, hi:1.20, note:'A-1-a gravelly — excellent'},
+  {re:/^A-1-B|^A-1$/, lo:0.35, hi:1.00, note:'A-1-b sand/gravel — excellent'},
+  {re:/^A-3/, lo:0.30, hi:0.80, note:'A-3 fine sand — excellent to good'},
+  {re:/^A-2-4|^A-2-5/, lo:0.15, hi:0.40, note:'A-2-4/5 silty/clayey sand — moderate'},
+  {re:/^A-2-6|^A-2-7/, lo:0.05, hi:0.20, note:'A-2-6/7 clayey — slow to moderate'},
+  {re:/^A-4|^A-5/, lo:0.02, hi:0.10, note:'A-4/A-5 silt — slow'},
+  {re:/^A-6|^A-7/, lo:0.00, hi:0.05, note:'A-6/A-7 clay — very slow'}
+];
+function infilBandForAashto(aashto){
+  const g=aashtoBase(aashto)||String(aashto||'').toUpperCase().replace(/\s+/g,'');
+  if(!g)return null;
+  for(const B of INFIL_AASHTO_BANDS){ if(B.re.test(g)) return {group:g, lo:B.lo, hi:B.hi, note:B.note}; }
+  return null;
+}
+function infilFromAashto(aashto, opts){
+  opts=opts||{};
+  const band=infilBandForAashto(aashto);
+  if(!band){
+    return{min:null,max:null,design_min:null,design_max:null,design_mid:null,fos:DNREC_BOREHOLE_FOS,
+      note:opts.reason||'no AASHTO group for infil',confidence:'none',aashto:aashto||null};
+  }
+  let lo=band.lo, hi=band.hi, adj=[], conf=opts.confidence||'aashto';
+  const p200med=opts.p200med;
+  if(p200med!=null){
+    if(p200med>=50){hi=Math.min(hi,(lo+hi)/2);adj.push('P200 med '+p200med+'% → lower end');}
+    else if(p200med<=12){lo=Math.max(lo,(lo+hi)/2);adj.push('P200 med '+p200med+'% → higher end');}
+  }
+  if(opts.good_ft!=null&&opts.good_ft>=10&&/^A-1|^A-3/.test(band.group)){
+    lo=Math.min(hi, Math.max(lo, lo+(hi-lo)*0.15));
+    adj.push(opts.good_ft+' ft granular in upper column');
+    conf='aashto_column';
+  }
+  const min=+lo.toFixed(3), max=+hi.toFixed(3);
+  const d=applyDnrecDesignFos(min,max);
+  const why=opts.reason||band.note;
+  return{min,max,...d,note:why+(adj.length?'; '+adj.join('; '):''),confidence:conf,aashto:band.group,hydgrp:null,ksat_in_hr:null};
+}
+function upperStickDominant(stick, depthFt){
+  depthFt=depthFt==null?20:depthFt;
+  const bag={}, goodTh={};
+  let covered=0;
+  (stick||[]).forEach(L=>{
+    if(!L||!L.label)return;
+    const top=Math.max(0,+L.top||0), bot=Math.min(depthFt, +L.bot||0);
+    const th=bot-top; if(th<=0)return;
+    const g=aashtoBase(L.label)||String(L.label).toUpperCase();
+    bag[g]=(bag[g]||0)+th;
+    covered+=th;
+    if(/^A-1|^A-3/.test(g)) goodTh.g=(goodTh.g||0)+th;
+  });
+  if(!covered)return null;
+  const keys=Object.keys(bag).sort((a,b)=>bag[b]-bag[a]||a.localeCompare(b));
+  const dom=keys[0];
+  return{
+    group:dom,
+    pct:Math.round((100*bag[dom]/covered)*10)/10,
+    covered_ft:Math.round(covered*10)/10,
+    depth_ft:depthFt,
+    good_ft:Math.round((goodTh.g||0)*10)/10,
+    mix:keys.slice(0,5).map(k=>({label:k, pct:Math.round((100*bag[k]/covered)*10)/10, ft:Math.round(bag[k]*10)/10}))
+  };
+}
 function infilFromHydgrp(hydgrp, p200med, aashto, ksatInHr){
   const letter=hydgrpLetter(hydgrp);
   if((!letter||!INFIL_BANDS[letter])&&!(ksatInHr!=null&&ksatInHr>0)){
-    return{min:null,max:null,design_min:null,design_max:null,design_mid:null,fos:DNREC_BOREHOLE_FOS,note:'no HYDGRP — load soils refs + nrcs_de_by_mukey.json',confidence:'none'};
+    if(aashto&&infilBandForAashto(aashto)) return infilFromAashto(aashto,{p200med, reason:'AASHTO prior (no HYDGRP / Ksat)', confidence:'aashto'});
+    return{min:null,max:null,design_min:null,design_max:null,design_mid:null,fos:DNREC_BOREHOLE_FOS,note:'no HYDGRP / AASHTO / Ksat — load soils refs or neighbor borings with class',confidence:'none'};
   }
   let lo,hi,note,conf='map_only',adj=[];
   if(letter&&INFIL_BANDS[letter]){
@@ -21853,7 +21918,13 @@ function infilFromHydgrp(hydgrp, p200med, aashto, ksatInHr){
   }
   if(aashto){
     const au=String(aashto).toUpperCase();
-    if(/^A-1|^A-3/.test(au)){lo=Math.max(lo,INFIL_BANDS.B[0]);adj.push('AASHTO '+aashto+' coarser');}
+    const ab=infilBandForAashto(aashto);
+    if(/^A-1|^A-3/.test(au)){
+      /* Strong granular — pull toward AASHTO excellent band, not just HYDGRP B floor */
+      if(ab){ lo=Math.max(lo, ab.lo*0.85); hi=Math.max(hi, Math.min(ab.hi, Math.max(hi, ab.lo))); }
+      else lo=Math.max(lo,INFIL_BANDS.B[0]);
+      adj.push('AASHTO '+aashto+' coarser');
+    }
     if(/^A-6|^A-7/.test(au)){hi=Math.min(hi,INFIL_BANDS.C[1]);adj.push('AASHTO '+aashto+' finer');}
   }
   if(ksatInHr!=null&&ksatInHr>0&&letter&&INFIL_BANDS[letter]){
@@ -21870,7 +21941,25 @@ function infilFromHydgrp(hydgrp, p200med, aashto, ksatInHr){
   if(hydgrp&&String(hydgrp).includes('/')){adj.push('dual HYDGRP '+hydgrp); if(conf==='map_only')conf='low';}
   const min=+lo.toFixed(3), max=+hi.toFixed(3);
   const d=applyDnrecDesignFos(min,max);
-  return{min,max,...d,note:note+(adj.length?'; '+adj.join('; '):''),confidence:conf,hydgrp:letter||null,ksat_in_hr:ksatInHr!=null?+ksatInHr:null};
+  return{min,max,...d,note:note+(adj.length?'; '+adj.join('; '):''),confidence:conf,hydgrp:letter||null,ksat_in_hr:ksatInHr!=null?+ksatInHr:null,aashto:aashto?aashtoBase(aashto):null};
+}
+function applyHydroLimitToInfil(P, hydro){
+  if(!P||!P.infil||P.infil.est_inhr==null||!hydro||hydro.skipped)return P;
+  const dtw=hydro.dtw_now!=null?+hydro.dtw_now:(hydro.dtw&&hydro.dtw.normal!=null?+hydro.dtw.normal:null);
+  if(dtw==null||!Number.isFinite(dtw))return P;
+  let factor=1, note=null;
+  if(dtw<2){ factor=0.35; note='shallow DTW '+dtw+' ft — strong WT cap'; }
+  else if(dtw<4){ factor=0.55; note='DTW '+dtw+' ft — WT reduces unsaturated zone'; }
+  else if(dtw<6){ factor=0.75; note='DTW '+dtw+' ft — mild WT cap'; }
+  P.infil.dtw_ft=dtw;
+  if(hydro.wte&&hydro.wte.normal!=null) P.infil.wte_navd=hydro.wte.normal;
+  if(factor>=0.999){ P.infil.wt_factor=1; return P; }
+  if(P.infil.est_inhr_uncapped==null) P.infil.est_inhr_uncapped=P.infil.est_inhr;
+  P.infil.wt_factor=factor;
+  P.infil.est_inhr=Math.round(P.infil.est_inhr_uncapped*factor*1000)/1000;
+  P.infil.design_inhr=Math.round((P.infil.est_inhr/DNREC_BOREHOLE_FOS)*1000)/1000;
+  if(note&&!(P.infil.note||'').includes('WT')) P.infil.note=(P.infil.note?P.infil.note+'; ':'')+note;
+  return P;
 }
 function lookupNrcs(mukey){
   if(mukey==null||mukey==='')return null;
@@ -21986,7 +22075,7 @@ function formatInfilHTML(E){
   return h;
 }
 
-/* ---------- prediction / site profile engine (v0.18) ---------- */
+/* ---------- prediction / site profile engine (v0.19) ---------- */
 const PROFILE_RADIUS_FT=500; /* lateral — estimate from borings within a few hundred ft */
 const PROFILE_K=16; /* denser clusters → more samples → better estimate */
 function parseDnrecNumber(raw){
@@ -22511,21 +22600,44 @@ function buildSiteProfile(lat, lon, hits, radiusFt){
     }
   }
   const classCol=estimateClassColumn(neighbors, CLASS_COL_DEPTH_FT);
-  /* infiltration */
+  /* infiltration — HYDGRP / NRCS / septic OR AASHTO from neighbor borings (no DNREC required) */
   const septic=septicPercNeighbors(hits);
   const percIdw=idwMean(septic.map(p=>({v:p.inhr,d:p.d})), 2);
   const mpiIdw=idwMean(septic.map(p=>({v:p.mpi,d:p.d})), 2);
+  const upperA=upperStickDominant(classCol&&classCol.aashto_stick, 20);
+  const aashtoEst=(upperA&&upperA.pct>=40?upperA.group:null)
+    ||(classes.aashto_loc&&classes.aashto_loc.value)
+    ||(E.lab&&E.lab.aashto_dom)
+    ||null;
+  const aashtoInfil=aashtoEst?infilFromAashto(aashtoEst,{
+    p200med:E.lab&&E.lab.p200_median,
+    good_ft:upperA&&upperA.good_ft,
+    reason:upperA&&upperA.pct>=40
+      ?('AASHTO '+upperA.group+' dominates 0–20 ft ('+upperA.pct+'%)')
+      :('AASHTO '+aashtoEst+' from neighbor / lab class'),
+    confidence:upperA&&upperA.good_ft>=10?'aashto_column':(classes.aashto_loc&&!classes.aashto_loc.from_nrcs?'aashto_idw':'aashto')
+  }):null;
+  const parts=[];
+  /* Avoid double-counting when enrich already fell back to AASHTO-only (no HYDGRP/Ksat). */
+  const enrichIsAashtoOnly=!!(E.infil&&E.infil.min!=null&&!E.infil.hydgrp&&!(E.infil.ksat_in_hr>0)&&(E.infil.confidence||'').indexOf('aashto')===0);
+  if(E.infil&&E.infil.min!=null&&!enrichIsAashtoOnly){
+    parts.push({v:(E.infil.min+E.infil.max)/2, w:1, src:E.infil.hydgrp?'HYDGRP '+E.infil.hydgrp:(E.infil.confidence||'map')});
+  }
+  if(aashtoInfil&&aashtoInfil.min!=null){
+    const w=(aashtoInfil.confidence==='aashto_column')?1.35:(upperA&&upperA.pct>=55?1.2:1);
+    parts.push({v:(aashtoInfil.min+aashtoInfil.max)/2, w, src:'AASHTO '+(aashtoInfil.aashto||aashtoEst)});
+  }
+  if(percIdw!=null){
+    parts.push({v:percIdw, w:1.1, src:'septic IDW'});
+  }
   let infilBlend=null, infilNote='';
-  if(E.infil&&E.infil.min!=null&&percIdw!=null){
-    const mid=(E.infil.min+E.infil.max)/2;
-    infilBlend=Math.round(((mid+percIdw)/2)*1000)/1000;
-    infilNote='blend of HYDGRP mid and IDW septic perc→in/hr';
-  }else if(E.infil&&E.infil.min!=null){
-    infilBlend=Math.round((((E.infil.min+E.infil.max)/2))*1000)/1000;
-    infilNote='HYDGRP mid only (no nearby septic PercRate)';
-  }else if(percIdw!=null){
-    infilBlend=Math.round(percIdw*1000)/1000;
-    infilNote='IDW septic perc→in/hr only (no HYDGRP)';
+  if(parts.length){
+    let sw=0, sv=0;
+    parts.forEach(p=>{ sw+=p.w; sv+=p.w*p.v; });
+    infilBlend=Math.round((sv/sw)*1000)/1000;
+    infilNote=parts.length===1
+      ?(parts[0].src+(parts[0].src.indexOf('AASHTO')===0?' (no HYDGRP/septic required)':''))
+      :('blend: '+parts.map(p=>p.src).join(' + '));
   }
   const designBlend=infilBlend!=null?Math.round((infilBlend/DNREC_BOREHOLE_FOS)*1000)/1000:null;
   /* subgrade — AASHTO M 57 / M 145 (not DelDOT N chart) */
@@ -22578,6 +22690,9 @@ function buildSiteProfile(lat, lon, hits, radiusFt){
       hydgrp_min:E.infil&&E.infil.min, hydgrp_max:E.infil&&E.infil.max,
       hydgrp:E.infil&&E.infil.hydgrp, confidence:E.infil&&E.infil.confidence,
       design_hydgrp_min:E.infil&&E.infil.design_min, design_hydgrp_max:E.infil&&E.infil.design_max,
+      aashto:aashtoInfil&&aashtoInfil.aashto, aashto_min:aashtoInfil&&aashtoInfil.min, aashto_max:aashtoInfil&&aashtoInfil.max,
+      aashto_confidence:aashtoInfil&&aashtoInfil.confidence,
+      upper20:upperA, sources:parts.map(p=>p.src),
       septic_n:septic.length, septic_mpi_idw:mpiIdw!=null?Math.round(mpiIdw*10)/10:null,
       septic_inhr_idw:percIdw, est_inhr:infilBlend, design_inhr:designBlend, note:infilNote, fos:DNREC_BOREHOLE_FOS
     },
@@ -22670,10 +22785,12 @@ function formatProfileHTML(P){
 
   h+=`<div class="hint" style="margin:8px 0 2px"><b>Infiltration design rate</b></div><table class="kv">`;
   if(P.infil.hydgrp_min!=null)h+=`<tr><td>HYDGRP band</td><td>${P.infil.hydgrp_min}–${P.infil.hydgrp_max} in/hr</td></tr>`;
+  if(P.infil.aashto_min!=null)h+=`<tr><td>AASHTO band</td><td>${P.infil.aashto_min}–${P.infil.aashto_max} in/hr <span class="hint">${esc(P.infil.aashto||'')}${P.infil.upper20&&P.infil.upper20.good_ft!=null?' · '+P.infil.upper20.good_ft+' ft granular 0–20′':''}</span></td></tr>`;
   if(P.infil.septic_mpi_idw!=null)h+=`<tr><td>Septic perc (IDW)</td><td>${P.infil.septic_mpi_idw} min/in ≈ ${P.infil.septic_inhr_idw} in/hr <span class="hint">(${P.infil.septic_n} pts)</span></td></tr>`;
   if(P.infil.est_inhr!=null)h+=`<tr><td>Est. rate</td><td><b>${P.infil.est_inhr} in/hr</b> <span class="hint">${esc(P.infil.note)}</span></td></tr>`;
+  if(P.infil.est_inhr_uncapped!=null&&P.infil.wt_factor!=null&&P.infil.wt_factor<1)h+=`<tr><td>Before WT cap</td><td>${P.infil.est_inhr_uncapped} in/hr <span class="hint">DTW ${P.infil.dtw_ft} ft · ×${P.infil.wt_factor}</span></td></tr>`;
   if(P.infil.design_inhr!=null)h+=`<tr><td>Design ÷${P.infil.fos}</td><td><b>${P.infil.design_inhr} in/hr</b></td></tr>`;
-  if(P.infil.est_inhr==null)h+=`<tr><td colspan="2"><span class="hint warn">Insufficient HYDGRP / septic data</span></td></tr>`;
+  if(P.infil.est_inhr==null)h+=`<tr><td colspan="2"><span class="hint warn">Insufficient HYDGRP / AASHTO / septic data</span></td></tr>`;
   h+=`</table>`;
 
   h+=`<div class="hint" style="margin:8px 0 2px"><b>Subgrade (AASHTO M 57 / M 145)</b></div><table class="kv">`;
@@ -22844,13 +22961,25 @@ async function runPointQuery(lat,lng,opts){
 
   const hydro=await sampleHydro(lat,lng);
   lastHydro=hydro;
+  if(lastProfile&&lastProfile.lat===lat&&lastProfile.lon===lng){
+    applyHydroLimitToInfil(lastProfile, hydro);
+    if(lastHudCtx) lastHudCtx.profile=lastProfile;
+  }
   if(lastHudCtx&&lastHudCtx.lat===lat&&lastHudCtx.lng===lng){
     lastHudCtx.hydro=hydro;
-    if(immersive&&hudTab==='hydro') renderHudDrawer(lastHudCtx);
+    if(immersive){
+      renderHudPanels(lastHudCtx);
+      if(hudTab==='hydro'||hudTab==='estimate') renderHudDrawer(lastHudCtx);
+    }
     const box=$('hydroBox');
     if(box&&!immersive){
       if(hydro.skipped) box.innerHTML=`<div class="hint">Hydro sampling off.</div>`;
       else box.innerHTML=formatHydroHTML(hydro);
+      /* refresh design infil cell if present */
+      if(lastProfile&&lastProfile.infil&&lastProfile.infil.design_inhr!=null){
+        const kv=$('qBody');
+        /* classic summary already rendered — leave hydro box; estimate tab has full note via HUD */
+      }
     }
   }
   if(typeof refreshReportPreview==='function')refreshReportPreview();
@@ -22974,6 +23103,8 @@ function renderHudDrawer(ctx){
     if(P.infil){
       if(P.infil.est_inhr!=null) h+=`<tr><td>Est. infil</td><td>${P.infil.est_inhr} in/hr</td></tr>`;
       if(P.infil.design_inhr!=null) h+=`<tr><td>Design ÷${P.infil.fos||2.5}</td><td><b>${P.infil.design_inhr} in/hr</b></td></tr>`;
+      if(P.infil.aashto) h+=`<tr><td>AASHTO driver</td><td>${esc(P.infil.aashto)}${P.infil.upper20&&P.infil.upper20.good_ft!=null?' · '+P.infil.upper20.good_ft+' ft granular 0–20′':''}</td></tr>`;
+      if(P.infil.dtw_ft!=null) h+=`<tr><td>DTW used</td><td>${P.infil.dtw_ft} ft${P.infil.wt_factor!=null&&P.infil.wt_factor<1?' · cap ×'+P.infil.wt_factor:''}${P.infil.wte_navd!=null?' · WTE ~'+P.infil.wte_navd+' ft NAVD':''}</td></tr>`;
       if(P.infil.note) h+=`<tr><td>Note</td><td>${esc(P.infil.note)}</td></tr>`;
     }
     if(P.subgrade&&P.subgrade.label) h+=`<tr><td>Subgrade</td><td>${esc(P.subgrade.label)}${P.subgrade.detail?' · '+esc(P.subgrade.detail):''}</td></tr>`;
