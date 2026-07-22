@@ -20951,7 +20951,7 @@ table.list td{padding:5px 8px;border-bottom:1px solid rgba(46,58,72,.5);font-fam
 </head>
 <body>
 <div id="hdr">
-  <h1><b>GEO REPORT CENTER</b><span class="badge">v0.21</span></h1>
+  <h1><b>GEO REPORT CENTER</b><span class="badge">v0.22</span></h1>
   <button class="tab on" data-p="map">Map</button>
   <button class="tab" data-p="refs">Reference data</button>
   <button class="tab" data-p="jobs">Jobs</button>
@@ -21792,7 +21792,13 @@ function fsProp(props,cands){
   for(const c of cands){const k=keys.find(k=>k.toLowerCase()===c.toLowerCase());if(k&&props[k]!=null&&String(props[k]).trim())return String(props[k]).trim();}
   return null;
 }
-const INFIL_BANDS={A:[0.30,0.60,'high — typically sands/gravels'],B:[0.15,0.30,'moderate — sandy loams'],C:[0.05,0.15,'slow — silty / finer soils'],D:[0.00,0.05,'very slow — clay / high water table']};
+const INFIL_BANDS={
+  /* Borehole-scale screening (in/hr), calibrated toward DE Coastal Plain field tests — NOT ASTM design. */
+  A:[5,30,'HYDGRP A — sands/gravels (borehole-scale screening)'],
+  B:[1.5,12,'HYDGRP B — sandy loams'],
+  C:[0.3,3,'HYDGRP C — silty / finer'],
+  D:[0.05,0.8,'HYDGRP D — clay / restricted drainage']
+};
 /* DNREC BMP App. 1 (Eff. Feb 2019 / Updated 2019.10.01) §II.A.4:
    FoS 2.5 applies ONLY to Cased Borehole Permeameter and to undersized rings
    treated as equivalent. Preferred full-size single/double-ring (ASTM D5126)
@@ -21842,13 +21848,14 @@ function applyDnrecDesignFos(min, max){
 }
 /* Screening AASHTO → infil bands (in/hr). Granular A-1/A-3 support excellent rates even without DNREC septic. */
 const INFIL_AASHTO_BANDS=[
-  {re:/^A-1-A/, lo:0.40, hi:1.20, note:'A-1-a gravelly — excellent'},
-  {re:/^A-1-B|^A-1$/, lo:0.35, hi:1.00, note:'A-1-b sand/gravel — excellent'},
-  {re:/^A-3/, lo:0.30, hi:0.80, note:'A-3 fine sand — excellent to good'},
-  {re:/^A-2-4|^A-2-5/, lo:0.15, hi:0.40, note:'A-2-4/5 silty/clayey sand — moderate'},
-  {re:/^A-2-6|^A-2-7/, lo:0.05, hi:0.20, note:'A-2-6/7 clayey — slow to moderate'},
-  {re:/^A-4|^A-5/, lo:0.02, hi:0.10, note:'A-4/A-5 silt — slow'},
-  {re:/^A-6|^A-7/, lo:0.00, hi:0.05, note:'A-6/A-7 clay — very slow'}
+  /* Anchored to DE Coastal Plain borehole experience (e.g. SP-SM / A-1-b field ~40 in/hr). Screening only. */
+  {re:/^A-1-A/, lo:15, hi:60, note:'A-1-a gravelly — very high (DE borehole screening)'},
+  {re:/^A-1-B|^A-1$/, lo:12, hi:50, note:'A-1-b sand/gravel — very high (DE borehole screening)'},
+  {re:/^A-3/, lo:10, hi:40, note:'A-3 fine sand — high'},
+  {re:/^A-2-4|^A-2-5/, lo:2, hi:15, note:'A-2-4/5 — moderate to high'},
+  {re:/^A-2-6|^A-2-7/, lo:0.5, hi:5, note:'A-2-6/7 — low to moderate'},
+  {re:/^A-4|^A-5/, lo:0.2, hi:2, note:'A-4/A-5 silt — low'},
+  {re:/^A-6|^A-7/, lo:0.05, hi:0.5, note:'A-6/A-7 clay — very low'}
 ];
 function infilBandForAashto(aashto){
   const g=aashtoBase(aashto)||String(aashto||'').toUpperCase().replace(/\s+/g,'');
@@ -21934,16 +21941,30 @@ function infilFromHydgrp(hydgrp, p200med, aashto, ksatInHr){
     }
     if(/^A-6|^A-7/.test(au)){hi=Math.min(hi,INFIL_BANDS.C[1]);adj.push('AASHTO '+aashto+' finer');}
   }
-  if(ksatInHr!=null&&ksatInHr>0&&letter&&INFIL_BANDS[letter]){
-    /* Pull band toward NRCS surface Ksat (still screening — not field infil) */
+  if(ksatInHr!=null&&ksatInHr>0){
+    /* NRCS surface Ksat — strong prior. Clean DE sands often test 1–3× map Ksat in boreholes. */
     const k=+ksatInHr;
-    const mid=(lo+hi)/2;
-    const blended=mid*0.4+k*0.6;
-    const span=Math.max(hi-lo, k*0.4);
-    lo=Math.max(0, blended-span/2);
-    hi=blended+span/2;
-    adj.push('NRCS Ksat≈'+k+' in/hr (surface)');
-    conf=conf.includes('lab')?'map+lab+nrcs':'map+nrcs';
+    const granular=letter==='A'||(aashto&&/^A-1|^A-3/.test(String(aashto).toUpperCase()));
+    if(letter&&INFIL_BANDS[letter]){
+      if(granular){
+        lo=Math.max(lo, k*0.75);
+        hi=Math.max(hi, k*3); /* room for borehole > map Ksat (e.g. Ksat 13 → hi≥39) */
+        adj.push('NRCS Ksat≈'+k+' in/hr · borehole room ×3');
+      }else{
+        const mid=(lo+hi)/2;
+        const blended=mid*0.35+k*0.65;
+        const span=Math.max(hi-lo, k*0.5);
+        lo=Math.max(0, blended-span/2);
+        hi=blended+span/2;
+        adj.push('NRCS Ksat≈'+k+' in/hr (surface)');
+      }
+      conf=conf.includes('lab')?'map+lab+nrcs':'map+nrcs';
+    }else{
+      lo=Math.max(0, granular?k*0.75:k*0.5);
+      hi=granular?Math.max(k*3, hi||0):k*1.5;
+      note='NRCS Ksat surface'; conf='nrcs_ksat';
+      adj.push('Ksat≈'+k+' in/hr');
+    }
   }
   if(hydgrp&&String(hydgrp).includes('/')){adj.push('dual HYDGRP '+hydgrp); if(conf==='map_only')conf='low';}
   const min=+lo.toFixed(3), max=+hi.toFixed(3);
@@ -22109,7 +22130,7 @@ function formatInfilHTML(E){
   return h;
 }
 
-/* ---------- prediction / site profile engine (v0.21) ---------- */
+/* ---------- prediction / site profile engine (v0.22) ---------- */
 const PROFILE_RADIUS_FT=500; /* lateral — estimate from borings within a few hundred ft */
 const PROFILE_K=16; /* denser clusters → more samples → better estimate */
 function parseDnrecNumber(raw){
@@ -22625,15 +22646,24 @@ function buildSiteProfile(lat, lon, hits, radiusFt){
   const parts=[];
   /* Avoid double-counting when enrich already fell back to AASHTO-only (no HYDGRP/Ksat). */
   const enrichIsAashtoOnly=!!(E.infil&&E.infil.min!=null&&!E.infil.hydgrp&&!(E.infil.ksat_in_hr>0)&&(E.infil.confidence||'').indexOf('aashto')===0);
+  const aashtoMid=aashtoInfil&&aashtoInfil.min!=null?(aashtoInfil.min+aashtoInfil.max)/2:null;
+  const granularAashto=!!(aashtoEst&&/^A-1|^A-3/.test(String(aashtoEst).toUpperCase()));
   if(E.infil&&E.infil.min!=null&&!enrichIsAashtoOnly){
-    parts.push({v:(E.infil.min+E.infil.max)/2, w:1, src:E.infil.hydgrp?'HYDGRP '+E.infil.hydgrp:(E.infil.confidence||'map')});
+    /* Map/Ksat path — solid weight when Ksat present; don't overpower strong AASHTO sand */
+    const mapMid=(E.infil.min+E.infil.max)/2;
+    let w=E.infil.ksat_in_hr!=null?1.1:0.7;
+    if(granularAashto&&aashtoMid!=null&&mapMid<aashtoMid*0.35) w=0.45; /* map too low vs sand class */
+    parts.push({v:mapMid, w, src:E.infil.hydgrp?('HYDGRP '+E.infil.hydgrp+(E.infil.ksat_in_hr!=null?'+Ksat':'')):(E.infil.confidence||'map')});
   }
   if(aashtoInfil&&aashtoInfil.min!=null){
-    const w=(aashtoInfil.confidence==='aashto_column')?1.35:(upperA&&upperA.pct>=55?1.2:1);
-    parts.push({v:(aashtoInfil.min+aashtoInfil.max)/2, w, src:'AASHTO '+(aashtoInfil.aashto||aashtoEst)});
+    const w=(aashtoInfil.confidence==='aashto_column')?1.6:(upperA&&upperA.pct>=55?1.4:1.2);
+    parts.push({v:aashtoMid, w, src:'AASHTO '+(aashtoInfil.aashto||aashtoEst)});
   }
   if(percIdw!=null){
-    parts.push({v:percIdw, w:1.1, src:'septic PercRate IDW (not App.1 ASTM)'});
+    /* Septic PercRate ≠ App.1 infil; light weight, and ignore if it would crush a clear sand site */
+    let w=0.55;
+    if(granularAashto&&aashtoMid!=null&&percIdw<aashtoMid*0.15) w=0.15;
+    parts.push({v:percIdw, w, src:'septic PercRate IDW (not App.1 ASTM)'});
   }
   let infilBlend=null, infilNote='';
   if(parts.length){
