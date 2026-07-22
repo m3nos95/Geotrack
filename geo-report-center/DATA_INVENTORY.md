@@ -350,3 +350,15 @@ Point layers query **nearest within 500 ft** on map click. Polygons use point-in
 ---
 
 *Last verified against FirstMap REST: 2026-07-22*
+
+
+# NRCS property join (v0.15)
+
+Run `python download-nrcs-soil-props.py` (or `download-all-refs.py`) to write:
+
+- `refs/nrcs_de_by_mukey.json` — app lookup (FirstMap `SOILKEY` ↔ `mukey`)
+- `refs/nrcs_de_by_mukey.csv` — spreadsheet
+
+Fields: Ksat (in/hr), AASHTO, USCS, drainage, flood/pond, restrictive depth, engineering ratings (roads / shallow excavations / sand source).
+
+Open project folder so the app loads the JSON. Map click shows **NRCS mapunit properties** and blends Ksat into screening infil.

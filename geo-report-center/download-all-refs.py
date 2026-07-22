@@ -220,6 +220,16 @@ def main() -> int:
     print(f"\nFinished. ~{grand} features written under {refs}")
     print("Open Geo_Report_Center.html → Open project folder → Map tab shows new layers.")
     print("Tip: large point layers (septic borings / wells) query nearest within 500 ft on click.")
+
+    # NRCS property lookup (mukey join) — small JSON, needed for Ksat / AASHTO / USCS screening
+    if not args.core and not args.only:
+        nrcs_script = Path(__file__).resolve().parent / "download-nrcs-soil-props.py"
+        if nrcs_script.exists():
+            print("\n=== nrcs_de_by_mukey (USDA Soil Data Access) ===")
+            import subprocess
+            rc = subprocess.call([sys.executable, str(nrcs_script), "--out", str(refs)])
+            if rc != 0:
+                print("WARNING: NRCS property download failed — soils polygons still work; Ksat/USCS join skipped.")
     return 0
 
 
