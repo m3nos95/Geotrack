@@ -20889,11 +20889,63 @@ table.list td{padding:5px 8px;border-bottom:1px solid rgba(46,58,72,.5);font-fam
 #splash .btnrow{display:flex;justify-content:flex-end;gap:8px}
 .leaflet-container{background:#0d1117}
 .leaflet-tooltip.btip{background:var(--ink);border:1px solid var(--line);color:var(--text);font-family:var(--mono);font-size:11px;border-radius:4px}
+
+/* ===== Site analysis HUD (map-overlaid) ===== */
+#page-map.hud-open #qPanel{width:300px;bottom:auto;max-height:calc(100% - 20px)}
+#page-map.hud-open #qBody{display:none}
+#siteHud{position:absolute;inset:0;z-index:850;pointer-events:none;opacity:0;visibility:hidden;transition:opacity .35s ease,visibility .35s}
+#siteHud.on{opacity:1;visibility:visible}
+#siteHud .hud-vignette{position:absolute;inset:0;background:radial-gradient(ellipse at center,transparent 35%,rgba(8,12,18,.55) 100%);pointer-events:none}
+#siteHud .hud-frame{position:absolute;inset:14px;border:1px solid rgba(232,163,61,.18);border-radius:4px;pointer-events:none}
+#siteHud .hud-frame:before,#siteHud .hud-frame:after{content:'';position:absolute;width:22px;height:22px;border-color:var(--amber);border-style:solid}
+#siteHud .hud-frame:before{top:-1px;left:-1px;border-width:2px 0 0 2px}
+#siteHud .hud-frame:after{bottom:-1px;right:-1px;border-width:0 2px 2px 0}
+#siteHud .hud-corner-tr,#siteHud .hud-corner-bl{position:absolute;width:22px;height:22px;border-color:var(--amber);border-style:solid;pointer-events:none}
+#siteHud .hud-corner-tr{top:13px;right:13px;border-width:2px 2px 0 0}
+#siteHud .hud-corner-bl{bottom:13px;left:13px;border-width:0 0 2px 2px}
+#siteHud .hud-close{pointer-events:auto;position:absolute;top:22px;right:330px;z-index:5;background:rgba(18,24,31,.9);border:1px solid var(--amber);color:var(--amber);font-family:var(--mono);font-size:12px;padding:6px 12px;border-radius:4px;cursor:pointer;letter-spacing:.06em;text-transform:uppercase}
+#siteHud .hud-close:hover{background:rgba(232,163,61,.15)}
+#page-map:not(.hud-open) #siteHud .hud-close{right:22px}
+#siteHud .hud-panel{pointer-events:auto;position:absolute;background:rgba(18,24,31,.88);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);border:1px solid rgba(105,165,214,.28);border-radius:6px;padding:10px 12px;box-shadow:0 8px 32px rgba(0,0,0,.45);max-width:min(340px,32vw);animation:hudIn .45s ease both;overflow:auto;max-height:min(42vh,380px)}
+#siteHud .hud-panel h4{margin:0 0 8px;font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:var(--amber);font-family:var(--mono);display:flex;align-items:center;gap:8px}
+#siteHud .hud-panel h4 .tag{font-size:9px;color:var(--dim);border:1px solid var(--line);padding:1px 5px;border-radius:3px;letter-spacing:.04em}
+#siteHud .hud-tl{top:22px;left:22px;animation-delay:.05s}
+#siteHud .hud-tr{top:22px;right:330px;animation-delay:.12s}
+#siteHud .hud-bl{bottom:72px;left:22px;animation-delay:.18s;max-width:min(420px,40vw)}
+#siteHud .hud-br{bottom:72px;right:330px;animation-delay:.24s;max-width:min(380px,36vw);max-height:min(52vh,460px)}
+#page-map:not(.hud-open) #siteHud .hud-tr,#page-map:not(.hud-open) #siteHud .hud-br{right:22px}
+@keyframes hudIn{from{opacity:0;transform:translateY(10px) scale(.98)}to{opacity:1;transform:none}}
+#siteHud .hud-metric-row{display:flex;flex-wrap:wrap;gap:8px;margin-top:6px}
+#siteHud .hud-chip{flex:1 1 90px;min-width:88px;background:rgba(34,44,56,.9);border:1px solid var(--line);border-radius:5px;padding:8px 9px}
+#siteHud .hud-chip .lbl{font-size:9px;letter-spacing:.1em;text-transform:uppercase;color:var(--dim);font-family:var(--mono)}
+#siteHud .hud-chip .val{font-size:16px;font-weight:600;color:var(--text);margin-top:3px;font-family:var(--mono);line-height:1.15}
+#siteHud .hud-chip .sub{font-size:10px;color:var(--dim);margin-top:2px}
+#siteHud .hud-chip.accent{border-color:rgba(232,163,61,.45)}
+#siteHud .hud-chip.accent .val{color:var(--amber)}
+#siteHud .hud-tabs{pointer-events:auto;position:absolute;left:50%;bottom:18px;transform:translateX(-50%);display:flex;gap:6px;z-index:6;animation:hudIn .4s ease .2s both}
+#siteHud .hud-tab{background:rgba(18,24,31,.92);border:1px solid var(--line);color:var(--dim);font-family:var(--mono);font-size:11px;letter-spacing:.08em;text-transform:uppercase;padding:8px 14px;border-radius:20px;cursor:pointer}
+#siteHud .hud-tab:hover{border-color:var(--blue);color:var(--text)}
+#siteHud .hud-tab.on{border-color:var(--amber);color:var(--amber);background:rgba(232,163,61,.1)}
+#siteHud .hud-drawer{pointer-events:auto;position:absolute;left:50%;bottom:58px;transform:translateX(-50%);width:min(920px,78vw);max-height:38vh;overflow:auto;background:rgba(18,24,31,.94);backdrop-filter:blur(14px);border:1px solid rgba(105,165,214,.35);border-radius:8px;padding:12px 14px;display:none;z-index:5;box-shadow:0 12px 40px rgba(0,0,0,.5)}
+#siteHud .hud-drawer.open{display:block;animation:hudIn .3s ease}
+#siteHud .hud-scan{position:absolute;left:50%;top:50%;width:120px;height:120px;margin:-60px 0 0 -60px;border:1px solid rgba(232,163,61,.35);border-radius:50%;pointer-events:none;animation:hudPulse 2.2s ease-out infinite}
+#siteHud .hud-scan:after{content:'';position:absolute;inset:18px;border:1px dashed rgba(105,165,214,.4);border-radius:50%}
+@keyframes hudPulse{0%{transform:scale(.55);opacity:.9}70%{transform:scale(1.35);opacity:0}100%{transform:scale(1.35);opacity:0}}
+#siteHud .hud-coords{pointer-events:none;position:absolute;left:50%;top:50%;transform:translate(-50%,-78px);font-family:var(--mono);font-size:11px;color:var(--amber);letter-spacing:.04em;text-shadow:0 1px 4px #000;white-space:nowrap}
+#siteHud .mini-kv{width:100%;border-collapse:collapse;font-size:11px}
+#siteHud .mini-kv td{padding:2px 4px;border-bottom:1px solid rgba(46,58,72,.45);vertical-align:top}
+#siteHud .mini-kv td:first-child{color:var(--dim);font-family:var(--mono);white-space:nowrap;width:1%}
+@media (max-width:1100px){
+  #siteHud .hud-panel{max-width:46vw}
+  #siteHud .hud-tr,#siteHud .hud-br,#siteHud .hud-close{right:16px}
+  #page-map.hud-open #qPanel{display:none}
+}
+
 </style>
 </head>
 <body>
 <div id="hdr">
-  <h1><b>GEO REPORT CENTER</b><span class="badge">v0.15</span></h1>
+  <h1><b>GEO REPORT CENTER</b><span class="badge">v0.16</span></h1>
   <button class="tab on" data-p="map">Map</button>
   <button class="tab" data-p="refs">Reference data</button>
   <button class="tab" data-p="jobs">Jobs</button>
@@ -20906,11 +20958,32 @@ table.list td{padding:5px 8px;border-bottom:1px solid rgba(46,58,72,.5);font-fam
 <main>
   <!-- ============ MAP ============ -->
   <div class="page on" id="page-map">
-    <div id="map"></div>
+        <div id="map"></div>
+    <div id="siteHud" aria-live="polite">
+      <div class="hud-vignette"></div>
+      <div class="hud-frame"></div>
+      <div class="hud-corner-tr"></div>
+      <div class="hud-corner-bl"></div>
+      <div class="hud-scan"></div>
+      <div class="hud-coords" id="hudCoords"></div>
+      <button type="button" class="hud-close" id="hudClose" title="Close site analysis">Close ✕</button>
+      <div class="hud-panel hud-tl" id="hudTL"></div>
+      <div class="hud-panel hud-tr" id="hudTR"></div>
+      <div class="hud-panel hud-bl" id="hudBL"></div>
+      <div class="hud-panel hud-br" id="hudBR"></div>
+      <div class="hud-drawer" id="hudDrawer"></div>
+      <div class="hud-tabs" id="hudTabs">
+        <button type="button" class="hud-tab on" data-hud="overview">Overview</button>
+        <button type="button" class="hud-tab" data-hud="column">Column</button>
+        <button type="button" class="hud-tab" data-hud="layers">Layers</button>
+        <button type="button" class="hud-tab" data-hud="borings">Borings</button>
+        <button type="button" class="hud-tab" data-hud="hydro">Hydro</button>
+      </div>
+    </div>
     <div id="qPanel">
       <div class="sec">
         <h3>Point query</h3>
-        <div class="hint">Click the map for a <b>site profile estimate</b> (infil design rate, subgrade, borrow, AASHTO + USCS location estimates), plus geology, DNREC layers, and nearby borings. Point layers return nearest within 500 ft. Toggle layers below.</div>
+        <div class="hint">Click the map to <b>zoom in</b> and open the <b>site analysis HUD</b> over the map (infil, subgrade, borrow, AASHTO/USCS column to 200 ft, NRCS, hydro). Point layers: nearest within 500 ft.</div>
       </div>
       <div class="sec">
         <h3>Search radius <span id="radLbl" style="color:var(--amber);font-family:var(--mono)">1500 ft</span></h3>
@@ -21902,7 +21975,7 @@ function formatInfilHTML(E){
   return h;
 }
 
-/* ---------- prediction / site profile engine (v0.15) ---------- */
+/* ---------- prediction / site profile engine (v0.16) ---------- */
 const PROFILE_RADIUS_FT=2000;
 const PROFILE_K=8;
 function parseDnrecNumber(raw){
@@ -22209,7 +22282,7 @@ function collectClassVotes(neighbors){
   };
 }
 /* Thickness-weighted classification column 0→maxDepth ft from neighbor borings (IDW). */
-const CLASS_COL_DEPTH_FT=50;
+const CLASS_COL_DEPTH_FT=200;
 function sampleIntervalThickness(samples, maxDepth, eob){
   const ss=(samples||[]).filter(s=>s.d!=null&&+s.d<=maxDepth).sort((a,b)=>a.d-b.d);
   const out=[];
@@ -22328,7 +22401,7 @@ function svgStickProfile(layers, maxDepth, title){
   if(!layers||!layers.length||!layers.some(L=>L.label)){
     return `<div class="hint warn" style="max-width:90px">No stick data</div>`;
   }
-  const H=200, COL_X=28, COL_W=34, TOP=8, BOT=H-8;
+  const H=Math.min(320, Math.max(180, Math.round(maxDepth*1.1))), COL_X=28, COL_W=34, TOP=8, BOT=H-8;
   const plotH=BOT-TOP;
   const yAt=ft=>TOP+(ft/maxDepth)*plotH;
   let rects='';
@@ -22350,7 +22423,8 @@ function svgStickProfile(layers, maxDepth, title){
   });
   /* column outline + depth ticks */
   let ticks=`<rect x="${COL_X}" y="${TOP}" width="${COL_W}" height="${plotH}" fill="none" stroke="#c7ccd1" stroke-width="1.2"/>`;
-  for(let ft=0;ft<=maxDepth;ft+=10){
+  const tickStep=maxDepth>100?25:10;
+  for(let ft=0;ft<=maxDepth;ft+=tickStep){
     const y=yAt(ft);
     ticks+=`<line x1="${COL_X+COL_W}" y1="${y}" x2="${COL_X+COL_W+5}" y2="${y}" stroke="#c7ccd1" stroke-width="1"/>`;
     ticks+=`<text x="${COL_X+COL_W+8}" y="${y+3}" fill="#c7ccd1" font-size="9">${ft}</text>`;
@@ -22697,9 +22771,9 @@ function toggleBoringLab(el){
   const wrap=el.nextElementSibling;
   if(!wrap||!wrap.classList.contains('labWrap'))return;
   const open=wrap.style.display!=='none';
-  // close others
-  document.querySelectorAll('#qBody .labWrap').forEach(w=>{w.style.display='none';});
-  document.querySelectorAll('#qBody .nearrow.open').forEach(x=>x.classList.remove('open'));
+  // close others (sidebar or HUD drawer)
+  document.querySelectorAll('#qBody .labWrap, #hudDrawer .labWrap').forEach(w=>{w.style.display='none';});
+  document.querySelectorAll('#qBody .nearrow.open, #hudDrawer .nearrow.open').forEach(x=>x.classList.remove('open'));
   if(open){wrap.style.display='none';return;}
   el.classList.add('open');
   wrap.style.display='block';
@@ -22712,82 +22786,201 @@ async function runPointQuery(lat,lng,opts){
   const radFt=+$('radius').value;
   if(qMarker)map.removeLayer(qMarker);
   if(qCircle)map.removeLayer(qCircle);
-  qMarker=L.circleMarker([lat,lng],{radius:6,color:'#fff',weight:2,fillColor:'#e06c6c',fillOpacity:1}).addTo(map);
-  qCircle=L.circle([lat,lng],{radius:radFt*0.3048,color:'#e8a33d',weight:1,fill:false,dashArray:'4 4'}).addTo(map);
+  qMarker=L.circleMarker([lat,lng],{radius:7,color:'#fff',weight:2,fillColor:'#e8a33d',fillOpacity:1}).addTo(map);
+  qCircle=L.circle([lat,lng],{radius:radFt*0.3048,color:'#e8a33d',weight:1.2,fillColor:'#e8a33d',fillOpacity:0.04,dashArray:'4 4'}).addTo(map);
+  try{
+    const z=Math.max(map.getZoom(), 16);
+    map.flyTo([lat,lng], z, {duration:0.85, easeLinearity:0.25});
+  }catch(_){ map.setView([lat,lng], Math.max(map.getZoom(),16)); }
+
   const hits=queryRefs(lat,lng);
   const near=[];
   db.borings.forEach(r=>{ if(r.lat==null)return; const d=distFt(lat,lng,r.lat,r.lon); if(d<=radFt)near.push({t:'boring',r,d}); });
   db.cores.forEach(p=>{ const d=distFt(lat,lng,p.lat,p.lon); if(d<=radFt)near.push({t:'core',p,d}); });
   near.sort((a,b)=>a.d-b.d);
-  let h=`<h3>At ${lat.toFixed(6)}, ${lng.toFixed(6)}</h3>`;
-  const onCount=refs.filter(R=>R.on!==false).length;
-  if(refs.length===0) h+=`<div class="hint warn">No reference layers loaded yet — see Reference data tab.</div>`;
-  else h+=`<div class="hint">${onCount}/${refs.length} layers enabled for this query.</div>`;
-  const grouped={};
-  hits.forEach(H=>{
-    const kind=H.kind||(refs.find(r=>r.name===H.layer)||{}).kind||'layer';
-    (grouped[kind]=grouped[kind]||[]).push(H);
-  });
-  if(grouped.geology_piedmont&&grouped.geology_surficial){
-    h+=`<div class="hint good" style="margin-top:6px">Piedmont + Surficial both hit — report Section 2 will prefer Piedmont bedrock.</div>`;
-  }
-  if(refs.length&&!hits.length) h+=`<div class="hint">No reference polygons at this point (or all matching layers are disabled).</div>`;
-  KIND_ORDER.forEach(kind=>{
-    const list=grouped[kind]; if(!list||!list.length)return;
-    h+=`<h3 style="margin-top:12px">${KIND_LABEL[kind]||kind}</h3>`;
-    list.forEach(H=>{
-      h+=`<div class="hint" style="margin:4px 0 2px">${esc(H.layer)}</div><table class="kv">`;
-      const P=H.props;
-      const keys=[];
-      PROP_PREFER.forEach(k=>{const hit=Object.keys(P).find(x=>x.toLowerCase()===k.toLowerCase()); if(hit&&P[hit]!=null&&String(P[hit]).trim()!=='')keys.push(hit);});
-      Object.keys(P).forEach(k=>{ if(!keys.includes(k)&&P[k]!=null&&String(P[k]).trim()!==''&&keys.length<16)keys.push(k);});
-      keys.slice(0,16).forEach(k=>h+=`<tr><td>${esc(k)}</td><td>${esc(P[k])}</td></tr>`);
-      if(!keys.length)h+=`<tr><td colspan="2"><span class="hint">No attribute fields</span></td></tr>`;
-      h+='</table>';
-    });
-  });
-  h+=`<h3 style="margin-top:12px">Historical data within ${radFt} ft — ${near.length} found</h3>`;
-  if(!near.length)h+=`<div class="hint">Nothing in the database within radius.</div>`;
-  else h+=`<div class="hint" style="margin-bottom:4px">Click a boring row to open NM / LL / PI / P10 / P200 / N.</div>`;
-  let focusKey=opts.focusJob&&opts.focusB?`${opts.focusJob}||${opts.focusB}`:null;
-  near.slice(0,60).forEach(n=>{
-    if(n.t==='boring'){
-      const key=`${n.r.job}||${n.r.b}`;
-      const open=focusKey===key;
-      h+=`<div class="nearrow${open?' open':''}" onclick="toggleBoringLab(this)"><span>◉ ${esc(n.r.b)} <span class="d">${esc(n.r.job)}</span></span><span class="d">${Math.round(n.d)} ft · ${n.r.s.length} samp</span></div>`;
-      h+=`<div class="labWrap" style="display:${open?'block':'none'}">${formatBoringLabHTML(n.r,n.d)}</div>`;
-    } else {
-      h+=`<div class="nearrow"><span>▪ ${esc(n.p.name)} <span class="d">core</span></span><span class="d">${Math.round(n.d)} ft</span></div>`;
-    }
-  });
-  if(opts.focusJob&&opts.focusB&&!near.some(n=>n.t==='boring'&&n.r.job===opts.focusJob&&n.r.b===opts.focusB)){
-    const r=findBoring(opts.focusJob,opts.focusB);
-    if(r){
-      h+=`<h3 style="margin-top:12px">Selected boring</h3>`;
-      h+=`<div class="nearrow open" onclick="toggleBoringLab(this)"><span>◉ ${esc(r.b)} <span class="d">${esc(r.job)}</span></span><span class="d">${(r.s||[]).length} samp</span></div>`;
-      h+=`<div class="labWrap" style="display:block">${formatBoringLabHTML(r,null)}</div>`;
-    }
-  }
-  // screening infiltration + site profile engine from soils / DNREC / neighbor borings
+
   const nearLab=nearestBoringLab(lat,lng,PROFILE_RADIUS_FT);
   const E=enrichFromHits(hits, nearLab.samples);
   if(nearLab.boring) E.lab._from=`${nearLab.boring.b} @ ${Math.round(nearLab.dist)} ft`;
   const profile=buildSiteProfile(lat,lng,hits);
   lastProfile=profile;
-  h+=formatProfileHTML(profile);
-  h+=formatInfilHTML(E);
-  if(nearLab.boring) h+=`<div class="hint">Nearest lab boring ${esc(nearLab.boring.b)} (${esc(nearLab.boring.job)}) · ${Math.round(nearLab.dist)} ft</div>`;
 
-  $('qBody').innerHTML=h+`<div id="hydroBox"><div class="hint" style="margin-top:12px">Sampling DGS water-table grids…</div></div>`;
+  const ctx={lat,lng,radFt,hits,near,nearLab,E,profile,hydro:null,opts};
+  lastHudCtx=ctx;
+  openSiteHud(ctx);
+
+  const onCount=refs.filter(R=>R.on!==false).length;
+  $('qBody').innerHTML=`<div class="hint good">Site analysis HUD is open on the map.</div>
+    <div class="hint">${lat.toFixed(5)}, ${lng.toFixed(5)} · ${onCount}/${refs.length} layers · ${near.length} boring(s) in radius</div>
+    <div class="hint">Bottom tabs: Column / Layers / Borings / Hydro. Press Esc or <b>Close ✕</b> to dismiss.</div>`;
+
   const hydro=await sampleHydro(lat,lng);
   lastHydro=hydro;
-  const box=$('hydroBox');
-  if(box){
-    if(hydro.skipped) box.innerHTML=`<h3 style="margin-top:12px">DGS water-table grids</h3><div class="hint">Online sampling is off.</div>`;
-    else box.innerHTML=formatHydroHTML(hydro);
+  if(lastHudCtx&&lastHudCtx.lat===lat&&lastHudCtx.lng===lng){
+    lastHudCtx.hydro=hydro;
+    if(hudTab==='hydro') renderHudDrawer(lastHudCtx);
   }
   if(typeof refreshReportPreview==='function')refreshReportPreview();
 }
+
+let lastHudCtx=null;
+let hudTab='overview';
+
+function closeSiteHud(){
+  const hud=$('siteHud');
+  if(hud) hud.classList.remove('on');
+  const page=document.getElementById('page-map');
+  if(page) page.classList.remove('hud-open');
+  const dr=$('hudDrawer'); if(dr) dr.classList.remove('open');
+  hudTab='overview';
+  document.querySelectorAll('#hudTabs .hud-tab').forEach(b=>b.classList.toggle('on', b.dataset.hud==='overview'));
+}
+function openSiteHud(ctx){
+  const page=document.getElementById('page-map');
+  if(page) page.classList.add('hud-open');
+  const hud=$('siteHud');
+  if(!hud)return;
+  hud.classList.add('on');
+  const coords=$('hudCoords');
+  if(coords) coords.textContent=`TARGET  ${ctx.lat.toFixed(5)}°N  ${Math.abs(ctx.lng).toFixed(5)}°W`;
+  renderHudPanels(ctx);
+  renderHudDrawer(ctx);
+  const dr=$('hudDrawer');
+  if(dr){ if(hudTab==='overview') dr.classList.remove('open'); else dr.classList.add('open'); }
+}
+function hudChip(lbl, val, sub, accent){
+  return `<div class="hud-chip${accent?' accent':''}"><div class="lbl">${esc(lbl)}</div><div class="val">${val!=null&&val!==''?val:'—'}</div>${sub?`<div class="sub">${sub}</div>`:''}</div>`;
+}
+function renderHudPanels(ctx){
+  const P=ctx.profile||{}, E=ctx.E||{}, N=E.nrcs||null;
+  const aLoc=P.classes&&(P.classes.aashto_loc||P.classes.aashto);
+  const uLoc=P.classes&&(P.classes.uscs_loc||P.classes.uscs);
+  const aVal=aLoc?(aLoc.value||(typeof aLoc==='string'?aLoc:null)):null;
+  const uVal=uLoc?(uLoc.value||(typeof uLoc==='string'?uLoc:null)):null;
+
+  let tl=`<h4>Site context <span class="tag">map units</span></h4><table class="mini-kv">`;
+  if(E.geoName) tl+=`<tr><td>Geology</td><td>${esc(E.geoName)}</td></tr>`;
+  if(E.soilName) tl+=`<tr><td>Soils</td><td>${esc(E.soilName)}${E.soilSym?' · '+esc(E.soilSym):''}</td></tr>`;
+  if(E.hydgrp) tl+=`<tr><td>HYDGRP</td><td>${esc(E.hydgrp)}${E.drain?' · '+esc(E.drain):''}</td></tr>`;
+  if(E.rech) tl+=`<tr><td>Recharge</td><td>${esc(E.rech)}</td></tr>`;
+  else if(E.wrpa&&E.wrpa.length) tl+=`<tr><td>WRPA</td><td>${esc(E.wrpa.join('; '))}</td></tr>`;
+  if(N){
+    if(N.aashto||N.uscs) tl+=`<tr><td>NRCS class</td><td>${N.aashto?esc(N.aashto):'—'}${N.uscs?' · '+esc(N.uscs):''}</td></tr>`;
+    if(N.ksat_in_hr!=null) tl+=`<tr><td>NRCS Ksat</td><td>${N.ksat_in_hr} in/hr</td></tr>`;
+    if(N.resdept_ft!=null) tl+=`<tr><td>Restrictive</td><td>~${N.resdept_ft} ft${N.reskind?' '+esc(N.reskind):''}</td></tr>`;
+  }
+  if(E.gmz) tl+=`<tr><td>GMZ</td><td>${esc(E.gmz)}</td></tr>`;
+  if(E.flood) tl+=`<tr><td>Flood</td><td>${esc(E.flood)}</td></tr>`;
+  if(E.wetland) tl+=`<tr><td>Wetland</td><td>${esc(E.wetland)}</td></tr>`;
+  tl+=`</table>`;
+  if(!E.geoName&&!E.soilName) tl+=`<div class="hint warn">Load soils / geology refs for mapunit context.</div>`;
+  $('hudTL').innerHTML=tl;
+
+  let tr=`<h4>Estimate <span class="tag">screening</span></h4><div class="hud-metric-row">`;
+  tr+=hudChip('Design infil', P.infil&&P.infil.design_inhr!=null?(P.infil.design_inhr+' in/hr'):null, '÷ FoS 2.5', true);
+  tr+=hudChip('Subgrade', P.subgrade&&P.subgrade.label, P.subgrade&&P.subgrade.detail?esc(P.subgrade.detail):'M 57 / M 145');
+  tr+=hudChip('Borrow', P.borrow&&P.borrow.top_ft!=null?(P.borrow.top_ft+' ft'):null, P.borrow&&P.borrow.thickness_ft!=null?('~'+P.borrow.thickness_ft+' ft thick'):'depth to good');
+  tr+=hudChip('AASHTO', aVal?esc(aVal):null, aLoc&&aLoc.from_nrcs?'NRCS prior':(aLoc&&aLoc.confidence_pct!=null?(aLoc.confidence_pct+'% IDW'):'≤15 ft'));
+  tr+=hudChip('USCS', uVal?esc(uVal):null, uLoc&&uLoc.from_nrcs?'NRCS prior':(uLoc&&uLoc.confidence_pct!=null?(uLoc.confidence_pct+'% IDW'):'≤15 ft'), true);
+  tr+=`</div>`;
+  tr+=`<div class="hint" style="margin-top:8px">${P.n_neighbors||0} neighbor boring(s)`+(P.nearest_ft!=null?` · nearest ${P.nearest_ft} ft`:'')+` · column 0–${CLASS_COL_DEPTH_FT} ft</div>`;
+  $('hudTR').innerHTML=tr;
+
+  let bl=`<h4>Location class <span class="tag">≤15 ft IDW</span></h4>`;
+  bl+=`<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">`;
+  bl+=`<div style="border:1px solid var(--line);border-radius:5px;padding:8px"><div class="hint">AASHTO</div><div style="font-size:20px;font-family:var(--mono);color:var(--amber)"><b>${aVal?esc(aVal):'—'}</b></div></div>`;
+  bl+=`<div style="border:1px solid var(--line);border-radius:5px;padding:8px"><div class="hint">USCS</div><div style="font-size:20px;font-family:var(--mono);color:var(--blue)"><b>${uVal?esc(uVal):'—'}</b></div></div>`;
+  bl+=`</div>`;
+  if(P.class_column){
+    const Ca=P.class_column.aashto||[], Cu=P.class_column.uscs||[];
+    if(Ca.length) bl+=`<div class="hint" style="margin-top:8px"><b>0–${CLASS_COL_DEPTH_FT} ft AASHTO:</b> ${Ca.slice(0,5).map(s=>esc(s.label)+' '+s.pct+'%').join(' · ')}</div>`;
+    if(Cu.length) bl+=`<div class="hint"><b>0–${CLASS_COL_DEPTH_FT} ft USCS:</b> ${Cu.slice(0,5).map(s=>esc(s.label)+' '+s.pct+'%').join(' · ')}</div>`;
+  }
+  $('hudBL').innerHTML=bl;
+
+  let br=`<h4>Column stick <span class="tag">0–${CLASS_COL_DEPTH_FT} ft</span></h4>`;
+  br+=`<div class="hint" style="margin-bottom:6px">Depth-ordered IDW · screening only</div>`;
+  if(P.class_column){
+    br+=`<div style="display:flex;gap:10px;flex-wrap:wrap;align-items:flex-start">`;
+    br+=`<div><div class="hint"><b>AASHTO</b></div>${svgStickProfile(P.class_column.aashto_stick,P.class_column.depth_ft,'AASHTO')}</div>`;
+    br+=`<div><div class="hint"><b>USCS</b></div>${svgStickProfile(P.class_column.uscs_stick,P.class_column.depth_ft,'USCS')}</div>`;
+    br+=`</div>`;
+  } else br+=`<div class="hint warn">No column data</div>`;
+  $('hudBR').innerHTML=br;
+}
+function renderHudDrawer(ctx){
+  const dr=$('hudDrawer'); if(!dr)return;
+  const P=ctx.profile||{}, E=ctx.E||{}, tab=hudTab;
+  if(tab==='overview'){ dr.classList.remove('open'); dr.innerHTML=''; return; }
+  dr.classList.add('open');
+  let h='';
+  if(tab==='column'){
+    h+=`<h4 style="margin:0 0 8px;color:var(--amber);font-size:11px;letter-spacing:.1em;text-transform:uppercase">Soil column 0–${CLASS_COL_DEPTH_FT} ft</h4>`;
+    if(P.class_column){
+      h+=`<div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">`;
+      h+=`<div><div class="hint"><b>AASHTO</b></div>${svgPieChart(P.class_column.aashto,'AASHTO',P.class_column.aashto_stick,P.class_column.depth_ft)}</div>`;
+      h+=`<div><div class="hint"><b>USCS</b></div>${svgPieChart(P.class_column.uscs,'USCS',P.class_column.uscs_stick,P.class_column.depth_ft)}</div>`;
+      h+=`</div>`;
+    } else h+=`<div class="hint warn">No column estimate</div>`;
+    h+=formatProfileHTML(P);
+  } else if(tab==='layers'){
+    h+=`<h4 style="margin:0 0 8px;color:var(--amber);font-size:11px;letter-spacing:.1em;text-transform:uppercase">Reference hits</h4>`;
+    const grouped={};
+    (ctx.hits||[]).forEach(H=>{ const kind=H.kind||'layer'; (grouped[kind]=grouped[kind]||[]).push(H); });
+    if(!(ctx.hits||[]).length) h+=`<div class="hint">No reference polygons at this point.</div>`;
+    KIND_ORDER.forEach(kind=>{
+      const list=grouped[kind]; if(!list||!list.length)return;
+      h+=`<div style="margin-top:10px"><b>${esc(KIND_LABEL[kind]||kind)}</b></div>`;
+      list.forEach(H=>{
+        h+=`<div class="hint">${esc(H.layer)}</div><table class="mini-kv">`;
+        const props=H.props||{}, keys=[];
+        PROP_PREFER.forEach(k=>{const hit=Object.keys(props).find(x=>x.toLowerCase()===k.toLowerCase()); if(hit&&props[hit]!=null&&String(props[hit]).trim()!=='')keys.push(hit);});
+        Object.keys(props).forEach(k=>{ if(!keys.includes(k)&&props[k]!=null&&String(props[k]).trim()!==''&&keys.length<12)keys.push(k);});
+        keys.slice(0,12).forEach(k=>h+=`<tr><td>${esc(k)}</td><td>${esc(props[k])}</td></tr>`);
+        h+=`</table>`;
+      });
+    });
+    h+=formatInfilHTML(E);
+  } else if(tab==='borings'){
+    h+=`<h4 style="margin:0 0 8px;color:var(--amber);font-size:11px;letter-spacing:.1em;text-transform:uppercase">Borings within ${ctx.radFt} ft — ${(ctx.near||[]).length}</h4>`;
+    if(!(ctx.near||[]).length) h+=`<div class="hint">Nothing in radius.</div>`;
+    const focusKey=ctx.opts&&ctx.opts.focusJob&&ctx.opts.focusB?`${ctx.opts.focusJob}||${ctx.opts.focusB}`:null;
+    (ctx.near||[]).slice(0,40).forEach(n=>{
+      if(n.t==='boring'){
+        const key=`${n.r.job}||${n.r.b}`;
+        const open=focusKey===key;
+        h+=`<div class="nearrow${open?' open':''}" onclick="toggleBoringLab(this)"><span>◉ ${esc(n.r.b)} <span class="d">${esc(n.r.job)}</span></span><span class="d">${Math.round(n.d)} ft · ${(n.r.s||[]).length} samp</span></div>`;
+        h+=`<div class="labWrap" style="display:${open?'block':'none'}">${formatBoringLabHTML(n.r,n.d)}</div>`;
+      } else {
+        h+=`<div class="nearrow"><span>▪ ${esc(n.p.name)} <span class="d">core</span></span><span class="d">${Math.round(n.d)} ft</span></div>`;
+      }
+    });
+  } else if(tab==='hydro'){
+    h+=`<h4 style="margin:0 0 8px;color:var(--amber);font-size:11px;letter-spacing:.1em;text-transform:uppercase">Hydro / climate</h4>`;
+    if(!ctx.hydro) h+=`<div class="hint">Sampling DGS water-table grids…</div>`;
+    else if(ctx.hydro.skipped) h+=`<div class="hint">Online sampling is off.</div>`;
+    else h+=formatHydroHTML(ctx.hydro);
+  }
+  dr.innerHTML=h;
+}
+
+(function wireHud(){
+  const close=$('hudClose');
+  if(close) close.onclick=()=>closeSiteHud();
+  document.querySelectorAll('#hudTabs .hud-tab').forEach(btn=>{
+    btn.onclick=()=>{
+      hudTab=btn.dataset.hud||'overview';
+      document.querySelectorAll('#hudTabs .hud-tab').forEach(b=>b.classList.toggle('on', b===btn));
+      if(lastHudCtx) renderHudDrawer(lastHudCtx);
+      const dr=$('hudDrawer');
+      if(dr){ if(hudTab==='overview') dr.classList.remove('open'); else dr.classList.add('open'); }
+    };
+  });
+  document.addEventListener('keydown',e=>{
+    if(e.key==='Escape'&&$('siteHud')&&$('siteHud').classList.contains('on')) closeSiteHud();
+  });
+})();
+
 map.on('click',e=>runPointQuery(e.latlng.lat,e.latlng.lng));
 $('radius').oninput=function(){$('radLbl').textContent=this.value+' ft'; if(lastQuery)runPointQuery(lastQuery.lat,lastQuery.lng);};
 $('hydroOnline')&&($('hydroOnline').onchange=function(){ if(lastQuery)runPointQuery(lastQuery.lat,lastQuery.lng); if(typeof refreshReportPreview==='function')refreshReportPreview(); });
@@ -23292,11 +23485,11 @@ async function refreshReportPreview(){
   else if(Pref.classes.uscs) html+=`<div><b>USCS (near-surface):</b> ${esc(Pref.classes.uscs.value)}</div>`;
   if(Pref.class_column&&Pref.class_column.aashto&&Pref.class_column.aashto.length){
     const top=Pref.class_column.aashto.slice(0,4).map(s=>`${s.label} ${s.pct}%`).join(' · ');
-    html+=`<div><b>0–50 ft AASHTO mix:</b> ${esc(top)}</div>`;
+    html+=`<div><b>0–${CLASS_COL_DEPTH_FT} ft AASHTO mix:</b> ${esc(top)}</div>`;
   }
   if(Pref.class_column&&Pref.class_column.uscs&&Pref.class_column.uscs.length){
     const top=Pref.class_column.uscs.slice(0,4).map(s=>`${s.label} ${s.pct}%`).join(' · ');
-    html+=`<div><b>0–50 ft USCS mix:</b> ${esc(top)}</div>`;
+    html+=`<div><b>0–${CLASS_COL_DEPTH_FT} ft USCS mix:</b> ${esc(top)}</div>`;
   }
   box.innerHTML=html;
   const hydro=await sampleHydro(cLat,cLon);
