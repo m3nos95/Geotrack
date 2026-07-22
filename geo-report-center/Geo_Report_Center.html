@@ -20893,7 +20893,7 @@ table.list td{padding:5px 8px;border-bottom:1px solid rgba(46,58,72,.5);font-fam
 </head>
 <body>
 <div id="hdr">
-  <h1><b>GEO REPORT CENTER</b><span class="badge">v0.13</span></h1>
+  <h1><b>GEO REPORT CENTER</b><span class="badge">v0.14</span></h1>
   <button class="tab on" data-p="map">Map</button>
   <button class="tab" data-p="refs">Reference data</button>
   <button class="tab" data-p="jobs">Jobs</button>
@@ -21835,7 +21835,7 @@ function formatInfilHTML(E){
   return h;
 }
 
-/* ---------- prediction / site profile engine (v0.13) ---------- */
+/* ---------- prediction / site profile engine (v0.14) ---------- */
 const PROFILE_RADIUS_FT=2000;
 const PROFILE_K=8;
 function parseDnrecNumber(raw){
@@ -22200,8 +22200,43 @@ function estimateClassColumn(neighbors, maxDepth){
     aashto:fixPct(aashto),
     uscs:fixPct(uscs),
     aashto_covered:aSum>0,
-    uscs_covered:uSum>0
+    uscs_covered:uSum>0,
+    aashto_stick:estimateClassStick(neighbors,'aashto',maxDepth),
+    uscs_stick:estimateClassStick(neighbors,'uscs',maxDepth)
   };
+}
+/* Depth-ordered stick: 1-ft bins, IDW vote per bin, merge runs → approximate layer tops/bots. */
+function estimateClassStick(neighbors, kind, maxDepth){
+  maxDepth=maxDepth==null?CLASS_COL_DEPTH_FT:maxDepth;
+  const bin=1;
+  const bins=[];
+  for(let z=0;z<maxDepth;z+=bin){
+    const votes={};
+    (neighbors||[]).forEach(({r,d})=>{
+      const w=d<1?1e6:1/Math.pow(Math.max(d,1),2);
+      const intervals=sampleIntervalThickness(r.s||[], maxDepth, r.eob);
+      intervals.forEach(({s,top,bot})=>{
+        if(bot<=z||top>=z+bin)return;
+        let lab=null;
+        if(kind==='aashto') lab=normalizeClassKey('aashto', s.aashto);
+        else lab=normalizeClassKey('uscs', uscsFromSample(s));
+        if(!lab)return;
+        const overlap=Math.min(bot,z+bin)-Math.max(top,z);
+        if(overlap<=0)return;
+        votes[lab]=(votes[lab]||0)+w*overlap;
+      });
+    });
+    let best=null, bestW=0;
+    Object.keys(votes).forEach(k=>{if(votes[k]>bestW){bestW=votes[k];best=k;}});
+    bins.push({z,z2:z+bin,label:best});
+  }
+  const layers=[];
+  bins.forEach(b=>{
+    const last=layers.length?layers[layers.length-1]:null;
+    if(last&&last.label===b.label){ last.bot=b.z2; last.th=Math.round((last.bot-last.top)*10)/10; }
+    else layers.push({label:b.label, top:b.z, bot:b.z2, th:Math.round((b.z2-b.z)*10)/10});
+  });
+  return layers.filter(L=>L.bot>L.top);
 }
 const PIE_COLORS=['#e8a33d','#5b9bd5','#70ad47','#ed7d31','#9e7bb0','#c45911','#00b0f0','#a9d08e','#ffc000','#ff6b6b','#4ecdc4','#c7ccd1','#7f8c8d','#e74c3c','#3498db','#2ecc71'];
 function pieColor(i,label){
@@ -22221,7 +22256,45 @@ function pieColor(i,label){
   if(/^PT/.test(label))return '#7f8c8d';
   return PIE_COLORS[i%PIE_COLORS.length];
 }
-function svgPieChart(slices, title){
+function svgStickProfile(layers, maxDepth, title){
+  maxDepth=maxDepth==null?CLASS_COL_DEPTH_FT:maxDepth;
+  if(!layers||!layers.length||!layers.some(L=>L.label)){
+    return `<div class="hint warn" style="max-width:90px">No stick data</div>`;
+  }
+  const H=200, COL_X=28, COL_W=34, TOP=8, BOT=H-8;
+  const plotH=BOT-TOP;
+  const yAt=ft=>TOP+(ft/maxDepth)*plotH;
+  let rects='';
+  /* color index by first occurrence order for unknowns */
+  const order=[];
+  layers.forEach(L=>{ if(L.label&&!order.includes(L.label))order.push(L.label); });
+  layers.forEach(L=>{
+    const y1=yAt(L.top), y2=yAt(L.bot);
+    const h=Math.max(0.8, y2-y1);
+    const col=L.label?pieColor(order.indexOf(L.label), L.label):'#2a2f36';
+    const tip=L.label?`${L.label}: ${L.top}–${L.bot} ft (${L.th} ft)`:`No data: ${L.top}–${L.bot} ft`;
+    rects+=`<rect x="${COL_X}" y="${y1}" width="${COL_W}" height="${h}" fill="${col}" stroke="#1a1e24" stroke-width="0.5"><title>${esc(tip)}</title></rect>`;
+    if(L.label&&h>=14){
+      const fs=h>=22?9:7;
+      rects+=`<text x="${COL_X+COL_W/2}" y="${y1+h/2+3}" text-anchor="middle" fill="#111" font-size="${fs}" font-weight="600">${esc(L.label)}</text>`;
+    }else if(L.label&&h>=8){
+      rects+=`<text x="${COL_X+COL_W/2}" y="${y1+h/2+2.5}" text-anchor="middle" fill="#111" font-size="6">${esc(L.label.length>6?L.label.slice(0,5)+'…':L.label)}</text>`;
+    }
+  });
+  /* column outline + depth ticks */
+  let ticks=`<rect x="${COL_X}" y="${TOP}" width="${COL_W}" height="${plotH}" fill="none" stroke="#c7ccd1" stroke-width="1.2"/>`;
+  for(let ft=0;ft<=maxDepth;ft+=10){
+    const y=yAt(ft);
+    ticks+=`<line x1="${COL_X+COL_W}" y1="${y}" x2="${COL_X+COL_W+5}" y2="${y}" stroke="#c7ccd1" stroke-width="1"/>`;
+    ticks+=`<text x="${COL_X+COL_W+8}" y="${y+3}" fill="#c7ccd1" font-size="9">${ft}</text>`;
+  }
+  ticks+=`<text x="${COL_X+COL_W/2}" y="${H-1}" text-anchor="middle" fill="#8b929a" font-size="8">ft</text>`;
+  return `<div style="text-align:center">
+    <div class="hint" style="margin-bottom:2px">Stick 0–${maxDepth}</div>
+    <svg width="100" height="${H}" viewBox="0 0 100 ${H}" aria-label="${esc(title)} stick profile">${rects}${ticks}</svg>
+  </div>`;
+}
+function svgPieChart(slices, title, stickLayers, maxDepth){
   if(!slices||!slices.length)return `<div class="hint warn">No ${esc(title)} data in 0–${CLASS_COL_DEPTH_FT} ft neighbors.</div>`;
   const R=54, CX=60, CY=60;
   let ang=-Math.PI/2, paths='';
@@ -22241,12 +22314,15 @@ function svgPieChart(slices, title){
   });
   let legend='<table class="kv" style="margin-top:4px">';
   slices.forEach((s,i)=>{
-    legend+=`<tr><td><span style="display:inline-block;width:10px;height:10px;background:${pieColor(i,s.label)};margin-right:6px"></span>${esc(s.label)}</td><td><b>${s.pct}%</b></td></tr>`;
+    const thFt=maxDepth!=null?Math.round((s.pct/100)*maxDepth*10)/10:null;
+    legend+=`<tr><td><span style="display:inline-block;width:10px;height:10px;background:${pieColor(i,s.label)};margin-right:6px"></span>${esc(s.label)}</td><td><b>${s.pct}%</b>${thFt!=null?` <span class="hint">≈${thFt} ft</span>`:''}</td></tr>`;
   });
   legend+='</table>';
+  const stick=svgStickProfile(stickLayers, maxDepth!=null?maxDepth:CLASS_COL_DEPTH_FT, title);
   return `<div style="display:flex;gap:12px;align-items:flex-start;flex-wrap:wrap;margin-top:6px">
     <svg width="120" height="120" viewBox="0 0 120 120" aria-label="${esc(title)} pie">${paths}</svg>
     <div style="flex:1;min-width:140px">${legend}</div>
+    <div style="flex:0 0 auto">${stick}</div>
   </div>`;
 }
 function septicPercNeighbors(hits){
@@ -22403,10 +22479,10 @@ function formatProfileHTML(P){
   if(P.class_column){
     const C=P.class_column;
     h+=`<div class="hint" style="margin:10px 0 2px"><b>Estimated soil column 0–${C.depth_ft} ft</b></div>`;
-    h+=`<div class="hint">Thickness-weighted · IDW from ${C.n_borings} neighbor boring(s) · likely % of each classification</div>`;
+    h+=`<div class="hint">Thickness-weighted mix (pie) · IDW from ${C.n_borings} neighbor boring(s) · stick = approx depth order</div>`;
     h+=`<div style="margin-top:6px">`;
-    h+=`<div><div class="hint"><b>AASHTO</b></div>${svgPieChart(C.aashto,'AASHTO')}</div>`;
-    h+=`<div style="margin-top:10px"><div class="hint"><b>USCS</b></div>${svgPieChart(C.uscs,'USCS')}</div>`;
+    h+=`<div><div class="hint"><b>AASHTO</b></div>${svgPieChart(C.aashto,'AASHTO',C.aashto_stick,C.depth_ft)}</div>`;
+    h+=`<div style="margin-top:10px"><div class="hint"><b>USCS</b></div>${svgPieChart(C.uscs,'USCS',C.uscs_stick,C.depth_ft)}</div>`;
     h+=`</div>`;
   }
 
