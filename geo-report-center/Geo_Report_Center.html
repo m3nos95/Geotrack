@@ -20893,7 +20893,7 @@ table.list td{padding:5px 8px;border-bottom:1px solid rgba(46,58,72,.5);font-fam
 </head>
 <body>
 <div id="hdr">
-  <h1><b>GEO REPORT CENTER</b><span class="badge">v0.12</span></h1>
+  <h1><b>GEO REPORT CENTER</b><span class="badge">v0.13</span></h1>
   <button class="tab on" data-p="map">Map</button>
   <button class="tab" data-p="refs">Reference data</button>
   <button class="tab" data-p="jobs">Jobs</button>
@@ -20910,7 +20910,7 @@ table.list td{padding:5px 8px;border-bottom:1px solid rgba(46,58,72,.5);font-fam
     <div id="qPanel">
       <div class="sec">
         <h3>Point query</h3>
-        <div class="hint">Click the map for a <b>site profile estimate</b> (infil design rate, subgrade, borrow, AASHTO/USCS), plus geology, DNREC layers, and nearby borings. Point layers return nearest within 500 ft. Toggle layers below.</div>
+        <div class="hint">Click the map for a <b>site profile estimate</b> (infil design rate, subgrade, borrow, AASHTO + USCS location estimates), plus geology, DNREC layers, and nearby borings. Point layers return nearest within 500 ft. Toggle layers below.</div>
       </div>
       <div class="sec">
         <h3>Search radius <span id="radLbl" style="color:var(--amber);font-family:var(--mono)">1500 ft</span></h3>
@@ -21712,22 +21712,25 @@ function hydgrpLetter(raw){
 }
 function labStatsFromSamples(samples){
   const ss=samples||[];
-  const p200s=[], nms=[], aash=[], nUpper=[], nAll=[];
+  const p200s=[], nms=[], aash=[], uscs=[], nUpper=[], nAll=[];
   ss.forEach(s=>{
     if(s.p200!=null&&!isNaN(+s.p200))p200s.push(+s.p200);
     if(s.nm!=null&&!isNaN(+s.nm))nms.push(+s.nm);
     if(s.aashto)aash.push(String(s.aashto));
+    const u=uscsFromSample(s); if(u)uscs.push(u);
     if(s.n!=null){nAll.push(+s.n); if(s.d!=null&&+s.d<=5)nUpper.push(+s.n);}
   });
   const bases=aash.map(a=>{const m=String(a).toUpperCase().replace(/\s+/g,'').match(/A-\d(?:-\d)?/);return m?m[0]:a.toUpperCase();});
   let dom=null; if(bases.length){const c={};bases.forEach(b=>c[b]=(c[b]||0)+1);dom=Object.keys(c).sort((a,b)=>c[b]-c[a])[0];}
+  let uscsDom=null; if(uscs.length){const c={};uscs.forEach(b=>c[b]=(c[b]||0)+1);uscsDom=Object.keys(c).sort((a,b)=>c[b]-c[a])[0];}
   p200s.sort((a,b)=>a-b);
   return{
     n_samples:ss.length,
     p200_median:p200s.length?Math.round(p200s[Math.floor(p200s.length/2)]*10)/10:null,
     nm_min:nms.length?Math.min(...nms):null, nm_max:nms.length?Math.max(...nms):null,
     n_min_upper5:nUpper.length?Math.min(...nUpper):null,
-    aashto_dom:dom
+    aashto_dom:dom,
+    uscs_dom:uscsDom
   };
 }
 function applyDnrecDesignFos(min, max){
@@ -21807,7 +21810,7 @@ function formatInfilHTML(E){
   if(E.geoName) h+=`<div class="hint">Geology: ${esc(E.geoName)}${E.geoKind?' ('+esc(E.geoKind)+')':''}</div>`;
   if(E.rech) h+=`<div class="hint">Recharge class: ${esc(E.rech)}</div>`;
   else if(E.wrpa&&E.wrpa.length) h+=`<div class="hint">WRPA: ${esc(E.wrpa.join('; '))}</div>`;
-  if(E.lab&&E.lab.p200_median!=null) h+=`<div class="hint">Nearest/selected lab: P200 med ${E.lab.p200_median}%${E.lab.aashto_dom?' · '+esc(E.lab.aashto_dom):''}</div>`;
+  if(E.lab&&E.lab.p200_median!=null) h+=`<div class="hint">Nearest/selected lab: P200 med ${E.lab.p200_median}%${E.lab.aashto_dom?' · '+esc(E.lab.aashto_dom):''}${E.lab.uscs_dom?' · '+esc(E.lab.uscs_dom):''}</div>`;
   if(E.infil.min!=null){
     h+=`<div style="margin-top:6px"><b>Estimated ${E.infil.min}–${E.infil.max} in/hr</b> <span class="hint">(${esc(E.infil.confidence)})</span><div class="hint">${esc(E.infil.note)}</div></div>`;
     h+=`<div style="margin-top:8px"><b>Design rate (÷ ${E.infil.fos} FoS)</b> <span class="hint">DNREC App. 1 borehole / undersized-ring FoS</span></div>`;
@@ -21832,7 +21835,7 @@ function formatInfilHTML(E){
   return h;
 }
 
-/* ---------- prediction / site profile engine (v0.12) ---------- */
+/* ---------- prediction / site profile engine (v0.13) ---------- */
 const PROFILE_RADIUS_FT=2000;
 const PROFILE_K=8;
 function parseDnrecNumber(raw){
@@ -21880,6 +21883,8 @@ function isGoodBorrowSample(s){
   if(!s)return false;
   const a=aashtoBase(s.aashto);
   if(a&&(/^A-1/.test(a)||a==='A-3'))return true;
+  const u=uscsFromSample(s);
+  if(u&&/^(GW|GP|SW|SP)(?:-SM)?$/.test(u))return true;
   if(s.p200!=null&&+s.p200<=12)return true;
   const desc=String(s.desc||'');
   if(/organic|peat|muck|fat clay|soft clay/i.test(desc))return false;
@@ -21982,9 +21987,143 @@ function subgradeFromSamples(ss){
     n_samples:ss.length
   };
 }
-function uscsFromSample(s){
-  if(s&&s.uscs)return String(s.uscs).toUpperCase().trim();
+/* ASTM D2487 screening estimate when GEO USCS field is blank — uses P200 / LL / PI / desc / AASHTO. */
+function parseAtterberg(v){
+  if(v==null||v==='')return {np:false, val:null};
+  const s=String(v).trim().toUpperCase();
+  if(s==='NP'||s==='NV'||s==='—'||s==='-')return {np:true, val:null};
+  const n=parseFloat(s.replace(/[^0-9.\-]/g,''));
+  return Number.isFinite(n)?{np:false, val:n}:{np:false, val:null};
+}
+function uscsFromAashto(a){
+  const g=aashtoBase(a);
+  if(!g)return null;
+  if(/^A-1-A/.test(g))return 'GW';
+  if(/^A-1-B/.test(g)||g==='A-1')return 'SW';
+  if(g==='A-3')return 'SP';
+  if(/^A-2-4/.test(g)||/^A-2-5/.test(g))return 'SM';
+  if(/^A-2-6/.test(g)||/^A-2-7/.test(g))return 'SC';
+  if(/^A-4/.test(g)||/^A-5/.test(g))return 'ML';
+  if(/^A-6/.test(g))return 'CL';
+  if(/^A-7-5/.test(g))return 'MH';
+  if(/^A-7-6/.test(g)||/^A-7/.test(g))return 'CH';
   return null;
+}
+function uscsFromDescription(desc){
+  const d=String(desc||'').toLowerCase();
+  if(!d)return null;
+  if(/\b(peat|muck|organic)\b/.test(d))return /fat|highly|high plastic/.test(d)?'OH':'OL';
+  if(/\bfat clay\b|\bhighly plastic clay\b/.test(d))return 'CH';
+  if((/\blean clay\b|\bclay\b/.test(d))&&!(/\bsandy clay\b|\bclayey sand\b/.test(d)))return 'CL';
+  if(/\belastic silt\b|\bfat silt\b/.test(d))return 'MH';
+  if(/\bsandy silt\b|\bsilt with sand\b/.test(d)||(/\bsilt\b/.test(d)&&/\bsand/.test(d)))return 'ML';
+  if(/\bsilt\b/.test(d)&&!/\bsilty sand\b/.test(d))return 'ML';
+  if(/\bclayey sand\b/.test(d)||(/\bclayey\b/.test(d)&&/\bsand\b/.test(d)))return 'SC';
+  if(/\bsilty sand\b|\bsand with silt\b/.test(d)||(/\bsilty\b/.test(d)&&/\bsand\b/.test(d)))return 'SM';
+  if(/\bclayey gravel\b/.test(d)||(/\bclayey\b/.test(d)&&/\bgravel\b/.test(d)))return 'GC';
+  if(/\bsilty gravel\b|\bgravel with silt\b/.test(d)||(/\bsilty\b/.test(d)&&/\bgravel\b/.test(d)))return 'GM';
+  if(/\bpoorly graded sand\b|\bfine sand\b|\bmedium sand\b|\bcoarse sand\b|\bsand\b/.test(d)){
+    if(/\bsilt/.test(d))return 'SM';
+    if(/\bclay/.test(d))return 'SC';
+    return 'SP';
+  }
+  if(/\bgravel\b/.test(d)){
+    if(/\bsilt/.test(d))return 'GM';
+    if(/\bclay/.test(d))return 'GC';
+    return 'GP';
+  }
+  return null;
+}
+function estimateUscsFromLab(s){
+  if(!s)return null;
+  const p200=s.p200!=null&&!isNaN(+s.p200)?+s.p200:null;
+  const llA=parseAtterberg(s.ll);
+  const piA=parseAtterberg(s.pi);
+  const ll=llA.val, pi=piA.val;
+  const nonplastic=llA.np||piA.np||(pi!=null&&pi<=0);
+  const aboveAline=(ll!=null&&pi!=null)?(pi>=0.73*(ll-20)):null;
+  const gravelly=/\bgravel\b/i.test(String(s.desc||''))||(s.p10!=null&&!isNaN(+s.p10)&&+s.p10<50&&p200!=null&&p200<50);
+
+  if(p200!=null){
+    if(p200>=50){
+      if(nonplastic||(ll==null&&pi==null))return 'ML';
+      if(ll==null||pi==null)return aboveAline===true?'CL':'ML';
+      if(ll<50){
+        if(pi<4)return 'ML';
+        if(pi>=4&&pi<=7)return aboveAline?'CL-ML':'ML';
+        return aboveAline?'CL':'ML';
+      }
+      return aboveAline?'CH':'MH';
+    }
+    /* coarse-grained */
+    const prefix=gravelly?'G':'S';
+    if(p200<5){
+      return prefix==='G'?'GP':'SP';
+    }
+    if(p200<=12){
+      const fineSym=(nonplastic||pi==null||pi<4||aboveAline===false)?'M':'C';
+      return prefix+('P-'+prefix+fineSym); /* SP-SM / SP-SC / GP-GM / GP-GC */
+    }
+    /* 12% < fines < 50% */
+    if(nonplastic||pi==null||pi<4||aboveAline===false)return prefix+'M';
+    return prefix+'C';
+  }
+  const fromA=uscsFromAashto(s.aashto);
+  if(fromA)return fromA;
+  return uscsFromDescription(s.desc);
+}
+function uscsFromSample(s, opts){
+  opts=opts||{};
+  if(s&&s.uscs){
+    const u=String(s.uscs).toUpperCase().replace(/\s+/g,' ').trim();
+    return u||null;
+  }
+  if(opts.storedOnly)return null;
+  return estimateUscsFromLab(s);
+}
+function uscsSource(s){
+  if(s&&s.uscs&&String(s.uscs).trim())return 'stored';
+  if(estimateUscsFromLab(s))return 'estimated';
+  return null;
+}
+/* IDW location estimate: majority USCS/AASHTO per boring (≤maxDepth), then distance-weighted across neighbors. */
+function estimateLocationClass(neighbors, kind, maxDepth){
+  maxDepth=maxDepth==null?15:maxDepth;
+  const weights={}, sources={stored:0, estimated:0};
+  let support=0, sampleN=0;
+  (neighbors||[]).forEach(({r,d})=>{
+    const labels=[];
+    (r.s||[]).forEach(s=>{
+      if(s.d==null||+s.d>maxDepth)return;
+      let lab=null;
+      if(kind==='aashto'){
+        lab=aashtoBase(s.aashto)||(s.aashto?String(s.aashto).toUpperCase().trim():null);
+        if(lab){labels.push(lab); sampleN++; sources.stored++;}
+      }else{
+        const src=uscsSource(s);
+        lab=uscsFromSample(s);
+        if(lab){labels.push(normalizeClassKey('uscs', lab)); sampleN++; if(src)sources[src]=(sources[src]||0)+1;}
+      }
+    });
+    if(!labels.length)return;
+    const maj=majorityVote(labels);
+    if(!maj)return;
+    support++;
+    const w=d<1?1e6:1/Math.pow(Math.max(d,1),2);
+    weights[maj.value]=(weights[maj.value]||0)+w;
+  });
+  const keys=Object.keys(weights);
+  if(!keys.length)return null;
+  keys.sort((a,b)=>weights[b]-weights[a]||a.localeCompare(b));
+  const value=keys[0];
+  const wSum=keys.reduce((s,k)=>s+weights[k],0);
+  const conf=wSum>0?Math.round(100*weights[value]/wSum):0;
+  const mix=keys.slice(0,4).map(k=>({label:k, pct:Math.round(100*weights[k]/wSum)}));
+  return {
+    value, support, sample_n:sampleN, confidence_pct:conf, mix,
+    sources, depth_ft:maxDepth,
+    estimated_share:sources.estimated?Math.round(100*sources.estimated/(sources.stored+sources.estimated||1)):0
+  };
 }
 function collectClassVotes(neighbors){
   const aash=[], uscs=[];
@@ -21992,10 +22131,15 @@ function collectClassVotes(neighbors){
     (r.s||[]).forEach(s=>{
       if(s.d!=null&&s.d>15)return; /* prefer near-surface for site class */
       if(s.aashto)aash.push(aashtoBase(s.aashto)||s.aashto);
-      const u=uscsFromSample(s); if(u)uscs.push(u);
+      const u=uscsFromSample(s); if(u)uscs.push(normalizeClassKey('uscs', u));
     });
   });
-  return {aashto:majorityVote(aash), uscs:majorityVote(uscs)};
+  return {
+    aashto:majorityVote(aash),
+    uscs:majorityVote(uscs),
+    aashto_loc:estimateLocationClass(neighbors,'aashto',15),
+    uscs_loc:estimateLocationClass(neighbors,'uscs',15)
+  };
 }
 /* Thickness-weighted classification column 0→maxDepth ft from neighbor borings (IDW). */
 const CLASS_COL_DEPTH_FT=50;
@@ -22227,9 +22371,33 @@ function formatProfileHTML(P){
   h+=`<div class="hint warn" style="margin-bottom:6px">Screening only — IDW / majority from ≤${PROFILE_K} borings within ${PROFILE_RADIUS_FT} ft + map/DNREC layers. Not sealed design values.</div>`;
   h+=`<div class="hint">${P.n_neighbors} neighbor boring(s)`+(P.nearest_ft!=null?` · nearest ${P.nearest_ft} ft (${esc(P.nearest_boring.b)} / ${esc(P.nearest_boring.job)})`:' · none in radius')+`</div>`;
 
-  h+=`<div class="hint" style="margin:8px 0 2px"><b>Classification (near-surface)</b></div><table class="kv">`;
-  h+=`<tr><td>AASHTO</td><td>${P.classes.aashto?esc(P.classes.aashto.value)+` <span class="hint">(${P.classes.aashto.count}/${P.classes.aashto.n})</span>`:'—'}</td></tr>`;
-  h+=`<tr><td>USCS</td><td>${P.classes.uscs?esc(P.classes.uscs.value)+` <span class="hint">(${P.classes.uscs.count}/${P.classes.uscs.n})</span>`:'—'}</td></tr>`;
+  h+=`<div class="hint" style="margin:8px 0 2px"><b>Location classification estimate</b> <span class="hint">(≤15 ft · IDW across neighbor borings)</span></div>`;
+  h+=`<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:4px">`;
+  function classCard(title, loc, maj){
+    let c=`<div style="border:1px solid var(--line);border-radius:6px;padding:8px 10px">`;
+    c+=`<div class="hint"><b>${esc(title)}</b></div>`;
+    if(loc&&loc.value){
+      c+=`<div style="font-size:18px;margin:4px 0"><b>${esc(loc.value)}</b></div>`;
+      c+=`<div class="hint">${loc.confidence_pct}% of IDW weight · ${loc.support} boring(s) · ${loc.sample_n} sample(s)</div>`;
+      if(loc.mix&&loc.mix.length>1){
+        c+=`<div class="hint" style="margin-top:4px">${loc.mix.slice(0,3).map(m=>esc(m.label)+' '+m.pct+'%').join(' · ')}</div>`;
+      }
+      if(title==='USCS'&&loc.estimated_share>0){
+        c+=`<div class="hint warn" style="margin-top:4px">${loc.estimated_share}% of samples estimated (no GEO USCS field) via P200/LL/PI/AASHTO/desc</div>`;
+      }
+    }else if(maj){
+      c+=`<div style="font-size:18px;margin:4px 0"><b>${esc(maj.value)}</b></div>`;
+      c+=`<div class="hint">majority ${maj.count}/${maj.n} samples</div>`;
+    }else{
+      c+=`<div class="hint warn" style="margin-top:6px">No ${esc(title)} in neighbor borings</div>`;
+    }
+    c+=`</div>`;
+    return c;
+  }
+  h+=classCard('AASHTO', P.classes.aashto_loc, P.classes.aashto);
+  h+=classCard('USCS', P.classes.uscs_loc, P.classes.uscs);
+  h+=`</div>`;
+  h+=`<table class="kv" style="margin-top:8px">`;
   h+=`<tr><td>USDA / HYDGRP</td><td>${P.enrich.hydgrp?esc(P.enrich.hydgrp)+(P.enrich.soilName?' · '+esc(P.enrich.soilName):''):'—'}</td></tr></table>`;
 
   if(P.class_column){
@@ -22323,7 +22491,7 @@ function formatBoringLabHTML(r, distFt){
   if(outside) h+=`<div class="hint warn">Coordinates fall outside Delaware — likely bad data.</div>`;
   if(!ns.length){h+=`<div class="hint">No samples in database for this boring.</div>`;return h;}
   h+=`<table class="lab"><thead><tr>
-    <th>#</th><th>D</th><th>N</th><th>NM</th><th>LL</th><th>PI</th><th>P10</th><th>P200</th><th>AASHTO</th><th>Desc</th>
+    <th>#</th><th>D</th><th>N</th><th>NM</th><th>LL</th><th>PI</th><th>P10</th><th>P200</th><th>AASHTO</th><th>USCS</th><th>Desc</th>
   </tr></thead><tbody>`;
   ns.forEach(s=>{
     const kind=s.kind||'';
@@ -22331,6 +22499,9 @@ function formatBoringLabHTML(r, distFt){
     const num=s.num!=null?s.num:'';
     const blowTxt=(s.blows&&s.blows.some(x=>x!=null))?('Blows '+s.blows.map(x=>x==null?'':x).join('-')):'';
     const tip=[blowTxt,s.desc].filter(Boolean).join(' · ').replace(/"/g,"'");
+    const uscsStored=s.uscs&&String(s.uscs).trim()?String(s.uscs).trim():null;
+    const uscsEst=!uscsStored?uscsFromSample(s):null;
+    const uscsCell=uscsStored?labCell(uscsStored):(uscsEst?`<span title="Estimated from lab / desc">${esc(uscsEst)}*</span>`:'—');
     h+=`<tr title="${esc(tip)}">
       <td>${labCell(num)}${kindLbl?`<span class="kindtag">${kindLbl}</span>`:''}</td>
       <td>${labCell(s.d)}</td>
@@ -22341,6 +22512,7 @@ function formatBoringLabHTML(r, distFt){
       <td>${labCell(s.p10)}</td>
       <td>${labCell(s.p200)}</td>
       <td>${labCell(s.aashto)}</td>
+      <td>${uscsCell}</td>
       <td class="desc">${labCell(s.desc)}</td>
     </tr>`;
   });
@@ -22547,7 +22719,7 @@ $('buildFeatureStore')&&($('buildFeatureStore').onclick=async ()=>{
   if(!confirm('Build feature-store.csv for '+pts.length+' mapped borings?\n\nUses loaded refs (geology/soils/recharge). May take a while. For fastest build, use build-feature-store.bat.'))return;
   toast('Building feature store… 0/'+pts.length, 60000);
   const rows=[];
-  const cols=['job','boring','lat','lon','eob','geology_kind','geology','recharge','wrpa','soil_name','soil_hydgrp','soil_drainage','p200_median','aashto_dom','n_min_upper5','infil_min_in_hr','infil_max_in_hr','infil_design_min_in_hr','infil_design_max_in_hr','infil_design_mid_in_hr','infil_fos','infil_confidence','infil_note','septic_perc','septic_dist_ft','gmz','wellhead','wetland','flood','watershed'];
+  const cols=['job','boring','lat','lon','eob','geology_kind','geology','recharge','wrpa','soil_name','soil_hydgrp','soil_drainage','p200_median','aashto_dom','uscs_dom','n_min_upper5','infil_min_in_hr','infil_max_in_hr','infil_design_min_in_hr','infil_design_max_in_hr','infil_design_mid_in_hr','infil_fos','infil_confidence','infil_note','septic_perc','septic_dist_ft','gmz','wellhead','wetland','flood','watershed'];
   let i=0;
   function csvEsc(v){if(v==null)return ''; const s=String(v); return /[",\n]/.test(s)?'"'+s.replace(/"/g,'""')+'"':s;}
   async function step(){
@@ -22560,7 +22732,7 @@ $('buildFeatureStore')&&($('buildFeatureStore').onclick=async ()=>{
         job:r.job,boring:r.b,lat:r.lat,lon:r.lon,eob:r.eob,
         geology_kind:E.geoKind,geology:E.geoName,recharge:E.rech,wrpa:(E.wrpa||[]).join('; '),
         soil_name:E.soilName,soil_hydgrp:E.hydgrp,soil_drainage:E.drain,
-        p200_median:E.lab.p200_median,aashto_dom:E.lab.aashto_dom,n_min_upper5:E.lab.n_min_upper5,
+        p200_median:E.lab.p200_median,aashto_dom:E.lab.aashto_dom,uscs_dom:E.lab.uscs_dom,n_min_upper5:E.lab.n_min_upper5,
         infil_min_in_hr:E.infil.min,infil_max_in_hr:E.infil.max,
         infil_design_min_in_hr:E.infil.design_min,infil_design_max_in_hr:E.infil.design_max,infil_design_mid_in_hr:E.infil.design_mid,
         infil_fos:E.infil.fos,infil_confidence:E.infil.confidence,infil_note:E.infil.note,
@@ -22924,7 +23096,10 @@ async function refreshReportPreview(){
   }
   if(Pref.subgrade.label) html+=`<div><b>Subgrade (M 57/M 145):</b> ${esc(Pref.subgrade.label)}${Pref.subgrade.detail?' · '+esc(Pref.subgrade.detail):''}${Pref.subgrade.gi_idw!=null?' · GI≈'+Pref.subgrade.gi_idw:''}</div>`;
   if(Pref.borrow.top_ft!=null) html+=`<div><b>Borrow:</b> ~${Pref.borrow.top_ft} ft`+(Pref.borrow.thickness_ft!=null?` · ~${Pref.borrow.thickness_ft} ft thick`:'')+`</div>`;
-  if(Pref.classes.aashto) html+=`<div><b>AASHTO (near-surface):</b> ${esc(Pref.classes.aashto.value)}</div>`;
+  if(Pref.classes.aashto_loc&&Pref.classes.aashto_loc.value) html+=`<div><b>AASHTO (near-surface):</b> ${esc(Pref.classes.aashto_loc.value)} <span class="hint">(${Pref.classes.aashto_loc.confidence_pct}% IDW · ${Pref.classes.aashto_loc.support} borings)</span></div>`;
+  else if(Pref.classes.aashto) html+=`<div><b>AASHTO (near-surface):</b> ${esc(Pref.classes.aashto.value)}</div>`;
+  if(Pref.classes.uscs_loc&&Pref.classes.uscs_loc.value) html+=`<div><b>USCS (near-surface):</b> ${esc(Pref.classes.uscs_loc.value)} <span class="hint">(${Pref.classes.uscs_loc.confidence_pct}% IDW · ${Pref.classes.uscs_loc.support} borings)</span></div>`;
+  else if(Pref.classes.uscs) html+=`<div><b>USCS (near-surface):</b> ${esc(Pref.classes.uscs.value)}</div>`;
   if(Pref.class_column&&Pref.class_column.aashto&&Pref.class_column.aashto.length){
     const top=Pref.class_column.aashto.slice(0,4).map(s=>`${s.label} ${s.pct}%`).join(' · ');
     html+=`<div><b>0–50 ft AASHTO mix:</b> ${esc(top)}</div>`;
@@ -23318,6 +23493,7 @@ async function buildDnrecSoilDocx(R){
     if(labAll.nm_min!=null) t+=`natural moisture ${labAll.nm_min}–${labAll.nm_max}%; `;
     if(labAll.p200_median!=null) t+=`P200 median ${labAll.p200_median}%; `;
     if(labAll.aashto_dom) t+=`dominant AASHTO ${labAll.aashto_dom}. `;
+    if(labAll.uscs_dom) t+=`dominant USCS ${labAll.uscs_dom}. `;
     t+='Attach full lab reports for submittal.';
     body.push(P(t));
   } else {
