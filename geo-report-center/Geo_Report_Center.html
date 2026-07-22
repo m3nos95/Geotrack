@@ -20893,7 +20893,7 @@ table.list td{padding:5px 8px;border-bottom:1px solid rgba(46,58,72,.5);font-fam
 </head>
 <body>
 <div id="hdr">
-  <h1><b>GEO REPORT CENTER</b><span class="badge">v0.11</span></h1>
+  <h1><b>GEO REPORT CENTER</b><span class="badge">v0.12</span></h1>
   <button class="tab on" data-p="map">Map</button>
   <button class="tab" data-p="refs">Reference data</button>
   <button class="tab" data-p="jobs">Jobs</button>
@@ -20910,7 +20910,7 @@ table.list td{padding:5px 8px;border-bottom:1px solid rgba(46,58,72,.5);font-fam
     <div id="qPanel">
       <div class="sec">
         <h3>Point query</h3>
-        <div class="hint">Click the map for geology, recharge / WRPA, soils, DNREC constraints, wetlands/flood, and nearby borings. Click a boring row (or map marker) to open lab tables. Point layers (septic borings, wells) return nearest within 500 ft. Toggle layers below.</div>
+        <div class="hint">Click the map for a <b>site profile estimate</b> (infil design rate, subgrade, borrow, AASHTO/USCS), plus geology, DNREC layers, and nearby borings. Point layers return nearest within 500 ft. Toggle layers below.</div>
       </div>
       <div class="sec">
         <h3>Search radius <span id="radLbl" style="color:var(--amber);font-family:var(--mono)">1500 ft</span></h3>
@@ -21102,6 +21102,7 @@ const HYDRO_SERVICES={
 const CLIMATE_FORECAST='https://api.open-meteo.com/v1/forecast';
 const CLIMATE_ARCHIVE='https://archive-api.open-meteo.com/v1/archive';
 let lastHydro=null;
+let lastProfile=null;
 const _climateMem=new Map(); /* session cache: rounded lat/lon + month → climate result */
 const $=id=>document.getElementById(id);
 function toast(m, ms){const t=$('toast');t.textContent=m;t.style.display='block';clearTimeout(t._h);t._h=setTimeout(()=>t.style.display='none', ms||4000);}
@@ -21830,6 +21831,249 @@ function formatInfilHTML(E){
   }
   return h;
 }
+
+/* ---------- prediction / site profile engine (v0.12) ---------- */
+const PROFILE_RADIUS_FT=2000;
+const PROFILE_K=8;
+function parseDnrecNumber(raw){
+  if(raw==null||raw==='')return null;
+  if(typeof raw==='number'&&Number.isFinite(raw))return raw;
+  const m=String(raw).replace(/,/g,'').match(/-?\d+(?:\.\d+)?/);
+  return m?+m[0]:null;
+}
+/* DNREC septic PercRate is typically minutes per inch — convert to approx in/hr for screening. */
+function percMinPerInToInHr(mpi){
+  if(mpi==null||!(mpi>0))return null;
+  return Math.round((60/mpi)*1000)/1000;
+}
+function neighborBorings(lat, lon, maxFt, k){
+  maxFt=maxFt||PROFILE_RADIUS_FT; k=k||PROFILE_K;
+  const list=[];
+  (db.borings||[]).forEach(r=>{
+    if(r.lat==null||r.lon==null)return;
+    const d=distFt(lat,lon,r.lat,r.lon);
+    if(d<=maxFt)list.push({r,d});
+  });
+  list.sort((a,b)=>a.d-b.d);
+  return list.slice(0,k);
+}
+function idwMean(pairs, power){
+  /* pairs: [{v,d}, ...] — d in ft; if d~0 return that v */
+  power=power==null?2:power;
+  const ok=(pairs||[]).filter(p=>p&&p.v!=null&&Number.isFinite(+p.v)&&p.d!=null);
+  if(!ok.length)return null;
+  const zero=ok.find(p=>p.d<1);
+  if(zero)return +zero.v;
+  let sw=0, sv=0;
+  ok.forEach(p=>{const w=1/Math.pow(Math.max(p.d,1),power); sw+=w; sv+=w*(+p.v);});
+  return sw>0?sv/sw:null;
+}
+function majorityVote(items){
+  const c={};
+  (items||[]).forEach(x=>{if(x==null||x==='')return; const k=String(x); c[k]=(c[k]||0)+1;});
+  const keys=Object.keys(c);
+  if(!keys.length)return null;
+  keys.sort((a,b)=>c[b]-c[a]||a.localeCompare(b));
+  return {value:keys[0], count:c[keys[0]], n:keys.reduce((s,k)=>s+c[k],0), tally:c};
+}
+function isGoodBorrowSample(s){
+  if(!s)return false;
+  const a=aashtoBase(s.aashto);
+  if(a&&(/^A-1/.test(a)||a==='A-3'))return true;
+  if(s.p200!=null&&+s.p200<=12)return true;
+  const desc=String(s.desc||'');
+  if(/organic|peat|muck|fat clay|soft clay/i.test(desc))return false;
+  if(/\b(sand|gravel|granular|borrow)\b/i.test(desc)&&!/\b(clayey sand|silty sand with clay)\b/i.test(desc))return true;
+  return false;
+}
+function borrowDepthInBoring(r){
+  const ss=(r.s||[]).filter(s=>s.d!=null).sort((a,b)=>a.d-b.d);
+  if(!ss.length)return null;
+  let first=null, last=null;
+  for(const s of ss){
+    if(isGoodBorrowSample(s)){
+      if(first==null)first=s.d;
+      last=s.d;
+    }else if(first!=null){
+      break; /* end of first continuous good run */
+    }
+  }
+  if(first==null)return {has:false, top:null, bot:null, thickness:null};
+  const bot=(last!=null?last+2:first+2);
+  return {has:true, top:first, bot, thickness:Math.max(0, bot-first)};
+}
+function subgradeFromBoring(r){
+  if(typeof analyzeBoring!=='function')return null;
+  const an=analyzeBoring(r);
+  if(!an||!an.upper)return null;
+  const u=an.upper;
+  const score={ 'very poor':1, 'poor':2, 'medium':3 }[u.cond]||null;
+  return {cond:u.cond, type:u.type, minN:u.minN, score, aashto:u.govern&&u.govern.aashto};
+}
+function uscsFromSample(s){
+  if(s&&s.uscs)return String(s.uscs).toUpperCase().trim();
+  return null;
+}
+function collectClassVotes(neighbors){
+  const aash=[], uscs=[], usda=[];
+  neighbors.forEach(({r})=>{
+    (r.s||[]).forEach(s=>{
+      if(s.d!=null&&s.d>15)return; /* prefer near-surface for site class */
+      if(s.aashto)aash.push(aashtoBase(s.aashto)||s.aashto);
+      const u=uscsFromSample(s); if(u)uscs.push(u);
+    });
+  });
+  return {aashto:majorityVote(aash), uscs:majorityVote(uscs)};
+}
+function septicPercNeighbors(hits){
+  const out=[];
+  (hits||[]).forEach(H=>{
+    if(H.kind!=='septic_boring')return;
+    const mpi=parseDnrecNumber(fsProp(H.props,['PercRate','PERCRATE']));
+    if(mpi==null)return;
+    const d=H.dist!=null?H.dist:(H.props&&H.props._dist_ft!=null?+H.props._dist_ft:null);
+    if(d==null)return;
+    const inhr=percMinPerInToInHr(mpi);
+    const lz=parseDnrecNumber(fsProp(H.props,['DepthtoLZ','DEPTHTOLZ']));
+    out.push({mpi, inhr, d, lz_in:lz, method:fsProp(H.props,['PercRateMethod','PERCRATEMETHOD'])});
+  });
+  out.sort((a,b)=>a.d-b.d);
+  return out;
+}
+function buildSiteProfile(lat, lon, hits){
+  const neighbors=neighborBorings(lat, lon, PROFILE_RADIUS_FT, PROFILE_K);
+  const labN=neighbors.length?{samples:neighbors[0].r.s||[],dist:neighbors[0].d,boring:neighbors[0].r}:nearestBoringLab(lat,lon,PROFILE_RADIUS_FT);
+  const E=enrichFromHits(hits||[], labN.samples||[]);
+  const classes=collectClassVotes(neighbors);
+  /* infiltration */
+  const septic=septicPercNeighbors(hits);
+  const percIdw=idwMean(septic.map(p=>({v:p.inhr,d:p.d})), 2);
+  const mpiIdw=idwMean(septic.map(p=>({v:p.mpi,d:p.d})), 2);
+  let infilBlend=null, infilNote='';
+  if(E.infil&&E.infil.min!=null&&percIdw!=null){
+    const mid=(E.infil.min+E.infil.max)/2;
+    infilBlend=Math.round(((mid+percIdw)/2)*1000)/1000;
+    infilNote='blend of HYDGRP mid and IDW septic perc→in/hr';
+  }else if(E.infil&&E.infil.min!=null){
+    infilBlend=Math.round((((E.infil.min+E.infil.max)/2))*1000)/1000;
+    infilNote='HYDGRP mid only (no nearby septic PercRate)';
+  }else if(percIdw!=null){
+    infilBlend=Math.round(percIdw*1000)/1000;
+    infilNote='IDW septic perc→in/hr only (no HYDGRP)';
+  }
+  const designBlend=infilBlend!=null?Math.round((infilBlend/DNREC_BOREHOLE_FOS)*1000)/1000:null;
+  /* subgrade */
+  const sgPairs=[], sgConds=[], sgTypes=[], sgAash=[];
+  neighbors.forEach(({r,d})=>{
+    const sg=subgradeFromBoring(r);
+    if(!sg)return;
+    if(sg.minN!=null)sgPairs.push({v:sg.minN,d});
+    if(sg.cond)sgConds.push(sg.cond);
+    if(sg.type)sgTypes.push(sg.type);
+    if(sg.aashto)sgAash.push(aashtoBase(sg.aashto)||sg.aashto);
+  });
+  const nIdw=idwMean(sgPairs,2);
+  const condMaj=majorityVote(sgConds);
+  const typeMaj=majorityVote(sgTypes);
+  let subgradeLabel=null;
+  if(condMaj){
+    subgradeLabel=condMaj.value==='medium'?'Fair–Good (medium)':(condMaj.value==='poor'?'Poor':'Very poor');
+  }
+  /* borrow */
+  const borrowPairs=[], borrowTh=[];
+  let borrowHits=0, borrowMiss=0;
+  neighbors.forEach(({r,d})=>{
+    const b=borrowDepthInBoring(r);
+    if(!b)return;
+    if(b.has){borrowHits++; borrowPairs.push({v:b.top,d}); if(b.thickness!=null)borrowTh.push({v:b.thickness,d});}
+    else borrowMiss++;
+  });
+  const borrowTop=idwMean(borrowPairs,2);
+  const borrowThickness=idwMean(borrowTh,2);
+  const lzIdw=idwMean(septic.filter(p=>p.lz_in!=null).map(p=>({v:p.lz_in/12,d:p.d})),2); /* inches→ft */
+
+  return {
+    lat, lon,
+    n_neighbors:neighbors.length,
+    nearest_ft:neighbors.length?Math.round(neighbors[0].d):null,
+    nearest_boring:neighbors.length?neighbors[0].r:null,
+    enrich:E,
+    classes,
+    infil:{
+      hydgrp_min:E.infil&&E.infil.min, hydgrp_max:E.infil&&E.infil.max,
+      hydgrp:E.infil&&E.infil.hydgrp, confidence:E.infil&&E.infil.confidence,
+      design_hydgrp_min:E.infil&&E.infil.design_min, design_hydgrp_max:E.infil&&E.infil.design_max,
+      septic_n:septic.length, septic_mpi_idw:mpiIdw!=null?Math.round(mpiIdw*10)/10:null,
+      septic_inhr_idw:percIdw, est_inhr:infilBlend, design_inhr:designBlend, note:infilNote, fos:DNREC_BOREHOLE_FOS
+    },
+    subgrade:{
+      n_idw:nIdw!=null?Math.round(nIdw*10)/10:null,
+      cond:condMaj&&condMaj.value, type:typeMaj&&typeMaj.value,
+      aashto:majorityVote(sgAash)&&majorityVote(sgAash).value,
+      label:subgradeLabel, support:sgPairs.length
+    },
+    borrow:{
+      top_ft:borrowTop!=null?Math.round(borrowTop*10)/10:null,
+      thickness_ft:borrowThickness!=null?Math.round(borrowThickness*10)/10:null,
+      hits:borrowHits, miss:borrowMiss,
+      likely:borrowHits>0&&borrowHits>=borrowMiss
+    },
+    limiting:{
+      lz_ft:lzIdw!=null?Math.round(lzIdw*10)/10:null,
+      septic_support:septic.filter(p=>p.lz_in!=null).length
+    },
+    neighbors:neighbors.map(({r,d})=>({job:r.job,b:r.b,d:Math.round(d),eob:r.eob}))
+  };
+}
+function formatProfileHTML(P){
+  if(!P)return '';
+  let h=`<h3 style="margin-top:12px">Site profile estimate</h3>`;
+  h+=`<div class="hint warn" style="margin-bottom:6px">Screening only — IDW / majority from ≤${PROFILE_K} borings within ${PROFILE_RADIUS_FT} ft + map/DNREC layers. Not sealed design values.</div>`;
+  h+=`<div class="hint">${P.n_neighbors} neighbor boring(s)`+(P.nearest_ft!=null?` · nearest ${P.nearest_ft} ft (${esc(P.nearest_boring.b)} / ${esc(P.nearest_boring.job)})`:' · none in radius')+`</div>`;
+
+  h+=`<div class="hint" style="margin:8px 0 2px"><b>Classification (near-surface)</b></div><table class="kv">`;
+  h+=`<tr><td>AASHTO</td><td>${P.classes.aashto?esc(P.classes.aashto.value)+` <span class="hint">(${P.classes.aashto.count}/${P.classes.aashto.n})</span>`:'—'}</td></tr>`;
+  h+=`<tr><td>USCS</td><td>${P.classes.uscs?esc(P.classes.uscs.value)+` <span class="hint">(${P.classes.uscs.count}/${P.classes.uscs.n})</span>`:'—'}</td></tr>`;
+  h+=`<tr><td>USDA / HYDGRP</td><td>${P.enrich.hydgrp?esc(P.enrich.hydgrp)+(P.enrich.soilName?' · '+esc(P.enrich.soilName):''):'—'}</td></tr></table>`;
+
+  h+=`<div class="hint" style="margin:8px 0 2px"><b>Infiltration design rate</b></div><table class="kv">`;
+  if(P.infil.hydgrp_min!=null)h+=`<tr><td>HYDGRP band</td><td>${P.infil.hydgrp_min}–${P.infil.hydgrp_max} in/hr</td></tr>`;
+  if(P.infil.septic_mpi_idw!=null)h+=`<tr><td>Septic perc (IDW)</td><td>${P.infil.septic_mpi_idw} min/in ≈ ${P.infil.septic_inhr_idw} in/hr <span class="hint">(${P.infil.septic_n} pts)</span></td></tr>`;
+  if(P.infil.est_inhr!=null)h+=`<tr><td>Est. rate</td><td><b>${P.infil.est_inhr} in/hr</b> <span class="hint">${esc(P.infil.note)}</span></td></tr>`;
+  if(P.infil.design_inhr!=null)h+=`<tr><td>Design ÷${P.infil.fos}</td><td><b>${P.infil.design_inhr} in/hr</b></td></tr>`;
+  if(P.infil.est_inhr==null)h+=`<tr><td colspan="2"><span class="hint warn">Insufficient HYDGRP / septic data</span></td></tr>`;
+  h+=`</table>`;
+
+  h+=`<div class="hint" style="margin:8px 0 2px"><b>Subgrade (upper 5 ft, DelDOT N chart)</b></div><table class="kv">`;
+  h+=`<tr><td>Condition</td><td>${P.subgrade.label?`<b>${esc(P.subgrade.label)}</b>`:'—'}${P.subgrade.cond?` <span class="hint">(${esc(P.subgrade.cond)} ${esc(P.subgrade.type||'')})</span>`:''}</td></tr>`;
+  h+=`<tr><td>N (IDW)</td><td>${P.subgrade.n_idw!=null?P.subgrade.n_idw:'—'} <span class="hint">${P.subgrade.support||0} boring(s)</span></td></tr>`;
+  h+=`<tr><td>Governing AASHTO</td><td>${P.subgrade.aashto?esc(P.subgrade.aashto):'—'}</td></tr></table>`;
+
+  h+=`<div class="hint" style="margin:8px 0 2px"><b>Borrow</b></div><table class="kv">`;
+  if(P.borrow.top_ft!=null){
+    h+=`<tr><td>Depth to good borrow</td><td><b>${P.borrow.top_ft} ft</b> <span class="hint">A-1/A-3 / low P200 / granular</span></td></tr>`;
+    h+=`<tr><td>Est. thickness</td><td>${P.borrow.thickness_ft!=null?P.borrow.thickness_ft+' ft':'—'}</td></tr>`;
+  } else {
+    h+=`<tr><td colspan="2"><span class="hint warn">No good-borrow samples in neighbor borings</span></td></tr>`;
+  }
+  h+=`<tr><td>Support</td><td>${P.borrow.hits} with borrow / ${P.borrow.hits+P.borrow.miss} neighbors</td></tr></table>`;
+
+  if(P.limiting.lz_ft!=null){
+    h+=`<div class="hint" style="margin:8px 0 2px"><b>Limiting zone (DNREC septic)</b></div>`;
+    h+=`<div>~${P.limiting.lz_ft} ft bgs <span class="hint">(IDW from ${P.limiting.septic_support} DepthtoLZ; inches÷12)</span></div>`;
+  }
+  if(P.enrich.gmz||P.enrich.wetland||P.enrich.flood||P.enrich.wellhead){
+    h+=`<div class="hint" style="margin-top:8px"><b>Flags:</b> `;
+    const flags=[];
+    if(P.enrich.gmz)flags.push('GMZ '+P.enrich.gmz);
+    if(P.enrich.wellhead)flags.push('wellhead');
+    if(P.enrich.wetland)flags.push('wetland');
+    if(P.enrich.flood)flags.push('flood '+P.enrich.flood);
+    h+=esc(flags.join(' · '))+'</div>';
+  }
+  return h;
+}
+
 function nearestBoringLab(lat,lon,maxFt){
   maxFt=maxFt||500;
   let best=null, bestD=1e99;
@@ -21974,12 +22218,15 @@ async function runPointQuery(lat,lng,opts){
       h+=`<div class="labWrap" style="display:block">${formatBoringLabHTML(r,null)}</div>`;
     }
   }
-  // screening infiltration from soils HYDGRP + nearest boring lab within 500 ft
-  const nearLab=nearestBoringLab(lat,lng,500);
+  // screening infiltration + site profile engine from soils / DNREC / neighbor borings
+  const nearLab=nearestBoringLab(lat,lng,PROFILE_RADIUS_FT);
   const E=enrichFromHits(hits, nearLab.samples);
   if(nearLab.boring) E.lab._from=`${nearLab.boring.b} @ ${Math.round(nearLab.dist)} ft`;
+  const profile=buildSiteProfile(lat,lng,hits);
+  lastProfile=profile;
+  h+=formatProfileHTML(profile);
   h+=formatInfilHTML(E);
-  if(nearLab.boring) h+=`<div class="hint">Lab adjustment from ${esc(nearLab.boring.b)} (${esc(nearLab.boring.job)}) · ${Math.round(nearLab.dist)} ft</div>`;
+  if(nearLab.boring) h+=`<div class="hint">Nearest lab boring ${esc(nearLab.boring.b)} (${esc(nearLab.boring.job)}) · ${Math.round(nearLab.dist)} ft</div>`;
 
   $('qBody').innerHTML=h+`<div id="hydroBox"><div class="hint" style="margin-top:12px">Sampling DGS water-table grids…</div></div>`;
   const hydro=await sampleHydro(lat,lng);
@@ -22459,16 +22706,19 @@ async function refreshReportPreview(){
   else html+=`<div><b>§4 Hydrologic:</b> <span class="hint warn">no recharge / WRPA hit</span></div>`;
   if(S.soilName)html+=`<div><b>Soils:</b> ${esc(S.soilName)}</div>`;
   const hitsPrev=queryRefs(cLat,cLon);
-  const labN=nearestBoringLab(cLat,cLon,500);
-  const Eprev=enrichFromHits(hitsPrev, labN.samples);
-  if(Eprev.infil&&Eprev.infil.min!=null){
-    html+=`<div id="repInfilPrev"><b>Infil screening:</b> ${Eprev.infil.min}–${Eprev.infil.max} in/hr`+
-      ` → <b>design ÷${Eprev.infil.fos}: ${Eprev.infil.design_min}–${Eprev.infil.design_max} in/hr</b>`+
-      (Eprev.infil.design_mid!=null?` <span class="hint">(mid ${Eprev.infil.design_mid})</span>`:'')+
-      ` <span class="hint">· ${esc(Eprev.infil.confidence)} · not field-verified</span></div>`;
+  const Pref=buildSiteProfile(cLat,cLon,hitsPrev);
+  lastProfile=Pref;
+  if(Pref.infil.design_inhr!=null){
+    html+=`<div id="repInfilPrev"><b>Profile design infil:</b> <b>${Pref.infil.design_inhr} in/hr</b>`+
+      ` <span class="hint">(est ${Pref.infil.est_inhr} ÷ ${Pref.infil.fos} · ${esc(Pref.infil.note)})</span></div>`;
+  } else if(Pref.enrich.infil&&Pref.enrich.infil.min!=null){
+    html+=`<div id="repInfilPrev"><b>Infil screening:</b> ${Pref.enrich.infil.min}–${Pref.enrich.infil.max} in/hr → design ${Pref.enrich.infil.design_min}–${Pref.enrich.infil.design_max}</div>`;
   } else {
-    html+=`<div id="repInfilPrev"><b>Infil screening:</b> <span class="hint warn">${esc((Eprev.infil&&Eprev.infil.note)||'no estimate')}</span></div>`;
+    html+=`<div id="repInfilPrev"><b>Infil:</b> <span class="hint warn">no estimate</span></div>`;
   }
+  if(Pref.subgrade.label) html+=`<div><b>Subgrade:</b> ${esc(Pref.subgrade.label)}${Pref.subgrade.n_idw!=null?' · N≈'+Pref.subgrade.n_idw:''}</div>`;
+  if(Pref.borrow.top_ft!=null) html+=`<div><b>Borrow:</b> ~${Pref.borrow.top_ft} ft`+(Pref.borrow.thickness_ft!=null?` · ~${Pref.borrow.thickness_ft} ft thick`:'')+`</div>`;
+  if(Pref.classes.aashto) html+=`<div><b>AASHTO (near-surface):</b> ${esc(Pref.classes.aashto.value)}</div>`;
   box.innerHTML=html;
   const hydro=await sampleHydro(cLat,cLon);
   lastHydro=hydro;
