@@ -20891,8 +20891,10 @@ table.list td{padding:5px 8px;border-bottom:1px solid rgba(46,58,72,.5);font-fam
 .leaflet-tooltip.btip{background:var(--ink);border:1px solid var(--line);color:var(--text);font-family:var(--mono);font-size:11px;border-radius:4px}
 
 /* ===== Site analysis HUD (map-overlaid) ===== */
-#page-map.hud-open #qPanel{width:300px;bottom:auto;max-height:calc(100% - 20px)}
+#page-map.hud-open #qPanel{width:300px;bottom:auto;max-height:min(48vh,420px)}
 #page-map.hud-open #qBody{display:none}
+#page-map.hud-open #layerSec{max-height:90px}
+#page-map.hud-open #qPanel .sec:last-of-type{display:none} /* hide long hydro help while HUD open */
 #siteHud{position:absolute;inset:0;z-index:850;pointer-events:none;opacity:0;visibility:hidden;transition:opacity .35s ease,visibility .35s}
 #siteHud.on{opacity:1;visibility:visible}
 #siteHud .hud-vignette{position:absolute;inset:0;background:radial-gradient(ellipse at center,transparent 35%,rgba(8,12,18,.55) 100%);pointer-events:none}
@@ -20945,7 +20947,7 @@ table.list td{padding:5px 8px;border-bottom:1px solid rgba(46,58,72,.5);font-fam
 </head>
 <body>
 <div id="hdr">
-  <h1><b>GEO REPORT CENTER</b><span class="badge">v0.16</span></h1>
+  <h1><b>GEO REPORT CENTER</b><span class="badge">v0.17</span></h1>
   <button class="tab on" data-p="map">Map</button>
   <button class="tab" data-p="refs">Reference data</button>
   <button class="tab" data-p="jobs">Jobs</button>
@@ -20983,11 +20985,11 @@ table.list td{padding:5px 8px;border-bottom:1px solid rgba(46,58,72,.5);font-fam
     <div id="qPanel">
       <div class="sec">
         <h3>Point query</h3>
-        <div class="hint">Click the map to <b>zoom in</b> and open the <b>site analysis HUD</b> over the map (infil, subgrade, borrow, AASHTO/USCS column to 200 ft, NRCS, hydro). Point layers: nearest within 500 ft.</div>
+        <div class="hint">Click the map to <b>zoom in</b> and open the <b>site analysis HUD</b>. Estimates use nearby borings within the search radius (default 500 ft lateral — denser clusters = better). Soil column depth stays 0–50 ft. Point layers: nearest within 500 ft.</div>
       </div>
       <div class="sec">
-        <h3>Search radius <span id="radLbl" style="color:var(--amber);font-family:var(--mono)">1500 ft</span></h3>
-        <input type="range" id="radius" min="250" max="5280" step="250" value="1500">
+        <h3>Search radius <span id="radLbl" style="color:var(--amber);font-family:var(--mono)">500 ft</span></h3>
+        <input type="range" id="radius" min="250" max="5280" step="250" value="500">
         <button class="hbtn" id="basemapToggle" style="float:right">Satellite</button>
       </div>
       <div class="sec" id="layerSec" style="max-height:160px;overflow-y:auto">
@@ -21975,9 +21977,9 @@ function formatInfilHTML(E){
   return h;
 }
 
-/* ---------- prediction / site profile engine (v0.16) ---------- */
-const PROFILE_RADIUS_FT=2000;
-const PROFILE_K=8;
+/* ---------- prediction / site profile engine (v0.17) ---------- */
+const PROFILE_RADIUS_FT=500; /* lateral — estimate from borings within a few hundred ft */
+const PROFILE_K=16; /* denser clusters → more samples → better estimate */
 function parseDnrecNumber(raw){
   if(raw==null||raw==='')return null;
   if(typeof raw==='number'&&Number.isFinite(raw))return raw;
@@ -22282,7 +22284,7 @@ function collectClassVotes(neighbors){
   };
 }
 /* Thickness-weighted classification column 0→maxDepth ft from neighbor borings (IDW). */
-const CLASS_COL_DEPTH_FT=200;
+const CLASS_COL_DEPTH_FT=50;
 function sampleIntervalThickness(samples, maxDepth, eob){
   const ss=(samples||[]).filter(s=>s.d!=null&&+s.d<=maxDepth).sort((a,b)=>a.d-b.d);
   const out=[];
@@ -22481,9 +22483,10 @@ function septicPercNeighbors(hits){
   out.sort((a,b)=>a.d-b.d);
   return out;
 }
-function buildSiteProfile(lat, lon, hits){
-  const neighbors=neighborBorings(lat, lon, PROFILE_RADIUS_FT, PROFILE_K);
-  const labN=neighbors.length?{samples:neighbors[0].r.s||[],dist:neighbors[0].d,boring:neighbors[0].r}:nearestBoringLab(lat,lon,PROFILE_RADIUS_FT);
+function buildSiteProfile(lat, lon, hits, radiusFt){
+  const latRadius=(radiusFt!=null&&+radiusFt>0)?+radiusFt:PROFILE_RADIUS_FT;
+  const neighbors=neighborBorings(lat, lon, latRadius, PROFILE_K);
+  const labN=neighbors.length?{samples:neighbors[0].r.s||[],dist:neighbors[0].d,boring:neighbors[0].r}:nearestBoringLab(lat,lon,latRadius);
   const E=enrichFromHits(hits||[], labN.samples||[]);
   const classes=collectClassVotes(neighbors);
   /* Mapunit prior from NRCS when neighbor borings lack classification */
