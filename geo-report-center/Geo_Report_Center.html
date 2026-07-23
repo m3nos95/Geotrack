@@ -21017,7 +21017,7 @@ table.list td{padding:5px 8px;border-bottom:1px solid rgba(46,58,72,.5);font-fam
 </head>
 <body>
 <div id="hdr">
-  <h1><b>DelDOT</b> GeoTrak<span class="badge">v0.27</span></h1>
+  <h1><b>DelDOT</b> GeoTrak<span class="badge">v0.28</span></h1>
   <button class="tab on" data-p="map">Map</button>
   <button class="tab" data-p="refs">Reference data</button>
   <button class="tab" data-p="jobs">Jobs</button>
@@ -21099,9 +21099,10 @@ table.list td{padding:5px 8px;border-bottom:1px solid rgba(46,58,72,.5);font-fam
     <div class="wrap">
       <div class="card">
         <h2>Reference layers</h2>
-        <div class="hint" style="margin-bottom:10px">Drop FirstMap / DNREC GeoJSON here, or run <code>download-all-refs.bat</code> into <code>refs/</code> then Open project folder. Pack includes geology, soils, WRPA, wetlands, flood, tax ditches, DNREC septic, coastal, roads, plus <code>nrcs_de_by_mukey.json</code> (USDA Ksat / AASHTO / USCS join). Paged files with the same base name merge. Empty files are skipped.</div>
-        <div class="drop" id="dropRef">Drop GeoJSON file(s) here (or click)</div>
+        <div class="hint" style="margin-bottom:10px">Drop FirstMap / DNREC GeoJSON here, or run <code>download-all-refs.bat</code> into <code>refs/</code> then Open project folder. Pack includes geology, soils, WRPA, wetlands, flood, tax ditches, DNREC septic, coastal, roads, plus <code>nrcs_de_by_mukey.json</code> and <code>infil_anchors.json</code> (from <code>import-infil-pdfs.bat</code> — DelDOT borehole infil PDFs). Paged files with the same base name merge. Empty files are skipped.</div>
+        <div class="drop" id="dropRef">Drop GeoJSON / infil_anchors.json here (or click)</div>
         <input type="file" id="fileRef" accept=".json,.geojson" multiple style="display:none">
+        <div class="hint" style="margin-top:8px">Field infil anchors: drop DelDOT M&amp;R <b>Borehole Infiltration Test</b> PDFs into <code>infil-pdfs\</code>, run <code>import-infil-pdfs.bat</code>, then reload refs. Map shows amber diamonds; Site Intel → <b>Anchors</b> lists measured rates (design = ÷2.5 for 4″ borehole).</div>
         <div style="margin-top:10px;display:flex;gap:8px;flex-wrap:wrap">
           <button class="btn" id="reloadRefs">Reload refs from project folder</button>
           <button class="btn" id="enableAllRefs">Enable all</button>
@@ -21269,6 +21270,8 @@ let lastHydro=null;
 let lastProfile=null;
 let nrcsByMukey={}; /* mukey string → NRCS property object */
 let nrcsMeta=null;
+let infilAnchors=[]; /* DelDOT field borehole infil tests from infil_anchors.json */
+let infilAnchorsMeta=null;
 const _climateMem=new Map(); /* session cache: rounded lat/lon + month → climate result */
 const $=id=>document.getElementById(id);
 function toast(m, ms){const t=$('toast');t.textContent=m;t.style.display='block';clearTimeout(t._h);t._h=setTimeout(()=>t.style.display='none', ms||4000);}
@@ -21346,6 +21349,7 @@ async function loadProject(){
     }
     refs=[];
     nrcsByMukey={}; nrcsMeta=null;
+    infilAnchors=[]; infilAnchorsMeta=null;
     try{
       const refDir = await dirHandle.getDirectoryHandle('refs',{create:true});
       for await (const [name,h] of refDir.entries()){
@@ -21353,6 +21357,7 @@ async function loadProject(){
           try{
             const gj=JSON.parse(await (await h.getFile()).text());
             if(isNrcsLookupFile(name, gj)){ loadNrcsLookup(gj, name); continue; }
+            if(isInfilAnchorsFile(name, gj)){ loadInfilAnchors(gj, name); continue; }
             addRefLayer(name, gj, false);
           }catch(e){ console.warn('ref skip', name, e); }
         }
@@ -21361,7 +21366,8 @@ async function loadProject(){
     renderAll();
     const mapped=db.borings.filter(r=>r.lat!=null&&r.lon!=null).length;
     const nrcsN=Object.keys(nrcsByMukey).length;
-    toast(`Project loaded — ${db.borings.length} borings (${mapped} mapped), ${refs.length} reference layer(s)`+(nrcsN?`, NRCS props ${nrcsN} mukeys`:''));
+    const ancN=infilAnchors.length;
+    toast(`Project loaded — ${db.borings.length} borings (${mapped} mapped), ${refs.length} reference layer(s)`+(nrcsN?`, NRCS props ${nrcsN} mukeys`:'')+(ancN?`, ${ancN} infil anchors`:''));
     if(db.borings.length && !mapped){
       toast('db.json has borings but none with lat/lon — check import logs for missing EAST/NORTH');
     }
@@ -21477,6 +21483,20 @@ function drawBorings(){
         renderer:boringCanvas
       }).bindTooltip(p.name,{className:'btip',direction:'top'}).addTo(boringLayer);
     });
+    (infilAnchors||[]).forEach(a=>{
+      if(a.lat==null||a.lon==null)return;
+      const m=L.circleMarker([a.lat,a.lon],{
+        radius:6,color:'#1a1408',weight:1.5,fillColor:'#f0a84a',fillOpacity:.95,
+        renderer:boringCanvas
+      }).bindTooltip(
+        `INFIL ${a.id}`+(a.measured_inhr!=null?` · ${a.measured_inhr} in/hr`:'')+(a.job?` · ${a.job}`:''),
+        {className:'btip',direction:'top',sticky:true}
+      ).addTo(boringLayer);
+      m.on('click',e=>{
+        L.DomEvent.stop(e);
+        runPointQuery(a.lat,a.lon,{hudTab:'anchors'});
+      });
+    });
     if(pts.length){
       try{
         const bounds=L.latLngBounds(pts.map(r=>[r.lat,r.lon]));
@@ -21484,7 +21504,7 @@ function drawBorings(){
       }catch(_){}
     }
   }
-  if(pts.length||cores.length) requestAnimationFrame(step);
+  if(pts.length||cores.length||(infilAnchors&&infilAnchors.length)) requestAnimationFrame(step);
 }
 
 /* ---------- point-in-polygon ---------- */
@@ -22114,6 +22134,56 @@ function loadNrcsLookup(obj, name){
   nrcsMeta={name:name||'nrcs_de_by_mukey.json', n:Object.keys(nrcsByMukey).length, source:obj&&obj.source};
   return nrcsMeta.n;
 }
+function isInfilAnchorsFile(name, obj){
+  if(/infil_anchors/i.test(name||''))return true;
+  if(!obj||obj.features)return false;
+  if(obj.type==='deldot_infil_anchors')return true;
+  return Array.isArray(obj.anchors)&&obj.anchors.length&&obj.anchors[0]&&(obj.anchors[0].measured_inhr!=null||obj.anchors[0].measured!=null);
+}
+function loadInfilAnchors(obj, name){
+  const raw=(obj&&Array.isArray(obj.anchors))?obj.anchors:(Array.isArray(obj)?obj:[]);
+  infilAnchors=[];
+  raw.forEach(a=>{
+    if(!a)return;
+    const lat=a.lat!=null?+a.lat:null, lon=a.lon!=null?+a.lon:null;
+    const measured=a.measured_inhr!=null?+a.measured_inhr:(a.measured!=null?+a.measured:null);
+    if(lat==null||lon==null||!Number.isFinite(lat)||!Number.isFinite(lon)||measured==null||!Number.isFinite(measured))return;
+    const fos=a.fos!=null?+a.fos:DNREC_BOREHOLE_FOS;
+    const design=a.design_inhr!=null?+a.design_inhr:Math.round((measured/fos)*10000)/10000;
+    infilAnchors.push({
+      id:a.id||a.test_id||'anchor',
+      job:a.job||a.contract||null,
+      project:a.project||null,
+      date:a.date||null,
+      easting:a.easting!=null?+a.easting:null,
+      northing:a.northing!=null?+a.northing:null,
+      lat, lon,
+      depth_ft:a.depth_ft!=null?+a.depth_ft:null,
+      pipe_in:a.pipe_in!=null?+a.pipe_in:null,
+      method:a.method||'cased_borehole',
+      measured_inhr:measured,
+      design_inhr:design,
+      fos,
+      contractor:a.contractor||null,
+      reviewer:a.reviewer||null,
+      source_file:a.source_file||null,
+      form:a.form||null
+    });
+  });
+  infilAnchorsMeta={name:name||'infil_anchors.json', n:infilAnchors.length, source:obj&&obj.source};
+  return infilAnchorsMeta.n;
+}
+function nearestInfilAnchors(lat, lon, maxFt){
+  maxFt=maxFt==null?PROFILE_RADIUS_FT:maxFt;
+  const out=[];
+  (infilAnchors||[]).forEach(a=>{
+    if(a.lat==null||a.lon==null)return;
+    const d=distFt(lat,lon,a.lat,a.lon);
+    if(d<=maxFt) out.push({a, d});
+  });
+  out.sort((x,y)=>x.d-y.d);
+  return out;
+}
 function enrichFromHits(hits, samples){
   const lab=labStatsFromSamples(samples);
   let soilName=null, hydgrp=null, drain=null, geoName=null, geoKind=null, rech=null, wrpa=[];
@@ -22214,7 +22284,7 @@ function formatInfilHTML(E){
   return h;
 }
 
-/* ---------- prediction / site profile engine (v0.27) ---------- */
+/* ---------- prediction / site profile engine (v0.28) ---------- */
 const PROFILE_RADIUS_FT=500; /* lateral — estimate from borings within a few hundred ft */
 const PROFILE_K=16; /* denser clusters → more samples → better estimate */
 function parseDnrecNumber(raw){
@@ -23045,16 +23115,39 @@ function buildSiteProfile(lat, lon, hits, radiusFt){
     if(granularAashto&&aashtoMid!=null&&percIdw<aashtoMid*0.15) w=0.15;
     parts.push({v:percIdw, w, src:'septic PercRate IDW (not App.1 ASTM)'});
   }
+  /* Field infil anchors (DelDOT borehole tests) — strongest signal when present */
+  const anchorsNear=nearestInfilAnchors(lat, lon, latRadius);
+  const anchorIdw=idwMean(anchorsNear.map(({a,d})=>({v:a.measured_inhr,d})), 2);
+  let fieldOverride=null;
+  if(anchorsNear.length&&anchorsNear[0].d<=75){
+    const A=anchorsNear[0].a, d0=anchorsNear[0].d;
+    fieldOverride={
+      measured:A.measured_inhr,
+      design:A.design_inhr!=null?A.design_inhr:Math.round((A.measured_inhr/DNREC_BOREHOLE_FOS)*1000)/1000,
+      id:A.id, d:d0, fos:A.fos!=null?A.fos:DNREC_BOREHOLE_FOS, method:A.method
+    };
+  } else if(anchorIdw!=null){
+    let w=anchorsNear[0].d<=200?2.6:1.9;
+    parts.push({v:anchorIdw, w, src:'field infil anchor IDW (DelDOT borehole)'});
+  }
   let infilBlend=null, infilNote='';
-  if(parts.length){
+  let designBlend=null;
+  if(fieldOverride){
+    infilBlend=fieldOverride.measured;
+    designBlend=fieldOverride.design;
+    infilNote=`field anchor ${fieldOverride.id} @ ${Math.round(fieldOverride.d)} ft · measured ${fieldOverride.measured} in/hr`+
+      (fieldOverride.method==='cased_borehole'||(fieldOverride.fos&&fieldOverride.fos>1)
+        ?` · design ÷${fieldOverride.fos} = ${fieldOverride.design} in/hr`
+        :'');
+  } else if(parts.length){
     let sw=0, sv=0;
     parts.forEach(p=>{ sw+=p.w; sv+=p.w*p.v; });
     infilBlend=Math.round((sv/sw)*1000)/1000;
     infilNote=parts.length===1
       ?(parts[0].src+(parts[0].src.indexOf('AASHTO')===0?' (no HYDGRP/septic required)':''))
       :('blend: '+parts.map(p=>p.src).join(' + '));
+    designBlend=Math.round((infilBlend/DNREC_BOREHOLE_FOS)*1000)/1000;
   }
-  const designBlend=infilBlend!=null?Math.round((infilBlend/DNREC_BOREHOLE_FOS)*1000)/1000:null;
   /* subgrade — AASHTO M 57 / M 145 (not DelDOT N chart) */
   const sgScores=[], sgGis=[], sgNs=[], sgRatings=[], sgGroups=[], sgDetails=[];
   neighbors.forEach(({r,d})=>{
@@ -23098,7 +23191,13 @@ function buildSiteProfile(lat, lon, hits, radiusFt){
       aashto_confidence:aashtoInfil&&aashtoInfil.confidence,
       upper20:upperA, sources:parts.map(p=>p.src),
       septic_n:septic.length, septic_mpi_idw:mpiIdw!=null?Math.round(mpiIdw*10)/10:null,
-      septic_inhr_idw:percIdw, est_inhr:infilBlend, design_inhr:designBlend, note:infilNote, fos:DNREC_BOREHOLE_FOS
+      septic_inhr_idw:percIdw, est_inhr:infilBlend, design_inhr:designBlend, note:infilNote, fos:DNREC_BOREHOLE_FOS,
+      field_anchor:fieldOverride, field_anchor_n:anchorsNear.length,
+      field_anchor_idw:anchorIdw!=null?Math.round(anchorIdw*1000)/1000:null,
+      field_anchors:anchorsNear.slice(0,12).map(({a,d})=>({
+        id:a.id, job:a.job, d:Math.round(d), measured_inhr:a.measured_inhr, design_inhr:a.design_inhr,
+        depth_ft:a.depth_ft, pipe_in:a.pipe_in, method:a.method, date:a.date, fos:a.fos
+      }))
     },
     subgrade:{
       rating:subgradeLabel,
@@ -23390,7 +23489,7 @@ function closeSiteHud(){
   const rail=$('hudRail'); if(rail) rail.querySelectorAll('.hud-rail-item').forEach(b=>b.classList.remove('on'));
 }
 function openSiteHud(ctx){
-  hudTab='overview';
+  hudTab=(ctx&&ctx.opts&&ctx.opts.hudTab)||'overview';
   const page=document.getElementById('page-map');
   if(page) page.classList.add('hud-open');
   const hud=$('siteHud');
@@ -23425,6 +23524,7 @@ function hudTopicMeta(tab){
     site:{title:'Site context', tag:'MAP UNITS'},
     estimate:{title:'Infiltration', tag:'SCREENING'},
     septic:{title:'DNREC septic', tag:'BORINGS · EVALS'},
+    anchors:{title:'Field infil anchors', tag:'DELDOT BOREHOLE'},
     class:{title:'Classification', tag:'≤15 FT IDW'},
     column:{title:'Soil column', tag:'0–'+CLASS_COL_DEPTH_FT+' FT'},
     layers:{title:'Reference layers', tag:'FIRSTMAP / DNREC'},
@@ -23448,6 +23548,11 @@ function renderHudBadges(ctx){
     const v=sep.inhr!=null?sep.inhr:(sep.nearInhr!=null?sep.nearInhr:null);
     h+=`<span class="hud-badge cyan">Septic<em>${v!=null?v+' in/hr':(sep.n+' pts')}</em></span>`;
   } else h+=`<span class="hud-badge">Septic<em>none</em></span>`;
+  if(P.infil&&P.infil.field_anchor){
+    h+=`<span class="hud-badge">Field<em>${P.infil.field_anchor.measured} in/hr</em></span>`;
+  } else if(P.infil&&P.infil.field_anchor_n>0){
+    h+=`<span class="hud-badge">Anchors<em>${P.infil.field_anchor_n}</em></span>`;
+  }
   if(P.infil&&P.infil.separation_ok===false) h+=`<span class="hud-badge warn">Sep.<em>&lt;2′</em></span>`;
   else if(P.infil&&P.infil.dtw_ft!=null) h+=`<span class="hud-badge cyan">DTW<em>${P.infil.dtw_ft}′</em></span>`;
   el.innerHTML=h;
@@ -23473,10 +23578,20 @@ function renderHudRail(ctx){
     :(sep.boringN||sep.evalN)?((sep.boringN||0)+' boring'+(sep.boringN===1?'':'s')+' · '+(sep.evalN||0)+' eval')
     :(sep.nearMpi!=null?('nearest '+sep.nearMpi+' min/in'+(sep.nearDist!=null?' @ '+sep.nearDist+' ft':'')):'no PercRate in radius');
 
+  const ancN=P.infil&&P.infil.field_anchor_n!=null?P.infil.field_anchor_n:0;
+  const anc0=P.infil&&P.infil.field_anchors&&P.infil.field_anchors[0];
+  const ancV=P.infil&&P.infil.field_anchor? (P.infil.field_anchor.measured+'')
+    :(anc0? (anc0.measured_inhr+'') : (infilAnchors.length?String(infilAnchors.length):'—'));
+  const ancS=P.infil&&P.infil.field_anchor
+    ? (`${P.infil.field_anchor.id} @ ${Math.round(P.infil.field_anchor.d)} ft · field`)
+    :(anc0? (`nearest ${anc0.id} @ ${anc0.d} ft · ${ancN} in radius`)
+      :(infilAnchors.length? `${infilAnchors.length} loaded · none in radius`:'import infil PDFs'));
+
   const items=[
     {id:'overview', cls:'', k:'Brief', v:'All signals', s:(P.n_neighbors||0)+' borings · '+hitN+' layer hits'},
     {id:'site', cls:'', k:'Site', v:E.soilSym||E.hydgrp||'—', s:(E.soilName||'soils')+(E.geoName?' · '+E.geoName:'')},
-    {id:'estimate', cls:'infil', k:'Infil', v:P.infil&&P.infil.design_inhr!=null?(P.infil.design_inhr+''):(P.infil&&P.infil.est_inhr!=null?(P.infil.est_inhr+''):'—'), s:P.infil&&P.infil.design_inhr!=null?'illustrative ÷2.5 in/hr':(P.infil&&P.infil.est_inhr!=null?'screening in/hr':'no estimate')},
+    {id:'estimate', cls:'infil', k:'Infil', v:P.infil&&P.infil.design_inhr!=null?(P.infil.design_inhr+''):(P.infil&&P.infil.est_inhr!=null?(P.infil.est_inhr+''):'—'), s:P.infil&&P.infil.field_anchor?'field-anchored ÷FoS':(P.infil&&P.infil.design_inhr!=null?'illustrative ÷2.5 in/hr':(P.infil&&P.infil.est_inhr!=null?'screening in/hr':'no estimate'))},
+    {id:'anchors', cls:'infil', k:'Anchors', v:ancV, s:ancS},
     {id:'septic', cls:'septic', k:'Septic', v:septicV, s:septicS},
     {id:'class', cls:'', k:'Class', v:aDisp.head, s:aDisp.sub||((u?u+' · ':'')+classSourceLabel(P.classes&&P.classes.aashto_loc))},
     {id:'column', cls:'', k:'Column', v:'0–'+CLASS_COL_DEPTH_FT+'′', s:P.class_column?'tap stick · Subsurface':'no column'},
@@ -23506,17 +23621,19 @@ function renderHudDrawer(ctx){
   let h='';
   if(tab==='overview'){
     h+=`<div class="brief-grid">`;
-    h+=`<div class="brief-cell"><div class="lbl">Illustrative design</div><div class="val amber">${P.infil&&P.infil.design_inhr!=null?P.infil.design_inhr+' in/hr':'—'}</div><div class="sub">÷ FoS 2.5 borehole path · screening</div></div>`;
+    h+=`<div class="brief-cell"><div class="lbl">Illustrative design</div><div class="val amber">${P.infil&&P.infil.design_inhr!=null?P.infil.design_inhr+' in/hr':'—'}</div><div class="sub">${P.infil&&P.infil.field_anchor?'field-anchored ÷FoS':'÷ FoS 2.5 borehole path · screening'}</div></div>`;
     h+=`<div class="brief-cell"><div class="lbl">Screening est.</div><div class="val">${P.infil&&P.infil.est_inhr!=null?P.infil.est_inhr+' in/hr':'—'}</div><div class="sub">${P.infil&&P.infil.note?esc(P.infil.note).slice(0,90):'—'}</div></div>`;
     const aBr=displayAashtoValue(P.classes&&P.classes.aashto_loc, P.classes&&P.classes.uscs_loc);
     const uBr=(P.classes&&P.classes.uscs_loc&&P.classes.uscs_loc.value)||'';
     h+=`<div class="brief-cell"><div class="lbl">AASHTO / USCS</div><div class="val amber">${esc(aBr.head)}</div><div class="sub">${esc(uBr)}${aBr.sub?' · '+esc(aBr.sub):''}</div></div>`;
+    const fa=P.infil&&P.infil.field_anchor;
+    const faN=P.infil&&P.infil.field_anchor_n||0;
+    h+=`<div class="brief-cell"><div class="lbl">Field anchors</div><div class="val amber">${fa?fa.measured+' in/hr':(faN||'—')}</div><div class="sub">${fa?(esc(fa.id)+' @ '+Math.round(fa.d)+' ft'):(faN?faN+' in radius':'none in radius')}</div></div>`;
     h+=`<div class="brief-cell"><div class="lbl">DNREC septic</div><div class="val cyan">${sep.inhr!=null?sep.inhr+' in/hr':(sep.nearInhr!=null?sep.nearInhr+' in/hr':'—')}</div><div class="sub">${sep.n?sep.n+' pts IDW':(sep.nearMpi!=null?'nearest '+sep.nearMpi+' min/in':'none nearby')}</div></div>`;
     h+=`<div class="brief-cell"><div class="lbl">Soils / HYDGRP</div><div class="val">${esc(E.soilSym||'—')}</div><div class="sub">${esc(E.hydgrp||'')}${E.soilName?' · '+esc(E.soilName):''}</div></div>`;
-    h+=`<div class="brief-cell"><div class="lbl">Hydro DTW</div><div class="val cyan">${P.infil&&P.infil.dtw_ft!=null?P.infil.dtw_ft+' ft':(ctx.hydro&&ctx.hydro.dtw&&ctx.hydro.dtw.normal!=null?fmtFt(ctx.hydro.dtw.normal):'—')}</div><div class="sub">${P.infil&&P.infil.separation_ok===false?'§II.A.3 separation fail':(P.infil&&P.infil.wte_navd!=null?'WTE ~'+P.infil.wte_navd+' NAVD':'DGS grids')}</div></div>`;
     h+=`</div>`;
     h+=`<h4>Tap any rail item for full detail</h4>`;
-    h+=`<div class="hint">Site · Infil · <b>Septic</b> · Class · Column · Layers · Borings · Hydro — every signal stays on the left rail.</div>`;
+    h+=`<div class="hint">Site · Infil · <b>Anchors</b> · Septic · Class · Column · Layers · Borings · Hydro.</div>`;
     if(P.class_column){
       h+=`<h4>Column peek</h4><div style="display:flex;gap:10px">`;
       h+=`<div>${svgStickProfile(P.class_column.aashto_stick,P.class_column.depth_ft,'AASHTO')}</div>`;
@@ -23547,6 +23664,8 @@ function renderHudDrawer(ctx){
   } else if(tab==='estimate'){
     h+=`<table class="mini-kv">`;
     if(P.infil){
+      if(P.infil.field_anchor) h+=`<tr><td>Field anchor</td><td><b>${P.infil.field_anchor.measured} in/hr</b> · ${esc(P.infil.field_anchor.id)} @ ${Math.round(P.infil.field_anchor.d)} ft</td></tr>`;
+      else if(P.infil.field_anchor_idw!=null) h+=`<tr><td>Field IDW</td><td>${P.infil.field_anchor_idw} in/hr (${P.infil.field_anchor_n} anchors)</td></tr>`;
       if(P.infil.est_inhr!=null) h+=`<tr><td>Screening est.</td><td><b>${P.infil.est_inhr} in/hr</b></td></tr>`;
       if(P.infil.design_inhr!=null) h+=`<tr><td>Illustrative ÷${P.infil.fos||2.5}</td><td><b>${P.infil.design_inhr} in/hr</b></td></tr>`;
       else if(P.infil.separation_ok===false) h+=`<tr><td>Illustrative design</td><td><span class="hint warn">withheld — &lt;${P.infil.separation_ft_req||2} ft to GW</span></td></tr>`;
@@ -23558,7 +23677,40 @@ function renderHudDrawer(ctx){
       if(P.infil.note) h+=`<tr><td>Note</td><td>${esc(P.infil.note)}</td></tr>`;
     }
     if(P.subgrade&&P.subgrade.label) h+=`<tr><td>Subgrade</td><td>${esc(P.subgrade.label)}${P.subgrade.detail?' · '+esc(P.subgrade.detail):''}</td></tr>`;
-    h+=`</table><div class="hint" style="margin-top:8px">Not ASTM field design. Preferred DNREC method: full-size ring infiltrometer.</div>`;
+    h+=`</table><div class="hint" style="margin-top:8px">Within 75 ft of a DelDOT borehole field test, measured rate overrides map/septic screening. Preferred DNREC method remains full-size ring infiltrometer.</div>`;
+  } else if(tab==='anchors'){
+    const list=(P.infil&&P.infil.field_anchors)||[];
+    const fa=P.infil&&P.infil.field_anchor;
+    h+=`<div class="septic-card">`;
+    if(fa){
+      h+=`<div class="big">${fa.measured} <span style="font-size:14px;font-weight:600">in/hr</span></div>`;
+      h+=`<div class="sub">Nearest field test ${esc(fa.id)} @ ${Math.round(fa.d)} ft · design ${fa.design} in/hr (÷${fa.fos||2.5})</div>`;
+    } else if(P.infil&&P.infil.field_anchor_idw!=null){
+      h+=`<div class="big">${P.infil.field_anchor_idw} <span style="font-size:14px;font-weight:600">in/hr</span></div>`;
+      h+=`<div class="sub">IDW from ${P.infil.field_anchor_n} DelDOT borehole anchors in radius</div>`;
+    } else {
+      h+=`<div class="big" style="font-size:20px;color:var(--dim)">${infilAnchors.length?'None in radius':'No anchors loaded'}</div>`;
+      h+=`<div class="sub">${infilAnchors.length?infilAnchors.length+' loaded — widen radius or click near amber markers':'Run import-infil-pdfs.bat → refs/infil_anchors.json'}</div>`;
+    }
+    h+=`</div>`;
+    h+=`<div class="hint warn" style="margin-bottom:8px">Anchors come from DelDOT M&amp;R Borehole Infiltration Test sheets (Measured Rate + Easting/Northing). 4″ cased borehole → App.1 FoS 2.5 for design. Not DNREC septic PercRate.</div>`;
+    if(list.length){
+      h+=`<h4>Nearest tests · ${list.length}</h4>`;
+      list.forEach(a=>{
+        h+=`<div class="dnrec-rec">`;
+        h+=`<div class="rec-top"><span class="rec-id">${esc(a.id||'Test')}</span><span class="rec-dist">${a.d} ft</span></div>`;
+        h+=`<table class="mini-kv">`;
+        h+=`<tr><td>Measured</td><td><b>${a.measured_inhr} in/hr</b></td></tr>`;
+        if(a.design_inhr!=null) h+=`<tr><td>Design ÷${a.fos||2.5}</td><td>${a.design_inhr} in/hr</td></tr>`;
+        if(a.depth_ft!=null) h+=`<tr><td>Test depth</td><td>${a.depth_ft} ft bgs</td></tr>`;
+        if(a.pipe_in!=null) h+=`<tr><td>Pipe</td><td>${a.pipe_in} in · ${esc(a.method||'cased_borehole')}</td></tr>`;
+        if(a.job) h+=`<tr><td>Contract</td><td>${esc(a.job)}</td></tr>`;
+        if(a.date) h+=`<tr><td>Date</td><td>${esc(a.date)}</td></tr>`;
+        h+=`</table></div>`;
+      });
+    } else if(infilAnchors.length){
+      h+=`<div class="hint">${infilAnchors.length} anchor(s) loaded project-wide. Amber markers on map.</div>`;
+    }
   } else if(tab==='septic'){
     const borings=septicBoringRecords(ctx.hits||[]);
     const evals=septicEvalRecords(ctx.hits||[]);
@@ -23815,6 +23967,17 @@ wireDrop('dropRef','fileRef',files=>{
           if(dirHandle){
             dirHandle.getDirectoryHandle('refs',{create:true}).then(rd=>
               rd.getFileHandle('nrcs_de_by_mukey.json',{create:true}).then(fh=>fh.createWritable()).then(async w=>{await w.write(t); await w.close();})
+            ).catch(()=>{});
+          }
+          return;
+        }
+        if(isInfilAnchorsFile(file.name, obj)){
+          const n=loadInfilAnchors(obj, file.name);
+          toast(`Loaded ${n} infil anchor(s)`);
+          drawBorings();
+          if(dirHandle){
+            dirHandle.getDirectoryHandle('refs',{create:true}).then(rd=>
+              rd.getFileHandle('infil_anchors.json',{create:true}).then(fh=>fh.createWritable()).then(async w=>{await w.write(t); await w.close();})
             ).catch(()=>{});
           }
           return;

@@ -364,3 +364,18 @@ Run `python download-nrcs-soil-props.py` (or `download-all-refs.py`) to write:
 Fields: Ksat (in/hr), AASHTO, USCS, drainage, flood/pond, restrictive depth, engineering ratings (roads / shallow excavations / sand source).
 
 Open project folder so the app loads the JSON. Map click shows **NRCS mapunit properties** and blends Ksat into screening infil.
+
+## Field infiltration anchors (v0.28)
+
+DelDOT Materials & Research **Borehole Infiltration Test** PDFs → `refs/infil_anchors.json`.
+
+```bat
+pip install pypdf pyproj
+REM drop PDFs into infil-pdfs\
+import-infil-pdfs.bat
+```
+
+Or: `python import-infil-pdfs.py path\to\pdf-or-folder --project . --merge`
+
+Each anchor stores Measured Rate (in/hr), Easting/Northing (DE SP ft → lat/lon), Test ID, depth, 4″ pipe, contract, date. Design rate = measured ÷ 2.5 for cased borehole. GeoTrak loads the JSON on Open project folder; amber map markers; Site Intel → **Anchors**. Within **75 ft**, measured rate overrides map/septic screening.
+
