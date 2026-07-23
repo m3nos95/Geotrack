@@ -305,6 +305,17 @@ Explicitly **not** the DelDOT pole/N-chart subgrade procedure (that chart is use
 
 ---
 
+### 7.8 Engineering-property forecast (v0.29)
+
+Site Intel → **Props** combines:
+
+1. **AASHTO M 145 group priors** — qualitative subgrade, strength, frost, shrink–swell, drainage, permeability, excavation, moisture sensitivity  
+2. **DTW flags** — soft/pumping / cave-in cautions when water table is shallow relative to the class  
+3. **NRCS mapunit eng ratings** — roads, shallow excavations, dwellings, sand source (when mukey join loaded)  
+4. **Column layers** — same priors applied to merged 0–50 ft AASHTO stick runs  
+
+Screening only — not lab CBR, shear strength, or sealed design.
+
 ## 8. Report generation
 
 ### 8.1 DelDOT geo-report memo
@@ -369,6 +380,7 @@ In-app **Export feature store (CSV)** produces a similar join for all mapped bor
 | v0.26 | Subsurface mode (GS elev + GWT on dual sticks) |
 | v0.27 | DNREC septic soil borings & site-eval record browse (attributes + DEN links) |
 | v0.28 | Field infil anchors from DelDOT borehole infil PDFs (`import-infil-pdfs`) |
+| v0.29 | Eng. property forecast panel (AASHTO priors + DTW + NRCS eng ratings) |
 
 ---
 
@@ -418,7 +430,7 @@ Users should retain citations for FirstMap / DGS products and NRCS Soil Data Acc
 |------|-------|
 | Product name | DelDOT GeoTrak |
 | App file | `Geo_Report_Center.html` |
-| Described release | v0.28 |
+| Described release | v0.29 |
 | Repository path | `geo-report-center/` |
 | Primary specification references | AASHTO M 57 / M 145; ASTM D2487 (USCS screening); ASTM D5126; DNREC BMP Standards & Specs Appendix 1 (Eff. Feb 2019) |
 

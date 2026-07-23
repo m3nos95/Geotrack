@@ -21017,7 +21017,7 @@ table.list td{padding:5px 8px;border-bottom:1px solid rgba(46,58,72,.5);font-fam
 </head>
 <body>
 <div id="hdr">
-  <h1><b>DelDOT</b> GeoTrak<span class="badge">v0.28</span></h1>
+  <h1><b>DelDOT</b> GeoTrak<span class="badge">v0.29</span></h1>
   <button class="tab on" data-p="map">Map</button>
   <button class="tab" data-p="refs">Reference data</button>
   <button class="tab" data-p="jobs">Jobs</button>
@@ -22094,6 +22094,7 @@ function applyHydroLimitToInfil(P, hydro){
   P.infil.separation_ok=sepOk;
   if(P.infil.est_inhr==null){
     if(!sepOk) P.infil.note=(P.infil.note?P.infil.note+'; ':'')+'DTW '+dtwSep+' ft < '+DNREC_SEP_FT+' ft — App.1 §II.A.3 separation not met (screening)';
+    P.eng_forecast=engForecastForProfile(P, P.enrich, hydro);
     return P;
   }
   if(P.infil.est_inhr_uncapped==null) P.infil.est_inhr_uncapped=P.infil.est_inhr;
@@ -22104,6 +22105,7 @@ function applyHydroLimitToInfil(P, hydro){
     P.infil.feasible=false;
     const note='DTW '+dtwSep+' ft < '+DNREC_SEP_FT+' ft — App.1 §II.A.3 separation to GW not met (infiltration BMP at grade unlikely without underdrain / redesign)';
     if(!(P.infil.note||'').includes('§II.A.3')) P.infil.note=(P.infil.note?P.infil.note+'; ':'')+note;
+    P.eng_forecast=engForecastForProfile(P, P.enrich, hydro);
     return P;
   }
   P.infil.feasible=true;
@@ -22115,7 +22117,13 @@ function applyHydroLimitToInfil(P, hydro){
   }
   /* Restore illustrative borehole-path design from uncapped material screening */
   P.infil.est_inhr=P.infil.est_inhr_uncapped;
-  P.infil.design_inhr=Math.round((P.infil.est_inhr/DNREC_BOREHOLE_FOS)*1000)/1000;
+  if(P.infil.field_anchor&&P.infil.field_anchor.design!=null){
+    P.infil.design_inhr=P.infil.field_anchor.design;
+  } else {
+    P.infil.design_inhr=Math.round((P.infil.est_inhr/DNREC_BOREHOLE_FOS)*1000)/1000;
+  }
+  /* Refresh eng-property forecast with sampled DTW */
+  P.eng_forecast=engForecastForProfile(P, P.enrich, hydro);
   return P;
 }
 function lookupNrcs(mukey){
@@ -22284,7 +22292,7 @@ function formatInfilHTML(E){
   return h;
 }
 
-/* ---------- prediction / site profile engine (v0.28) ---------- */
+/* ---------- prediction / site profile engine (v0.29) ---------- */
 const PROFILE_RADIUS_FT=500; /* lateral — estimate from borings within a few hundred ft */
 const PROFILE_K=16; /* denser clusters → more samples → better estimate */
 function parseDnrecNumber(raw){
@@ -22373,6 +22381,159 @@ function m57SubgradeRating(group, gi){
   }
   const detail=gi!=null?`${g}(${gi})`:g;
   return {rating, band, score, detail, group:g, gi};
+}
+/* Screening engineering-property priors by AASHTO M 145 group (not lab-certified). */
+const ENG_PROP_PRIORS=[
+  {re:/^A-1-A/, label:'A-1-a', uscs:'GW–GP', subgrade:'Excellent', strength:'High', frost:'Low', shrink:'Negligible', drain:'Excellent', permeab:'Very high', excav:'Easy (granular)', moisture:'Low sensitivity', note:'Coarse gravelly fill / subbase candidate'},
+  {re:/^A-1-B|^A-1$/, label:'A-1-b', uscs:'SW–SP', subgrade:'Excellent', strength:'High', frost:'Low–moderate', shrink:'Negligible', drain:'Excellent', permeab:'High', excav:'Easy (granular)', moisture:'Low sensitivity', note:'Sandy gravel / coarse sand — good embankment'},
+  {re:/^A-3$/, label:'A-3', uscs:'SP', subgrade:'Excellent', strength:'Moderate–high', frost:'Moderate (fine sand)', shrink:'Negligible', drain:'Excellent', permeab:'Very high', excav:'Easy; cave-prone below WT', moisture:'Low plasticity; raveling when dry', note:'Fine sand — excellent drainage, frost if fine'},
+  {re:/^A-2-4/, label:'A-2-4', uscs:'SM', subgrade:'Good', strength:'Moderate–high', frost:'Moderate', shrink:'Low', drain:'Good', permeab:'Moderate–high', excav:'Fair–easy', moisture:'Fines can soften when wet', note:'Silty sand — common DE Coastal Plain working fill'},
+  {re:/^A-2-5/, label:'A-2-5', uscs:'SM', subgrade:'Good', strength:'Moderate', frost:'Moderate–high', shrink:'Low–moderate', drain:'Fair–good', permeab:'Moderate', excav:'Fair', moisture:'Elastic fines; wet-weather trafficability issues', note:'Silty sand with elastic fines'},
+  {re:/^A-2-6/, label:'A-2-6', uscs:'SC', subgrade:'Fair', strength:'Moderate', frost:'Moderate', shrink:'Moderate', drain:'Fair', permeab:'Low–moderate', excav:'Fair; sticky when wet', moisture:'Clayey fines soften with water', note:'Clayey sand — volume change with moisture'},
+  {re:/^A-2-7/, label:'A-2-7', uscs:'SC', subgrade:'Fair', strength:'Low–moderate', frost:'Moderate', shrink:'Moderate–high', drain:'Fair–poor', permeab:'Low', excav:'Difficult when wet', moisture:'High moisture sensitivity', note:'Clayey sand / plastic fines'},
+  {re:/^A-4/, label:'A-4', uscs:'ML', subgrade:'Fair', strength:'Low–moderate', frost:'High', shrink:'Low–moderate', drain:'Poor–fair', permeab:'Low', excav:'Soft when wet; pumping risk', moisture:'High — loses strength when saturated', note:'Silty soil — frost and wet-season problems'},
+  {re:/^A-5/, label:'A-5', uscs:'MH', subgrade:'Fair–poor', strength:'Low', frost:'High', shrink:'Moderate', drain:'Poor', permeab:'Low', excav:'Poor trafficability', moisture:'Elastic silt; very moisture-sensitive', note:'Elastic silt — avoid as subgrade without treatment'},
+  {re:/^A-6/, label:'A-6', uscs:'CL', subgrade:'Poor', strength:'Low–moderate (undrained)', frost:'Moderate–high', shrink:'High', drain:'Poor', permeab:'Very low', excav:'Sticky; slope instability when wet', moisture:'High shrink–swell with WT swings', note:'Lean clay — settlement / volume change'},
+  {re:/^A-7-5/, label:'A-7-5', uscs:'MH–OH', subgrade:'Poor', strength:'Low', frost:'High', shrink:'High', drain:'Very poor', permeab:'Very low', excav:'Very difficult; organic risk', moisture:'Critical — soft when wet', note:'Elastic / organic silt-clay'},
+  {re:/^A-7-6|^A-7/, label:'A-7-6', uscs:'CH', subgrade:'Very poor', strength:'Low (softens when wet)', frost:'High', shrink:'Very high', drain:'Very poor', permeab:'Very low', excav:'Very difficult; heave/settlement', moisture:'Critical shrink–swell', note:'Fat clay — treat or remove for pavement/structures'},
+  {re:/^A-8|^A8/, label:'A-8', uscs:'PT/OH', subgrade:'Unsuitable', strength:'Very low', frost:'N/A', shrink:'Extreme (organic)', drain:'Very poor', permeab:'Variable', excav:'Unsuitable for support', moisture:'Critical — organics', note:'NRCS organic tag — not M 145 highway group from borings'}
+];
+function engPropPriorForAashto(aashto){
+  const g=aashtoBase(aashto)||String(aashto||'').toUpperCase().replace(/\s+/g,'');
+  if(!g)return null;
+  for(const P of ENG_PROP_PRIORS){ if(P.re.test(g)) return Object.assign({group:g}, P); }
+  return {group:g, label:g, uscs:'—', subgrade:'Unrated', strength:'—', frost:'—', shrink:'—', drain:'—', permeab:'—', excav:'—', moisture:'—', note:'No screening prior for this group'};
+}
+function dtwEngFlags(dtwFt, group){
+  const flags=[];
+  if(dtwFt==null||!Number.isFinite(+dtwFt)) return flags;
+  const d=+dtwFt;
+  const g=aashtoBase(group)||'';
+  const fine=/^A-4|^A-5|^A-6|^A-7|^A-2-6|^A-2-7/.test(g);
+  const sand=/^A-1|^A-3|^A-2-4|^A-2-5/.test(g);
+  if(d<2){
+    flags.push('DTW <2 ft — App.1 separation fail for infiltration; excavation likely wet');
+    if(fine) flags.push('Fine-grained soil + shallow WT — expect soft / pumping subgrade');
+    if(sand) flags.push('Granular + shallow WT — cave-in / flowing sand risk in open cuts');
+  } else if(d<4){
+    flags.push('DTW 2–4 ft — near SHWT; mounding / wet-season strength loss possible');
+    if(fine) flags.push('Fines may soften seasonally near pavement grade');
+  } else if(d<8&&fine){
+    flags.push('DTW <8 ft with plastic/silty soil — check capillary rise / frost');
+  }
+  return flags;
+}
+function mergeNrcsEng(prior, nrcs){
+  if(!nrcs) return {roads:null, excav:null, dwellings:null, sand:null, notes:[]};
+  const notes=[];
+  const roads=nrcs.eng_roads||null, excav=nrcs.eng_shallow_excav||null;
+  const dwellings=nrcs.eng_dwellings||null, sand=nrcs.eng_sand_source||null;
+  if(roads) notes.push('NRCS local roads / streets: '+roads);
+  if(excav) notes.push('NRCS shallow excavations: '+excav);
+  if(dwellings) notes.push('NRCS dwellings w/o basements: '+dwellings);
+  if(sand) notes.push('NRCS sand source: '+sand);
+  /* Soften optimistic AASHTO priors when NRCS says Very limited */
+  let adj=null;
+  if(roads&&/very limited/i.test(roads)&&prior&&/Excellent|Good/i.test(prior.subgrade||'')){
+    adj='NRCS roads “Very limited” — mapunit hydro/flood may override granular AASHTO prior near surface';
+  }
+  return {roads, excav, dwellings, sand, notes, adj};
+}
+function forecastEngProps(aashto, opts){
+  opts=opts||{};
+  const prior=engPropPriorForAashto(aashto);
+  if(!prior) return null;
+  const sg=m57SubgradeRating(aashto, opts.gi!=null?opts.gi:null);
+  const dtwFlags=dtwEngFlags(opts.dtw_ft, prior.group);
+  const nrcsM=mergeNrcsEng(prior, opts.nrcs);
+  const notes=[prior.note].filter(Boolean);
+  if(nrcsM.adj) notes.push(nrcsM.adj);
+  nrcsM.notes.forEach(n=>notes.push(n));
+  dtwFlags.forEach(f=>notes.push(f));
+  if(opts.from_nrcs) notes.push('Class from NRCS mapunit — confirm with boring samples when available');
+  if(opts.depth_top!=null||opts.depth_bot!=null){
+    notes.push('Depth window '+(opts.depth_top!=null?opts.depth_top:'?')+'–'+(opts.depth_bot!=null?opts.depth_bot:'?')+' ft');
+  }
+  let conf='aashto_prior';
+  if(opts.from_borings) conf='boring_class';
+  if(opts.from_nrcs) conf='nrcs_mapunit';
+  if(opts.nrcs&&(opts.nrcs.eng_roads||opts.nrcs.ksat_in_hr!=null)) conf+='+nrcs';
+  if(opts.dtw_ft!=null) conf+='+dtw';
+  return {
+    group:prior.group,
+    label:prior.label,
+    uscs_typical:prior.uscs,
+    subgrade:sg.rating||prior.subgrade,
+    subgrade_band:sg.band||null,
+    gi:sg.gi!=null?sg.gi:opts.gi,
+    strength:prior.strength,
+    frost:prior.frost,
+    shrink_swell:prior.shrink,
+    drainage:prior.drain,
+    permeability:prior.permeab,
+    excavation:prior.excav,
+    moisture:prior.moisture,
+    dtw_ft:opts.dtw_ft!=null?+opts.dtw_ft:null,
+    dtw_flags:dtwFlags,
+    nrcs_roads:nrcsM.roads,
+    nrcs_excav:nrcsM.excav,
+    nrcs_dwellings:nrcsM.dwellings,
+    nrcs_sand:nrcsM.sand,
+    notes,
+    confidence:conf,
+    screening:true,
+    depth_top:opts.depth_top!=null?+opts.depth_top:null,
+    depth_bot:opts.depth_bot!=null?+opts.depth_bot:null,
+    source:opts.from_borings?'neighbor boring class':(opts.from_nrcs?'NRCS mapunit':'AASHTO prior')
+  };
+}
+function engForecastForProfile(P, E, hydro){
+  if(!P) return null;
+  const dtw=(P.infil&&P.infil.dtw_ft!=null)?P.infil.dtw_ft
+    :(hydro&&hydro.dtw_now!=null)?hydro.dtw_now
+    :(hydro&&hydro.dtw&&hydro.dtw.normal!=null)?hydro.dtw.normal
+    :(E&&E.nrcs&&E.nrcs.wtdepannmin_ft!=null)?+E.nrcs.wtdepannmin_ft
+    :null;
+  const aLoc=P.classes&&P.classes.aashto_loc;
+  const group=(aLoc&&aLoc.value)||(P.subgrade&&P.subgrade.group)||(E&&E.nrcs&&E.nrcs.aashto)||null;
+  const fromNrcs=!!(aLoc&&aLoc.from_nrcs);
+  const fromBorings=!!(aLoc&&!aLoc.from_nrcs&&aLoc.value);
+  const near=group?forecastEngProps(group, {
+    gi:P.subgrade&&P.subgrade.gi_idw,
+    dtw_ft:dtw,
+    nrcs:E&&E.nrcs,
+    from_nrcs:fromNrcs,
+    from_borings:fromBorings,
+    depth_top:0,
+    depth_bot:15
+  }):null;
+  const layers=[];
+  const stick=(P.class_column&&P.class_column.aashto_stick)||[];
+  stick.forEach(L=>{
+    if(!L||!L.label)return;
+    const f=forecastEngProps(L.label, {
+      dtw_ft:dtw,
+      nrcs:E&&E.nrcs,
+      from_borings:true,
+      depth_top:L.top, depth_bot:L.bot
+    });
+    if(f) layers.push({
+      top:L.top, bot:L.bot, group:f.group, subgrade:f.subgrade, frost:f.frost,
+      shrink_swell:f.shrink_swell, permeability:f.permeability, excavation:f.excavation
+    });
+  });
+  const merged=[];
+  layers.forEach(L=>{
+    const last=merged[merged.length-1];
+    if(last&&last.group===L.group){ last.bot=L.bot; }
+    else merged.push(Object.assign({},L));
+  });
+  return {
+    near_surface:near,
+    column:merged.slice(0,12),
+    dtw_ft:dtw,
+    n_layers:merged.length
+  };
 }
 function subgradeFromBoring(r){
   const ss=(r.s||[]).filter(s=>s.d!=null&&s.d<=5&&s.aashto);
@@ -23175,7 +23336,7 @@ function buildSiteProfile(lat, lon, hits, radiusFt){
   const detailMaj=majorityVote(sgDetails);
   const lzIdw=idwMean(septic.filter(p=>p.lz_in!=null).map(p=>({v:p.lz_in/12,d:p.d})),2); /* inches→ft */
 
-  return {
+  const out={
     lat, lon,
     n_neighbors:neighbors.length,
     nearest_ft:neighbors.length?Math.round(neighbors[0].d):null,
@@ -23215,8 +23376,11 @@ function buildSiteProfile(lat, lon, hits, radiusFt){
       lz_ft:lzIdw!=null?Math.round(lzIdw*10)/10:null,
       septic_support:septic.filter(p=>p.lz_in!=null).length
     },
-    neighbors:neighbors.map(({r,d})=>({job:r.job,b:r.b,d:Math.round(d),eob:r.eob}))
+    neighbors:neighbors.map(({r,d})=>({job:r.job,b:r.b,d:Math.round(d),eob:r.eob})),
+    eng_forecast:null
   };
+  out.eng_forecast=engForecastForProfile(out, E, null);
+  return out;
 }
 function formatProfileHTML(P){
   if(!P)return '';
@@ -23525,6 +23689,7 @@ function hudTopicMeta(tab){
     estimate:{title:'Infiltration', tag:'SCREENING'},
     septic:{title:'DNREC septic', tag:'BORINGS · EVALS'},
     anchors:{title:'Field infil anchors', tag:'DELDOT BOREHOLE'},
+    props:{title:'Eng. property forecast', tag:'AASHTO · DTW · NRCS'},
     class:{title:'Classification', tag:'≤15 FT IDW'},
     column:{title:'Soil column', tag:'0–'+CLASS_COL_DEPTH_FT+' FT'},
     layers:{title:'Reference layers', tag:'FIRSTMAP / DNREC'},
@@ -23552,6 +23717,9 @@ function renderHudBadges(ctx){
     h+=`<span class="hud-badge">Field<em>${P.infil.field_anchor.measured} in/hr</em></span>`;
   } else if(P.infil&&P.infil.field_anchor_n>0){
     h+=`<span class="hud-badge">Anchors<em>${P.infil.field_anchor_n}</em></span>`;
+  }
+  if(P.eng_forecast&&P.eng_forecast.near_surface&&P.eng_forecast.near_surface.subgrade){
+    h+=`<span class="hud-badge">Subgrade<em>${esc(P.eng_forecast.near_surface.subgrade)}</em></span>`;
   }
   if(P.infil&&P.infil.separation_ok===false) h+=`<span class="hud-badge warn">Sep.<em>&lt;2′</em></span>`;
   else if(P.infil&&P.infil.dtw_ft!=null) h+=`<span class="hud-badge cyan">DTW<em>${P.infil.dtw_ft}′</em></span>`;
@@ -23587,11 +23755,16 @@ function renderHudRail(ctx){
     :(anc0? (`nearest ${anc0.id} @ ${anc0.d} ft · ${ancN} in radius`)
       :(infilAnchors.length? `${infilAnchors.length} loaded · none in radius`:'import infil PDFs'));
 
+  const eng=P.eng_forecast&&P.eng_forecast.near_surface;
+  const engV=eng?(eng.subgrade||eng.label||'—'):'—';
+  const engS=eng?((eng.group||'')+(eng.frost?' · frost '+eng.frost:'')+(eng.source?' · '+eng.source:'')):'AASHTO + DTW + NRCS';
+
   const items=[
     {id:'overview', cls:'', k:'Brief', v:'All signals', s:(P.n_neighbors||0)+' borings · '+hitN+' layer hits'},
     {id:'site', cls:'', k:'Site', v:E.soilSym||E.hydgrp||'—', s:(E.soilName||'soils')+(E.geoName?' · '+E.geoName:'')},
     {id:'estimate', cls:'infil', k:'Infil', v:P.infil&&P.infil.design_inhr!=null?(P.infil.design_inhr+''):(P.infil&&P.infil.est_inhr!=null?(P.infil.est_inhr+''):'—'), s:P.infil&&P.infil.field_anchor?'field-anchored ÷FoS':(P.infil&&P.infil.design_inhr!=null?'illustrative ÷2.5 in/hr':(P.infil&&P.infil.est_inhr!=null?'screening in/hr':'no estimate'))},
     {id:'anchors', cls:'infil', k:'Anchors', v:ancV, s:ancS},
+    {id:'props', cls:'', k:'Props', v:engV, s:engS},
     {id:'septic', cls:'septic', k:'Septic', v:septicV, s:septicS},
     {id:'class', cls:'', k:'Class', v:aDisp.head, s:aDisp.sub||((u?u+' · ':'')+classSourceLabel(P.classes&&P.classes.aashto_loc))},
     {id:'column', cls:'', k:'Column', v:'0–'+CLASS_COL_DEPTH_FT+'′', s:P.class_column?'tap stick · Subsurface':'no column'},
@@ -23629,11 +23802,13 @@ function renderHudDrawer(ctx){
     const fa=P.infil&&P.infil.field_anchor;
     const faN=P.infil&&P.infil.field_anchor_n||0;
     h+=`<div class="brief-cell"><div class="lbl">Field anchors</div><div class="val amber">${fa?fa.measured+' in/hr':(faN||'—')}</div><div class="sub">${fa?(esc(fa.id)+' @ '+Math.round(fa.d)+' ft'):(faN?faN+' in radius':'none in radius')}</div></div>`;
+    const engBr=P.eng_forecast&&P.eng_forecast.near_surface;
+    h+=`<div class="brief-cell"><div class="lbl">Eng. forecast</div><div class="val amber">${engBr?esc(engBr.subgrade||'—'):'—'}</div><div class="sub">${engBr?esc((engBr.group||'')+(engBr.frost?' · frost '+engBr.frost:'')):'AASHTO + DTW + NRCS'}</div></div>`;
     h+=`<div class="brief-cell"><div class="lbl">DNREC septic</div><div class="val cyan">${sep.inhr!=null?sep.inhr+' in/hr':(sep.nearInhr!=null?sep.nearInhr+' in/hr':'—')}</div><div class="sub">${sep.n?sep.n+' pts IDW':(sep.nearMpi!=null?'nearest '+sep.nearMpi+' min/in':'none nearby')}</div></div>`;
     h+=`<div class="brief-cell"><div class="lbl">Soils / HYDGRP</div><div class="val">${esc(E.soilSym||'—')}</div><div class="sub">${esc(E.hydgrp||'')}${E.soilName?' · '+esc(E.soilName):''}</div></div>`;
     h+=`</div>`;
     h+=`<h4>Tap any rail item for full detail</h4>`;
-    h+=`<div class="hint">Site · Infil · <b>Anchors</b> · Septic · Class · Column · Layers · Borings · Hydro.</div>`;
+    h+=`<div class="hint">Site · Infil · Anchors · <b>Props</b> · Septic · Class · Column · Layers · Borings · Hydro.</div>`;
     if(P.class_column){
       h+=`<h4>Column peek</h4><div style="display:flex;gap:10px">`;
       h+=`<div>${svgStickProfile(P.class_column.aashto_stick,P.class_column.depth_ft,'AASHTO')}</div>`;
@@ -23710,6 +23885,56 @@ function renderHudDrawer(ctx){
       });
     } else if(infilAnchors.length){
       h+=`<div class="hint">${infilAnchors.length} anchor(s) loaded project-wide. Amber markers on map.</div>`;
+    }
+  } else if(tab==='props'){
+    const F=P.eng_forecast, N=F&&F.near_surface;
+    h+=`<div class="hint warn" style="margin-bottom:8px">Screening forecast from AASHTO group priors + DTW + NRCS engineering ratings. Not lab strength, CBR, or sealed design values.</div>`;
+    if(!N){
+      h+=`<div class="hint warn">No AASHTO class available — load borings or NRCS mapunit join.</div>`;
+    } else {
+      h+=`<div class="septic-card">`;
+      h+=`<div class="big" style="font-size:22px">${esc(N.group||'—')} <span style="font-size:14px;font-weight:600;color:var(--dim)">${esc(N.uscs_typical||'')}</span></div>`;
+      h+=`<div class="sub">Subgrade <b style="color:var(--amber)">${esc(N.subgrade||'—')}</b>${N.subgrade_band?' · '+esc(N.subgrade_band):''} · ${esc(N.source||'')}</div>`;
+      h+=`</div>`;
+      h+=`<table class="mini-kv">`;
+      h+=`<tr><td>Strength / bearing</td><td class="wrap">${esc(N.strength||'—')}</td></tr>`;
+      h+=`<tr><td>Frost</td><td class="wrap">${esc(N.frost||'—')}</td></tr>`;
+      h+=`<tr><td>Shrink–swell</td><td class="wrap">${esc(N.shrink_swell||'—')}</td></tr>`;
+      h+=`<tr><td>Drainage</td><td class="wrap">${esc(N.drainage||'—')}</td></tr>`;
+      h+=`<tr><td>Permeability</td><td class="wrap">${esc(N.permeability||'—')}</td></tr>`;
+      h+=`<tr><td>Excavation</td><td class="wrap">${esc(N.excavation||'—')}</td></tr>`;
+      h+=`<tr><td>Moisture</td><td class="wrap">${esc(N.moisture||'—')}</td></tr>`;
+      if(N.dtw_ft!=null) h+=`<tr><td>DTW used</td><td>${N.dtw_ft} ft</td></tr>`;
+      if(N.gi!=null) h+=`<tr><td>GI (IDW)</td><td>${N.gi}</td></tr>`;
+      h+=`</table>`;
+      if(N.nrcs_roads||N.nrcs_excav||N.nrcs_dwellings||N.nrcs_sand){
+        h+=`<h4>NRCS mapunit eng ratings</h4><table class="mini-kv">`;
+        if(N.nrcs_roads) h+=`<tr><td>Roads / streets</td><td class="wrap">${esc(N.nrcs_roads)}</td></tr>`;
+        if(N.nrcs_excav) h+=`<tr><td>Shallow excav.</td><td class="wrap">${esc(N.nrcs_excav)}</td></tr>`;
+        if(N.nrcs_dwellings) h+=`<tr><td>Dwellings</td><td class="wrap">${esc(N.nrcs_dwellings)}</td></tr>`;
+        if(N.nrcs_sand) h+=`<tr><td>Sand source</td><td class="wrap">${esc(N.nrcs_sand)}</td></tr>`;
+        h+=`</table>`;
+      }
+      if(N.dtw_flags&&N.dtw_flags.length){
+        h+=`<h4>DTW flags</h4>`;
+        N.dtw_flags.forEach(f=>{ h+=`<div class="hint warn" style="margin:4px 0">${esc(f)}</div>`; });
+      }
+      if(N.notes&&N.notes.length){
+        h+=`<h4>Notes</h4>`;
+        N.notes.slice(0,8).forEach(n=>{ h+=`<div class="hint" style="margin:3px 0">${esc(n)}</div>`; });
+      }
+      h+=`<div class="hint" style="margin-top:8px">Confidence: ${esc(N.confidence||'—')} · near-surface window 0–15 ft</div>`;
+    }
+    const col=(F&&F.column)||[];
+    if(col.length){
+      h+=`<h4>Column by AASHTO · ${col.length} layer(s)</h4>`;
+      h+=`<table class="mini-kv">`;
+      col.forEach(L=>{
+        h+=`<tr><td>${L.top}–${L.bot} ft</td><td class="wrap"><b>${esc(L.group)}</b> · subgrade ${esc(L.subgrade||'—')} · frost ${esc(L.frost||'—')} · shrink ${esc(L.shrink_swell||'—')}</td></tr>`;
+      });
+      h+=`</table>`;
+    } else {
+      h+=`<div class="hint" style="margin-top:10px">No 0–50 ft stick layers — column forecast appears when neighbor boring classes exist.</div>`;
     }
   } else if(tab==='septic'){
     const borings=septicBoringRecords(ctx.hits||[]);
