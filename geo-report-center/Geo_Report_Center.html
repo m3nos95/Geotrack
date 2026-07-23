@@ -21017,7 +21017,7 @@ table.list td{padding:5px 8px;border-bottom:1px solid rgba(46,58,72,.5);font-fam
 </head>
 <body>
 <div id="hdr">
-  <h1><b>DelDOT</b> GeoTrak<span class="badge">v0.29</span></h1>
+  <h1><b>DelDOT</b> GeoTrak<span class="badge">v0.30</span></h1>
   <button class="tab on" data-p="map">Map</button>
   <button class="tab" data-p="refs">Reference data</button>
   <button class="tab" data-p="jobs">Jobs</button>
@@ -22292,7 +22292,7 @@ function formatInfilHTML(E){
   return h;
 }
 
-/* ---------- prediction / site profile engine (v0.29) ---------- */
+/* ---------- prediction / site profile engine (v0.30) ---------- */
 const PROFILE_RADIUS_FT=500; /* lateral — estimate from borings within a few hundred ft */
 const PROFILE_K=16; /* denser clusters → more samples → better estimate */
 function parseDnrecNumber(raw){
@@ -23276,20 +23276,37 @@ function buildSiteProfile(lat, lon, hits, radiusFt){
     if(granularAashto&&aashtoMid!=null&&percIdw<aashtoMid*0.15) w=0.15;
     parts.push({v:percIdw, w, src:'septic PercRate IDW (not App.1 ASTM)'});
   }
-  /* Field infil anchors (DelDOT borehole tests) — strongest signal when present */
-  const anchorsNear=nearestInfilAnchors(lat, lon, latRadius);
+  /* Field infil anchors (DelDOT borehole tests).
+     ≤75 ft  → hard override to measured
+     ≤300 ft → distance-weighted pull toward nearest measured so map/AASHTO
+               sand priors cannot invent ~8 in/hr across the road from a 0.4 in/hr test
+     farther → light IDW into parts only */
+  const FIELD_HARD_FT=75;
+  const FIELD_SOFT_FT=300;
+  const anchorsNear=nearestInfilAnchors(lat, lon, Math.max(latRadius, FIELD_SOFT_FT));
   const anchorIdw=idwMean(anchorsNear.map(({a,d})=>({v:a.measured_inhr,d})), 2);
   let fieldOverride=null;
-  if(anchorsNear.length&&anchorsNear[0].d<=75){
+  let fieldSoft=null;
+  if(anchorsNear.length&&anchorsNear[0].d<=FIELD_HARD_FT){
     const A=anchorsNear[0].a, d0=anchorsNear[0].d;
     fieldOverride={
       measured:A.measured_inhr,
       design:A.design_inhr!=null?A.design_inhr:Math.round((A.measured_inhr/DNREC_BOREHOLE_FOS)*1000)/1000,
       id:A.id, d:d0, fos:A.fos!=null?A.fos:DNREC_BOREHOLE_FOS, method:A.method
     };
+  } else if(anchorsNear.length&&anchorsNear[0].d<=FIELD_SOFT_FT){
+    const A=anchorsNear[0].a, d0=anchorsNear[0].d;
+    /* w_field: ~0.92 at 75 ft → ~0.55 at 160 ft → ~0.25 at 300 ft */
+    const t=Math.min(1, Math.max(0, (d0-FIELD_HARD_FT)/(FIELD_SOFT_FT-FIELD_HARD_FT)));
+    const wField=Math.round((0.92-0.67*Math.pow(t,0.85))*1000)/1000;
+    fieldSoft={
+      measured:A.measured_inhr,
+      design:A.design_inhr!=null?A.design_inhr:Math.round((A.measured_inhr/DNREC_BOREHOLE_FOS)*1000)/1000,
+      id:A.id, d:d0, fos:A.fos!=null?A.fos:DNREC_BOREHOLE_FOS, method:A.method,
+      w:wField
+    };
   } else if(anchorIdw!=null){
-    let w=anchorsNear[0].d<=200?2.6:1.9;
-    parts.push({v:anchorIdw, w, src:'field infil anchor IDW (DelDOT borehole)'});
+    parts.push({v:anchorIdw, w:1.4, src:'field infil anchor IDW (DelDOT borehole)'});
   }
   let infilBlend=null, infilNote='';
   let designBlend=null;
@@ -23300,14 +23317,32 @@ function buildSiteProfile(lat, lon, hits, radiusFt){
       (fieldOverride.method==='cased_borehole'||(fieldOverride.fos&&fieldOverride.fos>1)
         ?` · design ÷${fieldOverride.fos} = ${fieldOverride.design} in/hr`
         :'');
-  } else if(parts.length){
-    let sw=0, sv=0;
-    parts.forEach(p=>{ sw+=p.w; sv+=p.w*p.v; });
-    infilBlend=Math.round((sv/sw)*1000)/1000;
-    infilNote=parts.length===1
-      ?(parts[0].src+(parts[0].src.indexOf('AASHTO')===0?' (no HYDGRP/septic required)':''))
-      :('blend: '+parts.map(p=>p.src).join(' + '));
-    designBlend=Math.round((infilBlend/DNREC_BOREHOLE_FOS)*1000)/1000;
+  } else {
+    let mapBlend=null, mapNote='';
+    if(parts.length){
+      let sw=0, sv=0;
+      parts.forEach(p=>{ sw+=p.w; sv+=p.w*p.v; });
+      mapBlend=sv/sw;
+      mapNote=parts.length===1
+        ?(parts[0].src+(parts[0].src.indexOf('AASHTO')===0?' (no HYDGRP/septic required)':''))
+        :('blend: '+parts.map(p=>p.src).join(' + '));
+    }
+    if(fieldSoft){
+      const wf=fieldSoft.w, wm=1-wf;
+      const base=mapBlend!=null?mapBlend:fieldSoft.measured;
+      infilBlend=Math.round((wf*fieldSoft.measured+wm*base)*1000)/1000;
+      /* Cap runaway highs: within soft radius, don't exceed measured × headroom */
+      const headroom=1.25+2.75*((fieldSoft.d-FIELD_HARD_FT)/(FIELD_SOFT_FT-FIELD_HARD_FT)); /* ~1.25@75 → ~4@300 */
+      const cap=fieldSoft.measured*headroom;
+      if(infilBlend>cap) infilBlend=Math.round(cap*1000)/1000;
+      designBlend=Math.round((infilBlend/(fieldSoft.fos||DNREC_BOREHOLE_FOS))*1000)/1000;
+      infilNote=`field-anchored ${Math.round(wf*100)}% to ${fieldSoft.id} @ ${Math.round(fieldSoft.d)} ft (meas ${fieldSoft.measured})`+
+        (mapNote?`; map/class ${Math.round(wm*100)}% (`+mapNote.replace(/^blend:\s*/,'')+')':'');
+    } else if(mapBlend!=null){
+      infilBlend=Math.round(mapBlend*1000)/1000;
+      infilNote=mapNote;
+      designBlend=Math.round((infilBlend/DNREC_BOREHOLE_FOS)*1000)/1000;
+    }
   }
   /* subgrade — AASHTO M 57 / M 145 (not DelDOT N chart) */
   const sgScores=[], sgGis=[], sgNs=[], sgRatings=[], sgGroups=[], sgDetails=[];
