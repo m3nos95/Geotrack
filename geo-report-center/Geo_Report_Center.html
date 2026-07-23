@@ -20964,8 +20964,6 @@ table.list td{padding:5px 8px;border-bottom:1px solid rgba(46,58,72,.5);font-fam
 #siteHud .dnrec-rec .rec-id{font-family:var(--display);font-weight:700;font-size:15px;color:var(--text)}
 #siteHud .dnrec-rec .rec-dist{font-family:var(--mono);font-size:10px;color:var(--cyan);letter-spacing:.06em;white-space:nowrap}
 #siteHud .dnrec-rec .rec-meta{font-size:11px;color:var(--dim);line-height:1.4;margin-top:2px}
-#siteHud .dnrec-rec a.doc,#siteHud a.doc{display:inline-block;margin-top:8px;font-family:var(--mono);font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:var(--amber);border-bottom:1px solid rgba(240,168,74,.45);text-decoration:none}
-#siteHud .dnrec-rec a.doc:hover,#siteHud a.doc:hover{color:var(--text);border-color:var(--amber)}
 #siteHud .mini-kv{width:100%;border-collapse:collapse;font-size:11px}
 #siteHud .mini-kv td{padding:4px 5px;border-bottom:1px solid rgba(46,58,72,.4);vertical-align:top}
 #siteHud .mini-kv td:first-child{color:var(--dim);font-family:var(--mono);white-space:nowrap;width:1%}
@@ -21256,7 +21254,7 @@ const PROP_PREFER=['NAME','SYMBOL','AGE','DESCRIPTION','RECHARGE','CLASS','POTEN
   'PercRate','PercRateMethod','DepthtoLZ','LZReason','Profile','OptionArea','HorizontalMethod',
   'PermitNumber','PermitStatus','PermitType','OptionAreaA_ApprovedFor','OptionAreaB_ApprovedFor',
   'SiteAddress','OwnerName','SiteEvaluator','SiteEvaluatorLicenseNumber','EvaluationDate','ApprovedDate',
-  'DocumentLink','TaxParcelNumber','PIN','PiCounty','Watershed','BoringDetails','SoilsReview',
+  'TaxParcelNumber','PIN','PiCounty','Watershed','BoringDetails','SoilsReview',
   'FLD_ZONE','ZONE_SUBTY','SFHA_TF','HUC12','HU_12_NAME','WETLAND_TYPE',
   'SITENAME','PROGRAM','RESTRICTIO','MAXGW','STATUS','WellType','DGSid','TotalDepthActual','Formation'];
 const HYDRO_SERVICES={
@@ -23150,7 +23148,6 @@ function septicEvalRecords(hits){
     const d=septicHitDist(H);
     if(d==null)return;
     const props=H.props||{};
-    const doc=septicClean(fsProp(props,['DocumentLink','DOCUMENTLINK']));
     out.push({
       d,
       permit:septicClean(fsProp(props,['PermitNumber','PERMITNUMBER'])),
@@ -23170,7 +23167,6 @@ function septicEvalRecords(hits){
       watershed:septicClean(fsProp(props,['Watershed','WATERSHED'])),
       boring_details:septicClean(fsProp(props,['BoringDetails','BORINGDETAILS'])),
       soils_review:septicClean(fsProp(props,['SoilsReview','SOILSREVIEW'])),
-      doc,
       layer:H.layer||''
     });
   });
@@ -23212,7 +23208,6 @@ function renderSepticEvalCard(e){
   if(e.boring_details&&!/^\d{4}-\d{2}-\d{2}/.test(e.boring_details)) h+=`<tr><td>Boring notes</td><td class="wrap">${esc(e.boring_details)}</td></tr>`;
   if(e.soils_review&&!/^\d{4}-\d{2}-\d{2}/.test(e.soils_review)) h+=`<tr><td>Soils review</td><td class="wrap">${esc(e.soils_review)}</td></tr>`;
   h+=`</table>`;
-  if(e.doc&&/^https?:\/\//i.test(e.doc)) h+=`<a class="doc" href="${esc(e.doc)}" target="_blank" rel="noopener">Open DNREC DEN record →</a>`;
   h+=`</div>`;
   return h;
 }
@@ -23897,7 +23892,7 @@ function renderHudDrawer(ctx){
       if(P.infil.note) h+=`<tr><td>Note</td><td>${esc(P.infil.note)}</td></tr>`;
     }
     if(P.subgrade&&P.subgrade.label) h+=`<tr><td>Subgrade</td><td>${esc(P.subgrade.label)}${P.subgrade.detail?' · '+esc(P.subgrade.detail):''}</td></tr>`;
-    h+=`</table><div class="hint" style="margin-top:8px">Within 75 ft of a DelDOT borehole field test, measured rate overrides map/septic screening. Preferred DNREC method remains full-size ring infiltrometer.</div>`;
+    h+=`</table><div class="hint" style="margin-top:8px">Infil screening prefers NRCS mapunit (HYDGRP/Ksat) over neighbor AASHTO when soils are loaded. AASHTO still drives Props / subgrade / column. Field anchors dominate nearby. Preferred DNREC method: full-size ring infiltrometer.</div>`;
   } else if(tab==='anchors'){
     const list=(P.infil&&P.infil.field_anchors)||[];
     const fa=P.infil&&P.infil.field_anchor;
@@ -23996,7 +23991,7 @@ function renderHudDrawer(ctx){
       h+=`<div class="sub">${borings.length||evals.length?'Records below · widen radius for rates':'Load dnrec septic refs · widen radius'}</div>`;
     }
     h+=`</div>`;
-    h+=`<div class="hint warn" style="margin-bottom:8px">GIS attributes from DNREC septic soil borings &amp; site evaluations (FirstMap). PercRate is minutes/inch — screening proxy only, not Appendix 1 ASTM. Full narrative reports open via DEN document links on site evals.</div>`;
+    h+=`<div class="hint warn" style="margin-bottom:8px">GIS attributes from DNREC septic soil borings &amp; site evaluations (FirstMap). PercRate is minutes/inch — screening proxy only, not Appendix 1 ASTM.</div>`;
     h+=`<h4>Soil borings · ${borings.length}</h4>`;
     if(borings.length){
       borings.slice(0,12).forEach(p=>{ h+=renderSepticBoringCard(p); });
@@ -24071,13 +24066,11 @@ function renderHudDrawer(ctx){
           const status=fsProp(props,['PermitStatus','PERMITSTATUS']);
           const appr=fsProp(props,['OptionAreaA_ApprovedFor','OPTIONAREAA_APPROVEDFOR']);
           const site=fsProp(props,['SiteAddress','SITEADDRESS']);
-          const doc=fsProp(props,['DocumentLink','DOCUMENTLINK']);
           h+=`<table class="mini-kv">`;
           if(status) h+=`<tr><td>Status</td><td>${esc(status)}</td></tr>`;
           if(appr) h+=`<tr><td>Approved for</td><td>${esc(appr)}</td></tr>`;
           if(site) h+=`<tr><td>Site</td><td>${esc(site)}</td></tr>`;
           h+=`</table>`;
-          if(doc&&/^https?:\/\//i.test(String(doc))) h+=`<a class="doc" href="${esc(doc)}" target="_blank" rel="noopener">Open DEN record →</a>`;
         }
       });
       n++;

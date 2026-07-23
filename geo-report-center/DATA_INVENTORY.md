@@ -347,7 +347,7 @@ Default download (no flags) pulls **recommended full pack**. Optional:
 
 Point layers query **nearest within 500 ft** on map click (up to **12** septic borings / site evals; **5** for other point kinds). Polygons use point-in-polygon. Lines (tax ditches / rivers / roads) use nearest vertex within 200 ft.
 
-**Site Intel → Septic deck (v0.27):** lists soil-boring attributes (Profile, PercRate, DepthtoLZ, LZReason, PercRateMethod, OptionArea) and site-evaluation fields (permit, approved system, address, evaluator, dates) with **DocumentLink** to DNREC DEN when present.
+**Site Intel → Septic deck (v0.27+):** lists soil-boring attributes (Profile, PercRate, DepthtoLZ, LZReason, PercRateMethod, OptionArea) and site-evaluation fields (permit, approved system, address, evaluator, dates). DEN DocumentLink is not shown — public records almost never include usable attachments.
 
 ---
 
