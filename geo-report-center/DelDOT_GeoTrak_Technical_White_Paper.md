@@ -366,6 +366,8 @@ In-app **Export feature store (CSV)** produces a similar join for all mapped bor
 | v0.23 | Site Intel rail/deck UI; dedicated Septic topic |
 | v0.24 | Clarify NRCS A-8/PT vs AASHTO M 145 |
 | v0.25 | Product branding: **DelDOT GeoTrak** |
+| v0.26 | Subsurface mode (GS elev + GWT on dual sticks) |
+| v0.27 | DNREC septic soil borings & site-eval record browse (attributes + DEN links) |
 
 ---
 
@@ -415,7 +417,7 @@ Users should retain citations for FirstMap / DGS products and NRCS Soil Data Acc
 |------|-------|
 | Product name | DelDOT GeoTrak |
 | App file | `Geo_Report_Center.html` |
-| Described release | v0.25 |
+| Described release | v0.27 |
 | Repository path | `geo-report-center/` |
 | Primary specification references | AASHTO M 57 / M 145; ASTM D2487 (USCS screening); ASTM D5126; DNREC BMP Standards & Specs Appendix 1 (Eff. Feb 2019) |
 

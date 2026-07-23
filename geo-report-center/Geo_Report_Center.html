@@ -20959,9 +20959,17 @@ table.list td{padding:5px 8px;border-bottom:1px solid rgba(46,58,72,.5);font-fam
 #siteHud .septic-card{padding:12px;border:1px solid rgba(61,207,191,.4);background:linear-gradient(135deg,rgba(61,207,191,.08),rgba(8,14,20,.4));margin-bottom:10px}
 #siteHud .septic-card .big{font-family:var(--display);font-size:28px;font-weight:800;color:var(--cyan);line-height:1}
 #siteHud .septic-card .sub{margin-top:6px;font-size:11px;color:var(--dim)}
+#siteHud .dnrec-rec{padding:10px 12px;border:1px solid rgba(42,55,71,.95);background:rgba(8,14,20,.55);margin-bottom:8px}
+#siteHud .dnrec-rec .rec-top{display:flex;justify-content:space-between;gap:8px;align-items:baseline;margin-bottom:6px}
+#siteHud .dnrec-rec .rec-id{font-family:var(--display);font-weight:700;font-size:15px;color:var(--text)}
+#siteHud .dnrec-rec .rec-dist{font-family:var(--mono);font-size:10px;color:var(--cyan);letter-spacing:.06em;white-space:nowrap}
+#siteHud .dnrec-rec .rec-meta{font-size:11px;color:var(--dim);line-height:1.4;margin-top:2px}
+#siteHud .dnrec-rec a.doc,#siteHud a.doc{display:inline-block;margin-top:8px;font-family:var(--mono);font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:var(--amber);border-bottom:1px solid rgba(240,168,74,.45);text-decoration:none}
+#siteHud .dnrec-rec a.doc:hover,#siteHud a.doc:hover{color:var(--text);border-color:var(--amber)}
 #siteHud .mini-kv{width:100%;border-collapse:collapse;font-size:11px}
-#siteHud .mini-kv td{padding:4px 5px;border-bottom:1px solid rgba(46,58,72,.4)}
+#siteHud .mini-kv td{padding:4px 5px;border-bottom:1px solid rgba(46,58,72,.4);vertical-align:top}
 #siteHud .mini-kv td:first-child{color:var(--dim);font-family:var(--mono);white-space:nowrap;width:1%}
+#siteHud .mini-kv td.wrap{white-space:normal;word-break:break-word}
 @keyframes hudIn{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
 @keyframes hudSlideL{from{opacity:0;transform:translateX(-24px)}to{opacity:1;transform:none}}
 @keyframes hudSlideR{from{opacity:0;transform:translateX(28px)}to{opacity:1;transform:none}}
@@ -21009,7 +21017,7 @@ table.list td{padding:5px 8px;border-bottom:1px solid rgba(46,58,72,.5);font-fam
 </head>
 <body>
 <div id="hdr">
-  <h1><b>DelDOT</b> GeoTrak<span class="badge">v0.26</span></h1>
+  <h1><b>DelDOT</b> GeoTrak<span class="badge">v0.27</span></h1>
   <button class="tab on" data-p="map">Map</button>
   <button class="tab" data-p="refs">Reference data</button>
   <button class="tab" data-p="jobs">Jobs</button>
@@ -21059,7 +21067,7 @@ table.list td{padding:5px 8px;border-bottom:1px solid rgba(46,58,72,.5);font-fam
     <div id="qPanel">
       <div class="sec">
         <h3>Point query</h3>
-        <div class="hint">Click the map for <b>Site Intel</b>: left rail shows every signal (including DNREC septic); right deck opens full detail. Infil from AASHTO / HYDGRP / septic. Lateral radius default 500 ft; column 0–50 ft.</div>
+        <div class="hint">Click the map for <b>Site Intel</b>: left rail shows every signal (including DNREC septic); right deck opens full detail — septic shows soil-boring attributes and site-eval records with DEN links. Infil from AASHTO / HYDGRP / septic. Lateral radius default 500 ft; column 0–50 ft.</div>
       </div>
       <div class="sec">
         <h3>Search radius <span id="radLbl" style="color:var(--amber);font-family:var(--mono)">500 ft</span></h3>
@@ -21244,8 +21252,12 @@ const KIND_ORDER=['geology_piedmont','geology_surficial','geology_offshore','rec
 const PROP_PREFER=['NAME','SYMBOL','AGE','DESCRIPTION','RECHARGE','CLASS','POTENTIAL','QUADID','CENTLAT','CENTLONG',
   'MUNAME','MUSYM','AREASYMBOL','DRAINAGECL','HYDGRP','TAXORDER','TAXSUBORDER','FLOODFREQCL','HYDRIC','ZONE','TYPE','LABEL','FEATURE','UNIT',
   'SOILNAME','SOILSYM','SOILKEY','DRAINCLASS','RATING','CONDENSEDNAME',
-  'PercRate','PercRateMethod','DepthtoLZ','LZReason','Profile','FLD_ZONE','ZONE_SUBTY','SFHA_TF','HUC12','HU_12_NAME','WETLAND_TYPE',
-  'SITENAME','PROGRAM','RESTRICTIO','MAXGW','STATUS','WellType','PermitNumber','DGSid','TotalDepthActual','Formation'];
+  'PercRate','PercRateMethod','DepthtoLZ','LZReason','Profile','OptionArea','HorizontalMethod',
+  'PermitNumber','PermitStatus','PermitType','OptionAreaA_ApprovedFor','OptionAreaB_ApprovedFor',
+  'SiteAddress','OwnerName','SiteEvaluator','SiteEvaluatorLicenseNumber','EvaluationDate','ApprovedDate',
+  'DocumentLink','TaxParcelNumber','PIN','PiCounty','Watershed','BoringDetails','SoilsReview',
+  'FLD_ZONE','ZONE_SUBTY','SFHA_TF','HUC12','HU_12_NAME','WETLAND_TYPE',
+  'SITENAME','PROGRAM','RESTRICTIO','MAXGW','STATUS','WellType','DGSid','TotalDepthActual','Formation'];
 const HYDRO_SERVICES={
   dtw:'https://enterprise.firstmap.delaware.gov/arcgis/rest/services/Geology/DGS_DepthToWater/MapServer',
   wte:'https://enterprise.firstmap.delaware.gov/arcgis/rest/services/Geology/DGS_WaterTableElevation/MapServer',
@@ -21527,6 +21539,7 @@ function nearLineFt(lat,lon,geom,maxFt){
 }
 const POINT_KINDS=new Set(['septic_boring','septic_eval','well','env_site','septic_permit','asset']);
 const LINE_KINDS=new Set(['taxditch','hydrography','road']);
+const SEPTIC_POINT_KINDS=new Set(['septic_boring','septic_eval']);
 function queryRefs(lat,lon){
   const pt=[lon,lat], out=[];
   const pointRadiusFt=500, lineRadiusFt=200;
@@ -21542,7 +21555,9 @@ function queryRefs(lat,lon){
         if(d<=pointRadiusFt)near.push({f,d});
       }
       near.sort((a,b)=>a.d-b.d);
-      near.slice(0,5).forEach(({f,d})=>{
+      /* Keep more septic borings / site evals so the Septic deck can browse records, not only rates. */
+      const cap=SEPTIC_POINT_KINDS.has(kind)?12:5;
+      near.slice(0,cap).forEach(({f,d})=>{
         out.push({layer:R.name,kind,props:Object.assign({},f.properties||{},{_dist_ft:Math.round(d)}),dist:d});
       });
       return;
@@ -22199,7 +22214,7 @@ function formatInfilHTML(E){
   return h;
 }
 
-/* ---------- prediction / site profile engine (v0.26) ---------- */
+/* ---------- prediction / site profile engine (v0.27) ---------- */
 const PROFILE_RADIUS_FT=500; /* lateral — estimate from borings within a few hundred ft */
 const PROFILE_K=16; /* denser clusters → more samples → better estimate */
 function parseDnrecNumber(raw){
@@ -22836,20 +22851,139 @@ function svgPieChart(slices, title, stickLayers, maxDepth){
     <div style="flex:0 0 auto">${stick}</div>
   </div>`;
 }
+function septicHitDist(H){
+  if(H.dist!=null)return +H.dist;
+  if(H.props&&H.props._dist_ft!=null)return +H.props._dist_ft;
+  return null;
+}
+function septicClean(v){
+  if(v==null)return null;
+  const s=String(v).trim();
+  if(!s||s==='='||/^not\s*available$/i.test(s))return null;
+  return s;
+}
 function septicPercNeighbors(hits){
   const out=[];
   (hits||[]).forEach(H=>{
     if(H.kind!=='septic_boring')return;
     const mpi=parseDnrecNumber(fsProp(H.props,['PercRate','PERCRATE']));
     if(mpi==null)return;
-    const d=H.dist!=null?H.dist:(H.props&&H.props._dist_ft!=null?+H.props._dist_ft:null);
+    const d=septicHitDist(H);
     if(d==null)return;
     const inhr=percMinPerInToInHr(mpi);
     const lz=parseDnrecNumber(fsProp(H.props,['DepthtoLZ','DEPTHTOLZ']));
-    out.push({mpi, inhr, d, lz_in:lz, method:fsProp(H.props,['PercRateMethod','PERCRATEMETHOD'])});
+    out.push({
+      mpi, inhr, d, lz_in:lz,
+      method:septicClean(fsProp(H.props,['PercRateMethod','PERCRATEMETHOD'])),
+      profile:septicClean(fsProp(H.props,['Profile','PROFILE'])),
+      lz_reason:septicClean(fsProp(H.props,['LZReason','LZREASON'])),
+      option:septicClean(fsProp(H.props,['OptionArea','OPTIONAREA'])),
+      hmethod:septicClean(fsProp(H.props,['HorizontalMethod','HORIZONTALMETHOD']))
+    });
   });
   out.sort((a,b)=>a.d-b.d);
   return out;
+}
+/* All DNREC septic soil borings in hits (with or without PercRate) for record browse. */
+function septicBoringRecords(hits){
+  const out=[];
+  (hits||[]).forEach(H=>{
+    if(H.kind!=='septic_boring')return;
+    const d=septicHitDist(H);
+    if(d==null)return;
+    const props=H.props||{};
+    const mpiRaw=fsProp(props,['PercRate','PERCRATE']);
+    const mpi=parseDnrecNumber(mpiRaw);
+    const lzRaw=fsProp(props,['DepthtoLZ','DEPTHTOLZ']);
+    const lz=parseDnrecNumber(lzRaw);
+    out.push({
+      d,
+      profile:septicClean(fsProp(props,['Profile','PROFILE']))||'Boring',
+      mpi, mpi_raw:septicClean(mpiRaw),
+      inhr:mpi!=null?percMinPerInToInHr(mpi):null,
+      lz_in:lz, lz_raw:septicClean(lzRaw),
+      lz_reason:septicClean(fsProp(props,['LZReason','LZREASON'])),
+      method:septicClean(fsProp(props,['PercRateMethod','PERCRATEMETHOD'])),
+      option:septicClean(fsProp(props,['OptionArea','OPTIONAREA'])),
+      hmethod:septicClean(fsProp(props,['HorizontalMethod','HORIZONTALMETHOD'])),
+      layer:H.layer||''
+    });
+  });
+  out.sort((a,b)=>a.d-b.d);
+  return out;
+}
+function septicEvalRecords(hits){
+  const out=[];
+  (hits||[]).forEach(H=>{
+    if(H.kind!=='septic_eval')return;
+    const d=septicHitDist(H);
+    if(d==null)return;
+    const props=H.props||{};
+    const doc=septicClean(fsProp(props,['DocumentLink','DOCUMENTLINK']));
+    out.push({
+      d,
+      permit:septicClean(fsProp(props,['PermitNumber','PERMITNUMBER'])),
+      status:septicClean(fsProp(props,['PermitStatus','PERMITSTATUS'])),
+      type:septicClean(fsProp(props,['PermitType','PERMITTYPE'])),
+      approved_a:septicClean(fsProp(props,['OptionAreaA_ApprovedFor','OPTIONAREAA_APPROVEDFOR'])),
+      approved_b:septicClean(fsProp(props,['OptionAreaB_ApprovedFor','OPTIONAREAB_APPROVEDFOR'])),
+      site:septicClean(fsProp(props,['SiteAddress','SITEADDRESS'])),
+      owner:septicClean(fsProp(props,['OwnerName','OWNERNAME'])),
+      evaluator:septicClean(fsProp(props,['SiteEvaluator','SITEEVALUATOR'])),
+      license:septicClean(fsProp(props,['SiteEvaluatorLicenseNumber','SITEEVALUATORLICENSENUMBER'])),
+      eval_date:septicClean(fsProp(props,['EvaluationDate','EVALUATIONDATE'])),
+      approved_date:septicClean(fsProp(props,['ApprovedDate','APPROVEDDATE'])),
+      received:septicClean(fsProp(props,['DateReceived','DATERECEIVED'])),
+      parcel:septicClean(fsProp(props,['TaxParcelNumber','TAXPARCELNUMBER','PIN'])),
+      county:septicClean(fsProp(props,['PiCounty','TaxParcelCounty','Parcel_COUNTY','PICOUNTY'])),
+      watershed:septicClean(fsProp(props,['Watershed','WATERSHED'])),
+      boring_details:septicClean(fsProp(props,['BoringDetails','BORINGDETAILS'])),
+      soils_review:septicClean(fsProp(props,['SoilsReview','SOILSREVIEW'])),
+      doc,
+      layer:H.layer||''
+    });
+  });
+  out.sort((a,b)=>a.d-b.d);
+  return out;
+}
+function renderSepticBoringCard(p){
+  let h=`<div class="dnrec-rec">`;
+  h+=`<div class="rec-top"><span class="rec-id">${esc(p.profile||'Boring')}</span><span class="rec-dist">${Math.round(p.d)} ft</span></div>`;
+  h+=`<table class="mini-kv">`;
+  if(p.mpi!=null) h+=`<tr><td>PercRate</td><td><b>${p.mpi} min/in</b> ≈ ${p.inhr} in/hr</td></tr>`;
+  else if(p.mpi_raw) h+=`<tr><td>PercRate</td><td>${esc(p.mpi_raw)}</td></tr>`;
+  else h+=`<tr><td>PercRate</td><td><span class="hint">—</span></td></tr>`;
+  if(p.lz_in!=null) h+=`<tr><td>Depth to LZ</td><td>${p.lz_in} in (${Math.round(p.lz_in/12*10)/10} ft)</td></tr>`;
+  else if(p.lz_raw) h+=`<tr><td>Depth to LZ</td><td>${esc(p.lz_raw)}</td></tr>`;
+  if(p.lz_reason) h+=`<tr><td>LZ reason</td><td class="wrap">${esc(p.lz_reason)}</td></tr>`;
+  if(p.method) h+=`<tr><td>Perc method</td><td class="wrap">${esc(p.method)}</td></tr>`;
+  if(p.option) h+=`<tr><td>Option area</td><td>${esc(p.option)}</td></tr>`;
+  if(p.hmethod) h+=`<tr><td>Location</td><td class="wrap">${esc(p.hmethod)}</td></tr>`;
+  h+=`</table></div>`;
+  return h;
+}
+function renderSepticEvalCard(e){
+  const title=e.permit?('Permit '+e.permit):(e.site||e.owner||'Site evaluation');
+  let h=`<div class="dnrec-rec">`;
+  h+=`<div class="rec-top"><span class="rec-id">${esc(title)}</span><span class="rec-dist">${Math.round(e.d)} ft</span></div>`;
+  if(e.status||e.type) h+=`<div class="rec-meta">${esc([e.status,e.type].filter(Boolean).join(' · '))}</div>`;
+  h+=`<table class="mini-kv">`;
+  if(e.approved_a) h+=`<tr><td>Area A</td><td class="wrap">${esc(e.approved_a)}</td></tr>`;
+  if(e.approved_b) h+=`<tr><td>Area B</td><td class="wrap">${esc(e.approved_b)}</td></tr>`;
+  if(e.site) h+=`<tr><td>Site</td><td class="wrap">${esc(e.site)}</td></tr>`;
+  if(e.owner) h+=`<tr><td>Owner</td><td class="wrap">${esc(e.owner)}</td></tr>`;
+  if(e.evaluator) h+=`<tr><td>Evaluator</td><td class="wrap">${esc(e.evaluator)}${e.license?' · lic. '+esc(e.license):''}</td></tr>`;
+  if(e.eval_date) h+=`<tr><td>Eval date</td><td>${esc(e.eval_date)}</td></tr>`;
+  if(e.approved_date) h+=`<tr><td>Approved</td><td>${esc(e.approved_date)}</td></tr>`;
+  else if(e.received) h+=`<tr><td>Received</td><td>${esc(e.received)}</td></tr>`;
+  if(e.parcel) h+=`<tr><td>Parcel</td><td class="wrap">${esc(e.parcel)}${e.county?' · '+esc(e.county):''}</td></tr>`;
+  if(e.watershed) h+=`<tr><td>Watershed</td><td class="wrap">${esc(e.watershed)}</td></tr>`;
+  if(e.boring_details&&!/^\d{4}-\d{2}-\d{2}/.test(e.boring_details)) h+=`<tr><td>Boring notes</td><td class="wrap">${esc(e.boring_details)}</td></tr>`;
+  if(e.soils_review&&!/^\d{4}-\d{2}-\d{2}/.test(e.soils_review)) h+=`<tr><td>Soils review</td><td class="wrap">${esc(e.soils_review)}</td></tr>`;
+  h+=`</table>`;
+  if(e.doc&&/^https?:\/\//i.test(e.doc)) h+=`<a class="doc" href="${esc(e.doc)}" target="_blank" rel="noopener">Open DNREC DEN record →</a>`;
+  h+=`</div>`;
+  return h;
 }
 function buildSiteProfile(lat, lon, hits, radiusFt){
   const latRadius=(radiusFt!=null&&+radiusFt>0)?+radiusFt:PROFILE_RADIUS_FT;
@@ -23281,14 +23415,16 @@ function septicSummary(ctx){
   const nearMpi=E.septicPerc!=null?parseDnrecNumber(E.septicPerc):null;
   const nearInhr=nearMpi!=null?percMinPerInToInHr(nearMpi):null;
   const nearDist=E.septicDist!=null?Math.round(+E.septicDist):null;
-  return {n, mpi, inhr, nearMpi, nearInhr, nearDist};
+  const boringN=septicBoringRecords(ctx.hits||[]).length;
+  const evalN=septicEvalRecords(ctx.hits||[]).length;
+  return {n, mpi, inhr, nearMpi, nearInhr, nearDist, boringN, evalN};
 }
 function hudTopicMeta(tab){
   const map={
     overview:{title:'Briefing', tag:'ALL SIGNALS'},
     site:{title:'Site context', tag:'MAP UNITS'},
     estimate:{title:'Infiltration', tag:'SCREENING'},
-    septic:{title:'DNREC septic', tag:'PERCRATE'},
+    septic:{title:'DNREC septic', tag:'BORINGS · EVALS'},
     class:{title:'Classification', tag:'≤15 FT IDW'},
     column:{title:'Soil column', tag:'0–'+CLASS_COL_DEPTH_FT+' FT'},
     layers:{title:'Reference layers', tag:'FIRSTMAP / DNREC'},
@@ -23332,8 +23468,9 @@ function renderHudRail(ctx){
     else { hydroV='…'; hydroS='sampling'; }
   } else { hydroV='…'; hydroS='sampling'; }
 
-  const septicV=sep.inhr!=null?(sep.inhr+' in/hr'):(sep.nearInhr!=null?(sep.nearInhr+' in/hr'):(sep.n?'IDW…':'—'));
-  const septicS=sep.n?(sep.n+' pt'+(sep.n===1?'':'s')+(sep.mpi!=null?' · '+sep.mpi+' min/in':''))
+  const septicV=sep.inhr!=null?(sep.inhr+' in/hr'):(sep.nearInhr!=null?(sep.nearInhr+' in/hr'):(sep.boringN||sep.evalN?'records':'—'));
+  const septicS=sep.n?(sep.n+' pt'+(sep.n===1?'':'s')+(sep.mpi!=null?' · '+sep.mpi+' min/in':'')+(sep.evalN?' · '+sep.evalN+' eval':''))
+    :(sep.boringN||sep.evalN)?((sep.boringN||0)+' boring'+(sep.boringN===1?'':'s')+' · '+(sep.evalN||0)+' eval')
     :(sep.nearMpi!=null?('nearest '+sep.nearMpi+' min/in'+(sep.nearDist!=null?' @ '+sep.nearDist+' ft':'')):'no PercRate in radius');
 
   const items=[
@@ -23423,6 +23560,8 @@ function renderHudDrawer(ctx){
     if(P.subgrade&&P.subgrade.label) h+=`<tr><td>Subgrade</td><td>${esc(P.subgrade.label)}${P.subgrade.detail?' · '+esc(P.subgrade.detail):''}</td></tr>`;
     h+=`</table><div class="hint" style="margin-top:8px">Not ASTM field design. Preferred DNREC method: full-size ring infiltrometer.</div>`;
   } else if(tab==='septic'){
+    const borings=septicBoringRecords(ctx.hits||[]);
+    const evals=septicEvalRecords(ctx.hits||[]);
     h+=`<div class="septic-card">`;
     if(sep.inhr!=null){
       h+=`<div class="big">${sep.inhr} <span style="font-size:14px;font-weight:600">in/hr</span></div>`;
@@ -23431,18 +23570,22 @@ function renderHudDrawer(ctx){
       h+=`<div class="big">${sep.nearInhr} <span style="font-size:14px;font-weight:600">in/hr</span></div>`;
       h+=`<div class="sub">Nearest PercRate ${sep.nearMpi} min/in${sep.nearDist!=null?' @ '+sep.nearDist+' ft':''}</div>`;
     } else {
-      h+=`<div class="big" style="font-size:20px;color:var(--dim)">No septic hits</div>`;
-      h+=`<div class="sub">Load dnrec septic borings into refs/ · widen radius</div>`;
+      h+=`<div class="big" style="font-size:20px;color:var(--dim)">No PercRate nearby</div>`;
+      h+=`<div class="sub">${borings.length||evals.length?'Records below · widen radius for rates':'Load dnrec septic refs · widen radius'}</div>`;
     }
     h+=`</div>`;
-    h+=`<div class="hint warn" style="margin-bottom:8px">Septic PercRate is minutes/inch from DNREC onsite system records — screening proxy only, not Appendix 1 ASTM permeability.</div>`;
-    const list=septicPercNeighbors(ctx.hits||[]).slice(0,15);
-    if(list.length){
-      h+=`<h4>Nearest septic points</h4><table class="mini-kv">`;
-      list.forEach(p=>{
-        h+=`<tr><td>${Math.round(p.d)} ft</td><td><b>${p.mpi} min/in</b> ≈ ${p.inhr} in/hr${p.lz_in!=null?' · LZ '+p.lz_in+' in':''}${p.method?' · '+esc(p.method):''}</td></tr>`;
-      });
-      h+=`</table>`;
+    h+=`<div class="hint warn" style="margin-bottom:8px">GIS attributes from DNREC septic soil borings &amp; site evaluations (FirstMap). PercRate is minutes/inch — screening proxy only, not Appendix 1 ASTM. Full narrative reports open via DEN document links on site evals.</div>`;
+    h+=`<h4>Soil borings · ${borings.length}</h4>`;
+    if(borings.length){
+      borings.slice(0,12).forEach(p=>{ h+=renderSepticBoringCard(p); });
+    } else {
+      h+=`<div class="hint">No septic soil borings within 500 ft. Load <code>dnrec_septic_soil_borings</code> into <code>refs/</code>.</div>`;
+    }
+    h+=`<h4>Site evaluations · ${evals.length}</h4>`;
+    if(evals.length){
+      evals.slice(0,12).forEach(e=>{ h+=renderSepticEvalCard(e); });
+    } else {
+      h+=`<div class="hint">No site evaluations within 500 ft. Load <code>dnrec_septic_site_evals</code> into <code>refs/</code>.</div>`;
     }
     if(E.feasibility) h+=`<div class="hint" style="margin-top:8px">Feasibility: ${esc(E.feasibility)}</div>`;
   } else if(tab==='class'){
@@ -23478,7 +23621,7 @@ function renderHudDrawer(ctx){
       h+=`</div>`;
     } else h+=`<div class="hint warn">No column data</div>`;
   } else if(tab==='layers'){
-    const want=['geology_piedmont','geology_surficial','soils','recharge','wrpa','gmz','flood','wetland','septic_boring','wellhead','watershed','coastal','feasibility'];
+    const want=['geology_piedmont','geology_surficial','soils','recharge','wrpa','gmz','flood','wetland','septic_boring','septic_eval','wellhead','watershed','coastal','feasibility'];
     const grouped={};
     (ctx.hits||[]).forEach(H=>{ const k=H.kind||'layer'; (grouped[k]=grouped[k]||[]).push(H); });
     let n=0;
@@ -23487,17 +23630,32 @@ function renderHudDrawer(ctx){
       h+=`<h4>${esc(KIND_LABEL[kind]||kind)} · ${list.length}</h4>`;
       list.slice(0,4).forEach(H=>{
         const props=H.props||{};
-        let label=fsProp(props,['NAME','SOILNAME','MUNAME','RECHARGE','SITENAME','FLD_ZONE','WETLAND_TYPE','PercRate','ZONE'])||H.layer;
+        let label=fsProp(props,['NAME','SOILNAME','MUNAME','RECHARGE','SITENAME','FLD_ZONE','WETLAND_TYPE','Profile','PermitNumber','PercRate','ZONE'])||H.layer;
         h+=`<div class="hint" style="margin:4px 0"><b>${esc(label)}</b> <span class="d">${esc(H.layer||'')}${H.dist!=null?' · '+Math.round(H.dist)+' ft':''}</span></div>`;
         if(kind==='septic_boring'){
           const mpi=fsProp(props,['PercRate','PERCRATE']);
           const lz=fsProp(props,['DepthtoLZ','DEPTHTOLZ']);
           const meth=fsProp(props,['PercRateMethod','PERCRATEMETHOD']);
+          const lzR=fsProp(props,['LZReason','LZREASON']);
+          const opt=fsProp(props,['OptionArea','OPTIONAREA']);
           h+=`<table class="mini-kv">`;
           if(mpi!=null) h+=`<tr><td>PercRate</td><td>${esc(mpi)} min/in</td></tr>`;
           if(lz!=null) h+=`<tr><td>Depth to LZ</td><td>${esc(lz)}</td></tr>`;
+          if(lzR) h+=`<tr><td>LZ reason</td><td>${esc(lzR)}</td></tr>`;
           if(meth) h+=`<tr><td>Method</td><td>${esc(meth)}</td></tr>`;
+          if(opt) h+=`<tr><td>Option</td><td>${esc(opt)}</td></tr>`;
           h+=`</table>`;
+        } else if(kind==='septic_eval'){
+          const status=fsProp(props,['PermitStatus','PERMITSTATUS']);
+          const appr=fsProp(props,['OptionAreaA_ApprovedFor','OPTIONAREAA_APPROVEDFOR']);
+          const site=fsProp(props,['SiteAddress','SITEADDRESS']);
+          const doc=fsProp(props,['DocumentLink','DOCUMENTLINK']);
+          h+=`<table class="mini-kv">`;
+          if(status) h+=`<tr><td>Status</td><td>${esc(status)}</td></tr>`;
+          if(appr) h+=`<tr><td>Approved for</td><td>${esc(appr)}</td></tr>`;
+          if(site) h+=`<tr><td>Site</td><td>${esc(site)}</td></tr>`;
+          h+=`</table>`;
+          if(doc&&/^https?:\/\//i.test(String(doc))) h+=`<a class="doc" href="${esc(doc)}" target="_blank" rel="noopener">Open DEN record →</a>`;
         }
       });
       n++;
