@@ -21930,6 +21930,8 @@ const INFIL_BANDS={
    borehole-path planning number, NOT an approved DNREC design rate. */
 const DNREC_BOREHOLE_FOS=2.5;
 const DNREC_SEP_FT=2; /* §II.A.3 — min separation to limiting layer / groundwater */
+const DESIGN_INHR_CAP=10; /* conservative ceiling on illustrative design rates (in/hr) */
+const P200_TOP_FT=10; /* near-surface fines window for infil conservatism */
 function hydgrpLetter(raw){
   if(!raw)return null;
   const m=String(raw).toUpperCase().match(/\b([ABCD])(?:\s*\/\s*[ABCD])?\b/);
@@ -21995,8 +21997,9 @@ function infilFromAashto(aashto, opts){
   let lo=band.lo, hi=band.hi, adj=[], conf=opts.confidence||'aashto';
   const p200med=opts.p200med;
   if(p200med!=null){
-    if(p200med>=50){hi=Math.min(hi,(lo+hi)/2);adj.push('P200 med '+p200med+'% → lower end');}
-    else if(p200med<=12){lo=Math.max(lo,(lo+hi)/2);adj.push('P200 med '+p200med+'% → higher end');}
+    /* Conservative: high fines pull down; do not boost from low P200 here */
+    if(p200med>=35){hi=Math.min(hi,(lo+hi)/2);adj.push('P200 med '+p200med+'% → lower end');}
+    if(p200med>=50){hi=Math.min(hi, lo+(hi-lo)*0.35);adj.push('P200≥50% fines-limited');}
   }
   if(opts.good_ft!=null&&opts.good_ft>=10&&/^A-1|^A-3/.test(band.group)){
     lo=Math.min(hi, Math.max(lo, lo+(hi-lo)*0.15));
@@ -22049,8 +22052,9 @@ function infilFromHydgrp(hydgrp, p200med, aashto, ksatInHr){
   }
   if(p200med!=null){
     conf=conf==='nrcs_ksat'?'nrcs+lab':'map+lab';
-    if(p200med>=50){hi=Math.min(hi,(lo+hi)/2);adj.push('P200 med '+p200med+'% → lower end');}
-    else if(p200med<=15){lo=Math.max(lo,(lo+hi)/2);adj.push('P200 med '+p200med+'% → higher end');}
+    /* Conservative: fines lower the band; low P200 no longer boosts the high end */
+    if(p200med>=35){hi=Math.min(hi,(lo+hi)/2);adj.push('P200 med '+p200med+'% → lower end');}
+    if(p200med>=50){hi=Math.min(hi, lo+(hi-lo)*0.35);adj.push('P200≥50% fines-limited');}
   }
   if(aashto){
     const au=String(aashto).toUpperCase();
@@ -22142,6 +22146,7 @@ function applyHydroLimitToInfil(P, hydro){
   } else {
     P.infil.design_inhr=Math.round((P.infil.est_inhr/DNREC_BOREHOLE_FOS)*1000)/1000;
   }
+  applyDesignInhrCap(P.infil);
   /* Refresh eng-property forecast with sampled DTW */
   P.eng_forecast=engForecastForProfile(P, P.enrich, hydro);
   return P;
@@ -22325,6 +22330,67 @@ function parseDnrecNumber(raw){
 function percMinPerInToInHr(mpi){
   if(mpi==null||!(mpi>0))return null;
   return Math.round((60/mpi)*1000)/1000;
+}
+/* Cap illustrative design rates (conservative BMP planning ceiling). Screening est stays uncapped. */
+function applyDesignInhrCap(infil){
+  if(!infil||infil.design_inhr==null)return infil;
+  const raw=+infil.design_inhr;
+  if(!Number.isFinite(raw))return infil;
+  infil.design_inhr_uncapped=Math.round(raw*1000)/1000;
+  if(raw>DESIGN_INHR_CAP){
+    infil.design_inhr=DESIGN_INHR_CAP;
+    infil.design_capped=true;
+    const note='illustrative design capped at '+DESIGN_INHR_CAP+' in/hr (conservative)';
+    if(!(infil.note||'').includes('capped at '+DESIGN_INHR_CAP)) infil.note=(infil.note?infil.note+'; ':'')+note;
+  } else {
+    infil.design_capped=false;
+  }
+  return infil;
+}
+/* Thickness×distance-weighted P200 in the top depthFt of neighbor borings. */
+function estimateTopP200(neighbors, depthFt){
+  depthFt=depthFt==null?P200_TOP_FT:depthFt;
+  let sw=0, sv=0, nSamp=0, nBor=0;
+  (neighbors||[]).forEach(({r,d})=>{
+    const wB=d<1?1e6:1/Math.pow(Math.max(d,1),2);
+    const intervals=sampleIntervalThickness(r.s||[], depthFt, r.eob);
+    let used=false;
+    intervals.forEach(({s,th})=>{
+      if(s.p200==null||isNaN(+s.p200))return;
+      const w=wB*Math.max(th,0.25);
+      sw+=w; sv+=w*(+s.p200); nSamp++; used=true;
+    });
+    if(used)nBor++;
+  });
+  if(!(sw>0))return null;
+  return{p200:Math.round((sv/sw)*10)/10, n_samples:nSamp, n_borings:nBor, depth_ft:depthFt};
+}
+/* Conservative fines → infil prior. Higher P200 ⇒ lower rate and heavier blend weight. */
+function infilPriorFromTopP200(p200){
+  if(p200==null||!Number.isFinite(+p200))return null;
+  const F=Math.max(0, Math.min(100, +p200));
+  /* Continuous conservative curve (in/hr): ~20 @5%, ~6 @15%, ~1.5 @35%, ~0.45 @50%, ~0.15 @70% */
+  const v=Math.max(0.05, Math.min(25, 22*Math.pow(Math.max(F,3)/3, -1.4)));
+  let w;
+  if(F<=12) w=0.25;
+  else if(F<=25) w=0.25+(F-12)/13*0.55;      /* → 0.80 */
+  else if(F<=50) w=0.80+(F-25)/25*0.85;      /* → 1.65 */
+  else w=1.65+Math.min(0.55,(F-50)/40*0.55); /* → ≤2.20 */
+  /* Hard ceiling used after blend so high-fines sites cannot stay sandy-fast */
+  let ceil;
+  if(F<=12) ceil=40;
+  else if(F<=25) ceil=10;
+  else if(F<=35) ceil=4;
+  else if(F<=50) ceil=1.5;
+  else if(F<=70) ceil=0.6;
+  else ceil=0.3;
+  return{
+    v:Math.round(v*1000)/1000,
+    w:Math.round(w*100)/100,
+    ceil,
+    p200:F,
+    src:'P200 top '+P200_TOP_FT+'′ ≈'+F+'% (fines→lower infil)'
+  };
 }
 function neighborBorings(lat, lon, maxFt, k){
   maxFt=maxFt||PROFILE_RADIUS_FT; k=k||PROFILE_K;
@@ -23300,6 +23366,12 @@ function buildSiteProfile(lat, lon, hits, radiusFt){
     if(!hasMapSoils&&granularAashto&&aashtoMid!=null&&percIdw<aashtoMid*0.15) w=0.15;
     parts.push({v:percIdw, w, src:'septic PercRate IDW (not App.1 ASTM)'});
   }
+  /* Top-10′ P200 from neighbor borings — higher fines ⇒ lower rate, heavier weight (conservative). */
+  const p200Top=estimateTopP200(neighbors, P200_TOP_FT);
+  const p200Prior=p200Top?infilPriorFromTopP200(p200Top.p200):null;
+  if(p200Prior){
+    parts.push({v:p200Prior.v, w:p200Prior.w, src:p200Prior.src});
+  }
   /* Field infil anchors (DelDOT borehole tests).
      ≤75 ft  → hard override to measured
      ≤300 ft → distance-weighted pull toward nearest measured so map priors
@@ -23367,6 +23439,12 @@ function buildSiteProfile(lat, lon, hits, radiusFt){
       infilNote=mapNote;
       designBlend=Math.round((infilBlend/DNREC_BOREHOLE_FOS)*1000)/1000;
     }
+    /* Conservative P200 ceiling on screening blend (not on hard field override) */
+    if(infilBlend!=null&&p200Prior&&p200Prior.ceil!=null&&infilBlend>p200Prior.ceil){
+      infilBlend=p200Prior.ceil;
+      designBlend=Math.round((infilBlend/DNREC_BOREHOLE_FOS)*1000)/1000;
+      infilNote=(infilNote?infilNote+'; ':'')+'P200 top '+P200_TOP_FT+'′ '+p200Prior.p200+'% caps screening at '+p200Prior.ceil+' in/hr';
+    }
   }
   /* subgrade — AASHTO M 57 / M 145 (not DelDOT N chart) */
   const sgScores=[], sgGis=[], sgNs=[], sgRatings=[], sgGroups=[], sgDetails=[];
@@ -23412,6 +23490,13 @@ function buildSiteProfile(lat, lon, hits, radiusFt){
       upper20:upperA, sources:parts.map(p=>p.src),
       septic_n:septic.length, septic_mpi_idw:mpiIdw!=null?Math.round(mpiIdw*10)/10:null,
       septic_inhr_idw:percIdw, est_inhr:infilBlend, design_inhr:designBlend, note:infilNote, fos:DNREC_BOREHOLE_FOS,
+      design_cap:DESIGN_INHR_CAP,
+      p200_top10:p200Top?p200Top.p200:null,
+      p200_top10_n:p200Top?p200Top.n_samples:0,
+      p200_top10_borings:p200Top?p200Top.n_borings:0,
+      p200_prior_inhr:p200Prior?p200Prior.v:null,
+      p200_prior_w:p200Prior?p200Prior.w:null,
+      p200_ceil_inhr:p200Prior?p200Prior.ceil:null,
       field_anchor:fieldOverride||(fieldSoft?{
         measured:fieldSoft.measured, design:fieldSoft.design, id:fieldSoft.id, d:fieldSoft.d,
         fos:fieldSoft.fos, method:fieldSoft.method, soft:true, w:fieldSoft.w
@@ -23441,6 +23526,7 @@ function buildSiteProfile(lat, lon, hits, radiusFt){
     neighbors:neighbors.map(({r,d})=>({job:r.job,b:r.b,d:Math.round(d),eob:r.eob})),
     eng_forecast:null
   };
+  applyDesignInhrCap(out.infil);
   out.eng_forecast=engForecastForProfile(out, E, null);
   return out;
 }
@@ -23510,10 +23596,11 @@ function formatProfileHTML(P){
   if(P.infil.hydgrp_min!=null)h+=`<tr><td>HYDGRP band</td><td>${P.infil.hydgrp_min}–${P.infil.hydgrp_max} in/hr</td></tr>`;
   if(P.infil.aashto_min!=null)h+=`<tr><td>AASHTO band</td><td>${P.infil.aashto_min}–${P.infil.aashto_max} in/hr <span class="hint">${esc(P.infil.aashto||'')}${P.infil.upper20&&P.infil.upper20.good_ft!=null?' · '+P.infil.upper20.good_ft+' ft granular 0–20′':''}</span></td></tr>`;
   if(P.infil.septic_mpi_idw!=null)h+=`<tr><td>Septic perc (IDW)</td><td>${P.infil.septic_mpi_idw} min/in ≈ ${P.infil.septic_inhr_idw} in/hr <span class="hint">(${P.infil.septic_n} pts)</span></td></tr>`;
+  if(P.infil.p200_top10!=null)h+=`<tr><td>P200 top ${P200_TOP_FT}′</td><td><b>${P.infil.p200_top10}%</b> <span class="hint">w=${P.infil.p200_prior_w} · prior ${P.infil.p200_prior_inhr} in/hr${P.infil.p200_ceil_inhr!=null?' · ceil '+P.infil.p200_ceil_inhr:''} · ${P.infil.p200_top10_n} samp</span></td></tr>`;
   if(P.infil.est_inhr!=null)h+=`<tr><td>Est. rate</td><td><b>${P.infil.est_inhr} in/hr</b> <span class="hint">${esc(P.infil.note)}</span></td></tr>`;
   if(P.infil.est_inhr_uncapped!=null&&P.infil.wt_factor!=null&&P.infil.wt_factor<1)h+=`<tr><td>Before WT cap</td><td>${P.infil.est_inhr_uncapped} in/hr <span class="hint">DTW ${P.infil.dtw_ft} ft · ×${P.infil.wt_factor}</span></td></tr>`;
   if(P.infil.separation_ok===false)h+=`<tr><td>App.1 separation</td><td><span class="hint warn">DTW ${P.infil.dtw_ft} ft &lt; ${P.infil.separation_ft_req||2} ft — §II.A.3 not met</span></td></tr>`;
-  if(P.infil.design_inhr!=null)h+=`<tr><td>Illustrative ÷${P.infil.fos}</td><td><b>${P.infil.design_inhr} in/hr</b> <span class="hint">borehole FoS planning only</span></td></tr>`;
+  if(P.infil.design_inhr!=null)h+=`<tr><td>Illustrative ÷${P.infil.fos}</td><td><b>${P.infil.design_inhr} in/hr</b> <span class="hint">borehole FoS planning only${P.infil.design_capped?' · capped @ '+DESIGN_INHR_CAP:''}</span></td></tr>`;
   if(P.infil.est_inhr==null)h+=`<tr><td colspan="2"><span class="hint warn">Insufficient HYDGRP / AASHTO / septic data</span></td></tr>`;
   h+=`</table>`;
 
@@ -23904,8 +23991,9 @@ function renderHudDrawer(ctx){
       if(P.infil.field_anchor) h+=`<tr><td>Field anchor</td><td><b>${P.infil.field_anchor.measured} in/hr</b> · ${esc(P.infil.field_anchor.id)} @ ${Math.round(P.infil.field_anchor.d)} ft</td></tr>`;
       else if(P.infil.field_anchor_idw!=null) h+=`<tr><td>Field IDW</td><td>${P.infil.field_anchor_idw} in/hr (${P.infil.field_anchor_n} anchors)</td></tr>`;
       if(P.infil.est_inhr!=null) h+=`<tr><td>Screening est.</td><td><b>${P.infil.est_inhr} in/hr</b></td></tr>`;
-      if(P.infil.design_inhr!=null) h+=`<tr><td>Illustrative ÷${P.infil.fos||2.5}</td><td><b>${P.infil.design_inhr} in/hr</b></td></tr>`;
+      if(P.infil.design_inhr!=null) h+=`<tr><td>Illustrative ÷${P.infil.fos||2.5}</td><td><b>${P.infil.design_inhr} in/hr</b>${P.infil.design_capped?' <span class="hint warn">capped @ '+esc(String(P.infil.design_cap||DESIGN_INHR_CAP))+'</span>':''}${P.infil.design_inhr_uncapped!=null&&P.infil.design_capped?' <span class="hint">(was '+P.infil.design_inhr_uncapped+')</span>':''}</td></tr>`;
       else if(P.infil.separation_ok===false) h+=`<tr><td>Illustrative design</td><td><span class="hint warn">withheld — &lt;${P.infil.separation_ft_req||2} ft to GW</span></td></tr>`;
+      if(P.infil.p200_top10!=null) h+=`<tr><td>P200 top ${P200_TOP_FT}′</td><td><b>${P.infil.p200_top10}%</b> · w=${P.infil.p200_prior_w!=null?P.infil.p200_prior_w:'—'} · prior ${P.infil.p200_prior_inhr!=null?P.infil.p200_prior_inhr+' in/hr':'—'}${P.infil.p200_ceil_inhr!=null?' · ceil '+P.infil.p200_ceil_inhr:''} <span class="hint">(${P.infil.p200_top10_n||0} samp / ${P.infil.p200_top10_borings||0} bor)</span></td></tr>`;
       if(P.infil.aashto_min!=null) h+=`<tr><td>AASHTO band</td><td>${P.infil.aashto_min}–${P.infil.aashto_max} in/hr · ${esc(P.infil.aashto||'')}</td></tr>`;
       if(P.infil.hydgrp_min!=null) h+=`<tr><td>HYDGRP band</td><td>${P.infil.hydgrp_min}–${P.infil.hydgrp_max} in/hr${P.infil.hydgrp?' · '+esc(P.infil.hydgrp):''}</td></tr>`;
       if(P.infil.septic_inhr_idw!=null) h+=`<tr><td>Septic IDW</td><td>${P.infil.septic_inhr_idw} in/hr (${P.infil.septic_mpi_idw} min/in · ${P.infil.septic_n} pts)</td></tr>`;
@@ -23914,7 +24002,7 @@ function renderHudDrawer(ctx){
       if(P.infil.note) h+=`<tr><td>Note</td><td>${esc(P.infil.note)}</td></tr>`;
     }
     if(P.subgrade&&P.subgrade.label) h+=`<tr><td>Subgrade</td><td>${esc(P.subgrade.label)}${P.subgrade.detail?' · '+esc(P.subgrade.detail):''}</td></tr>`;
-    h+=`</table><div class="hint" style="margin-top:8px">Infil screening prefers NRCS mapunit (HYDGRP/Ksat) over neighbor AASHTO when soils are loaded. AASHTO still drives Props / subgrade / column. Field anchors dominate nearby. Preferred DNREC method: full-size ring infiltrometer.</div>`;
+    h+=`</table><div class="hint" style="margin-top:8px">Conservative screen: top-${P200_TOP_FT}′ P200 (fines) pulls rates down with heavier weight as % rises; illustrative design capped at ${DESIGN_INHR_CAP} in/hr. Map HYDGRP/Ksat preferred over neighbor AASHTO for infil. Field anchors dominate nearby. Preferred DNREC method: full-size ring infiltrometer.</div>`;
   } else if(tab==='anchors'){
     const list=(P.infil&&P.infil.field_anchors)||[];
     const fa=P.infil&&P.infil.field_anchor;
