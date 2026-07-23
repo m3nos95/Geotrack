@@ -20,7 +20,8 @@ if (-not (Test-Path $pyScript)) {
 }
 
 $infilFolder = Join-Path $PSScriptRoot 'infil-pdfs'
-$project = $PSScriptRoot
+# Use resolved path without a trailing backslash (safer for CLI args)
+$project = (Resolve-Path $PSScriptRoot).Path.TrimEnd('\')
 
 if (-not (Test-Path $infilFolder)) {
   New-Item -ItemType Directory -Path $infilFolder | Out-Null

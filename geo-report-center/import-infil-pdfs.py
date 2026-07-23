@@ -257,9 +257,19 @@ def main() -> int:
         print(f"No PDFs under {src}", file=sys.stderr)
         return 1
 
-    root = Path(args.project).expanduser().resolve()
+    # Windows bat quirk: trailing \" in --project "C:\path\" can glue args together.
+    proj_raw = str(args.project).strip().strip('"').rstrip("\\/")
+    root = Path(proj_raw).expanduser().resolve()
+    if not root.exists() or not root.is_dir():
+        print(f"Project folder not found: {root}", file=sys.stderr)
+        print("Tip: run from the GeoTrak folder, or pass --project with no trailing backslash.", file=sys.stderr)
+        return 1
     refs = root / "refs"
-    refs.mkdir(parents=True, exist_ok=True)
+    try:
+        refs.mkdir(parents=True, exist_ok=True)
+    except OSError as e:
+        print(f"Could not create refs/ under {root}: {e}", file=sys.stderr)
+        return 1
     out_path = Path(args.output).expanduser().resolve() if args.output else refs / "infil_anchors.json"
 
     anchors: list[dict] = []
