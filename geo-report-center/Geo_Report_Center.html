@@ -21017,7 +21017,7 @@ table.list td{padding:5px 8px;border-bottom:1px solid rgba(46,58,72,.5);font-fam
 </head>
 <body>
 <div id="hdr">
-  <h1><b>DelDOT</b> GeoTrak<span class="badge">v0.30</span></h1>
+  <h1><b>DelDOT</b> GeoTrak<span class="badge">v0.31</span></h1>
   <button class="tab on" data-p="map">Map</button>
   <button class="tab" data-p="refs">Reference data</button>
   <button class="tab" data-p="jobs">Jobs</button>
@@ -22292,7 +22292,7 @@ function formatInfilHTML(E){
   return h;
 }
 
-/* ---------- prediction / site profile engine (v0.30) ---------- */
+/* ---------- prediction / site profile engine (v0.31) ---------- */
 const PROFILE_RADIUS_FT=500; /* lateral — estimate from borings within a few hundred ft */
 const PROFILE_K=16; /* denser clusters → more samples → better estimate */
 function parseDnrecNumber(raw){
@@ -23259,27 +23259,34 @@ function buildSiteProfile(lat, lon, hits, radiusFt){
   const enrichIsAashtoOnly=!!(E.infil&&E.infil.min!=null&&!E.infil.hydgrp&&!(E.infil.ksat_in_hr>0)&&(E.infil.confidence||'').indexOf('aashto')===0);
   const aashtoMid=aashtoInfil&&aashtoInfil.min!=null?(aashtoInfil.min+aashtoInfil.max)/2:null;
   const granularAashto=!!(aashtoEst&&/^A-1|^A-3/.test(String(aashtoEst).toUpperCase()));
-  if(E.infil&&E.infil.min!=null&&!enrichIsAashtoOnly){
-    /* Map/Ksat path — solid weight when Ksat present; don't overpower strong AASHTO sand */
+  /* Surface infiltration should follow NRCS mapunit (HYDGRP/Ksat / soil name) when present.
+     Neighbor AASHTO often mixes deeper granular layers and overstates near-surface rates
+     (e.g. Matapeake silt loam C vs A-1-b from borings across the road). Keep AASHTO for
+     Props / subgrade / column — only use it for infil when map soils are missing. */
+  const hasMapSoils=!!(E.infil&&E.infil.min!=null&&!enrichIsAashtoOnly&&(E.infil.hydgrp||(E.infil.ksat_in_hr!=null&&E.infil.ksat_in_hr>0)));
+  if(hasMapSoils){
     const mapMid=(E.infil.min+E.infil.max)/2;
-    let w=E.infil.ksat_in_hr!=null?1.1:0.7;
-    if(granularAashto&&aashtoMid!=null&&mapMid<aashtoMid*0.35) w=0.45; /* map too low vs sand class */
-    parts.push({v:mapMid, w, src:E.infil.hydgrp?('HYDGRP '+E.infil.hydgrp+(E.infil.ksat_in_hr!=null?'+Ksat':'')):(E.infil.confidence||'map')});
+    const w=E.infil.ksat_in_hr!=null?1.35:1.0;
+    parts.push({v:mapMid, w, src:E.infil.hydgrp?('HYDGRP '+E.infil.hydgrp+(E.infil.ksat_in_hr!=null?'+Ksat':''))+(E.soilSym?' · '+E.soilSym:''):(E.infil.confidence||'map')});
+  } else if(E.infil&&E.infil.min!=null&&!enrichIsAashtoOnly){
+    const mapMid=(E.infil.min+E.infil.max)/2;
+    parts.push({v:mapMid, w:0.8, src:E.infil.confidence||'map'});
   }
-  if(aashtoInfil&&aashtoInfil.min!=null){
+  if(aashtoInfil&&aashtoInfil.min!=null&&!hasMapSoils){
     const w=(aashtoInfil.confidence==='aashto_column')?1.6:(upperA&&upperA.pct>=55?1.4:1.2);
-    parts.push({v:aashtoMid, w, src:'AASHTO '+(aashtoInfil.aashto||aashtoEst)});
+    parts.push({v:aashtoMid, w, src:'AASHTO '+(aashtoInfil.aashto||aashtoEst)+' (no map HYDGRP/Ksat)'});
   }
   if(percIdw!=null){
-    /* Septic PercRate ≠ App.1 infil; light weight, and ignore if it would crush a clear sand site */
-    let w=0.55;
-    if(granularAashto&&aashtoMid!=null&&percIdw<aashtoMid*0.15) w=0.15;
+    /* Septic PercRate ≠ App.1 infil; light weight vs map soils */
+    let w=hasMapSoils?0.35:0.55;
+    if(hasMapSoils&&E.infil&&E.infil.hydgrp&&/^A\b|^A\//.test(String(E.infil.hydgrp))&&percIdw<0.5) w=0.2;
+    if(!hasMapSoils&&granularAashto&&aashtoMid!=null&&percIdw<aashtoMid*0.15) w=0.15;
     parts.push({v:percIdw, w, src:'septic PercRate IDW (not App.1 ASTM)'});
   }
   /* Field infil anchors (DelDOT borehole tests).
      ≤75 ft  → hard override to measured
-     ≤300 ft → distance-weighted pull toward nearest measured so map/AASHTO
-               sand priors cannot invent ~8 in/hr across the road from a 0.4 in/hr test
+     ≤300 ft → distance-weighted pull toward nearest measured so map priors
+               cannot invent high rates across the road from a poor borehole test
      farther → light IDW into parts only */
   const FIELD_HARD_FT=75;
   const FIELD_SOFT_FT=300;
@@ -23337,7 +23344,7 @@ function buildSiteProfile(lat, lon, hits, radiusFt){
       if(infilBlend>cap) infilBlend=Math.round(cap*1000)/1000;
       designBlend=Math.round((infilBlend/(fieldSoft.fos||DNREC_BOREHOLE_FOS))*1000)/1000;
       infilNote=`field-anchored ${Math.round(wf*100)}% to ${fieldSoft.id} @ ${Math.round(fieldSoft.d)} ft (meas ${fieldSoft.measured})`+
-        (mapNote?`; map/class ${Math.round(wm*100)}% (`+mapNote.replace(/^blend:\s*/,'')+')':'');
+        (mapNote?`; soils/map ${Math.round(wm*100)}% (`+mapNote.replace(/^blend:\s*/,'')+')':'');
     } else if(mapBlend!=null){
       infilBlend=Math.round(mapBlend*1000)/1000;
       infilNote=mapNote;
@@ -23388,7 +23395,10 @@ function buildSiteProfile(lat, lon, hits, radiusFt){
       upper20:upperA, sources:parts.map(p=>p.src),
       septic_n:septic.length, septic_mpi_idw:mpiIdw!=null?Math.round(mpiIdw*10)/10:null,
       septic_inhr_idw:percIdw, est_inhr:infilBlend, design_inhr:designBlend, note:infilNote, fos:DNREC_BOREHOLE_FOS,
-      field_anchor:fieldOverride, field_anchor_n:anchorsNear.length,
+      field_anchor:fieldOverride||(fieldSoft?{
+        measured:fieldSoft.measured, design:fieldSoft.design, id:fieldSoft.id, d:fieldSoft.d,
+        fos:fieldSoft.fos, method:fieldSoft.method, soft:true, w:fieldSoft.w
+      }:null), field_anchor_n:anchorsNear.length,
       field_anchor_idw:anchorIdw!=null?Math.round(anchorIdw*1000)/1000:null,
       field_anchors:anchorsNear.slice(0,12).map(({a,d})=>({
         id:a.id, job:a.job, d:Math.round(d), measured_inhr:a.measured_inhr, design_inhr:a.design_inhr,
