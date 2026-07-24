@@ -502,6 +502,29 @@ https://raw.githubusercontent.com/m3nos95/Geotrack/cursor/prediction-profile-eng
 | v0.35 | DGS DGIR / NGGDPP well inventory |
 | v0.36 | Project limits draw + grid best-infil marker |
 | v0.37 | Qualitative polygon site summary + issues list |
+| v0.38 | Formal normalized infil blender + exp field-anchor decay + contribution % UI |
+
+---
+
+## 9b. Addendum — Formal blender (v0.38)
+
+Screening estimate is now an explicit normalized weighted average:
+
+\[
+\hat{r}_{\mathrm{est}} = \min\!\left(\mathrm{EST\_INHR\_CAP},\; \frac{\sum_i w_i r_i}{\sum_i w_i}\right)
+\]
+
+then \(\hat{r}_{\mathrm{design}} = \min(4,\;\hat{r}_{\mathrm{est}}/2.5)\), with hydro separation gate unchanged.
+
+**Hard rules retained from the pre-formal engine:**
+
+- AASHTO weight = **0** when map HYDGRP/Ksat present  
+- P200 **hard ceiling** after the average  
+- Mukey weight **restrained** when map Ksat is present (gap-fill otherwise)  
+- Field anchors ≤ **75 ft** hard override (95% measured + 5% map smoothness)  
+- Soft anchors use \(w \propto e^{-d/120}\) out to ~400 ft  
+
+Site Intel → Infil shows **Contribution %** bars for each source in the normalized blend.
 
 ---
 
