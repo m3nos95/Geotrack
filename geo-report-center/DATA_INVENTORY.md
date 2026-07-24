@@ -275,7 +275,8 @@ FirstMap folder browsers:
 
 | Done | Data | Source | Role |
 |------|------|--------|------|
-| [ ] | DGIR wells / water levels / logs | https://www.dgs.udel.edu/projects/delaware-geologic-information-resource-dgir-web-application | Subsurface + hydro time series |
+| [x] | DGIR / DGS well inventory + log PDFs | `download-dgir-wells.bat` → `refs/dgir_wells.json` (AGOL NGGDPP mirrors; classic `maps.dgs.udel.edu` GeoServer often offline) | Nearby DGS lith + geophys logs with PDF/LAS links |
+| [ ] | DGIR structured lithology intervals (WFS WellLog) | http://maps.dgs.udel.edu/geoserver/dgs/ows | Interval text when GeoServer is reachable |
 | [ ] | DGS digital datasets catalog | https://www.dgs.udel.edu/data | Master list of downloadable products |
 | [ ] | DGS OGC / web services | https://www.dgs.udel.edu/web-services | WMS/WFS alternatives |
 | [ ] | DNREC monitoring / facilities | FirstMap `Environmental/DE_DNREC_*` | Environmental constraints |

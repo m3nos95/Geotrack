@@ -10,6 +10,7 @@ Usage (from Ultimate Geo Program / geo-report-center folder):
 
 Saves raw GeoJSON pages as {prefix}_{offset}.json (2000 features/page).
 Rasters (DTW / WTE / unconfined aquifer) are NOT downloaded — the app samples them online.
+Also pulls nrcs_de_by_mukey.json and dgir_wells.json (DGS NGGDPP borehole inventory) unless --core/--only.
 """
 from __future__ import annotations
 
@@ -230,6 +231,20 @@ def main() -> int:
             rc = subprocess.call([sys.executable, str(nrcs_script), "--out", str(refs)])
             if rc != 0:
                 print("WARNING: NRCS property download failed — soils polygons still work; Ksat/USCS join skipped.")
+
+        # DGS DGIR-adjacent borehole / geophys inventory (AGOL NGGDPP mirrors)
+        dgir_script = Path(__file__).resolve().parent / "download-dgir-wells.py"
+        if dgir_script.exists():
+            print("\n=== dgir_wells (DGS NGGDPP / Borehole Log Mapper) ===")
+            import subprocess
+            rc = subprocess.call(
+                [sys.executable, str(dgir_script), "--out", str(refs / "dgir_wells.json")]
+            )
+            if rc != 0:
+                print(
+                    "WARNING: DGS DGIR well download failed — classic GeoServer may be offline; "
+                    "run download-dgir-wells.bat later."
+                )
     return 0
 
 
