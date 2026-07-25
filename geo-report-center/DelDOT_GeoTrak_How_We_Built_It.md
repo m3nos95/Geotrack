@@ -504,6 +504,7 @@ https://raw.githubusercontent.com/m3nos95/Geotrack/cursor/prediction-profile-eng
 | v0.37 | Qualitative polygon site summary + issues list |
 | v0.38 | Formal normalized infil blender + exp field-anchor decay + contribution % UI |
 | v0.39 | Guided M&R soil-boring request wizard (map pick → purpose → BDM §105 count/depth/tests → .xlsx / print) |
+| v0.40 | Boring request aligned to official Figure 105-2 sheet (N/E, SPT, infil, rock, lab Y/N flags) |
 
 ---
 
@@ -539,6 +540,8 @@ Map panel → **Request soil borings** walks designers through an M&R subsurface
 4. Export a draft **.xlsx** (Request / Borings / Lab_Tests sheets) or print a PDF-ready sheet  
 
 Medians are guidelines for limited prior data — not automatic work orders. Attach structure plan, ROW/access, control, and utilities per §105.4.1. Official DRC Excel form remains the submittal vehicle when required.
+
+**v0.40** export/print matches Figure 105-2 columns: Contract Number/Name, funding, M&R + PD/Bridge contacts, Boring No., Structure/Location, Northing/Easting (DE State Plane ft from map lat/lon), Total Depth, T206/SPT, Infiltration Y/N, coordination (Prop. Owner / DNREC / Town / USACE), Notes 1–6, Rock Coring, and lab Y/N for T288&T289, T99/T180, T216-07, T236, T297.
 
 ---
 
