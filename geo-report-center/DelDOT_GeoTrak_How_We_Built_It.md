@@ -503,6 +503,7 @@ https://raw.githubusercontent.com/m3nos95/Geotrack/cursor/prediction-profile-eng
 | v0.36 | Project limits draw + grid best-infil marker |
 | v0.37 | Qualitative polygon site summary + issues list |
 | v0.38 | Formal normalized infil blender + exp field-anchor decay + contribution % UI |
+| v0.39 | Guided M&R soil-boring request wizard (map pick → purpose → BDM §105 count/depth/tests → .xlsx / print) |
 
 ---
 
@@ -525,6 +526,19 @@ then \(\hat{r}_{\mathrm{design}} = \min(4,\;\hat{r}_{\mathrm{est}}/2.5)\), with 
 - Soft anchors use \(w \propto e^{-d/120}\) out to ~400 ft  
 
 Site Intel → Infil shows **Contribution %** bars for each source in the normalized blend.
+
+---
+
+## 9c. Addendum — Guided boring request (v0.39)
+
+Map panel → **Request soil borings** walks designers through an M&R subsurface request aligned to BDM §105 / DRC Figure 105-2:
+
+1. Tap boring location(s) on the map  
+2. Choose purpose (bridge abutment/pier, wingwall, culvert, retaining wall, signal/light pole, infiltration BMP, roadway, other)  
+3. Receive **median boring count**, **guide depth**, and **lab/field test** checklist from §105.4.1 / §105.4.3  
+4. Export a draft **.xlsx** (Request / Borings / Lab_Tests sheets) or print a PDF-ready sheet  
+
+Medians are guidelines for limited prior data — not automatic work orders. Attach structure plan, ROW/access, control, and utilities per §105.4.1. Official DRC Excel form remains the submittal vehicle when required.
 
 ---
 

@@ -20871,6 +20871,31 @@ input[type=range]{width:140px;accent-color:var(--amber)}
 .hint{font-size:11px;color:var(--dim)}
 .hint.warn{color:var(--amber)} .hint.err{color:var(--red)} .hint.good{color:var(--green)}
 
+/* guided soil boring request wizard (v0.39) */
+#boringReqBody{margin-top:8px;font-size:12px;line-height:1.45}
+#boringReqBody .br-step{font-family:var(--mono);font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--cyan);margin-bottom:6px}
+#boringReqBody .br-purpose{display:grid;gap:5px;margin:8px 0}
+#boringReqBody .br-purpose label{display:flex;gap:8px;align-items:flex-start;padding:6px 8px;border:1px solid var(--line);border-radius:5px;cursor:pointer;background:rgba(10,16,22,.55)}
+#boringReqBody .br-purpose label:hover,#boringReqBody .br-purpose label.on{border-color:var(--cyan);background:rgba(61,207,191,.08)}
+#boringReqBody .br-purpose input{margin-top:2px;accent-color:var(--cyan)}
+#boringReqBody .br-purpose .ttl{font-weight:600;color:var(--text)}
+#boringReqBody .br-purpose .sub{font-size:10.5px;color:var(--dim);margin-top:2px}
+#boringReqBody .br-list{margin:6px 0;max-height:140px;overflow:auto}
+#boringReqBody .br-item{display:flex;gap:8px;align-items:flex-start;padding:6px 0;border-bottom:1px solid rgba(46,58,72,.45)}
+#boringReqBody .br-item .id{font-family:var(--mono);color:var(--amber);min-width:2.2em}
+#boringReqBody .br-item .meta{flex:1;min-width:0}
+#boringReqBody .br-item button{flex-shrink:0;padding:2px 7px;font-size:10px}
+#boringReqBody .br-rec{margin:8px 0;padding:8px 10px;border:1px solid rgba(61,207,191,.35);background:rgba(61,207,191,.06);border-radius:5px}
+#boringReqBody .br-rec h4{margin:0 0 4px;font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--cyan)}
+#boringReqBody .br-tests{margin:6px 0 0;padding-left:1.1em}
+#boringReqBody .br-tests li{margin:2px 0}
+#boringReqBody input[type=text],#boringReqBody input[type=number],#boringReqBody select,#boringReqBody textarea{
+  width:100%;background:var(--ink);border:1px solid var(--line);border-radius:4px;color:var(--text);padding:5px 7px;font-size:12px;font-family:var(--mono);box-sizing:border-box}
+#boringReqBody textarea{min-height:52px;resize:vertical;font-family:inherit}
+#boringReqBody .br-grid{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin:6px 0}
+#boringReqBody .br-actions{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}
+.map-pick-boring{cursor:crosshair !important}
+
 /* generic content pages */
 .wrap{max-width:860px;margin:0 auto;padding:26px 18px;height:100%;overflow-y:auto}
 .card{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:18px;margin-bottom:16px}
@@ -21029,7 +21054,7 @@ table.list td{padding:5px 8px;border-bottom:1px solid rgba(46,58,72,.5);font-fam
 <div id="hdr">
   <div class="brand" title="Delaware Department of Transportation">
     <img src="data:image/png;base64,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" width="28" height="28" alt="DelDOT">
-    <h1><b>DelDOT</b> GeoTrak<span class="badge">v0.38</span></h1>
+    <h1><b>DelDOT</b> GeoTrak<span class="badge">v0.39</span></h1>
   </div>
   <button class="tab on" data-p="map">Map</button>
   <button class="tab" data-p="refs">Reference data</button>
@@ -21093,6 +21118,16 @@ table.list td{padding:5px 8px;border-bottom:1px solid rgba(46,58,72,.5);font-fam
         </div>
         <div class="hint" id="limitsHint" style="margin-top:6px">Click Draw, then click map vertices. Double-click or Close to finish (≥3 points).</div>
         <div id="limitsBody"></div>
+      </div>
+      <div class="sec">
+        <h3>Request soil borings</h3>
+        <div class="hint">Guided M&amp;R request for the <b>Soils/Rock Testing Program</b> sheet (BDM §105 / DRC Figure 105-2). Tap map locations → choose purpose → get median boring count, depth, and lab-test recommendations from DelDOT Bridge Design Manual guidelines. Screening aid — engineer confirms before submittal.</div>
+        <div class="btnrow" style="margin-top:8px;display:flex;gap:6px;flex-wrap:wrap">
+          <button class="btn" id="boringReqStartBtn" type="button" style="border-color:var(--amber);color:var(--amber)">Request soil borings</button>
+          <button class="btn" id="boringReqClearBtn" type="button" disabled>Clear request</button>
+        </div>
+        <div class="hint" id="boringReqHint" style="margin-top:6px">Start the wizard, then tap the first boring location on the map.</div>
+        <div id="boringReqBody"></div>
       </div>
       <div class="sec">
         <h3>Search radius <span id="radLbl" style="color:var(--amber);font-family:var(--mono)">500 ft</span></h3>
@@ -21556,6 +21591,12 @@ function redrawLimitsSketch(){
 }
 function startLimitsDraw(){
   if(limitsBusy)return;
+  if(boringReq && boringReq.active){
+    boringReq.picking=false;
+    stopBoringReqPickCursor();
+    if(!boringReq.points.length && !boringReq.pendingLatLng) clearBoringRequest();
+    else { boringReq.step='review'; renderBoringReqPanel(); updateBoringReqButtons(); }
+  }
   limitsMode='draw';
   limitsVerts=[];
   limitsRing=null;
@@ -22205,6 +22246,599 @@ function wireProjectLimitsUI(){
   if($('limitsAnalyzeBtn')) $('limitsAnalyzeBtn').onclick=()=>analyzeProjectLimits();
   if($('limitsClearBtn')) $('limitsClearBtn').onclick=()=>clearProjectLimits();
   updateLimitsButtons();
+}
+
+/* ---------- guided soil boring request (v0.39) — BDM §105 / DRC sheet ---------- */
+const BORING_REQ_PURPOSES = {
+  bridge_abutment:{
+    id:'bridge_abutment', label:'Structural — bridge abutment',
+    group:'bridge',
+    medianCount:2, countUnit:'per abutment',
+    countNote:'BDM §105.4.1.1 median: two borings per abutment. Reduce only if confident of uniform conditions across the substructure (e.g. short abutment + known uniform strata).',
+    depthFt:80, depthMin:40, depthMax:120,
+    depthNote:'Pile foundations: obtain soils ≥10 ft below estimated pile tip. Initial borings commonly extend 20–30 ft below the first hard layer (N≥20 for ≥20 ft), or ≥30 ft / refusal in weak deposits (N<5 fine-grained, N<10 coarse).',
+    foundationDefault:'deep',
+    tests:[
+      {id:'class', name:'Classification suite', std:'AASHTO T88/T89/T90 · ASTM D6913/D4318', req:true},
+      {id:'mc', name:'Moisture content', std:'AASHTO T265 · ASTM D2216', req:true},
+      {id:'corrosion', name:'Corrosion potential (pH, Cl⁻, SO₄²⁻, resistivity)', std:'AASHTO T288/T289 · ASTM D4972', req:true},
+      {id:'consol', name:'1-D consolidation (undisturbed)', std:'ASTM D2435 · AASHTO T216', req:false, when:'soft fine-grained expected'},
+      {id:'uu', name:'UU triaxial', std:'ASTM D2850 · AASHTO T296', req:false, when:'cohesive strength'},
+      {id:'cu', name:'CU triaxial', std:'ASTM D4767', req:false, when:'effective-stress design'},
+      {id:'uc', name:'Unconfined compression (soil)', std:'ASTM D2166 · AASHTO T208', req:false},
+      {id:'ds', name:'Direct shear', std:'ASTM D3080 · AASHTO T236', req:false, when:'specify confining stress / unit weight'},
+      {id:'organic', name:'Organic content (LOI)', std:'AASHTO T267', req:false, when:'organics / muck suspected'},
+      {id:'rock_uc', name:'Rock unconfined compression', std:'ASTM D7012', req:false, when:'NCC Piedmont / rock expected'}
+    ]
+  },
+  bridge_pier:{
+    id:'bridge_pier', label:'Structural — bridge pier',
+    group:'bridge',
+    medianCount:2, countUnit:'per pier',
+    countNote:'BDM §105.4.1.1 median: two borings per pier. May reduce when uniform conditions are well established.',
+    depthFt:90, depthMin:50, depthMax:140,
+    depthNote:'Same pile termination criteria as abutments — ≥10 ft below estimated tip; hard-layer / weak-deposit rules in §105.4.1.2. Scour prism soils above total scour are treated as removed for stream piers.',
+    foundationDefault:'deep',
+    tests:null /* inherit abutment */
+  },
+  wingwall:{
+    id:'wingwall', label:'Structural — wingwall',
+    group:'bridge',
+    medianCount:1, countUnit:'per wingwall',
+    countNote:'BDM §105.4.1.1 median: one boring per wingwall. Add borings if abutment borings show non-uniform conditions or wingwall >40 ft.',
+    depthFt:50, depthMin:25, depthMax:80,
+    depthNote:'Depth should characterize bearing / global stability and any soft layers behind the wall. Extend through unsuitable materials or to competent stratum for the proposed foundation.',
+    foundationDefault:'shallow',
+    tests:null
+  },
+  culvert:{
+    id:'culvert', label:'Structural — pipe / culvert / 3-sided frame',
+    group:'bridge',
+    medianCount:2, countUnit:'per structure',
+    countNote:'BDM §105.4.1.1 median: two borings at inlet and outlet, staggered.',
+    depthFt:35, depthMin:20, depthMax:60,
+    depthNote:'Characterize bearing and settlement under the structure and any soft compressible fills. Extend below invert / footing influence zone; deepen if unsuitable soils persist.',
+    foundationDefault:'shallow',
+    tests:null
+  },
+  retaining_wall:{
+    id:'retaining_wall', label:'Structural — retaining / noise wall',
+    group:'wall',
+    medianCount:2, countUnit:'per wall (≤100 ft)',
+    countNote:'BDM §105.4.1.1: two borings for walls ≤100 ft; add one boring each additional 100 ft. Enter wall length below to size the program.',
+    depthFt:45, depthMin:25, depthMax:80,
+    depthNote:'Depth should support bearing, settlement, and global stability analyses for wall height / retained fill. Extend through soft layers or to competent bearing stratum.',
+    foundationDefault:'shallow', asksWallLength:true,
+    tests:null
+  },
+  signal_pole:{
+    id:'signal_pole', label:'Ancillary — signal / strain pole',
+    group:'ancillary',
+    medianCount:1, countUnit:'per foundation',
+    countNote:'BDM §105.4.1.1 median: one boring per ancillary structure foundation.',
+    depthFt:25, depthMin:15, depthMax:40,
+    depthNote:'Typically through design embedment plus a margin (often ~15–30+ ft depending on pole class / soils). Confirm against DelDOT pole foundation guidance and local soft layers.',
+    foundationDefault:'deep',
+    tests:[
+      {id:'class', name:'Classification suite', std:'AASHTO T88/T89/T90 · ASTM D6913/D4318', req:true},
+      {id:'mc', name:'Moisture content', std:'AASHTO T265 · ASTM D2216', req:true},
+      {id:'corrosion', name:'Corrosion potential (pH, Cl⁻, SO₄²⁻, resistivity)', std:'AASHTO T288/T289', req:true},
+      {id:'ds', name:'Direct shear (remolded granular if needed)', std:'ASTM D3080', req:false},
+      {id:'uu', name:'UU triaxial / UC', std:'ASTM D2850 / D2166', req:false, when:'cohesive soils for lateral capacity'}
+    ]
+  },
+  light_sign:{
+    id:'light_sign', label:'Ancillary — light pole / overhead sign',
+    group:'ancillary',
+    medianCount:1, countUnit:'per foundation',
+    countNote:'BDM §105.4.1.1 median: one boring per ancillary structure foundation.',
+    depthFt:20, depthMin:12, depthMax:35,
+    depthNote:'Through proposed foundation depth plus margin for SPT profile and groundwater. Deepen if soft / organic soils or high WT complicate design.',
+    foundationDefault:'deep',
+    tests:null
+  },
+  infiltration:{
+    id:'infiltration', label:'Stormwater — infiltration / BMP',
+    group:'infil',
+    medianCount:1, countUnit:'per facility (min)',
+    countNote:'Not a BDM structural boring count. For DelDOT/DNREC BMP screening: ≥1 boring or test pit at the proposed facility; add points when soils or hydro vary across the footprint. Pair with field infiltration testing (prefer full-size ring; borehole FoS 2.5 if used).',
+    depthFt:15, depthMin:10, depthMax:25,
+    depthNote:'Extend ≥5 ft below proposed bottom of practice (or to limiting layer / seasonal high water). Log textures, redox / mottling, and groundwater for separation checks.',
+    foundationDefault:'na',
+    tests:[
+      {id:'class', name:'Classification suite (gradation + Atterberg)', std:'ASTM D6913/D4318', req:true},
+      {id:'mc', name:'Moisture content', std:'ASTM D2216', req:true},
+      {id:'organic', name:'Organic content (LOI)', std:'AASHTO T267', req:true},
+      {id:'perm', name:'Lab permeability (constant/falling head)', std:'ASTM D2434 / D5084', req:false, when:'supplement to field infil'},
+      {id:'infil_field', name:'Field infiltration test (preferred)', std:'DNREC BMP App.1 / ASTM guidance', req:true}
+    ]
+  },
+  roadway:{
+    id:'roadway', label:'Roadway / pavement subgrade',
+    group:'roadway',
+    medianCount:1, countUnit:'per representative location',
+    countNote:'BDM §105 covers structural borings; roadway borings are separate. Use spacing based on project length / variability (often ~200–500 ft for reconnaissance — engineer judgment).',
+    depthFt:10, depthMin:5, depthMax:20,
+    depthNote:'Through pavement section and subgrade influence (commonly 5–15 ft). Deepen for embankments, undercut decisions, or soft compressible deposits.',
+    foundationDefault:'na',
+    tests:[
+      {id:'class', name:'Classification suite', std:'AASHTO T88/T89/T90', req:true},
+      {id:'mc', name:'Moisture content', std:'AASHTO T265', req:true},
+      {id:'proctor', name:'Proctor (std / modified)', std:'AASHTO T99 / T180', req:true},
+      {id:'cbr', name:'CBR (if required by pavement design)', std:'AASHTO T193', req:false},
+      {id:'organic', name:'Organic content', std:'AASHTO T267', req:false}
+    ]
+  },
+  other:{
+    id:'other', label:'Other / describe in remarks',
+    group:'other',
+    medianCount:1, countUnit:'as needed',
+    countNote:'No fixed BDM median. Document purpose and justify count/depth for M&R coordination (§105.4).',
+    depthFt:30, depthMin:10, depthMax:100,
+    depthNote:'Set depth from structure loads, geology, and termination criteria in §105.4.1.2.',
+    foundationDefault:'deep',
+    tests:null
+  }
+};
+(function _inheritBoringTests(){
+  const base=BORING_REQ_PURPOSES.bridge_abutment.tests;
+  Object.keys(BORING_REQ_PURPOSES).forEach(k=>{
+    const p=BORING_REQ_PURPOSES[k];
+    if(!p.tests) p.tests=base.slice();
+  });
+  const light=BORING_REQ_PURPOSES.signal_pole.tests;
+  BORING_REQ_PURPOSES.light_sign.tests=light.slice();
+})();
+
+let boringReqLayer=L.layerGroup().addTo(map);
+let boringReq={
+  active:false,
+  picking:false,
+  step:'idle', /* idle | pick | purpose | review */
+  pendingLatLng:null,
+  points:[], /* {id, lat, lon, purpose, depthFt, foundation, wallLenFt, label, tests[]} */
+  meta:{project:'', contract:'', requester:'', section:'', phone:'', email:'', remarks:''}
+};
+
+function setBoringReqHint(msg, cls){
+  const el=$('boringReqHint'); if(!el)return;
+  el.className='hint'+(cls?' '+cls:'');
+  el.textContent=msg||'';
+}
+function updateBoringReqButtons(){
+  const n=boringReq.points.length;
+  if($('boringReqStartBtn')){
+    $('boringReqStartBtn').disabled=false;
+    $('boringReqStartBtn').textContent=boringReq.active?(boringReq.picking?'Tapping map…':'Continue request'):'Request soil borings';
+  }
+  if($('boringReqClearBtn')) $('boringReqClearBtn').disabled=!boringReq.active && !n;
+}
+function clearBoringReqMarkers(){
+  if(boringReqLayer) boringReqLayer.clearLayers();
+}
+function redrawBoringReqMarkers(){
+  clearBoringReqMarkers();
+  boringReq.points.forEach((p,i)=>{
+    const m=L.circleMarker([p.lat,p.lon],{
+      radius:7,color:'#1a1408',weight:2,fillColor:'#f0a84a',fillOpacity:.95
+    }).bindTooltip((p.label||('B'+(i+1)))+' · '+(BORING_REQ_PURPOSES[p.purpose]?.label||p.purpose),{
+      className:'btip',direction:'top'
+    }).addTo(boringReqLayer);
+    m._boringReqId=p.id;
+  });
+  if(boringReq.pendingLatLng){
+    L.circleMarker([boringReq.pendingLatLng.lat, boringReq.pendingLatLng.lng],{
+      radius:8,color:'#3dcfbf',weight:2,fillColor:'#3dcfbf',fillOpacity:.35,dashArray:'2 4'
+    }).bindTooltip('New location — choose purpose',{className:'btip'}).addTo(boringReqLayer);
+  }
+}
+function recommendWallCount(wallLenFt){
+  const Lft=Math.max(0, +wallLenFt||0);
+  if(Lft<=100) return 2;
+  return 2 + Math.ceil((Lft-100)/100);
+}
+function recommendBoringProgram(purposeId, opts){
+  opts=opts||{};
+  const P=BORING_REQ_PURPOSES[purposeId]||BORING_REQ_PURPOSES.other;
+  let count=P.medianCount;
+  let countNote=P.countNote;
+  if(P.asksWallLength){
+    count=recommendWallCount(opts.wallLenFt);
+    countNote=P.countNote+` Calculated median for ${(+opts.wallLenFt||0)} ft wall: ${count} boring(s).`;
+  }
+  const placed=boringReq.points.filter(x=>x.purpose===purposeId).length + (opts.includePending?1:0);
+  let depthFt=P.depthFt;
+  if(opts.foundation==='shallow' && P.foundationDefault==='deep') depthFt=Math.min(depthFt, Math.max(P.depthMin, 40));
+  if(opts.foundation==='deep' && P.foundationDefault==='shallow') depthFt=Math.max(depthFt, 50);
+  const tests=(P.tests||[]).map(t=>({...t, selected: !!t.req}));
+  return {purpose:P, count, countNote, placed, depthFt, depthNote:P.depthNote, tests, depthMin:P.depthMin, depthMax:P.depthMax};
+}
+function stopBoringReqPickCursor(){
+  try{ map.getContainer().classList.remove('map-pick-boring'); }catch(_){}
+  map.getContainer().style.cursor='';
+}
+function startBoringRequest(){
+  if(limitsMode==='draw'){
+    /* pause limits draw so map clicks go to boring pick */
+    limitsMode=null;
+    try{ map.doubleClickZoom.enable(); }catch(_){}
+    updateLimitsButtons();
+  }
+  boringReq.active=true;
+  boringReq.picking=true;
+  boringReq.step='pick';
+  boringReq.pendingLatLng=null;
+  map.getContainer().classList.add('map-pick-boring');
+  map.getContainer().style.cursor='crosshair';
+  setBoringReqHint('Step 1 — tap the first boring location on the map.','good');
+  toast('Boring request — tap map for location 1');
+  renderBoringReqPanel();
+  updateBoringReqButtons();
+}
+function cancelBoringRequestPick(){
+  boringReq.picking=false;
+  boringReq.pendingLatLng=null;
+  stopBoringReqPickCursor();
+  if(boringReq.points.length) boringReq.step='review';
+  else { boringReq.active=false; boringReq.step='idle'; }
+  redrawBoringReqMarkers();
+  renderBoringReqPanel();
+  updateBoringReqButtons();
+}
+function clearBoringRequest(){
+  boringReq.active=false;
+  boringReq.picking=false;
+  boringReq.step='idle';
+  boringReq.pendingLatLng=null;
+  boringReq.points=[];
+  boringReq.meta={project:'', contract:'', requester:'', section:'', phone:'', email:'', remarks:''};
+  stopBoringReqPickCursor();
+  clearBoringReqMarkers();
+  if($('boringReqBody')) $('boringReqBody').innerHTML='';
+  setBoringReqHint('Start the wizard, then tap the first boring location on the map.');
+  updateBoringReqButtons();
+}
+function onBoringReqMapClick(ll){
+  if(!boringReq.active||!boringReq.picking||!ll)return false;
+  boringReq.pendingLatLng={lat:+ll.lat, lng:+ll.lng};
+  boringReq.picking=false;
+  boringReq.step='purpose';
+  stopBoringReqPickCursor();
+  redrawBoringReqMarkers();
+  setBoringReqHint('Step 2 — choose the purpose of this boring.','');
+  toast('Location captured — select purpose');
+  renderBoringReqPanel();
+  updateBoringReqButtons();
+  return true;
+}
+function acceptPendingBoring(purposeId, fields){
+  fields=fields||{};
+  if(!boringReq.pendingLatLng) return;
+  const rec=recommendBoringProgram(purposeId,{
+    wallLenFt:fields.wallLenFt,
+    foundation:fields.foundation,
+    includePending:true
+  });
+  const n=boringReq.points.length+1;
+  const id='B'+n;
+  const selectedTests=(fields.tests||rec.tests).filter(t=>t.selected).map(t=>t.id);
+  boringReq.points.push({
+    id,
+    label:fields.label||id,
+    lat:boringReq.pendingLatLng.lat,
+    lon:boringReq.pendingLatLng.lng,
+    purpose:purposeId,
+    foundation:fields.foundation||rec.purpose.foundationDefault,
+    wallLenFt:fields.wallLenFt!=null?+fields.wallLenFt:null,
+    depthFt:+fields.depthFt||rec.depthFt,
+    depthNote:rec.depthNote,
+    countGuide:rec.count,
+    countNote:rec.countNote,
+    testIds:selectedTests,
+    remarks:fields.remarks||''
+  });
+  boringReq.pendingLatLng=null;
+  boringReq.step='review';
+  boringReq.picking=false;
+  redrawBoringReqMarkers();
+  setBoringReqHint(`${boringReq.points.length} boring(s) on the request. Add another or export the sheet.`,'good');
+  renderBoringReqPanel();
+  updateBoringReqButtons();
+}
+function removeBoringReqPoint(id){
+  boringReq.points=boringReq.points.filter(p=>p.id!==id);
+  if(!boringReq.points.length && !boringReq.pendingLatLng){
+    clearBoringRequest();
+    return;
+  }
+  redrawBoringReqMarkers();
+  renderBoringReqPanel();
+  updateBoringReqButtons();
+}
+function readBoringReqMetaFromForm(){
+  const g=id=>{ const el=$(id); return el?el.value.trim():''; };
+  boringReq.meta={
+    project:g('brMetaProject'),
+    contract:g('brMetaContract'),
+    requester:g('brMetaRequester'),
+    section:g('brMetaSection'),
+    phone:g('brMetaPhone'),
+    email:g('brMetaEmail'),
+    remarks:g('brMetaRemarks')
+  };
+}
+function renderBoringReqPanel(){
+  const box=$('boringReqBody'); if(!box)return;
+  if(!boringReq.active && !boringReq.points.length){ box.innerHTML=''; return; }
+
+  if(boringReq.step==='purpose' && boringReq.pendingLatLng){
+    const ll=boringReq.pendingLatLng;
+    let h=`<div class="br-step">Step 2 · Purpose</div>`;
+    h+=`<div class="hint">Location <b>${ll.lat.toFixed(6)}, ${ll.lng.toFixed(6)}</b></div>`;
+    h+=`<div class="br-purpose" id="brPurposeList">`;
+    Object.values(BORING_REQ_PURPOSES).forEach((p,i)=>{
+      h+=`<label class="${i===0?'on':''}" data-pid="${p.id}">
+        <input type="radio" name="brPurpose" value="${p.id}" ${i===0?'checked':''}>
+        <span><div class="ttl">${esc(p.label)}</div><div class="sub">Median ${p.medianCount} ${esc(p.countUnit)} · guide depth ~${p.depthFt} ft</div></span>
+      </label>`;
+    });
+    h+=`</div>`;
+    h+=`<div id="brPurposeDetail"></div>`;
+    h+=`<div class="br-actions">
+      <button class="btn" type="button" id="brAcceptPt" style="border-color:var(--cyan);color:var(--cyan)">Add boring to request</button>
+      <button class="btn" type="button" id="brCancelPt">Cancel location</button>
+    </div>`;
+    box.innerHTML=h;
+    const detail=$('brPurposeDetail');
+    const paintDetail=()=>{
+      const pid=(box.querySelector('input[name=brPurpose]:checked')||{}).value||'bridge_abutment';
+      box.querySelectorAll('#brPurposeList label').forEach(lb=>lb.classList.toggle('on', lb.getAttribute('data-pid')===pid));
+      const wallEl=box.querySelector('#brWallLen');
+      const wallLen=wallEl?+wallEl.value:0;
+      const foundEl=box.querySelector('#brFound');
+      const foundation=foundEl?foundEl.value:'';
+      const rec=recommendBoringProgram(pid,{wallLenFt:wallLen, foundation, includePending:true});
+      let d=`<div class="br-rec"><h4>BDM recommendation</h4>`;
+      d+=`<div><b>Median count:</b> ${rec.count} ${esc(rec.purpose.countUnit)}</div>`;
+      d+=`<div class="hint" style="margin-top:4px">${esc(rec.countNote)}</div>`;
+      d+=`<div style="margin-top:6px"><b>Guide depth:</b> ${rec.depthFt} ft <span class="hint">(${rec.depthMin}–${rec.depthMax} ft range)</span></div>`;
+      d+=`<div class="hint" style="margin-top:4px">${esc(rec.depthNote)}</div></div>`;
+      d+=`<div class="br-grid">
+        <div><label class="hint">Boring ID</label><input type="text" id="brLabel" value="B${boringReq.points.length+1}"></div>
+        <div><label class="hint">Requested depth (ft)</label><input type="number" id="brDepth" min="5" max="300" step="1" value="${rec.depthFt}"></div>
+        <div><label class="hint">Foundation</label>
+          <select id="brFound">
+            <option value="deep"${(foundation||rec.purpose.foundationDefault)==='deep'?' selected':''}>Deep / piles / shafts</option>
+            <option value="shallow"${(foundation||rec.purpose.foundationDefault)==='shallow'?' selected':''}>Shallow / spread footing</option>
+            <option value="na"${(foundation||rec.purpose.foundationDefault)==='na'?' selected':''}>N/A</option>
+          </select></div>`;
+      if(rec.purpose.asksWallLength){
+        d+=`<div><label class="hint">Wall length (ft)</label><input type="number" id="brWallLen" min="0" step="10" value="${wallLen||100}"></div>`;
+      } else d+=`<div></div>`;
+      d+=`</div>`;
+      d+=`<div class="br-rec"><h4>Recommended lab / field tests</h4><ul class="br-tests">`;
+      rec.tests.forEach(t=>{
+        d+=`<li><label><input type="checkbox" data-tid="${t.id}" ${t.selected?'checked':''}> <b>${esc(t.name)}</b>
+          <span class="hint"> — ${esc(t.std)}${t.when?' · '+esc(t.when):''}${t.req?' · typical minimum':''}</span></label></li>`;
+      });
+      d+=`</ul><div class="hint" style="margin-top:6px">Direct shear: specify confining stresses and target unit weight for remolded samples (BDM note on Figure 105-2).</div></div>`;
+      d+=`<div><label class="hint">Remarks for this boring</label><textarea id="brPtRemarks" placeholder="Utilities, access, traffic, known soft soils…"></textarea></div>`;
+      detail.innerHTML=d;
+      const wall2=$('brWallLen'), found2=$('brFound');
+      if(wall2) wall2.onchange=wall2.oninput=paintDetail;
+      if(found2) found2.onchange=()=>{
+        const pid2=(box.querySelector('input[name=brPurpose]:checked')||{}).value;
+        const rec2=recommendBoringProgram(pid2,{wallLenFt:$('brWallLen')?+$('brWallLen').value:0, foundation:found2.value, includePending:true});
+        if($('brDepth')) $('brDepth').value=rec2.depthFt;
+      };
+    };
+    box.querySelectorAll('input[name=brPurpose]').forEach(r=>r.onchange=paintDetail);
+    paintDetail();
+    $('brCancelPt').onclick=()=>{
+      boringReq.pendingLatLng=null;
+      if(boringReq.points.length){ boringReq.step='review'; renderBoringReqPanel(); }
+      else cancelBoringRequestPick();
+      redrawBoringReqMarkers();
+    };
+    $('brAcceptPt').onclick=()=>{
+      const pid=(box.querySelector('input[name=brPurpose]:checked')||{}).value||'other';
+      const tests=[];
+      detail.querySelectorAll('input[type=checkbox][data-tid]').forEach(cb=>{
+        tests.push({id:cb.getAttribute('data-tid'), selected:cb.checked});
+      });
+      acceptPendingBoring(pid,{
+        label:($('brLabel')||{}).value,
+        depthFt:($('brDepth')||{}).value,
+        foundation:($('brFound')||{}).value,
+        wallLenFt:($('brWallLen')||{}).value,
+        remarks:($('brPtRemarks')||{}).value,
+        tests
+      });
+    };
+    return;
+  }
+
+  /* review / pick */
+  const m=boringReq.meta;
+  let h=`<div class="br-step">${boringReq.picking?'Step 1 · Tap map':'Request draft'} · ${boringReq.points.length} boring(s)</div>`;
+  h+=`<div class="br-grid">
+    <div><label class="hint">Project / job</label><input type="text" id="brMetaProject" value="${esc(m.project)}"></div>
+    <div><label class="hint">Contract #</label><input type="text" id="brMetaContract" value="${esc(m.contract)}"></div>
+    <div><label class="hint">Requested by</label><input type="text" id="brMetaRequester" value="${esc(m.requester)}"></div>
+    <div><label class="hint">Section</label><input type="text" id="brMetaSection" value="${esc(m.section)}" placeholder="Bridge / M&R / Design"></div>
+    <div><label class="hint">Phone</label><input type="text" id="brMetaPhone" value="${esc(m.phone)}"></div>
+    <div><label class="hint">Email</label><input type="text" id="brMetaEmail" value="${esc(m.email)}"></div>
+  </div>`;
+  h+=`<div><label class="hint">Program remarks</label><textarea id="brMetaRemarks" placeholder="MOT, permits, utilities, staging, two-stage boring schedule…">${esc(m.remarks)}</textarea></div>`;
+  if(boringReq.points.length){
+    h+=`<div class="br-list">`;
+    boringReq.points.forEach(p=>{
+      const pl=BORING_REQ_PURPOSES[p.purpose];
+      h+=`<div class="br-item"><span class="id">${esc(p.label||p.id)}</span><div class="meta">
+        <div>${esc(pl?pl.label:p.purpose)}</div>
+        <div class="hint">${p.lat.toFixed(5)}, ${p.lon.toFixed(5)} · depth ${p.depthFt} ft · median guide ${p.countGuide}</div>
+        <div class="hint">${(p.testIds||[]).length} test(s) selected${p.remarks?' · '+esc(p.remarks):''}</div>
+      </div><button class="btn" type="button" data-rm="${esc(p.id)}">✕</button></div>`;
+    });
+    h+=`</div>`;
+    /* program rollup by purpose */
+    const by={};
+    boringReq.points.forEach(p=>{ by[p.purpose]=(by[p.purpose]||0)+1; });
+    h+=`<div class="br-rec"><h4>Program vs BDM median</h4>`;
+    Object.keys(by).forEach(pid=>{
+      const rec=recommendBoringProgram(pid,{wallLenFt:(boringReq.points.find(x=>x.purpose===pid)||{}).wallLenFt});
+      const n=by[pid];
+      const ok=n>=rec.count;
+      h+=`<div class="hint" style="margin:3px 0;color:${ok?'var(--green)':'var(--amber)'}">${esc(rec.purpose.label)}: ${n} placed · median ${rec.count} ${esc(rec.purpose.countUnit)}${ok?'':' — below median'}</div>`;
+    });
+    h+=`<div class="hint" style="margin-top:6px">Medians are guidelines for limited prior data (§105.4.1.1). Adjust for geology, existing borings, and risk.</div></div>`;
+  }
+  h+=`<div class="br-actions">
+    <button class="btn" type="button" id="brAddMore" style="border-color:var(--cyan);color:var(--cyan)">${boringReq.picking?'Listening for map tap…':'Add another location'}</button>
+    <button class="btn" type="button" id="brExportXlsx" ${boringReq.points.length?'':'disabled'} style="border-color:var(--amber);color:var(--amber)">Export request .xlsx</button>
+    <button class="btn" type="button" id="brPrint" ${boringReq.points.length?'':'disabled'}>Print / PDF sheet</button>
+  </div>`;
+  h+=`<div class="hint" style="margin-top:8px">Attach a plan showing boring points, ROW/access, control, and utilities per BDM §105.4.1. Official DRC form: Soils/Rock Testing Program request (Figure 105-2).</div>`;
+  box.innerHTML=h;
+  box.querySelectorAll('[data-rm]').forEach(btn=>{
+    btn.onclick=()=>{ readBoringReqMetaFromForm(); removeBoringReqPoint(btn.getAttribute('data-rm')); };
+  });
+  if($('brAddMore')) $('brAddMore').onclick=()=>{
+    readBoringReqMetaFromForm();
+    boringReq.active=true;
+    boringReq.picking=true;
+    boringReq.step='pick';
+    boringReq.pendingLatLng=null;
+    map.getContainer().classList.add('map-pick-boring');
+    map.getContainer().style.cursor='crosshair';
+    setBoringReqHint(`Step 1 — tap boring location ${boringReq.points.length+1} on the map.`,'good');
+    toast('Tap map for next boring');
+    renderBoringReqPanel();
+    updateBoringReqButtons();
+  };
+  if($('brExportXlsx')) $('brExportXlsx').onclick=()=>{ readBoringReqMetaFromForm(); exportBoringRequestXlsx(); };
+  if($('brPrint')) $('brPrint').onclick=()=>{ readBoringReqMetaFromForm(); printBoringRequestSheet(); };
+}
+function boringRequestTestName(id){
+  for(const p of Object.values(BORING_REQ_PURPOSES)){
+    const t=(p.tests||[]).find(x=>x.id===id);
+    if(t) return t.name+(t.std?' ('+t.std+')':'');
+  }
+  return id;
+}
+function exportBoringRequestXlsx(){
+  if(!boringReq.points.length){ toast('Add at least one boring'); return; }
+  if(typeof XLSX==='undefined'){ toastErr('SheetJS not available'); return; }
+  const meta=boringReq.meta;
+  const cover=[
+    ['DelDOT GeoTrak — Soils/Rock Testing Program request draft'],
+    ['Aligned to BDM §105 / DRC Figure 105-2 (Soil Boring Request Sheet)'],
+    ['Generated', new Date().toISOString().slice(0,10)],
+    [],
+    ['Project / job', meta.project],
+    ['Contract #', meta.contract],
+    ['Requested by', meta.requester],
+    ['Section', meta.section],
+    ['Phone', meta.phone],
+    ['Email', meta.email],
+    ['Program remarks', meta.remarks],
+    [],
+    ['NOTE','Median boring counts and depths are BDM guidelines. Engineer confirms program with M&R. Attach structure plan with boring locations, ROW/access, control, and utilities.']
+  ];
+  const rows=[['Boring','Purpose','Latitude','Longitude','Depth_ft','Foundation','Wall_len_ft','BDM_median_count','Count_note','Tests','Remarks']];
+  boringReq.points.forEach(p=>{
+    const pl=BORING_REQ_PURPOSES[p.purpose];
+    rows.push([
+      p.label||p.id,
+      pl?pl.label:p.purpose,
+      +p.lat.toFixed(6), +p.lon.toFixed(6),
+      p.depthFt,
+      p.foundation||'',
+      p.wallLenFt!=null?p.wallLenFt:'',
+      p.countGuide,
+      p.countNote||'',
+      (p.testIds||[]).map(boringRequestTestName).join('; '),
+      p.remarks||''
+    ]);
+  });
+  const testSet=new Map();
+  boringReq.points.forEach(p=> (p.testIds||[]).forEach(id=> testSet.set(id, boringRequestTestName(id))));
+  const testRows=[['Test','Requested','Standard / notes']];
+  [...testSet.entries()].forEach(([id,name])=>{
+    testRows.push([name,'YES', (Object.values(BORING_REQ_PURPOSES).flatMap(p=>p.tests||[]).find(t=>t.id===id)||{}).std||'']);
+  });
+  const wb=XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(cover), 'Request');
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(rows), 'Borings');
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(testRows), 'Lab_Tests');
+  const fname=(meta.contract||meta.project||'GeoTrak').replace(/[^\w-]+/g,'_')+'_Soil_Boring_Request.xlsx';
+  XLSX.writeFile(wb, fname);
+  toast('Downloaded '+fname);
+}
+function printBoringRequestSheet(){
+  if(!boringReq.points.length){ toast('Add at least one boring'); return; }
+  const meta=boringReq.meta;
+  let rows=boringReq.points.map(p=>{
+    const pl=BORING_REQ_PURPOSES[p.purpose];
+    return `<tr>
+      <td>${esc(p.label||p.id)}</td>
+      <td>${esc(pl?pl.label:p.purpose)}</td>
+      <td>${p.lat.toFixed(6)}</td><td>${p.lon.toFixed(6)}</td>
+      <td>${p.depthFt}</td>
+      <td>${esc(p.foundation||'')}</td>
+      <td>${esc((p.testIds||[]).map(boringRequestTestName).join('; '))}</td>
+      <td>${esc(p.remarks||'')}</td>
+    </tr>`;
+  }).join('');
+  const html=`<!doctype html><html><head><meta charset="utf-8"><title>Soil Boring Request</title>
+    <style>
+      body{font-family:Georgia,"Times New Roman",serif;color:#111;margin:28px;font-size:12px}
+      h1{font-size:18px;margin:0 0 4px} h2{font-size:13px;margin:18px 0 6px;text-transform:uppercase;letter-spacing:.06em}
+      .sub{color:#444;margin:0 0 14px;font-size:11px}
+      table{border-collapse:collapse;width:100%;margin:8px 0 16px}
+      th,td{border:1px solid #333;padding:5px 6px;vertical-align:top;text-align:left}
+      th{background:#eee;font-size:10px;text-transform:uppercase}
+      .meta td{border:none;padding:2px 8px 2px 0}
+      .note{font-size:10.5px;color:#333;line-height:1.4;margin-top:12px}
+      @media print{body{margin:12px}}
+    </style></head><body>
+    <h1>DelDOT — Soils/Rock Testing Program Request</h1>
+    <p class="sub">Draft from GeoTrak · BDM §105 / DRC Figure 105-2 · ${esc(new Date().toISOString().slice(0,10))}</p>
+    <table class="meta">
+      <tr><td><b>Project</b></td><td>${esc(meta.project||'—')}</td><td><b>Contract</b></td><td>${esc(meta.contract||'—')}</td></tr>
+      <tr><td><b>Requested by</b></td><td>${esc(meta.requester||'—')}</td><td><b>Section</b></td><td>${esc(meta.section||'—')}</td></tr>
+      <tr><td><b>Phone</b></td><td>${esc(meta.phone||'—')}</td><td><b>Email</b></td><td>${esc(meta.email||'—')}</td></tr>
+    </table>
+    <h2>Requested borings</h2>
+    <table><thead><tr><th>Boring</th><th>Purpose</th><th>Lat</th><th>Lon</th><th>Depth (ft)</th><th>Foundation</th><th>Tests</th><th>Remarks</th></tr></thead>
+    <tbody>${rows}</tbody></table>
+    <h2>Program remarks</h2>
+    <p>${esc(meta.remarks||'—')}</p>
+    <p class="note">Attach a plan of the existing/proposed structure with approximate boring locations, ROW/access, control points (station/offset or lat/lon), and known utilities (BDM §105.4.1). Median quantities and depths are guidelines for sites with limited prior subsurface data; increase/decrease based on geology and risk. Direct Shear — specify confining stresses and target unit weight for remolded samples. This draft does not replace the official DRC Excel form or M&amp;R coordination.</p>
+    <script>window.onload=function(){window.print()}<\/script>
+    </body></html>`;
+  const w=window.open('','_blank','noopener,noreferrer');
+  if(!w){ toastErr('Popup blocked — allow popups to print'); return; }
+  w.document.open(); w.document.write(html); w.document.close();
+}
+function wireBoringRequestUI(){
+  if($('boringReqStartBtn')) $('boringReqStartBtn').onclick=()=>{
+    if(boringReq.active && boringReq.step==='purpose') return;
+    if(boringReq.active && !boringReq.picking && boringReq.points.length){
+      readBoringReqMetaFromForm();
+      boringReq.picking=true;
+      boringReq.step='pick';
+      map.getContainer().classList.add('map-pick-boring');
+      map.getContainer().style.cursor='crosshair';
+      setBoringReqHint(`Tap next boring location (${boringReq.points.length+1}).`,'good');
+      renderBoringReqPanel();
+      updateBoringReqButtons();
+      return;
+    }
+    startBoringRequest();
+  };
+  if($('boringReqClearBtn')) $('boringReqClearBtn').onclick=()=>clearBoringRequest();
+  updateBoringReqButtons();
 }
 
 function drawBorings(){
@@ -25341,6 +25975,11 @@ function setHudTab(tab){
     if(e.key!=='Escape')return;
     if($('subsurfaceMode')&&$('subsurfaceMode').classList.contains('on')){ closeSubsurfaceMode(); return; }
     if($('siteHud')&&$('siteHud').classList.contains('on')) closeSiteHud();
+    if(typeof boringReq!=='undefined' && boringReq.active && boringReq.picking){
+      cancelBoringRequestPick();
+      setBoringReqHint(boringReq.points.length?'Pick cancelled — review request or add another.':'Request cancelled.');
+      return;
+    }
   });
   const imm=$('immersiveMode');
   if(imm) imm.onchange=function(){ if(lastQuery) runPointQuery(lastQuery.lat,lastQuery.lng); };
@@ -25350,6 +25989,10 @@ function setHudTab(tab){
 map.on('click',e=>{
   if(limitsMode==='draw'){
     addLimitsVertex(e.latlng);
+    return;
+  }
+  if(boringReq.active && boringReq.picking){
+    onBoringReqMapClick(e.latlng);
     return;
   }
   runPointQuery(e.latlng.lat,e.latlng.lng);
@@ -25362,6 +26005,7 @@ map.on('dblclick',e=>{
   }
 });
 wireProjectLimitsUI();
+wireBoringRequestUI();
 $('radius').oninput=function(){$('radLbl').textContent=this.value+' ft'; if(lastQuery)runPointQuery(lastQuery.lat,lastQuery.lng);};
 $('hydroOnline')&&($('hydroOnline').onchange=function(){ if(lastQuery)runPointQuery(lastQuery.lat,lastQuery.lng); if(typeof refreshReportPreview==='function')refreshReportPreview(); });
 $('aquiferOnline')&&($('aquiferOnline').onchange=function(){ if(lastQuery)runPointQuery(lastQuery.lat,lastQuery.lng); if(typeof refreshReportPreview==='function')refreshReportPreview(); });
