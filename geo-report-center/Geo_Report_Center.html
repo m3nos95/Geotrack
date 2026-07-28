@@ -20841,7 +20841,7 @@ main{position:absolute;top:44px;left:0;right:0;bottom:0}
 #map{position:absolute;inset:0}
 
 /* map side panel */
-#qPanel{position:absolute;top:10px;right:10px;bottom:10px;width:380px;z-index:1000;background:var(--panel);border:1px solid var(--line);
+#qPanel{position:absolute;top:10px;right:10px;bottom:10px;width:400px;z-index:1000;background:var(--panel);border:1px solid var(--line);
   border-radius:8px;display:flex;flex-direction:column;overflow:hidden}
 #qPanel .sec{padding:10px 12px;border-bottom:1px solid var(--line)}
 #qPanel h3{font-size:11px;text-transform:uppercase;letter-spacing:.07em;color:var(--dim);margin-bottom:6px}
@@ -20849,10 +20849,28 @@ main{position:absolute;top:44px;left:0;right:0;bottom:0}
 #qBody .kv{width:100%;border-collapse:collapse;font-size:12px}
 #qBody .kv td{padding:3px 6px;border-bottom:1px solid rgba(46,58,72,.5);vertical-align:top}
 #qBody .kv td:first-child{font-family:var(--mono);color:var(--dim);white-space:nowrap;width:1%}
-.layerRow{display:flex;align-items:center;gap:8px;padding:4px 0;font-size:12px;font-family:var(--mono)}
-.layerRow input{accent-color:var(--amber)}
-.layerRow .nm{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.layerRow .kd{color:var(--dim);font-size:10px}
+.layerRow{display:flex;align-items:flex-start;gap:8px;padding:6px 4px;font-size:12px;font-family:var(--mono);border-radius:4px}
+.layerRow:hover{background:rgba(240,168,74,.06)}
+.layerRow input{accent-color:var(--amber);margin-top:2px;flex-shrink:0}
+.layerRow .nm{flex:1;min-width:0;white-space:normal;word-break:break-word;line-height:1.35}
+.layerRow .kd{color:var(--dim);font-size:10px;white-space:nowrap;flex-shrink:0;margin-top:1px}
+.layer-group-hd{font-size:10px;text-transform:uppercase;letter-spacing:.08em;color:var(--cyan);padding:10px 4px 4px;margin-top:4px;border-bottom:1px solid rgba(46,58,72,.45)}
+.layer-group-hd:first-child{margin-top:0;padding-top:2px}
+.layer-toolbar{display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-bottom:6px}
+.layer-toolbar input[type=search]{flex:1;min-width:140px;background:var(--ink);border:1px solid var(--line);border-radius:4px;color:var(--text);padding:5px 8px;font-size:12px;font-family:var(--mono)}
+.layer-toolbar input[type=search]:focus{outline:none;border-color:var(--amber)}
+.layer-list-scroll{flex:1;overflow-y:auto;min-height:140px;max-height:100%;padding-right:4px}
+.qpanel-scroll{flex:0 1 auto;max-height:34vh;overflow-y:auto;min-height:0}
+#layerSec.layer-sec{flex:1 1 260px;min-height:220px;max-height:min(48vh,520px);display:flex;flex-direction:column;overflow:hidden}
+#layerModal{position:fixed;inset:0;z-index:4500;background:rgba(6,10,14,.78);backdrop-filter:blur(4px);display:none;align-items:center;justify-content:center;padding:20px}
+#layerModal.open{display:flex}
+#layerModal .layer-modal-box{width:min(760px,96vw);max-height:min(90vh,920px);background:var(--panel);border:1px solid var(--line);border-radius:10px;display:flex;flex-direction:column;overflow:hidden;box-shadow:0 20px 60px rgba(0,0,0,.55)}
+#layerModal .layer-modal-head{padding:12px 16px;border-bottom:1px solid var(--line);display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+#layerModal .layer-modal-head h2{font-size:13px;text-transform:uppercase;letter-spacing:.07em;color:var(--amber);margin:0;flex:1}
+#layerModal .layer-modal-body{flex:1;overflow-y:auto;padding:8px 14px 16px}
+#layerModal .layer-modal-foot{padding:10px 16px;border-top:1px solid var(--line);display:flex;gap:8px;justify-content:flex-end;flex-wrap:wrap}
+#refLayerPanel .ref-layer-scroll{max-height:min(70vh,720px);overflow-y:auto;border:1px solid var(--line);border-radius:8px;margin-top:10px}
+#refLayerPanel table.list td:first-child+td{max-width:420px;word-break:break-word}
 .badge{display:inline-block;font-family:var(--mono);font-size:10px;padding:1px 6px;border-radius:3px;border:1px solid var(--line);color:var(--dim);margin-left:8px}
 #repPreview{margin-top:12px;padding:10px;background:var(--ink);border:1px solid var(--line);border-radius:6px;font-size:12px;line-height:1.55}
 #repPreview h3{font-size:11px;text-transform:uppercase;letter-spacing:.07em;color:var(--amber);margin-bottom:6px}
@@ -21054,7 +21072,7 @@ table.list td{padding:5px 8px;border-bottom:1px solid rgba(46,58,72,.5);font-fam
 <div id="hdr">
   <div class="brand" title="Delaware Department of Transportation">
     <img src="data:image/png;base64,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" width="28" height="28" alt="DelDOT">
-    <h1><b>DelDOT</b> GeoTrak<span class="badge">v0.41</span></h1>
+    <h1><b>DelDOT</b> GeoTrak<span class="badge">v0.42</span></h1>
   </div>
   <button class="tab on" data-p="map">Map</button>
   <button class="tab" data-p="refs">Reference data</button>
@@ -21103,6 +21121,7 @@ table.list td{padding:5px 8px;border-bottom:1px solid rgba(46,58,72,.5);font-fam
       </div>
     </div>
     <div id="qPanel">
+      <div class="qpanel-scroll">
       <div class="sec">
         <h3>Point query</h3>
         <div class="hint">Click the map for <b>Site Intel</b>: left rail shows every signal (including DNREC septic); right deck opens full detail — septic shows soil-boring attributes and site-eval records with DEN links. Infil from AASHTO / HYDGRP / septic. Lateral radius default 500 ft; column 0–50 ft.</div>
@@ -21134,9 +21153,16 @@ table.list td{padding:5px 8px;border-bottom:1px solid rgba(46,58,72,.5);font-fam
         <input type="range" id="radius" min="250" max="5280" step="250" value="500">
         <button class="hbtn" id="basemapToggle" style="float:right">Satellite</button>
       </div>
-      <div class="sec" id="layerSec" style="max-height:160px;overflow-y:auto">
+      </div>
+      <div class="sec layer-sec" id="layerSec">
         <h3>Loaded layers <span id="layerCount" style="color:var(--amber);font-family:var(--mono)"></span></h3>
-        <div id="layerList"><div class="hint">Open project folder to load refs/.</div></div>
+        <div class="layer-toolbar">
+          <input type="search" id="layerFilter" placeholder="Filter layers…" autocomplete="off">
+          <button type="button" class="hbtn" id="layerEnableAll">All on</button>
+          <button type="button" class="hbtn" id="layerDisableAll">All off</button>
+          <button type="button" class="hbtn accent" id="layerModalOpen">Expand…</button>
+        </div>
+        <div id="layerList" class="layer-list-scroll"><div class="hint">Open project folder to load refs/.</div></div>
       </div>
       <div class="sec">
         <h3>Phase 2 hydro grids</h3>
@@ -21165,12 +21191,18 @@ table.list td{padding:5px 8px;border-bottom:1px solid rgba(46,58,72,.5);font-fam
         <div class="hint" style="margin-top:8px">Field infil anchors: drop DelDOT M&amp;R <b>Borehole Infiltration Test</b> PDFs into <code>infil-pdfs\</code>, run <code>import-infil-pdfs.bat</code>, then reload refs. Map shows amber diamonds; Site Intel → <b>Anchors</b> lists measured rates (design = ÷2.5 for 4″ borehole).</div>
         <div class="hint" style="margin-top:8px">DGS DGIR wells: run <code>download-dgir-wells.bat</code> → <code>refs/dgir_wells.json</code>. Teal markers = lithologic / geophysical log sites (PDF/LAS links). Site Intel → <b>DGS</b>. Classic DGIR GeoServer interval text is not bundled when <code>maps.dgs.udel.edu</code> is offline.</div>
         <div class="hint" style="margin-top:8px">DGS geophys zones: run <code>download-dgir-geophys.bat</code> → <code>refs/dgir_geophys_zones.json</code>. Shallow coarse/fine classes feed Site Intel and a screening fines / P200 prior in the infil blender (not lab %fines).</div>
-        <div style="margin-top:10px;display:flex;gap:8px;flex-wrap:wrap">
-          <button class="btn" id="reloadRefs">Reload refs from project folder</button>
+        <div id="refLayerPanel">
+        <div style="margin-top:10px;display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+          <input type="search" id="refLayerFilter" placeholder="Filter layers…" autocomplete="off" style="flex:1;min-width:200px;background:var(--ink);border:1px solid var(--line);border-radius:4px;color:var(--text);padding:6px 10px;font-size:12px;font-family:var(--mono)">
+          <button class="btn" id="reloadRefs">Reload refs</button>
           <button class="btn" id="enableAllRefs">Enable all</button>
           <button class="btn" id="disableAllRefs">Disable all</button>
+          <button class="btn" id="openLayerModalRefs" style="border-color:var(--cyan);color:var(--cyan)">Full layer manager…</button>
         </div>
-        <table class="list" id="refTable" style="margin-top:10px"></table>
+        <div class="ref-layer-scroll">
+        <table class="list" id="refTable" style="margin-top:0"></table>
+        </div>
+        </div>
         <div class="hint" id="refHint" style="margin-top:8px"></div>
       </div>
       <div class="card">
@@ -21260,6 +21292,21 @@ table.list td{padding:5px 8px;border-bottom:1px solid rgba(46,58,72,.5);font-fam
     </div>
   </div>
 </main>
+<div id="layerModal" role="dialog" aria-labelledby="layerModalTitle" aria-modal="true">
+  <div class="layer-modal-box">
+    <div class="layer-modal-head">
+      <h2 id="layerModalTitle">Reference layers <span id="layerModalCount" style="color:var(--cyan);font-family:var(--mono)"></span></h2>
+      <input type="search" id="layerModalFilter" placeholder="Filter by name or type…" autocomplete="off" style="flex:1;min-width:180px;background:var(--ink);border:1px solid var(--line);border-radius:4px;color:var(--text);padding:6px 10px;font-size:12px;font-family:var(--mono)">
+      <button type="button" class="hbtn" id="layerModalClose" title="Close (Esc)">✕</button>
+    </div>
+    <div class="layer-modal-body" id="layerModalList"></div>
+    <div class="layer-modal-foot">
+      <button type="button" class="btn" id="layerModalEnableAll">Enable all</button>
+      <button type="button" class="btn" id="layerModalDisableAll">Disable all</button>
+      <button type="button" class="btn" id="layerModalDone" style="border-color:var(--amber);color:var(--amber)">Done</button>
+    </div>
+  </div>
+</div>
 <div id="toast"></div>
 <div id="splash" role="dialog" aria-modal="true" aria-labelledby="splashTitle">
   <div class="box">
@@ -26534,20 +26581,61 @@ function setRefOn(base, on){
   if(lastQuery)runPointQuery(lastQuery.lat,lastQuery.lng);
   if(typeof refreshReportPreview==='function')refreshReportPreview();
 }
+let layerFilterQ='';
+function layerFilterMatch(R, q){
+  if(!q) return true;
+  const s=q.trim().toLowerCase();
+  if(!s) return true;
+  const kind=String(KIND_LABEL[R.kind]||R.kind||'').toLowerCase();
+  return String(R.name||'').toLowerCase().includes(s)||kind.includes(s)||String(R.base||'').toLowerCase().includes(s);
+}
+function layerListHTML(filter){
+  const q=filter==null?layerFilterQ:filter;
+  const sorted=[...refs].sort((a,b)=>KIND_ORDER.indexOf(a.kind)-KIND_ORDER.indexOf(b.kind)||a.name.localeCompare(b.name));
+  const filtered=sorted.filter(R=>layerFilterMatch(R,q));
+  if(!sorted.length) return '<div class="hint">Open project folder to load refs/.</div>';
+  if(!filtered.length) return '<div class="hint">No layers match filter.</div>';
+  let html='', lastKind=null;
+  filtered.forEach(R=>{
+    if(R.kind!==lastKind){
+      lastKind=R.kind;
+      html+=`<div class="layer-group-hd">${esc(KIND_LABEL[R.kind]||R.kind)}</div>`;
+    }
+    html+=`<label class="layerRow"><input type="checkbox" ${R.on===false?'':'checked'} data-base="${esc(R.base)}" onchange="setRefOn(this.dataset.base,this.checked)">`+
+      `<span class="nm" title="${esc(R.name)}">${esc(R.name)}</span><span class="kd">${R.count}</span></label>`;
+  });
+  return html;
+}
+function openLayerModal(){
+  const m=$('layerModal'); if(!m) return;
+  m.classList.add('open');
+  const f=$('layerModalFilter'); if(f){ f.value=layerFilterQ||''; setTimeout(()=>f.focus(), 50); }
+  renderLayerLists();
+}
+function closeLayerModal(){
+  const m=$('layerModal'); if(m) m.classList.remove('open');
+}
+function setAllRefsOn(on){
+  refs.forEach(R=>{ R.on=!!on; });
+  renderLayerLists();
+  if(lastQuery) runPointQuery(lastQuery.lat, lastQuery.lng);
+  if(typeof refreshReportPreview==='function') refreshReportPreview();
+}
 function renderLayerLists(){
   const sorted=[...refs].sort((a,b)=>KIND_ORDER.indexOf(a.kind)-KIND_ORDER.indexOf(b.kind)||a.name.localeCompare(b.name));
   const onN=refs.filter(R=>R.on!==false).length;
-  if($('layerCount'))$('layerCount').textContent=refs.length?`(${onN}/${refs.length})`:'';
-  if($('layerList')){
-    $('layerList').innerHTML=sorted.length?sorted.map(R=>
-      `<label class="layerRow"><input type="checkbox" ${R.on===false?'':'checked'} data-base="${esc(R.base)}" onchange="setRefOn(this.dataset.base,this.checked)">`+
-      `<span class="nm" title="${esc(R.name)}">${esc(R.name)}</span><span class="kd">${esc(KIND_LABEL[R.kind]||R.kind)} · ${R.count}</span></label>`
-    ).join(''):'<div class="hint">Open project folder to load refs/.</div>';
-  }
-  $('refTable').innerHTML=sorted.length?
+  const countTxt=refs.length?`(${onN}/${refs.length} on)`:'';
+  if($('layerCount')) $('layerCount').textContent=refs.length?`(${onN}/${refs.length})`:'';
+  if($('layerModalCount')) $('layerModalCount').textContent=countTxt;
+  const listHtml=layerListHTML(layerFilterQ);
+  if($('layerList')) $('layerList').innerHTML=listHtml;
+  if($('layerModalList')) $('layerModalList').innerHTML=listHtml;
+  const filtered=sorted.filter(R=>layerFilterMatch(R, layerFilterQ));
+  if($('refTable')) $('refTable').innerHTML=sorted.length?
     '<tr><th>On</th><th>Layer</th><th>Features</th><th>Kind</th></tr>'+
-    sorted.map(R=>`<tr><td><input type="checkbox" ${R.on===false?'':'checked'} data-base="${esc(R.base)}" onchange="setRefOn(this.dataset.base,this.checked)"></td>`+
-      `<td>${esc(R.name)}</td><td>${R.count}</td><td>${esc(KIND_LABEL[R.kind]||R.kind)}</td></tr>`).join(''):'';
+    filtered.map(R=>`<tr><td><input type="checkbox" ${R.on===false?'':'checked'} data-base="${esc(R.base)}" onchange="setRefOn(this.dataset.base,this.checked)"></td>`+
+      `<td>${esc(R.name)}</td><td>${R.count}</td><td>${esc(KIND_LABEL[R.kind]||R.kind)}</td></tr>`).join(''):
+    '<tr><td colspan="4" class="hint">No reference GeoJSON layers loaded.</td></tr>';
 }
 function renderAll(){
   const ns=db.borings.reduce((a,r)=>a+r.s.length,0);
@@ -26589,8 +26677,27 @@ $('reloadRefs')&&($('reloadRefs').onclick=async ()=>{
   renderAll();
   toast(`Reloaded ${refs.length} reference layer(s)`+(Object.keys(nrcsByMukey).length?` · NRCS ${Object.keys(nrcsByMukey).length} mukeys`:'')+(dgirGeophysZones.length?` · ${dgirGeophysZones.length} geophys zones`:''));
 });
-$('enableAllRefs')&&($('enableAllRefs').onclick=()=>{refs.forEach(R=>R.on=true);renderAll();if(lastQuery)runPointQuery(lastQuery.lat,lastQuery.lng);});
-$('disableAllRefs')&&($('disableAllRefs').onclick=()=>{refs.forEach(R=>R.on=false);renderAll();if(lastQuery)runPointQuery(lastQuery.lat,lastQuery.lng);});
+$('enableAllRefs')&&($('enableAllRefs').onclick=()=>{setAllRefsOn(true);});
+$('disableAllRefs')&&($('disableAllRefs').onclick=()=>{setAllRefsOn(false);});
+function wireLayerFilterInput(el){
+  if(!el) return;
+  el.addEventListener('input', ()=>{ layerFilterQ=el.value||''; renderLayerLists(); });
+}
+wireLayerFilterInput($('layerFilter'));
+wireLayerFilterInput($('refLayerFilter'));
+wireLayerFilterInput($('layerModalFilter'));
+$('layerEnableAll')&&($('layerEnableAll').onclick=()=>setAllRefsOn(true));
+$('layerDisableAll')&&($('layerDisableAll').onclick=()=>setAllRefsOn(false));
+$('layerModalOpen')&&($('layerModalOpen').onclick=openLayerModal);
+$('openLayerModalRefs')&&($('openLayerModalRefs').onclick=openLayerModal);
+$('layerModalClose')&&($('layerModalClose').onclick=closeLayerModal);
+$('layerModalDone')&&($('layerModalDone').onclick=closeLayerModal);
+$('layerModalEnableAll')&&($('layerModalEnableAll').onclick=()=>setAllRefsOn(true));
+$('layerModalDisableAll')&&($('layerModalDisableAll').onclick=()=>setAllRefsOn(false));
+$('layerModal')&&($('layerModal').onclick=e=>{ if(e.target===$('layerModal')) closeLayerModal(); });
+document.addEventListener('keydown', e=>{
+  if(e.key==='Escape' && $('layerModal') && $('layerModal').classList.contains('open')) closeLayerModal();
+});
 renderAll();
 
 </script>
