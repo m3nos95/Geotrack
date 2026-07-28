@@ -20856,9 +20856,32 @@ main{position:absolute;top:44px;left:0;right:0;bottom:0}
 .layer-toolbar{display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-bottom:6px}
 .layer-toolbar input[type=search]{flex:1;min-width:140px;background:var(--ink);border:1px solid var(--line);border-radius:4px;color:var(--text);padding:5px 8px;font-size:12px;font-family:var(--mono)}
 .layer-toolbar input[type=search]:focus{outline:none;border-color:var(--amber)}
-.layer-list-scroll{flex:1;overflow-y:auto;min-height:140px;max-height:100%;padding-right:4px}
-.qpanel-scroll{flex:0 1 auto;max-height:34vh;overflow-y:auto;min-height:0}
-#layerSec.layer-sec{flex:1 1 260px;min-height:220px;max-height:min(48vh,520px);display:flex;flex-direction:column;overflow:hidden}
+.qpanel-scroll{flex:1 1 auto;max-height:min(68vh,820px);overflow-y:auto;min-height:140px}
+/* Loaded layers de-emphasized — collapsed by default; Expand… / chevron for full list */
+#layerSec.layer-sec{flex:0 0 auto;min-height:0;max-height:none;display:flex;flex-direction:column;overflow:hidden;opacity:.78;background:rgba(8,12,18,.35)}
+#layerSec.layer-sec.open{flex:0 1 180px;max-height:min(26vh,260px);opacity:1;background:transparent}
+#layerSec .layer-sec-head{display:flex;align-items:center;gap:8px}
+#layerSec .layer-sec-toggle{cursor:pointer;user-select:none;display:flex;align-items:center;gap:8px;margin:0;flex:1;min-width:0}
+#layerSec .layer-sec-toggle .chev{margin-left:auto;font-family:var(--mono);color:var(--dim);font-size:11px;transition:transform .15s}
+#layerSec.layer-sec.open .layer-sec-toggle .chev{transform:rotate(90deg);color:var(--amber)}
+#layerSec .layer-sec-body{display:none}
+#layerSec.layer-sec.open .layer-sec-body{display:flex;flex-direction:column;flex:1;min-height:0;overflow:hidden;margin-top:6px}
+#layerSec .layer-sec-summary{font-size:10.5px;color:var(--dim);margin-top:4px;line-height:1.35}
+#layerSec.layer-sec.open .layer-sec-summary{display:none}
+.layer-list-scroll{flex:1;overflow-y:auto;min-height:80px;max-height:100%;padding-right:4px}
+/* Infil contribution sliders (Site Intel) */
+.infil-sliders{margin:8px 0 4px;padding:10px;border:1px solid rgba(240,168,74,.28);background:rgba(240,168,74,.05);border-radius:6px}
+.infil-sliders .isl-head{display:flex;align-items:center;gap:8px;margin-bottom:8px;flex-wrap:wrap}
+.infil-sliders .isl-head h4{margin:0;flex:1}
+.infil-sliders .isl-row{display:grid;grid-template-columns:72px 1fr 52px;gap:8px;align-items:center;margin:6px 0}
+.infil-sliders .isl-row label{font-family:var(--mono);font-size:10px;letter-spacing:.06em;text-transform:uppercase;color:var(--dim)}
+.infil-sliders .isl-row input[type=range]{width:100%;accent-color:var(--amber)}
+.infil-sliders .isl-row .isl-val{font-family:var(--mono);font-size:11px;color:var(--amber);text-align:right}
+.infil-sliders .isl-row.miss{opacity:.4}
+.infil-sliders .isl-row.miss input{pointer-events:none}
+.infil-sliders .isl-sum{font-size:10px;color:var(--dim);margin-top:6px}
+.infil-sliders .isl-live{margin-top:8px;padding-top:8px;border-top:1px solid rgba(46,58,72,.55);font-size:12px}
+.infil-sliders .isl-live b{color:var(--amber);font-family:var(--mono)}
 #layerModal{position:fixed;inset:0;z-index:4500;background:rgba(6,10,14,.78);backdrop-filter:blur(4px);display:none;align-items:center;justify-content:center;padding:20px}
 #layerModal.open{display:flex}
 #layerModal .layer-modal-box{width:min(760px,96vw);max-height:min(90vh,920px);background:var(--panel);border:1px solid var(--line);border-radius:10px;display:flex;flex-direction:column;overflow:hidden;box-shadow:0 20px 60px rgba(0,0,0,.55)}
@@ -21069,7 +21092,7 @@ table.list td{padding:5px 8px;border-bottom:1px solid rgba(46,58,72,.5);font-fam
 <div id="hdr">
   <div class="brand" title="Delaware Department of Transportation">
     <img src="data:image/png;base64,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" width="28" height="28" alt="DelDOT">
-    <h1><b>DelDOT</b> GeoTrak<span class="badge">v0.52</span></h1>
+    <h1><b>DelDOT</b> GeoTrak<span class="badge">v0.53</span></h1>
   </div>
   <button class="tab on" data-p="map">Map</button>
   <button class="tab" data-p="refs">Reference data</button>
@@ -21156,14 +21179,19 @@ table.list td{padding:5px 8px;border-bottom:1px solid rgba(46,58,72,.5);font-fam
       </div>
       </div>
       <div class="sec layer-sec" id="layerSec">
-        <h3>Loaded layers <span id="layerCount" style="color:var(--amber);font-family:var(--mono)"></span></h3>
-        <div class="layer-toolbar">
-          <input type="search" id="layerFilter" placeholder="Filter layers…" autocomplete="off">
-          <button type="button" class="hbtn" id="layerEnableAll">All on</button>
-          <button type="button" class="hbtn" id="layerDisableAll">All off</button>
-          <button type="button" class="hbtn accent" id="layerModalOpen">Expand…</button>
+        <div class="layer-sec-head">
+          <h3 class="layer-sec-toggle" id="layerSecToggle" title="Show or hide the compact layer checklist" role="button" tabindex="0" aria-expanded="false">Loaded layers <span id="layerCount" style="color:var(--amber);font-family:var(--mono)"></span><span class="chev" aria-hidden="true">▸</span></h3>
+          <button type="button" class="hbtn accent" id="layerModalOpen" title="Full layer manager">Expand…</button>
         </div>
-        <div id="layerList" class="layer-list-scroll"><div class="hint">Open project folder to load refs/.</div></div>
+        <div class="layer-sec-summary" id="layerSecSummary">On for Site Intel — expand checklist only when toggling refs.</div>
+        <div class="layer-sec-body" id="layerSecBody">
+          <div class="layer-toolbar">
+            <input type="search" id="layerFilter" placeholder="Filter layers…" autocomplete="off">
+            <button type="button" class="hbtn" id="layerEnableAll">All on</button>
+            <button type="button" class="hbtn" id="layerDisableAll">All off</button>
+          </div>
+          <div id="layerList" class="layer-list-scroll"><div class="hint">Open project folder to load refs/.</div></div>
+        </div>
       </div>
       <div class="sec">
         <h3>Map markers</h3>
@@ -24919,6 +24947,53 @@ function fieldAnchorExpWeight(dFt, d0){
   if(dFt==null||!Number.isFinite(+dFt)||dFt<0)return 0;
   return Math.exp(-(+dFt)/d0);
 }
+/* Tunable formal-blend contribution shares (defaults = current DelDOT screening mix). */
+const INFIL_SLIDER_DEFAULTS={hydgrp:52.9, dna:19.2, p200:14.4, septic:13.5};
+const INFIL_SLIDER_KEYS=['hydgrp','dna','p200','septic'];
+const INFIL_SLIDER_LABELS={hydgrp:'HYDGRP', dna:'DNA', p200:'P200', septic:'Septic'};
+const INFIL_ID_TO_SLIDER={map:'hydgrp', aashto:'hydgrp', mukey:'dna', p200:'p200', septic:'septic'};
+function loadInfilSliderW(){
+  try{
+    const raw=localStorage.getItem('geotrak_infil_slider_w');
+    if(!raw) return Object.assign({}, INFIL_SLIDER_DEFAULTS);
+    const o=JSON.parse(raw);
+    const out={};
+    INFIL_SLIDER_KEYS.forEach(k=>{
+      const v=o&&o[k]!=null?+o[k]:INFIL_SLIDER_DEFAULTS[k];
+      out[k]=Number.isFinite(v)?Math.max(0,Math.min(100,v)):INFIL_SLIDER_DEFAULTS[k];
+    });
+    return out;
+  }catch(_){ return Object.assign({}, INFIL_SLIDER_DEFAULTS); }
+}
+let infilSliderW=loadInfilSliderW();
+function saveInfilSliderW(){
+  try{ localStorage.setItem('geotrak_infil_slider_w', JSON.stringify(infilSliderW)); }catch(_){}
+}
+function resetInfilSliderW(){
+  infilSliderW=Object.assign({}, INFIL_SLIDER_DEFAULTS);
+  saveInfilSliderW();
+}
+function infilSliderSum(){
+  return INFIL_SLIDER_KEYS.reduce((s,k)=>s+(+infilSliderW[k]||0),0);
+}
+function isInfilSliderDefault(){
+  return INFIL_SLIDER_KEYS.every(k=>Math.abs((+infilSliderW[k])-(+INFIL_SLIDER_DEFAULTS[k]))<0.05);
+}
+/* Replace auto weights for hydgrp/dna/p200/septic with user slider shares (relative %). */
+function applyInfilSliderWeights(parts){
+  let n=0;
+  (parts||[]).forEach(p=>{
+    const key=INFIL_ID_TO_SLIDER[p.id];
+    if(!key) return;
+    const pct=+infilSliderW[key];
+    if(!(pct>=0) || !Number.isFinite(pct)) return;
+    p.w=pct;
+    p._sliderKey=key;
+    n++;
+  });
+  return n;
+}
+
 function blendInfiltrationFormal(ctx){
   /* ctx: hasMapSoils, mapMid, mapSrc, hasGoodKsat, aashtoMid, aashtoSrc, aashtoConf,
           percIdw, mapHydgrp, granularAashto,
@@ -25043,6 +25118,9 @@ function blendInfiltrationFormal(ctx){
       parts.push({id:'field', v:anchorIdw, w:0.55, src:'field infil anchor IDW (DelDOT borehole)'});
     }
   }
+
+  /* User contribution sliders override HYDGRP / DNA / P200 / septic relative weights */
+  applyInfilSliderWeights(parts);
 
   let infilBlend=null, designBlend=null, infilNote='', norm=null, p200Capped=false, geophysCapped=false;
 
@@ -26667,6 +26745,7 @@ window.toggleBoringLab=toggleBoringLab;
 async function runPointQuery(lat,lng,opts){
   opts=opts||{};
   lastQuery={lat,lng};
+  if(opts.keepTab) hudTab=opts.keepTab;
   const radFt=+$('radius').value;
   if(qMarker)map.removeLayer(qMarker);
   if(qCircle)map.removeLayer(qCircle);
@@ -26674,10 +26753,12 @@ async function runPointQuery(lat,lng,opts){
   qCircle=L.circle([lat,lng],{radius:radFt*0.3048,color:'#e8a33d',weight:1.2,fillColor:'#e8a33d',fillOpacity:0.05,dashArray:'5 5'}).addTo(map);
 
   const immersive=!$('immersiveMode')||$('immersiveMode').checked;
-  try{
-    const z=immersive?Math.max(map.getZoom(),17):Math.max(map.getZoom(),15);
-    map.flyTo([lat,lng], z, {duration:immersive?1.05:0.7, easeLinearity:0.2});
-  }catch(_){ map.setView([lat,lng], Math.max(map.getZoom(),16)); }
+  if(!opts.quiet){
+    try{
+      const z=immersive?Math.max(map.getZoom(),17):Math.max(map.getZoom(),15);
+      map.flyTo([lat,lng], z, {duration:immersive?1.05:0.7, easeLinearity:0.2});
+    }catch(_){ map.setView([lat,lng], Math.max(map.getZoom(),16)); }
+  }
 
   const hits=queryRefs(lat,lng,radFt);
   const near=[];
@@ -26722,6 +26803,20 @@ async function runPointQuery(lat,lng,opts){
     $('qBody').innerHTML=h;
   }
 
+  if(opts.skipHydro && lastHudCtx && lastHudCtx.lat===lat && lastHudCtx.lng===lng && lastHydro){
+    /* Slider re-blend: keep last hydro, just refresh HUD numbers */
+    if(lastProfile&&lastProfile.lat===lat&&lastProfile.lon===lng){
+      applyHydroLimitToInfil(lastProfile, lastHydro);
+      if(lastHudCtx) lastHudCtx.profile=lastProfile;
+    }
+    if(immersive){
+      renderHudRail(lastHudCtx);
+      renderHudDrawer(lastHudCtx);
+      syncHudFocusMarkers(lastHudCtx);
+      if($('subsurfaceMode')&&$('subsurfaceMode').classList.contains('on')) renderSubsurface(lastHudCtx);
+    }
+    return;
+  }
   const hydro=await sampleHydro(lat,lng);
   lastHydro=hydro;
   if(lastProfile&&lastProfile.lat===lat&&lastProfile.lon===lng){
@@ -27090,18 +27185,50 @@ function renderHudDrawer(ctx){
     }
     if(P.subgrade&&P.subgrade.label) h+=`<tr><td>Subgrade</td><td>${esc(P.subgrade.label)}${P.subgrade.detail?' · '+esc(P.subgrade.detail):''}</td></tr>`;
     h+=`</table>`;
-    if(P.infil&&P.infil.contributions&&P.infil.contributions.length&&!(P.infil.field_anchor&&!P.infil.field_anchor.soft)){
-      h+=`<h4 style="margin-top:10px">Contribution %</h4>`;
-      h+=`<div class="hint" style="margin-bottom:6px">Share of the normalized weighted average before caps/ceilings.</div>`;
-      P.infil.contributions.filter(c=>c.pct>0).forEach(c=>{
-        const wPct=Math.max(2, Math.min(100, c.pct));
-        h+=`<div style="margin:0 0 6px">`;
-        h+=`<div style="display:flex;justify-content:space-between;gap:8px;font-size:11px"><span>${esc(c.src)}</span><span style="color:var(--amber);font-family:var(--mono)">${c.pct}% · ${c.rate} in/hr</span></div>`;
-        h+=`<div style="height:6px;background:rgba(42,55,71,.9);border-radius:3px;overflow:hidden"><div style="height:100%;width:${wPct}%;background:linear-gradient(90deg,var(--cyan),var(--amber))"></div></div>`;
-        h+=`</div>`;
+    if(P.infil&&!(P.infil.field_anchor&&!P.infil.field_anchor.soft)){
+      const present=new Set((P.infil.contributions||[]).map(c=>INFIL_ID_TO_SLIDER[c.id]).filter(Boolean));
+      const rateByKey={};
+      (P.infil.contributions||[]).forEach(c=>{
+        const k=INFIL_ID_TO_SLIDER[c.id];
+        if(k) rateByKey[k]=c.rate;
       });
+      const sum=Math.round(infilSliderSum()*10)/10;
+      h+=`<div class="infil-sliders" id="infilSliders">`;
+      h+=`<div class="isl-head"><h4>Contribution %</h4>`;
+      h+=`<button type="button" class="hbtn" id="infilSliderDefault"${isInfilSliderDefault()?' disabled':''}>Default</button></div>`;
+      h+=`<div class="hint" style="margin-bottom:4px">Slide HYDGRP / DNA / P200 / Septic to re-weight the screening blend. Default = 52.9 · 19.2 · 14.4 · 13.5. Rates update as you drag.</div>`;
+      INFIL_SLIDER_KEYS.forEach(k=>{
+        const miss=!present.has(k);
+        const v=Math.round((+infilSliderW[k])*10)/10;
+        const rate=rateByKey[k];
+        h+=`<div class="isl-row${miss?' miss':''}" data-key="${k}">`;
+        h+=`<label for="isl_${k}">${INFIL_SLIDER_LABELS[k]}</label>`;
+        h+=`<input type="range" id="isl_${k}" min="0" max="100" step="0.1" value="${v}" ${miss?'disabled':''} aria-label="${INFIL_SLIDER_LABELS[k]} contribution">`;
+        h+=`<span class="isl-val" id="islv_${k}">${v}%</span>`;
+        h+=`</div>`;
+        if(!miss&&rate!=null) h+=`<div class="hint" style="margin:-2px 0 4px 80px">${rate} in/hr at this weight</div>`;
+        else if(miss) h+=`<div class="hint" style="margin:-2px 0 4px 80px">Not available at this point</div>`;
+      });
+      h+=`<div class="isl-sum">Slider sum ${sum}% (normalized in blend)${isInfilSliderDefault()?' · defaults':''}</div>`;
+      if(P.infil.est_inhr!=null){
+        h+=`<div class="isl-live">Screening est. <b>${P.infil.est_inhr} in/hr</b>`;
+        if(P.infil.design_inhr!=null) h+=` · illustrative ÷${P.infil.fos||2.5} <b>${P.infil.design_inhr} in/hr</b>`;
+        h+=`</div>`;
+      }
+      const extras=(P.infil.contributions||[]).filter(c=>c.pct>0&&!INFIL_ID_TO_SLIDER[c.id]);
+      if(extras.length){
+        h+=`<div class="hint" style="margin-top:8px">Also in blend (auto):</div>`;
+        extras.forEach(c=>{
+          const wPct=Math.max(2, Math.min(100, c.pct));
+          h+=`<div style="margin:0 0 6px">`;
+          h+=`<div style="display:flex;justify-content:space-between;gap:8px;font-size:11px"><span>${esc(c.src)}</span><span style="color:var(--cyan);font-family:var(--mono)">${c.pct}% · ${c.rate} in/hr</span></div>`;
+          h+=`<div style="height:6px;background:rgba(42,55,71,.9);border-radius:3px;overflow:hidden"><div style="height:100%;width:${wPct}%;background:linear-gradient(90deg,var(--cyan),rgba(61,207,191,.35))"></div></div>`;
+          h+=`</div>`;
+        });
+      }
+      h+=`</div>`;
     }
-    h+=`<div class="hint" style="margin-top:8px">Formal blender v0.41: ˆr = min(${EST_INHR_CAP}, Σwᵢrᵢ/Σwᵢ). Map soils gate AASHTO off; P200 hard ceiling; DGS geophys shallow fines (gamma) add weight + ceiling when clay/silt indicated; mukey restrained when Ksat present; field ≤${FIELD_HARD_FT} ft hard override; soft anchors exp(−d/${FIELD_ANCHOR_D0}). Illustrative design ≤${DESIGN_INHR_CAP} in/hr (÷${DNREC_BOREHOLE_FOS}). Preferred DNREC method: full-size ring infiltrometer.</div>`;
+    h+=`<div class="hint" style="margin-top:8px">Formal blender v0.41 + contribution sliders: ˆr = min(${EST_INHR_CAP}, Σwᵢrᵢ/Σwᵢ). Map soils gate AASHTO off; P200 hard ceiling; DGS geophys shallow fines (gamma) add weight + ceiling when clay/silt indicated; mukey restrained when Ksat present; field ≤${FIELD_HARD_FT} ft hard override; soft anchors exp(−d/${FIELD_ANCHOR_D0}). Illustrative design ≤${DESIGN_INHR_CAP} in/hr (÷${DNREC_BOREHOLE_FOS}). Preferred DNREC method: full-size ring infiltrometer.</div>`;
   } else if(tab==='anchors'){
     const list=(P.infil&&P.infil.field_anchors)||[];
     const fa=P.infil&&P.infil.field_anchor;
@@ -27380,6 +27507,34 @@ function renderHudDrawer(ctx){
     }
   }
   dr.innerHTML=h;
+  wireInfilSliders();
+}
+
+function wireInfilSliders(){
+  const box=$('infilSliders'); if(!box) return;
+  let timer=null;
+  function refresh(quiet){
+    saveInfilSliderW();
+    if(!lastQuery) return;
+    clearTimeout(timer);
+    const run=()=>runPointQuery(lastQuery.lat, lastQuery.lng, {quiet:true, keepTab:'infil', skipHydro:true});
+    if(quiet) timer=setTimeout(run, 60);
+    else run();
+  }
+  INFIL_SLIDER_KEYS.forEach(k=>{
+    const el=$('isl_'+k); if(!el) return;
+    el.oninput=function(){
+      infilSliderW[k]=+this.value;
+      const lab=$('islv_'+k); if(lab) lab.textContent=(Math.round((+this.value)*10)/10)+'%';
+      const def=$('infilSliderDefault'); if(def) def.disabled=isInfilSliderDefault();
+      refresh(true);
+    };
+  });
+  const defBtn=$('infilSliderDefault');
+  if(defBtn) defBtn.onclick=function(){
+    resetInfilSliderW();
+    refresh(false);
+  };
 }
 
 function setHudTab(tab){
@@ -27702,6 +27857,12 @@ function renderLayerLists(){
   const countTxt=refs.length?`(${onN}/${refs.length} on)`:'';
   if($('layerCount')) $('layerCount').textContent=refs.length?`(${onN}/${refs.length})`:'';
   if($('layerModalCount')) $('layerModalCount').textContent=countTxt;
+  const sumEl=$('layerSecSummary');
+  if(sumEl){
+    sumEl.innerHTML=refs.length
+      ? (`${onN}/${refs.length} ON for Site Intel — click heading for checklist, or <b>Expand…</b>.`)
+      : ('Open project folder to load refs/. Checklist stays collapsed so Point query / Limits / Boring request stay primary.');
+  }
   const listHtml=layerListHTML(layerFilterQ);
   if($('layerList')) $('layerList').innerHTML=listHtml;
   if($('layerModalList')) $('layerModalList').innerHTML=listHtml;
@@ -27800,7 +27961,24 @@ wireLayerFilterInput($('refLayerFilter'));
 wireLayerFilterInput($('layerModalFilter'));
 $('layerEnableAll')&&($('layerEnableAll').onclick=()=>setAllRefsOn(true));
 $('layerDisableAll')&&($('layerDisableAll').onclick=()=>setAllRefsOn(false));
-$('layerModalOpen')&&($('layerModalOpen').onclick=openLayerModal);
+(function wireLayerSecCollapse(){
+  const sec=$('layerSec'), tog=$('layerSecToggle');
+  if(!sec||!tog) return;
+  const sync=()=>{
+    const open=sec.classList.contains('open');
+    tog.setAttribute('aria-expanded', open?'true':'false');
+  };
+  tog.onclick=e=>{
+    if(e.target&&e.target.closest&&e.target.closest('button')) return;
+    sec.classList.toggle('open');
+    sync();
+  };
+  tog.onkeydown=e=>{
+    if(e.key==='Enter'||e.key===' '){ e.preventDefault(); sec.classList.toggle('open'); sync(); }
+  };
+  sync();
+})();
+$('layerModalOpen')&&($('layerModalOpen').onclick=()=>openLayerModal());
 $('openLayerModalRefs')&&($('openLayerModalRefs').onclick=openLayerModal);
 $('layerModalClose')&&($('layerModalClose').onclick=closeLayerModal);
 $('layerModalDone')&&($('layerModalDone').onclick=closeLayerModal);
