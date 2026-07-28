@@ -276,7 +276,7 @@ FirstMap folder browsers:
 | Done | Data | Source | Role |
 |------|------|--------|------|
 | [x] | DGIR / DGS well inventory + log PDFs | `download-dgir-wells.bat` → `refs/dgir_wells.json` (AGOL NGGDPP mirrors; classic `maps.dgs.udel.edu` GeoServer often offline) | Nearby DGS lith + geophys logs with PDF/LAS links |
-| [x] | DGS geophys coarse/fine zones | `download-dgir-geophys.bat` → `dgir-geophys-csv/` + `refs/dgir_geophys_zones.json` (~2.2k gamma/induction CSVs) | Screening sand vs clay/silt packages; shallow fines risk for infil |
+| [x] | DGS geophys coarse/fine zones | `download-dgir-geophys.bat` → `dgir-geophys-csv/` + `refs/dgir_geophys_zones.json` (~2.2k gamma/induction CSVs) | Screening sand vs clay/silt packages; Site Intel + infil blender shallow fines prior / ceiling (v0.41) |
 | [ ] | DGIR structured lithology intervals (WFS WellLog) | http://maps.dgs.udel.edu/geoserver/dgs/ows | Interval text when GeoServer is reachable |
 | [ ] | DGS digital datasets catalog | https://www.dgs.udel.edu/data | Master list of downloadable products |
 | [ ] | DGS OGC / web services | https://www.dgs.udel.edu/web-services | WMS/WFS alternatives |
