@@ -1,0 +1,20 @@
+<?xml version="1.0" standalone="yes"?>
+<GEOTECHNICAL_PROJECT>
+  <CLASSIFICATION>
+    <NATURAL_WATER_CONTENT wet="711.02" dry="563.85" tare="87.56">
+      30.9
+    </NATURAL_WATER_CONTENT>
+    <LIQUID_LIMIT>
+      <LLTestPoint>
+        <Blows>25</Blows>
+        <MOISTURE_DATA wet="31.29" dry="29.15" tare="21.42" tarename="" moist="27.7"/>
+      </LLTestPoint>
+      <OnePointTest set="yes"/>
+      27.7
+    </LIQUID_LIMIT>
+    <PLASTIC_LIMIT>
+      <MOISTURE_DATA wet="25.81" dry="25.15" tare="21.10" tarename="" moist="16.3"/>
+      16.3
+    </PLASTIC_LIMIT>
+  </CLASSIFICATION>
+</GEOTECHNICAL_PROJECT>
