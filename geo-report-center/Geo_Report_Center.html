@@ -27896,7 +27896,7 @@ function renderLayerLists(){
     '<tr><td colspan="4" class="hint">No reference GeoJSON layers loaded.</td></tr>';
 }
 function updateHdrToolBadges(){
-  const ns=db.borings.reduce((a,r)=>a+r.s.length,0);
+  const ns=db.borings.reduce((a,r)=>a+((r.s&&r.s.length)||0),0);
   const onN=refs.filter(R=>R.on!==false).length;
   const lb=$('hdrLayersBadge');
   if(lb) lb.textContent=refs.length?String(refs.length):'0';
