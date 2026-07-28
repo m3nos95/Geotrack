@@ -27914,6 +27914,7 @@ function updateHdrToolBadges(){
 }
 function renderAll(){
   updateHdrToolBadges();
+  const ns=db.borings.reduce((a,r)=>a+((r.s&&r.s.length)||0),0);
   $('dbInfo').textContent=db.borings.length?
     `${db.borings.length} borings / ${ns} samples across ${new Set(db.borings.map(r=>r.job)).size} project(s); ${db.cores.length} pavement cores.`:
     'Database empty — open project folder (loads db.json) or run import-geo-zips.py on your GEO.zip files.';
