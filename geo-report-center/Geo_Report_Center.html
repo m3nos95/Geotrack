@@ -21048,7 +21048,7 @@ table.list td{padding:5px 8px;border-bottom:1px solid rgba(46,58,72,.5);font-fam
 #subsurfaceMode .ss-close:hover{background:rgba(240,168,74,.14)}
 #subsurfaceMode .ss-body{flex:1;display:flex;align-items:stretch;justify-content:center;gap:24px;padding:18px 20px 24px;overflow:auto;min-height:0}
 #subsurfaceMode .ss-stage{flex:1;display:flex;align-items:center;justify-content:center;min-width:0}
-#subsurfaceMode .ss-side{width:min(280px,28vw);display:flex;flex-direction:column;gap:10px}
+#subsurfaceMode .ss-side{width:min(300px,30vw);display:flex;flex-direction:column;gap:10px}
 #subsurfaceMode .ss-card{padding:12px 14px;border:1px solid rgba(61,207,191,.28);background:rgba(10,16,22,.88)}
 #subsurfaceMode .ss-card .lbl{font-family:var(--mono);font-size:9px;letter-spacing:.14em;text-transform:uppercase;color:var(--cyan)}
 #subsurfaceMode .ss-card .val{font-family:var(--display);font-size:22px;font-weight:700;color:var(--text);margin-top:4px}
@@ -25672,15 +25672,19 @@ function wrapStickHit(svgHtml){
   return `<div class="stick-hit" onclick="openSubsurfaceMode()" title="Open Subsurface mode">${svgHtml}</div>`;
 }
 function svgSubsurfaceDual(ctx){
-  const P=ctx.profile||{}, C=P.class_column, hydro=ctx.hydro, levels=hydroProfileLevels(hydro, P.infil);
-  const maxDepth=C&&C.depth_ft!=null?C.depth_ft:CLASS_COL_DEPTH_FT;
+  /* Full Subsurface stick: 0–100′. Depth ticks left, elev right; short GWT tags
+     with collision nudge; numeric GWT detail lives in the bottom legend. */
+  const P=ctx.profile||{}, C=P.subsurface_column||P.class_column, hydro=ctx.hydro, levels=hydroProfileLevels(hydro, P.infil);
+  const maxDepth=C&&C.depth_ft!=null?C.depth_ft:SUBSURFACE_DEPTH_FT;
   const aLayers=(C&&C.aashto_stick)||[], uLayers=(C&&C.uscs_stick)||[];
-  const W=520, H=Math.min(620, Math.max(420, Math.round(maxDepth*9))), TOP=48, BOT=H-36, plotH=BOT-TOP;
+  const legendH=54;
+  const W=580, H=Math.min(760, Math.max(520, Math.round(maxDepth*6.2)+legendH+56)), TOP=52, BOT=H-legendH-8, plotH=BOT-TOP;
   const yAt=ft=>TOP+(ft/maxDepth)*plotH;
   const elevAt=ft=>levels.gs_navd!=null?Math.round((levels.gs_navd-ft)*10)/10:null;
-  const axL=54, gap=28, colW=56;
-  const aX=axL+36, uX=aX+colW+gap;
-  const axR=uX+colW+10;
+  const axL=48, gap=22, colW=52;
+  const aX=axL+42, uX=aX+colW+gap;
+  const axR=uX+colW+14;
+  const tagX=aX-10; /* GWT short tags sit left of sticks, clear of elev ticks */
   function drawStick(layers, x){
     let s='';
     const order=[];
@@ -25690,29 +25694,28 @@ function svgSubsurfaceDual(ctx){
       const y1=yAt(L.top), y2=yAt(L.bot), h=Math.max(1,y2-y1);
       const col=pieColor(order.indexOf(L.label), L.label);
       s+=`<rect x="${x}" y="${y1}" width="${colW}" height="${h}" fill="${col}" stroke="#0a0e14" stroke-width="0.8"/>`;
-      if(h>=16) s+=`<text x="${x+colW/2}" y="${y1+h/2+4}" text-anchor="middle" fill="#111" font-size="${h>=28?12:9}" font-weight="700">${esc(L.label)}</text>`;
-      else if(h>=10) s+=`<text x="${x+colW/2}" y="${y1+h/2+3}" text-anchor="middle" fill="#111" font-size="8">${esc(L.label.length>6?L.label.slice(0,5)+'…':L.label)}</text>`;
+      if(h>=18) s+=`<text x="${x+colW/2}" y="${y1+h/2+4}" text-anchor="middle" fill="#111" font-size="${h>=30?11:9}" font-weight="700">${esc(L.label)}</text>`;
+      else if(h>=11) s+=`<text x="${x+colW/2}" y="${y1+h/2+3}" text-anchor="middle" fill="#111" font-size="8">${esc(L.label.length>5?L.label.slice(0,4)+'…':L.label)}</text>`;
     });
     s+=`<rect x="${x}" y="${TOP}" width="${colW}" height="${plotH}" fill="none" stroke="rgba(232,238,244,.55)" stroke-width="1.4"/>`;
     return s;
   }
   let g='';
-  /* sky / ground band */
   g+=`<rect x="0" y="0" width="${W}" height="${TOP}" fill="rgba(61,207,191,.06)"/>`;
-  g+=`<line x1="${axL}" y1="${TOP}" x2="${axR+70}" y2="${TOP}" stroke="#f0a84a" stroke-width="2.5"/>`;
-  g+=`<text x="${axL}" y="${TOP-14}" fill="#f0a84a" font-size="12" font-weight="700" font-family="IBM Plex Mono,monospace">GROUND SURFACE</text>`;
+  g+=`<line x1="${axL}" y1="${TOP}" x2="${axR+56}" y2="${TOP}" stroke="#f0a84a" stroke-width="2.5"/>`;
+  g+=`<text x="${axL}" y="${TOP-16}" fill="#f0a84a" font-size="12" font-weight="700" font-family="IBM Plex Mono,monospace">GROUND SURFACE</text>`;
   if(levels.gs_navd!=null){
-    g+=`<text x="${axR+8}" y="${TOP-14}" fill="#3dcfbf" font-size="13" font-weight="700" font-family="IBM Plex Mono,monospace">${levels.gs_navd} ft NAVD88</text>`;
+    g+=`<text x="${axR+8}" y="${TOP-16}" fill="#3dcfbf" font-size="12" font-weight="700" font-family="IBM Plex Mono,monospace">${levels.gs_navd}′ NAVD88</text>`;
   } else {
-    g+=`<text x="${axR+8}" y="${TOP-14}" fill="#8a9aab" font-size="11" font-family="IBM Plex Mono,monospace">elev unknown</text>`;
+    g+=`<text x="${axR+8}" y="${TOP-16}" fill="#8a9aab" font-size="11" font-family="IBM Plex Mono,monospace">elev unknown</text>`;
   }
   g+=drawStick(aLayers, aX);
   g+=drawStick(uLayers, uX);
-  g+=`<text x="${aX+colW/2}" y="${TOP-28}" text-anchor="middle" fill="#f0a84a" font-size="11" letter-spacing="1" font-family="IBM Plex Mono,monospace">AASHTO</text>`;
-  g+=`<text x="${uX+colW/2}" y="${TOP-28}" text-anchor="middle" fill="#5eb0e0" font-size="11" letter-spacing="1" font-family="IBM Plex Mono,monospace">USCS</text>`;
+  g+=`<text x="${aX+colW/2}" y="${TOP-30}" text-anchor="middle" fill="#f0a84a" font-size="11" letter-spacing="1" font-family="IBM Plex Mono,monospace">AASHTO</text>`;
+  g+=`<text x="${uX+colW/2}" y="${TOP-30}" text-anchor="middle" fill="#5eb0e0" font-size="11" letter-spacing="1" font-family="IBM Plex Mono,monospace">USCS</text>`;
 
-  /* depth + elev ticks */
-  const tickStep=maxDepth>40?10:5;
+  /* Depth LEFT · elev RIGHT — never share a lane with GWT text */
+  const tickStep=maxDepth>60?10:5;
   for(let ft=0;ft<=maxDepth;ft+=tickStep){
     const y=yAt(ft);
     g+=`<line x1="${axL-6}" y1="${y}" x2="${axL}" y2="${y}" stroke="#8a9aab" stroke-width="1"/>`;
@@ -25723,30 +25726,58 @@ function svgSubsurfaceDual(ctx){
       g+=`<text x="${axR+10}" y="${y+3}" fill="#3dcfbf" font-size="10" font-family="IBM Plex Mono,monospace">${el}</text>`;
     }
   }
-  g+=`<text x="${axL-10}" y="${BOT+20}" text-anchor="end" fill="#8a9aab" font-size="9" font-family="IBM Plex Mono,monospace">ft bgs</text>`;
-  if(levels.gs_navd!=null) g+=`<text x="${axR+10}" y="${BOT+20}" fill="#3dcfbf" font-size="9" font-family="IBM Plex Mono,monospace">ft NAVD88</text>`;
+  g+=`<text x="${axL-10}" y="${BOT+14}" text-anchor="end" fill="#8a9aab" font-size="9" font-family="IBM Plex Mono,monospace">ft bgs</text>`;
+  if(levels.gs_navd!=null) g+=`<text x="${axR+10}" y="${BOT+14}" fill="#3dcfbf" font-size="9" font-family="IBM Plex Mono,monospace">ft NAVD88</text>`;
 
-  function gwtLine(dtw, label, solid){
-    if(dtw==null||!(dtw>=0)||dtw>maxDepth)return '';
-    const y=yAt(dtw);
-    const dash=solid?'':'6 5';
-    const col=solid?'#5eb0e0':'rgba(94,176,224,.55)';
-    let s=`<line x1="${axL}" y1="${y}" x2="${axR}" y2="${y}" stroke="${col}" stroke-width="${solid?2.4:1.4}" stroke-dasharray="${dash}"/>`;
-    s+=`<circle cx="${aX-8}" cy="${y}" r="4" fill="${col}"/>`;
-    const wte=levels.gs_navd!=null?Math.round((levels.gs_navd-dtw)*10)/10:null;
-    s+=`<text x="${axR+8}" y="${y-6}" fill="${col}" font-size="11" font-weight="700" font-family="IBM Plex Mono,monospace">${esc(label)}</text>`;
-    s+=`<text x="${axR+8}" y="${y+8}" fill="${col}" font-size="10" font-family="IBM Plex Mono,monospace">${dtw} ft bgs${wte!=null?' · '+wte+' NAVD':''}</text>`;
-    return s;
+  /* Collect GWT marks, nudge short tags vertically when depths cluster */
+  const gwtMarks=[];
+  function addGwt(dtw, short, solid){
+    if(dtw==null||!(dtw>=0)||dtw>maxDepth)return;
+    gwtMarks.push({dtw:+dtw, short:short, solid:!!solid, y:yAt(+dtw)});
   }
-  /* faint dry/wet envelopes then primary */
-  g+=gwtLine(levels.dtw_dry, 'GWT dry', false);
-  g+=gwtLine(levels.dtw_wet, 'GWT wet', false);
-  g+=gwtLine(levels.dtw, levels.scenario==='now'?'GWT now':('GWT '+(levels.scenario||'')), true);
+  addGwt(levels.dtw_dry, 'dry', false);
+  addGwt(levels.dtw_wet, 'wet', false);
+  const primLabel=levels.scenario==='now'?'now':(levels.scenario||'gwt');
+  addGwt(levels.dtw, primLabel, true);
+  gwtMarks.sort((a,b)=>a.y-b.y);
+  const minGap=14;
+  let lastTagY=-999;
+  gwtMarks.forEach(m=>{
+    const y=m.y;
+    const dash=m.solid?'':'6 5';
+    const col=m.solid?'#5eb0e0':'rgba(94,176,224,.55)';
+    g+=`<line x1="${axL}" y1="${y}" x2="${axR}" y2="${y}" stroke="${col}" stroke-width="${m.solid?2.2:1.3}" stroke-dasharray="${dash}"/>`;
+    g+=`<circle cx="${aX-6}" cy="${y}" r="${m.solid?3.5:2.8}" fill="${col}"/>`;
+    let tagY=y+3;
+    if(tagY-lastTagY<minGap) tagY=lastTagY+minGap;
+    if(tagY>BOT-2) tagY=BOT-2;
+    lastTagY=tagY;
+    g+=`<text x="${tagX}" y="${tagY}" text-anchor="end" fill="${col}" font-size="10" font-weight="${m.solid?700:600}" font-family="IBM Plex Mono,monospace">${esc(m.short)}</text>`;
+  });
+
+  /* Bottom legend — full depths / WTE, off the ruler lanes */
+  const legY=BOT+28;
+  g+=`<rect x="8" y="${BOT+8}" width="${W-16}" height="${legendH-4}" rx="3" fill="rgba(10,16,22,.72)" stroke="rgba(94,176,224,.28)"/>`;
+  const fmtG=(dtw,lab)=>{
+    if(dtw==null)return null;
+    const wte=levels.gs_navd!=null?Math.round((levels.gs_navd-dtw)*10)/10:null;
+    return `${lab} ${dtw}′ bgs${wte!=null?' · '+wte+'′ NAVD':''}`;
+  };
+  const bits=[];
+  const dry=fmtG(levels.dtw_dry,'dry');
+  const wet=fmtG(levels.dtw_wet,'wet');
+  const now=fmtG(levels.dtw, primLabel);
+  if(dry) bits.push(dry);
+  if(wet) bits.push(wet);
+  if(now) bits.push(now);
+  const legTxt=bits.length?('GWT  '+bits.join('   ·   ')):'GWT  — (no DGS water-table grids at this point)';
+  g+=`<text x="18" y="${legY}" fill="#9eb4c8" font-size="11" font-family="IBM Plex Mono,monospace">${esc(legTxt)}</text>`;
+  g+=`<text x="18" y="${legY+16}" fill="#6a7d90" font-size="10" font-family="IBM Plex Mono,monospace">Lines: solid = primary · dashed = dry/wet envelope · tags left of sticks</text>`;
 
   if(!aLayers.length&&!uLayers.length){
-    g+=`<text x="${W/2}" y="${H/2}" text-anchor="middle" fill="#e06c6c" font-size="14">No column data — load soils / DGS geophys / borings</text>`;
+    g+=`<text x="${W/2}" y="${(TOP+BOT)/2}" text-anchor="middle" fill="#e06c6c" font-size="14">No column data — load soils / DGS geophys / borings</text>`;
   }
-  return `<svg width="100%" height="${H}" viewBox="0 0 ${W} ${H}" style="max-width:560px;filter:drop-shadow(0 12px 28px rgba(0,0,0,.45))" aria-label="Subsurface profile">${g}</svg>`;
+  return `<svg width="100%" height="${H}" viewBox="0 0 ${W} ${H}" style="max-width:620px;filter:drop-shadow(0 12px 28px rgba(0,0,0,.45))" aria-label="Subsurface profile 0–${maxDepth} ft">${g}</svg>`;
 }
 function columnSourceLabel(C){
   if(!C)return 'no column';
@@ -25762,24 +25793,25 @@ function renderSubsurface(ctx){
   const stage=$('ssStage'), side=$('ssSide'), meta=$('ssMeta');
   if(!stage||!ctx)return;
   const P=ctx.profile||{}, levels=hydroProfileLevels(ctx.hydro, P.infil);
-  const C=P.class_column;
-  if(meta) meta.innerHTML=`TARGET <b>${ctx.lat.toFixed(5)}°N ${Math.abs(ctx.lng).toFixed(5)}°W</b> · column 0–${(C&&C.depth_ft)||CLASS_COL_DEPTH_FT} ft · ${esc(columnSourceLabel(C))}`;
+  const C=P.subsurface_column||P.class_column;
+  const depthFt=(C&&C.depth_ft)||SUBSURFACE_DEPTH_FT;
+  if(meta) meta.innerHTML=`TARGET <b>${ctx.lat.toFixed(5)}°N ${Math.abs(ctx.lng).toFixed(5)}°W</b> · column 0–${depthFt} ft · ${esc(columnSourceLabel(C))}`;
   stage.innerHTML=svgSubsurfaceDual(ctx);
   let h='';
   h+=`<div class="ss-card"><div class="lbl">Est. ground elev</div><div class="val amber">${levels.gs_navd!=null?levels.gs_navd+' ft':'—'}</div><div class="sub">${levels.gs_navd!=null?'NAVD 88 · GS ≈ WTE + DTW ('+esc(levels.scenario||'')+')':'Need DGS DTW + WTE to estimate GS'}</div></div>`;
   h+=`<div class="ss-card"><div class="lbl">Est. GWT</div><div class="val cyan">${levels.dtw!=null?levels.dtw+' ft bgs':'—'}</div><div class="sub">${levels.wte!=null?'WTE '+levels.wte+' ft NAVD88':''}${levels.scenario?' · '+esc(levels.scenario):''}</div></div>`;
   if(levels.dtw_dry!=null||levels.dtw_wet!=null){
-    h+=`<div class="ss-card"><div class="lbl">GWT envelope</div><div class="val" style="font-size:15px">dry ${levels.dtw_dry!=null?levels.dtw_dry+'′':'—'} · wet ${levels.dtw_wet!=null?levels.dtw_wet+'′':'—'}</div><div class="sub">Dashed lines on profile · DGS grids</div></div>`;
+    h+=`<div class="ss-card"><div class="lbl">GWT envelope</div><div class="val" style="font-size:15px">dry ${levels.dtw_dry!=null?levels.dtw_dry+'′':'—'} · wet ${levels.dtw_wet!=null?levels.dtw_wet+'′':'—'}</div><div class="sub">Short tags on plot · full numbers in legend</div></div>`;
   }
   const a=P.classes&&P.classes.aashto_loc&&P.classes.aashto_loc.value;
   const u=P.classes&&P.classes.uscs_loc&&P.classes.uscs_loc.value;
-  h+=`<div class="ss-card"><div class="lbl">Near-surface class</div><div class="val" style="font-size:18px">${esc(a||'—')} <span style="color:var(--blue)">${esc(u||'')}</span></div><div class="sub">≤15 ft · sticks show full 0–${CLASS_COL_DEPTH_FT} ft</div></div>`;
-  h+=`<div class="ss-card"><div class="lbl">Column sources</div><div class="val" style="font-size:14px">${esc(columnSourceLabel(C))}</div><div class="sub">Borings IDW · DGS γ zones (to ${PROFILE_GEOPHYS_MAX_FT} ft) · HYDGRP/NRCS upper ${PROFILE_SURFACE_FT}′ · sealed to ${CLASS_COL_DEPTH_FT}′</div></div>`;
+  h+=`<div class="ss-card"><div class="lbl">Near-surface class</div><div class="val" style="font-size:18px">${esc(a||'—')} <span style="color:var(--blue)">${esc(u||'')}</span></div><div class="sub">≤15 ft · sticks show full 0–${depthFt} ft</div></div>`;
+  h+=`<div class="ss-card"><div class="lbl">Column sources</div><div class="val" style="font-size:14px">${esc(columnSourceLabel(C))}</div><div class="sub">Borings IDW · DGS γ zones (to ${PROFILE_GEOPHYS_MAX_FT} ft) · HYDGRP/NRCS upper ${PROFILE_SURFACE_FT}′ · sealed to ${depthFt}′</div></div>`;
   if(C&&C.aashto_stick&&C.aashto_stick.length){
-    const preview=C.aashto_stick.slice(0,6).map(L=>`${L.top}–${L.bot}′ ${L.label||'—'}${L.src&&L.src!=='boring'?' ['+L.src+']':''}`).join(' · ');
-    h+=`<div class="ss-card"><div class="lbl">AASHTO layers</div><div class="val" style="font-size:12px;line-height:1.45">${esc(preview)}${C.aashto_stick.length>6?' …':''}</div><div class="sub">Screening classes from γ are texture proxies (coarse→A-1-b · fine→A-6), not lab</div></div>`;
+    const preview=C.aashto_stick.slice(0,8).map(L=>`${L.top}–${L.bot}′ ${L.label||'—'}${L.src&&L.src!=='boring'?' ['+L.src+']':''}`).join(' · ');
+    h+=`<div class="ss-card"><div class="lbl">AASHTO layers</div><div class="val" style="font-size:12px;line-height:1.45">${esc(preview)}${C.aashto_stick.length>8?' …':''}</div><div class="sub">Screening classes from γ are texture proxies (coarse→A-1-b · fine→A-6), not lab</div></div>`;
   }
-  h+=`<div class="ss-hint">Screening profile: DelDOT borings + DGS gamma/geophys + HYDGRP/NRCS + water-table grids. Not a logged boring. Esc or Back to return.</div>`;
+  h+=`<div class="ss-hint">Screening profile 0–${depthFt} ft: DelDOT borings + DGS gamma/geophys + HYDGRP/NRCS + water-table grids. HUD peeks stay 0–${CLASS_COL_DEPTH_FT} ft. Not a logged boring. Esc or Back to return.</div>`;
   if(side) side.innerHTML=h;
 }
 function openSubsurfaceMode(ctx){
