@@ -20830,6 +20830,10 @@ body{font:13px/1.45 -apple-system,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;b
 #hdrTools .hdr-tool:hover{border-color:var(--amber);color:var(--text)}
 #hdrTools .hdr-tool.on{border-color:var(--amber);color:var(--amber);background:rgba(240,168,74,.1)}
 #hdrTools .hdr-tool .b{color:var(--cyan);margin-left:4px;font-weight:600}
+#hdrTools .hdr-tool.est-toggle .b{color:var(--dim)}
+#hdrTools .hdr-tool.est-toggle.on{border-color:var(--cyan);color:var(--cyan);background:rgba(61,207,191,.1)}
+#hdrTools .hdr-tool.est-toggle.on .b{color:var(--cyan)}
+#hdrTools .hdr-tool.est-toggle:not(.on){opacity:.85}
 #hdrPop{position:absolute;top:44px;left:0;right:0;z-index:1600;pointer-events:none;display:none}
 #hdrPop.open{display:block}
 #hdrPop .hdr-pop-panel{display:none;pointer-events:auto;position:absolute;top:8px;left:max(12px, min(28vw, 320px));width:min(520px,calc(100vw - 24px));max-height:min(70vh,640px);overflow:auto;background:var(--panel);border:1px solid var(--line);border-radius:8px;box-shadow:0 16px 48px rgba(0,0,0,.55);padding:12px 14px}
@@ -21118,13 +21122,14 @@ table.list td{padding:5px 8px;border-bottom:1px solid rgba(46,58,72,.5);font-fam
 <div id="hdr">
   <div class="brand" title="Delaware Department of Transportation">
     <img src="data:image/png;base64,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" width="28" height="28" alt="DelDOT">
-    <h1><b>DelDOT</b> GeoTrak<span class="badge">v0.56</span></h1>
+    <h1><b>DelDOT</b> GeoTrak<span class="badge">v0.57</span></h1>
   </div>
   <button class="tab on" data-p="map">Map</button>
   <button class="tab" data-p="refs">Reference data</button>
   <button class="tab" data-p="jobs">Jobs</button>
   <button class="tab" data-p="report">Report</button>
   <div id="hdrTools" role="toolbar" aria-label="Map data tools">
+    <button type="button" class="hdr-tool est-toggle" id="hdrBtnEstimates" title="Screening estimates off by default — turn on for infil rates, class/column profiles, and DNA transfer mids">Estimates<span class="b" id="hdrEstimatesBadge">OFF</span></button>
     <button type="button" class="hdr-tool" id="hdrBtnLayers" data-pop="layers" title="Loaded reference layers">Layers<span class="b" id="hdrLayersBadge">0</span></button>
     <button type="button" class="hdr-tool" id="hdrBtnMarkers" data-pop="markers" title="Map marker toggles">Markers</button>
     <button type="button" class="hdr-tool" id="hdrBtnHydro" data-pop="hydro" title="Phase 2 hydro grids &amp; HUD">Hydro</button>
@@ -21480,6 +21485,48 @@ function toastSticky(m){const t=$('toast');t.textContent=m;t.style.display='bloc
 function yieldToUi(){ return new Promise(r=>setTimeout(r,0)); }
 async function yieldToUiLong(){ await new Promise(r=>requestAnimationFrame(()=>setTimeout(r,0))); }
 let projectLoading=false;
+/* Screening estimates (infil rates, class/column profiles, DNA mids) — OFF until user enables. */
+let estimatesOn=false;
+try{ estimatesOn=localStorage.getItem('geotrak_estimates_on')==='1'; }catch(_){ estimatesOn=false; }
+function estimatesEnabled(){ return !!estimatesOn; }
+function syncEstimatesToggleUI(){
+  const btn=$('hdrBtnEstimates'), badge=$('hdrEstimatesBadge');
+  if(btn){
+    btn.classList.toggle('on', !!estimatesOn);
+    btn.setAttribute('aria-pressed', estimatesOn?'true':'false');
+    btn.title=estimatesOn
+      ?'Estimates ON — infil rates, class/column profiles, DNA transfer mids visible. Click to turn off.'
+      :'Estimates OFF — Site Intel shows map facts only. Click to enable screening infil / profiles.';
+  }
+  if(badge) badge.textContent=estimatesOn?'ON':'OFF';
+}
+function setEstimatesOn(on, persist){
+  estimatesOn=!!on;
+  if(persist!==false){
+    try{ localStorage.setItem('geotrak_estimates_on', estimatesOn?'1':'0'); }catch(_){}
+  }
+  syncEstimatesToggleUI();
+  if(lastHudCtx){
+    if(!estimatesOn && (hudTab==='estimate'||hudTab==='class'||hudTab==='column'||hudTab==='props'||hudTab==='dna')){
+      /* stay on dna for identity, but class/column/estimate/props → overview */
+      if(hudTab==='estimate'||hudTab==='class'||hudTab==='column'||hudTab==='props') hudTab='overview';
+    }
+    renderHudRail(lastHudCtx);
+    renderHudDrawer(lastHudCtx);
+    syncHudFocusMarkers(lastHudCtx);
+  }
+  if(typeof refreshReportPreview==='function') refreshReportPreview();
+  if(estimatesOn) toast('Estimates ON — infil / profiles / DNA mids available', 3500);
+  else toast('Estimates OFF — map facts only (no screening rates or profiles)', 3500);
+}
+function estimatesOffNotice(kind){
+  const label=kind||'Screening estimates';
+  return `<div class="hint warn" style="margin:8px 0">`
+    +`<b>${esc(label)} are off.</b> Turn on <b>Estimates</b> in the top bar to show infil rates, class/column profiles, and DNA transfer mids. `
+    +`Map units, layers, borings, septic records, and field anchors stay available.</div>`
+    +`<button type="button" class="hbtn accent" id="estEnableFromPanel">Turn Estimates on</button>`;
+}
+
 function esc(x){return String(x).replace(/&/g,'&amp;').replace(/</g,'&lt;');}
 
 /* ---------- splash disclaimer ---------- */
@@ -22667,6 +22714,11 @@ function tallyDom(cells, key){
 async function analyzeProjectLimits(){
   if(!limitsRing||limitsRing.length<4){
     setLimitsHint('Close a polygon first.','warn');
+    return;
+  }
+  if(!estimatesEnabled()){
+    setLimitsHint('Turn on Estimates in the top bar before Analyze & find best infil.','warn');
+    toast('Estimates are off — enable in the top bar to score infil cells');
     return;
   }
   if(limitsBusy)return;
@@ -26173,6 +26225,7 @@ function renderSubsurface(ctx){
   if(side) side.innerHTML=h;
 }
 function openSubsurfaceMode(ctx){
+  if(!estimatesEnabled()){ toast('Turn on Estimates (top bar) for class/column profiles'); return; }
   ctx=ctx||lastHudCtx;
   if(!ctx)return;
   const el=$('subsurfaceMode'); if(!el)return;
@@ -26835,9 +26888,13 @@ async function runPointQuery(lat,lng,opts){
     let h=`<h3>At ${lat.toFixed(5)}, ${lng.toFixed(5)}</h3>`;
     h+=`<div class="hint">${near.length} boring(s) · radius ${radFt} ft</div>`;
     h+=`<table class="kv">`;
-    h+=`<tr><td>Design infil</td><td><b>${P.infil&&P.infil.design_inhr!=null?P.infil.design_inhr+' in/hr':'—'}</b></td></tr>`;
-    h+=`<tr><td>Subgrade</td><td>${P.subgrade&&P.subgrade.label?esc(P.subgrade.label):'—'}</td></tr>`;
-    h+=`<tr><td>AASHTO / USCS</td><td>${a&&a.value?esc(a.value):'—'} · ${u&&u.value?esc(u.value):'—'}</td></tr>`;
+    if(estimatesEnabled()){
+      h+=`<tr><td>Design infil</td><td><b>${P.infil&&P.infil.design_inhr!=null?P.infil.design_inhr+' in/hr':'—'}</b></td></tr>`;
+      h+=`<tr><td>Subgrade</td><td>${P.subgrade&&P.subgrade.label?esc(P.subgrade.label):'—'}</td></tr>`;
+      h+=`<tr><td>AASHTO / USCS</td><td>${a&&a.value?esc(a.value):'—'} · ${u&&u.value?esc(u.value):'—'}</td></tr>`;
+    } else {
+      h+=`<tr><td>Estimates</td><td><span class="hint warn">OFF — enable in top bar for infil / class</span></td></tr>`;
+    }
     h+=`</table>`;
     h+=`<div class="hint" style="margin-top:8px">Enable <b>Immersive HUD</b> (top bar → Hydro) for floating map popups.</div>`;
     h+=`<div id="hydroBox"></div>`;
@@ -27006,9 +27063,13 @@ function renderHudBadges(ctx){
   const P=ctx.profile||{}, E=ctx.E||{}, sep=septicSummary(ctx);
   const a=P.classes&&P.classes.aashto_loc&&P.classes.aashto_loc.value;
   let h='';
-  if(P.infil&&P.infil.design_inhr!=null) h+=`<span class="hud-badge">Design<em>${P.infil.design_inhr}</em></span>`;
-  else if(P.infil&&P.infil.est_inhr!=null) h+=`<span class="hud-badge">Screen<em>${P.infil.est_inhr}</em></span>`;
-  if(a){
+  if(estimatesEnabled()){
+    if(P.infil&&P.infil.design_inhr!=null) h+=`<span class="hud-badge">Design<em>${P.infil.design_inhr}</em></span>`;
+    else if(P.infil&&P.infil.est_inhr!=null) h+=`<span class="hud-badge">Screen<em>${P.infil.est_inhr}</em></span>`;
+  } else {
+    h+=`<span class="hud-badge">Estimates<em>off</em></span>`;
+  }
+  if(estimatesEnabled() && a){
     const organic=P.classes&&P.classes.aashto_loc&&(P.classes.aashto_loc.from_nrcs||P.classes.aashto_loc.organic)&&isOrganicEngClass(a, P.classes.uscs_loc&&P.classes.uscs_loc.value);
     h+=`<span class="hud-badge${organic?' warn':''}">${organic?'NRCS org.':'AASHTO'}<em>${esc(a)}</em></span>`;
   }
@@ -27087,17 +27148,18 @@ function renderHudRail(ctx){
   const dnaV=dnaA&&dnaA.n?('n='+dnaA.n):(dna&&dna.hydgrp&&dna.hydgrp!=='?'?dna.hydgrp:'—');
   const dnaS=dnaA?((dnaA.match||'analog')+' · '+(dnaA.match_key||'')):(dna?String(dna.label||'').slice(0,48):'export feature store');
 
+  const estOn=estimatesEnabled();
   const items=[
-    {id:'overview', cls:'', k:'Brief', v:'All signals', s:(P.n_neighbors||0)+' borings · '+hitN+' layer hits'},
+    {id:'overview', cls:'', k:'Brief', v:estOn?'All signals':'Facts only', s:(P.n_neighbors||0)+' borings · '+hitN+' layer hits'+(estOn?'':' · estimates off')},
     {id:'site', cls:'', k:'Site', v:E.soilSym||E.hydgrp||'—', s:(E.soilName||'soils')+(E.geoName?' · '+E.geoName:'')},
-    {id:'dna', cls:'', k:'DNA', v:dnaV, s:dnaS},
-    {id:'estimate', cls:'infil', k:'Infil', v:P.infil&&P.infil.design_inhr!=null?(P.infil.design_inhr+''):(P.infil&&P.infil.est_inhr!=null?(P.infil.est_inhr+''):'—'), s:P.infil&&P.infil.field_anchor?'field-anchored ÷FoS':(P.infil&&P.infil.design_inhr!=null?'illustrative ÷2.5 in/hr':(P.infil&&P.infil.est_inhr!=null?'screening in/hr':'no estimate'))},
+    {id:'dna', cls:'', k:'DNA', v:estOn?dnaV:(dna&&dna.hydgrp&&dna.hydgrp!=='?'?dna.hydgrp:'—'), s:estOn?dnaS:(dna?String(dna.label||'').slice(0,48):'map DNA key only')},
+    {id:'estimate', cls:'infil', k:'Infil', v:estOn?(P.infil&&P.infil.design_inhr!=null?(P.infil.design_inhr+''):(P.infil&&P.infil.est_inhr!=null?(P.infil.est_inhr+''):'—')):'off', s:estOn?(P.infil&&P.infil.field_anchor?'field-anchored ÷FoS':(P.infil&&P.infil.design_inhr!=null?'illustrative ÷2.5 in/hr':(P.infil&&P.infil.est_inhr!=null?'screening in/hr':'no estimate'))):'enable Estimates in top bar'},
     {id:'anchors', cls:'infil', k:'Anchors', v:ancV, s:ancS},
     {id:'dgir', cls:'septic', k:'DGS', v:dgV, s:dgS},
-    {id:'props', cls:'', k:'Props', v:engV, s:engS},
+    {id:'props', cls:'', k:'Props', v:estOn?engV:'off', s:estOn?engS:'enable Estimates in top bar'},
     {id:'septic', cls:'septic', k:'Septic', v:septicV, s:septicS},
-    {id:'class', cls:'', k:'Class', v:aDisp.head, s:aDisp.sub||((u?u+' · ':'')+classSourceLabel(P.classes&&P.classes.aashto_loc))},
-    {id:'column', cls:'', k:'Column', v:'0–'+CLASS_COL_DEPTH_FT+'′', s:P.class_column&&(P.class_column.aashto_covered||P.class_column.uscs_covered)?columnSourceLabel(P.class_column):'no column'},
+    {id:'class', cls:'', k:'Class', v:estOn?aDisp.head:'off', s:estOn?(aDisp.sub||((u?u+' · ':'')+classSourceLabel(P.classes&&P.classes.aashto_loc))):'enable Estimates in top bar'},
+    {id:'column', cls:'', k:'Column', v:estOn?('0–'+CLASS_COL_DEPTH_FT+'′'):'off', s:estOn?(P.class_column&&(P.class_column.aashto_covered||P.class_column.uscs_covered)?columnSourceLabel(P.class_column):'no column'):'enable Estimates in top bar'},
     {id:'layers', cls:'', k:'Layers', v:String(hitN), s:'geology · soils · flood · more'},
     {id:'borings', cls:'', k:'Borings', v:String(boringN), s:'within '+ (P.radius_ft||ctx.radFt)+' ft'},
     {id:'hydro', cls:'', k:'Hydro', v:hydroV, s:hydroS}
@@ -27124,12 +27186,19 @@ function renderHudDrawer(ctx){
   let h='';
   try{
   if(tab==='overview'){
+    if(!estimatesEnabled()) h+=estimatesOffNotice('Screening estimates');
     h+=`<div class="brief-grid">`;
-    h+=`<div class="brief-cell"><div class="lbl">Illustrative design</div><div class="val amber">${P.infil&&P.infil.design_inhr!=null?P.infil.design_inhr+' in/hr':'—'}</div><div class="sub">${P.infil&&P.infil.field_anchor?'field-anchored ÷FoS':'÷ FoS 2.5 borehole path · screening'}</div></div>`;
-    h+=`<div class="brief-cell"><div class="lbl">Screening est.</div><div class="val">${P.infil&&P.infil.est_inhr!=null?P.infil.est_inhr+' in/hr':'—'}</div><div class="sub">${P.infil&&P.infil.note?esc(P.infil.note).slice(0,90):'—'}</div></div>`;
-    const aBr=displayAashtoValue(P.classes&&P.classes.aashto_loc, P.classes&&P.classes.uscs_loc);
-    const uBr=(P.classes&&P.classes.uscs_loc&&P.classes.uscs_loc.value)||'';
-    h+=`<div class="brief-cell"><div class="lbl">AASHTO / USCS</div><div class="val amber">${esc(aBr.head)}</div><div class="sub">${esc(uBr)}${aBr.sub?' · '+esc(aBr.sub):''}</div></div>`;
+    if(estimatesEnabled()){
+      h+=`<div class="brief-cell"><div class="lbl">Illustrative design</div><div class="val amber">${P.infil&&P.infil.design_inhr!=null?P.infil.design_inhr+' in/hr':'—'}</div><div class="sub">${P.infil&&P.infil.field_anchor?'field-anchored ÷FoS':'÷ FoS 2.5 borehole path · screening'}</div></div>`;
+      h+=`<div class="brief-cell"><div class="lbl">Screening est.</div><div class="val">${P.infil&&P.infil.est_inhr!=null?P.infil.est_inhr+' in/hr':'—'}</div><div class="sub">${P.infil&&P.infil.note?esc(P.infil.note).slice(0,90):'—'}</div></div>`;
+      const aBr=displayAashtoValue(P.classes&&P.classes.aashto_loc, P.classes&&P.classes.uscs_loc);
+      const uBr=(P.classes&&P.classes.uscs_loc&&P.classes.uscs_loc.value)||'';
+      h+=`<div class="brief-cell"><div class="lbl">AASHTO / USCS</div><div class="val amber">${esc(aBr.head)}</div><div class="sub">${esc(uBr)}${aBr.sub?' · '+esc(aBr.sub):''}</div></div>`;
+    } else {
+      h+=`<div class="brief-cell"><div class="lbl">Illustrative design</div><div class="val" style="color:var(--dim)">off</div><div class="sub">Estimates toggle</div></div>`;
+      h+=`<div class="brief-cell"><div class="lbl">Screening est.</div><div class="val" style="color:var(--dim)">off</div><div class="sub">Estimates toggle</div></div>`;
+      h+=`<div class="brief-cell"><div class="lbl">AASHTO / USCS</div><div class="val" style="color:var(--dim)">off</div><div class="sub">Class estimate gated</div></div>`;
+    }
     const fa=P.infil&&P.infil.field_anchor;
     const faN=P.infil&&P.infil.field_anchor_n||0;
     h+=`<div class="brief-cell"><div class="lbl">Field anchors</div><div class="val amber">${fa?fa.measured+' in/hr':(faN||'—')}</div><div class="sub">${fa?(esc(fa.id)+' @ '+Math.round(fa.d)+' ft'):(faN?faN+' in radius':'none in radius')}</div></div>`;
@@ -27144,7 +27213,7 @@ function renderHudDrawer(ctx){
     h+=`</div>`;
     h+=`<h4>Tap any rail item for full detail</h4>`;
     h+=`<div class="hint">Site · <b>DNA</b> · Infil · Anchors · DGS · Props · Septic · Class · Column · Layers · Borings · Hydro.</div>`;
-    if(P.class_column&&(P.class_column.aashto_covered||(P.class_column.aashto_stick&&P.class_column.aashto_stick.some(L=>L.label)))){
+    if(estimatesEnabled()&&P.class_column&&(P.class_column.aashto_covered||(P.class_column.aashto_stick&&P.class_column.aashto_stick.some(L=>L.label)))){
       h+=`<h4>Column peek · ${esc(columnSourceLabel(P.class_column))}</h4><div style="display:flex;gap:10px">`;
       h+=`<div>${svgStickProfile(P.class_column.aashto_stick,P.class_column.depth_ft,'AASHTO')}</div>`;
       h+=`<div>${svgStickProfile(P.class_column.uscs_stick,P.class_column.depth_ft,'USCS')}</div>`;
@@ -27191,7 +27260,9 @@ function renderHudDrawer(ctx){
       h+=`<tr><td>Label</td><td>${esc(dna.label)}</td></tr>`;
       h+=`</table>`;
     } else h+=`<div class="hint warn">No DNA — load soils/geology refs.</div>`;
-    if(dnaA){
+    if(!estimatesEnabled()){
+      h+=`<div class="hint" style="margin-top:8px">DNA key above is map fact. Analog transfer rates stay hidden until <b>Estimates</b> is ON.</div>`;
+    } else if(dnaA){
       h+=`<h4>Relatives (analog transfer)</h4><table class="mini-kv">`;
       h+=`<tr><td>Match</td><td><b>${esc(dnaA.match)}</b> · ${esc(dnaA.match_key||'')}</td></tr>`;
       h+=`<tr><td>Support</td><td>n=${dnaA.n}${dnaA.confidence?' · '+esc(dnaA.confidence):''}${dnaA.from_cells?' · from feature-store cells':''}</td></tr>`;
@@ -27206,6 +27277,8 @@ function renderHudDrawer(ctx){
       h+=`<div class="hint">${analogCells.length} analog cell(s) · ${Object.keys(mukeyPriorsBySiteDna).length} DNA families · ${Object.keys(mukeyPriorsBySiteDnaGamma).length} DNA+γ · ${Object.keys(mukeyPriorsByMukey).length} mukey</div>`;
     }
   } else if(tab==='estimate'){
+    if(!estimatesEnabled()){ h+=estimatesOffNotice('Infiltration estimates'); }
+    else {
     h+=`<table class="mini-kv">`;
     if(P.infil){
       if(P.infil.field_anchor) h+=`<tr><td>Field anchor</td><td><b>${P.infil.field_anchor.measured} in/hr</b> · ${esc(P.infil.field_anchor.id)} @ ${Math.round(P.infil.field_anchor.d)} ft</td></tr>`;
@@ -27275,6 +27348,7 @@ function renderHudDrawer(ctx){
       h+=`</div>`;
     }
     h+=`<div class="hint" style="margin-top:8px">Formal blender v0.41 + contribution sliders: ˆr = min(${EST_INHR_CAP}, Σwᵢrᵢ/Σwᵢ). Map soils gate AASHTO off; P200 hard ceiling; DGS geophys shallow fines (gamma) add weight + ceiling when clay/silt indicated; mukey restrained when Ksat present; field ≤${FIELD_HARD_FT} ft hard override; soft anchors exp(−d/${FIELD_ANCHOR_D0}). Illustrative design ≤${DESIGN_INHR_CAP} in/hr (÷${DNREC_BOREHOLE_FOS}). Preferred DNREC method: full-size ring infiltrometer.</div>`;
+    }
   } else if(tab==='anchors'){
     const list=(P.infil&&P.infil.field_anchors)||[];
     const fa=P.infil&&P.infil.field_anchor;
@@ -27367,6 +27441,8 @@ function renderHudDrawer(ctx){
     }
     h+=`<div class="hint" style="margin-top:8px"><a href="https://experience.arcgis.com/experience/ca41e4c56e164341906b2b060ea05ebd" target="_blank" rel="noopener">DGS Borehole Log Mapper</a> · <a href="https://www.dgs.udel.edu/projects/delaware-geologic-information-resource-dgir-web-application" target="_blank" rel="noopener">DGIR project page</a></div>`;
   } else if(tab==='props'){
+    if(!estimatesEnabled()){ h+=estimatesOffNotice('Eng. property forecasts'); }
+    else {
     const F=P.eng_forecast, N=F&&F.near_surface;
     h+=`<div class="hint warn" style="margin-bottom:8px">Screening forecast from AASHTO group priors + DTW + NRCS engineering ratings. Not lab strength, CBR, or sealed design values.</div>`;
     if(!N){
@@ -27416,6 +27492,8 @@ function renderHudDrawer(ctx){
     } else {
       h+=`<div class="hint" style="margin-top:10px">No 0–50 ft stick layers — column forecast appears when neighbor boring classes exist.</div>`;
     }
+
+    }
   } else if(tab==='septic'){
     const borings=septicBoringRecords(ctx.hits||[]);
     const evals=septicEvalRecords(ctx.hits||[]);
@@ -27449,6 +27527,8 @@ function renderHudDrawer(ctx){
     }
     if(E.feasibility) h+=`<div class="hint" style="margin-top:8px">Feasibility: ${esc(E.feasibility)}</div>`;
   } else if(tab==='class'){
+    if(!estimatesEnabled()){ h+=estimatesOffNotice('Classification estimates'); }
+    else {
     const a=P.classes&&P.classes.aashto_loc, u=P.classes&&P.classes.uscs_loc;
     const aDisp=displayAashtoValue(a,u);
     h+=`<table class="mini-kv">`;
@@ -27467,7 +27547,11 @@ function renderHudDrawer(ctx){
       if(Ca.length) h+=`<div class="hint" style="margin-top:8px"><b>0–${CLASS_COL_DEPTH_FT} ft AASHTO:</b> ${Ca.slice(0,8).map(s=>esc(s.label)+' '+s.pct+'%').join(' · ')}</div>`;
       if(Cu.length) h+=`<div class="hint"><b>0–${CLASS_COL_DEPTH_FT} ft USCS:</b> ${Cu.slice(0,8).map(s=>esc(s.label)+' '+s.pct+'%').join(' · ')}</div>`;
     }
+
+    }
   } else if(tab==='column'){
+    if(!estimatesEnabled()){ h+=estimatesOffNotice('Soil column profiles'); }
+    else {
     if(P.class_column&&(P.class_column.aashto_covered||P.class_column.uscs_covered||(P.class_column.aashto_stick&&P.class_column.aashto_stick.some(L=>L.label)))){
       h+=`<button type="button" class="ss-enter" onclick="openSubsurfaceMode()">Enter Subsurface mode →</button>`;
       h+=`<div class="hint" style="margin:8px 0">${esc(columnSourceLabel(P.class_column))} · sealed to ${P.class_column.depth_ft} ft · γ→AASHTO is screening texture (coarse≈A-1-b · fine≈A-6)</div>`;
@@ -27481,6 +27565,8 @@ function renderHudDrawer(ctx){
       h+=`<div>${svgPieChart(P.class_column.uscs,'USCS',null,P.class_column.depth_ft)}</div>`;
       h+=`</div>`;
     } else h+=`<div class="hint warn">No column yet — load soils refs and/or <code>dgir_geophys_zones.json</code> (download-dgir-geophys.bat). Borings help but are no longer required.</div>`;
+
+    }
   } else if(tab==='layers'){
     const want=['geology_piedmont','geology_surficial','soils','recharge','wrpa','gmz','flood','wetland','septic_boring','septic_eval','wellhead','watershed','coastal','feasibility'];
     const grouped={};
@@ -27559,6 +27645,8 @@ function renderHudDrawer(ctx){
   if(!h) h=`<div class="hint warn">No content for “${esc(String(tab))}”.</div>`;
   dr.innerHTML=h;
   wireInfilSliders();
+  const en=$('estEnableFromPanel');
+  if(en) en.onclick=()=>setEstimatesOn(true);
 }
 
 /* Re-weight screening blend from current Site Intel hits — no full map re-query. */
@@ -28075,7 +28163,16 @@ $('layerDisableAll')&&($('layerDisableAll').onclick=()=>setAllRefsOn(false));
   }
   window.closeHdrPop=closeHdrPop;
   window.openHdrPop=openHdrPop;
-  document.querySelectorAll('#hdrTools .hdr-tool').forEach(btn=>{
+  const estBtn=$('hdrBtnEstimates');
+  if(estBtn){
+    estBtn.onclick=e=>{
+      e.stopPropagation();
+      if(typeof closeHdrPop==='function') closeHdrPop();
+      setEstimatesOn(!estimatesOn);
+    };
+  }
+  syncEstimatesToggleUI();
+  document.querySelectorAll('#hdrTools .hdr-tool[data-pop]').forEach(btn=>{
     btn.onclick=()=>openHdrPop(btn.dataset.pop);
   });
   pop.querySelectorAll('[data-hdr-close]').forEach(b=>b.onclick=closeHdrPop);
