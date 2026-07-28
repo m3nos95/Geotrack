@@ -19,6 +19,7 @@ from __future__ import annotations
 
 import argparse
 import csv
+import http.client
 import io
 import json
 import math
@@ -26,12 +27,13 @@ import re
 import sys
 import time
 import urllib.error
+import urllib.parse
 import urllib.request
 from datetime import datetime, timezone
 from pathlib import Path
 from statistics import median
 
-UA = "DelDOT-GeoTrak-dgir-geophys/0.41 (+https://github.com/m3nos95/Geotrack)"
+UA = "DelDOT-GeoTrak-dgir-geophys/0.42 (+https://github.com/m3nos95/Geotrack)"
 NULL = -999.25
 DEFAULT_WELLS = Path("refs/dgir_wells.json")
 DEFAULT_CSV_DIR = Path("dgir-geophys-csv")
@@ -64,25 +66,73 @@ def safe_filename(dgsid: str) -> str:
     return s or "unknown"
 
 
+def _encode_url(url: str) -> str:
+    """Percent-encode path so spaces / odd chars do not crash http.client."""
+    parts = urllib.parse.urlsplit(url.strip())
+    path = urllib.parse.quote(parts.path, safe="/:@!$&'()*+,;=-._~")
+    query = urllib.parse.quote(parts.query, safe="=&%")
+    return urllib.parse.urlunsplit((parts.scheme, parts.netloc, path, query, parts.fragment))
+
+
+def candidate_urls(url: str) -> list[str]:
+    """Build fetch candidates for messy DGS GCS links (spaces in well ids)."""
+    raw = (url or "").strip()
+    if not raw:
+        return []
+    out: list[str] = []
+    # 1) as-published, properly encoded
+    out.append(_encode_url(raw))
+    # 2) strip all whitespace from path (Id32-56 /Id32-56 _GAM → Id32-56/Id32-56_GAM)
+    parts = urllib.parse.urlsplit(raw)
+    nospace_path = re.sub(r"\s+", "", parts.path)
+    if nospace_path != parts.path:
+        out.append(
+            _encode_url(
+                urllib.parse.urlunsplit(
+                    (parts.scheme, parts.netloc, nospace_path, parts.query, parts.fragment)
+                )
+            )
+        )
+    # 3) collapse "Id32-56 /" → "Id32-56/" style typos
+    fixed = re.sub(r"(\w)\s+/", r"\1/", raw)
+    fixed = re.sub(r"/\s+", "/", fixed)
+    fixed = re.sub(r"\s+_", "_", fixed)
+    if fixed != raw:
+        out.append(_encode_url(fixed))
+    # de-dupe preserve order
+    seen: set[str] = set()
+    uniq: list[str] = []
+    for u in out:
+        if u and u not in seen:
+            seen.add(u)
+            uniq.append(u)
+    return uniq
+
+
 def fetch_bytes(url: str, retries: int = 4) -> tuple[bytes | None, str | None]:
     last_err: str | None = None
-    for i in range(retries):
-        try:
-            req = urllib.request.Request(url, headers={"User-Agent": UA})
-            with urllib.request.urlopen(req, timeout=90) as resp:
-                data = resp.read()
-            if len(data) < 20:
-                return None, f"too small ({len(data)} bytes)"
-            return data, None
-        except urllib.error.HTTPError as e:
-            last_err = f"HTTP {e.code}"
-            if e.code in (404, 403, 410):
-                return None, last_err
-            time.sleep(1.2 * (i + 1))
-        except (urllib.error.URLError, TimeoutError, OSError) as e:
-            last_err = str(e)
-            time.sleep(1.5 * (i + 1))
-    return None, last_err
+    for cand in candidate_urls(url):
+        for i in range(retries):
+            try:
+                req = urllib.request.Request(cand, headers={"User-Agent": UA})
+                with urllib.request.urlopen(req, timeout=90) as resp:
+                    data = resp.read()
+                if len(data) < 20:
+                    last_err = f"too small ({len(data)} bytes)"
+                    break  # try next candidate
+                return data, None
+            except urllib.error.HTTPError as e:
+                last_err = f"HTTP {e.code}"
+                if e.code in (404, 403, 410):
+                    break  # try next candidate
+                time.sleep(1.2 * (i + 1))
+            except (urllib.error.URLError, TimeoutError, OSError, ValueError, http.client.InvalidURL) as e:
+                last_err = str(e)
+                time.sleep(1.5 * (i + 1))
+            except Exception as e:  # never crash the batch on one URL
+                last_err = f"{type(e).__name__}: {e}"
+                break
+    return None, last_err or "fetch failed"
 
 
 def download_all(
@@ -132,7 +182,21 @@ def download_all(
                 print(f"  [{i}/{len(targets)}] skip existing …", flush=True)
             continue
 
-        data, err = fetch_bytes(url)
+        try:
+            data, err = fetch_bytes(url)
+        except Exception as e:
+            fail += 1
+            manifest[wid] = {
+                "id": wid,
+                "url": url,
+                "status": "error",
+                "error": f"{type(e).__name__}: {e}",
+            }
+            print(f"  FAIL {wid}: {type(e).__name__}: {e}", flush=True)
+            if delay_s > 0:
+                time.sleep(delay_s)
+            continue
+
         if err or data is None:
             fail += 1
             manifest[wid] = {"id": wid, "url": url, "status": "error", "error": err}
