@@ -181,6 +181,7 @@ def main() -> int:
 
     by_mukey: dict[str, list[dict]] = defaultdict(list)
     by_dna: dict[str, list[dict]] = defaultdict(list)
+    by_dna_gamma: dict[str, list[dict]] = defaultdict(list)
     by_hyd_geo: dict[str, list[dict]] = defaultdict(list)
     by_hyd: dict[str, list[dict]] = defaultdict(list)
     skipped_mukey = 0
@@ -194,8 +195,12 @@ def main() -> int:
         # collapse A/D → primary letter for DNA buckets
         hyd_letter = hyd[0] if hyd and hyd[0] in "ABCD" else hyd
         geo = txt(r.get("geology")) or "unknown"
-        rech = (txt(r.get("recharge")) or "none").lower()
-        by_dna[f"{hyd_letter}|{geo}|{rech}"].append(r)
+        rech = (txt(r.get("recharge")) or "none").lower().replace(" ", "_")
+        dna_key = f"{hyd_letter}|{geo}|{rech}"
+        by_dna[dna_key].append(r)
+        gamma = (txt(r.get("gamma_class")) or txt(r.get("gamma")) or "").lower()
+        if gamma:
+            by_dna_gamma[f"{dna_key}|{gamma}"].append(r)
         by_hyd_geo[f"{hyd_letter}|{geo}"].append(r)
         if hyd_letter and hyd_letter != "?":
             by_hyd[hyd_letter].append(r)
@@ -212,25 +217,28 @@ def main() -> int:
 
     mukey_priors = publish(by_mukey)
     dna_priors = publish(by_dna)
+    dna_gamma_priors = publish(by_dna_gamma)
     hyd_geo_priors = publish(by_hyd_geo)
     hyd_priors = publish(by_hyd)
 
     out = {
         "type": "deldot_mukey_priors",
-        "version": 2,
+        "version": 3,
         "source_csv": csv_path.name,
         "n_borings": len(rows),
         "n_mukeys": len(mukey_priors),
         "n_site_dna": len(dna_priors),
+        "n_site_dna_gamma": len(dna_gamma_priors),
         "n_hyd_geo": len(hyd_geo_priors),
         "n_hydgrp": len(hyd_priors),
         "min_n": min_n,
         "disclaimer": (
-            "Screening analogs only — DelDOT quantitative priors transferred by "
-            "site DNA (mukey / HYDGRP|geology|recharge). Not sealed design."
+            "Screening cell genealogy — DelDOT quantitative priors transferred by "
+            "site DNA (mukey / HYDGRP|geology|recharge|γ). Not sealed design."
         ),
         "by_mukey": mukey_priors,
         "by_site_dna": dna_priors,
+        "by_site_dna_gamma": dna_gamma_priors,
         "by_hydgrp_geology": hyd_geo_priors,
         "by_hydgrp": hyd_priors,
     }
@@ -244,11 +252,12 @@ def main() -> int:
     print(f"Wrote {out_path}")
     print(f"  mukey priors: {len(mukey_priors)} (skipped rows without mukey: {skipped_mukey})")
     print(f"  site DNA (HYDGRP|geology|recharge): {len(dna_priors)}")
+    print(f"  site DNA+γ: {len(dna_gamma_priors)}")
     print(f"  HYDGRP|geology priors: {len(hyd_geo_priors)}")
     print(f"  HYDGRP priors: {len(hyd_priors)}")
     if dna_priors:
         top = sorted(dna_priors.values(), key=lambda p: -p["n"])[:8]
-        print("  Top site-DNA buckets by support:")
+        print("  Top site-DNA families by support:")
         for p in top:
             print(
                 f"    {p['key']}: n={p['n']}  AASHTO={p.get('aashto_dom') or '—'}  "
