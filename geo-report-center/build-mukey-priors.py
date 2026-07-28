@@ -1,9 +1,16 @@
 #!/usr/bin/env python3
 """
-Build statewide mukey / soils analogs from feature-store.csv (Step 2).
+Build statewide site-DNA / mukey analogs from feature-store.csv (Step 2).
 
-Groups DelDOT borings by NRCS mapunit (mukey) and summarizes lab + infil
-priors so similar map signatures elsewhere in Delaware can inherit them.
+Theory: reference "DNA" (geology + HYDGRP + recharge + mukey) defines cell type.
+Dense tested borings in that DNA bucket transfer lab class / P200 / infil mid
+to sparse cells with the same reference signature.
+
+Groups DelDOT borings by:
+  - NRCS mapunit (mukey)
+  - HYDGRP|geology|recharge  (site DNA)
+  - HYDGRP|geology           (fallback)
+  - HYDGRP                   (coarse fallback)
 
 Usage (from project folder with feature-store.csv):
   python build-mukey-priors.py
@@ -173,7 +180,9 @@ def main() -> int:
     print(f"Loaded {len(rows)} feature-store rows from {csv_path.name}")
 
     by_mukey: dict[str, list[dict]] = defaultdict(list)
+    by_dna: dict[str, list[dict]] = defaultdict(list)
     by_hyd_geo: dict[str, list[dict]] = defaultdict(list)
+    by_hyd: dict[str, list[dict]] = defaultdict(list)
     skipped_mukey = 0
     for r in rows:
         mukey = txt(r.get("soil_mukey")) or txt(r.get("mukey"))
@@ -182,33 +191,48 @@ def main() -> int:
         else:
             skipped_mukey += 1
         hyd = (txt(r.get("soil_hydgrp")) or "?").upper()
+        # collapse A/D → primary letter for DNA buckets
+        hyd_letter = hyd[0] if hyd and hyd[0] in "ABCD" else hyd
         geo = txt(r.get("geology")) or "unknown"
-        by_hyd_geo[f"{hyd}|{geo}"].append(r)
+        rech = (txt(r.get("recharge")) or "none").lower()
+        by_dna[f"{hyd_letter}|{geo}|{rech}"].append(r)
+        by_hyd_geo[f"{hyd_letter}|{geo}"].append(r)
+        if hyd_letter and hyd_letter != "?":
+            by_hyd[hyd_letter].append(r)
 
     min_n = max(1, int(args.min_n))
-    mukey_priors = {}
-    for k, group in sorted(by_mukey.items(), key=lambda kv: (-len(kv[1]), kv[0])):
-        if len(group) < min_n:
-            continue
-        mukey_priors[k] = summarize(group, k)
 
-    hyd_geo_priors = {}
-    for k, group in sorted(by_hyd_geo.items(), key=lambda kv: (-len(kv[1]), kv[0])):
-        if len(group) < min_n:
-            continue
-        hyd_geo_priors[k] = summarize(group, k)
+    def publish(groups: dict[str, list[dict]]) -> dict:
+        out: dict = {}
+        for k, group in sorted(groups.items(), key=lambda kv: (-len(kv[1]), kv[0])):
+            if len(group) < min_n:
+                continue
+            out[k] = summarize(group, k)
+        return out
+
+    mukey_priors = publish(by_mukey)
+    dna_priors = publish(by_dna)
+    hyd_geo_priors = publish(by_hyd_geo)
+    hyd_priors = publish(by_hyd)
 
     out = {
         "type": "deldot_mukey_priors",
-        "version": 1,
+        "version": 2,
         "source_csv": csv_path.name,
         "n_borings": len(rows),
         "n_mukeys": len(mukey_priors),
+        "n_site_dna": len(dna_priors),
         "n_hyd_geo": len(hyd_geo_priors),
+        "n_hydgrp": len(hyd_priors),
         "min_n": min_n,
-        "disclaimer": "Screening analogs only — DelDOT boring lab/class priors transferred by NRCS mapunit. Not sealed design.",
+        "disclaimer": (
+            "Screening analogs only — DelDOT quantitative priors transferred by "
+            "site DNA (mukey / HYDGRP|geology|recharge). Not sealed design."
+        ),
         "by_mukey": mukey_priors,
+        "by_site_dna": dna_priors,
         "by_hydgrp_geology": hyd_geo_priors,
+        "by_hydgrp": hyd_priors,
     }
 
     out_path = Path(args.out)
@@ -219,15 +243,16 @@ def main() -> int:
 
     print(f"Wrote {out_path}")
     print(f"  mukey priors: {len(mukey_priors)} (skipped rows without mukey: {skipped_mukey})")
+    print(f"  site DNA (HYDGRP|geology|recharge): {len(dna_priors)}")
     print(f"  HYDGRP|geology priors: {len(hyd_geo_priors)}")
-    if mukey_priors:
-        top = sorted(mukey_priors.values(), key=lambda p: -p["n"])[:8]
-        print("  Top mukeys by support:")
+    print(f"  HYDGRP priors: {len(hyd_priors)}")
+    if dna_priors:
+        top = sorted(dna_priors.values(), key=lambda p: -p["n"])[:8]
+        print("  Top site-DNA buckets by support:")
         for p in top:
             print(
                 f"    {p['key']}: n={p['n']}  AASHTO={p.get('aashto_dom') or '—'}  "
-                f"P200={p.get('p200_median')}  infil_mid={p.get('infil_mid_in_hr')}  "
-                f"{(p.get('soil_name') or '')[:40]}"
+                f"P200={p.get('p200_median')}  infil_mid={p.get('infil_mid_in_hr')}"
             )
     print("Copy/keep under refs/ and re-open the project folder in GeoTrak.")
     return 0
