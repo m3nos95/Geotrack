@@ -505,6 +505,7 @@ https://raw.githubusercontent.com/m3nos95/Geotrack/cursor/prediction-profile-eng
 | v0.38 | Formal normalized infil blender + exp field-anchor decay + contribution % UI |
 | v0.39 | Guided M&R soil-boring request wizard (map pick → purpose → BDM §105 count/depth/tests → .xlsx / print) |
 | v0.40 | Boring request aligned to official Figure 105-2 sheet (N/E, SPT, infil, rock, lab Y/N flags) |
+| v0.41 | DGS geophys zones (`dgir_geophys_zones.json`) in Site Intel + infil blender; shallow gamma fines prior / hard ceiling; screening P200 proxy from coarse/fine class |
 
 ---
 
