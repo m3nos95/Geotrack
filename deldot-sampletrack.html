@@ -11323,11 +11323,43 @@ function wireConcreteProjectAutofill() { return; // no-op
 // ══════════════════════════════════════════════
 const SB_URL_STORAGE_KEY = 'labtrak_sb_url';
 const SB_KEY_STORAGE_KEY = 'labtrak_sb_anon_key';
+const SB_URL_DEFAULT = 'https://qlwaqdlldldyoshyglmu.supabase.co';
+const SB_KEY_DEFAULT = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFsd2FxZGxsZGxkeW9zaHlnbG11Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzg2MDQxOTEsImV4cCI6MjA5NDE4MDE5MX0.VRDDiDxGay5npABiVHiJ1o0-M6mHrwAVWaclWMBNU_k';
 const AUTH_MODE_KEY = 'labtrak_auth_mode'; // auto | required
 
 let _supabaseAuthSession = null;
 let _authProfile = null;
 window._anonBlocked = false;
+
+function readStoredSbUrl() {
+  try {
+    return localStorage.getItem(SB_URL_STORAGE_KEY) || SB_URL_DEFAULT;
+  } catch (_) { return SB_URL_DEFAULT; }
+}
+function readStoredSbKey() {
+  try {
+    return localStorage.getItem(SB_KEY_STORAGE_KEY) || SB_KEY_DEFAULT;
+  } catch (_) { return SB_KEY_DEFAULT; }
+}
+function friendlyAuthNetworkError(err, url) {
+  const raw = (err && (err.message || String(err))) || 'Sign-in failed';
+  const low = String(raw).toLowerCase();
+  if (low.includes('failed to fetch') || low.includes('networkerror') || low.includes('load failed') || low.includes('network request failed')) {
+    const host = (url || readStoredSbUrl() || '').replace(/^https?:\/\//, '').replace(/\/$/, '');
+    if (host && host.indexOf('qlwaqdlldldyoshyglmu') < 0) {
+      return 'Cannot reach ' + host + '. LabTrak needs the LabTrak Supabase project — open Settings → Database, set URL to ' + SB_URL_DEFAULT + ' (and the matching anon key), Save, then try again. Or hard-refresh and clear a bad GeoTrak connection.';
+    }
+    return 'Cannot reach Supabase (' + (host || 'no URL') + '). Check internet/VPN, then Settings → Database → reconnect. Hard-refresh if you just changed projects.';
+  }
+  if (low.includes('invalid login') || low.includes('invalid credentials')) {
+    const host = (url || readStoredSbUrl() || '').replace(/^https?:\/\//, '').replace(/\/$/, '');
+    if (host && host.indexOf('qlwaqdlldldyoshyglmu') < 0) {
+      return 'Wrong email/password for project ' + host + '. That is not the LabTrak project — restore LabTrak URL/key in Settings → Database.';
+    }
+    return 'Wrong email or password.';
+  }
+  return raw;
+}
 
 function getAuthMode() {
   const mode = localStorage.getItem(AUTH_MODE_KEY) || 'required';
@@ -11561,7 +11593,8 @@ async function submitAuthSignIn() {
     await authSignIn(email, password);
     await completeAuthLogin();
   } catch (e) {
-    if (errEl) errEl.textContent = e.message || 'Sign-in failed.';
+    const url = document.getElementById('sbUrl')?.value.trim() || readStoredSbUrl();
+    if (errEl) errEl.textContent = friendlyAuthNetworkError(e, url);
   }
 }
 
@@ -11692,19 +11725,23 @@ function loadSupabaseSettings() {
   const urlEl = document.getElementById('sbUrl');
   const keyEl = document.getElementById('sbKey');
   if (!urlEl || !keyEl) return;
-  const savedUrl = localStorage.getItem(SB_URL_STORAGE_KEY);
-  const savedKey = localStorage.getItem(SB_KEY_STORAGE_KEY);
-  if (savedUrl) urlEl.value = savedUrl;
-  if (savedKey) keyEl.value = savedKey;
+  urlEl.value = readStoredSbUrl();
+  keyEl.value = readStoredSbKey();
   const authSel = document.getElementById('authModeSelect');
   if (authSel) authSel.value = getAuthMode();
 }
 
 function persistSupabaseSettings() {
-  const url = document.getElementById('sbUrl')?.value.trim();
-  const key = document.getElementById('sbKey')?.value.trim();
-  if (url) localStorage.setItem(SB_URL_STORAGE_KEY, url);
-  if (key) localStorage.setItem(SB_KEY_STORAGE_KEY, key);
+  const url = (document.getElementById('sbUrl')?.value.trim() || SB_URL_DEFAULT).replace(/\/$/, '');
+  const key = document.getElementById('sbKey')?.value.trim() || SB_KEY_DEFAULT;
+  if (url) {
+    localStorage.setItem(SB_URL_STORAGE_KEY, url);
+    localStorage.setItem('geotrak_sb_url', url);
+  }
+  if (key) {
+    localStorage.setItem(SB_KEY_STORAGE_KEY, key);
+    localStorage.setItem('geotrak_sb_anon_key', key);
+  }
 }
 
 function updateSupabaseStatus() {
