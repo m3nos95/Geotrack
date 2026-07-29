@@ -43,7 +43,7 @@ Without a local project folder, the map still works, but most soils / borings / 
 | 4 | **Borings** | “Nearby DelDOT borings and lab snippets.” |
 | 5 | **Infil** (Estimates ON) | “Planning rate + plain-English story of how it was blended. Not sealed design.” |
 | 6 | **Draw limits** → Analyze | “Polygon around the job → inventory, best screening cell, short site summary.” |
-| 7 | Top bar **Borings** | “Drafts the official M&R boring request sheet from purpose (bridge, pole, SWM…).” |
+| 7 | Top bar **Request borings** | “Drafts the official M&R boring request sheet from purpose (bridge, pole, SWM…).” |
 
 Full checklist and talking points: **[FEATURE_TOUR.md](./FEATURE_TOUR.md)**
 
