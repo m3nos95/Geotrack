@@ -20904,6 +20904,20 @@ main{position:absolute;top:44px;left:0;right:0;bottom:0}
 .infil-sliders .isl-sum{font-size:10px;color:var(--dim);margin-top:6px}
 .infil-sliders .isl-live{margin-top:8px;padding-top:8px;border-top:1px solid rgba(46,58,72,.55);font-size:12px}
 .infil-sliders .isl-live b{color:var(--amber);font-family:var(--mono)}
+/* Qualitative “how we got the rate” narrative (Site Intel → Infil) */
+.infil-analysis{margin:0 0 12px;padding:12px 12px 10px;border:1px solid rgba(61,207,191,.28);background:rgba(61,207,191,.05);border-radius:6px}
+.infil-analysis h4{margin:0 0 8px;font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--cyan)}
+.infil-analysis .ia-verdict{font-size:13px;line-height:1.5;margin:0 0 10px;color:var(--text)}
+.infil-analysis .ia-verdict b{color:var(--amber);font-family:var(--mono)}
+.infil-analysis .ia-p{font-size:12px;line-height:1.55;color:var(--text);margin:0 0 8px}
+.infil-analysis .ia-p strong{color:var(--cyan);font-weight:600}
+.infil-analysis .ia-steps{margin:6px 0 8px;padding:0;list-style:none}
+.infil-analysis .ia-steps li{position:relative;padding:6px 0 6px 14px;border-top:1px solid rgba(46,58,72,.45);font-size:12px;line-height:1.5;color:var(--text)}
+.infil-analysis .ia-steps li:first-child{border-top:none}
+.infil-analysis .ia-steps li::before{content:'';position:absolute;left:0;top:12px;width:6px;height:6px;border-radius:50%;background:var(--cyan);opacity:.85}
+.infil-analysis .ia-steps .ia-src{color:var(--cyan);font-family:var(--mono);font-size:10.5px;letter-spacing:.04em}
+.infil-analysis .ia-steps .ia-rate{color:var(--amber);font-family:var(--mono);white-space:nowrap}
+.infil-analysis .ia-foot{margin:8px 0 0;font-size:11px;line-height:1.45;color:var(--dim)}
 #layerModal{position:fixed;inset:0;z-index:4500;background:rgba(6,10,14,.78);backdrop-filter:blur(4px);display:none;align-items:center;justify-content:center;padding:20px}
 #layerModal.open{display:flex}
 #layerModal .layer-modal-box{width:min(760px,96vw);max-height:min(90vh,920px);background:var(--panel);border:1px solid var(--line);border-radius:10px;display:flex;flex-direction:column;overflow:hidden;box-shadow:0 20px 60px rgba(0,0,0,.55)}
@@ -21176,7 +21190,7 @@ table.list td{padding:5px 8px;border-bottom:1px solid rgba(46,58,72,.5);font-fam
 <div id="hdr">
   <div class="brand" title="Delaware Department of Transportation">
     <img src="data:image/png;base64,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" width="28" height="28" alt="DelDOT">
-    <h1><b>DelDOT</b> GeoTrak<span class="badge">v0.62</span></h1>
+    <h1><b>DelDOT</b> GeoTrak<span class="badge">v0.63</span></h1>
   </div>
   <button class="tab on" data-p="map">Map</button>
   <button class="tab" data-p="refs">Reference data</button>
@@ -25380,6 +25394,154 @@ function enrichFromHits(hits, samples){
   const infil=infilFromHydgrp(hydgrp, lab.p200_median, aashtoPrior, ksat);
   return{soilName,soilSym,soilKey,hydgrp,drain,nrcs,geoName,geoKind,rech,wrpa,lab,infil,wetland,flood,gmz,wellhead,watershed,coastal,septicPerc,septicDist,feasibility};
 }
+/* Plain-language walkthrough of how Site Intel arrived at screening / illustrative rates. */
+function infilContributionLabel(id){
+  const m={
+    map:'Mapped soils (HYDGRP / NRCS Ksat)',
+    aashto:'Neighbor boring AASHTO class',
+    septic:'DNREC septic PercRate (IDW)',
+    p200:'Near-surface fines (P200 top '+P200_TOP_FT+'′)',
+    geophys:'DGS geophys shallow fines (gamma)',
+    mukey:'Site DNA / mukey analogs',
+    field:'DelDOT field borehole infiltration test'
+  };
+  return m[id]||(id?String(id):'Other prior');
+}
+function infilRateOutlook(est){
+  if(est==null||!Number.isFinite(+est)) return {tier:'unknown', blurb:'No screening rate could be scored at this point.'};
+  const v=+est;
+  if(v>=8) return {tier:'high', blurb:'This screening rate is high for Delaware Coastal Plain borehole experience — typical of clean sands/gravels when map and field signals agree.'};
+  if(v>=3) return {tier:'favorable', blurb:'This screening rate is favorable for many infiltration BMPs, provided separation, contamination screens, and field ASTM tests confirm it.'};
+  if(v>=1) return {tier:'moderate', blurb:'This screening rate is moderate — workable for selective BMP siting, but confirmatory field testing and careful footprint selection matter.'};
+  if(v>=0.3) return {tier:'limited', blurb:'This screening rate is limited. Expect underdrains, filtration, or alternative BMPs unless a better micro-site is confirmed in the field.'};
+  return {tier:'poor', blurb:'This screening rate is poor. Infiltration at grade is unlikely without engineered measures or a different location.'};
+}
+function buildInfilQualitativeAnalysis(P, E){
+  E=E||(P&&P.enrich)||{};
+  const I=(P&&P.infil)||{};
+  const parts=[];
+  function p(t){ if(t) parts.push(`<p class="ia-p">${t}</p>`); }
+  let h=`<div class="infil-analysis"><h4>How we arrived at this rate</h4>`;
+
+  if(I.est_inhr==null){
+    h+=`<p class="ia-verdict">No screening infiltration estimate at this point.</p>`;
+    p(esc(I.note)||'Load soils / HYDGRP / NRCS props (and optionally neighbor borings or field anchors), then click again with <b>Estimates</b> on.');
+    if(I.separation_ok===false&&I.dtw_ft!=null){
+      p(`Depth to water is about <strong>${I.dtw_ft} ft</strong>, which is below the App.1 §II.A.3 minimum of <strong>${I.separation_ft_req||DNREC_SEP_FT} ft</strong> to groundwater / limiting layer. Even if material rates existed, an at-grade infiltration BMP would be unlikely without underdrain or redesign.`);
+    }
+    h+=`<p class="ia-foot">Screening only — not an approved DNREC design rate. Preferred method: full-size ring infiltrometer (ASTM D5126).</p></div>`;
+    return h;
+  }
+
+  const outlook=infilRateOutlook(I.est_inhr);
+  let verdict=`Screening estimate <b>${I.est_inhr} in/hr</b>`;
+  if(I.design_inhr!=null) verdict+=` → illustrative design <b>${I.design_inhr} in/hr</b> (÷${I.fos||DNREC_BOREHOLE_FOS})`;
+  else if(I.separation_ok===false) verdict+=` · illustrative design <b>withheld</b> (GW separation)`;
+  verdict+=`. ${outlook.blurb}`;
+  h+=`<p class="ia-verdict">${verdict}</p>`;
+
+  /* Starting map / soil story */
+  const soilBits=[];
+  if(E.soilName||E.soilSym) soilBits.push(esc(E.soilName||E.soilSym)+(E.soilSym&&E.soilName?' ('+esc(E.soilSym)+')':''));
+  if(I.hydgrp||E.hydgrp) soilBits.push('HYDGRP <strong>'+esc(I.hydgrp||E.hydgrp)+'</strong>');
+  if(E.drain) soilBits.push('drainage '+esc(E.drain));
+  if(E.nrcs&&E.nrcs.ksat_in_hr!=null) soilBits.push('NRCS Ksat ≈ <strong>'+E.nrcs.ksat_in_hr+' in/hr</strong>');
+  if(soilBits.length){
+    p(`<strong>1. Mapped soils.</strong> ${soilBits.join(' · ')}. GeoTrak starts from the FirstMap / NRCS hydrologic group band (A fast → D slow), then nudges with surface Ksat and lab fines when present. Dual HYDGRP values are treated as lower confidence.`);
+  } else if(I.aashto_min!=null){
+    p(`<strong>1. No map HYDGRP / Ksat here.</strong> The program fell back to neighbor-boring AASHTO class <strong>${esc(I.aashto||'?')}</strong> (${I.aashto_min}–${I.aashto_max} in/hr). Mapped soils normally gate AASHTO out of the blend when they are present.`);
+  } else {
+    p(`<strong>1. Map soils thin.</strong> The blend leans on whatever other priors are available (DNA analogs, septic PercRate, P200, field anchors).`);
+  }
+  if(I.hydgrp_min!=null){
+    p(`HYDGRP / map screening band used as the soil prior: <strong>${I.hydgrp_min}–${I.hydgrp_max} in/hr</strong>${I.confidence?' ('+esc(I.confidence)+')':''}.`);
+  }
+
+  /* Blend contributions */
+  const contrib=(I.contributions||[]).filter(c=>c&&c.pct>0);
+  const fa=I.field_anchor;
+  const hardField=fa&&!fa.soft;
+  if(hardField){
+    p(`<strong>2. Field test hard override.</strong> A DelDOT borehole infiltration test (<strong>${esc(fa.id)}</strong>) sits only <strong>${Math.round(fa.d)} ft</strong> away (≤${FIELD_HARD_FT} ft). Measured rate <strong>${fa.measured} in/hr</strong> dominates (~95% measured + 5% map blend when map exists). Map/DNA/septic priors do not invent a higher rate next to a real test.`);
+  } else if(contrib.length){
+    p(`<strong>2. Formal weighted blend.</strong> Each available prior contributes a rate and a weight. Weights are normalized so shares sum to 100%, then ˆr = Σ(w·r) / Σw. Contribution sliders below re-scale HYDGRP / DNA / P200 / Septic relative shares.`);
+    h+=`<ul class="ia-steps">`;
+    contrib.forEach(c=>{
+      const label=infilContributionLabel(c.id);
+      let why='';
+      if(c.id==='map') why='Primary soil-map prior — usually the largest share when HYDGRP/Ksat are present.';
+      else if(c.id==='aashto') why='Used only when map soils are absent; class from nearby boring columns.';
+      else if(c.id==='septic') why='Converted from minutes/inch PercRate (not App.1 ASTM). Light weight; conflict with sandy map soils is down-weighted.';
+      else if(c.id==='p200') why='Higher fines → lower prior rate and stronger pull / hard ceiling after the blend.';
+      else if(c.id==='geophys') why='DGS gamma (± resistivity) shallow coarse/fine class — believes clay when logs say so.';
+      else if(c.id==='mukey') why='Rates observed at same (or soft-related) site DNA / mukey elsewhere in the state. Soft transfers carry lower weight.';
+      else if(c.id==='field') why='Soft field anchor (beyond hard-override distance) pulls the blend toward the measured borehole rate with distance decay.';
+      else why=esc(c.src||'');
+      h+=`<li><span class="ia-src">${esc(label)}</span> · <span class="ia-rate">${c.pct}% · ${c.rate} in/hr</span><br>${why}${c.src&&c.id!=='map'&&c.id!=='aashto'&&c.id!=='septic'&&c.id!=='p200'?' <span class="hint">('+esc(c.src)+')</span>':''}</li>`;
+    });
+    h+=`</ul>`;
+  } else {
+    p(`<strong>2. Blend.</strong> ${esc(I.note||'Single-source or capped estimate.')}`);
+  }
+
+  /* Caps / gates after blend */
+  const gates=[];
+  if(I.est_capped) gates.push(`Screening estimate was capped at <strong>${I.est_cap||EST_INHR_CAP} in/hr</strong> (conservative ceiling).`);
+  if(I.p200_capped&&I.p200_ceil_inhr!=null){
+    gates.push(`Near-surface P200${I.p200_top10!=null?' ≈ <strong>'+I.p200_top10+'%</strong>':''} imposed a hard ceiling of <strong>${I.p200_ceil_inhr} in/hr</strong> so sandy map bands cannot outrun measured fines.`);
+  } else if(I.p200_top10!=null&&I.p200_top10>=35){
+    gates.push(`Near-surface P200 ≈ <strong>${I.p200_top10}%</strong> (${I.p200_top10_borings||0} boring(s)) argues for fines-limited infiltration; the P200 prior and ceiling keep the estimate conservative.`);
+  }
+  if((I.geophys_capped||(I.geophys&&I.geophys.capped))&&I.geophys){
+    gates.push(`DGS geophys class <strong>${esc(I.geophys.class||'fines')}</strong>${I.geophys.d!=null?' @ '+I.geophys.d+' ft':''} capped screening at <strong>${I.geophys.ceil_inhr} in/hr</strong>.`);
+  } else if(I.geophys&&I.geophys.class){
+    gates.push(`Nearest DGS geophys well <strong>${esc(I.geophys.id||'')}</strong> (${I.geophys.d} ft) reads shallow <strong>${esc(I.geophys.class)}</strong>${I.geophys.class_0_10ft?' · 0–10′ '+esc(I.geophys.class_0_10ft):''} — used as a soft fines prior${I.geophys.ceil_inhr!=null?', ceiling '+I.geophys.ceil_inhr+' in/hr':''}.`);
+  }
+  if(fa&&fa.soft){
+    gates.push(`Soft field anchor <strong>${esc(fa.id)}</strong> @ ${Math.round(fa.d)} ft (measured ${fa.measured} in/hr) entered the blend with distance decay; nearby poor tests also limit how high map priors can climb.`);
+  }
+  if(I.mukey_prior&&I.mukey_prior.infil_mid!=null){
+    const mp=I.mukey_prior;
+    gates.push(`DNA analog <strong>${esc(mp.match||'')}</strong> ${esc(String(mp.key||''))} (n=${mp.n}${mp.n_cells!=null?', '+mp.n_cells+' cells':''}${mp.transfer_conf!=null?', transfer conf '+Math.round(mp.transfer_conf*100)+'%':''}${mp.from_soft_transfer?', soft phenotype fill':''}) suggested mid ≈ <strong>${mp.infil_mid} in/hr</strong>${mp.aashto?' · '+esc(mp.aashto):''}.`);
+  }
+  if(gates.length){
+    p(`<strong>3. Conservatism &amp; hard rules after the average.</strong>`);
+    gates.forEach(g=>p(g));
+  }
+
+  /* Hydro / design */
+  if(I.dtw_ft!=null){
+    if(I.separation_ok===false){
+      p(`<strong>4. Groundwater separation.</strong> DTW ≈ <strong>${I.dtw_ft} ft</strong> fails App.1 §II.A.3 (≥${I.separation_ft_req||DNREC_SEP_FT} ft). Material screening rate is kept for context, but the illustrative ÷FoS design rate is <strong>withheld</strong> — at-grade infiltration is unlikely without underdrain / redesign.`);
+    } else if(I.dtw_ft<4){
+      p(`<strong>4. Groundwater separation.</strong> DTW ≈ <strong>${I.dtw_ft} ft</strong> meets ≥${I.separation_ft_req||DNREC_SEP_FT} ft but is near seasonal high water — mounding analysis may apply (App.1 §I.B.2).`);
+    } else {
+      p(`<strong>4. Groundwater separation.</strong> DTW ≈ <strong>${I.dtw_ft} ft</strong> clears the ≥${I.separation_ft_req||DNREC_SEP_FT} ft screen for this planning check.`);
+    }
+  } else {
+    p(`<strong>4. Groundwater separation.</strong> No FirstMap / climate DTW at this click — separation was not checked here. Confirm wet-season water table before relying on infiltration.`);
+  }
+
+  if(I.design_inhr!=null){
+    p(`<strong>5. Illustrative design path.</strong> Screening est. <strong>${I.est_inhr} in/hr</strong> ÷ FoS <strong>${I.fos||DNREC_BOREHOLE_FOS}</strong> → <strong>${I.design_inhr} in/hr</strong>${I.design_capped?' (capped at '+(I.design_cap||DESIGN_INHR_CAP)+' in/hr)':''}. That FoS is the App.1 §II.A.4 cased-borehole / undersized-ring path — preferred full-size rings use field-verified steady-state, not this ÷${I.fos||DNREC_BOREHOLE_FOS}.`);
+  } else if(I.est_inhr!=null){
+    p(`<strong>5. Illustrative design.</strong> Not published here${I.separation_ok===false?' because GW separation failed':''}. Do not treat the screening number as an approved design rate.`);
+  }
+
+  /* Constraints context from enrich */
+  const flags=[];
+  if(E.gmz) flags.push('GMZ: '+E.gmz);
+  if(E.wellhead) flags.push('wellhead: '+E.wellhead);
+  if(E.wetland) flags.push('wetland: '+E.wetland);
+  if(E.flood) flags.push('flood: '+E.flood);
+  if(flags.length) p(`<strong>Site constraint flags at this point:</strong> ${esc(flags.join(' · '))}. These can prohibit or restrict infiltration even when the material rate looks workable.`);
+
+  p(`<strong>Bottom line.</strong> This is a reconnaissance blend of public soils, DelDOT borings / DNA relatives, septic PercRate, geophysics, and field anchors — not a sealed Appendix 1 design rate. Schedule ASTM D5126 (prefer full-size ring) at candidate BMP locations before design.`);
+  if(I.note) h+=`<p class="ia-foot">Blend note: ${esc(I.note)}</p>`;
+  else h+=`<p class="ia-foot">Blender ${esc(I.blender||'formal')} · FoS ${I.fos||DNREC_BOREHOLE_FOS} · screening only.</p>`;
+  h+=`</div>`;
+  return h;
+}
 function formatInfilHTML(E){
   let h=`<h3 style="margin-top:12px">Screening infiltration</h3>`;
   h+=`<div class="hint warn" style="margin-bottom:4px">Informational only — does not replace DNREC field permeability testing (ASTM D5126) or PE design.</div>`;
@@ -27192,6 +27354,8 @@ function buildSiteProfile(lat, lon, hits, radiusFt){
       septic_n:septic.length, septic_mpi_idw:mpiIdw!=null?Math.round(mpiIdw*10)/10:null,
       septic_inhr_idw:percIdw, est_inhr:infilBlend, design_inhr:designBlend, note:infilNote, fos:DNREC_BOREHOLE_FOS,
       est_cap:EST_INHR_CAP, design_cap:DESIGN_INHR_CAP,
+      p200_capped:!!blended.p200_capped,
+      geophys_capped:!!blended.geophys_capped,
       p200_top10:p200Top?p200Top.p200:(mukeyPrior&&mukeyPrior.p200_median!=null?mukeyPrior.p200_median:(geophysPrior?geophysPrior.p200:null)),
       p200_top10_n:p200Top?p200Top.n_samples:0,
       p200_top10_borings:p200Top?p200Top.n_borings:0,
@@ -27906,6 +28070,7 @@ function renderHudDrawer(ctx){
   } else if(tab==='estimate'){
     if(!estimatesEnabled()){ h+=estimatesOffNotice('Infiltration estimates'); }
     else {
+    h+=buildInfilQualitativeAnalysis(P, E);
     h+=`<table class="mini-kv">`;
     if(P.infil){
       if(P.infil.field_anchor) h+=`<tr><td>Field anchor</td><td><b>${P.infil.field_anchor.measured} in/hr</b> · ${esc(P.infil.field_anchor.id)} @ ${Math.round(P.infil.field_anchor.d)} ft</td></tr>`;
