@@ -11,8 +11,11 @@ It is **not** a sealed geotechnical report, **not** an approved DNREC design inf
 | **Hosted app (sign-in works here)** | https://m3nos95.github.io/Geotrack/geotrak/ |
 | **LabTrak (sample tracking)** | https://m3nos95.github.io/Geotrack/ |
 | **This file’s app** | `Geo_Report_Center.html` in this folder |
+| **Feature tour (demo someone)** | **[FEATURE_TOUR.md](./FEATURE_TOUR.md)** — click-by-click: Septic, DGS, project limits, boring request, checklist |
 
-> **Screenshots:** Yes — real screenshots of the app are included below (`docs/readme-screenshots/`). They were captured from the live UI. Your screen will look fuller after you open a project folder with `refs/` and `db.json`.
+> **Don’t turn someone loose on the map cold.** Use the [Feature tour](./FEATURE_TOUR.md): click a point → walk the left Site Intel tabs (Septic = perc tests, DGS = wells + PDF links, Infil = how the rate was built) → draw project limits → try a boring request.
+
+> **Screenshots:** Real UI captures live under `docs/readme-screenshots/`. The screen looks fuller after you open a project folder with `refs/` and `db.json`.
 
 ---
 
@@ -24,9 +27,25 @@ It is **not** a sealed geotechnical report, **not** an approved DNREC design inf
 3. Click **I understand — continue** on the disclaimer if it appears.
 4. Click **Open project folder** and choose your local GeoTrak project folder (the one with `refs/` and `db.json`).
 5. Turn **Estimates** **ON** in the top bar when you want screening rates.
-6. Click the map → read **Site Intel** on the left.
+6. Click the map → read **Site Intel** on the left — start with **Site**, **Septic**, **DGS**, **Borings**, **Hydro**, then **Infil**.
 
 Without a local project folder, the map still works, but most soils / borings / rates will be empty.
+
+---
+
+## Show someone the features (2-minute script)
+
+| Step | Click | Tell them |
+|------|-------|-----------|
+| 1 | Map point | “Everything on the left is about **this** spot.” |
+| 2 | **Septic** | “These are DNREC **perc tests** in the search radius — real records, not a guess.” |
+| 3 | **DGS** | “DGS wells — open the **PDF / lith / geophys** link when it’s there.” |
+| 4 | **Borings** | “Nearby DelDOT borings and lab snippets.” |
+| 5 | **Infil** (Estimates ON) | “Planning rate + plain-English story of how it was blended. Not sealed design.” |
+| 6 | **Draw limits** → Analyze | “Polygon around the job → inventory, best screening cell, short site summary.” |
+| 7 | **Request soil borings** | “Drafts the official M&R boring request sheet from purpose (bridge, pole, SWM…).” |
+
+Full checklist and talking points: **[FEATURE_TOUR.md](./FEATURE_TOUR.md)**
 
 ---
 

@@ -9,9 +9,10 @@ DelDOT Materials & Research tools hosted on GitHub Pages.
 
 ## GeoTrak user guide
 
-Plain-English instructions, every box explained, with screenshots:
-
-→ **[geo-report-center/README.md](geo-report-center/README.md)**
+| Doc | Use it for |
+|-----|------------|
+| **[geo-report-center/FEATURE_TOUR.md](geo-report-center/FEATURE_TOUR.md)** | Demo someone — click Septic / DGS / draw limits / boring request |
+| **[geo-report-center/README.md](geo-report-center/README.md)** | Full box-by-box guide + screenshots |
 
 Local app file: `geo-report-center/Geo_Report_Center.html`  
 Open a project folder with `refs/` + `db.json` for full statewide data.
