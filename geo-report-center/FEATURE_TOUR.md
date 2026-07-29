@@ -57,7 +57,7 @@ Each left button is a different “deck” of information about **that exact spo
 | **Search radius** | Drag the slider (e.g. 500 ft) | Controls how far Site Intel looks for borings, septic, anchors, DGS |
 | **Satellite** | Click | Toggle imagery basemap |
 | **Project limits** | **Draw limits** → click vertices → **Close polygon** → **Analyze & find best infil** | Inventory inside the polygon; **best screening infiltration cell** marked; **qualitative site summary** (soils, hydro, constraints, UST/landfill flags). Screening only — not Phase I / App.1 |
-| **Request soil borings** | **Request soil borings** → tap locations → pick purpose | Draft **Soil Boring Request Sheet** (BDM Fig. 105-2): count, depth, continuous SPT, infil Y/N, rock core (purpose-gated), lab tests, M&R contact. Export for M&R; engineer confirms |
+| **Request soil borings** | Top bar **Borings** (next to Hydro) → tap locations → pick purpose | Draft **Soil Boring Request Sheet** (BDM Fig. 105-2): count, depth, continuous SPT, infil Y/N, rock core (purpose-gated), lab tests, M&R contact. Export for M&R; engineer confirms |
 
 ### Say this for project limits
 > “Draw the job outline. Analyze doesn’t design the BMP — it ranks cells for screening, flags problems (wetland, GMZ, LUST), and writes a short site story you can argue with.”
@@ -111,7 +111,7 @@ Copy this into an email or print it. Check items as you demo.
 
 ### Area & request tools
 - [ ] **Draw project limits** → inventory + best infil cell + site summary  
-- [ ] **Request soil borings** → purpose-based BDM sheet draft / export  
+- [ ] **Borings** (top bar, next to Hydro) → purpose-based BDM sheet draft / export  
 - [ ] **Search radius** — widen/narrow neighbor search  
 - [ ] **Satellite** — basemap toggle  
 
