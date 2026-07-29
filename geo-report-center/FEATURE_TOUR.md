@@ -56,11 +56,11 @@ Each left button is a different “deck” of information about **that exact spo
 |---------|---------------|--------------|
 | **Search radius** | Drag the slider (e.g. 500 ft) | Controls how far Site Intel looks for borings, septic, anchors, DGS |
 | **Satellite** | Click | Toggle imagery basemap |
-| **Project limits** | **Draw limits** → click vertices → **Close polygon** → **Analyze & find best infil** | Inventory inside the polygon; **best screening infiltration cell** marked; **qualitative site summary** (soils, hydro, constraints, UST/landfill flags). Screening only — not Phase I / App.1 |
+| **Project limits** | **Draw limits** → click vertices → **Close polygon** → **Analyze & find best infil** | Inventory inside the polygon; **best screening infiltration cell** marked; **qualitative site summary**; **boring recommendations** with **Request borings** / **Request at best cell** links into the top-bar wizard. Screening only — not Phase I / App.1 |
 | **Request soil borings** | Top bar **Request borings** (next to Hydro) → tap locations → pick purpose | Draft **Soil Boring Request Sheet** (BDM Fig. 105-2): count, depth, continuous SPT, infil Y/N, rock core (purpose-gated), lab tests, M&R contact. Export for M&R; engineer confirms |
 
 ### Say this for project limits
-> “Draw the job outline. Analyze doesn’t design the BMP — it ranks cells for screening, flags problems (wetland, GMZ, LUST), and writes a short site story you can argue with.”
+> “Draw the job outline. Analyze ranks cells for screening, flags problems (wetland, GMZ, LUST), writes a short site story, and now suggests **where to request borings** — including a one-click jump to the best infil cell.”
 
 ### Say this for boring request
 > “Tap where you want borings, pick what you’re building (bridge, pole, SWM…). GeoTrak drafts the official request sheet from BDM guidance. You still review with M&R before it goes out.”
