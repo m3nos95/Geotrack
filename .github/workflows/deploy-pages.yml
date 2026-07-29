@@ -28,6 +28,11 @@ jobs:
             --exclude='.github' \
             --exclude='supabase/scripts/node_modules' \
             ./ _site/
+          # Clean GeoTrak URL: /Geotrack/geotrak/
+          if [ -f geo-report-center/Geo_Report_Center.html ]; then
+            mkdir -p _site/geotrak
+            cp geo-report-center/Geo_Report_Center.html _site/geotrak/index.html
+          fi
       - uses: actions/upload-pages-artifact@v3
         with:
           path: _site

@@ -2,11 +2,44 @@
 <html lang="en">
 <head>
   <meta charset="utf-8">
-  <meta http-equiv="refresh" content="0; url=deldot-sampletrack.html">
-  <title>LabTrak</title>
-  <script>location.replace('deldot-sampletrack.html');</script>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>DelDOT Geotrack</title>
+  <style>
+    :root { color-scheme: dark; --bg:#0b1118; --panel:#121a24; --line:#2a3747; --text:#e8eef5; --dim:#8b9bb0; --amber:#f0a84a; --cyan:#3dcfbf; }
+    * { box-sizing: border-box; }
+    body { margin:0; min-height:100vh; font-family: "Segoe UI", system-ui, sans-serif; background:
+      radial-gradient(1200px 600px at 10% -10%, rgba(240,168,74,.16), transparent 55%),
+      radial-gradient(900px 500px at 100% 0%, rgba(61,207,191,.12), transparent 50%),
+      var(--bg); color: var(--text); display:flex; align-items:center; justify-content:center; padding:28px 16px; }
+    main { width:min(560px,100%); background:rgba(18,26,36,.92); border:1px solid var(--line); border-radius:12px; padding:28px 26px 22px; }
+    h1 { margin:0 0 6px; font-size:28px; letter-spacing:.02em; }
+    h1 b { color: var(--amber); }
+    p { margin:0 0 18px; color:var(--dim); line-height:1.5; font-size:14px; }
+    .apps { display:grid; gap:10px; }
+    a.app { display:block; text-decoration:none; color:var(--text); border:1px solid var(--line); border-radius:8px; padding:14px 16px; background:rgba(10,14,20,.55); transition: border-color .15s, background .15s; }
+    a.app:hover { border-color: var(--amber); background:rgba(240,168,74,.08); }
+    a.app .name { display:block; font-size:16px; font-weight:650; margin-bottom:4px; }
+    a.app .name span { color: var(--amber); }
+    a.app .desc { display:block; font-size:12px; color:var(--dim); line-height:1.4; }
+    .foot { margin-top:16px; font-size:11px; color:var(--dim); }
+    code { color: var(--cyan); }
+  </style>
 </head>
 <body>
-  <p><a href="deldot-sampletrack.html">Open LabTrak</a></p>
+  <main>
+    <h1><b>DelDOT</b> Geotrack</h1>
+    <p>Hosted apps for Materials &amp; Research. Sign-in uses Supabase over https — do not open these as local <code>file://</code> downloads.</p>
+    <div class="apps">
+      <a class="app" href="geotrak/">
+        <span class="name"><span>GeoTrak</span> — geotech reconnaissance</span>
+        <span class="desc">Boring request, infiltration screening, site DNA, bedrock screen. Open project folder for local refs/DB.</span>
+      </a>
+      <a class="app" href="deldot-sampletrack.html">
+        <span class="name"><span>LabTrak</span> — sample tracking</span>
+        <span class="desc">Field / lab sample workflows (existing app).</span>
+      </a>
+    </div>
+    <p class="foot">Direct GeoTrak file: <a href="geo-report-center/Geo_Report_Center.html" style="color:var(--cyan)">geo-report-center/Geo_Report_Center.html</a></p>
+  </main>
 </body>
 </html>
