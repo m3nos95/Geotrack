@@ -161,7 +161,7 @@ These sit on the right of the Map tab.
 ### Search radius & basemap
 | Box | Meaning | What you do |
 |-----|---------|-------------|
-| **Search radius** (e.g. 500 ft) | How far to look for nearby borings / septic / anchors | Drag slider |
+| **Search radius** (e.g. 500 ft) | Yellow map circle + nearby lists only — **not** the screening infil blend | Drag slider |
 | **Satellite** | Switch basemap | Click |
 
 ---

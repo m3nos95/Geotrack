@@ -32,7 +32,7 @@ Each left button is a different “deck” of information about **that exact spo
 | **Anchors** | Real DelDOT borehole infil tests | Measured rates (amber diamonds on map); strongest truth when nearby |
 | **DGS** | Delaware Geological Survey wells | Nearby DGIR wells; **PDF / lith / geophys links** when available; shallow coarse/fine from gamma |
 | **Props** | Screening engineering properties | Subgrade / frost / drainage-style priors from AASHTO — not a lab CBR report |
-| **Septic** | DNREC septic / perc records | **All PercRate points in the search radius** — minutes/inch, distance, useful as a soft infil clue (not App.1 ASTM) |
+| **Septic** | DNREC septic / perc records | Browse PercRate points in the **search radius** list; screening blend uses a **fixed** septic window (not the slider) |
 | **Class** | Soil classification at the point | AASHTO / USCS from nearby borings (or NRCS fallback) |
 | **Column** | Stick log with depth | 0–50′ layers; enter **Subsurface** for a deeper column view |
 | **Layers** | Constraint polygons hitting the point | Flood, wetland, GMZ, wellhead, brownfield/UST/landfill flags, etc. |
@@ -54,7 +54,7 @@ Each left button is a different “deck” of information about **that exact spo
 
 | Feature | How to use it | What you get |
 |---------|---------------|--------------|
-| **Search radius** | Drag the slider (e.g. 500 ft) | Controls how far Site Intel looks for borings, septic, anchors, DGS |
+| **Search radius** | Drag the slider (e.g. 500 ft) | Yellow map circle + nearby **lists** (borings / septic browse / DGS). Does **not** change screening infil — that uses fixed engine windows + statewide DNA |
 | **Satellite** | Click | Toggle imagery basemap |
 | **Project limits** | **Draw limits** → click vertices → **Close polygon** → **Analyze & find best infil** | Inventory inside the polygon; **best screening infiltration cell** marked; **qualitative site summary**; **boring recommendations** with **Request borings** / **Request at best cell** links into the top-bar wizard. Screening only — not Phase I / App.1 |
 | **Request soil borings** | Top bar **Request borings** (next to Hydro) → tap locations → pick purpose | Draft **Soil Boring Request Sheet** (BDM Fig. 105-2): count, depth, continuous SPT, infil Y/N, rock core (purpose-gated), lab tests, M&R contact. Export for M&R; engineer confirms |
@@ -112,7 +112,7 @@ Copy this into an email or print it. Check items as you demo.
 ### Area & request tools
 - [ ] **Draw project limits** → inventory + best infil cell + site summary  
 - [ ] **Request borings** (top bar, next to Hydro) → purpose-based BDM sheet draft / export  
-- [ ] **Search radius** — widen/narrow neighbor search  
+- [ ] **Search radius** — widen/narrow nearby **lists** / map circle (infil rate should stay the same)  
 - [ ] **Satellite** — basemap toggle  
 
 ### Data & documents
