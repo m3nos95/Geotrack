@@ -23,7 +23,7 @@ It is **not** a sealed geotechnical report, **not** an approved DNREC design inf
 
 1. Open https://m3nos95.github.io/Geotrack/geotrak/ in Chrome or Edge (**not** a downloaded double-clicked file).
 2. Sign in with your LabTrak / Supabase email and password  
-   (or **Create account**, or **Connection settings → Reset to LabTrak project** if login fails).
+   (accounts are managed in Supabase; use **Connection settings → Reset to LabTrak project** if login fails).
 3. Click **I understand — continue** on the disclaimer if it appears.
 4. Click **Open project folder** and choose your local GeoTrak project folder (the one with `refs/` and `db.json`).
 5. Turn **Estimates** **ON** in the top bar when you want screening rates.
@@ -72,23 +72,19 @@ Full checklist and talking points: **[FEATURE_TOUR.md](./FEATURE_TOUR.md)**
 
 | Box / button | What it means | What you do |
 |--------------|---------------|-------------|
-| **DelDOT GeoTrak** | App title | — |
+| Logo + **DelDOT GeoTrak** | Same branding as the splash screen | — |
 | Connection status (teal) | Can the browser reach Supabase? | If it fails, open Connection settings |
-| **SIGN IN / CREATE ACCOUNT** | Two modes | Pick one |
 | **EMAIL** | Your login | Work email |
 | **PASSWORD** | Your password (checked by Supabase — not stored in the HTML) | Type password |
-| **Confirm password** | Create-account only | Type again |
-| **SIGN IN / CREATE ACCOUNT** (button) | Submit | Click |
-| **Connection settings** | Point GeoTrak at the right Supabase project | Expand if login fails |
+| **SIGN IN** | Submit | Click |
+| **Connection settings** | Point GeoTrak at the right Supabase project | Collapsed by default — expand if login fails |
 | **Supabase URL** | Project web address (`https://xxxxx.supabase.co`) | Must match LabTrak’s project for shared logins |
 | **Anon key** | Public browser key from Supabase → Project Settings → API Keys | Paste `anon` `public` key (never `service_role`) |
 | **Save connection** | Remember URL + key in this browser | Click after pasting |
 | **Test** | Ping Supabase | Should say Connected ✓ |
 | **Reset to LabTrak project** | Put back the shared LabTrak Supabase project | Use this if you pointed at a new empty project and passwords “don’t work” |
 
-**Important:** LabTrak and GeoTrak should use the **same** Supabase project so the same email/password works in both. A brand-new empty project will say “wrong password” for old LabTrak users.
-
-![Create account](docs/readme-screenshots/02-create-account.png)
+**Important:** LabTrak and GeoTrak should use the **same** Supabase project so the same email/password works in both. A brand-new empty project will say “wrong password” for old LabTrak users. New users are created in the **Supabase Dashboard** (Authentication → Users), not in GeoTrak.
 
 ---
 
