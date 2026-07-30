@@ -20862,6 +20862,15 @@ body{font:13px/1.45 -apple-system,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;b
 #measureDock .meas-readout .sub{font-size:11px;color:var(--dim);margin-top:4px}
 #measureDock .meas-actions{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}
 .map-measure{cursor:crosshair !important}
+
+#firstmapList{margin-top:10px;border-top:1px solid var(--line);padding-top:8px;max-height:min(42vh,360px);overflow:auto}
+#firstmapList .fm-head{font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:var(--cyan);margin:8px 0 4px;display:flex;align-items:center;gap:8px}
+#firstmapList .fm-head .sp{flex:1}
+#firstmapList .layerRow.heavy .nm{opacity:.9}
+#firstmapList .fm-badge{font-family:var(--mono);font-size:10px;color:var(--dim);margin-left:6px}
+#firstmapList .fm-badge.on{color:var(--cyan)}
+#firstmapList .fm-badge.load{color:var(--amber)}
+
 @media (max-width:900px){
   #boringReqDock{left:10px;right:10px;width:auto}
   #measureDock{left:10px;right:10px;width:auto}
@@ -21257,7 +21266,7 @@ table.list td{padding:5px 8px;border-bottom:1px solid rgba(46,58,72,.5);font-fam
 <div id="hdr">
   <div class="brand" title="Delaware Department of Transportation">
     <img src="data:image/png;base64,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" width="28" height="28" alt="DelDOT">
-    <h1><b>DelDOT</b> GeoTrak<span class="badge">v0.75</span></h1>
+    <h1><b>DelDOT</b> GeoTrak<span class="badge">v0.76</span></h1>
   </div>
   <button class="tab on" data-p="map">Map</button>
   <button class="tab" data-p="refs">Reference data</button>
@@ -21297,6 +21306,12 @@ table.list td{padding:5px 8px;border-bottom:1px solid rgba(46,58,72,.5);font-fam
       <button type="button" class="hbtn" id="layerDisableAll">All off</button>
     </div>
     <div id="layerList" class="layer-list-scroll"><div class="hint">Open project folder to load refs/.</div></div>
+    <div class="hint" style="margin-top:10px"><b>DelDOT FirstMap</b> — toggle online layers (lazy-load). Offline pack: <code>download-deldot-firstmap.bat</code>. Bridges also under Markers. Street View / huge road packs need confirm.</div>
+    <div class="layer-toolbar" style="margin-top:6px">
+      <input type="search" id="firstmapFilter" placeholder="Filter DelDOT layers…" autocomplete="off">
+      <button type="button" class="hbtn" id="firstmapOffAll">All offline</button>
+    </div>
+    <div id="firstmapList"></div>
   </div>
   <div class="hdr-pop-panel" id="hdrPopMarkers" data-pop="markers">
     <h3>Map markers<span class="sp"></span><button type="button" class="hdr-pop-close" data-hdr-close title="Close">✕</button></h3>
@@ -21628,6 +21643,97 @@ const HYDRO_SERVICES={
 };
 const BRIDGE_SERVICE='https://enterprise.firstmap.delaware.gov/arcgis/rest/services/Transportation/DE_Roadways_Main/FeatureServer/0';
 const BRIDGE_NEAR_FT=2500;
+const FIRSTMAP_FS_BASE='https://enterprise.firstmap.delaware.gov/arcgis/rest/services';
+const FIRSTMAP_LAYERS=[
+  {id:'centerline',label:'Centerline',svc:'Transportation/DE_Roadways_Main/FeatureServer',lid:1,hint:78309,heavy:true,skipDefault:false,style:{color:'#94a3b8',weight:1.5,opacity:0.75,fillColor:'#94a3b8',fillOpacity:0.45,radius:3.5}},
+  {id:'road_inventory',label:'Road inventory',svc:'Transportation/DE_Roadways_Main/FeatureServer',lid:2,hint:112272,heavy:true,skipDefault:false,style:{color:'#94a3b8',weight:1.5,opacity:0.75,fillColor:'#94a3b8',fillOpacity:0.45,radius:3.5}},
+  {id:'guardrails',label:'Guardrails',svc:'Transportation/DE_Roadways_Main/FeatureServer',lid:3,hint:5387,heavy:false,skipDefault:false,style:{color:'#a3e635',weight:1.5,opacity:0.7,fillColor:'#a3e635',fillOpacity:0.5,radius:3}},
+  {id:'infra_bridge_agreement',label:'Infrastructure bridge agreement',svc:'Transportation/DE_Roadways_Main/FeatureServer',lid:4,hint:171,heavy:false,skipDefault:false,style:{color:'#94a3b8',weight:1.5,opacity:0.75,fillColor:'#94a3b8',fillOpacity:0.45,radius:3.5}},
+  {id:'infra_road_agreement',label:'Infrastructure road agreement',svc:'Transportation/DE_Roadways_Main/FeatureServer',lid:5,hint:1448,heavy:false,skipDefault:false,style:{color:'#94a3b8',weight:1.5,opacity:0.75,fillColor:'#94a3b8',fillOpacity:0.45,radius:3.5}},
+  {id:'intersections',label:'Intersections',svc:'Transportation/DE_Roadways_Main/FeatureServer',lid:6,hint:34425,heavy:false,skipDefault:false,style:{color:'#94a3b8',weight:1.5,opacity:0.75,fillColor:'#94a3b8',fillOpacity:0.45,radius:3.5}},
+  {id:'maintenance_responsibility',label:'Maintenance responsibility',svc:'Transportation/DE_Roadways_Main/FeatureServer',lid:7,hint:14509,heavy:false,skipDefault:false,style:{color:'#3dcfbf',weight:2,opacity:0.8,fillColor:'#3dcfbf',fillOpacity:0.15}},
+  {id:'routes',label:'Routes',svc:'Transportation/DE_Roadways_Main/FeatureServer',lid:8,hint:540,heavy:false,skipDefault:false,style:{color:'#94a3b8',weight:1.5,opacity:0.75,fillColor:'#94a3b8',fillOpacity:0.45,radius:3.5}},
+  {id:'snow_primary',label:'Snow removal — primary',svc:'Transportation/DE_Roadways_Main/FeatureServer',lid:9,hint:1722,heavy:false,skipDefault:false,style:{color:'#94a3b8',weight:1.5,opacity:0.75,fillColor:'#94a3b8',fillOpacity:0.45,radius:3.5}},
+  {id:'snow_secondary',label:'Snow removal — secondary',svc:'Transportation/DE_Roadways_Main/FeatureServer',lid:10,hint:632,heavy:false,skipDefault:false,style:{color:'#94a3b8',weight:1.5,opacity:0.75,fillColor:'#94a3b8',fillOpacity:0.45,radius:3.5}},
+  {id:'snow_tertiary',label:'Snow removal — tertiary',svc:'Transportation/DE_Roadways_Main/FeatureServer',lid:11,hint:4177,heavy:false,skipDefault:false,style:{color:'#94a3b8',weight:1.5,opacity:0.75,fillColor:'#94a3b8',fillOpacity:0.45,radius:3.5}},
+  {id:'snow_suburban',label:'Snow removal — suburban',svc:'Transportation/DE_Roadways_Main/FeatureServer',lid:12,hint:1971,heavy:false,skipDefault:false,style:{color:'#94a3b8',weight:1.5,opacity:0.75,fillColor:'#94a3b8',fillOpacity:0.45,radius:3.5}},
+  {id:'snow_reimburse',label:'Snow reimburse',svc:'Transportation/DE_Roadways_Main/FeatureServer',lid:13,hint:6298,heavy:false,skipDefault:false,style:{color:'#94a3b8',weight:1.5,opacity:0.75,fillColor:'#94a3b8',fillOpacity:0.45,radius:3.5}},
+  {id:'snowstations',label:'Snow stations',svc:'Transportation/DE_Roadways_Main/FeatureServer',lid:14,hint:26,heavy:false,skipDefault:false,style:{color:'#94a3b8',weight:1.5,opacity:0.75,fillColor:'#94a3b8',fillOpacity:0.45,radius:3.5}},
+  {id:'speed_limit',label:'Speed limit',svc:'Transportation/DE_Roadways_Main/FeatureServer',lid:15,hint:16083,heavy:false,skipDefault:false,style:{color:'#94a3b8',weight:1.5,opacity:0.75,fillColor:'#94a3b8',fillOpacity:0.45,radius:3.5}},
+  {id:'functional_class',label:'Functional class',svc:'Transportation/DE_Roadways_Main/FeatureServer',lid:16,hint:14479,heavy:false,skipDefault:false,style:{color:'#94a3b8',weight:1.5,opacity:0.75,fillColor:'#94a3b8',fillOpacity:0.45,radius:3.5}},
+  {id:'nhs',label:'NHS',svc:'Transportation/DE_Roadways_Main/FeatureServer',lid:17,hint:192,heavy:false,skipDefault:false,style:{color:'#94a3b8',weight:1.5,opacity:0.75,fillColor:'#94a3b8',fillOpacity:0.45,radius:3.5}},
+  {id:'state_maint_roads',label:'State-maintained maintenance roads',svc:'Transportation/DE_Roadways_Main/FeatureServer',lid:18,hint:61582,heavy:true,skipDefault:false,style:{color:'#3dcfbf',weight:2,opacity:0.8,fillColor:'#3dcfbf',fillOpacity:0.15}},
+  {id:'state_maint_subdivisions',label:'State-maintained subdivisions',svc:'Transportation/DE_Roadways_Main/FeatureServer',lid:19,hint:32188,heavy:false,skipDefault:false,style:{color:'#3dcfbf',weight:2,opacity:0.8,fillColor:'#3dcfbf',fillOpacity:0.15}},
+  {id:'lane_shoulder_median',label:'Lane / shoulder / median',svc:'Transportation/DE_Roadways_Main/FeatureServer',lid:20,hint:60408,heavy:true,skipDefault:false,style:{color:'#94a3b8',weight:1.5,opacity:0.75,fillColor:'#94a3b8',fillOpacity:0.45,radius:3.5}},
+  {id:'network_segment_intersection',label:'Network segment at intersection',svc:'Transportation/DE_Roadways_Main/FeatureServer',lid:21,hint:43686,heavy:false,skipDefault:false,style:{color:'#94a3b8',weight:1.5,opacity:0.75,fillColor:'#94a3b8',fillOpacity:0.45,radius:3.5}},
+  {id:'ctp_web',label:'CTP projects (web)',svc:'Transportation/DE_Assets/FeatureServer',lid:0,hint:1359,heavy:false,skipDefault:false,style:{color:'#3dcfbf',weight:2,opacity:0.8,fillColor:'#3dcfbf',fillOpacity:0.15}},
+  {id:'ctp_point',label:'CTP projects (points)',svc:'Transportation/DE_Assets/FeatureServer',lid:1,hint:31,heavy:false,skipDefault:false,style:{color:'#3dcfbf',weight:2,opacity:0.8,fillColor:'#3dcfbf',fillOpacity:0.15}},
+  {id:'ctp_line',label:'CTP projects (lines)',svc:'Transportation/DE_Assets/FeatureServer',lid:2,hint:21490,heavy:false,skipDefault:false,style:{color:'#3dcfbf',weight:2,opacity:0.8,fillColor:'#3dcfbf',fillOpacity:0.15}},
+  {id:'ctp_poly',label:'CTP projects (polygons)',svc:'Transportation/DE_Assets/FeatureServer',lid:3,hint:299,heavy:false,skipDefault:false,style:{color:'#3dcfbf',weight:2,opacity:0.8,fillColor:'#3dcfbf',fillOpacity:0.15}},
+  {id:'lightposts',label:'Lightposts',svc:'Transportation/DE_Assets/FeatureServer',lid:4,hint:15052,heavy:false,skipDefault:false,style:{color:'#f0a84a',weight:1.5,fillColor:'#f0a84a',fillOpacity:0.75,radius:4}},
+  {id:'lightposts_suburban',label:'Lightposts (suburban)',svc:'Transportation/DE_Assets/FeatureServer',lid:5,hint:21465,heavy:false,skipDefault:false,style:{color:'#f0a84a',weight:1.5,fillColor:'#f0a84a',fillOpacity:0.75,radius:4}},
+  {id:'milemarkers',label:'Milemarkers',svc:'Transportation/DE_Assets/FeatureServer',lid:6,hint:644,heavy:false,skipDefault:false,style:{color:'#f0a84a',weight:1.5,fillColor:'#f0a84a',fillOpacity:0.75,radius:4}},
+  {id:'overhead_signs',label:'Overhead sign structures',svc:'Transportation/DE_Assets/FeatureServer',lid:7,hint:244,heavy:false,skipDefault:false,style:{color:'#f0a84a',weight:1.5,fillColor:'#f0a84a',fillOpacity:0.75,radius:4}},
+  {id:'road_ratings',label:'Road ratings',svc:'Transportation/DE_Assets/FeatureServer',lid:8,hint:20247,heavy:false,skipDefault:false,style:{color:'#94a3b8',weight:1.5,opacity:0.75,fillColor:'#94a3b8',fillOpacity:0.45,radius:3.5}},
+  {id:'traffic_counts',label:'Traffic counts',svc:'Transportation/DE_Assets/FeatureServer',lid:9,hint:4134,heavy:false,skipDefault:false,style:{color:'#94a3b8',weight:1.5,opacity:0.75,fillColor:'#94a3b8',fillOpacity:0.45,radius:3.5}},
+  {id:'traffic_counts_10yr',label:'Traffic counts (10 yr)',svc:'Transportation/DE_Assets/FeatureServer',lid:10,hint:4134,heavy:false,skipDefault:false,style:{color:'#94a3b8',weight:1.5,opacity:0.75,fillColor:'#94a3b8',fillOpacity:0.45,radius:3.5}},
+  {id:'utilities_permit',label:'Utilities permits',svc:'Transportation/DE_Assets/FeatureServer',lid:11,hint:246,heavy:false,skipDefault:false,style:{color:'#94a3b8',weight:1.5,opacity:0.75,fillColor:'#94a3b8',fillOpacity:0.45,radius:3.5}},
+  {id:'traffic_counter_locations',label:'Traffic counter locations',svc:'Transportation/DE_Assets/FeatureServer',lid:12,hint:4134,heavy:false,skipDefault:false,style:{color:'#f0a84a',weight:1.5,fillColor:'#f0a84a',fillOpacity:0.75,radius:4}},
+  {id:'impaired_sites',label:'DelDOT-owned DNREC impaired sites',svc:'Transportation/DE_Assets/FeatureServer',lid:13,hint:141,heavy:false,skipDefault:false,style:{color:'#f0a84a',weight:1.5,fillColor:'#f0a84a',fillOpacity:0.75,radius:4}},
+  {id:'historic_markers',label:'Historic markers',svc:'Transportation/DE_Assets/FeatureServer',lid:14,hint:578,heavy:false,skipDefault:false,style:{color:'#f0a84a',weight:1.5,fillColor:'#f0a84a',fillOpacity:0.75,radius:4}},
+  {id:'leg_report_line',label:'Legislative report (lines)',svc:'Transportation/DE_Assets/FeatureServer',lid:16,hint:569,heavy:false,skipDefault:false,style:{color:'#94a3b8',weight:1.5,opacity:0.75,fillColor:'#94a3b8',fillOpacity:0.45,radius:3.5}},
+  {id:'leg_report_poly',label:'Legislative report (polygons)',svc:'Transportation/DE_Assets/FeatureServer',lid:17,hint:4,heavy:false,skipDefault:false,style:{color:'#94a3b8',weight:1.5,opacity:0.75,fillColor:'#94a3b8',fillOpacity:0.45,radius:3.5}},
+  {id:'paving_current',label:'Paving — current',svc:'Transportation/DE_Assets/FeatureServer',lid:18,hint:136,heavy:false,skipDefault:false,style:{color:'#3dcfbf',weight:2,opacity:0.8,fillColor:'#3dcfbf',fillOpacity:0.15}},
+  {id:'paving_archive',label:'Paving — archive',svc:'Transportation/DE_Assets/FeatureServer',lid:19,hint:5840,heavy:false,skipDefault:false,style:{color:'#3dcfbf',weight:2,opacity:0.8,fillColor:'#3dcfbf',fillOpacity:0.15}},
+  {id:'evacuation_routes',label:'Evacuation routes',svc:'Transportation/DE_Roadways_Other/FeatureServer',lid:0,hint:1900,heavy:false,skipDefault:false,style:{color:'#5b9fd4',weight:2.5,opacity:0.85}},
+  {id:'fhwa_national_highway',label:'FHWA national highway',svc:'Transportation/DE_Roadways_Other/FeatureServer',lid:1,hint:56123,heavy:true,skipDefault:false,style:{color:'#94a3b8',weight:1.5,opacity:0.75,fillColor:'#94a3b8',fillOpacity:0.45,radius:3.5}},
+  {id:'freq_flooded_roads',label:'Frequently flooded roadways',svc:'Transportation/DE_Roadways_Other/FeatureServer',lid:2,hint:967,heavy:false,skipDefault:false,style:{color:'#5b9fd4',weight:2.5,opacity:0.85}},
+  {id:'private_proposed_streets',label:'Private / proposed streets',svc:'Transportation/DE_Roadways_Other/FeatureServer',lid:3,hint:26135,heavy:false,skipDefault:false,style:{color:'#a3e635',weight:1.5,opacity:0.7,fillColor:'#a3e635',fillOpacity:0.5,radius:3}},
+  {id:'roundabouts',label:'Roundabouts / traffic circles',svc:'Transportation/DE_Roadways_Other/FeatureServer',lid:4,hint:56,heavy:false,skipDefault:false,style:{color:'#94a3b8',weight:1.5,opacity:0.75,fillColor:'#94a3b8',fillOpacity:0.45,radius:3.5}},
+  {id:'street_view',label:'Street View points',svc:'Transportation/DE_Roadways_Other/FeatureServer',lid:16,hint:744115,heavy:true,skipDefault:true,style:{color:'#a3e635',weight:1.5,opacity:0.7,fillColor:'#a3e635',fillOpacity:0.5,radius:3}},
+  {id:'byways_poi',label:'Byways — points of interest',svc:'Transportation/DE_Roadways_Other/FeatureServer',lid:17,hint:350,heavy:false,skipDefault:false,style:{color:'#94a3b8',weight:1.5,opacity:0.75,fillColor:'#94a3b8',fillOpacity:0.45,radius:3.5}},
+  {id:'byways',label:'Byways',svc:'Transportation/DE_Roadways_Other/FeatureServer',lid:18,hint:12,heavy:false,skipDefault:false,style:{color:'#94a3b8',weight:1.5,opacity:0.75,fillColor:'#94a3b8',fillOpacity:0.45,radius:3.5}},
+  {id:'byways_buf_660',label:'Byways buffer 660',svc:'Transportation/DE_Roadways_Other/FeatureServer',lid:19,hint:1,heavy:false,skipDefault:false,style:{color:'#94a3b8',weight:1.5,opacity:0.75,fillColor:'#94a3b8',fillOpacity:0.45,radius:3.5}},
+  {id:'byways_buf_680',label:'Byways buffer 680',svc:'Transportation/DE_Roadways_Other/FeatureServer',lid:20,hint:1,heavy:false,skipDefault:false,style:{color:'#94a3b8',weight:1.5,opacity:0.75,fillColor:'#94a3b8',fillOpacity:0.45,radius:3.5}},
+  {id:'as_builts',label:'Electronic as-builts',svc:'Transportation/DE_Electronic_As_Builts_Assets/FeatureServer',lid:0,hint:316,heavy:false,skipDefault:false,style:{color:'#f0a84a',weight:1.5,fillColor:'#f0a84a',fillOpacity:0.75,radius:4}},
+  {id:'as_designed',label:'As-designed',svc:'Transportation/DE_Electronic_As_Builts_Assets/FeatureServer',lid:1,hint:655,heavy:false,skipDefault:false,style:{color:'#f0a84a',weight:1.5,fillColor:'#f0a84a',fillOpacity:0.75,radius:4}},
+  {id:'as_designed_lines',label:'As-designed line assets',svc:'Transportation/DE_Electronic_As_Builts_Assets/FeatureServer',lid:2,hint:26,heavy:false,skipDefault:false,style:{color:'#f0a84a',weight:1.5,fillColor:'#f0a84a',fillOpacity:0.75,radius:4}},
+  {id:'dtc_facility',label:'DTC facilities',svc:'Transportation/DE_Boundary_and_Point/FeatureServer',lid:0,hint:6,heavy:false,skipDefault:false,style:{color:'#f0a84a',weight:1.5,fillColor:'#f0a84a',fillOpacity:0.75,radius:4}},
+  {id:'aggregate_plants',label:'DelDOT aggregate plants',svc:'Transportation/DE_Boundary_and_Point/FeatureServer',lid:1,hint:6,heavy:false,skipDefault:false,style:{color:'#f0a84a',weight:1.5,fillColor:'#f0a84a',fillOpacity:0.75,radius:4}},
+  {id:'asphalt_plants',label:'DelDOT asphalt plants',svc:'Transportation/DE_Boundary_and_Point/FeatureServer',lid:2,hint:0,heavy:false,skipDefault:false,style:{color:'#f0a84a',weight:1.5,fillColor:'#f0a84a',fillOpacity:0.75,radius:4}},
+  {id:'concrete_plants',label:'DelDOT concrete plants',svc:'Transportation/DE_Boundary_and_Point/FeatureServer',lid:3,hint:14,heavy:false,skipDefault:false,style:{color:'#f0a84a',weight:1.5,fillColor:'#f0a84a',fillOpacity:0.75,radius:4}},
+  {id:'deldot_buildings',label:'DelDOT buildings',svc:'Transportation/DE_Boundary_and_Point/FeatureServer',lid:4,hint:27,heavy:false,skipDefault:false,style:{color:'#f0a84a',weight:1.5,fillColor:'#f0a84a',fillOpacity:0.75,radius:4}},
+  {id:'maintenance_yards',label:'DelDOT maintenance yards',svc:'Transportation/DE_Boundary_and_Point/FeatureServer',lid:5,hint:37,heavy:false,skipDefault:false,style:{color:'#f0a84a',weight:1.5,fillColor:'#f0a84a',fillOpacity:0.75,radius:4}},
+  {id:'maintenance_districts',label:'DelDOT maintenance districts',svc:'Transportation/DE_Boundary_and_Point/FeatureServer',lid:6,hint:4,heavy:false,skipDefault:false,style:{color:'#3dcfbf',weight:2,opacity:0.8,fillColor:'#3dcfbf',fillOpacity:0.15}},
+  {id:'maintenance_areas',label:'DelDOT maintenance areas',svc:'Transportation/DE_Boundary_and_Point/FeatureServer',lid:7,hint:12,heavy:false,skipDefault:false,style:{color:'#3dcfbf',weight:2,opacity:0.8,fillColor:'#3dcfbf',fillOpacity:0.15}},
+  {id:'mpo_areas',label:'MPO planning areas',svc:'Transportation/DE_Boundary_and_Point/FeatureServer',lid:8,hint:3,heavy:false,skipDefault:false,style:{color:'#3dcfbf',weight:2,opacity:0.8,fillColor:'#3dcfbf',fillOpacity:0.15}},
+  {id:'obs_bridge_rails',label:'Roadside — bridge rails',svc:'Transportation/DE_Boundary_and_Point/FeatureServer',lid:9,hint:1106,heavy:false,skipDefault:false,style:{color:'#a3e635',weight:1.5,opacity:0.7,fillColor:'#a3e635',fillOpacity:0.5,radius:3}},
+  {id:'obs_bus_shelters',label:'Roadside — bus shelters',svc:'Transportation/DE_Boundary_and_Point/FeatureServer',lid:10,hint:121,heavy:false,skipDefault:false,style:{color:'#a3e635',weight:1.5,opacity:0.7,fillColor:'#a3e635',fillOpacity:0.5,radius:3}},
+  {id:'obs_fences',label:'Roadside — fences',svc:'Transportation/DE_Boundary_and_Point/FeatureServer',lid:11,hint:9491,heavy:false,skipDefault:false,style:{color:'#a3e635',weight:1.5,opacity:0.7,fillColor:'#a3e635',fillOpacity:0.5,radius:3}},
+  {id:'obs_headwalls',label:'Roadside — headwalls',svc:'Transportation/DE_Boundary_and_Point/FeatureServer',lid:12,hint:13492,heavy:false,skipDefault:false,style:{color:'#a3e635',weight:1.5,opacity:0.7,fillColor:'#a3e635',fillOpacity:0.5,radius:3}},
+  {id:'obs_light_poles',label:'Roadside — light poles',svc:'Transportation/DE_Boundary_and_Point/FeatureServer',lid:13,hint:27490,heavy:false,skipDefault:false,style:{color:'#a3e635',weight:1.5,opacity:0.7,fillColor:'#a3e635',fillOpacity:0.5,radius:3}},
+  {id:'obs_mailboxes',label:'Roadside — mailboxes',svc:'Transportation/DE_Boundary_and_Point/FeatureServer',lid:14,hint:20789,heavy:false,skipDefault:false,style:{color:'#a3e635',weight:1.5,opacity:0.7,fillColor:'#a3e635',fillOpacity:0.5,radius:3}},
+  {id:'obs_other_lines',label:'Roadside — other lines',svc:'Transportation/DE_Boundary_and_Point/FeatureServer',lid:15,hint:529,heavy:false,skipDefault:false,style:{color:'#a3e635',weight:1.5,opacity:0.7,fillColor:'#a3e635',fillOpacity:0.5,radius:3}},
+  {id:'obs_signal_poles',label:'Roadside — signal poles',svc:'Transportation/DE_Boundary_and_Point/FeatureServer',lid:16,hint:1952,heavy:false,skipDefault:false,style:{color:'#f0a84a',weight:1.5,fillColor:'#f0a84a',fillOpacity:0.75,radius:4}},
+  {id:'obs_tree_groves',label:'Roadside — tree groves',svc:'Transportation/DE_Boundary_and_Point/FeatureServer',lid:17,hint:7560,heavy:false,skipDefault:false,style:{color:'#a3e635',weight:1.5,opacity:0.7,fillColor:'#a3e635',fillOpacity:0.5,radius:3}},
+  {id:'obs_trees',label:'Roadside — trees',svc:'Transportation/DE_Boundary_and_Point/FeatureServer',lid:18,hint:48735,heavy:false,skipDefault:false,style:{color:'#a3e635',weight:1.5,opacity:0.7,fillColor:'#a3e635',fillOpacity:0.5,radius:3}},
+  {id:'soil_borings',label:'DelDOT soil borings (FirstMap)',svc:'Transportation/DE_Boundary_and_Point/FeatureServer',lid:19,hint:4136,heavy:false,skipDefault:false,style:{color:'#f0a84a',weight:1.5,fillColor:'#f0a84a',fillOpacity:0.75,radius:4}},
+  {id:'taz',label:'Transportation analysis zones',svc:'Transportation/DE_Boundary_and_Point/FeatureServer',lid:20,hint:1281,heavy:false,skipDefault:false,style:{color:'#3dcfbf',weight:2,opacity:0.8,fillColor:'#3dcfbf',fillOpacity:0.15}},
+  {id:'tid',label:'Transportation improvement districts',svc:'Transportation/DE_Boundary_and_Point/FeatureServer',lid:21,hint:14,heavy:false,skipDefault:false,style:{color:'#3dcfbf',weight:2,opacity:0.8,fillColor:'#3dcfbf',fillOpacity:0.15}},
+  {id:'toll_booths',label:'Toll booths',svc:'Transportation/DE_Boundary_and_Point/FeatureServer',lid:23,hint:17,heavy:false,skipDefault:false,style:{color:'#f0a84a',weight:1.5,fillColor:'#f0a84a',fillOpacity:0.75,radius:4}},
+  {id:'atr_counters',label:'ATR traffic counters',svc:'Transportation/DE_Boundary_and_Point/FeatureServer',lid:24,hint:37,heavy:false,skipDefault:false,style:{color:'#f0a84a',weight:1.5,fillColor:'#f0a84a',fillOpacity:0.75,radius:4}},
+  {id:'bluetooth_detectors',label:'Bluetooth detectors',svc:'Transportation/DE_Boundary_and_Point/FeatureServer',lid:25,hint:295,heavy:false,skipDefault:false,style:{color:'#f0a84a',weight:1.5,fillColor:'#f0a84a',fillOpacity:0.75,radius:4}},
+  {id:'cameras',label:'Traffic cameras',svc:'Transportation/DE_Boundary_and_Point/FeatureServer',lid:26,hint:440,heavy:false,skipDefault:false,style:{color:'#f0a84a',weight:1.5,fillColor:'#f0a84a',fillOpacity:0.75,radius:4}},
+  {id:'red_light_signals',label:'Red light signals',svc:'Transportation/DE_Boundary_and_Point/FeatureServer',lid:28,hint:60,heavy:false,skipDefault:false,style:{color:'#f0a84a',weight:1.5,fillColor:'#f0a84a',fillOpacity:0.75,radius:4}},
+  {id:'signals',label:'Traffic signals',svc:'Transportation/DE_Boundary_and_Point/FeatureServer',lid:29,hint:1502,heavy:false,skipDefault:false,style:{color:'#f0a84a',weight:1.5,fillColor:'#f0a84a',fillOpacity:0.75,radius:4}},
+  {id:'vms',label:'Variable message signs',svc:'Transportation/DE_Boundary_and_Point/FeatureServer',lid:30,hint:153,heavy:false,skipDefault:false,style:{color:'#f0a84a',weight:1.5,fillColor:'#f0a84a',fillOpacity:0.75,radius:4}},
+  {id:'wavetronix',label:'Wavetronix radar',svc:'Transportation/DE_Boundary_and_Point/FeatureServer',lid:31,hint:303,heavy:false,skipDefault:false,style:{color:'#f0a84a',weight:1.5,fillColor:'#f0a84a',fillOpacity:0.75,radius:4}},
+  {id:'weather_stations',label:'Weather stations',svc:'Transportation/DE_Boundary_and_Point/FeatureServer',lid:32,hint:49,heavy:false,skipDefault:false,style:{color:'#f0a84a',weight:1.5,fillColor:'#f0a84a',fillOpacity:0.75,radius:4}},
+  {id:'urbanized_2010',label:'Urbanized areas 2010',svc:'Transportation/DE_Boundary_and_Point/FeatureServer',lid:35,hint:22,heavy:false,skipDefault:false,style:{color:'#3dcfbf',weight:2,opacity:0.8,fillColor:'#3dcfbf',fillOpacity:0.15}},
+  {id:'urbanized_2020',label:'Urbanized areas 2020',svc:'Transportation/DE_Boundary_and_Point/FeatureServer',lid:36,hint:12,heavy:false,skipDefault:false,style:{color:'#3dcfbf',weight:2,opacity:0.8,fillColor:'#3dcfbf',fillOpacity:0.15}},
+  {id:'developer_agreements',label:'Developer agreements',svc:'Transportation/DE_Boundary_and_Point/FeatureServer',lid:37,hint:1977,heavy:false,skipDefault:false,style:{color:'#3dcfbf',weight:2,opacity:0.8,fillColor:'#3dcfbf',fillOpacity:0.15}},
+];
+
 const CLIMATE_FORECAST='https://api.open-meteo.com/v1/forecast';
 const CLIMATE_ARCHIVE='https://archive-api.open-meteo.com/v1/archive';
 let lastHydro=null;
@@ -22282,6 +22388,7 @@ $('loadBridgesOnlineBtn')&&($('loadBridgesOnlineBtn').onclick=async ()=>{
   else drawBorings();
 });
 syncMarkerToggleUI();
+wireFirstmapUI();
 if(showBridgeMarkers){
   fetchDeldotBridgesOnline({silent:true}).then(()=>{ syncMarkerToggleUI(); drawBorings(); });
 }
@@ -29993,6 +30100,176 @@ $('aquiferOnline')&&($('aquiferOnline').onchange=function(){ if(lastQuery)runPoi
 $('climateBlend')&&($('climateBlend').onchange=function(){ if(lastQuery)runPointQuery(lastQuery.lat,lastQuery.lng); if(typeof refreshReportPreview==='function')refreshReportPreview(); });
 
 /* ---------- reference layer ingest ---------- */
+
+/* ---------- DelDOT FirstMap online overlays (lazy) ---------- */
+let firstmapOn={}; /* id → true */
+let firstmapLoading={};
+let firstmapCache={}; /* id → GeoJSON FeatureCollection */
+let firstmapLeaflet={}; /* id → L.geoJSON|L.layerGroup */
+let firstmapLayerGroup=null;
+function ensureFirstmapGroup(){
+  if(!firstmapLayerGroup){
+    firstmapLayerGroup=L.layerGroup().addTo(map);
+  }
+  return firstmapLayerGroup;
+}
+function firstmapTip(props){
+  if(!props) return 'DelDOT';
+  const keys=['BRIDGE_NO','NAME','LABEL','FACILITY','ROAD_NAME','RDNAME','ROUTE','SIGNAL_ID','ASSET_ID','STRUCTURE','DESCRIPTION','SITE_NAME','SITENAME'];
+  for(const k of keys){
+    if(props[k]!=null&&String(props[k]).trim()) return String(props[k]).trim();
+  }
+  const vals=Object.keys(props).slice(0,3).map(k=>props[k]).filter(v=>v!=null&&String(v).trim());
+  return vals.length?String(vals[0]):'DelDOT feature';
+}
+function firstmapPointToLayer(style){
+  return function(feature, latlng){
+    const st=Object.assign({radius:4,weight:1,fillOpacity:0.75}, style||{});
+    return L.circleMarker(latlng, st);
+  };
+}
+function firstmapStyleFn(style){
+  return function(feature){
+    return Object.assign({color:'#94a3b8',weight:1.5,opacity:0.8,fillOpacity:0.2}, style||{});
+  };
+}
+async function fetchFirstmapLayerGeoJSON(Lyr){
+  if(firstmapCache[Lyr.id]) return firstmapCache[Lyr.id];
+  const url=`${FIRSTMAP_FS_BASE}/${Lyr.svc}/${Lyr.lid}/query`;
+  const page=2000;
+  const features=[];
+  let offset=0;
+  for(let guard=0;guard<400;guard++){
+    const qs=new URLSearchParams({
+      where:'1=1', outFields:'*', returnGeometry:'true', outSR:'4326',
+      resultOffset:String(offset), resultRecordCount:String(page), f:'geojson'
+    });
+    const r=await fetch(url+'?'+qs.toString());
+    if(!r.ok) throw new Error('HTTP '+r.status);
+    const d=await r.json();
+    if(d.error) throw new Error(d.error.message||JSON.stringify(d.error));
+    const feats=d.features||[];
+    features.push(...feats);
+    toastSticky(`FirstMap ${Lyr.label}: ${features.length.toLocaleString()}…`);
+    if(feats.length<page) break;
+    offset+=feats.length;
+    await yieldToUi();
+  }
+  const gj={type:'FeatureCollection', features, deldot_firstmap:{slug:Lyr.id,label:Lyr.label,n:features.length}};
+  firstmapCache[Lyr.id]=gj;
+  return gj;
+}
+function removeFirstmapOverlay(id){
+  const lyr=firstmapLeaflet[id];
+  if(lyr&&firstmapLayerGroup) try{ firstmapLayerGroup.removeLayer(lyr); }catch(_){}
+  delete firstmapLeaflet[id];
+  firstmapOn[id]=false;
+  try{
+    const raw=JSON.parse(localStorage.getItem('geotrak_firstmap_on')||'{}');
+    delete raw[id];
+    localStorage.setItem('geotrak_firstmap_on', JSON.stringify(raw));
+  }catch(_){}
+}
+async function setFirstmapLayerOn(id, on){
+  const Lyr=FIRSTMAP_LAYERS.find(x=>x.id===id);
+  if(!Lyr) return;
+  if(!on){
+    removeFirstmapOverlay(id);
+    renderFirstmapLayerList();
+    return;
+  }
+  if(firstmapOn[id]&&firstmapLeaflet[id]){ renderFirstmapLayerList(); return; }
+  if(firstmapLoading[id]) return;
+  if(Lyr.heavy||Lyr.skipDefault){
+    const msg=Lyr.id==='street_view'
+      ?`Load Street View (~${Lyr.hint.toLocaleString()} points)? This can freeze the browser.`
+      :`Load “${Lyr.label}” (~${Lyr.hint.toLocaleString()} features)? Large layers may be slow.`;
+    if(!confirm(msg)) { renderFirstmapLayerList(); return; }
+  }
+  firstmapLoading[id]=true;
+  renderFirstmapLayerList();
+  try{
+    const gj=await fetchFirstmapLayerGeoJSON(Lyr);
+    ensureFirstmapGroup();
+    if(firstmapLeaflet[id]) try{ firstmapLayerGroup.removeLayer(firstmapLeaflet[id]); }catch(_){}
+    const layer=L.geoJSON(gj,{
+      style:firstmapStyleFn(Lyr.style),
+      pointToLayer:firstmapPointToLayer(Lyr.style),
+      onEachFeature:(f,l)=>{
+        try{ l.bindTooltip(firstmapTip(f.properties),{className:'btip',sticky:true,direction:'top'}); }catch(_){}
+      }
+    });
+    layer.addTo(firstmapLayerGroup);
+    firstmapLeaflet[id]=layer;
+    firstmapOn[id]=true;
+    try{
+      const raw=JSON.parse(localStorage.getItem('geotrak_firstmap_on')||'{}');
+      raw[id]=1;
+      localStorage.setItem('geotrak_firstmap_on', JSON.stringify(raw));
+    }catch(_){}
+    toast(`${Lyr.label}: ${(gj.features||[]).length.toLocaleString()} features on map`);
+  }catch(e){
+    console.warn('firstmap', id, e);
+    toastErr('FirstMap “'+Lyr.label+'” failed — '+(e&&e.message||e));
+    firstmapOn[id]=false;
+  }finally{
+    firstmapLoading[id]=false;
+    renderFirstmapLayerList();
+    if(typeof updateHdrToolBadges==='function') updateHdrToolBadges();
+  }
+}
+function renderFirstmapLayerList(){
+  const box=$('firstmapList'); if(!box) return;
+  const q=(($('firstmapFilter')&&$('firstmapFilter').value)||'').trim().toLowerCase();
+  const groups={};
+  FIRSTMAP_LAYERS.forEach(L=>{
+    if(q && !(L.label.toLowerCase().includes(q)||L.id.includes(q))) return;
+    const g=L.svc.split('/')[1]||'Other';
+    (groups[g]=groups[g]||[]).push(L);
+  });
+  let html='';
+  Object.keys(groups).sort().forEach(g=>{
+    html+=`<div class="fm-head">${esc(g.replace(/^DE_/,'').replace(/_/g,' '))}<span class="sp"></span></div>`;
+    groups[g].forEach(L=>{
+      const on=!!firstmapOn[L.id];
+      const loading=!!firstmapLoading[L.id];
+      const n=firstmapCache[L.id]&&firstmapCache[L.id].features?firstmapCache[L.id].features.length:null;
+      const badge=loading?'<span class="fm-badge load">loading…</span>'
+        :(on?(n!=null?`<span class="fm-badge on">${n.toLocaleString()} on</span>`:'<span class="fm-badge on">on</span>')
+          :`<span class="fm-badge">~${L.hint.toLocaleString()}${L.heavy?' · heavy':''}</span>`);
+      html+=`<label class="layerRow${L.heavy?' heavy':''}" style="margin:0">`+
+        `<input type="checkbox" data-fm="${esc(L.id)}" ${on?'checked':''} ${loading?'disabled':''}>`+
+        `<span class="nm">${esc(L.label)}</span>${badge}</label>`;
+    });
+  });
+  if(!html) html='<div class="hint">No FirstMap layers match filter.</div>';
+  box.innerHTML=html;
+  box.querySelectorAll('input[data-fm]').forEach(inp=>{
+    inp.onchange=function(){ setFirstmapLayerOn(this.dataset.fm, this.checked); };
+  });
+}
+function wireFirstmapUI(){
+  try{
+    const raw=JSON.parse(localStorage.getItem('geotrak_firstmap_on')||'{}');
+    Object.keys(raw).forEach(id=>{ if(raw[id]) firstmapOn[id]=true; });
+  }catch(_){}
+  renderFirstmapLayerList();
+  // restore previously-on layers (skip heavy until user re-checks)
+  Object.keys(firstmapOn).forEach(id=>{
+    const L=FIRSTMAP_LAYERS.find(x=>x.id===id);
+    if(!L||L.heavy||L.skipDefault) { firstmapOn[id]=false; return; }
+    setFirstmapLayerOn(id, true);
+  });
+  if($('firstmapFilter')) $('firstmapFilter').oninput=function(){ renderFirstmapLayerList(); };
+  if($('firstmapOffAll')) $('firstmapOffAll').onclick=()=>{
+    Object.keys(firstmapLeaflet).slice().forEach(id=>removeFirstmapOverlay(id));
+    firstmapOn={};
+    try{ localStorage.setItem('geotrak_firstmap_on','{}'); }catch(_){}
+    renderFirstmapLayerList();
+    toast('DelDOT FirstMap overlays off');
+  };
+}
+
 function detectKind(name,gj){
   const n=name.toLowerCase();
   const p=(gj.features&&gj.features[0]&&gj.features[0].properties)||{};
@@ -30021,6 +30298,15 @@ function detectKind(name,gj){
   if(/lulc|land.?use/.test(n))return 'lulc';
   if(/irrigated/.test(n))return 'irrigated';
   if(/deldot_bridges|bridges/.test(n) && !/tax|guard/.test(n))return 'bridge';
+  if(/^deldot_/.test(n)){
+    if(/soil_boring/.test(n))return 'well';
+    if(/impaired|env/.test(n))return 'env_site';
+    if(/flood/.test(n))return 'flood';
+    if(/signal|lightpost|overhead|milemarker|camera|vms|plant|yard|facility|building|as_built|as_designed|counter|weather|bluetooth|wavetronix|toll|historic/.test(n))return 'asset';
+    if(/centerline|road_|route|guard|intersection|snow|speed|functional|nhs|lane_|network_|evac|fhwa|street|byway|paving|ctp|maint|obs_/.test(n))return 'road';
+    return 'asset';
+  }
+
   if(/roads_|bridge/.test(n))return 'road';
   if(/assets_|lightpost|overhead_sign/.test(n))return 'asset';
   if(/landfill|biosolid|ust|lust|rcra|rs_sites|industrial_storm|env_site|sussex_landfill/.test(n))return 'env_site';
@@ -30289,8 +30575,10 @@ function renderLayerLists(){
 function updateHdrToolBadges(){
   const ns=db.borings.reduce((a,r)=>a+((r.s&&r.s.length)||0),0);
   const onN=refs.filter(R=>R.on!==false).length;
+  const fmN=Object.keys(firstmapOn||{}).filter(k=>firstmapOn[k]).length;
   const lb=$('hdrLayersBadge');
-  if(lb) lb.textContent=refs.length?String(refs.length):'0';
+  if(lb) lb.textContent=String((refs.length||0)+fmN);
+
   const btn=$('hdrBtnLayers');
   if(btn) btn.title=`${db.borings.length.toLocaleString()} borings · ${ns.toLocaleString()} samples · ${onN}/${refs.length} layers ON`;
   const mb=$('hdrBtnMarkers');
@@ -30311,6 +30599,7 @@ function renderAll(){
     'Database empty — open project folder (loads db.json) or run import-geo-zips.py on your GEO.zip files.';
   renderLayerLists();
   if(typeof syncMarkerToggleUI==='function') syncMarkerToggleUI();
+  if(typeof renderFirstmapLayerList==='function') renderFirstmapLayerList();
   drawBorings();
   if(typeof refreshJobSelects==='function')refreshJobSelects();
   if(typeof refreshReportPreview==='function')refreshReportPreview();
