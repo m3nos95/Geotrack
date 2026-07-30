@@ -56,7 +56,7 @@ Each left button is a different “deck” of information about **that exact spo
 |---------|---------------|--------------|
 | **Search radius** | Drag the slider (e.g. 500 ft) | Yellow map circle + nearby **lists** (borings / septic browse / DGS). Does **not** change screening infil — that uses fixed engine windows + statewide DNA |
 | **Satellite** | Click | Toggle imagery basemap |
-| **Project limits** | **Draw limits** → click vertices → **Close polygon** → **Analyze & find best infil** | Inventory inside the polygon; **best screening infiltration cell** marked; **qualitative site summary**; **boring recommendations** with **Request borings** / **Request at best cell** links into the top-bar wizard. Screening only — not Phase I / App.1 |
+| **Project limits** | **Draw limits** → click vertices → **Close polygon** → pick **Grid** or **Voronoi** lattice → **Analyze & find best infil** | Discretizes the polygon into cells; builds a quantitative **reference profile** from measured cells (borings / anchors / feature-store); scores every other cell by **similarity**; transfers phenotypes with a **confidence** score. Paint modes: infil / similarity / confidence. Also: inventory, best screening infil cell, site summary, boring recommendations. Screening only — not Phase I / App.1 |
 | **Request soil borings** | Top bar **Request borings** (next to Hydro) → tap locations → pick purpose | Draft **Soil Boring Request Sheet** (BDM Fig. 105-2): count, depth, continuous SPT, infil Y/N, rock core (purpose-gated), lab tests, M&R contact. Export for M&R; engineer confirms |
 
 ### Say this for project limits
