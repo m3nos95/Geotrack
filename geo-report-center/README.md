@@ -19,7 +19,21 @@ It is **not** a sealed geotechnical report, **not** an approved DNREC design inf
 
 ---
 
-## Quick start (5 minutes)
+## DNREC BMP knowledge (v0.72)
+
+GeoTrak encodes key rules from **7 Del. Admin. Code §5101-11 & §5101-12** (Post Construction BMP Standards / Soil Investigation Procedures — the regulatory home of the former BMP Manual Appendix 1):
+
+| Rule | How GeoTrak uses it |
+|------|---------------------|
+| ≥2 ft separation to SHWT / bedrock | Withholds illustrative design rate; flags Site Intel + limits |
+| Native soils ≥1 in/hr | Flags screening rates below the §11.1.3.3 minimum |
+| FoS 2.0 (ring) / 2.5 (cased borehole) | Labels both paths; planning ÷ still uses borehole FoS |
+| Design ≤15 in/hr | Documented ceiling on field-verified design rates |
+| Boring / infil test count tables | **Request borings** → infiltration purpose: enter BMP type + area/length |
+| Explore to limiting layer or ≥3 ft below bottom | Depth notes on SWM purpose + limits recommendations |
+| Confirmatory ≥150% of approved design | Shown in Site Intel → Infil and boring-request guidance |
+
+Screening still ≠ sealed design. Field ASTM D5126 tests and Delegated Agency approval control.
 
 1. Open https://m3nos95.github.io/Geotrack/geotrak/ in Chrome or Edge (**not** a downloaded double-clicked file).
 2. Sign in with your LabTrak / Supabase email and password  
