@@ -73,7 +73,7 @@ Full checklist and talking points: **[FEATURE_TOUR.md](./FEATURE_TOUR.md)**
 | **Illustrative design (÷ 2.5)** | Screening ÷ FoS 2.5 for **cased borehole / undersized ring** planning. Preferred DNREC method is a **full-size ring** field test — that path does **not** use this ÷2.5 as the approved rate. |
 | **FoS 2.5** | Factor of safety from DNREC BMP Appendix 1 for certain borehole-style tests. |
 | **HYDGRP (A/B/C/D)** | NRCS drainage group. A drains fast; D drains poorly. |
-| **Site DNA** | Fingerprint of a spot: drainage group + geology + recharge class. Similar fingerprints elsewhere can “lend” typical lab behavior. |
+| **Site DNA** | Fingerprint of a spot: drainage group + geology + recharge class. Similar fingerprints elsewhere can “lend” typical lab behavior. Project limits also build a **cell lattice** (grid or Voronoi) and transfer from a local reference profile with a confidence score. |
 | **Field anchors** | Real DelDOT borehole infiltration tests (amber diamonds). Strongest truth when nearby. |
 | **Estimates OFF** | Map facts only (soils, geology, borings). No screening rates. |
 | **Estimates ON** | Unlocks screening rates, class/column profiles, DNA mids, eng. props. |
