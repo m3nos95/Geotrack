@@ -21001,6 +21001,17 @@ input[type=range]{width:140px;accent-color:var(--amber)}
 #boringReqBody .br-grid{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin:6px 0}
 #boringReqBody .br-actions{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}
 .map-pick-boring{cursor:crosshair !important}
+.phys-infil{margin-top:12px;padding:10px 12px;border:1px solid rgba(61,207,191,.3);border-radius:6px;background:rgba(61,207,191,.05)}
+.phys-infil h4{margin:0 0 6px;font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--cyan)}
+.phys-infil .phys-params{font-size:11px;color:var(--dim);margin:0 0 8px;line-height:1.45}
+.phys-infil table.phys-tbl{width:100%;border-collapse:collapse;font-size:11px;font-family:var(--mono);margin:6px 0}
+.phys-infil table.phys-tbl th{text-align:left;color:var(--dim);font-weight:600;padding:3px 6px;border-bottom:1px solid var(--line);font-size:10px;text-transform:uppercase;letter-spacing:.04em}
+.phys-infil table.phys-tbl td{padding:3px 6px;border-bottom:1px solid rgba(46,58,72,.4)}
+.phys-infil table.phys-tbl td.num{color:var(--cyan);text-align:right}
+.phys-infil .phys-models{display:grid;gap:10px;margin-top:8px}
+.phys-infil .phys-model{border:1px solid rgba(46,58,72,.55);border-radius:5px;padding:8px 10px;background:rgba(10,16,22,.35)}
+.phys-infil .phys-model .ttl{font-size:12px;font-weight:600;color:var(--text);margin:0 0 2px}
+.phys-infil .phys-model .eq{font-family:var(--mono);font-size:10px;color:var(--dim);margin:0 0 6px}
 
 /* generic content pages */
 .wrap{max-width:860px;margin:0 auto;padding:26px 18px;height:100%;overflow-y:auto}
@@ -21246,7 +21257,7 @@ table.list td{padding:5px 8px;border-bottom:1px solid rgba(46,58,72,.5);font-fam
 <div id="hdr">
   <div class="brand" title="Delaware Department of Transportation">
     <img src="data:image/png;base64,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" width="28" height="28" alt="DelDOT">
-    <h1><b>DelDOT</b> GeoTrak<span class="badge">v0.73</span></h1>
+    <h1><b>DelDOT</b> GeoTrak<span class="badge">v0.74</span></h1>
   </div>
   <button class="tab on" data-p="map">Map</button>
   <button class="tab" data-p="refs">Reference data</button>
@@ -25454,6 +25465,9 @@ function applyHydroLimitToInfil(P, hydro){
      a DNREC design rate from map/AASHTO alone. Also flags §11.1.3.3 min native 1 in/hr. */
   if(!P||!P.infil)return P;
   const I=P.infil;
+  const refreshPhys=()=>{
+    if(typeof buildPhysInfilFromProfile==='function') P.phys_infil=buildPhysInfilFromProfile(P, P.enrich);
+  };
   /* Limiting layer from septic DepthtoLZ IDW (ft bgs) — advisory until invert known */
   const lz=P.limiting&&P.limiting.lz_ft!=null?+P.limiting.lz_ft:null;
   if(lz!=null&&Number.isFinite(lz)){
@@ -25481,6 +25495,7 @@ function applyHydroLimitToInfil(P, hydro){
       I.max_design_inhr=DNREC_BMP.max_design_inhr;
     }
     P.eng_forecast=engForecastForProfile(P, P.enrich, hydro||null);
+    refreshPhys();
     return P;
   }
   const dtwWet=hydro.dtw&&hydro.dtw.wet!=null?+hydro.dtw.wet:null;
@@ -25496,6 +25511,7 @@ function applyHydroLimitToInfil(P, hydro){
       I.max_design_inhr=DNREC_BMP.max_design_inhr;
     }
     P.eng_forecast=engForecastForProfile(P, P.enrich, hydro);
+    refreshPhys();
     return P;
   }
   I.dtw_ft=dtwSep;
@@ -25512,6 +25528,7 @@ function applyHydroLimitToInfil(P, hydro){
   if(I.est_inhr==null){
     if(!sepOk) I.note=(I.note?I.note+'; ':'')+'DTW '+dtwSep+' ft < '+DNREC_SEP_FT+' ft — §12.1.3.1.4 / §11.1.3.2 separation not met (screening)';
     P.eng_forecast=engForecastForProfile(P, P.enrich, hydro);
+    refreshPhys();
     return P;
   }
   if(I.est_inhr_uncapped==null) I.est_inhr_uncapped=I.est_inhr;
@@ -25527,6 +25544,7 @@ function applyHydroLimitToInfil(P, hydro){
     const note='DTW '+dtwSep+' ft < '+DNREC_SEP_FT+' ft — §12.1.3.1.4 / §11.1.3.2 separation to GW not met (infiltration BMP at grade unlikely without underdrain / redesign)';
     if(!(I.note||'').includes('§12.1.3.1.4')&&!(I.note||'').includes('§II.A.3')) I.note=(I.note?I.note+'; ':'')+note;
     P.eng_forecast=engForecastForProfile(P, P.enrich, hydro);
+    refreshPhys();
     return P;
   }
   I.feasible=!(I.below_min_native);
@@ -25548,6 +25566,7 @@ function applyHydroLimitToInfil(P, hydro){
   applyDesignInhrCap(I);
   /* Refresh eng-property forecast with sampled DTW */
   P.eng_forecast=engForecastForProfile(P, P.enrich, hydro);
+  refreshPhys();
   return P;
 }
 function lookupNrcs(mukey){
@@ -28050,6 +28069,273 @@ function renderSepticEvalCard(e){
   h+=`</div>`;
   return h;
 }
+/* ---------- EPA vadose-zone infil models (screening) ----------
+   Port of EPA/600/R-97/128 Mathcad worksheets (SCS, PHILIP2T, GAEXP-style Green–Ampt).
+   Inputs estimated from NRCS Ksat, HYDGRP/AASHTO/USCS, DNA/P200, and screening ˆr —
+   NOT field-verified design. Carsel & Parrish (1988) + Rawls GA suction defaults. */
+const CM_PER_IN=2.54;
+const PHYS_INFIL_TIMES_H=[0.25,0.5,1,2,4,8];
+const PHYS_TEXTURE_PROPS={
+  /* θs, θr from Carsel–Parrish geometric means; Ksat_cm_h CP default; psi_cm Rawls wetting-front suction; λ Brooks–Corey≈n−1 proxy */
+  sand:           {label:'Sand',            theta_s:0.43, theta_r:0.045, Ksat_cm_h:29.7,  psi_cm:4.95,  lambda:0.694, cn:49},
+  loamy_sand:     {label:'Loamy sand',      theta_s:0.41, theta_r:0.057, Ksat_cm_h:14.6,  psi_cm:6.13,  lambda:0.553, cn:61},
+  sandy_loam:     {label:'Sandy loam',      theta_s:0.41, theta_r:0.065, Ksat_cm_h:4.42,  psi_cm:11.01, lambda:0.378, cn:69},
+  loam:           {label:'Loam',            theta_s:0.43, theta_r:0.078, Ksat_cm_h:1.04,  psi_cm:8.89,  lambda:0.252, cn:72},
+  silt_loam:      {label:'Silt loam',       theta_s:0.45, theta_r:0.067, Ksat_cm_h:0.45,  psi_cm:16.68, lambda:0.234, cn:74},
+  sandy_clay_loam:{label:'Sandy clay loam', theta_s:0.39, theta_r:0.100, Ksat_cm_h:1.31,  psi_cm:21.85, lambda:0.319, cn:79},
+  clay_loam:      {label:'Clay loam',       theta_s:0.41, theta_r:0.095, Ksat_cm_h:0.26,  psi_cm:20.88, lambda:0.242, cn:82},
+  silty_clay:     {label:'Silty clay',      theta_s:0.36, theta_r:0.070, Ksat_cm_h:0.02,  psi_cm:29.22, lambda:0.151, cn:86},
+  clay:           {label:'Clay',            theta_s:0.38, theta_r:0.068, Ksat_cm_h:0.20,  psi_cm:31.63, lambda:0.165, cn:89}
+};
+function inHrToCmH(v){ return v==null?null:v*CM_PER_IN; }
+function cmHToInHr(v){ return v==null?null:v/CM_PER_IN; }
+function cmToIn(v){ return v==null?null:v/CM_PER_IN; }
+function textureBinFromClasses(aashto, uscs, hydgrp, p200){
+  const a=String(aashto||'').toUpperCase().replace(/\s+/g,'');
+  const u=String(uscs||'').toUpperCase().replace(/[^A-Z]/g,'');
+  const h=String(hydgrp||'').toUpperCase().replace(/[^A-D]/g,'').charAt(0);
+  if(/^GW|^GP|^SW|^SP$|^SPSM/.test(u)||/^A-1-A|^A-1-B|^A-1$/.test(a)) return 'sand';
+  if(/^SP$/.test(u)&&p200!=null&&p200<10) return 'sand';
+  if(/^A-3/.test(a)||/^SPSM|^SMSP/.test(u)||(u==='SP'&&p200!=null&&p200<20)) return 'loamy_sand';
+  if(/^A-2-4|^A-2-5/.test(a)||/^SM$|^SWSM/.test(u)) return (p200!=null&&p200>=35)?'silt_loam':'sandy_loam';
+  if(/^A-2-6/.test(a)||/^SC$|^SMSC/.test(u)) return 'sandy_clay_loam';
+  if(/^A-2-7|^A-6/.test(a)||/^CL$|^CLML|^SCSM/.test(u)) return 'clay_loam';
+  if(/^A-4|^A-5/.test(a)||/^ML$|^MLCL|^MH$/.test(u)) return 'silt_loam';
+  if(/^A-7|^CH$|^OH$/.test(a+u)||/^CH|^OH|^MHCH/.test(u)) return (p200!=null&&p200>=60)?'clay':'silty_clay';
+  if(h==='A') return 'sand';
+  if(h==='B') return 'sandy_loam';
+  if(h==='C') return 'silt_loam';
+  if(h==='D') return 'clay';
+  if(p200!=null){
+    if(p200<10) return 'sand';
+    if(p200<25) return 'loamy_sand';
+    if(p200<40) return 'sandy_loam';
+    if(p200<55) return 'silt_loam';
+    if(p200<70) return 'clay_loam';
+    return 'clay';
+  }
+  return 'sandy_loam';
+}
+function resolvePhysTexture(P, E){
+  const I=(P&&P.infil)||{};
+  const aashto=(P.classes&&P.classes.aashto_loc&&P.classes.aashto_loc.value)
+    ||(I.aashto)||(E&&E.nrcs&&E.nrcs.aashto)||(I.mukey_prior&&I.mukey_prior.aashto)||null;
+  const uscs=(P.classes&&P.classes.uscs_loc&&P.classes.uscs_loc.value)
+    ||(E&&E.nrcs&&E.nrcs.uscs)||(I.mukey_prior&&I.mukey_prior.uscs)||null;
+  const hydgrp=(E&&E.hydgrp)||(I.hydgrp)||(E&&E.nrcs&&E.nrcs.hydgrp)||null;
+  const p200=I.p200_top10!=null?+I.p200_top10:null;
+  const bin=textureBinFromClasses(aashto, uscs, hydgrp, p200);
+  const props=PHYS_TEXTURE_PROPS[bin]||PHYS_TEXTURE_PROPS.sandy_loam;
+  const sources=[];
+  if(aashto) sources.push('AASHTO '+aashto);
+  if(uscs) sources.push('USCS '+uscs);
+  if(hydgrp) sources.push('HYDGRP '+hydgrp);
+  if(p200!=null) sources.push('P200 '+p200+'%');
+  if(I.mukey_prior&&I.mukey_prior.match) sources.push('DNA '+I.mukey_prior.match);
+  return {bin, props, aashto:aashto||null, uscs:uscs||null, hydgrp:hydgrp||null, p200, sources};
+}
+function resolvePhysKsatInHr(P, E, texture){
+  const I=(P&&P.infil)||{};
+  const notes=[];
+  let ksat=null, src=null;
+  if(E&&E.nrcs&&E.nrcs.ksat_in_hr!=null&&+E.nrcs.ksat_in_hr>0){
+    ksat=+E.nrcs.ksat_in_hr; src='NRCS surface Ksat'; notes.push('NRCS Ksat '+ksat+' in/hr');
+  } else if(I.field_anchor&&I.field_anchor.measured!=null&&!I.field_anchor.soft){
+    ksat=+I.field_anchor.measured; src='Field borehole (hard)'; notes.push('Field '+ksat+' in/hr @ '+Math.round(I.field_anchor.d||0)+' ft');
+  } else if(I.field_anchor&&I.field_anchor.measured!=null){
+    ksat=+I.field_anchor.measured; src='Field borehole (soft)'; notes.push('Soft field '+ksat+' in/hr');
+  } else if(I.est_inhr!=null&&+I.est_inhr>0){
+    ksat=+I.est_inhr; src='Screening blend ˆr'; notes.push('Blend est '+ksat+' in/hr (proxy for Ksat)');
+  } else if(I.mukey_prior&&I.mukey_prior.infil_mid!=null){
+    ksat=+I.mukey_prior.infil_mid; src='DNA mid'; notes.push('DNA mid '+ksat+' in/hr');
+  } else if(texture&&texture.props){
+    ksat=cmHToInHr(texture.props.Ksat_cm_h); src='Carsel–Parrish default'; notes.push('Texture default Ksat '+(+ksat.toFixed(3))+' in/hr');
+  }
+  if(ksat!=null) ksat=+Math.max(1e-4, ksat).toFixed(4);
+  return {ksat_in_hr:ksat, source:src, notes};
+}
+function physMoistureState(props, opts){
+  opts=opts||{};
+  /* θi: moderately dry screening default between residual and saturation */
+  const frac=opts.theta_i_frac!=null?+opts.theta_i_frac:0.35;
+  const theta_s=props.theta_s, theta_r=props.theta_r;
+  const theta_i=+(theta_r+Math.max(0.05, Math.min(0.85, frac))*(theta_s-theta_r)).toFixed(3);
+  const dtheta=Math.max(0.02, +(theta_s-theta_i).toFixed(3));
+  return {theta_s, theta_r, theta_i, dtheta, theta_i_frac:frac};
+}
+function physSorptivityInHr05(Ksat_in_hr, psi_in, dtheta){
+  /* S ≈ √(2 K ψ Δθ)  — Philip–Green–Ampt link; units in · hr^−½ */
+  if(!(Ksat_in_hr>0)||!(psi_in>0)||!(dtheta>0)) return null;
+  return +Math.sqrt(2*Ksat_in_hr*psi_in*dtheta).toFixed(4);
+}
+function runPhilip2T(opts){
+  const K=+opts.Ksat_in_hr, S=+opts.S_in_hr05, Afrac=opts.A_frac!=null?+opts.A_frac:1/3;
+  if(!(K>0)||!(S>0)) return null;
+  const A=+(K*Afrac).toFixed(4);
+  const rows=(opts.times||PHYS_INFIL_TIMES_H).map(t=>{
+    const tt=Math.max(1e-6,+t);
+    const rate=+(0.5*S/Math.sqrt(tt)+A).toFixed(4);
+    const cum=+(S*Math.sqrt(tt)+A*tt).toFixed(4);
+    const avg=+(cum/tt).toFixed(4);
+    return {t_h:tt, rate_in_hr:rate, cum_in:cum, avg_in_hr:avg};
+  });
+  return {Ksat_in_hr:K, S_in_hr05:S, A_in_hr:A, A_frac:Afrac, rows,
+    cite:'Philip (1957) two-term · EPA/600/R-97/128 PHILIP2T'};
+}
+function greenAmptCumulativeAtT(K, psiEff, dtheta, t){
+  /* Solve I − ψΔθ ln(1 + I/(ψΔθ)) = K t  (ponded GA). Units: length & time consistent. */
+  const C=psiEff*dtheta;
+  if(!(K>0)||!(C>0)||!(t>0)) return null;
+  /* initial guess: early-time √(2K C t) then late Kt */
+  let I=Math.sqrt(Math.max(1e-9, 2*K*C*t));
+  for(let n=0;n<40;n++){
+    const arg=1+I/C;
+    if(!(arg>0)) { I=Math.max(I, C*0.01); continue; }
+    const f=I-C*Math.log(arg)-K*t;
+    const df=I/(C+I);
+    if(!(df>1e-12)) break;
+    const step=f/df;
+    I=Math.max(1e-9, I-step);
+    if(Math.abs(step)<1e-7*Math.max(1,I)) break;
+  }
+  const rate=K*(1+C/I);
+  return {cum:I, rate};
+}
+function runGreenAmpt(opts){
+  const K=+opts.Ksat_in_hr;
+  const psi=+opts.psi_in;
+  const dtheta=+opts.dtheta;
+  const Hp=opts.H_pond_in!=null?+opts.H_pond_in:0;
+  if(!(K>0)||!(psi>0)||!(dtheta>0)) return null;
+  const psiEff=psi+Math.max(0,Hp);
+  const rows=(opts.times||PHYS_INFIL_TIMES_H).map(t=>{
+    const tt=Math.max(1e-6,+t);
+    const sol=greenAmptCumulativeAtT(K, psiEff, dtheta, tt);
+    if(!sol) return {t_h:tt, rate_in_hr:null, cum_in:null, avg_in_hr:null};
+    const cum=+sol.cum.toFixed(4), rate=+sol.rate.toFixed(4), avg=+(cum/tt).toFixed(4);
+    return {t_h:tt, rate_in_hr:rate, cum_in:cum, avg_in_hr:avg};
+  });
+  return {Ksat_in_hr:K, psi_in:+psi.toFixed(3), psi_eff_in:+psiEff.toFixed(3), dtheta, H_pond_in:Hp, rows,
+    cite:'Green–Ampt ponded · EPA/600/R-97/128 GAEXP-style'};
+}
+function runScsDaily(opts){
+  const CN=+opts.CN, P=+opts.P_in;
+  if(!(CN>0)||!(P>=0)) return null;
+  const S=+(1000/CN-10).toFixed(3);
+  const Ia=+(0.2*S).toFixed(3);
+  let Q=0;
+  if(P>Ia) Q=+((Math.pow(P-Ia,2)/(P-Ia+S))).toFixed(4);
+  const F=+(P-Q).toFixed(4); /* infiltration + initial abstraction retention as daily F≈P−Q */
+  const infil=+(Math.max(0, P-Q-Ia)+Math.min(Ia,P)).toFixed(4); /* ≈P−Q */
+  return {CN, P_in:P, S_in:S, Ia_in:Ia, Q_in:Q, F_in:+(P-Q).toFixed(4), infil_in:+(P-Q).toFixed(4),
+    cite:'SCS curve number · EPA/600/R-97/128 SCS'};
+}
+function buildPhysInfilFromProfile(P, E){
+  if(!P) return null;
+  const texture=resolvePhysTexture(P, E);
+  const props=texture.props;
+  const kRes=resolvePhysKsatInHr(P, E, texture);
+  if(kRes.ksat_in_hr==null){
+    return {ok:false, reason:'No Ksat / screening rate available yet', texture, ksat:kRes};
+  }
+  const moist=physMoistureState(props, {theta_i_frac:0.35});
+  const psi_in=+cmToIn(props.psi_cm).toFixed(3);
+  const S=physSorptivityInHr05(kRes.ksat_in_hr, psi_in, moist.dtheta);
+  const philip=runPhilip2T({Ksat_in_hr:kRes.ksat_in_hr, S_in_hr05:S, A_frac:1/3});
+  const ga=runGreenAmpt({Ksat_in_hr:kRes.ksat_in_hr, psi_in, dtheta:moist.dtheta, H_pond_in:0});
+  const scs=runScsDaily({CN:props.cn, P_in:1.5});
+  /* Compare 1-hr average rates to screening blend */
+  const philip1=philip&&philip.rows.find(r=>r.t_h===1);
+  const ga1=ga&&ga.rows.find(r=>r.t_h===1);
+  const screen=P.infil&&P.infil.est_inhr!=null?+P.infil.est_inhr:null;
+  return {
+    ok:true,
+    cite:'EPA/600/R-97/128a–b · Carsel & Parrish (1988) · Rawls wetting-front suction',
+    texture:{
+      bin:texture.bin, label:props.label, aashto:texture.aashto, uscs:texture.uscs,
+      hydgrp:texture.hydgrp, p200:texture.p200, sources:texture.sources
+    },
+    params:{
+      Ksat_in_hr:kRes.ksat_in_hr, Ksat_source:kRes.source, Ksat_notes:kRes.notes,
+      psi_in, psi_cm:props.psi_cm, lambda:props.lambda,
+      theta_s:moist.theta_s, theta_r:moist.theta_r, theta_i:moist.theta_i, dtheta:moist.dtheta,
+      S_in_hr05:S, A_frac:1/3, CN:props.cn, P_design_in:1.5, H_pond_in:0
+    },
+    philip, green_ampt:ga, scs,
+    compare:{
+      screening_est_inhr:screen,
+      philip_1h_avg:philip1?philip1.avg_in_hr:null,
+      philip_1h_rate:philip1?philip1.rate_in_hr:null,
+      ga_1h_avg:ga1?ga1.avg_in_hr:null,
+      ga_1h_rate:ga1?ga1.rate_in_hr:null
+    },
+    disclaimer:'Screening physics check only — parameters estimated from map/DNA/lab proxies. Not a DNREC field-verified design rate. Prefer ring infiltrometer for sealed design.'
+  };
+}
+function formatPhysInfilHTML(phys){
+  if(!phys) return '';
+  let h=`<div class="phys-infil">`;
+  h+=`<h4>Physically-based models</h4>`;
+  h+=`<div class="hint" style="margin-bottom:6px">EPA vadose-zone worksheets (Philip · Green–Ampt · SCS) fed by NRCS Ksat, soil class, DNA / P200, and screening ˆr. <b>Screening only</b> — not sealed design.</div>`;
+  if(!phys.ok){
+    h+=`<div class="hint warn">${esc(phys.reason||'Insufficient inputs')}</div></div>`;
+    return h;
+  }
+  const T=phys.texture, p=phys.params, c=phys.compare||{};
+  h+=`<div class="phys-params">`;
+  h+=`<b>${esc(T.label)}</b> texture bin`;
+  if(T.aashto) h+=` · ${esc(T.aashto)}`;
+  if(T.uscs) h+=` · ${esc(T.uscs)}`;
+  if(T.hydgrp) h+=` · HYDGRP ${esc(T.hydgrp)}`;
+  if(T.p200!=null) h+=` · P200 ${T.p200}%`;
+  h+=`<br>Ksat <b>${p.Ksat_in_hr} in/hr</b> <span class="hint">(${esc(p.Ksat_source||'—')})</span>`;
+  h+=` · ψ ${p.psi_in} in · Δθ ${p.dtheta} (θi ${p.theta_i} → θs ${p.theta_s})`;
+  h+=` · S ${p.S_in_hr05} in/√hr · A = K/3`;
+  if(T.sources&&T.sources.length) h+=`<br><span class="hint">From: ${esc(T.sources.join(' · '))}</span>`;
+  h+=`</div>`;
+  if(c.screening_est_inhr!=null){
+    h+=`<div class="hint" style="margin-bottom:6px">vs screening blend <b>${c.screening_est_inhr} in/hr</b>`;
+    if(c.philip_1h_avg!=null) h+=` · Philip 1-h avg <b>${c.philip_1h_avg}</b>`;
+    if(c.ga_1h_avg!=null) h+=` · GA 1-h avg <b>${c.ga_1h_avg}</b>`;
+    h+=`</div>`;
+  }
+  h+=`<div class="phys-models">`;
+  if(phys.philip){
+    const m=phys.philip;
+    h+=`<div class="phys-model"><div class="ttl">Philip two-term (PHILIP2T)</div>`;
+    h+=`<div class="eq">i = ½ S t<sup>−½</sup> + A · I = S √t + A t · A=${m.A_in_hr} in/hr</div>`;
+    h+=`<table class="phys-tbl"><tr><th>t (h)</th><th>i (in/hr)</th><th>I (in)</th><th>I/t</th></tr>`;
+    m.rows.forEach(r=>{
+      h+=`<tr><td>${r.t_h}</td><td class="num">${r.rate_in_hr}</td><td class="num">${r.cum_in}</td><td class="num">${r.avg_in_hr}</td></tr>`;
+    });
+    h+=`</table></div>`;
+  }
+  if(phys.green_ampt){
+    const m=phys.green_ampt;
+    h+=`<div class="phys-model"><div class="ttl">Green–Ampt ponded (GAEXP-style)</div>`;
+    h+=`<div class="eq">i = K (1 + ψΔθ / I) · ψ<sub>eff</sub>=${m.psi_eff_in} in · H<sub>pond</sub>=${m.H_pond_in} in</div>`;
+    h+=`<table class="phys-tbl"><tr><th>t (h)</th><th>i (in/hr)</th><th>I (in)</th><th>I/t</th></tr>`;
+    m.rows.forEach(r=>{
+      h+=`<tr><td>${r.t_h}</td><td class="num">${r.rate_in_hr!=null?r.rate_in_hr:'—'}</td><td class="num">${r.cum_in!=null?r.cum_in:'—'}</td><td class="num">${r.avg_in_hr!=null?r.avg_in_hr:'—'}</td></tr>`;
+    });
+    h+=`</table></div>`;
+  }
+  if(phys.scs){
+    const m=phys.scs;
+    h+=`<div class="phys-model"><div class="ttl">SCS curve number (daily)</div>`;
+    h+=`<div class="eq">CN=${m.CN} · S=${m.S_in} in · Ia=0.2S · example P=${m.P_in} in storm</div>`;
+    h+=`<table class="mini-kv">`;
+    h+=`<tr><td>Runoff Q</td><td><b>${m.Q_in} in</b></td></tr>`;
+    h+=`<tr><td>Infiltrated P−Q</td><td><b>${m.F_in} in</b></td></tr>`;
+    h+=`</table></div>`;
+  }
+  h+=`</div>`;
+  h+=`<div class="hint warn" style="margin-top:8px">${esc(phys.disclaimer)}</div>`;
+  h+=`<div class="hint" style="margin-top:4px">${esc(phys.cite)}</div>`;
+  h+=`</div>`;
+  return h;
+}
+
 function buildSiteProfile(lat, lon, hits, radiusFt){
   /* radiusFt = UI Search radius (optional, display only). Screening ˆr / DNA / P200 / anchors /
      geophys always use fixed engine windows + statewide soft DNA — never the slider.
@@ -28376,6 +28662,7 @@ function buildSiteProfile(lat, lon, hits, radiusFt){
   applyDesignInhrCap(out.infil);
   /* Apply BMP feasibility flags (min native rate, limiting-layer screen) even before hydro arrives */
   applyHydroLimitToInfil(out, null);
+  out.phys_infil=buildPhysInfilFromProfile(out, E);
   out.eng_forecast=engForecastForProfile(out, E, null);
   return out;
 }
@@ -29106,6 +29393,7 @@ function renderHudDrawer(ctx){
       h+=`</div>`;
     }
     h+=`<div class="hint" style="margin-top:8px">Formal blender v0.41 + contribution sliders: ˆr = min(${EST_INHR_CAP}, Σwᵢrᵢ/Σwᵢ). Map soils gate AASHTO off; P200 hard ceiling; DGS geophys shallow fines (gamma) add weight + ceiling when clay/silt indicated; mukey restrained when Ksat present; field ≤${FIELD_HARD_FT} ft hard override; soft anchors exp(−d/${FIELD_ANCHOR_D0}). Illustrative design ≤${DESIGN_INHR_CAP} in/hr (÷${DNREC_BOREHOLE_FOS}). Preferred DNREC method: full-size ring infiltrometer.</div>`;
+    h+=formatPhysInfilHTML(P.phys_infil||buildPhysInfilFromProfile(P, E));
     }
   } else if(tab==='anchors'){
     const list=(P.infil&&P.infil.field_anchors)||[];
