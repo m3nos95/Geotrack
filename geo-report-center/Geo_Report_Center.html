@@ -20836,6 +20836,7 @@ body{font:13px/1.45 -apple-system,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;b
 #hdrTools .hdr-tool.est-toggle:not(.on){opacity:.85}
 #hdrTools .hdr-tool.boring-req.on{border-color:var(--amber);color:var(--amber);background:rgba(240,168,74,.14)}
 #hdrTools .hdr-tool.boring-req .b{color:var(--amber)}
+#hdrTools .hdr-tool.measure.on{border-color:var(--cyan);color:var(--cyan);background:rgba(61,207,191,.12)}
 /* Floating boring-request dock (opened from top bar — stays open while tapping map) */
 #boringReqDock{display:none;position:absolute;top:52px;left:max(12px,min(22vw,280px));z-index:1700;width:min(440px,calc(100vw - 24px));
   max-height:min(72vh,680px);overflow:auto;background:var(--panel);border:1px solid rgba(240,168,74,.45);border-radius:8px;
@@ -20845,8 +20846,25 @@ body{font:13px/1.45 -apple-system,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;b
 #boringReqDock h3 .sp{flex:1}
 #boringReqDock .hdr-pop-close{background:transparent;border:1px solid var(--line);color:var(--dim);border-radius:4px;padding:3px 8px;cursor:pointer;font-size:11px}
 #boringReqDock .hdr-pop-close:hover{border-color:var(--amber);color:var(--amber)}
+/* Measure dock — distance / area on the map */
+#measureDock{display:none;position:absolute;top:52px;left:max(12px,min(22vw,280px));z-index:1700;width:min(340px,calc(100vw - 24px));
+  background:var(--panel);border:1px solid rgba(61,207,191,.45);border-radius:8px;
+  box-shadow:0 16px 48px rgba(0,0,0,.55);padding:12px 14px}
+#measureDock.open{display:block}
+#measureDock h3{font-size:11px;text-transform:uppercase;letter-spacing:.07em;color:var(--cyan);margin:0 0 8px;display:flex;align-items:center;gap:8px}
+#measureDock h3 .sp{flex:1}
+#measureDock .hdr-pop-close{background:transparent;border:1px solid var(--line);color:var(--dim);border-radius:4px;padding:3px 8px;cursor:pointer;font-size:11px}
+#measureDock .hdr-pop-close:hover{border-color:var(--cyan);color:var(--cyan)}
+#measureDock .meas-modes{display:flex;gap:6px;margin:8px 0}
+#measureDock .meas-modes .btn.on{border-color:var(--cyan);color:var(--cyan);background:rgba(61,207,191,.1)}
+#measureDock .meas-readout{margin:10px 0 8px;padding:10px 12px;border:1px solid rgba(61,207,191,.3);border-radius:6px;background:rgba(61,207,191,.06)}
+#measureDock .meas-readout .big{font-family:var(--mono);font-size:18px;color:var(--cyan);line-height:1.2}
+#measureDock .meas-readout .sub{font-size:11px;color:var(--dim);margin-top:4px}
+#measureDock .meas-actions{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}
+.map-measure{cursor:crosshair !important}
 @media (max-width:900px){
   #boringReqDock{left:10px;right:10px;width:auto}
+  #measureDock{left:10px;right:10px;width:auto}
 }
 #hdrPop{position:absolute;top:44px;left:0;right:0;z-index:1600;pointer-events:none;display:none}
 #hdrPop.open{display:block}
@@ -21228,7 +21246,7 @@ table.list td{padding:5px 8px;border-bottom:1px solid rgba(46,58,72,.5);font-fam
 <div id="hdr">
   <div class="brand" title="Delaware Department of Transportation">
     <img src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACgAAAAoCAYAAACM/rhtAAARW0lEQVR42q2ZeZRdRZ3HP1X3vnff3nunl3SSTjqdTmJCErKRxY4haCAEPEgHOcAEBwREMeDAcSdG8Zw5ikIGRIVxFAQVwuCMkRBFQjobDWmzkaWzdDqd7nR3en/7e3epmj8aRpRxGWfqv/qn6lO3fnVPfT8l+NuaoLHRoLnZBZACVt20sa5/cGRpPu8udD23QXmqUmsVARBCpqQhe03DbLMs863y0qK9v3tu0xml3xmtsdGkudkD9F+f+K+1jRslmzYpgDs+/88FLQd6rs/k8ze6dn6RQEeUBldrPC1Qemw4KTSG0JhCIAVoRMr0W2+GLOvni2urXnzyyS/E/3Tsvw9wbKXuCy+84P/6U82fSWfse1GqxvVcMsogJ8LKMIM67DNE1CdFQGrQmpwSOulq0o6nPTcrAjotQ9LDNEyQsisc8j/64CcbH1+3bp397hx/B2CTAVu8xWvvXTowmnnMc725rpsnoaOeGShiRlTLZbGkmB8codZKUaJTBIQLhklOSYa8AB1OlNZsMXsSUX08IZSbHyEmkoZpWhimcbCsMHRPy9ZH9747198KKKBJCrZ4H1j16XsT6fzDeHkjqSxXBCuM1SU5sb6kk8WBi0RVEqSBqyVeYQVKmpAaRRoSw81j4oGTIymjtGTLeXp4EtsHLa2zfV5U5k0My4uFrfuP/u57j+oxSPWndWm8D66pSYoTW7yGlXd9J5X1NiknLYZlhbqkrMh8vPaUuL/kKFN8cRx/iGxlA/a0RTj+MGrWB/HChXiuh7rhfpx0mpwRwJ63Gnn+GNP9I1wXPMOlha44oWvl2azlBdwRaStzdeXUBbGhc89sp6nJ4Phx/jxgY6Mptm3zGlbe9d1MTn3OtdNO3KqVd9Tk5FPVb9BAL3EZwV5zJ/S0w+zlUFOP0d+JPzNMwFD4Bs9jaA89chGFRGgPus+QM0PkqxuYrs7TVNBF0lcu92XG4bMHXE/7llVOXVAw9PIz22lsNOnsVO8DbGpqMo5v2+bNWvWpDams2uTaaScVnOL7xsSL4sGyVpxAAdmFazGlRg9cwAhHibbtxDqxF/tiHxd7Bjl9uod4DvJnjhOK9xIjjTV4Djdno2csxqyfQy5QjDx7mKuLeggHouI3mYmGmb/oeNq3tGbawtH+1198o6mpyTh+/Lj+Qw02NRls2eItXHvf4otDib3KzqlRa5Lx0KSL4rPlx4hnQPot5I0P4HW3E9v9LGkR4tcXAuzRdezPFdOrgtTXVtJ6upeoCdVGjvn+QZaanVxdPECkspJE3RLkhVNQXYc30EPBmd38S3wBX+ko04X5c570B+S4ktjSt7Y+0vIukwEIjjexefN1/tdbu7Zp1y4fluP0nTU5+dWy3xPPG5hX3waxEjiwg2hnKy91x9iYWELX3Ot56ozLBWUQz+T46OrZpPA40TVEt7Y4HZ1E5Qev5akTJv7+DuaM7Mc2QjB5FvLCKbKJDI3hCwzJcWJPIqZDKmHkbG/Jzfev/9Fb34l40IzR2LjR7Ozc5HU7tRvytro56fncOWWF5pPVb+D4I2CFoGw8Mp/GOrOfB05NpmXWeh5+6FY+sbqB/pERWg+cxQhbnOoe4hNXzGbnoQ7MgEF+ZIQv3LqUm266ks3tJbScHOaq8Hm8E/vRyThCaFwrxgrrPDvtqbIrlXP9knE9Z0dG+jse3tfYuNE0Ojub9U33bIy1nx9+3nXzITc4Xnyv9qSol/3kVtyEUT8XvXMLgb5T3N5+CSU3fIYn7ltBZ98gj/98HzPqKtl3qoec45EeSjGxppTS4iinz1xEmya7jnez8cZF3LBqOnucGn66q4vrKkZxPY2omIi6/CYi5w4wSSbZkpqCYQ/iKuas+eg1T259YVNu7JDEPnCL43g3jnohdXWlNO4rPUZCBzGdDJ5pEbtwmAfONlB6w6d5aP08Dp7pY9Hd/8bO3Sc4FU+z9rJpvHmwAxkNcLpriPWrZrHraBfCbzLaN0q0KMLSGeNZOaeKg6qKbbtOsbZsgFx5HfL4PnLaZJro46hbJY7EhQoZKjoSt8/2n91/QAoBmVz+Ftd1tRko5taiDrTpR6z5R7xYKbG3f8tLF8vovfR6vrF+HkppPv/jndjpHOHactqOdJLK5plQWw6uIjWcorW9j7XLG3DjGYxIgG8//waDiSyup9h0yzx6L72el/pKiZ3ajRpfj1x7B7q0iltjpzGDJbiuqzPZ/C1CCOSKdV+e4jnOgowyxcyokotDA2SyDrL7JGb1ZJJZl5+4C9j0qZUAbNvfzqu72/AVhkkPp5g7exIFkQC3feQSVNbGKAixdXcb8+sqiBRFwJAM9Azz8IstmIZEKcVDn76cn3gLSCo/hp1FDJwnE0+xKDTIzKiSGWUIz3UWrFj3pSlyYHCkUQiCORFSy2MJESaL17AIpSC08xm29kSoX7mSqRUhcrbLF3/8OsJn4CSzXLVsGrddO5+jh85hux4zZ45H5RzsTJ6db5/nYytm4CWyGLEQj//yLTovxtEIJpcHqV+xgq2DpYTPH0SdPoxXMp5IULI8PCJyIqyEIDgwONIobcddrDQYZkjPDwxCMIKY2ABVkyFaTLM9kTUrZgDwr9sPc/TtLoTPoKg4wqpLJ3PPIy+z41AnP3z5ANcsrgc0MhLk1ZbT1FUWUVpZCFqTHknz9Z/txZACrTXXrpxJs56CTiegZhpi5TpQivmhEQwzpJUG2/UWSU95Da6GiE+KWiuLm8vD/t/ga2thsG+EeHk9C6YWM5rK8dBzu5ERC5XK8fHLZ/Hve06iHZfAuAIGz/TRerqXeTNr0Nk82lO8vP8M61bMxEvlMAtCPPPKQY509COEYPbkIhLFkxmy/fjaD8DWH+IqQW0gQ8QnhavB87wGidYVnoKoKUSxmcf1NPR14jt7kAu2hVU6johf8s1f7ONi9xBoqKktpyQaYG9rO2Y0SC6Z5eZ1S7h+WQN3XTUPrTRG2KLlQAcl0SATasvxbBc3Z/PVZ3YBUGBJwuMquWBb+FKDiCtvxZu+mGJnhKjfEJ4CtKqUGh1WCAIGBLwcumoyzL8Cs242wxmPisoy+kbTPPZiC0YshMrZNC2fzpbdbQifgRvPcPs18/npF67ljqvmcvvqS1i2YAoqk0cYkv/Yd5Lrl09H2y5mNMivmo+z49A5AKxIhLgjxy6ynotKJQj4JAGhUAg0Oiz/cNESoDwIxRAN8yEQRnsePtPgwZ/uJp/MomyXmTPGk3dcTp7sAUNSXlnEI3euIu94jKbzKKW5ZtFUdNaGoJ+3T/dSGAkgIwE8pSGd58XdbbieQmmFRoLnoHf9EkYHxgLPe5opEGmJIudqcmaI2Lmj6EwaOz1MTXGA7XuPciSVQ0aDqLzDVfOn8PSrRxBBP9rx+MiiOg519LNsxngs39h/f/+pXgLRIEJrpjVUYzselqswQ35ESYSPLZuGaUjy6QwFIotXWI1Yug7ZeZjcrtfIKYFEI5BpEyH6DMnUpCf0cA5RPb4G59q7cd58hcqBbej4EI4KQTbPZZdO4fxAgv7eETAN5s0cT972uPK+Z/jWPauZWl1EJu8yfUIJM29dgXJcxpXGSGVs7l23GC0EPtMgmbX52c42Rru6qIkK8skkunkLxuA5hmURSUdpQyIQos80pNFmCnf5iOPqDq+QOckB9G+fw02OUBD2cVlolIPxKGbAx5KGar6/tRURstCOx8L6KrbsOk7K9bj7W/8JhgQEIuADrdFCgOOOlY8hxy7zWkM+D47FnZX9lETzxIuqEEvWYDY/S8cxh5SrdZEAQxpt0h8wW6QAz8mI1nwZJAbRgz2IhR9Gm36uifWgMzYfXjyVQ2cvkklm0dmxfnlhmKFTvWBKsHxjEIZA5x207ULeGQPyFNjuGKzrQcBPMBrkowW9aC2g+xS66zRk4rTmSvDcjJAC/AGzxSwrKmpOxVO5gM4E9iTH6XSRJcyqiWgnR9oqZLnVxaqyGVj+MNvfPIwI+LGkoL6qiKDf5OYbl7HvSCfab/4hhQmBeOfcjXXH+pqxtQzGXWame2kMXiBdWocxdQ4c3EF6dIQ92bk6oPqkFjpXVlTULIQQTF56W7NtO8vT/mq1peG0scLXTjI2HlFZS6SjleZEOVd2LsG1bLxEjmuvmM1IKscbvz/L7dctwm8IPD1GoPRYKNNav7OjGq1Bo1GeRko41jbKl3MvsdpqJzXnSqieQrTrMDtaOljXOdcL57uk3+/bfXbvjxpNrTWhgP9ZpfQHndwoPxmawIeqzyMmzcBcvJqUY/Ohc618qbydjX11lFX6qSmNsm3fSZTl4/vP7xv7LPwFkaHHAj1CQT7MF6vbuaq6m3hwIuZIL146Dj1HeTq1ACc3jOkzRSjgf1ZrjQTE7Ollz2t0f4FIyG1DIdWcriJ6cg/uhQ5kxQSSNnx53FFuCpxhXn0DU6oKcUZSeJn8Owfjf0jZWoNSY/Xnk5jRAPhL+OyEfr4x/gRJW2IuWYO34gaifSdoHilm23BEFZCQGt0/e3rZ84AQjY0bzebmTe4HVt79T6ms/XDCEe6scRXmyxNfg6JxKMdBLLgC9v4Ky0nxzf5LOF6/BicgsNMJXAE520OpsVqTUmAaAstnEAn4CFgmre2jnGrr56sVZ/lS6WHyVhRl+CBSiBxfB4d3s+b0Zbzd3+/GfNqMBP33H93xxHcaGzeaYmzdG8XmzcW+zS+8fdBz8tOHRLl3V60yvh39LfH6D2IuvRr15nZETzuR3BC/HCjjJf9Sai5bxjUrZzK3rghL/vGuesChswm2vn6M9l3N3GK08uFwJ0kVgFAUuWQt7oWzFBx5hQdGV/KDLssrURcNw2ed2LBu1twNG4Yd2KT/KHYuuHrDZf3D6T3Kzqq4VWs8NKlP3FNxgnjORHo28spP4L65nYJEN3HH4NeDxTS7tcSLJhEaV0UoFgUgnUiQ6e8jNtxBozzLNRUJCsgQD43DXHE96twxVH83BRGDxw5afKW7Rhfk2j3pD8ny4vCy/b/e/Ma7TOK9wX3Lli3erMvvvi+Rdb/r2mknHZzi+/qEC9xTeJB0aR1u6QTMwS68uZcjX3uOiOGA4zDgWvRkDOLuWIotMF2qfFnKLAeCEVJZF1U7G9nfiVqwGjM1QqjlRR5LLuDBCxMJZ884pj/siwXNz7392hOPvMvyfnnU2GiK5ma34UN3PpLJ63tdO+0krVrzk1UJ8bXKI0ScBIkV/wBWCHnyLdTEGdDZhtlxBH/AGjsvrouHwCmqwrEioDXSNFChAqicTOyVJ0gFivnawDye6onqaK7DNf1hX8gSj7a9/sP79J/ouD92M52dmqYmY2jbM69U1i0s9DCXWvZFvSdVqHZma+WEoEtD8jj+ky24FVPQlZPRQ73ooV4c28G+5HKcxhtwEqPoSTOhug6dGMYIR4j2nsAaucCOeCl3ds9na6/yCp0uDH/EDAWMR9p2/uBzuqnJYNs29bfrtyvuvi+Ryj+MZ8ukCrgiWGFcWZQU60vOszg0SKSqAvq7x/SbnUfXzYUZixBHdmMqB6O0Ao63kHIMWjIlPD0wnlfihe/ot5yJ4VexiHX/0VefeOTP6be/KjAXrrl3+VAi85jnepe4Tp6EiHmmVcTMqJLLAv1ifkGGyf40xWYeCwfsPHkzxJBt0JEL0eqMY0+qUB9LyjGBqROG6bMwTPNQSSz42bdefnT3/1Zgvk8Bb9682Xpy66l7Mll7A0qNH1PAJjkZVoYR1BGfFFFTiIChQUhyribpCZ1yPO05aRHQGRmS7rsKuDsU9G++Y239Yxs2bMj/HxTw+yX6+g0bCw+cGGrK5uyPu7a98L8lugJPg+I9Eh2NKd8r0f1vBQP+X8ybXrLl6c2bRv9/JPpfeIZY+fGvTB0YTi7N284iz3UalFYVWr3zDCFlSgrZZ5i+Nsvve7OsOLp3xy8eOv33PEP8Fw+Mpfdt4DtKAAAAAElFTkSuQmCC" width="28" height="28" alt="DelDOT">
-    <h1><b>DelDOT</b> GeoTrak<span class="badge">v0.72</span></h1>
+    <h1><b>DelDOT</b> GeoTrak<span class="badge">v0.73</span></h1>
   </div>
   <button class="tab on" data-p="map">Map</button>
   <button class="tab" data-p="refs">Reference data</button>
@@ -21239,6 +21257,7 @@ table.list td{padding:5px 8px;border-bottom:1px solid rgba(46,58,72,.5);font-fam
     <button type="button" class="hdr-tool" id="hdrBtnLayers" data-pop="layers" title="Loaded reference layers">Layers<span class="b" id="hdrLayersBadge">0</span></button>
     <button type="button" class="hdr-tool" id="hdrBtnMarkers" data-pop="markers" title="Map marker toggles">Markers</button>
     <button type="button" class="hdr-tool" id="hdrBtnHydro" data-pop="hydro" title="Phase 2 hydro grids &amp; HUD">Hydro</button>
+    <button type="button" class="hdr-tool measure" id="hdrBtnMeasure" title="Measure distance or area on the map">Measure</button>
     <button type="button" class="hdr-tool boring-req" id="hdrBtnBoringReq" title="Request soil borings — draft M&amp;R Soil Boring Request Sheet">Request borings<span class="b" id="hdrBoringReqBadge">0</span></button>
   </div>
   <span class="stats" id="hdrStats" aria-hidden="true"></span>
@@ -21302,6 +21321,26 @@ table.list td{padding:5px 8px;border-bottom:1px solid rgba(46,58,72,.5);font-fam
   <div class="hint" id="boringReqHint" style="margin-top:6px">Start the wizard, then tap the first boring location on the map.</div>
   <div id="boringReqBody"></div>
 </div>
+<div id="measureDock" role="dialog" aria-labelledby="measureDockTitle">
+  <h3 id="measureDockTitle">Measure<span class="sp"></span>
+    <button type="button" class="hdr-pop-close" id="measureDockClose" title="Exit measure mode">✕</button>
+  </h3>
+  <div class="hint">Click vertices on the map. Double-click or Finish to complete. Site Intel is paused while measuring.</div>
+  <div class="meas-modes" role="group" aria-label="Measure type">
+    <button type="button" class="btn on" id="measModeDist" data-kind="distance">Distance</button>
+    <button type="button" class="btn" id="measModeArea" data-kind="area">Area</button>
+  </div>
+  <div class="meas-readout" id="measReadout">
+    <div class="big" id="measBig">—</div>
+    <div class="sub" id="measSub">Click the map to start</div>
+  </div>
+  <div class="hint" id="measHint">Distance · click two or more points</div>
+  <div class="meas-actions">
+    <button type="button" class="btn" id="measUndoBtn" disabled>Undo</button>
+    <button type="button" class="btn" id="measClearBtn" disabled>Clear</button>
+    <button type="button" class="btn" id="measFinishBtn" disabled style="border-color:var(--cyan);color:var(--cyan)">Finish</button>
+  </div>
+</div>
 <main>
   <!-- ============ MAP ============ -->
   <div class="page on" id="page-map">
@@ -21343,7 +21382,7 @@ table.list td{padding:5px 8px;border-bottom:1px solid rgba(46,58,72,.5);font-fam
       <div class="qpanel-scroll">
       <div class="sec">
         <h3>Point query</h3>
-        <div class="hint">Click the map for <b>Site Intel</b> on the map. Layers / Markers / Hydro / <b>Request borings</b> → top bar.</div>
+        <div class="hint">Click the map for <b>Site Intel</b> on the map. Layers / Markers / Hydro / <b>Measure</b> / <b>Request borings</b> → top bar.</div>
       </div>
       <div class="sec">
         <h3>Project limits</h3>
@@ -22257,6 +22296,7 @@ function redrawLimitsSketch(){
 }
 function startLimitsDraw(){
   if(limitsBusy)return;
+  if(typeof stopMeasureMode==='function') stopMeasureMode({keepGraphics:false});
   if(boringReq && boringReq.active){
     boringReq.picking=false;
     stopBoringReqPickCursor();
@@ -23406,6 +23446,7 @@ function closeBoringReqDock(){
   updateBoringReqButtons();
 }
 function focusBoringRequestFromHeader(){
+  if(typeof stopMeasureMode==='function') stopMeasureMode({keepGraphics:false});
   openBoringReqDock();
   /* If idle, start picking immediately so the top-bar button is one-click useful */
   if(!boringReq.active){
@@ -23642,6 +23683,7 @@ function stopBoringReqPickCursor(){
   map.getContainer().style.cursor='';
 }
 function startBoringRequest(){
+  if(typeof stopMeasureMode==='function') stopMeasureMode({keepGraphics:false});
   if(limitsMode==='draw'){
     /* pause limits draw so map clicks go to boring pick */
     limitsMode=null;
@@ -24284,6 +24326,300 @@ function wireBoringRequestUI(){
     }
   });
   updateBoringReqButtons();
+}
+
+/* ---------- map measure (distance / area) ---------- */
+let measureLayer=L.layerGroup().addTo(map);
+const measure={
+  active:false,
+  kind:'distance', /* distance | area */
+  verts:[], /* [{lat,lon}, ...] */
+  finished:false,
+  hover:null /* LatLng while drawing */
+};
+function pathLenFt(verts){
+  let t=0;
+  for(let i=1;i<(verts||[]).length;i++){
+    const a=verts[i-1], b=verts[i];
+    t+=distFt(a.lat,a.lon,b.lat,b.lon);
+  }
+  return t;
+}
+function ringAreaSqFt(verts){
+  if(!verts||verts.length<3) return 0;
+  const lat0=verts.reduce((s,v)=>s+v.lat,0)/verts.length;
+  const cos=Math.cos(lat0*Math.PI/180);
+  let a=0;
+  const n=verts.length;
+  for(let i=0;i<n;i++){
+    const j=(i+1)%n;
+    const x1=verts[i].lon*364000*cos, y1=verts[i].lat*364000;
+    const x2=verts[j].lon*364000*cos, y2=verts[j].lat*364000;
+    a+=x1*y2-x2*y1;
+  }
+  return Math.abs(a)/2;
+}
+function fmtMeasDist(ft){
+  if(!Number.isFinite(ft)||ft<=0) return '0 ft';
+  if(ft>=5280){
+    const mi=ft/5280;
+    return mi.toFixed(mi>=10?1:2)+' mi · '+Math.round(ft).toLocaleString()+' ft';
+  }
+  return Math.round(ft).toLocaleString()+' ft';
+}
+function fmtMeasArea(sqft){
+  if(!Number.isFinite(sqft)||sqft<=0) return '0 sq ft';
+  const ac=sqft/43560;
+  if(ac>=0.01) return ac.toFixed(ac>=10?1:2)+' ac · '+Math.round(sqft).toLocaleString()+' sq ft';
+  return Math.round(sqft).toLocaleString()+' sq ft';
+}
+function setMeasHint(msg, cls){
+  const el=$('measHint'); if(!el)return;
+  el.className='hint'+(cls?' '+cls:'');
+  el.textContent=msg||'';
+}
+function updateMeasureButtons(){
+  const n=measure.verts.length;
+  const need=measure.kind==='area'?3:2;
+  if($('measUndoBtn')) $('measUndoBtn').disabled=!measure.active||!n;
+  if($('measClearBtn')) $('measClearBtn').disabled=!measure.active||!(n||measure.finished);
+  if($('measFinishBtn')) $('measFinishBtn').disabled=!measure.active||measure.finished||n<need;
+  if($('measModeDist')) $('measModeDist').classList.toggle('on', measure.kind==='distance');
+  if($('measModeArea')) $('measModeArea').classList.toggle('on', measure.kind==='area');
+  if($('hdrBtnMeasure')) $('hdrBtnMeasure').classList.toggle('on', !!measure.active);
+}
+function measureVertsWithHover(){
+  const verts=measure.verts.slice();
+  if(measure.active&&!measure.finished&&measure.hover&&verts.length){
+    verts.push({lat:+measure.hover.lat, lon:+measure.hover.lng});
+  }
+  return verts;
+}
+function updateMeasureReadout(){
+  const verts=measureVertsWithHover();
+  const big=$('measBig'), sub=$('measSub');
+  if(!big||!sub) return;
+  if(measure.kind==='distance'){
+    const ft=pathLenFt(verts);
+    big.textContent=fmtMeasDist(ft);
+    if(!measure.verts.length) sub.textContent='Click the map to start';
+    else if(measure.finished) sub.textContent=measure.verts.length+' vertices · finished';
+    else sub.textContent=measure.verts.length+' vertex(es) · click to continue, Finish or double-click';
+  } else {
+    const use=verts;
+    const sq=ringAreaSqFt(use.length>=3?use:[]);
+    let periFt=pathLenFt(measure.verts);
+    if(measure.finished&&measure.verts.length>=3){
+      const a=measure.verts[measure.verts.length-1], b=measure.verts[0];
+      periFt+=distFt(a.lat,a.lon,b.lat,b.lon);
+    } else if(measure.hover&&measure.verts.length){
+      periFt=pathLenFt(verts);
+      if(measure.verts.length>=2){
+        const last=verts[verts.length-1], first=measure.verts[0];
+        periFt+=distFt(last.lat,last.lon,first.lat,first.lon);
+      }
+    }
+    big.textContent=sq>0?fmtMeasArea(sq):'—';
+    if(!measure.verts.length) sub.textContent='Click the map to start a polygon';
+    else if(measure.finished) sub.textContent=measure.verts.length+' vertices · perimeter '+fmtMeasDist(periFt);
+    else sub.textContent=measure.verts.length+' vertex(es) · need ≥3 · perimeter '+fmtMeasDist(periFt);
+  }
+}
+function redrawMeasureSketch(){
+  if(measureLayer) measureLayer.clearLayers();
+  const verts=measure.verts;
+  const hover=measure.active&&!measure.finished?measure.hover:null;
+  const drawVerts=verts.slice();
+  if(hover&&drawVerts.length) drawVerts.push({lat:+hover.lat, lon:+hover.lng});
+  const color='#7dd3fc';
+  if(measure.kind==='area'&&(measure.finished?verts.length>=3:drawVerts.length>=3)){
+    const polyVerts=measure.finished?verts:drawVerts;
+    L.polygon(polyVerts.map(v=>[v.lat,v.lon]),{
+      color, weight:2, fillColor:color, fillOpacity:measure.finished?0.18:0.1, dashArray:measure.finished?null:'5 4'
+    }).addTo(measureLayer);
+  } else if(drawVerts.length>=2){
+    L.polyline(drawVerts.map(v=>[v.lat,v.lon]),{
+      color, weight:2.5, dashArray:measure.finished?null:'6 4'
+    }).addTo(measureLayer);
+  }
+  verts.forEach((v,i)=>{
+    L.circleMarker([v.lat,v.lon],{
+      radius:5, color:'#0a1218', weight:1, fillColor:color, fillOpacity:1
+    }).bindTooltip('P'+(i+1),{className:'btip',direction:'top'}).addTo(measureLayer);
+  });
+  updateMeasureReadout();
+  updateMeasureButtons();
+}
+function openMeasureDock(){
+  try{
+    document.querySelectorAll('.tab').forEach(t=>t.classList.toggle('on', t.dataset.p==='map'));
+    document.querySelectorAll('.page').forEach(p=>p.classList.toggle('on', p.id==='page-map'));
+  }catch(_){}
+  if(typeof closeHdrPop==='function') closeHdrPop();
+  if(typeof closeBoringReqDock==='function') closeBoringReqDock();
+  const dock=$('measureDock');
+  if(dock) dock.classList.add('open');
+}
+function closeMeasureDock(){
+  const dock=$('measureDock');
+  if(dock) dock.classList.remove('open');
+}
+function applyMeasureCursor(on){
+  try{
+    map.getContainer().classList.toggle('map-measure', !!on);
+    map.getContainer().style.cursor=on?'crosshair':'';
+  }catch(_){}
+}
+function stopMeasureMode(opts){
+  const keep=!!(opts&&opts.keepGraphics);
+  measure.active=false;
+  measure.hover=null;
+  if(!keep){
+    measure.verts=[];
+    measure.finished=false;
+    if(measureLayer) measureLayer.clearLayers();
+  }
+  applyMeasureCursor(false);
+  try{ map.doubleClickZoom.enable(); }catch(_){}
+  closeMeasureDock();
+  updateMeasureButtons();
+  if(keep) updateMeasureReadout();
+}
+function startMeasureMode(kind){
+  if(limitsMode==='draw'){
+    limitsMode=null;
+    try{ map.doubleClickZoom.enable(); }catch(_){}
+    map.getContainer().style.cursor='';
+    updateLimitsButtons();
+    setLimitsHint('Draw paused — measure mode active.');
+  }
+  if(boringReq && boringReq.active && boringReq.picking){
+    boringReq.picking=false;
+    stopBoringReqPickCursor();
+    if(boringReq.points.length){ boringReq.step='review'; renderBoringReqPanel(); }
+    updateBoringReqButtons();
+  }
+  if(kind==='distance'||kind==='area') measure.kind=kind;
+  measure.active=true;
+  measure.finished=false;
+  measure.verts=[];
+  measure.hover=null;
+  if(measureLayer) measureLayer.clearLayers();
+  openMeasureDock();
+  try{ map.doubleClickZoom.disable(); }catch(_){}
+  applyMeasureCursor(true);
+  setMeasHint(measure.kind==='area'
+    ?'Area · click ≥3 vertices, then Finish or double-click'
+    :'Distance · click two or more points, then Finish or double-click','good');
+  updateMeasureButtons();
+  updateMeasureReadout();
+  toast(measure.kind==='area'?'Measure area — click polygon vertices':'Measure distance — click path vertices');
+}
+function addMeasureVertex(ll){
+  if(!measure.active||!ll) return;
+  if(measure.finished){
+    measure.finished=false;
+    measure.verts=[];
+  }
+  measure.verts.push({lat:+ll.lat, lon:+ll.lng});
+  measure.hover=null;
+  redrawMeasureSketch();
+  const n=measure.verts.length;
+  if(measure.kind==='distance'){
+    setMeasHint(n+' point(s) · '+fmtMeasDist(pathLenFt(measure.verts))+' · Finish or double-click when done','');
+  } else {
+    setMeasHint(n+' vertex(es)'+(n>=3?' · Finish or double-click to close':' · need ≥3'),'');
+  }
+}
+function finishMeasure(fromDbl){
+  if(!measure.active||measure.finished) return false;
+  if(fromDbl && measure.verts.length>=2){
+    const a=measure.verts[measure.verts.length-1], b=measure.verts[measure.verts.length-2];
+    if(distFt(a.lat,a.lon,b.lat,b.lon)<8) measure.verts.pop();
+  }
+  const need=measure.kind==='area'?3:2;
+  if(measure.verts.length<need){
+    setMeasHint(measure.kind==='area'?'Need at least 3 vertices.':'Need at least 2 points.','warn');
+    redrawMeasureSketch();
+    return false;
+  }
+  measure.finished=true;
+  measure.hover=null;
+  redrawMeasureSketch();
+  if(measure.kind==='distance'){
+    setMeasHint('Distance '+fmtMeasDist(pathLenFt(measure.verts))+' · Clear or click to start a new measure','good');
+  } else {
+    setMeasHint('Area '+fmtMeasArea(ringAreaSqFt(measure.verts))+' · Clear or click to start a new measure','good');
+  }
+  toast(measure.kind==='distance'?fmtMeasDist(pathLenFt(measure.verts)):fmtMeasArea(ringAreaSqFt(measure.verts)));
+  return true;
+}
+function undoMeasureVertex(){
+  if(!measure.active||!measure.verts.length) return;
+  measure.finished=false;
+  measure.verts.pop();
+  redrawMeasureSketch();
+  setMeasHint(measure.verts.length?'Undid last vertex.':'Click the map to start.');
+}
+function clearMeasureSketch(){
+  measure.verts=[];
+  measure.finished=false;
+  measure.hover=null;
+  if(measureLayer) measureLayer.clearLayers();
+  updateMeasureReadout();
+  updateMeasureButtons();
+  setMeasHint(measure.kind==='area'?'Area · click ≥3 vertices':'Distance · click two or more points');
+}
+function onMeasureMapClick(ll){
+  if(!measure.active) return false;
+  addMeasureVertex(ll);
+  return true;
+}
+function onMeasureMapMove(ll){
+  if(!measure.active||measure.finished||!ll) return;
+  measure.hover=ll;
+  redrawMeasureSketch();
+}
+function wireMeasureUI(){
+  if($('hdrBtnMeasure')) $('hdrBtnMeasure').onclick=e=>{
+    e.stopPropagation();
+    if(measure.active){
+      stopMeasureMode({keepGraphics:!!measure.verts.length});
+      return;
+    }
+    startMeasureMode(measure.kind||'distance');
+  };
+  if($('measureDockClose')) $('measureDockClose').onclick=()=>stopMeasureMode({keepGraphics:!!measure.verts.length});
+  if($('measModeDist')) $('measModeDist').onclick=()=>{
+    if(measure.kind==='distance') return;
+    measure.kind='distance';
+    clearMeasureSketch();
+    if(measure.active) setMeasHint('Distance · click two or more points','good');
+    updateMeasureButtons();
+  };
+  if($('measModeArea')) $('measModeArea').onclick=()=>{
+    if(measure.kind==='area') return;
+    measure.kind='area';
+    clearMeasureSketch();
+    if(measure.active) setMeasHint('Area · click ≥3 vertices','good');
+    updateMeasureButtons();
+  };
+  if($('measUndoBtn')) $('measUndoBtn').onclick=()=>undoMeasureVertex();
+  if($('measClearBtn')) $('measClearBtn').onclick=()=>clearMeasureSketch();
+  if($('measFinishBtn')) $('measFinishBtn').onclick=()=>finishMeasure();
+  document.addEventListener('keydown',e=>{
+    if(!measure.active) return;
+    if((e.key==='Enter'||e.key==='f'||e.key==='F')&&!e.metaKey&&!e.ctrlKey){
+      const t=e.target&&e.target.tagName;
+      if(t==='INPUT'||t==='TEXTAREA'||t==='SELECT') return;
+      finishMeasure();
+    }
+    if((e.key==='z'||e.key==='Z')&&(e.ctrlKey||e.metaKey)){
+      e.preventDefault();
+      undoMeasureVertex();
+    }
+  });
+  updateMeasureButtons();
 }
 
 function drawBorings(){
@@ -29141,6 +29477,11 @@ function setHudTab(tab){
     if(e.key!=='Escape')return;
     if($('subsurfaceMode')&&$('subsurfaceMode').classList.contains('on')){ closeSubsurfaceMode(); return; }
     if($('siteHud')&&$('siteHud').classList.contains('on')) closeSiteHud();
+    if(typeof measure!=='undefined' && measure.active){
+      if(measure.verts.length&&!measure.finished){ undoMeasureVertex(); return; }
+      stopMeasureMode({keepGraphics:false});
+      return;
+    }
     if(typeof boringReq!=='undefined' && boringReq.active && boringReq.picking){
       cancelBoringRequestPick();
       setBoringReqHint(boringReq.points.length?'Pick cancelled — review request or add another.':'Request cancelled.');
@@ -29158,6 +29499,10 @@ map.on('click',e=>{
     addLimitsVertex(e.latlng);
     return;
   }
+  if(typeof measure!=='undefined' && measure.active){
+    onMeasureMapClick(e.latlng);
+    return;
+  }
   if(boringReq.active && boringReq.picking){
     onBoringReqMapClick(e.latlng);
     return;
@@ -29169,10 +29514,22 @@ map.on('dblclick',e=>{
     L.DomEvent.stopPropagation(e);
     L.DomEvent.preventDefault(e);
     if(limitsVerts.length>=3) closeLimitsPolygon();
+    return;
+  }
+  if(typeof measure!=='undefined' && measure.active){
+    L.DomEvent.stopPropagation(e);
+    L.DomEvent.preventDefault(e);
+    finishMeasure(true);
+  }
+});
+map.on('mousemove',e=>{
+  if(typeof measure!=='undefined' && measure.active && !measure.finished){
+    onMeasureMapMove(e.latlng);
   }
 });
 wireProjectLimitsUI();
 wireBoringRequestUI();
+wireMeasureUI();
 $('radius').oninput=function(){$('radLbl').textContent=this.value+' ft'; if(lastQuery)runPointQuery(lastQuery.lat,lastQuery.lng);};
 $('hydroOnline')&&($('hydroOnline').onchange=function(){ if(lastQuery)runPointQuery(lastQuery.lat,lastQuery.lng); if(typeof refreshReportPreview==='function')refreshReportPreview(); });
 $('aquiferOnline')&&($('aquiferOnline').onchange=function(){ if(lastQuery)runPointQuery(lastQuery.lat,lastQuery.lng); if(typeof refreshReportPreview==='function')refreshReportPreview(); });
