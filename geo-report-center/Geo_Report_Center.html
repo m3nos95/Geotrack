@@ -25137,8 +25137,7 @@ function applyHydroLimitToInfil(P, hydro){
     I.below_min_native=false;
   }
   if(!hydro||hydro.skipped){
-    /* Still publish BMP feasibility flags without hydro */
-    if(I.limiting_sep_ok===false&&I.separation_ok==null) I.separation_ok=false;
+    /* Still publish BMP feasibility flags without hydro — limiting layer is advisory until invert known */
     if(I.est_inhr!=null){
       I.design_ring_inhr=dnrecDesignFromField(I.est_inhr,'ring').design;
       I.fos_ring=DNREC_BMP.fos_ring;
@@ -25170,8 +25169,8 @@ function applyHydroLimitToInfil(P, hydro){
   if(hydro.wte&&hydro.wte.normal!=null) I.wte_navd=hydro.wte.normal;
   I.separation_ft_req=DNREC_SEP_FT;
   const dtwOk=dtwSep>=DNREC_SEP_FT;
-  const lzOk=I.limiting_sep_ok!==false; /* null/true = ok or unknown */
-  const sepOk=dtwOk&&lzOk;
+  /* Limiting-layer depth is advisory until proposed invert is known — DTW drives design withhold */
+  const sepOk=dtwOk;
   I.separation_ok=sepOk;
   I.separation_dtw_ok=dtwOk;
   if(I.est_inhr==null){
