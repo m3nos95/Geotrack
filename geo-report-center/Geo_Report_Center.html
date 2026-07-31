@@ -20900,6 +20900,42 @@ main{position:absolute;top:44px;left:0;right:0;bottom:0}
 .page.on{display:block}
 #map{position:absolute;inset:0}
 
+/* Map marker key — quartered survey boring + other types */
+#mapLegend{
+  position:absolute;left:12px;bottom:12px;z-index:850;
+  background:rgba(10,16,22,.92);border:1px solid var(--line);border-radius:8px;
+  padding:8px 10px 8px 10px;min-width:148px;max-width:220px;
+  box-shadow:0 8px 24px rgba(0,0,0,.35);pointer-events:auto;
+  font-family:var(--mono);font-size:10px;color:var(--text);
+}
+#mapLegend.hidden{display:none}
+#mapLegend .ml-hd{display:flex;align-items:center;gap:8px;margin-bottom:6px;color:var(--dim);text-transform:uppercase;letter-spacing:.08em;font-size:9px}
+#mapLegend .ml-hd button{margin-left:auto;background:transparent;border:0;color:var(--dim);cursor:pointer;font:inherit;padding:0 2px}
+#mapLegend .ml-hd button:hover{color:var(--amber)}
+#mapLegend .ml-row{display:flex;align-items:center;gap:8px;padding:3px 0;line-height:1.2}
+#mapLegend .ml-row .ml-lab{color:var(--text);font-size:10.5px}
+#mapLegend .sym{flex-shrink:0;display:inline-block}
+#mapLegend .sym-boring{
+  width:12px;height:12px;border-radius:50%;border:1px solid #0a1218;
+  background:conic-gradient(#111 0deg 90deg,#fff 90deg 180deg,#111 180deg 270deg,#fff 270deg 360deg);
+}
+#mapLegend .sym-core{width:10px;height:10px;border-radius:50%;background:#e8a33d;border:1px solid #0a1218}
+#mapLegend .sym-anchor{
+  width:11px;height:11px;background:#f0a84a;border:1px solid #1a1408;
+  transform:rotate(45deg);border-radius:1px;
+}
+#mapLegend .sym-dgir{width:10px;height:10px;border-radius:50%;background:#3dcfbf;border:1px solid #0a1218}
+#mapLegend .sym-bridge{width:10px;height:10px;border-radius:50%;background:#c084fc;border:1px solid #1a1020}
+#mapLegend .sym-firstmap{width:10px;height:10px;border-radius:50%;background:#a3e635;border:1px solid #0a1218;opacity:.85}
+#mapLegendToggle{
+  position:absolute;left:12px;bottom:12px;z-index:850;
+  background:rgba(10,16,22,.92);border:1px solid var(--line);border-radius:6px;
+  color:var(--dim);font:10px var(--mono);padding:5px 8px;cursor:pointer;display:none;
+  text-transform:uppercase;letter-spacing:.06em;
+}
+#mapLegendToggle:hover{color:var(--amber);border-color:var(--amber)}
+#mapLegendToggle.on{display:block}
+
 /* map side panel */
 #qPanel{position:absolute;top:10px;right:10px;bottom:10px;width:400px;z-index:1000;background:var(--panel);border:1px solid var(--line);
   border-radius:8px;display:flex;flex-direction:column;overflow:hidden}
@@ -21266,7 +21302,7 @@ table.list td{padding:5px 8px;border-bottom:1px solid rgba(46,58,72,.5);font-fam
 <div id="hdr">
   <div class="brand" title="Delaware Department of Transportation">
     <img src="data:image/png;base64,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" width="28" height="28" alt="DelDOT">
-    <h1><b>DelDOT</b> GeoTrak<span class="badge">v0.77.1</span></h1>
+    <h1><b>DelDOT</b> GeoTrak<span class="badge">v0.78</span></h1>
   </div>
   <button class="tab on" data-p="map">Map</button>
   <button class="tab" data-p="refs">Reference data</button>
@@ -21315,6 +21351,7 @@ table.list td{padding:5px 8px;border-bottom:1px solid rgba(46,58,72,.5);font-fam
   </div>
   <div class="hdr-pop-panel" id="hdrPopMarkers" data-pop="markers">
     <h3>Map markers<span class="sp"></span><button type="button" class="hdr-pop-close" data-hdr-close title="Close">✕</button></h3>
+    <div class="hint" style="margin:0 0 8px">Soil borings use a quartered survey symbol. Other types stay color-coded — see the map <b>Key</b> (bottom-left).</div>
     <label class="layerRow" style="margin:0"><input type="checkbox" id="showDgirMarkers">
       <span class="nm">Show DGS DGIR well markers</span></label>
     <div class="hint" style="margin:4px 0 8px 2px">Off by default — avoids thousands of teal dots. <code>dgir_wells.json</code> and geophys zones still load for Site Intel when you click the map.</div>
@@ -21375,6 +21412,16 @@ table.list td{padding:5px 8px;border-bottom:1px solid rgba(46,58,72,.5);font-fam
   <!-- ============ MAP ============ -->
   <div class="page on" id="page-map">
         <div id="map"></div>
+        <div id="mapLegend" class="hidden" aria-label="Map marker key">
+          <div class="ml-hd">Key <button type="button" id="mapLegendHide" title="Hide key">✕</button></div>
+          <div class="ml-row" data-leg="boring"><span class="sym sym-boring" aria-hidden="true"></span><span class="ml-lab">Soil boring</span></div>
+          <div class="ml-row" data-leg="core"><span class="sym sym-core" aria-hidden="true"></span><span class="ml-lab">Pavement core</span></div>
+          <div class="ml-row" data-leg="anchor"><span class="sym sym-anchor" aria-hidden="true"></span><span class="ml-lab">Field infil anchor</span></div>
+          <div class="ml-row" data-leg="dgir"><span class="sym sym-dgir" aria-hidden="true"></span><span class="ml-lab">DGS DGIR well</span></div>
+          <div class="ml-row" data-leg="bridge"><span class="sym sym-bridge" aria-hidden="true"></span><span class="ml-lab">DelDOT bridge</span></div>
+          <div class="ml-row" data-leg="firstmap"><span class="sym sym-firstmap" aria-hidden="true"></span><span class="ml-lab">FirstMap point</span></div>
+        </div>
+        <button type="button" id="mapLegendToggle" title="Show marker key">Key</button>
     <div id="siteHud" aria-live="polite">
       <div class="hud-vignette"></div>
       <div class="hud-grain"></div>
@@ -22420,6 +22467,127 @@ let limitsLayer=L.layerGroup().addTo(map);
 let hudFocusLayer=L.layerGroup().addTo(map); /* Site Intel focus markers (DNREC septic, etc.) */
 let qMarker=null, qCircle=null;
 let _drawToken=0;
+let mapLegendHidden=false;
+try{ mapLegendHidden=localStorage.getItem('geotrak_map_legend_hidden')==='1'; }catch(_){}
+
+/* Canvas survey symbol for soil borings — quartered black/white (keeps thousands of markers fast).
+   Top-right & bottom-left white; top-left & bottom-right black. */
+L.Canvas.include({
+  _updateBoringSurvey(layer){
+    if(!this._drawing||layer._empty()) return;
+    const p=layer._point;
+    const r=Math.max(Math.round(layer._radius), 1);
+    const ctx=this._ctx;
+    ctx.beginPath();
+    ctx.arc(p.x, p.y, r, 0, Math.PI*2);
+    ctx.fillStyle='#ffffff';
+    ctx.fill();
+    /* black top-left (π … 3π/2) and bottom-right (0 … π/2) */
+    ctx.beginPath();
+    ctx.moveTo(p.x, p.y);
+    ctx.arc(p.x, p.y, r, Math.PI, Math.PI*1.5);
+    ctx.closePath();
+    ctx.fillStyle='#111111';
+    ctx.fill();
+    ctx.beginPath();
+    ctx.moveTo(p.x, p.y);
+    ctx.arc(p.x, p.y, r, 0, Math.PI*0.5);
+    ctx.closePath();
+    ctx.fillStyle='#111111';
+    ctx.fill();
+    ctx.beginPath();
+    ctx.arc(p.x, p.y, r, 0, Math.PI*2);
+    ctx.strokeStyle='#0a1218';
+    ctx.lineWidth=1.25;
+    ctx.stroke();
+  },
+  _updateInfilDiamond(layer){
+    if(!this._drawing||layer._empty()) return;
+    const p=layer._point;
+    const r=Math.max(Math.round(layer._radius), 1);
+    const ctx=this._ctx;
+    ctx.beginPath();
+    ctx.moveTo(p.x, p.y-r);
+    ctx.lineTo(p.x+r, p.y);
+    ctx.lineTo(p.x, p.y+r);
+    ctx.lineTo(p.x-r, p.y);
+    ctx.closePath();
+    ctx.fillStyle='#f0a84a';
+    ctx.fill();
+    ctx.strokeStyle='#1a1408';
+    ctx.lineWidth=1.5;
+    ctx.stroke();
+  }
+});
+const BoringSurveyMarker=L.CircleMarker.extend({
+  _updatePath(){ this._renderer._updateBoringSurvey(this); }
+});
+const InfilAnchorMarker=L.CircleMarker.extend({
+  _updatePath(){ this._renderer._updateInfilDiamond(this); }
+});
+function boringSurveyMarker(latlng, opts){
+  return new BoringSurveyMarker(latlng, Object.assign({
+    radius:5, interactive:true, bubblingMouseEvents:false
+  }, opts||{}));
+}
+function infilAnchorMarker(latlng, opts){
+  return new InfilAnchorMarker(latlng, Object.assign({
+    radius:6, interactive:true, bubblingMouseEvents:false
+  }, opts||{}));
+}
+function syncMapLegend(){
+  const box=$('mapLegend');
+  const tog=$('mapLegendToggle');
+  if(!box) return;
+  const nBoring=(db.borings||[]).filter(r=>r.lat!=null&&r.lon!=null).length;
+  const nCore=(db.cores||[]).filter(p=>p.lat!=null&&p.lon!=null).length;
+  const nAnc=showInfilAnchorMarkers&&infilAnchors?infilAnchors.filter(a=>a.lat!=null).length:0;
+  const nDgir=showDgirMarkers&&dgirWells?dgirWells.filter(w=>w.lat!=null).length:0;
+  const nBr=showBridgeMarkers&&deldotBridges?deldotBridges.filter(b=>b.lat!=null).length:0;
+  let nFm=0;
+  try{ nFm=Object.keys(firstmapOn||{}).filter(k=>firstmapOn[k]&&firstmapLeaflet[k]).length; }catch(_){}
+  const rows={
+    boring:nBoring>0,
+    core:nCore>0,
+    anchor:nAnc>0,
+    dgir:nDgir>0,
+    bridge:nBr>0,
+    firstmap:nFm>0
+  };
+  let any=false;
+  box.querySelectorAll('[data-leg]').forEach(el=>{
+    const on=!!rows[el.getAttribute('data-leg')];
+    el.style.display=on?'flex':'none';
+    if(on) any=true;
+  });
+  if(!any){
+    box.classList.add('hidden');
+    if(tog) tog.classList.remove('on');
+    return;
+  }
+  if(mapLegendHidden){
+    box.classList.add('hidden');
+    if(tog) tog.classList.add('on');
+  } else {
+    box.classList.remove('hidden');
+    if(tog) tog.classList.remove('on');
+  }
+}
+function wireMapLegendUI(){
+  const hide=$('mapLegendHide');
+  const tog=$('mapLegendToggle');
+  if(hide) hide.onclick=()=>{
+    mapLegendHidden=true;
+    try{ localStorage.setItem('geotrak_map_legend_hidden','1'); }catch(_){}
+    syncMapLegend();
+  };
+  if(tog) tog.onclick=()=>{
+    mapLegendHidden=false;
+    try{ localStorage.setItem('geotrak_map_legend_hidden','0'); }catch(_){}
+    syncMapLegend();
+  };
+  syncMapLegend();
+}
 
 /* ---------- project limits (draw polygon → inventory → best infil) ---------- */
 let limitsMode=null; /* null | 'draw' */
@@ -25163,9 +25331,8 @@ function drawBorings(){
     const end=Math.min(i+CHUNK, pts.length);
     for(;i<end;i++){
       const r=pts[i];
-      const m=L.circleMarker([r.lat,r.lon],{
-        radius:3.5,color:'rgba(15,20,26,.85)',weight:1,fillColor:'#69a5d6',fillOpacity:.85,
-        renderer:boringCanvas
+      const m=boringSurveyMarker([r.lat,r.lon],{
+        radius:5, renderer:boringCanvas
       }).bindTooltip(`${r.b} · ${r.job}`,{className:'btip',direction:'top',sticky:true})
         .addTo(boringLayer);
       m.on('click',e=>{
@@ -25176,16 +25343,15 @@ function drawBorings(){
     if(i<pts.length){ requestAnimationFrame(step); return; }
     cores.forEach(p=>{
       L.circleMarker([p.lat,p.lon],{
-        radius:3,color:'rgba(15,20,26,.85)',weight:1,fillColor:'#e8a33d',fillOpacity:.85,
+        radius:3.5,color:'rgba(15,20,26,.85)',weight:1,fillColor:'#e8a33d',fillOpacity:.9,
         renderer:boringCanvas
       }).bindTooltip(p.name,{className:'btip',direction:'top'}).addTo(boringLayer);
     });
     if(showInfilAnchorMarkers){
       (infilAnchors||[]).forEach(a=>{
         if(a.lat==null||a.lon==null)return;
-        const m=L.circleMarker([a.lat,a.lon],{
-          radius:6,color:'#1a1408',weight:1.5,fillColor:'#f0a84a',fillOpacity:.95,
-          renderer:boringCanvas
+        const m=infilAnchorMarker([a.lat,a.lon],{
+          radius:6, renderer:boringCanvas
         }).bindTooltip(
           `INFIL ${a.id}`+(a.measured_inhr!=null?` · ${a.measured_inhr} in/hr`:'')+(a.job?` · ${a.job}`:''),
           {className:'btip',direction:'top',sticky:true}
@@ -25233,6 +25399,7 @@ function drawBorings(){
         });
       });
     }
+    if(typeof syncMapLegend==='function') syncMapLegend();
     if(pts.length){
       try{
         const bounds=L.latLngBounds(pts.map(r=>[r.lat,r.lon]));
@@ -25241,6 +25408,7 @@ function drawBorings(){
     }
   }
   if(pts.length||cores.length||(infilAnchors&&infilAnchors.length)||(dgirWells&&dgirWells.length)||(deldotBridges&&deldotBridges.length&&showBridgeMarkers)) requestAnimationFrame(step);
+  else if(typeof syncMapLegend==='function') syncMapLegend();
 }
 
 /* ---------- point-in-polygon ---------- */
@@ -30459,6 +30627,7 @@ map.on('mousemove',e=>{
 wireProjectLimitsUI();
 wireBoringRequestUI();
 wireMeasureUI();
+wireMapLegendUI();
 $('radius').oninput=function(){$('radLbl').textContent=this.value+' ft'; if(lastQuery)runPointQuery(lastQuery.lat,lastQuery.lng);};
 $('hydroOnline')&&($('hydroOnline').onchange=function(){ if(lastQuery)runPointQuery(lastQuery.lat,lastQuery.lng); if(typeof refreshReportPreview==='function')refreshReportPreview(); });
 $('aquiferOnline')&&($('aquiferOnline').onchange=function(){ if(lastQuery)runPointQuery(lastQuery.lat,lastQuery.lng); if(typeof refreshReportPreview==='function')refreshReportPreview(); });
@@ -30564,6 +30733,7 @@ async function setFirstmapLayerOn(id, on){
   if(!on){
     removeFirstmapOverlay(id);
     renderFirstmapLayerList();
+    if(typeof syncMapLegend==='function') syncMapLegend();
     return;
   }
   if(firstmapOn[id]&&firstmapLeaflet[id]){ renderFirstmapLayerList(); return; }
@@ -30605,6 +30775,7 @@ async function setFirstmapLayerOn(id, on){
     firstmapLoading[id]=false;
     renderFirstmapLayerList();
     if(typeof updateHdrToolBadges==='function') updateHdrToolBadges();
+    if(typeof syncMapLegend==='function') syncMapLegend();
   }
 }
 function renderFirstmapLayerList(){
@@ -30655,6 +30826,7 @@ function wireFirstmapUI(){
     firstmapOn={};
     try{ localStorage.setItem('geotrak_firstmap_on','{}'); }catch(_){}
     renderFirstmapLayerList();
+    if(typeof syncMapLegend==='function') syncMapLegend();
     toast('DelDOT FirstMap overlays off');
   };
 }
