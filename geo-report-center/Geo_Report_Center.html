@@ -31303,7 +31303,7 @@ const GUIDE_STEPS=[
     async enter(){
       guideGoPage('map');
       guideCloseIntel();
-      if($('boringReqDockClose')) try{ $('boringReqDockClose').click(); }catch(_){}
+      if(typeof closeBoringReqDock==='function') closeBoringReqDock();
     }
   },
   {
