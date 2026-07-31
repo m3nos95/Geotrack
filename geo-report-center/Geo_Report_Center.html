@@ -22769,6 +22769,12 @@ L.Canvas.include({
 rcleMarker.extend({
   _updatePath(){ this._renderer._updateInfilDiamond(this); }
 });
+const BoringSurveyMarker=L.CircleMarker.extend({
+  _updatePath(){ this._renderer._updateBoringSurvey(this); }
+});
+const InfilAnchorMarker=L.CircleMarker.extend({
+  _updatePath(){ this._renderer._updateInfilDiamond(this); }
+});
 const BridgeIconMarker=L.CircleMarker.extend({
   _updatePath(){ this._renderer._updateBridgeIcon(this); }
 });
