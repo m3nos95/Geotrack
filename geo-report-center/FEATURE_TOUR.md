@@ -27,11 +27,11 @@ Each left button is a different “deck” of information about **that exact spo
 |------------|------------------------|------------------------|
 | **Brief** | One-screen summary | Screening/design infil (if Estimates ON), class, neighbor count, hydro snapshot |
 | **Site** | Mapped soils & geology | Soil name/symbol, HYDGRP A–D, geology unit, recharge / WRPA notes |
-| **Props** | Engineering property forecast | AASHTO group + **FHWA NHI-05-037** frost F1–F4, Mr / CBR screens, subdrainage need, unsuitable-subgrade flags (Estimates ON) |
+| **DNA** | “Fingerprint” of the ground | Same drainage+geology+recharge family elsewhere; can borrow typical lab/infil behavior when local data is thin |
+| **Props** | Engineering property forecast | AASHTO + **FHWA NHI-05-037** frost F1–F4, Mr / CBR screens, subdrainage need, unsuitable-subgrade flags (Estimates ON) — not a lab CBR report |
 | **Infil** | Screening infiltration story | Estimated in/hr, illustrative ÷2.5 design, plain-English **How we arrived at this rate**, contribution sliders |
 | **Anchors** | Real DelDOT borehole infil tests | Measured rates (amber diamonds on map); strongest truth when nearby |
 | **DGS** | Delaware Geological Survey wells | Nearby DGIR wells; **PDF / lith / geophys links** when available; shallow coarse/fine from gamma |
-| **Props** | Screening engineering properties | Subgrade / frost / drainage-style priors from AASHTO — not a lab CBR report |
 | **Septic** | DNREC septic / perc records | Browse PercRate points in the **search radius** list; screening blend uses a **fixed** septic window (not the slider) |
 | **Class** | Soil classification at the point | AASHTO / USCS from nearby borings (or NRCS fallback) |
 | **Column** | Stick log with depth | 0–50′ layers; enter **Subsurface** for a deeper column view |
