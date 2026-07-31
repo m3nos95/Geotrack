@@ -27,7 +27,7 @@ Each left button is a different “deck” of information about **that exact spo
 |------------|------------------------|------------------------|
 | **Brief** | One-screen summary | Screening/design infil (if Estimates ON), class, neighbor count, hydro snapshot |
 | **Site** | Mapped soils & geology | Soil name/symbol, HYDGRP A–D, geology unit, recharge / WRPA notes |
-| **DNA** | “Fingerprint” of the ground | Same drainage+geology+recharge family elsewhere; can borrow typical lab/infil behavior when local data is thin |
+| **Props** | Engineering property forecast | AASHTO group + **FHWA NHI-05-037** frost F1–F4, Mr / CBR screens, subdrainage need, unsuitable-subgrade flags (Estimates ON) |
 | **Infil** | Screening infiltration story | Estimated in/hr, illustrative ÷2.5 design, plain-English **How we arrived at this rate**, contribution sliders |
 | **Anchors** | Real DelDOT borehole infil tests | Measured rates (amber diamonds on map); strongest truth when nearby |
 | **DGS** | Delaware Geological Survey wells | Nearby DGIR wells; **PDF / lith / geophys links** when available; shallow coarse/fine from gamma |
