@@ -20901,16 +20901,23 @@ main{position:absolute;top:44px;left:0;right:0;bottom:0}
 .page.on{display:block}
 #map{position:absolute;inset:0}
 
-/* Map marker key — quartered survey boring + other types */
+/* Map marker key — draggable; sits above Leaflet zoom */
 #mapLegend{
-  position:absolute;left:12px;bottom:12px;z-index:850;
+  position:absolute;left:12px;bottom:88px;z-index:1200;
   background:rgba(10,16,22,.92);border:1px solid var(--line);border-radius:8px;
   padding:8px 10px 8px 10px;min-width:148px;max-width:220px;
   box-shadow:0 8px 24px rgba(0,0,0,.35);pointer-events:auto;
   font-family:var(--mono);font-size:10px;color:var(--text);
+  touch-action:none;
 }
 #mapLegend.hidden{display:none}
-#mapLegend .ml-hd{display:flex;align-items:center;gap:8px;margin-bottom:6px;color:var(--dim);text-transform:uppercase;letter-spacing:.08em;font-size:9px}
+#mapLegend .ml-hd{
+  display:flex;align-items:center;gap:8px;margin-bottom:6px;color:var(--dim);
+  text-transform:uppercase;letter-spacing:.08em;font-size:9px;
+  cursor:grab;user-select:none;-webkit-user-select:none;
+}
+#mapLegend.dragging .ml-hd{cursor:grabbing}
+#mapLegend .ml-hd .ml-drag{flex:1;min-width:0}
 #mapLegend .ml-hd button{margin-left:auto;background:transparent;border:0;color:var(--dim);cursor:pointer;font:inherit;padding:0 2px}
 #mapLegend .ml-hd button:hover{color:var(--amber)}
 #mapLegend .ml-row{display:flex;align-items:center;gap:8px;padding:3px 0;line-height:1.2}
@@ -20928,12 +20935,12 @@ main{position:absolute;top:44px;left:0;right:0;bottom:0}
 #mapLegend .sym-dgir{width:10px;height:10px;border-radius:50%;background:#3dcfbf;border:1px solid #0a1218}
 #mapLegend .sym-bridge{
   width:14px;height:14px;border-radius:50%;border:1px solid #0a1218;
-  background:#1a1a1a center/78% 78% no-repeat;
-  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath fill='%23f0c14a' d='M2.2 16.6h19.6v2.4H2.2z'/%3E%3Cpath fill='none' stroke='%23f0c14a' stroke-width='2.4' d='M4.2 16.6a7.8 7.8 0 0 1 15.6 0'/%3E%3Cpath fill='%23f0c14a' d='M7.05 10.2h1.7V16.6h-1.7zm4.1 0h1.7V16.6h-1.7zm4.1 0h1.7V16.6h-1.7z'/%3E%3C/svg%3E");
+  background:#1a1a1a center/82% 82% no-repeat;
+  background-image:url("data:image/svg+xml,%3Csvg%20xmlns%3D%27http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%27%20viewBox%3D%270%200%2024%2024%27%3E%3Cpath%20fill%3D%27%23f0c14a%27%20d%3D%27M1.2%2014.8h21.6v1.5H1.2z%27%2F%3E%3Cpath%20fill%3D%27%23f0c14a%27%20d%3D%27M6.05%204.6h1.7v11.7h-1.7zm10.2%200h1.7v11.7h-1.7z%27%2F%3E%3Cpath%20fill%3D%27%23f0c14a%27%20d%3D%27M5.7%204.6L6.9%202.5%208.1%204.6zm10.2%200L17.1%202.5%2018.3%204.6z%27%2F%3E%3Cpath%20fill%3D%27%23f0c14a%27%20d%3D%27M5.4%2016h3v1.7h-3zm10.2%200h3v1.7h-3z%27%2F%3E%3Cpath%20fill%3D%27none%27%20stroke%3D%27%23f0c14a%27%20stroke-width%3D%271.15%27%20stroke-linecap%3D%27round%27%20d%3D%27M1.6%2014.8Q3.8%209.2%206.9%203.3Q12%2011.5%2017.1%203.3Q20.2%209.2%2022.4%2014.8%27%2F%3E%3Cpath%20stroke%3D%27%23f0c14a%27%20stroke-width%3D%27.7%27%20d%3D%27M3.2%2012.2V14.8M4.4%2010.2V14.8M5.5%207.8V14.8M8.4%206.6V14.8M9.6%208.6V14.8M10.8%2010.2V14.8M12%2011V14.8M13.2%2010.2V14.8M14.4%208.6V14.8M15.6%206.6V14.8M18.5%207.8V14.8M19.6%2010.2V14.8M20.8%2012.2V14.8%27%2F%3E%3C%2Fsvg%3E");
 }
 #mapLegend .sym-firstmap{width:10px;height:10px;border-radius:50%;background:#a3e635;border:1px solid #0a1218;opacity:.85}
 #mapLegendToggle{
-  position:absolute;left:12px;bottom:12px;z-index:850;
+  position:absolute;left:12px;bottom:88px;z-index:1200;
   background:rgba(10,16,22,.92);border:1px solid var(--line);border-radius:6px;
   color:var(--dim);font:10px var(--mono);padding:5px 8px;cursor:pointer;display:none;
   text-transform:uppercase;letter-spacing:.06em;
@@ -21448,7 +21455,7 @@ table.list td{padding:5px 8px;border-bottom:1px solid rgba(46,58,72,.5);font-fam
 <div id="hdr">
   <div class="brand" title="Delaware Department of Transportation">
     <img src="data:image/png;base64,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" width="28" height="28" alt="DelDOT">
-    <h1><b>DelDOT</b> GeoTrak<span class="badge">v0.80.1</span></h1>
+    <h1><b>DelDOT</b> GeoTrak<span class="badge">v0.80.2</span></h1>
   </div>
   <button class="tab on" data-p="map">Map</button>
   <button class="tab" data-p="refs">Reference data</button>
@@ -21498,7 +21505,7 @@ table.list td{padding:5px 8px;border-bottom:1px solid rgba(46,58,72,.5);font-fam
   </div>
   <div class="hdr-pop-panel" id="hdrPopMarkers" data-pop="markers">
     <h3>Map markers<span class="sp"></span><button type="button" class="hdr-pop-close" data-hdr-close title="Close">✕</button></h3>
-    <div class="hint" style="margin:0 0 8px">Soil borings use a quartered survey symbol; DelDOT bridges use a gold arched-bridge badge. See the map <b>Key</b> (bottom-left).</div>
+    <div class="hint" style="margin:0 0 8px">Soil borings use a quartered survey symbol; DelDOT bridges use a gold suspension-bridge badge. Drag the map <b>Key</b> header to move it (double-click resets).</div>
     <label class="layerRow" style="margin:0"><input type="checkbox" id="showDgirMarkers">
       <span class="nm">Show DGS DGIR well markers</span></label>
     <div class="hint" style="margin:4px 0 8px 2px">Off by default — avoids thousands of teal dots. <code>dgir_wells.json</code> and geophys zones still load for Site Intel when you click the map.</div>
@@ -21576,7 +21583,7 @@ table.list td{padding:5px 8px;border-bottom:1px solid rgba(46,58,72,.5);font-fam
   <div class="page on" id="page-map">
         <div id="map"></div>
         <div id="mapLegend" class="hidden" aria-label="Map marker key">
-          <div class="ml-hd">Key <button type="button" id="mapLegendHide" title="Hide key">✕</button></div>
+          <div class="ml-hd" title="Drag to move · double-click to reset"><span class="ml-drag">Key</span> <button type="button" id="mapLegendHide" title="Hide key">✕</button></div>
           <div class="ml-row" data-leg="boring"><span class="sym sym-boring" aria-hidden="true"></span><span class="ml-lab">Soil boring</span></div>
           <div class="ml-row" data-leg="core"><span class="sym sym-core" aria-hidden="true"></span><span class="ml-lab">Pavement core</span></div>
           <div class="ml-row" data-leg="anchor"><span class="sym sym-anchor" aria-hidden="true"></span><span class="ml-lab">Field infil anchor</span></div>
@@ -22681,7 +22688,7 @@ L.Canvas.include({
     ctx.lineWidth=1.5;
     ctx.stroke();
   },
-  /* Flat DelDOT bridge badge — dark disc + gold arched-bridge silhouette */
+  /* Flat DelDOT bridge badge — dark disc + gold suspension-bridge silhouette */
   _updateBridgeIcon(layer){
     if(!this._drawing||layer._empty()) return;
     const p=layer._point;
@@ -22695,32 +22702,73 @@ L.Canvas.include({
     ctx.lineWidth=1.1;
     ctx.stroke();
     const gold='#f0c14a';
-    const s=r*0.78;
-    const baseY=p.y+s*0.55;
-    const rx=s*0.78;
-    const ry=s*0.78; /* near-semicircle arch */
-    const baseH=Math.max(1.7, r*0.24);
-    const pierW=Math.max(1.2, r*0.17);
-    const archW=Math.max(1.6, r*0.22);
+    const s=r*0.82;
+    const left=p.x-s*0.88;
+    const right=p.x+s*0.88;
+    const deckY=p.y+s*0.28;
+    const deckH=Math.max(1.4, r*0.18);
+    const tw=Math.max(1.3, r*0.16);
+    const tL=p.x-s*0.38;
+    const tR=p.x+s*0.38;
+    const topY=p.y-s*0.72;
+    const baseY=p.y+s*0.62;
     ctx.fillStyle=gold;
     ctx.strokeStyle=gold;
     ctx.lineCap='butt';
     ctx.lineJoin='miter';
-    /* abutment / roadway bar — slightly wider than arch */
-    ctx.fillRect(p.x-rx-s*0.08, baseY, rx*2+s*0.16, baseH);
-    /* three piers from deck up to underside of arch */
-    const pierXs=[p.x-rx*0.42, p.x, p.x+rx*0.42];
-    pierXs.forEach(x=>{
-      const dx=(x-p.x)/rx;
-      const under=baseY-ry*Math.sqrt(Math.max(0, 1-dx*dx))+archW*0.35;
-      const top=Math.min(under, baseY-1);
-      if(top<baseY) ctx.fillRect(x-pierW/2, top, pierW, baseY-top+0.5);
+    /* deck */
+    ctx.fillRect(left, deckY, right-left, deckH);
+    /* towers */
+    ctx.fillRect(tL-tw/2, topY+s*0.12, tw, baseY-(topY+s*0.12));
+    ctx.fillRect(tR-tw/2, topY+s*0.12, tw, baseY-(topY+s*0.12));
+    /* pointed caps */
+    const tip=Math.max(2, r*0.22);
+    [[tL,topY+s*0.12],[tR,topY+s*0.12]].forEach(([tx,ty])=>{
+      ctx.beginPath();
+      ctx.moveTo(tx-tw*0.85, ty);
+      ctx.lineTo(tx, ty-tip);
+      ctx.lineTo(tx+tw*0.85, ty);
+      ctx.closePath();
+      ctx.fill();
     });
-    /* outer arch */
-    ctx.lineWidth=archW;
+    /* tower bases */
+    ctx.fillRect(tL-tw*1.35, deckY+deckH*0.2, tw*2.7, Math.max(1.5, r*0.2));
+    ctx.fillRect(tR-tw*1.35, deckY+deckH*0.2, tw*2.7, Math.max(1.5, r*0.2));
+    /* main cables — left span, center catenary, right span */
+    ctx.lineWidth=Math.max(1.1, r*0.14);
     ctx.beginPath();
-    ctx.ellipse(p.x, baseY, rx, ry, 0, Math.PI, 0, false);
+    ctx.moveTo(left, deckY);
+    ctx.quadraticCurveTo((left+tL)/2, topY+s*0.05, tL, topY+s*0.14);
+    ctx.quadraticCurveTo(p.x, deckY+s*0.05, tR, topY+s*0.14);
+    ctx.quadraticCurveTo((tR+right)/2, topY+s*0.05, right, deckY);
     ctx.stroke();
+    /* suspenders */
+    ctx.lineWidth=Math.max(0.7, r*0.08);
+    const xs=[];
+    for(let i=1;i<=11;i++) xs.push(left+(right-left)*(i/12));
+    xs.forEach(x=>{
+      /* approximate cable height along piecewise quadratic */
+      let cy;
+      if(x<=tL){
+        const t=(x-left)/Math.max(1e-6,tL-left);
+        const mx=(left+tL)/2, my=topY+s*0.05;
+        cy=(1-t)*(1-t)*deckY+2*(1-t)*t*my+t*t*(topY+s*0.14);
+      } else if(x<=tR){
+        const t=(x-tL)/Math.max(1e-6,tR-tL);
+        const mx=p.x, my=deckY+s*0.05;
+        cy=(1-t)*(1-t)*(topY+s*0.14)+2*(1-t)*t*my+t*t*(topY+s*0.14);
+      } else {
+        const t=(x-tR)/Math.max(1e-6,right-tR);
+        const mx=(tR+right)/2, my=topY+s*0.05;
+        cy=(1-t)*(1-t)*(topY+s*0.14)+2*(1-t)*t*my+t*t*deckY;
+      }
+      if(cy<deckY-0.5){
+        ctx.beginPath();
+        ctx.moveTo(x, cy);
+        ctx.lineTo(x, deckY);
+        ctx.stroke();
+      }
+    });
   }
 });
 const BoringSurveyMarker=L.CircleMarker.extend({
@@ -22785,6 +22833,140 @@ function syncMapLegend(){
     if(tog) tog.classList.remove('on');
   }
 }
+function readMapLegendPos(){
+  try{
+    const p=JSON.parse(localStorage.getItem('geotrak_map_legend_pos')||'null');
+    if(p && Number.isFinite(p.left) && Number.isFinite(p.top)) return {left:+p.left, top:+p.top};
+  }catch(_){}
+  return null;
+}
+function writeMapLegendPos(left, top){
+  try{ localStorage.setItem('geotrak_map_legend_pos', JSON.stringify({left, top})); }catch(_){}
+}
+function clearMapLegendPos(){
+  try{ localStorage.removeItem('geotrak_map_legend_pos'); }catch(_){}
+}
+function applyMapLegendPos(el){
+  if(!el) return;
+  const pos=readMapLegendPos();
+  if(!pos){
+    el.style.left='';
+    el.style.top='';
+    el.style.right='';
+    el.style.bottom='';
+    return;
+  }
+  el.style.left=pos.left+'px';
+  el.style.top=pos.top+'px';
+  el.style.right='auto';
+  el.style.bottom='auto';
+}
+function clampMapLegendPos(left, top, el){
+  const parent=el.offsetParent||el.parentElement;
+  if(!parent) return {left, top};
+  const pw=parent.clientWidth||0;
+  const ph=parent.clientHeight||0;
+  const w=el.offsetWidth||160;
+  const h=el.offsetHeight||40;
+  const maxL=Math.max(8, pw-w-8);
+  const maxT=Math.max(8, ph-h-8);
+  return {
+    left:Math.min(Math.max(8, left), maxL),
+    top:Math.min(Math.max(8, top), maxT)
+  };
+}
+function wireMapLegendDrag(){
+  const box=$('mapLegend');
+  const tog=$('mapLegendToggle');
+  const hd=box&&box.querySelector('.ml-hd');
+  if(!box||!hd) return;
+  applyMapLegendPos(box);
+  applyMapLegendPos(tog);
+  try{
+    if(typeof L!=='undefined'&&L.DomEvent){
+      L.DomEvent.disableClickPropagation(box);
+      L.DomEvent.disableScrollPropagation(box);
+      if(tog){
+        L.DomEvent.disableClickPropagation(tog);
+        L.DomEvent.disableScrollPropagation(tog);
+      }
+    }
+  }catch(_){}
+  let dragging=false, ox=0, oy=0, moved=false;
+  const ptr=(e)=>e.touches&&e.touches[0]?e.touches[0]:e;
+  const onMove=(e)=>{
+    if(!dragging) return;
+    const pt=ptr(e);
+    const parent=box.offsetParent||box.parentElement;
+    const prect=parent.getBoundingClientRect();
+    let left=pt.clientX-prect.left-ox;
+    let top=pt.clientY-prect.top-oy;
+    ({left, top}=clampMapLegendPos(left, top, box));
+    box.style.left=left+'px';
+    box.style.top=top+'px';
+    box.style.right='auto';
+    box.style.bottom='auto';
+    if(tog){
+      tog.style.left=left+'px';
+      tog.style.top=top+'px';
+      tog.style.right='auto';
+      tog.style.bottom='auto';
+    }
+    moved=true;
+    if(e.cancelable) e.preventDefault();
+    e.stopPropagation();
+  };
+  const onUp=(e)=>{
+    if(!dragging) return;
+    dragging=false;
+    box.classList.remove('dragging');
+    document.removeEventListener('mousemove', onMove, true);
+    document.removeEventListener('mouseup', onUp, true);
+    document.removeEventListener('touchmove', onMove, true);
+    document.removeEventListener('touchend', onUp, true);
+    document.removeEventListener('touchcancel', onUp, true);
+    if(moved){
+      const left=parseFloat(box.style.left)||0;
+      const top=parseFloat(box.style.top)||0;
+      writeMapLegendPos(left, top);
+    }
+    if(e) e.stopPropagation();
+  };
+  const onDown=(e)=>{
+    if(e.target&&e.target.closest&&e.target.closest('button')) return;
+    if(e.button!=null&&e.button!==0) return;
+    const pt=ptr(e);
+    const rect=box.getBoundingClientRect();
+    const parent=box.offsetParent||box.parentElement;
+    const prect=parent.getBoundingClientRect();
+    ox=pt.clientX-rect.left;
+    oy=pt.clientY-rect.top;
+    box.style.left=(rect.left-prect.left)+'px';
+    box.style.top=(rect.top-prect.top)+'px';
+    box.style.right='auto';
+    box.style.bottom='auto';
+    dragging=true;
+    moved=false;
+    box.classList.add('dragging');
+    document.addEventListener('mousemove', onMove, true);
+    document.addEventListener('mouseup', onUp, true);
+    document.addEventListener('touchmove', onMove, {capture:true, passive:false});
+    document.addEventListener('touchend', onUp, true);
+    document.addEventListener('touchcancel', onUp, true);
+    if(e.cancelable) e.preventDefault();
+    e.stopPropagation();
+  };
+  hd.addEventListener('mousedown', onDown);
+  hd.addEventListener('touchstart', onDown, {passive:false});
+  hd.addEventListener('dblclick', (e)=>{
+    if(e.target&&e.target.closest&&e.target.closest('button')) return;
+    clearMapLegendPos();
+    applyMapLegendPos(box);
+    applyMapLegendPos(tog);
+    e.preventDefault();
+    e.stopPropagation();
+  });
+}
 function wireMapLegendUI(){
   const hide=$('mapLegendHide');
   const tog=$('mapLegendToggle');
@@ -22798,6 +22980,7 @@ function wireMapLegendUI(){
     try{ localStorage.setItem('geotrak_map_legend_hidden','0'); }catch(_){}
     syncMapLegend();
   };
+  wireMapLegendDrag();
   syncMapLegend();
 }
 
