@@ -20977,10 +20977,13 @@ main{position:absolute;top:44px;left:0;right:0;bottom:0}
 #guideTour .gt-nav button.primary{border-color:var(--amber);color:var(--amber);background:rgba(240,168,74,.1)}
 #guideTour .gt-nav button.ghost{color:var(--dim)}
 #hdrBtnGuide.on{border-color:var(--amber);color:var(--amber)}
-/* Guide: wait for a real map click — pass events through to Leaflet */
-#guideTour.await-click{pointer-events:none;background:transparent}
-#guideTour.await-click .gt-card{pointer-events:auto}
-#guideTour.await-click .gt-spot{
+/* Guide: wait for a real map click or project folder — pass events through */
+#guideTour.await-click,
+#guideTour.await-project{pointer-events:none;background:transparent}
+#guideTour.await-click .gt-card,
+#guideTour.await-project .gt-card{pointer-events:auto}
+#guideTour.await-click .gt-spot,
+#guideTour.await-project .gt-spot{
   box-shadow:0 0 0 9999px rgba(4,8,12,.32), 0 0 0 2px rgba(240,168,74,.55);
   animation:guidePulse 1.4s ease-in-out infinite;
 }
@@ -20988,7 +20991,8 @@ main{position:absolute;top:44px;left:0;right:0;bottom:0}
   0%,100%{box-shadow:0 0 0 9999px rgba(4,8,12,.32), 0 0 0 2px rgba(240,168,74,.45)}
   50%{box-shadow:0 0 0 9999px rgba(4,8,12,.22), 0 0 0 3px rgba(240,168,74,.85)}
 }
-#guideTour.await-click .gt-nav button.primary:disabled{
+#guideTour.await-click .gt-nav button.primary:disabled,
+#guideTour.await-project .gt-nav button.primary:disabled{
   opacity:.85;cursor:wait;border-color:var(--cyan);color:var(--cyan);
 }
 
@@ -21536,7 +21540,7 @@ table.list td{padding:5px 8px;border-bottom:1px solid rgba(46,58,72,.5);font-fam
 <div id="hdr">
   <div class="brand" title="Delaware Department of Transportation">
     <img src="data:image/png;base64,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" width="28" height="28" alt="DelDOT">
-    <h1><b>DelDOT</b> GeoTrak<span class="badge">v0.80.6</span></h1>
+    <h1><b>DelDOT</b> GeoTrak<span class="badge">v0.80.7</span></h1>
   </div>
   <button class="tab on" data-p="map">Map</button>
   <button class="tab" data-p="refs">Reference data</button>
@@ -22395,6 +22399,7 @@ async function bindProjectHandle(handle, opts){
   try{ await idbSetProjectHandle(handle); }catch(e){ console.warn('persist handle', e); }
   setProjUi(handle.name+'/', 'loaded');
   await loadProject();
+  try{ if(typeof guideNotifyProjectLoaded==='function') await guideNotifyProjectLoaded(); }catch(_){}
   return true;
 }
 async function tryAutoOpenProject(){
@@ -31578,6 +31583,7 @@ let guideActive=false;
 let guideStep=0;
 let guideBusy=false;
 let guideAwaitingMapClick=false;
+let guideAwaitingProject=false;
 /* GUIDE_STORAGE_KEY declared with cold-start keys above */
 
 function guideGoPage(name){
@@ -31630,6 +31636,43 @@ function guideSetAwaitMapClick(on){
       next.disabled=false;
       next.title='';
     }
+  }
+}
+function guideProjectReady(){
+  return !!dirHandle && !projectLoading;
+}
+function guideSetAwaitProject(on){
+  guideAwaitingProject=!!on;
+  const root=$('guideTour');
+  if(root) root.classList.toggle('await-project', !!on);
+  const next=$('guideNext');
+  if(next){
+    if(on){
+      next.disabled=true;
+      next.textContent='Open a folder…';
+      next.title='Browse to your project folder (db.json + refs/) to continue';
+    } else {
+      next.disabled=false;
+      next.title='';
+    }
+  }
+}
+async function guideNotifyProjectLoaded(){
+  if(!guideActive || !guideAwaitingProject) return;
+  if(!guideProjectReady()) return;
+  guideBusy=true;
+  guideSetAwaitProject(false);
+  try{
+    const name=(dirHandle&&dirHandle.name)?dirHandle.name:'project';
+    const nBor=((db&&db.borings)||[]).length;
+    toast('Loaded '+name+' · '+nBor+' boring(s) — continuing…', 3500);
+    await new Promise(r=>requestAnimationFrame(()=>setTimeout(r,60)));
+    guideBusy=false;
+    await guideShowStep(guideStep+1);
+  }catch(e){
+    console.warn('guide project loaded', e);
+    guideBusy=false;
+    guideSetAwaitProject(true);
   }
 }
 function guidePositionAwaitCard(){
@@ -31725,9 +31768,24 @@ const GUIDE_STEPS=[
   {
     id:'project',
     title:'Open your project folder',
-    body:'Start here. Opening a project folder loads your boring database and map reference files so Site Intel has something to work with.',
+    body:'Browse to your GeoTrak project folder (the one with <b>db.json</b> and a <b>refs/</b> folder). Click <b>Open project folder</b> above, pick it in the file dialog, and wait for borings + map layers to load. Without this, Site Intel has nothing to show when you click the map later.',
     sel:'#openProj',
-    async enter(){ guideGoPage('map'); guideCloseIntel(); }
+    awaitProject:true,
+    async enter(){
+      guideGoPage('map');
+      guideCloseIntel();
+      if(guideProjectReady()){
+        guideSetAwaitProject(false);
+        const body=$('guideBody');
+        const name=dirHandle&&dirHandle.name?dirHandle.name:'project';
+        const nBor=((db&&db.borings)||[]).length;
+        if(body) body.innerHTML='Project <b>'+esc(name)+'</b> is already loaded ('+nBor+' boring'+(nBor===1?'':'s')+'). Click <b>Next</b> — or <b>Change folder</b> if you need a different project.';
+        toast('Project already loaded — hit Next, or Change folder to switch', 4000);
+      } else {
+        guideSetAwaitProject(true);
+        toast('Guide: browse to your project folder to continue', 4500);
+      }
+    }
   },
   {
     id:'estimates',
@@ -31767,6 +31825,12 @@ const GUIDE_STEPS=[
       guideGoPage('map');
       if(typeof closeHdrPop==='function') closeHdrPop();
       guideCloseIntel();
+      if(!guideProjectReady()){
+        toast('Open a project folder first — Site Intel needs db.json + refs');
+        const pi=GUIDE_STEPS.findIndex(s=>s.id==='project');
+        guideBusy=false;
+        if(pi>=0){ await guideShowStep(pi); return; }
+      }
       /* Estimates on so the walkthrough after the click shows rates / profiles */
       if(typeof setEstimatesOn==='function' && !estimatesOn) setEstimatesOn(true, true);
       guideSetAwaitMapClick(true);
@@ -31927,6 +31991,7 @@ async function guideShowStep(i){
   if(!guideActive) return;
   guideBusy=true;
   guideSetAwaitMapClick(false);
+  guideSetAwaitProject(false);
   guideStep=Math.max(0, Math.min(i, GUIDE_STEPS.length-1));
   const step=GUIDE_STEPS[guideStep];
   const kick=$('guideKicker');
@@ -31944,7 +32009,12 @@ async function guideShowStep(i){
     next.title='';
   }
   try{ if(step.enter) await step.enter(); }catch(e){ console.warn('guide step', step.id, e); }
-  /* enter() may have set await-click — keep Next disabled */
+  /* enter() may have redirected to another step (e.g. click → project) */
+  if(!guideActive || GUIDE_STEPS[guideStep]!==step){ guideBusy=false; return; }
+  /* enter() may have set await flags — keep Next disabled */
+  if(step.awaitProject && guideAwaitingProject){
+    if(next){ next.disabled=true; next.textContent='Open a folder…'; next.title='Browse to your project folder (db.json + refs/) to continue'; }
+  }
   if(step.awaitClick && guideAwaitingMapClick){
     if(next){ next.disabled=true; next.textContent='Click the map…'; next.title='Click a point on the map to continue'; }
   }
@@ -31961,6 +32031,7 @@ async function guideShowStep(i){
 function guideStop(markSeen){
   guideActive=false;
   guideSetAwaitMapClick(false);
+  guideSetAwaitProject(false);
   const root=$('guideTour');
   if(root){ root.classList.remove('on'); root.hidden=true; }
   const btn=$('hdrBtnGuide');
@@ -31996,6 +32067,10 @@ function wireGuideTour(){
   };
   if(next) next.onclick=async ()=>{
     if(guideBusy) return;
+    if(guideAwaitingProject){
+      toast('Browse to your project folder first (Open project folder) — then Site Intel will have data');
+      return;
+    }
     if(guideAwaitingMapClick){
       toast('Click a point on the map first — then we walk Site Intel for that location');
       return;
@@ -32020,6 +32095,7 @@ function wireGuideTour(){
     if(!guideActive) return;
     if(e.key==='Escape'){ e.preventDefault(); guideStop(false); }
     else if(e.key==='ArrowRight'||e.key==='Enter'){
+      if(guideAwaitingProject){ e.preventDefault(); toast('Open a project folder to continue'); return; }
       if(guideAwaitingMapClick){ e.preventDefault(); toast('Click the map to continue'); return; }
       e.preventDefault(); if(next) next.click();
     }
