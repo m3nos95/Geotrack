@@ -1,7 +1,7 @@
 @echo off
 setlocal
 cd /d "%~dp0"
-echo Downloading DelDOT bridges (BRIDGE_NO + GPS) from FirstMap...
+echo Downloading DelDOT bridges (full TSDM inventory) from FirstMap...
 python download-deldot-bridges.py
 if errorlevel 1 (
   echo FAILED — need Python 3 and internet access to FirstMap.
