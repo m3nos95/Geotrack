@@ -41,7 +41,11 @@ def is_pdf(data: bytes) -> bool:
 
 
 def fetch_bytes(url: str, timeout: int = 120) -> bytes:
-    req = urllib.request.Request(url, headers={"User-Agent": UA})
+    # Quote path segments with spaces for live requests
+    parsed = urllib.parse.urlsplit(url)
+    path = urllib.parse.quote(parsed.path, safe="/:@")
+    final = urllib.parse.urlunsplit((parsed.scheme, parsed.netloc, path, parsed.query, ""))
+    req = urllib.request.Request(final, headers={"User-Agent": UA})
     with urllib.request.urlopen(req, timeout=timeout) as resp:
         return resp.read()
 
@@ -49,14 +53,34 @@ def fetch_bytes(url: str, timeout: int = 120) -> bytes:
 def archive_url(url: str, ts: str | None) -> str:
     # Prefer a recent known timestamp when available
     stamp = ts or "2025"
-    return f"https://web.archive.org/web/{stamp}id_/{url}"
+    # Wayback id_ mode needs a fully encoded original URL (spaces etc.)
+    quoted = urllib.parse.quote(url, safe=":/?&=%#")
+    return f"https://web.archive.org/web/{stamp}id_/{quoted}"
+
+
+def resolve_mediawiki_file_url(url: str) -> str | None:
+    """Turn /index.php/File:Foo.pdf into the direct /images/.../Foo.pdf link."""
+    if "index.php/File:" not in url and "title=File:" not in url:
+        return None
+    try:
+        html = fetch_bytes(url).decode("utf-8", "ignore")
+    except Exception:
+        return None
+    m = re.search(r'href="(/images/[^"]+\.pdf)"', html, re.I)
+    if not m:
+        return None
+    return urllib.parse.urljoin(url, m.group(1))
 
 
 def download_one(item: dict, force: bool = False) -> dict:
     url = item["url"]
-    dest = safe_path(url)
+    # Prefer direct binary URL when given a MediaWiki File: page
+    resolved = resolve_mediawiki_file_url(url)
+    fetch_url = resolved or url
+    dest = safe_path(fetch_url if resolved else url)
     result = {
         "url": url,
+        "resolved_url": resolved,
         "path": str(dest.relative_to(ROOT)),
         "status": None,
         "bytes": 0,
@@ -69,9 +93,10 @@ def download_one(item: dict, force: bool = False) -> dict:
         return result
 
     dest.parent.mkdir(parents=True, exist_ok=True)
-    attempts = [("live", url)]
-    if item.get("archive_ts") or True:
-        attempts.append(("wayback", archive_url(url, item.get("archive_ts"))))
+    attempts = [("live", fetch_url)]
+    attempts.append(("wayback", archive_url(fetch_url, item.get("archive_ts"))))
+    if resolved and resolved != url:
+        attempts.append(("wayback_original", archive_url(url, item.get("archive_ts"))))
 
     last_err = None
     for via, attempt_url in attempts:
