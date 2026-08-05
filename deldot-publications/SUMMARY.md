@@ -1,0 +1,75 @@
+# DelDOT publications mirror — download summary
+
+- **PDFs on disk:** 3,691
+- **Size:** 7.37 GB
+- **Catalog URLs:** 4,364
+- **Location:** `deldot-publications/files/` (gitignored)
+
+## Counts by section
+
+- `manuals/const_details`: 1313
+- `engineeringsupport`: 450
+- `manuals/traffic_counts`: 421
+- `reports/CTP`: 282
+- `reports/hpms`: 166
+- `reports/highway_statistics`: 122
+- `manuals/de_mutcd`: 117
+- `manuals/mat_research`: 117
+- `manuals/traffic_design`: 76
+- `manuals/safety_manual`: 61
+- `plans`: 55
+- `archived`: 42
+- `manuals/standard_specifications`: 41
+- `manuals/livable_delaware`: 39
+- `manuals/corr_cap`: 37
+- `manuals/dgm`: 36
+- `reports/budgetRequests`: 36
+- `reports/msa`: 29
+- `brochures`: 18
+- `manuals/road_design`: 17
+- `reports/bond_offering_statements`: 17
+- `manuals/construction_manual`: 16
+- `manuals/bridge_atlas`: 13
+- `other`: 12
+- `reports/annual_prop_mgmt`: 12
+- `reports/fact_book`: 12
+- `shop_de_maps`: 12
+- `manuals/scenic_hwys`: 10
+- `reports/financial_statements_audits`: 10
+- `manuals/edh`: 9
+- `manuals/pedestrianAccessibility`: 9
+- `pdfs`: 9
+- `reports/bond_bill`: 8
+- `reports/plan`: 8
+- `manuals/bridge_design`: 5
+- `manuals/qa-qc-manual`: 5
+- `reports/ITMS`: 5
+- `reports/customer_satisfaction_surveys`: 5
+- `reports/freight_plan`: 4
+- `manuals/bridge_inspection`: 3
+- `manuals/right-of-way-engineering`: 3
+- `reports/jfc_presentations`: 3
+- `reports/ctf-checkbook`: 2
+- `tamp`: 2
+- `manuals/DelDOT RW Manual 2025 Rev 8-22-25.pdf`: 1
+- `manuals/UAV`: 1
+- `manuals/clear_zone`: 1
+- `manuals/complete_streets`: 1
+- `manuals/de_byways`: 1
+- `manuals/lighting`: 1
+- `manuals/ojt`: 1
+- `manuals/policies`: 1
+- `manuals/professional_services`: 1
+- `manuals/sign_inspection`: 1
+- `manuals/traffic_calming`: 1
+- `reports/DelDOT_Non-Metropolitan_Consultation_Process_2021.pdf`: 1
+- `reports/HR47_2011`: 1
+- `reports/LewesTrailhead`: 1
+- `reports/SIP`: 1
+- `reports/Sussex-LRTP`: 1
+- `reports/assessment`: 1
+- `reports/delrtp`: 1
+- `reports/developments`: 1
+- `reports/fhwa_consultation_process`: 1
+- `reports/srp`: 1
+- `reports/ttf_task_force`: 1
