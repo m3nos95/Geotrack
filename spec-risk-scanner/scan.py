@@ -53,8 +53,9 @@ def scan_patterns(full_text: str, sections: list[dict], rules: dict) -> list[dic
     categories = rules.get("categories", {})
 
     for cat_id, cat in categories.items():
-        severity = cat.get("severity", "medium")
+        cat_severity = cat.get("severity", "medium")
         for pat in cat.get("patterns", []):
+            severity = pat.get("severity", cat_severity)
             regex = re.compile(pat["regex"], re.IGNORECASE)
             for m in regex.finditer(full_text):
                 # Skip TOC region (early pages with dense leaders near match)
@@ -165,11 +166,18 @@ def dedupe_findings(findings: list[dict]) -> list[dict]:
     """Collapse near-duplicate matches of same rule in same section."""
     best = {}
     for f in findings:
-        key = (f["rule_id"], f.get("section_id"), f["page"] // 1)
-        # keep first occurrence per rule/section/page
+        # Prefer stable id for Table B-1 / structured findings
+        if f.get("rule_id") == "full_t99_no_one_point" or f.get("capacity_scenarios"):
+            key = ("structured", f.get("id") or f.get("snippet") or id(f))
+        else:
+            page = f.get("page")
+            key = (f["rule_id"], f.get("section_id"), page, f.get("source"))
         if key not in best:
             best[key] = f
-    return sorted(best.values(), key=lambda x: (severity_rank(x["severity"]), x["page"], x["rule_id"]))
+    return sorted(
+        best.values(),
+        key=lambda x: (severity_rank(x["severity"]), x.get("page") or 0, x["rule_id"]),
+    )
 
 
 def severity_rank(s: str) -> int:
@@ -191,15 +199,25 @@ def summarize(findings: list[dict]) -> dict:
 def render_html(findings: list[dict], summary: dict, source_name: str) -> str:
     rows = []
     for f in findings:
+        cap = f.get("capacity_scenarios") or {}
+        cap_bits = []
+        for sc in cap.values():
+            cap_bits.append(
+                f"{sc.get('label', '')}: ~{sc.get('samples')} samples / "
+                f"{sc.get('est_lab_hours')} lab-hrs ({sc.get('mode')})"
+            )
+        cap_html = ("<br><em>" + html.escape(" | ".join(cap_bits)) + "</em>") if cap_bits else ""
+        page = f.get("page")
+        page_s = "" if page is None else str(page)
         rows.append(
             "<tr>"
             f"<td class='sev {html.escape(f['severity'])}'>{html.escape(f['severity'])}</td>"
-            f"<td>{html.escape(f['category'])}</td>"
+            f"<td>{html.escape(f['category'])}<br><small>{html.escape(str(f.get('source') or ''))}</small></td>"
             f"<td>{html.escape(f['rule_id'])}</td>"
-            f"<td>{f['page']}</td>"
-            f"<td>{html.escape(f.get('section_id') or '')}<br><small>{html.escape(f.get('section_header') or '')}</small></td>"
+            f"<td>{html.escape(page_s)}</td>"
+            f"<td>{html.escape(str(f.get('section_id') or ''))}<br><small>{html.escape(f.get('section_header') or '')}</small></td>"
             f"<td><code>{html.escape(f['match'])}</code></td>"
-            f"<td>{html.escape(f['note'])}</td>"
+            f"<td>{html.escape(f['note'])}{cap_html}</td>"
             f"<td class='snip'>{html.escape(f['snippet'])}</td>"
             "</tr>"
         )
@@ -275,7 +293,8 @@ def render_html(findings: list[dict], summary: dict, source_name: str) -> str:
   <div class="brand">DelDOT · Spec Risk Scanner</div>
   <h1>Contract language review findings</h1>
   <p class="sub">Candidate issues in <strong>{html.escape(source_name)}</strong> —
-  poor phrasing, discretionary standards, payment shifts, and conflict/precedence language.
+  poor phrasing, payment shifts, document conflicts, and
+  <em>unrealistic testing frequencies</em> (full T99 vs one-point — RT 301 lesson).
   For internal review only; not legal advice.</p>
 </header>
 <main>
@@ -306,6 +325,32 @@ def render_html(findings: list[dict], summary: dict, source_name: str) -> str:
 """
 
 
+def scan_pdf(pdf: Path, rules: dict, max_shall_will: int) -> tuple[list[dict], dict]:
+    pages = extract_pages(pdf)
+    full = pages_to_full_text(pages)
+    sections = parse_sections(full)
+    findings = scan_patterns(full, sections, rules)
+    for f in findings:
+        f["source"] = pdf.name
+    heur = rules.get("heuristics", {})
+    if heur.get("shall_will_proximity", {}).get("enabled", True):
+        sw = scan_shall_will_proximity(
+            full,
+            sections,
+            window=heur["shall_will_proximity"].get("window_chars", 400),
+        )
+        for f in sw[:max_shall_will]:
+            f["source"] = pdf.name
+        findings.extend(sw[:max_shall_will])
+    if heur.get("measurement_vs_basis_of_payment", {}).get("enabled", True):
+        extra = find_cross_section_keyword_conflicts(sections)
+        for f in extra:
+            f["source"] = pdf.name
+        findings.extend(extra)
+    meta = {"pages": len(pages), "sections": len(sections), "source": pdf.name}
+    return findings, meta
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
@@ -313,6 +358,20 @@ def main() -> None:
         type=Path,
         default=DATA_DIR / "2026_DelDOT_Standard_Specifications.pdf",
     )
+    parser.add_argument(
+        "--also",
+        type=Path,
+        nargs="*",
+        default=[],
+        help="Additional PDFs (e.g. M&R Part B)",
+    )
+    parser.add_argument(
+        "--include-table-b1",
+        action="store_true",
+        default=True,
+        help="Merge Table B-1 full-T99-without-one-point findings (default on)",
+    )
+    parser.add_argument("--no-table-b1", action="store_true")
     parser.add_argument("--rules", type=Path, default=RULES_PATH)
     parser.add_argument("--out-dir", type=Path, default=REPORT_DIR)
     parser.add_argument(
@@ -327,43 +386,60 @@ def main() -> None:
         raise SystemExit(f"PDF not found: {args.pdf}\nRun download_specs.py first.")
 
     rules = load_rules(args.rules)
-    pages = extract_pages(args.pdf)
-    full = pages_to_full_text(pages)
-    sections = parse_sections(full)
+    pdfs = [args.pdf] + list(args.also or [])
+    # Default: also scan Part B if present
+    part_b = DATA_DIR / "mat_research" / "4b_min_test_and_cert_req.pdf"
+    if part_b.exists() and part_b not in pdfs:
+        pdfs.append(part_b)
 
-    findings = scan_patterns(full, sections, rules)
-    heur = rules.get("heuristics", {})
-    if heur.get("shall_will_proximity", {}).get("enabled", True):
-        sw = scan_shall_will_proximity(
-            full,
-            sections,
-            window=heur["shall_will_proximity"].get("window_chars", 400),
-        )
-        findings.extend(sw[: args.max_shall_will])
-    if heur.get("measurement_vs_basis_of_payment", {}).get("enabled", True):
-        findings.extend(find_cross_section_keyword_conflicts(sections))
+    all_findings: list[dict] = []
+    sources_meta = []
+    for pdf in pdfs:
+        if not pdf.exists():
+            print(f"skip missing {pdf}")
+            continue
+        findings, meta = scan_pdf(pdf, rules, args.max_shall_will)
+        all_findings.extend(findings)
+        sources_meta.append(meta)
+        print(f"Scanned {pdf.name}: {len(findings)} raw findings")
 
-    findings = dedupe_findings(findings)
+    if args.include_table_b1 and not args.no_table_b1:
+        try:
+            from parse_table_b1 import build_findings, extract_text, parse_rows
+
+            b1 = DATA_DIR / "mat_research" / "5-part_b_b-2-min_test_cert-quantities_list.pdf"
+            if b1.exists():
+                rows = parse_rows(extract_text(b1))
+                b1_findings = build_findings(rows)
+                all_findings.extend(b1_findings)
+                print(f"Table B-1 T99 capacity findings: {len(b1_findings)}")
+            else:
+                print("Table B-1 PDF not found; run download_specs.py --only table_b1_quantities")
+        except Exception as exc:
+            print(f"Table B-1 parse skipped: {exc}")
+
+    findings = dedupe_findings(all_findings)
     summary = summarize(findings)
 
     args.out_dir.mkdir(parents=True, exist_ok=True)
-    source_name = args.pdf.name
+    source_name = " + ".join(m["source"] for m in sources_meta) or args.pdf.name
+    if any(f.get("source") == "Table B-1 quantities list" for f in findings):
+        source_name += " + Table B-1"
     payload = {
-        "source": source_name,
+        "sources": sources_meta,
         "generated_at": datetime.now(timezone.utc).isoformat(),
-        "pages": len(pages),
-        "sections": len(sections),
         "summary": summary,
         "findings": findings,
+        "lesson": "docs/lesson-rt301-t99-testing-capacity.md",
     }
     json_path = args.out_dir / "spec_risk_findings.json"
     html_path = args.out_dir / "spec_risk_findings.html"
     json_path.write_text(json.dumps(payload, indent=2), encoding="utf-8")
     html_path.write_text(render_html(findings, summary, source_name), encoding="utf-8")
 
-    print(f"Sections: {len(sections)}")
     print(f"Findings: {summary['total']}")
     print(f"By severity: {summary['by_severity']}")
+    print(f"By category: {summary['by_category']}")
     print(f"Wrote {json_path}")
     print(f"Wrote {html_path}")
 

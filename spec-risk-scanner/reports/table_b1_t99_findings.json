@@ -1,0 +1,2571 @@
+{
+  "summary": {
+    "rows_with_t99": 107,
+    "full_t99_without_alt": 103,
+    "t99_with_t272_alt": 4
+  },
+  "findings": [
+    {
+      "id": "table-b1-t99-202000-1 / 1000 ( 1 / 750 )",
+      "rule_id": "full_t99_no_one_point",
+      "category": "testing_capacity_risk",
+      "severity": "high",
+      "note": "Table B-1 lists full AASHTO T99 without T272 / one-point alternative. On high-volume earthwork this can exceed field/lab capacity (RT 301 lesson: Tutor Perini exploited missed testing frequencies).",
+      "match": "T99 without T272/one-point",
+      "page": null,
+      "section_id": "202000",
+      "section_header": "Excavation and Embankment yd3 (m3)",
+      "snippet": "202000 Excavation and Embankment yd3 (m3) 1 / 1000 ( 1 / 750 ) T88, T89, T90, T99 (M ethod C), T310",
+      "item": "202000",
+      "frequency": {
+        "kind": "per_unit",
+        "every": 1000,
+        "raw": "1 / 1000 ( 1 / 750 )"
+      },
+      "tests": "T88, T89, T90, T99 (M ethod C), T310",
+      "capacity_scenarios": {
+        "medium_earthwork_50k_cy": {
+          "samples": 50,
+          "mode": "full_t99",
+          "est_lab_hours": 350.0,
+          "est_field_density_hours": 25.0,
+          "quantity": 50000,
+          "every": 1000,
+          "label": "50,000 yd\u00b3 embankment/borrow"
+        },
+        "large_earthwork_200k_cy": {
+          "samples": 200,
+          "mode": "full_t99",
+          "est_lab_hours": 1400.0,
+          "est_field_density_hours": 100.0,
+          "quantity": 200000,
+          "every": 1000,
+          "label": "200,000 yd\u00b3 embankment/borrow (RT-301-scale)"
+        }
+      },
+      "source": "Table B-1 quantities list"
+    },
+    {
+      "id": "table-b1-t99-Structures yd3 (m3)-1 / 1000 ( 1 / 750 )",
+      "rule_id": "full_t99_no_one_point",
+      "category": "testing_capacity_risk",
+      "severity": "high",
+      "note": "Table B-1 lists full AASHTO T99 without T272 / one-point alternative. On high-volume earthwork this can exceed field/lab capacity (RT 301 lesson: Tutor Perini exploited missed testing frequencies).",
+      "match": "T99 without T272/one-point",
+      "page": null,
+      "section_id": null,
+      "section_header": "Structures yd3 (m3)",
+      "snippet": "Structures yd3 (m3) 1 / 1000 ( 1 / 750 ) T88, T89, T90, T99 ( Method C), T310",
+      "item": null,
+      "frequency": {
+        "kind": "per_unit",
+        "every": 1000,
+        "raw": "1 / 1000 ( 1 / 750 )"
+      },
+      "tests": "T88, T89, T90, T99 ( Method C), T310",
+      "capacity_scenarios": {
+        "medium_earthwork_50k_cy": {
+          "samples": 50,
+          "mode": "full_t99",
+          "est_lab_hours": 350.0,
+          "est_field_density_hours": 25.0,
+          "quantity": 50000,
+          "every": 1000,
+          "label": "50,000 yd\u00b3 embankment/borrow"
+        },
+        "large_earthwork_200k_cy": {
+          "samples": 200,
+          "mode": "full_t99",
+          "est_lab_hours": 1400.0,
+          "est_field_density_hours": 100.0,
+          "quantity": 200000,
+          "every": 1000,
+          "label": "200,000 yd\u00b3 embankment/borrow (RT-301-scale)"
+        }
+      },
+      "source": "Table B-1 quantities list"
+    },
+    {
+      "id": "table-b1-t99-Trenches yd3 (m3)-1 / 300 ( 1 / 200 )",
+      "rule_id": "full_t99_no_one_point",
+      "category": "testing_capacity_risk",
+      "severity": "high",
+      "note": "Table B-1 lists full AASHTO T99 without T272 / one-point alternative. On high-volume earthwork this can exceed field/lab capacity (RT 301 lesson: Tutor Perini exploited missed testing frequencies). Frequency is aggressive: 1 per 300 units.",
+      "match": "T99 without T272/one-point",
+      "page": null,
+      "section_id": null,
+      "section_header": "Trenches yd3 (m3)",
+      "snippet": "Trenches yd3 (m3) 1 / 300 ( 1 / 200 ) T88, T89, T90, T99 (Method C), T310",
+      "item": null,
+      "frequency": {
+        "kind": "per_unit",
+        "every": 300,
+        "raw": "1 / 300 ( 1 / 200 )"
+      },
+      "tests": "T88, T89, T90, T99 (Method C), T310",
+      "capacity_scenarios": {
+        "medium_earthwork_50k_cy": {
+          "samples": 167,
+          "mode": "full_t99",
+          "est_lab_hours": 1169.0,
+          "est_field_density_hours": 83.5,
+          "quantity": 50000,
+          "every": 300,
+          "label": "50,000 yd\u00b3 embankment/borrow"
+        },
+        "large_earthwork_200k_cy": {
+          "samples": 667,
+          "mode": "full_t99",
+          "est_lab_hours": 4669.0,
+          "est_field_density_hours": 333.5,
+          "quantity": 200000,
+          "every": 300,
+          "label": "200,000 yd\u00b3 embankment/borrow (RT-301-scale)"
+        }
+      },
+      "source": "Table B-1 quantities list"
+    },
+    {
+      "id": "table-b1-t99-Common Trenche s yd3 (m3)-1 / 1000 ( 1 / 750 )",
+      "rule_id": "full_t99_no_one_point",
+      "category": "testing_capacity_risk",
+      "severity": "high",
+      "note": "Table B-1 lists full AASHTO T99 without T272 / one-point alternative. On high-volume earthwork this can exceed field/lab capacity (RT 301 lesson: Tutor Perini exploited missed testing frequencies).",
+      "match": "T99 without T272/one-point",
+      "page": null,
+      "section_id": null,
+      "section_header": "Common Trenche s yd3 (m3)",
+      "snippet": "Common Trenche s yd3 (m3) 1 / 1000 ( 1 / 750 ) T88, T89, T90, T99 (Method C), T310",
+      "item": null,
+      "frequency": {
+        "kind": "per_unit",
+        "every": 1000,
+        "raw": "1 / 1000 ( 1 / 750 )"
+      },
+      "tests": "T88, T89, T90, T99 (Method C), T310",
+      "capacity_scenarios": {
+        "medium_earthwork_50k_cy": {
+          "samples": 50,
+          "mode": "full_t99",
+          "est_lab_hours": 350.0,
+          "est_field_density_hours": 25.0,
+          "quantity": 50000,
+          "every": 1000,
+          "label": "50,000 yd\u00b3 embankment/borrow"
+        },
+        "large_earthwork_200k_cy": {
+          "samples": 200,
+          "mode": "full_t99",
+          "est_lab_hours": 1400.0,
+          "est_field_density_hours": 100.0,
+          "quantity": 200000,
+          "every": 1000,
+          "label": "200,000 yd\u00b3 embankment/borrow (RT-301-scale)"
+        }
+      },
+      "source": "Table B-1 quantities list"
+    },
+    {
+      "id": "table-b1-t99-Trenches yd3 (m3)-1 / 1000 ( 1 / 750 )",
+      "rule_id": "full_t99_no_one_point",
+      "category": "testing_capacity_risk",
+      "severity": "high",
+      "note": "Table B-1 lists full AASHTO T99 without T272 / one-point alternative. On high-volume earthwork this can exceed field/lab capacity (RT 301 lesson: Tutor Perini exploited missed testing frequencies).",
+      "match": "T99 without T272/one-point",
+      "page": null,
+      "section_id": null,
+      "section_header": "Trenches yd3 (m3)",
+      "snippet": "Trenches yd3 (m3) 1 / 1000 ( 1 / 750 ) T88, T89, T90, T99 (Method C), T310",
+      "item": null,
+      "frequency": {
+        "kind": "per_unit",
+        "every": 1000,
+        "raw": "1 / 1000 ( 1 / 750 )"
+      },
+      "tests": "T88, T89, T90, T99 (Method C), T310",
+      "capacity_scenarios": {
+        "medium_earthwork_50k_cy": {
+          "samples": 50,
+          "mode": "full_t99",
+          "est_lab_hours": 350.0,
+          "est_field_density_hours": 25.0,
+          "quantity": 50000,
+          "every": 1000,
+          "label": "50,000 yd\u00b3 embankment/borrow"
+        },
+        "large_earthwork_200k_cy": {
+          "samples": 200,
+          "mode": "full_t99",
+          "est_lab_hours": 1400.0,
+          "est_field_density_hours": 100.0,
+          "quantity": 200000,
+          "every": 1000,
+          "label": "200,000 yd\u00b3 embankment/borrow (RT-301-scale)"
+        }
+      },
+      "source": "Table B-1 quantities list"
+    },
+    {
+      "id": "table-b1-t99-209001-1 / 750 ( 1 / 600 )",
+      "rule_id": "full_t99_no_one_point",
+      "category": "testing_capacity_risk",
+      "severity": "high",
+      "note": "Table B-1 lists full AASHTO T99 without T272 / one-point alternative. On high-volume earthwork this can exceed field/lab capacity (RT 301 lesson: Tutor Perini exploited missed testing frequencies).",
+      "match": "T99 without T272/one-point",
+      "page": null,
+      "section_id": "209001",
+      "section_header": "Borrow, Type A yd3 (m3)",
+      "snippet": "209001 Borrow, Type A yd3 (m3) 1 / 750 ( 1 / 600 ) T88, T89, T90, T99 (Method C), T310",
+      "item": "209001",
+      "frequency": {
+        "kind": "per_unit",
+        "every": 750,
+        "raw": "1 / 750 ( 1 / 600 )"
+      },
+      "tests": "T88, T89, T90, T99 (Method C), T310",
+      "capacity_scenarios": {
+        "medium_earthwork_50k_cy": {
+          "samples": 67,
+          "mode": "full_t99",
+          "est_lab_hours": 469.0,
+          "est_field_density_hours": 33.5,
+          "quantity": 50000,
+          "every": 750,
+          "label": "50,000 yd\u00b3 embankment/borrow"
+        },
+        "large_earthwork_200k_cy": {
+          "samples": 267,
+          "mode": "full_t99",
+          "est_lab_hours": 1869.0,
+          "est_field_density_hours": 133.5,
+          "quantity": 200000,
+          "every": 750,
+          "label": "200,000 yd\u00b3 embankment/borrow (RT-301-scale)"
+        }
+      },
+      "source": "Table B-1 quantities list"
+    },
+    {
+      "id": "table-b1-t99-209002-1 / 500 ( 1 / 400 )",
+      "rule_id": "full_t99_no_one_point",
+      "category": "testing_capacity_risk",
+      "severity": "high",
+      "note": "Table B-1 lists full AASHTO T99 without T272 / one-point alternative. On high-volume earthwork this can exceed field/lab capacity (RT 301 lesson: Tutor Perini exploited missed testing frequencies). Frequency is aggressive: 1 per 500 units.",
+      "match": "T99 without T272/one-point",
+      "page": null,
+      "section_id": "209002",
+      "section_header": "Borrow, Type B yd3 (m3)",
+      "snippet": "209002 Borrow, Type B yd3 (m3) 1 / 500 ( 1 / 400 ) T88, T89, T90, T99 (Method C)",
+      "item": "209002",
+      "frequency": {
+        "kind": "per_unit",
+        "every": 500,
+        "raw": "1 / 500 ( 1 / 400 )"
+      },
+      "tests": "T88, T89, T90, T99 (Method C)",
+      "capacity_scenarios": {
+        "medium_earthwork_50k_cy": {
+          "samples": 100,
+          "mode": "full_t99",
+          "est_lab_hours": 700.0,
+          "est_field_density_hours": 0,
+          "quantity": 50000,
+          "every": 500,
+          "label": "50,000 yd\u00b3 embankment/borrow"
+        },
+        "large_earthwork_200k_cy": {
+          "samples": 400,
+          "mode": "full_t99",
+          "est_lab_hours": 2800.0,
+          "est_field_density_hours": 0,
+          "quantity": 200000,
+          "every": 500,
+          "label": "200,000 yd\u00b3 embankment/borrow (RT-301-scale)"
+        }
+      },
+      "source": "Table B-1 quantities list"
+    },
+    {
+      "id": "table-b1-t99-209003-1 / 300 ( 1 / 200 )",
+      "rule_id": "full_t99_no_one_point",
+      "category": "testing_capacity_risk",
+      "severity": "high",
+      "note": "Table B-1 lists full AASHTO T99 without T272 / one-point alternative. On high-volume earthwork this can exceed field/lab capacity (RT 301 lesson: Tutor Perini exploited missed testing frequencies). Frequency is aggressive: 1 per 300 units.",
+      "match": "T99 without T272/one-point",
+      "page": null,
+      "section_id": "209003",
+      "section_header": "Borrow, Type C yd3 (m3)",
+      "snippet": "209003 Borrow, Type C yd3 (m3) 1 / 300 ( 1 / 200 ) T88, T89, T90, T99 (Method C), T310",
+      "item": "209003",
+      "frequency": {
+        "kind": "per_unit",
+        "every": 300,
+        "raw": "1 / 300 ( 1 / 200 )"
+      },
+      "tests": "T88, T89, T90, T99 (Method C), T310",
+      "capacity_scenarios": {
+        "medium_earthwork_50k_cy": {
+          "samples": 167,
+          "mode": "full_t99",
+          "est_lab_hours": 1169.0,
+          "est_field_density_hours": 83.5,
+          "quantity": 50000,
+          "every": 300,
+          "label": "50,000 yd\u00b3 embankment/borrow"
+        },
+        "large_earthwork_200k_cy": {
+          "samples": 667,
+          "mode": "full_t99",
+          "est_lab_hours": 4669.0,
+          "est_field_density_hours": 333.5,
+          "quantity": 200000,
+          "every": 300,
+          "label": "200,000 yd\u00b3 embankment/borrow (RT-301-scale)"
+        }
+      },
+      "source": "Table B-1 quantities list"
+    },
+    {
+      "id": "table-b1-t99-209004-1 / 1000 ( 1 / 750 )",
+      "rule_id": "full_t99_no_one_point",
+      "category": "testing_capacity_risk",
+      "severity": "high",
+      "note": "Table B-1 lists full AASHTO T99 without T272 / one-point alternative. On high-volume earthwork this can exceed field/lab capacity (RT 301 lesson: Tutor Perini exploited missed testing frequencies).",
+      "match": "T99 without T272/one-point",
+      "page": null,
+      "section_id": "209004",
+      "section_header": "Borrow, Type D yd3 (m3)",
+      "snippet": "209004 Borrow, Type D yd3 (m3) 1 / 1000 ( 1 / 750 ) T88, T89, T90, T99 (Method C), T310",
+      "item": "209004",
+      "frequency": {
+        "kind": "per_unit",
+        "every": 1000,
+        "raw": "1 / 1000 ( 1 / 750 )"
+      },
+      "tests": "T88, T89, T90, T99 (Method C), T310",
+      "capacity_scenarios": {
+        "medium_earthwork_50k_cy": {
+          "samples": 50,
+          "mode": "full_t99",
+          "est_lab_hours": 350.0,
+          "est_field_density_hours": 25.0,
+          "quantity": 50000,
+          "every": 1000,
+          "label": "50,000 yd\u00b3 embankment/borrow"
+        },
+        "large_earthwork_200k_cy": {
+          "samples": 200,
+          "mode": "full_t99",
+          "est_lab_hours": 1400.0,
+          "est_field_density_hours": 100.0,
+          "quantity": 200000,
+          "every": 1000,
+          "label": "200,000 yd\u00b3 embankment/borrow (RT-301-scale)"
+        }
+      },
+      "source": "Table B-1 quantities list"
+    },
+    {
+      "id": "table-b1-t99-209005-1 / 1000 ( 1 / 750 )",
+      "rule_id": "full_t99_no_one_point",
+      "category": "testing_capacity_risk",
+      "severity": "high",
+      "note": "Table B-1 lists full AASHTO T99 without T272 / one-point alternative. On high-volume earthwork this can exceed field/lab capacity (RT 301 lesson: Tutor Perini exploited missed testing frequencies).",
+      "match": "T99 without T272/one-point",
+      "page": null,
+      "section_id": "209005",
+      "section_header": "Borrow, Type E yd3 (m3)",
+      "snippet": "209005 Borrow, Type E yd3 (m3) 1 / 1000 ( 1 / 750 ) T88, T89, T90, T99 (Method C), T310",
+      "item": "209005",
+      "frequency": {
+        "kind": "per_unit",
+        "every": 1000,
+        "raw": "1 / 1000 ( 1 / 750 )"
+      },
+      "tests": "T88, T89, T90, T99 (Method C), T310",
+      "capacity_scenarios": {
+        "medium_earthwork_50k_cy": {
+          "samples": 50,
+          "mode": "full_t99",
+          "est_lab_hours": 350.0,
+          "est_field_density_hours": 25.0,
+          "quantity": 50000,
+          "every": 1000,
+          "label": "50,000 yd\u00b3 embankment/borrow"
+        },
+        "large_earthwork_200k_cy": {
+          "samples": 200,
+          "mode": "full_t99",
+          "est_lab_hours": 1400.0,
+          "est_field_density_hours": 100.0,
+          "quantity": 200000,
+          "every": 1000,
+          "label": "200,000 yd\u00b3 embankment/borrow (RT-301-scale)"
+        }
+      },
+      "source": "Table B-1 quantities list"
+    },
+    {
+      "id": "table-b1-t99-209006-1 / 1000 ( 1 / 750 )",
+      "rule_id": "full_t99_no_one_point",
+      "category": "testing_capacity_risk",
+      "severity": "high",
+      "note": "Table B-1 lists full AASHTO T99 without T272 / one-point alternative. On high-volume earthwork this can exceed field/lab capacity (RT 301 lesson: Tutor Perini exploited missed testing frequencies).",
+      "match": "T99 without T272/one-point",
+      "page": null,
+      "section_id": "209006",
+      "section_header": "Borrow, Type F yd3 (m3)",
+      "snippet": "209006 Borrow, Type F yd3 (m3) 1 / 1000 ( 1 / 750 ) T88, T89, T90, T99 (Method C), T310",
+      "item": "209006",
+      "frequency": {
+        "kind": "per_unit",
+        "every": 1000,
+        "raw": "1 / 1000 ( 1 / 750 )"
+      },
+      "tests": "T88, T89, T90, T99 (Method C), T310",
+      "capacity_scenarios": {
+        "medium_earthwork_50k_cy": {
+          "samples": 50,
+          "mode": "full_t99",
+          "est_lab_hours": 350.0,
+          "est_field_density_hours": 25.0,
+          "quantity": 50000,
+          "every": 1000,
+          "label": "50,000 yd\u00b3 embankment/borrow"
+        },
+        "large_earthwork_200k_cy": {
+          "samples": 200,
+          "mode": "full_t99",
+          "est_lab_hours": 1400.0,
+          "est_field_density_hours": 100.0,
+          "quantity": 200000,
+          "every": 1000,
+          "label": "200,000 yd\u00b3 embankment/borrow (RT-301-scale)"
+        }
+      },
+      "source": "Table B-1 quantities list"
+    },
+    {
+      "id": "table-b1-t99-209007-1 / 500 ( 1 / 400 )",
+      "rule_id": "full_t99_no_one_point",
+      "category": "testing_capacity_risk",
+      "severity": "high",
+      "note": "Table B-1 lists full AASHTO T99 without T272 / one-point alternative. On high-volume earthwork this can exceed field/lab capacity (RT 301 lesson: Tutor Perini exploited missed testing frequencies). Frequency is aggressive: 1 per 500 units.",
+      "match": "T99 without T272/one-point",
+      "page": null,
+      "section_id": "209007",
+      "section_header": "Borrow, Type G yd3 (m3)",
+      "snippet": "209007 Borrow, Type G yd3 (m3) 1 / 500 ( 1 / 400 ) T88, T89, T90, T99 (Method C), T310",
+      "item": "209007",
+      "frequency": {
+        "kind": "per_unit",
+        "every": 500,
+        "raw": "1 / 500 ( 1 / 400 )"
+      },
+      "tests": "T88, T89, T90, T99 (Method C), T310",
+      "capacity_scenarios": {
+        "medium_earthwork_50k_cy": {
+          "samples": 100,
+          "mode": "full_t99",
+          "est_lab_hours": 700.0,
+          "est_field_density_hours": 50.0,
+          "quantity": 50000,
+          "every": 500,
+          "label": "50,000 yd\u00b3 embankment/borrow"
+        },
+        "large_earthwork_200k_cy": {
+          "samples": 400,
+          "mode": "full_t99",
+          "est_lab_hours": 2800.0,
+          "est_field_density_hours": 200.0,
+          "quantity": 200000,
+          "every": 500,
+          "label": "200,000 yd\u00b3 embankment/borrow (RT-301-scale)"
+        }
+      },
+      "source": "Table B-1 quantities list"
+    },
+    {
+      "id": "table-b1-t99-209500-1 / 1000 ( 1 / 750 )",
+      "rule_id": "full_t99_no_one_point",
+      "category": "testing_capacity_risk",
+      "severity": "high",
+      "note": "Table B-1 lists full AASHTO T99 without T272 / one-point alternative. On high-volume earthwork this can exceed field/lab capacity (RT 301 lesson: Tutor Perini exploited missed testing frequencies).",
+      "match": "T99 without T272/one-point",
+      "page": null,
+      "section_id": "209500",
+      "section_header": "Coal Ash yd3 (m3)",
+      "snippet": "209500 Coal Ash yd3 (m3) 1 / 1000 ( 1 / 750 ) T88, T89, T90, T99 (Method C)",
+      "item": "209500",
+      "frequency": {
+        "kind": "per_unit",
+        "every": 1000,
+        "raw": "1 / 1000 ( 1 / 750 )"
+      },
+      "tests": "T88, T89, T90, T99 (Method C)",
+      "capacity_scenarios": {
+        "medium_earthwork_50k_cy": {
+          "samples": 50,
+          "mode": "full_t99",
+          "est_lab_hours": 350.0,
+          "est_field_density_hours": 0,
+          "quantity": 50000,
+          "every": 1000,
+          "label": "50,000 yd\u00b3 embankment/borrow"
+        },
+        "large_earthwork_200k_cy": {
+          "samples": 200,
+          "mode": "full_t99",
+          "est_lab_hours": 1400.0,
+          "est_field_density_hours": 0,
+          "quantity": 200000,
+          "every": 1000,
+          "label": "200,000 yd\u00b3 embankment/borrow (RT-301-scale)"
+        }
+      },
+      "source": "Table B-1 quantities list"
+    },
+    {
+      "id": "table-b1-t99-yd3 (m3)-1 / 500 ( 1 / 400 )",
+      "rule_id": "full_t99_no_one_point",
+      "category": "testing_capacity_risk",
+      "severity": "high",
+      "note": "Table B-1 lists full AASHTO T99 without T272 / one-point alternative. On high-volume earthwork this can exceed field/lab capacity (RT 301 lesson: Tutor Perini exploited missed testing frequencies). Frequency is aggressive: 1 per 500 units.",
+      "match": "T99 without T272/one-point",
+      "page": null,
+      "section_id": null,
+      "section_header": "yd3 (m3)",
+      "snippet": "yd3 (m3) 1 / 500 ( 1 / 400 ) T88, T89, T90, T99 (Method C), T310",
+      "item": null,
+      "frequency": {
+        "kind": "per_unit",
+        "every": 500,
+        "raw": "1 / 500 ( 1 / 400 )"
+      },
+      "tests": "T88, T89, T90, T99 (Method C), T310",
+      "capacity_scenarios": {
+        "medium_earthwork_50k_cy": {
+          "samples": 100,
+          "mode": "full_t99",
+          "est_lab_hours": 700.0,
+          "est_field_density_hours": 50.0,
+          "quantity": 50000,
+          "every": 500,
+          "label": "50,000 yd\u00b3 embankment/borrow"
+        },
+        "large_earthwork_200k_cy": {
+          "samples": 400,
+          "mode": "full_t99",
+          "est_lab_hours": 2800.0,
+          "est_field_density_hours": 200.0,
+          "quantity": 200000,
+          "every": 500,
+          "label": "200,000 yd\u00b3 embankment/borrow (RT-301-scale)"
+        }
+      },
+      "source": "Table B-1 quantities list"
+    },
+    {
+      "id": "table-b1-t99-yd3 (m3)-1 / 1000 ( 1 / 750 )",
+      "rule_id": "full_t99_no_one_point",
+      "category": "testing_capacity_risk",
+      "severity": "high",
+      "note": "Table B-1 lists full AASHTO T99 without T272 / one-point alternative. On high-volume earthwork this can exceed field/lab capacity (RT 301 lesson: Tutor Perini exploited missed testing frequencies).",
+      "match": "T99 without T272/one-point",
+      "page": null,
+      "section_id": null,
+      "section_header": "yd3 (m3)",
+      "snippet": "yd3 (m3) 1 / 1000 ( 1 / 750 ) T88, T89, T90, T99 (Method C), T310",
+      "item": null,
+      "frequency": {
+        "kind": "per_unit",
+        "every": 1000,
+        "raw": "1 / 1000 ( 1 / 750 )"
+      },
+      "tests": "T88, T89, T90, T99 (Method C), T310",
+      "capacity_scenarios": {
+        "medium_earthwork_50k_cy": {
+          "samples": 50,
+          "mode": "full_t99",
+          "est_lab_hours": 350.0,
+          "est_field_density_hours": 25.0,
+          "quantity": 50000,
+          "every": 1000,
+          "label": "50,000 yd\u00b3 embankment/borrow"
+        },
+        "large_earthwork_200k_cy": {
+          "samples": 200,
+          "mode": "full_t99",
+          "est_lab_hours": 1400.0,
+          "est_field_density_hours": 100.0,
+          "quantity": 200000,
+          "every": 1000,
+          "label": "200,000 yd\u00b3 embankment/borrow (RT-301-scale)"
+        }
+      },
+      "source": "Table B-1 quantities list"
+    },
+    {
+      "id": "table-b1-t99-212000-1 / 1000 ( 1 / 750 )",
+      "rule_id": "full_t99_no_one_point",
+      "category": "testing_capacity_risk",
+      "severity": "high",
+      "note": "Table B-1 lists full AASHTO T99 without T272 / one-point alternative. On high-volume earthwork this can exceed field/lab capacity (RT 301 lesson: Tutor Perini exploited missed testing frequencies).",
+      "match": "T99 without T272/one-point",
+      "page": null,
+      "section_id": "212000",
+      "section_header": "Undercut Excavation yd3 (m3)",
+      "snippet": "212000 Undercut Excavation yd3 (m3) 1 / 1000 ( 1 / 750 ) T88, T89, T90, T99 (Method C), T267, T310",
+      "item": "212000",
+      "frequency": {
+        "kind": "per_unit",
+        "every": 1000,
+        "raw": "1 / 1000 ( 1 / 750 )"
+      },
+      "tests": "T88, T89, T90, T99 (Method C), T267, T310",
+      "capacity_scenarios": {
+        "medium_earthwork_50k_cy": {
+          "samples": 50,
+          "mode": "full_t99",
+          "est_lab_hours": 350.0,
+          "est_field_density_hours": 25.0,
+          "quantity": 50000,
+          "every": 1000,
+          "label": "50,000 yd\u00b3 embankment/borrow"
+        },
+        "large_earthwork_200k_cy": {
+          "samples": 200,
+          "mode": "full_t99",
+          "est_lab_hours": 1400.0,
+          "est_field_density_hours": 100.0,
+          "quantity": 200000,
+          "every": 1000,
+          "label": "200,000 yd\u00b3 embankment/borrow (RT-301-scale)"
+        }
+      },
+      "source": "Table B-1 quantities list"
+    },
+    {
+      "id": "table-b1-t99-212001-1 / 1000 ( 1 / 750 )",
+      "rule_id": "full_t99_no_one_point",
+      "category": "testing_capacity_risk",
+      "severity": "high",
+      "note": "Table B-1 lists full AASHTO T99 without T272 / one-point alternative. On high-volume earthwork this can exceed field/lab capacity (RT 301 lesson: Tutor Perini exploited missed testing frequencies).",
+      "match": "T99 without T272/one-point",
+      "page": null,
+      "section_id": "212001",
+      "section_header": "Undercut Excavation, Patching yd3 (m3)",
+      "snippet": "212001 Undercut Excavation, Patching yd3 (m3) 1 / 1000 ( 1 / 750 ) T88, T89, T90, T99 (Method C), T267, T310",
+      "item": "212001",
+      "frequency": {
+        "kind": "per_unit",
+        "every": 1000,
+        "raw": "1 / 1000 ( 1 / 750 )"
+      },
+      "tests": "T88, T89, T90, T99 (Method C), T267, T310",
+      "capacity_scenarios": {
+        "medium_earthwork_50k_cy": {
+          "samples": 50,
+          "mode": "full_t99",
+          "est_lab_hours": 350.0,
+          "est_field_density_hours": 25.0,
+          "quantity": 50000,
+          "every": 1000,
+          "label": "50,000 yd\u00b3 embankment/borrow"
+        },
+        "large_earthwork_200k_cy": {
+          "samples": 200,
+          "mode": "full_t99",
+          "est_lab_hours": 1400.0,
+          "est_field_density_hours": 100.0,
+          "quantity": 200000,
+          "every": 1000,
+          "label": "200,000 yd\u00b3 embankment/borrow (RT-301-scale)"
+        }
+      },
+      "source": "Table B-1 quantities list"
+    },
+    {
+      "id": "table-b1-t99-Management Pond, Type I yd3 (m3)-minimum 1 / Source / Contract",
+      "rule_id": "full_t99_no_one_point",
+      "category": "testing_capacity_risk",
+      "severity": "high",
+      "note": "Table B-1 lists full AASHTO T99 without T272 / one-point alternative. On high-volume earthwork this can exceed field/lab capacity (RT 301 lesson: Tutor Perini exploited missed testing frequencies).",
+      "match": "T99 without T272/one-point",
+      "page": null,
+      "section_id": null,
+      "section_header": "Management Pond, Type I yd3 (m3)",
+      "snippet": "Management Pond, Type I yd3 (m3) minimum 1 / Source / Contract T88, T89, T90, T99M (Method C), T310",
+      "item": null,
+      "frequency": {
+        "kind": "per_source_contract",
+        "every": null,
+        "raw": "minimum 1 / Source / Contract"
+      },
+      "tests": "T88, T89, T90, T99M (Method C), T310",
+      "capacity_scenarios": {},
+      "source": "Table B-1 quantities list"
+    },
+    {
+      "id": "table-b1-t99-Management Pond, Type II yd3 (m3)-minimum 1 / Source / Contract",
+      "rule_id": "full_t99_no_one_point",
+      "category": "testing_capacity_risk",
+      "severity": "high",
+      "note": "Table B-1 lists full AASHTO T99 without T272 / one-point alternative. On high-volume earthwork this can exceed field/lab capacity (RT 301 lesson: Tutor Perini exploited missed testing frequencies).",
+      "match": "T99 without T272/one-point",
+      "page": null,
+      "section_id": null,
+      "section_header": "Management Pond, Type II yd3 (m3)",
+      "snippet": "Management Pond, Type II yd3 (m3) minimum 1 / Source / Contract T88, T89, T90, T99M (Method C), T310",
+      "item": null,
+      "frequency": {
+        "kind": "per_source_contract",
+        "every": null,
+        "raw": "minimum 1 / Source / Contract"
+      },
+      "tests": "T88, T89, T90, T99M (Method C), T310",
+      "capacity_scenarios": {},
+      "source": "Table B-1 quantities list"
+    },
+    {
+      "id": "table-b1-t99-301000-1 / 500 ( 1 / 400 )",
+      "rule_id": "full_t99_no_one_point",
+      "category": "testing_capacity_risk",
+      "severity": "high",
+      "note": "Table B-1 lists full AASHTO T99 without T272 / one-point alternative. On high-volume earthwork this can exceed field/lab capacity (RT 301 lesson: Tutor Perini exploited missed testing frequencies). Frequency is aggressive: 1 per 500 units.",
+      "match": "T99 without T272/one-point",
+      "page": null,
+      "section_id": "301000",
+      "section_header": "Select Borrow Base Course yd3 (m3)",
+      "snippet": "301000 Select Borrow Base Course yd3 (m3) 1 / 500 ( 1 / 400 ) T88, T89, T90, T99 (Method C), T310",
+      "item": "301000",
+      "frequency": {
+        "kind": "per_unit",
+        "every": 500,
+        "raw": "1 / 500 ( 1 / 400 )"
+      },
+      "tests": "T88, T89, T90, T99 (Method C), T310",
+      "capacity_scenarios": {
+        "medium_earthwork_50k_cy": {
+          "samples": 100,
+          "mode": "full_t99",
+          "est_lab_hours": 700.0,
+          "est_field_density_hours": 50.0,
+          "quantity": 50000,
+          "every": 500,
+          "label": "50,000 yd\u00b3 embankment/borrow"
+        },
+        "large_earthwork_200k_cy": {
+          "samples": 400,
+          "mode": "full_t99",
+          "est_lab_hours": 2800.0,
+          "est_field_density_hours": 200.0,
+          "quantity": 200000,
+          "every": 500,
+          "label": "200,000 yd\u00b3 embankment/borrow (RT-301-scale)"
+        }
+      },
+      "source": "Table B-1 quantities list"
+    },
+    {
+      "id": "table-b1-t99-mm) yd2 (m2)-1 / 500 ( 1 / 400 )",
+      "rule_id": "full_t99_no_one_point",
+      "category": "testing_capacity_risk",
+      "severity": "high",
+      "note": "Table B-1 lists full AASHTO T99 without T272 / one-point alternative. On high-volume earthwork this can exceed field/lab capacity (RT 301 lesson: Tutor Perini exploited missed testing frequencies). Frequency is aggressive: 1 per 500 units.",
+      "match": "T99 without T272/one-point",
+      "page": null,
+      "section_id": null,
+      "section_header": "mm) yd2 (m2)",
+      "snippet": "mm) yd2 (m2) 1 / 500 ( 1 / 400 ) T88, T89, T90, T99 (Method C), T22, T23, or ASTM C39",
+      "item": null,
+      "frequency": {
+        "kind": "per_unit",
+        "every": 500,
+        "raw": "1 / 500 ( 1 / 400 )"
+      },
+      "tests": "T88, T89, T90, T99 (Method C), T22, T23, or ASTM C39",
+      "capacity_scenarios": {
+        "medium_earthwork_50k_cy": {
+          "samples": 100,
+          "mode": "full_t99",
+          "est_lab_hours": 700.0,
+          "est_field_density_hours": 0,
+          "quantity": 50000,
+          "every": 500,
+          "label": "50,000 yd\u00b3 embankment/borrow"
+        },
+        "large_earthwork_200k_cy": {
+          "samples": 400,
+          "mode": "full_t99",
+          "est_lab_hours": 2800.0,
+          "est_field_density_hours": 0,
+          "quantity": 200000,
+          "every": 500,
+          "label": "200,000 yd\u00b3 embankment/borrow (RT-301-scale)"
+        }
+      },
+      "source": "Table B-1 quantities list"
+    },
+    {
+      "id": "table-b1-t99--1 / 500 ( 1 / 400 )",
+      "rule_id": "full_t99_no_one_point",
+      "category": "testing_capacity_risk",
+      "severity": "high",
+      "note": "Table B-1 lists full AASHTO T99 without T272 / one-point alternative. On high-volume earthwork this can exceed field/lab capacity (RT 301 lesson: Tutor Perini exploited missed testing frequencies). Frequency is aggressive: 1 per 500 units.",
+      "match": "T99 without T272/one-point",
+      "page": null,
+      "section_id": null,
+      "section_header": "",
+      "snippet": "1 / 500 ( 1 / 400 ) T88, T89, T90, T99 (Method C), T22, T23, or ASTM C39",
+      "item": null,
+      "frequency": {
+        "kind": "per_unit",
+        "every": 500,
+        "raw": "1 / 500 ( 1 / 400 )"
+      },
+      "tests": "T88, T89, T90, T99 (Method C), T22, T23, or ASTM C39",
+      "capacity_scenarios": {
+        "medium_earthwork_50k_cy": {
+          "samples": 100,
+          "mode": "full_t99",
+          "est_lab_hours": 700.0,
+          "est_field_density_hours": 0,
+          "quantity": 50000,
+          "every": 500,
+          "label": "50,000 yd\u00b3 embankment/borrow"
+        },
+        "large_earthwork_200k_cy": {
+          "samples": 400,
+          "mode": "full_t99",
+          "est_lab_hours": 2800.0,
+          "est_field_density_hours": 0,
+          "quantity": 200000,
+          "every": 500,
+          "label": "200,000 yd\u00b3 embankment/borrow (RT-301-scale)"
+        }
+      },
+      "source": "Table B-1 quantities list"
+    },
+    {
+      "id": "table-b1-t99-mm) yd2 (m2)-1 / 500",
+      "rule_id": "full_t99_no_one_point",
+      "category": "testing_capacity_risk",
+      "severity": "high",
+      "note": "Table B-1 lists full AASHTO T99 without T272 / one-point alternative. On high-volume earthwork this can exceed field/lab capacity (RT 301 lesson: Tutor Perini exploited missed testing frequencies). Frequency is aggressive: 1 per 500 units.",
+      "match": "T99 without T272/one-point",
+      "page": null,
+      "section_id": null,
+      "section_header": "mm) yd2 (m2)",
+      "snippet": "mm) yd2 (m2) 1 / 500 ( 1 / 4 00 ) T88, T89, T90, T99 (Method C), T22, T23, or ASTM C39",
+      "item": null,
+      "frequency": {
+        "kind": "per_unit",
+        "every": 500,
+        "raw": "1 / 500"
+      },
+      "tests": "( 1 / 4 00 ) T88, T89, T90, T99 (Method C), T22, T23, or ASTM C39",
+      "capacity_scenarios": {
+        "medium_earthwork_50k_cy": {
+          "samples": 100,
+          "mode": "full_t99",
+          "est_lab_hours": 700.0,
+          "est_field_density_hours": 0,
+          "quantity": 50000,
+          "every": 500,
+          "label": "50,000 yd\u00b3 embankment/borrow"
+        },
+        "large_earthwork_200k_cy": {
+          "samples": 400,
+          "mode": "full_t99",
+          "est_lab_hours": 2800.0,
+          "est_field_density_hours": 0,
+          "quantity": 200000,
+          "every": 500,
+          "label": "200,000 yd\u00b3 embankment/borrow (RT-301-scale)"
+        }
+      },
+      "source": "Table B-1 quantities list"
+    },
+    {
+      "id": "table-b1-t99-(300mm), Class III ft (m)-minimum 1 / Source / Contract",
+      "rule_id": "full_t99_no_one_point",
+      "category": "testing_capacity_risk",
+      "severity": "high",
+      "note": "Table B-1 lists full AASHTO T99 without T272 / one-point alternative. On high-volume earthwork this can exceed field/lab capacity (RT 301 lesson: Tutor Perini exploited missed testing frequencies).",
+      "match": "T99 without T272/one-point",
+      "page": null,
+      "section_id": null,
+      "section_header": "(300mm), Class III ft (m)",
+      "snippet": "(300mm), Class III ft (m) minimum 1 / Source / Contract Certification: M170, ASTM C443; T88, T89, T90, T99 (Method C),",
+      "item": null,
+      "frequency": {
+        "kind": "per_source_contract",
+        "every": null,
+        "raw": "minimum 1 / Source / Contract"
+      },
+      "tests": "Certification: M170, ASTM C443; T88, T89, T90, T99 (Method C),",
+      "capacity_scenarios": {},
+      "source": "Table B-1 quantities list"
+    },
+    {
+      "id": "table-b1-t99-(375mm), Class III ft (m)-minimum 1 / Source / Contract",
+      "rule_id": "full_t99_no_one_point",
+      "category": "testing_capacity_risk",
+      "severity": "high",
+      "note": "Table B-1 lists full AASHTO T99 without T272 / one-point alternative. On high-volume earthwork this can exceed field/lab capacity (RT 301 lesson: Tutor Perini exploited missed testing frequencies).",
+      "match": "T99 without T272/one-point",
+      "page": null,
+      "section_id": null,
+      "section_header": "(375mm), Class III ft (m)",
+      "snippet": "(375mm), Class III ft (m) minimum 1 / Source / Contract Certification: M170, ASTM C443; T88, T89, T90, T99 (Method C),",
+      "item": null,
+      "frequency": {
+        "kind": "per_source_contract",
+        "every": null,
+        "raw": "minimum 1 / Source / Contract"
+      },
+      "tests": "Certification: M170, ASTM C443; T88, T89, T90, T99 (Method C),",
+      "capacity_scenarios": {},
+      "source": "Table B-1 quantities list"
+    },
+    {
+      "id": "table-b1-t99-(525mm), Class III ft (m)-minimum 1 / Source / Contract",
+      "rule_id": "full_t99_no_one_point",
+      "category": "testing_capacity_risk",
+      "severity": "high",
+      "note": "Table B-1 lists full AASHTO T99 without T272 / one-point alternative. On high-volume earthwork this can exceed field/lab capacity (RT 301 lesson: Tutor Perini exploited missed testing frequencies).",
+      "match": "T99 without T272/one-point",
+      "page": null,
+      "section_id": null,
+      "section_header": "(525mm), Class III ft (m)",
+      "snippet": "(525mm), Class III ft (m) minimum 1 / Source / Contract Certification: M170, ASTM C443; T88, T89, T90, T99 (Metho d C),",
+      "item": null,
+      "frequency": {
+        "kind": "per_source_contract",
+        "every": null,
+        "raw": "minimum 1 / Source / Contract"
+      },
+      "tests": "Certification: M170, ASTM C443; T88, T89, T90, T99 (Metho d C),",
+      "capacity_scenarios": {},
+      "source": "Table B-1 quantities list"
+    },
+    {
+      "id": "table-b1-t99-(600mm), Class III ft (m)-minimum 1 / Source / Contract",
+      "rule_id": "full_t99_no_one_point",
+      "category": "testing_capacity_risk",
+      "severity": "high",
+      "note": "Table B-1 lists full AASHTO T99 without T272 / one-point alternative. On high-volume earthwork this can exceed field/lab capacity (RT 301 lesson: Tutor Perini exploited missed testing frequencies).",
+      "match": "T99 without T272/one-point",
+      "page": null,
+      "section_id": null,
+      "section_header": "(600mm), Class III ft (m)",
+      "snippet": "(600mm), Class III ft (m) minimum 1 / Source / Contract Certification: M170, ASTM C443; T88, T89, T90, T99 (Method C),",
+      "item": null,
+      "frequency": {
+        "kind": "per_source_contract",
+        "every": null,
+        "raw": "minimum 1 / Source / Contract"
+      },
+      "tests": "Certification: M170, ASTM C443; T88, T89, T90, T99 (Method C),",
+      "capacity_scenarios": {},
+      "source": "Table B-1 quantities list"
+    },
+    {
+      "id": "table-b1-t99-(675mm), Class III ft (m)-minimum 1 / Source / Contract",
+      "rule_id": "full_t99_no_one_point",
+      "category": "testing_capacity_risk",
+      "severity": "high",
+      "note": "Table B-1 lists full AASHTO T99 without T272 / one-point alternative. On high-volume earthwork this can exceed field/lab capacity (RT 301 lesson: Tutor Perini exploited missed testing frequencies).",
+      "match": "T99 without T272/one-point",
+      "page": null,
+      "section_id": null,
+      "section_header": "(675mm), Class III ft (m)",
+      "snippet": "(675mm), Class III ft (m) minimum 1 / Source / Contract Certification: M170, ASTM C443; T88, T89, T90, T99 (Method C),",
+      "item": null,
+      "frequency": {
+        "kind": "per_source_contract",
+        "every": null,
+        "raw": "minimum 1 / Source / Contract"
+      },
+      "tests": "Certification: M170, ASTM C443; T88, T89, T90, T99 (Method C),",
+      "capacity_scenarios": {},
+      "source": "Table B-1 quantities list"
+    },
+    {
+      "id": "table-b1-t99-(825mm), Class III ft (m)-minimum 1 / Source / Contract",
+      "rule_id": "full_t99_no_one_point",
+      "category": "testing_capacity_risk",
+      "severity": "high",
+      "note": "Table B-1 lists full AASHTO T99 without T272 / one-point alternative. On high-volume earthwork this can exceed field/lab capacity (RT 301 lesson: Tutor Perini exploited missed testing frequencies).",
+      "match": "T99 without T272/one-point",
+      "page": null,
+      "section_id": null,
+      "section_header": "(825mm), Class III ft (m)",
+      "snippet": "(825mm), Class III ft (m) minimum 1 / Source / Contract Certification: M170, ASTM C443; T88, T89, T90, T99 (Method C) ,",
+      "item": null,
+      "frequency": {
+        "kind": "per_source_contract",
+        "every": null,
+        "raw": "minimum 1 / Source / Contract"
+      },
+      "tests": "Certification: M170, ASTM C443; T88, T89, T90, T99 (Method C) ,",
+      "capacity_scenarios": {},
+      "source": "Table B-1 quantities list"
+    },
+    {
+      "id": "table-b1-t99-(900mm), Class III ft (m)-minimum 1 / Source / Contract",
+      "rule_id": "full_t99_no_one_point",
+      "category": "testing_capacity_risk",
+      "severity": "high",
+      "note": "Table B-1 lists full AASHTO T99 without T272 / one-point alternative. On high-volume earthwork this can exceed field/lab capacity (RT 301 lesson: Tutor Perini exploited missed testing frequencies).",
+      "match": "T99 without T272/one-point",
+      "page": null,
+      "section_id": null,
+      "section_header": "(900mm), Class III ft (m)",
+      "snippet": "(900mm), Class III ft (m) minimum 1 / Source / Contract Certification: M170, ASTM C443; T88, T89, T90, T99 (Method C),",
+      "item": null,
+      "frequency": {
+        "kind": "per_source_contract",
+        "every": null,
+        "raw": "minimum 1 / Source / Contract"
+      },
+      "tests": "Certification: M170, ASTM C443; T88, T89, T90, T99 (Method C),",
+      "capacity_scenarios": {},
+      "source": "Table B-1 quantities list"
+    },
+    {
+      "id": "table-b1-t99-(1050mm), Class III ft (m)-minimum 1 / Source / Contract",
+      "rule_id": "full_t99_no_one_point",
+      "category": "testing_capacity_risk",
+      "severity": "high",
+      "note": "Table B-1 lists full AASHTO T99 without T272 / one-point alternative. On high-volume earthwork this can exceed field/lab capacity (RT 301 lesson: Tutor Perini exploited missed testing frequencies).",
+      "match": "T99 without T272/one-point",
+      "page": null,
+      "section_id": null,
+      "section_header": "(1050mm), Class III ft (m)",
+      "snippet": "(1050mm), Class III ft (m) minimum 1 / Source / Contract Certification: M170, ASTM C443; T88, T89, T90, T99 (Method C),",
+      "item": null,
+      "frequency": {
+        "kind": "per_source_contract",
+        "every": null,
+        "raw": "minimum 1 / Source / Contract"
+      },
+      "tests": "Certification: M170, ASTM C443; T88, T89, T90, T99 (Method C),",
+      "capacity_scenarios": {},
+      "source": "Table B-1 quantities list"
+    },
+    {
+      "id": "table-b1-t99-(1200mm), Class III ft (m)-minimum 1 / Source / Contract",
+      "rule_id": "full_t99_no_one_point",
+      "category": "testing_capacity_risk",
+      "severity": "high",
+      "note": "Table B-1 lists full AASHTO T99 without T272 / one-point alternative. On high-volume earthwork this can exceed field/lab capacity (RT 301 lesson: Tutor Perini exploited missed testing frequencies).",
+      "match": "T99 without T272/one-point",
+      "page": null,
+      "section_id": null,
+      "section_header": "(1200mm), Class III ft (m)",
+      "snippet": "(1200mm), Class III ft (m) minimum 1 / Source / Contract Certification: M170, ASTM C443; T88, T89, T90, T99 (Method C),",
+      "item": null,
+      "frequency": {
+        "kind": "per_source_contract",
+        "every": null,
+        "raw": "minimum 1 / Source / Contract"
+      },
+      "tests": "Certification: M170, ASTM C443; T88, T89, T90, T99 (Method C),",
+      "capacity_scenarios": {},
+      "source": "Table B-1 quantities list"
+    },
+    {
+      "id": "table-b1-t99-(1350mm), Class III ft (m)-minimum 1 / Source / Contract",
+      "rule_id": "full_t99_no_one_point",
+      "category": "testing_capacity_risk",
+      "severity": "high",
+      "note": "Table B-1 lists full AASHTO T99 without T272 / one-point alternative. On high-volume earthwork this can exceed field/lab capacity (RT 301 lesson: Tutor Perini exploited missed testing frequencies).",
+      "match": "T99 without T272/one-point",
+      "page": null,
+      "section_id": null,
+      "section_header": "(1350mm), Class III ft (m)",
+      "snippet": "(1350mm), Class III ft (m) minimum 1 / Source / Contract Certification: M170, ASTM C443; T88, T89, T90, T99 (Method C),",
+      "item": null,
+      "frequency": {
+        "kind": "per_source_contract",
+        "every": null,
+        "raw": "minimum 1 / Source / Contract"
+      },
+      "tests": "Certification: M170, ASTM C443; T88, T89, T90, T99 (Method C),",
+      "capacity_scenarios": {},
+      "source": "Table B-1 quantities list"
+    },
+    {
+      "id": "table-b1-t99-(1500mm), Class III ft (m)-minimum 1 / Source / Contract",
+      "rule_id": "full_t99_no_one_point",
+      "category": "testing_capacity_risk",
+      "severity": "high",
+      "note": "Table B-1 lists full AASHTO T99 without T272 / one-point alternative. On high-volume earthwork this can exceed field/lab capacity (RT 301 lesson: Tutor Perini exploited missed testing frequencies).",
+      "match": "T99 without T272/one-point",
+      "page": null,
+      "section_id": null,
+      "section_header": "(1500mm), Class III ft (m)",
+      "snippet": "(1500mm), Class III ft (m) minimum 1 / Source / Contract Certification: M170, ASTM C443; T88, T89, T90, T99 (Method C),",
+      "item": null,
+      "frequency": {
+        "kind": "per_source_contract",
+        "every": null,
+        "raw": "minimum 1 / Source / Contract"
+      },
+      "tests": "Certification: M170, ASTM C443; T88, T89, T90, T99 (Method C),",
+      "capacity_scenarios": {},
+      "source": "Table B-1 quantities list"
+    },
+    {
+      "id": "table-b1-t99-(1650mm), Class III ft (m)-minimum 1 / Source / Contract",
+      "rule_id": "full_t99_no_one_point",
+      "category": "testing_capacity_risk",
+      "severity": "high",
+      "note": "Table B-1 lists full AASHTO T99 without T272 / one-point alternative. On high-volume earthwork this can exceed field/lab capacity (RT 301 lesson: Tutor Perini exploited missed testing frequencies).",
+      "match": "T99 without T272/one-point",
+      "page": null,
+      "section_id": null,
+      "section_header": "(1650mm), Class III ft (m)",
+      "snippet": "(1650mm), Class III ft (m) minimum 1 / Source / Contract Certification: M170, ASTM C443; T88, T89, T90, T99 (Method C),",
+      "item": null,
+      "frequency": {
+        "kind": "per_source_contract",
+        "every": null,
+        "raw": "minimum 1 / Source / Contract"
+      },
+      "tests": "Certification: M170, ASTM C443; T88, T89, T90, T99 (Method C),",
+      "capacity_scenarios": {},
+      "source": "Table B-1 quantities list"
+    },
+    {
+      "id": "table-b1-t99-(1800mm), Class III ft (m)-minimum 1 / Source / Contract",
+      "rule_id": "full_t99_no_one_point",
+      "category": "testing_capacity_risk",
+      "severity": "high",
+      "note": "Table B-1 lists full AASHTO T99 without T272 / one-point alternative. On high-volume earthwork this can exceed field/lab capacity (RT 301 lesson: Tutor Perini exploited missed testing frequencies).",
+      "match": "T99 without T272/one-point",
+      "page": null,
+      "section_id": null,
+      "section_header": "(1800mm), Class III ft (m)",
+      "snippet": "(1800mm), Class III ft (m) minimum 1 / Source / Contract Certification: M170, ASTM C443; T88, T89, T90, T99 (Method C),",
+      "item": null,
+      "frequency": {
+        "kind": "per_source_contract",
+        "every": null,
+        "raw": "minimum 1 / Source / Contract"
+      },
+      "tests": "Certification: M170, ASTM C443; T88, T89, T90, T99 (Method C),",
+      "capacity_scenarios": {},
+      "source": "Table B-1 quantities list"
+    },
+    {
+      "id": "table-b1-t99-(1950mm), Class III ft (m)-minimum 1 / Source / Contract",
+      "rule_id": "full_t99_no_one_point",
+      "category": "testing_capacity_risk",
+      "severity": "high",
+      "note": "Table B-1 lists full AASHTO T99 without T272 / one-point alternative. On high-volume earthwork this can exceed field/lab capacity (RT 301 lesson: Tutor Perini exploited missed testing frequencies).",
+      "match": "T99 without T272/one-point",
+      "page": null,
+      "section_id": null,
+      "section_header": "(1950mm), Class III ft (m)",
+      "snippet": "(1950mm), Class III ft (m) minimum 1 / Source / Contract Certification: M170, ASTM C443; T88, T89, T90, T99 (Method C),",
+      "item": null,
+      "frequency": {
+        "kind": "per_source_contract",
+        "every": null,
+        "raw": "minimum 1 / Source / Contract"
+      },
+      "tests": "Certification: M170, ASTM C443; T88, T89, T90, T99 (Method C),",
+      "capacity_scenarios": {},
+      "source": "Table B-1 quantities list"
+    },
+    {
+      "id": "table-b1-t99-(2100mm), Class III ft (m)-minimum 1 / Source / Contract",
+      "rule_id": "full_t99_no_one_point",
+      "category": "testing_capacity_risk",
+      "severity": "high",
+      "note": "Table B-1 lists full AASHTO T99 without T272 / one-point alternative. On high-volume earthwork this can exceed field/lab capacity (RT 301 lesson: Tutor Perini exploited missed testing frequencies).",
+      "match": "T99 without T272/one-point",
+      "page": null,
+      "section_id": null,
+      "section_header": "(2100mm), Class III ft (m)",
+      "snippet": "(2100mm), Class III ft (m) minimum 1 / Source / Contract Certification: M170, ASTM C443; T88, T89, T90, T99 (Method C),",
+      "item": null,
+      "frequency": {
+        "kind": "per_source_contract",
+        "every": null,
+        "raw": "minimum 1 / Source / Contract"
+      },
+      "tests": "Certification: M170, ASTM C443; T88, T89, T90, T99 (Method C),",
+      "capacity_scenarios": {},
+      "source": "Table B-1 quantities list"
+    },
+    {
+      "id": "table-b1-t99-(2250mm), Class III ft (m)-minimum 1 / Source / Contract",
+      "rule_id": "full_t99_no_one_point",
+      "category": "testing_capacity_risk",
+      "severity": "high",
+      "note": "Table B-1 lists full AASHTO T99 without T272 / one-point alternative. On high-volume earthwork this can exceed field/lab capacity (RT 301 lesson: Tutor Perini exploited missed testing frequencies).",
+      "match": "T99 without T272/one-point",
+      "page": null,
+      "section_id": null,
+      "section_header": "(2250mm), Class III ft (m)",
+      "snippet": "(2250mm), Class III ft (m) minimum 1 / Source / Contract Certification: M170, ASTM C443; T88, T89, T90, T99 (Method C),",
+      "item": null,
+      "frequency": {
+        "kind": "per_source_contract",
+        "every": null,
+        "raw": "minimum 1 / Source / Contract"
+      },
+      "tests": "Certification: M170, ASTM C443; T88, T89, T90, T99 (Method C),",
+      "capacity_scenarios": {},
+      "source": "Table B-1 quantities list"
+    },
+    {
+      "id": "table-b1-t99-(2400mm), Class III ft (m)-minimum 1 / Source / Contract",
+      "rule_id": "full_t99_no_one_point",
+      "category": "testing_capacity_risk",
+      "severity": "high",
+      "note": "Table B-1 lists full AASHTO T99 without T272 / one-point alternative. On high-volume earthwork this can exceed field/lab capacity (RT 301 lesson: Tutor Perini exploited missed testing frequencies).",
+      "match": "T99 without T272/one-point",
+      "page": null,
+      "section_id": null,
+      "section_header": "(2400mm), Class III ft (m)",
+      "snippet": "(2400mm), Class III ft (m) minimum 1 / Source / Contract Certification: M170, ASTM C443; T88, T89, T90, T99 (Method C),",
+      "item": null,
+      "frequency": {
+        "kind": "per_source_contract",
+        "every": null,
+        "raw": "minimum 1 / Source / Contract"
+      },
+      "tests": "Certification: M170, ASTM C443; T88, T89, T90, T99 (Method C),",
+      "capacity_scenarios": {},
+      "source": "Table B-1 quantities list"
+    },
+    {
+      "id": "table-b1-t99-(300mm), Class IV ft (m)-minimum 1 / Source / Contract",
+      "rule_id": "full_t99_no_one_point",
+      "category": "testing_capacity_risk",
+      "severity": "high",
+      "note": "Table B-1 lists full AASHTO T99 without T272 / one-point alternative. On high-volume earthwork this can exceed field/lab capacity (RT 301 lesson: Tutor Perini exploited missed testing frequencies).",
+      "match": "T99 without T272/one-point",
+      "page": null,
+      "section_id": null,
+      "section_header": "(300mm), Class IV ft (m)",
+      "snippet": "(300mm), Class IV ft (m) minimum 1 / Source / Contract Certification: M170, ASTM C443; T88, T89, T90, T99 (Method C),",
+      "item": null,
+      "frequency": {
+        "kind": "per_source_contract",
+        "every": null,
+        "raw": "minimum 1 / Source / Contract"
+      },
+      "tests": "Certification: M170, ASTM C443; T88, T89, T90, T99 (Method C),",
+      "capacity_scenarios": {},
+      "source": "Table B-1 quantities list"
+    },
+    {
+      "id": "table-b1-t99-(375mm), Class IV ft (m)-minimum 1 / Source / Contract",
+      "rule_id": "full_t99_no_one_point",
+      "category": "testing_capacity_risk",
+      "severity": "high",
+      "note": "Table B-1 lists full AASHTO T99 without T272 / one-point alternative. On high-volume earthwork this can exceed field/lab capacity (RT 301 lesson: Tutor Perini exploited missed testing frequencies).",
+      "match": "T99 without T272/one-point",
+      "page": null,
+      "section_id": null,
+      "section_header": "(375mm), Class IV ft (m)",
+      "snippet": "(375mm), Class IV ft (m) minimum 1 / Source / Contract Certification: M170, ASTM C443; T88, T89, T90, T99 (Method C),",
+      "item": null,
+      "frequency": {
+        "kind": "per_source_contract",
+        "every": null,
+        "raw": "minimum 1 / Source / Contract"
+      },
+      "tests": "Certification: M170, ASTM C443; T88, T89, T90, T99 (Method C),",
+      "capacity_scenarios": {},
+      "source": "Table B-1 quantities list"
+    },
+    {
+      "id": "table-b1-t99-(450mm), Class IV ft (m)-minimum 1 / Source / Contract",
+      "rule_id": "full_t99_no_one_point",
+      "category": "testing_capacity_risk",
+      "severity": "high",
+      "note": "Table B-1 lists full AASHTO T99 without T272 / one-point alternative. On high-volume earthwork this can exceed field/lab capacity (RT 301 lesson: Tutor Perini exploited missed testing frequencies).",
+      "match": "T99 without T272/one-point",
+      "page": null,
+      "section_id": null,
+      "section_header": "(450mm), Class IV ft (m)",
+      "snippet": "(450mm), Class IV ft (m) minimum 1 / Source / Contract Certification: M170, ASTM C443; T88, T89, T90, T99 (Method C),",
+      "item": null,
+      "frequency": {
+        "kind": "per_source_contract",
+        "every": null,
+        "raw": "minimum 1 / Source / Contract"
+      },
+      "tests": "Certification: M170, ASTM C443; T88, T89, T90, T99 (Method C),",
+      "capacity_scenarios": {},
+      "source": "Table B-1 quantities list"
+    },
+    {
+      "id": "table-b1-t99-(600mm), Class IV ft (m)-minimum 1 / Source / Contract",
+      "rule_id": "full_t99_no_one_point",
+      "category": "testing_capacity_risk",
+      "severity": "high",
+      "note": "Table B-1 lists full AASHTO T99 without T272 / one-point alternative. On high-volume earthwork this can exceed field/lab capacity (RT 301 lesson: Tutor Perini exploited missed testing frequencies).",
+      "match": "T99 without T272/one-point",
+      "page": null,
+      "section_id": null,
+      "section_header": "(600mm), Class IV ft (m)",
+      "snippet": "(600mm), Class IV ft (m) minimum 1 / Source / Contract Certification: M170, ASTM C443; T88, T89, T90, T99 (Method C),",
+      "item": null,
+      "frequency": {
+        "kind": "per_source_contract",
+        "every": null,
+        "raw": "minimum 1 / Source / Contract"
+      },
+      "tests": "Certification: M170, ASTM C443; T88, T89, T90, T99 (Method C),",
+      "capacity_scenarios": {},
+      "source": "Table B-1 quantities list"
+    },
+    {
+      "id": "table-b1-t99-(675mm), Class IV ft (m)-minimum 1 / Source / Contract",
+      "rule_id": "full_t99_no_one_point",
+      "category": "testing_capacity_risk",
+      "severity": "high",
+      "note": "Table B-1 lists full AASHTO T99 without T272 / one-point alternative. On high-volume earthwork this can exceed field/lab capacity (RT 301 lesson: Tutor Perini exploited missed testing frequencies).",
+      "match": "T99 without T272/one-point",
+      "page": null,
+      "section_id": null,
+      "section_header": "(675mm), Class IV ft (m)",
+      "snippet": "(675mm), Class IV ft (m) minimum 1 / Source / Contract Certification: M170, ASTM C443; T88, T89, T90, T99 (Method C),",
+      "item": null,
+      "frequency": {
+        "kind": "per_source_contract",
+        "every": null,
+        "raw": "minimum 1 / Source / Contract"
+      },
+      "tests": "Certification: M170, ASTM C443; T88, T89, T90, T99 (Method C),",
+      "capacity_scenarios": {},
+      "source": "Table B-1 quantities list"
+    },
+    {
+      "id": "table-b1-t99-(750mm), Class IV ft (m)-minimum 1 / Source / Contract",
+      "rule_id": "full_t99_no_one_point",
+      "category": "testing_capacity_risk",
+      "severity": "high",
+      "note": "Table B-1 lists full AASHTO T99 without T272 / one-point alternative. On high-volume earthwork this can exceed field/lab capacity (RT 301 lesson: Tutor Perini exploited missed testing frequencies).",
+      "match": "T99 without T272/one-point",
+      "page": null,
+      "section_id": null,
+      "section_header": "(750mm), Class IV ft (m)",
+      "snippet": "(750mm), Class IV ft (m) minimum 1 / Source / Contract Certification: M170, ASTM C443; T88, T89, T90, T99 (Method C),",
+      "item": null,
+      "frequency": {
+        "kind": "per_source_contract",
+        "every": null,
+        "raw": "minimum 1 / Source / Contract"
+      },
+      "tests": "Certification: M170, ASTM C443; T88, T89, T90, T99 (Method C),",
+      "capacity_scenarios": {},
+      "source": "Table B-1 quantities list"
+    },
+    {
+      "id": "table-b1-t99-(750mm), Class V ft (m)-minimum 1 / Source / Contract",
+      "rule_id": "full_t99_no_one_point",
+      "category": "testing_capacity_risk",
+      "severity": "high",
+      "note": "Table B-1 lists full AASHTO T99 without T272 / one-point alternative. On high-volume earthwork this can exceed field/lab capacity (RT 301 lesson: Tutor Perini exploited missed testing frequencies).",
+      "match": "T99 without T272/one-point",
+      "page": null,
+      "section_id": null,
+      "section_header": "(750mm), Class V ft (m)",
+      "snippet": "(750mm), Class V ft (m) minimum 1 / Source / Contract Certification: M170, ASTM C443 ; T88, T89, T90, T99 (Method C),",
+      "item": null,
+      "frequency": {
+        "kind": "per_source_contract",
+        "every": null,
+        "raw": "minimum 1 / Source / Contract"
+      },
+      "tests": "Certification: M170, ASTM C443 ; T88, T89, T90, T99 (Method C),",
+      "capacity_scenarios": {},
+      "source": "Table B-1 quantities list"
+    },
+    {
+      "id": "table-b1-t99-(1050mm), Class IV ft (m)-minimum 1 / Source / Contract",
+      "rule_id": "full_t99_no_one_point",
+      "category": "testing_capacity_risk",
+      "severity": "high",
+      "note": "Table B-1 lists full AASHTO T99 without T272 / one-point alternative. On high-volume earthwork this can exceed field/lab capacity (RT 301 lesson: Tutor Perini exploited missed testing frequencies).",
+      "match": "T99 without T272/one-point",
+      "page": null,
+      "section_id": null,
+      "section_header": "(1050mm), Class IV ft (m)",
+      "snippet": "(1050mm), Class IV ft (m) minimum 1 / Source / Contract Certification: M170, ASTM C443; T88, T89, T90, T99 (Method C),",
+      "item": null,
+      "frequency": {
+        "kind": "per_source_contract",
+        "every": null,
+        "raw": "minimum 1 / Source / Contract"
+      },
+      "tests": "Certification: M170, ASTM C443; T88, T89, T90, T99 (Method C),",
+      "capacity_scenarios": {},
+      "source": "Table B-1 quantities list"
+    },
+    {
+      "id": "table-b1-t99-(1200mm), Class IV ft (m)-minimum 1 / Source / Contract",
+      "rule_id": "full_t99_no_one_point",
+      "category": "testing_capacity_risk",
+      "severity": "high",
+      "note": "Table B-1 lists full AASHTO T99 without T272 / one-point alternative. On high-volume earthwork this can exceed field/lab capacity (RT 301 lesson: Tutor Perini exploited missed testing frequencies).",
+      "match": "T99 without T272/one-point",
+      "page": null,
+      "section_id": null,
+      "section_header": "(1200mm), Class IV ft (m)",
+      "snippet": "(1200mm), Class IV ft (m) minimum 1 / Source / Contract Certification: M170, ASTM C443; T88, T89, T90, T99 (Method C),",
+      "item": null,
+      "frequency": {
+        "kind": "per_source_contract",
+        "every": null,
+        "raw": "minimum 1 / Source / Contract"
+      },
+      "tests": "Certification: M170, ASTM C443; T88, T89, T90, T99 (Method C),",
+      "capacity_scenarios": {},
+      "source": "Table B-1 quantities list"
+    },
+    {
+      "id": "table-b1-t99-(1350mm), Class IV ft (m)-minimum 1 / Source / Contract",
+      "rule_id": "full_t99_no_one_point",
+      "category": "testing_capacity_risk",
+      "severity": "high",
+      "note": "Table B-1 lists full AASHTO T99 without T272 / one-point alternative. On high-volume earthwork this can exceed field/lab capacity (RT 301 lesson: Tutor Perini exploited missed testing frequencies).",
+      "match": "T99 without T272/one-point",
+      "page": null,
+      "section_id": null,
+      "section_header": "(1350mm), Class IV ft (m)",
+      "snippet": "(1350mm), Class IV ft (m) minimum 1 / Source / Contract Certification: M170, ASTM C443; T88, T89, T90, T99 (Method C),",
+      "item": null,
+      "frequency": {
+        "kind": "per_source_contract",
+        "every": null,
+        "raw": "minimum 1 / Source / Contract"
+      },
+      "tests": "Certification: M170, ASTM C443; T88, T89, T90, T99 (Method C),",
+      "capacity_scenarios": {},
+      "source": "Table B-1 quantities list"
+    },
+    {
+      "id": "table-b1-t99-(450mm), Class V ft (m)-minimum 1 / Source / Contract",
+      "rule_id": "full_t99_no_one_point",
+      "category": "testing_capacity_risk",
+      "severity": "high",
+      "note": "Table B-1 lists full AASHTO T99 without T272 / one-point alternative. On high-volume earthwork this can exceed field/lab capacity (RT 301 lesson: Tutor Perini exploited missed testing frequencies).",
+      "match": "T99 without T272/one-point",
+      "page": null,
+      "section_id": null,
+      "section_header": "(450mm), Class V ft (m)",
+      "snippet": "(450mm), Class V ft (m) minimum 1 / Source / Contract Certification: M170, ASTM C443; T88, T89, T90, T99 (Method C),",
+      "item": null,
+      "frequency": {
+        "kind": "per_source_contract",
+        "every": null,
+        "raw": "minimum 1 / Source / Contract"
+      },
+      "tests": "Certification: M170, ASTM C443; T88, T89, T90, T99 (Method C),",
+      "capacity_scenarios": {},
+      "source": "Table B-1 quantities list"
+    },
+    {
+      "id": "table-b1-t99-(600mm), Class V ft (m)-minimum 1 / Source / Contract",
+      "rule_id": "full_t99_no_one_point",
+      "category": "testing_capacity_risk",
+      "severity": "high",
+      "note": "Table B-1 lists full AASHTO T99 without T272 / one-point alternative. On high-volume earthwork this can exceed field/lab capacity (RT 301 lesson: Tutor Perini exploited missed testing frequencies).",
+      "match": "T99 without T272/one-point",
+      "page": null,
+      "section_id": null,
+      "section_header": "(600mm), Class V ft (m)",
+      "snippet": "(600mm), Class V ft (m) minimum 1 / Source / Contract Certification: M170, ASTM C443; T88, T89, T90, T99 (Method C),",
+      "item": null,
+      "frequency": {
+        "kind": "per_source_contract",
+        "every": null,
+        "raw": "minimum 1 / Source / Contract"
+      },
+      "tests": "Certification: M170, ASTM C443; T88, T89, T90, T99 (Method C),",
+      "capacity_scenarios": {},
+      "source": "Table B-1 quantities list"
+    },
+    {
+      "id": "table-b1-t99-(375mm), Class V ft (m)-minimum 1 / Source / Contract",
+      "rule_id": "full_t99_no_one_point",
+      "category": "testing_capacity_risk",
+      "severity": "high",
+      "note": "Table B-1 lists full AASHTO T99 without T272 / one-point alternative. On high-volume earthwork this can exceed field/lab capacity (RT 301 lesson: Tutor Perini exploited missed testing frequencies).",
+      "match": "T99 without T272/one-point",
+      "page": null,
+      "section_id": null,
+      "section_header": "(375mm), Class V ft (m)",
+      "snippet": "(375mm), Class V ft (m) minimum 1 / Source / Contract Certification: M170, ASTM C443; T88, T89, T90, T99 (Method C),",
+      "item": null,
+      "frequency": {
+        "kind": "per_source_contract",
+        "every": null,
+        "raw": "minimum 1 / Source / Contract"
+      },
+      "tests": "Certification: M170, ASTM C443; T88, T89, T90, T99 (Method C),",
+      "capacity_scenarios": {},
+      "source": "Table B-1 quantities list"
+    },
+    {
+      "id": "table-b1-t99-(525mm), Class IV ft (m)-minimum 1 / Source / Contract",
+      "rule_id": "full_t99_no_one_point",
+      "category": "testing_capacity_risk",
+      "severity": "high",
+      "note": "Table B-1 lists full AASHTO T99 without T272 / one-point alternative. On high-volume earthwork this can exceed field/lab capacity (RT 301 lesson: Tutor Perini exploited missed testing frequencies).",
+      "match": "T99 without T272/one-point",
+      "page": null,
+      "section_id": null,
+      "section_header": "(525mm), Class IV ft (m)",
+      "snippet": "(525mm), Class IV ft (m) minimum 1 / Source / Contract Certification: M170, ASTM C443; T88, T89, T90, T99 (Method C),",
+      "item": null,
+      "frequency": {
+        "kind": "per_source_contract",
+        "every": null,
+        "raw": "minimum 1 / Source / Contract"
+      },
+      "tests": "Certification: M170, ASTM C443; T88, T89, T90, T99 (Method C),",
+      "capacity_scenarios": {},
+      "source": "Table B-1 quantities list"
+    },
+    {
+      "id": "table-b1-t99-(900mm), Class IV ft (m)-minimum 1 / Source / Contract",
+      "rule_id": "full_t99_no_one_point",
+      "category": "testing_capacity_risk",
+      "severity": "high",
+      "note": "Table B-1 lists full AASHTO T99 without T272 / one-point alternative. On high-volume earthwork this can exceed field/lab capacity (RT 301 lesson: Tutor Perini exploited missed testing frequencies).",
+      "match": "T99 without T272/one-point",
+      "page": null,
+      "section_id": null,
+      "section_header": "(900mm), Class IV ft (m)",
+      "snippet": "(900mm), Class IV ft (m) minimum 1 / Source / Contract Certification: M170, ASTM C443; T88, T89, T90, T99 (Method C),",
+      "item": null,
+      "frequency": {
+        "kind": "per_source_contract",
+        "every": null,
+        "raw": "minimum 1 / Source / Contract"
+      },
+      "tests": "Certification: M170, ASTM C443; T88, T89, T90, T99 (Method C),",
+      "capacity_scenarios": {},
+      "source": "Table B-1 quantities list"
+    },
+    {
+      "id": "table-b1-t99-(1650mm), Class V ft (m)-minimum 1 / Source / Contract",
+      "rule_id": "full_t99_no_one_point",
+      "category": "testing_capacity_risk",
+      "severity": "high",
+      "note": "Table B-1 lists full AASHTO T99 without T272 / one-point alternative. On high-volume earthwork this can exceed field/lab capacity (RT 301 lesson: Tutor Perini exploited missed testing frequencies).",
+      "match": "T99 without T272/one-point",
+      "page": null,
+      "section_id": null,
+      "section_header": "(1650mm), Class V ft (m)",
+      "snippet": "(1650mm), Class V ft (m) minimum 1 / Source / Contract Certification: M170, ASTM C443; T88, T89, T90, T99 (Method C),",
+      "item": null,
+      "frequency": {
+        "kind": "per_source_contract",
+        "every": null,
+        "raw": "minimum 1 / Source / Contract"
+      },
+      "tests": "Certification: M170, ASTM C443; T88, T89, T90, T99 (Method C),",
+      "capacity_scenarios": {},
+      "source": "Table B-1 quantities list"
+    },
+    {
+      "id": "table-b1-t99-(1200mm), Class V ft (m)-minimum 1 / Source / Contract",
+      "rule_id": "full_t99_no_one_point",
+      "category": "testing_capacity_risk",
+      "severity": "high",
+      "note": "Table B-1 lists full AASHTO T99 without T272 / one-point alternative. On high-volume earthwork this can exceed field/lab capacity (RT 301 lesson: Tutor Perini exploited missed testing frequencies).",
+      "match": "T99 without T272/one-point",
+      "page": null,
+      "section_id": null,
+      "section_header": "(1200mm), Class V ft (m)",
+      "snippet": "(1200mm), Class V ft (m) minimum 1 / Source / Contract Certification: M170, ASTM C443; T88, T89, T90, T99 (Method C),",
+      "item": null,
+      "frequency": {
+        "kind": "per_source_contract",
+        "every": null,
+        "raw": "minimum 1 / Source / Contract"
+      },
+      "tests": "Certification: M170, ASTM C443; T88, T89, T90, T99 (Method C),",
+      "capacity_scenarios": {},
+      "source": "Table B-1 quantities list"
+    },
+    {
+      "id": "table-b1-t99-(1500mm), Class IV ft (m)-minimum 1 / Source / Contract",
+      "rule_id": "full_t99_no_one_point",
+      "category": "testing_capacity_risk",
+      "severity": "high",
+      "note": "Table B-1 lists full AASHTO T99 without T272 / one-point alternative. On high-volume earthwork this can exceed field/lab capacity (RT 301 lesson: Tutor Perini exploited missed testing frequencies).",
+      "match": "T99 without T272/one-point",
+      "page": null,
+      "section_id": null,
+      "section_header": "(1500mm), Class IV ft (m)",
+      "snippet": "(1500mm), Class IV ft (m) minimum 1 / Source / Contract Certification: M170, ASTM C443; T88, T89, T90, T99 (Method C),",
+      "item": null,
+      "frequency": {
+        "kind": "per_source_contract",
+        "every": null,
+        "raw": "minimum 1 / Source / Contract"
+      },
+      "tests": "Certification: M170, ASTM C443; T88, T89, T90, T99 (Method C),",
+      "capacity_scenarios": {},
+      "source": "Table B-1 quantities list"
+    },
+    {
+      "id": "table-b1-t99-(900mm), Class V ft (m)-minimum 1 / Source / Contract",
+      "rule_id": "full_t99_no_one_point",
+      "category": "testing_capacity_risk",
+      "severity": "high",
+      "note": "Table B-1 lists full AASHTO T99 without T272 / one-point alternative. On high-volume earthwork this can exceed field/lab capacity (RT 301 lesson: Tutor Perini exploited missed testing frequencies).",
+      "match": "T99 without T272/one-point",
+      "page": null,
+      "section_id": null,
+      "section_header": "(900mm), Class V ft (m)",
+      "snippet": "(900mm), Class V ft (m) minimum 1 / Source / Contract Certification: M170, ASTM C443; T88, T89, T90, T99 (Method C),",
+      "item": null,
+      "frequency": {
+        "kind": "per_source_contract",
+        "every": null,
+        "raw": "minimum 1 / Source / Contract"
+      },
+      "tests": "Certification: M170, ASTM C443; T88, T89, T90, T99 (Method C),",
+      "capacity_scenarios": {},
+      "source": "Table B-1 quantities list"
+    },
+    {
+      "id": "table-b1-t99-(1350mm), Class V ft (m)-minimum 1 / Source / Contract",
+      "rule_id": "full_t99_no_one_point",
+      "category": "testing_capacity_risk",
+      "severity": "high",
+      "note": "Table B-1 lists full AASHTO T99 without T272 / one-point alternative. On high-volume earthwork this can exceed field/lab capacity (RT 301 lesson: Tutor Perini exploited missed testing frequencies).",
+      "match": "T99 without T272/one-point",
+      "page": null,
+      "section_id": null,
+      "section_header": "(1350mm), Class V ft (m)",
+      "snippet": "(1350mm), Class V ft (m) minimum 1 / Source / Contract Certification: M170, ASTM C443; T88, T89, T90, T99 (Method C),",
+      "item": null,
+      "frequency": {
+        "kind": "per_source_contract",
+        "every": null,
+        "raw": "minimum 1 / Source / Contract"
+      },
+      "tests": "Certification: M170, ASTM C443; T88, T89, T90, T99 (Method C),",
+      "capacity_scenarios": {},
+      "source": "Table B-1 quantities list"
+    },
+    {
+      "id": "table-b1-t99-(2550mm), Class III ft (m)-minimum 1 / Source / Contract",
+      "rule_id": "full_t99_no_one_point",
+      "category": "testing_capacity_risk",
+      "severity": "high",
+      "note": "Table B-1 lists full AASHTO T99 without T272 / one-point alternative. On high-volume earthwork this can exceed field/lab capacity (RT 301 lesson: Tutor Perini exploited missed testing frequencies).",
+      "match": "T99 without T272/one-point",
+      "page": null,
+      "section_id": null,
+      "section_header": "(2550mm), Class III ft (m)",
+      "snippet": "(2550mm), Class III ft (m) minimum 1 / Source / Contract Certification: M170, ASTM C443; T88, T89, T90, T99 (Method C),",
+      "item": null,
+      "frequency": {
+        "kind": "per_source_contract",
+        "every": null,
+        "raw": "minimum 1 / Source / Contract"
+      },
+      "tests": "Certification: M170, ASTM C443; T88, T89, T90, T99 (Method C),",
+      "capacity_scenarios": {},
+      "source": "Table B-1 quantities list"
+    },
+    {
+      "id": "table-b1-t99-(1050mm), Class V ft (m)-minimum 1 / Source / Contract",
+      "rule_id": "full_t99_no_one_point",
+      "category": "testing_capacity_risk",
+      "severity": "high",
+      "note": "Table B-1 lists full AASHTO T99 without T272 / one-point alternative. On high-volume earthwork this can exceed field/lab capacity (RT 301 lesson: Tutor Perini exploited missed testing frequencies).",
+      "match": "T99 without T272/one-point",
+      "page": null,
+      "section_id": null,
+      "section_header": "(1050mm), Class V ft (m)",
+      "snippet": "(1050mm), Class V ft (m) minimum 1 / Source / Contract Certification: M170, ASTM C443; T88, T89, T90, T99 (Method C),",
+      "item": null,
+      "frequency": {
+        "kind": "per_source_contract",
+        "every": null,
+        "raw": "minimum 1 / Source / Contract"
+      },
+      "tests": "Certification: M170, ASTM C443; T88, T89, T90, T99 (Method C),",
+      "capacity_scenarios": {},
+      "source": "Table B-1 quantities list"
+    },
+    {
+      "id": "table-b1-t99-(1650mm), Class IV ft (m)-minimum 1 / Source / Contract",
+      "rule_id": "full_t99_no_one_point",
+      "category": "testing_capacity_risk",
+      "severity": "high",
+      "note": "Table B-1 lists full AASHTO T99 without T272 / one-point alternative. On high-volume earthwork this can exceed field/lab capacity (RT 301 lesson: Tutor Perini exploited missed testing frequencies).",
+      "match": "T99 without T272/one-point",
+      "page": null,
+      "section_id": null,
+      "section_header": "(1650mm), Class IV ft (m)",
+      "snippet": "(1650mm), Class IV ft (m) minimum 1 / Source / Contract Certification: M170, ASTM C443; T88, T89, T90, T99 (Method C),",
+      "item": null,
+      "frequency": {
+        "kind": "per_source_contract",
+        "every": null,
+        "raw": "minimum 1 / Source / Contract"
+      },
+      "tests": "Certification: M170, ASTM C443; T88, T89, T90, T99 (Method C),",
+      "capacity_scenarios": {},
+      "source": "Table B-1 quantities list"
+    },
+    {
+      "id": "table-b1-t99-(975mm), Class IV ft (m)-minimum 1 / Source / Contract",
+      "rule_id": "full_t99_no_one_point",
+      "category": "testing_capacity_risk",
+      "severity": "high",
+      "note": "Table B-1 lists full AASHTO T99 without T272 / one-point alternative. On high-volume earthwork this can exceed field/lab capacity (RT 301 lesson: Tutor Perini exploited missed testing frequencies).",
+      "match": "T99 without T272/one-point",
+      "page": null,
+      "section_id": null,
+      "section_header": "(975mm), Class IV ft (m)",
+      "snippet": "(975mm), Class IV ft (m) minimum 1 / Source / Contract Certification: M170, ASTM C443; T88, T89, T90, T99 (Method C),",
+      "item": null,
+      "frequency": {
+        "kind": "per_source_contract",
+        "every": null,
+        "raw": "minimum 1 / Source / Contract"
+      },
+      "tests": "Certification: M170, ASTM C443; T88, T89, T90, T99 (Method C),",
+      "capacity_scenarios": {},
+      "source": "Table B-1 quantities list"
+    },
+    {
+      "id": "table-b1-t99-(525mm), Class V ft (m)-minimum 1 / Source / Contract",
+      "rule_id": "full_t99_no_one_point",
+      "category": "testing_capacity_risk",
+      "severity": "high",
+      "note": "Table B-1 lists full AASHTO T99 without T272 / one-point alternative. On high-volume earthwork this can exceed field/lab capacity (RT 301 lesson: Tutor Perini exploited missed testing frequencies).",
+      "match": "T99 without T272/one-point",
+      "page": null,
+      "section_id": null,
+      "section_header": "(525mm), Class V ft (m)",
+      "snippet": "(525mm), Class V ft (m) minimum 1 / Source / Contract Certification: M170, ASTM C443; T88, T89, T90, T99 (Method C),",
+      "item": null,
+      "frequency": {
+        "kind": "per_source_contract",
+        "every": null,
+        "raw": "minimum 1 / Source / Contract"
+      },
+      "tests": "Certification: M170, ASTM C443; T88, T89, T90, T99 (Method C),",
+      "capacity_scenarios": {},
+      "source": "Table B-1 quantities list"
+    },
+    {
+      "id": "table-b1-t99-(675mm), Class V ft (m)-minimum 1 / Source / Contract",
+      "rule_id": "full_t99_no_one_point",
+      "category": "testing_capacity_risk",
+      "severity": "high",
+      "note": "Table B-1 lists full AASHTO T99 without T272 / one-point alternative. On high-volume earthwork this can exceed field/lab capacity (RT 301 lesson: Tutor Perini exploited missed testing frequencies).",
+      "match": "T99 without T272/one-point",
+      "page": null,
+      "section_id": null,
+      "section_header": "(675mm), Class V ft (m)",
+      "snippet": "(675mm), Class V ft (m) minimum 1 / Source / Contract Certification: M170, ASTM C443; T88, T89, T90, T99 (Method C),",
+      "item": null,
+      "frequency": {
+        "kind": "per_source_contract",
+        "every": null,
+        "raw": "minimum 1 / Source / Contract"
+      },
+      "tests": "Certification: M170, ASTM C443; T88, T89, T90, T99 (Method C),",
+      "capacity_scenarios": {},
+      "source": "Table B-1 quantities list"
+    },
+    {
+      "id": "table-b1-t99-(825mm), Class IV ft (m)-minimum 1 / Source / Contract",
+      "rule_id": "full_t99_no_one_point",
+      "category": "testing_capacity_risk",
+      "severity": "high",
+      "note": "Table B-1 lists full AASHTO T99 without T272 / one-point alternative. On high-volume earthwork this can exceed field/lab capacity (RT 301 lesson: Tutor Perini exploited missed testing frequencies).",
+      "match": "T99 without T272/one-point",
+      "page": null,
+      "section_id": null,
+      "section_header": "(825mm), Class IV ft (m)",
+      "snippet": "(825mm), Class IV ft (m) minimum 1 / Source / Contract Certification: M170, ASTM C443; T88, T89, T90, T99 (Method C),",
+      "item": null,
+      "frequency": {
+        "kind": "per_source_contract",
+        "every": null,
+        "raw": "minimum 1 / Source / Contract"
+      },
+      "tests": "Certification: M170, ASTM C443; T88, T89, T90, T99 (Method C),",
+      "capacity_scenarios": {},
+      "source": "Table B-1 quantities list"
+    },
+    {
+      "id": "table-b1-t99-14\" x 23\" (350 x 575 mm), Class III ft (-minimum 1 / Source / Contract",
+      "rule_id": "full_t99_no_one_point",
+      "category": "testing_capacity_risk",
+      "severity": "high",
+      "note": "Table B-1 lists full AASHTO T99 without T272 / one-point alternative. On high-volume earthwork this can exceed field/lab capacity (RT 301 lesson: Tutor Perini exploited missed testing frequencies).",
+      "match": "T99 without T272/one-point",
+      "page": null,
+      "section_id": null,
+      "section_header": "14\" x 23\" (350 x 575 mm), Class III ft (m)",
+      "snippet": "14\" x 23\" (350 x 575 mm), Class III ft (m) minimum 1 / Source / Contract Certification: M170, ASTM C443; T88, T89, T90, T99 (Method C),",
+      "item": null,
+      "frequency": {
+        "kind": "per_source_contract",
+        "every": null,
+        "raw": "minimum 1 / Source / Contract"
+      },
+      "tests": "Certification: M170, ASTM C443; T88, T89, T90, T99 (Method C),",
+      "capacity_scenarios": {},
+      "source": "Table B-1 quantities list"
+    },
+    {
+      "id": "table-b1-t99-19\" x 30\" (475 x 750 mm), Class III ft (-minimum 1 / Source / Contract",
+      "rule_id": "full_t99_no_one_point",
+      "category": "testing_capacity_risk",
+      "severity": "high",
+      "note": "Table B-1 lists full AASHTO T99 without T272 / one-point alternative. On high-volume earthwork this can exceed field/lab capacity (RT 301 lesson: Tutor Perini exploited missed testing frequencies).",
+      "match": "T99 without T272/one-point",
+      "page": null,
+      "section_id": null,
+      "section_header": "19\" x 30\" (475 x 750 mm), Class III ft (m)",
+      "snippet": "19\" x 30\" (475 x 750 mm), Class III ft (m) minimum 1 / Source / Contract Certification: M170, ASTM C443; T88, T89, T90, T99 (Method C),",
+      "item": null,
+      "frequency": {
+        "kind": "per_source_contract",
+        "every": null,
+        "raw": "minimum 1 / Source / Contract"
+      },
+      "tests": "Certification: M170, ASTM C443; T88, T89, T90, T99 (Method C),",
+      "capacity_scenarios": {},
+      "source": "Table B-1 quantities list"
+    },
+    {
+      "id": "table-b1-t99-24\" x 38\" (600 x 950 mm), Class III ft (-minimum 1 / Source / Contract",
+      "rule_id": "full_t99_no_one_point",
+      "category": "testing_capacity_risk",
+      "severity": "high",
+      "note": "Table B-1 lists full AASHTO T99 without T272 / one-point alternative. On high-volume earthwork this can exceed field/lab capacity (RT 301 lesson: Tutor Perini exploited missed testing frequencies).",
+      "match": "T99 without T272/one-point",
+      "page": null,
+      "section_id": null,
+      "section_header": "24\" x 38\" (600 x 950 mm), Class III ft (m)",
+      "snippet": "24\" x 38\" (600 x 950 mm), Class III ft (m) minimum 1 / Source / Contract Certification: M170, ASTM C443; T88, T89, T90, T99 (Method C),",
+      "item": null,
+      "frequency": {
+        "kind": "per_source_contract",
+        "every": null,
+        "raw": "minimum 1 / Source / Contract"
+      },
+      "tests": "Certification: M170, ASTM C443; T88, T89, T90, T99 (Method C),",
+      "capacity_scenarios": {},
+      "source": "Table B-1 quantities list"
+    },
+    {
+      "id": "table-b1-t99-ft (m)-minimum 1 / Source / Contract",
+      "rule_id": "full_t99_no_one_point",
+      "category": "testing_capacity_risk",
+      "severity": "high",
+      "note": "Table B-1 lists full AASHTO T99 without T272 / one-point alternative. On high-volume earthwork this can exceed field/lab capacity (RT 301 lesson: Tutor Perini exploited missed testing frequencies).",
+      "match": "T99 without T272/one-point",
+      "page": null,
+      "section_id": null,
+      "section_header": "ft (m)",
+      "snippet": "ft (m) minimum 1 / Source / Contract Certification: M170, ASTM C443; T88, T89, T90, T99 (Meth od C),",
+      "item": null,
+      "frequency": {
+        "kind": "per_source_contract",
+        "every": null,
+        "raw": "minimum 1 / Source / Contract"
+      },
+      "tests": "Certification: M170, ASTM C443; T88, T89, T90, T99 (Meth od C),",
+      "capacity_scenarios": {},
+      "source": "Table B-1 quantities list"
+    },
+    {
+      "id": "table-b1-t99-ft (m)-minimum 1 / Source / Contract",
+      "rule_id": "full_t99_no_one_point",
+      "category": "testing_capacity_risk",
+      "severity": "high",
+      "note": "Table B-1 lists full AASHTO T99 without T272 / one-point alternative. On high-volume earthwork this can exceed field/lab capacity (RT 301 lesson: Tutor Perini exploited missed testing frequencies).",
+      "match": "T99 without T272/one-point",
+      "page": null,
+      "section_id": null,
+      "section_header": "ft (m)",
+      "snippet": "ft (m) minimum 1 / Source / Contract Certification: M170, ASTM C443; T88, T89, T90, T99 (Method C),",
+      "item": null,
+      "frequency": {
+        "kind": "per_source_contract",
+        "every": null,
+        "raw": "minimum 1 / Source / Contract"
+      },
+      "tests": "Certification: M170, ASTM C443; T88, T89, T90, T99 (Method C),",
+      "capacity_scenarios": {},
+      "source": "Table B-1 quantities list"
+    },
+    {
+      "id": "table-b1-t99-19\" x 30\" (475 x 750 mm), Class IV ft (m-minimum 1 / Source / Contract",
+      "rule_id": "full_t99_no_one_point",
+      "category": "testing_capacity_risk",
+      "severity": "high",
+      "note": "Table B-1 lists full AASHTO T99 without T272 / one-point alternative. On high-volume earthwork this can exceed field/lab capacity (RT 301 lesson: Tutor Perini exploited missed testing frequencies).",
+      "match": "T99 without T272/one-point",
+      "page": null,
+      "section_id": null,
+      "section_header": "19\" x 30\" (475 x 750 mm), Class IV ft (m)",
+      "snippet": "19\" x 30\" (475 x 750 mm), Class IV ft (m) minimum 1 / Source / Contract Certification: M170, ASTM C443; T88, T89, T90, T99 (Method C),",
+      "item": null,
+      "frequency": {
+        "kind": "per_source_contract",
+        "every": null,
+        "raw": "minimum 1 / Source / Contract"
+      },
+      "tests": "Certification: M170, ASTM C443; T88, T89, T90, T99 (Method C),",
+      "capacity_scenarios": {},
+      "source": "Table B-1 quantities list"
+    },
+    {
+      "id": "table-b1-t99-22\" x 34\" (550 x 850 mm), Class III ft (-minimum 1 / Source / Contract",
+      "rule_id": "full_t99_no_one_point",
+      "category": "testing_capacity_risk",
+      "severity": "high",
+      "note": "Table B-1 lists full AASHTO T99 without T272 / one-point alternative. On high-volume earthwork this can exceed field/lab capacity (RT 301 lesson: Tutor Perini exploited missed testing frequencies).",
+      "match": "T99 without T272/one-point",
+      "page": null,
+      "section_id": null,
+      "section_header": "22\" x 34\" (550 x 850 mm), Class III ft (m)",
+      "snippet": "22\" x 34\" (550 x 850 mm), Class III ft (m) minimum 1 / Source / Contract Certification: M170, ASTM C443; T88, T89, T90, T99 (Method C),",
+      "item": null,
+      "frequency": {
+        "kind": "per_source_contract",
+        "every": null,
+        "raw": "minimum 1 / Source / Contract"
+      },
+      "tests": "Certification: M170, ASTM C443; T88, T89, T90, T99 (Method C),",
+      "capacity_scenarios": {},
+      "source": "Table B-1 quantities list"
+    },
+    {
+      "id": "table-b1-t99-29\" x 45\" (725 x 1125 mm), Class III ft -minimum 1 / Source / Contract",
+      "rule_id": "full_t99_no_one_point",
+      "category": "testing_capacity_risk",
+      "severity": "high",
+      "note": "Table B-1 lists full AASHTO T99 without T272 / one-point alternative. On high-volume earthwork this can exceed field/lab capacity (RT 301 lesson: Tutor Perini exploited missed testing frequencies).",
+      "match": "T99 without T272/one-point",
+      "page": null,
+      "section_id": null,
+      "section_header": "29\" x 45\" (725 x 1125 mm), Class III ft (m)",
+      "snippet": "29\" x 45\" (725 x 1125 mm), Class III ft (m) minimum 1 / Source / Contract Certification: M170, ASTM C443; T88, T89, T9 0, T99 (Method C),",
+      "item": null,
+      "frequency": {
+        "kind": "per_source_contract",
+        "every": null,
+        "raw": "minimum 1 / Source / Contract"
+      },
+      "tests": "Certification: M170, ASTM C443; T88, T89, T9 0, T99 (Method C),",
+      "capacity_scenarios": {},
+      "source": "Table B-1 quantities list"
+    },
+    {
+      "id": "table-b1-t99-43\" x 68\" (1075 x 1700 mm), Class IV ft -minimum 1 / Source / Contract",
+      "rule_id": "full_t99_no_one_point",
+      "category": "testing_capacity_risk",
+      "severity": "high",
+      "note": "Table B-1 lists full AASHTO T99 without T272 / one-point alternative. On high-volume earthwork this can exceed field/lab capacity (RT 301 lesson: Tutor Perini exploited missed testing frequencies).",
+      "match": "T99 without T272/one-point",
+      "page": null,
+      "section_id": null,
+      "section_header": "43\" x 68\" (1075 x 1700 mm), Class IV ft (m)",
+      "snippet": "43\" x 68\" (1075 x 1700 mm), Class IV ft (m) minimum 1 / Source / Contract Certification: M170, ASTM C443; T88, T89, T90, T99 (Method C),",
+      "item": null,
+      "frequency": {
+        "kind": "per_source_contract",
+        "every": null,
+        "raw": "minimum 1 / Source / Contract"
+      },
+      "tests": "Certification: M170, ASTM C443; T88, T89, T90, T99 (Method C),",
+      "capacity_scenarios": {},
+      "source": "Table B-1 quantities list"
+    },
+    {
+      "id": "table-b1-t99-27\" x 42\" (675 x 1050 mm), Class III ft -minimum 1 / Source / Contract",
+      "rule_id": "full_t99_no_one_point",
+      "category": "testing_capacity_risk",
+      "severity": "high",
+      "note": "Table B-1 lists full AASHTO T99 without T272 / one-point alternative. On high-volume earthwork this can exceed field/lab capacity (RT 301 lesson: Tutor Perini exploited missed testing frequencies).",
+      "match": "T99 without T272/one-point",
+      "page": null,
+      "section_id": null,
+      "section_header": "27\" x 42\" (675 x 1050 mm), Class III ft (m)",
+      "snippet": "27\" x 42\" (675 x 1050 mm), Class III ft (m) minimum 1 / Source / Contract Certification: M170, ASTM C443; T88, T89, T90, T99 (Method C),",
+      "item": null,
+      "frequency": {
+        "kind": "per_source_contract",
+        "every": null,
+        "raw": "minimum 1 / Source / Contract"
+      },
+      "tests": "Certification: M170, ASTM C443; T88, T89, T90, T99 (Method C),",
+      "capacity_scenarios": {},
+      "source": "Table B-1 quantities list"
+    },
+    {
+      "id": "table-b1-t99-22\" x 34\" (550 x 850 mm), Class IV ft (m-minimum 1 / Source / Contract",
+      "rule_id": "full_t99_no_one_point",
+      "category": "testing_capacity_risk",
+      "severity": "high",
+      "note": "Table B-1 lists full AASHTO T99 without T272 / one-point alternative. On high-volume earthwork this can exceed field/lab capacity (RT 301 lesson: Tutor Perini exploited missed testing frequencies).",
+      "match": "T99 without T272/one-point",
+      "page": null,
+      "section_id": null,
+      "section_header": "22\" x 34\" (550 x 850 mm), Class IV ft (m)",
+      "snippet": "22\" x 34\" (550 x 850 mm), Class IV ft (m) minimum 1 / Source / Contract Certification: M170, ASTM C443; T88, T89, T90, T99 (Method C),",
+      "item": null,
+      "frequency": {
+        "kind": "per_source_contract",
+        "every": null,
+        "raw": "minimum 1 / Source / Contract"
+      },
+      "tests": "Certification: M170, ASTM C443; T88, T89, T90, T99 (Method C),",
+      "capacity_scenarios": {},
+      "source": "Table B-1 quantities list"
+    },
+    {
+      "id": "table-b1-t99-38\" x 60\" (950 x 1500 mm) , Class III ft-minimum 1 / Source / Contract",
+      "rule_id": "full_t99_no_one_point",
+      "category": "testing_capacity_risk",
+      "severity": "high",
+      "note": "Table B-1 lists full AASHTO T99 without T272 / one-point alternative. On high-volume earthwork this can exceed field/lab capacity (RT 301 lesson: Tutor Perini exploited missed testing frequencies).",
+      "match": "T99 without T272/one-point",
+      "page": null,
+      "section_id": null,
+      "section_header": "38\" x 60\" (950 x 1500 mm) , Class III ft (m)",
+      "snippet": "38\" x 60\" (950 x 1500 mm) , Class III ft (m) minimum 1 / Source / Contract Certification: M170, ASTM C443; T88, T89, T90, T99 (Method C),",
+      "item": null,
+      "frequency": {
+        "kind": "per_source_contract",
+        "every": null,
+        "raw": "minimum 1 / Source / Contract"
+      },
+      "tests": "Certification: M170, ASTM C443; T88, T89, T90, T99 (Method C),",
+      "capacity_scenarios": {},
+      "source": "Table B-1 quantities list"
+    },
+    {
+      "id": "table-b1-t99-27\" x 42\" (675 x 1050 mm), Class IV ft (-minimum 1 / Source / Contract",
+      "rule_id": "full_t99_no_one_point",
+      "category": "testing_capacity_risk",
+      "severity": "high",
+      "note": "Table B-1 lists full AASHTO T99 without T272 / one-point alternative. On high-volume earthwork this can exceed field/lab capacity (RT 301 lesson: Tutor Perini exploited missed testing frequencies).",
+      "match": "T99 without T272/one-point",
+      "page": null,
+      "section_id": null,
+      "section_header": "27\" x 42\" (675 x 1050 mm), Class IV ft (m)",
+      "snippet": "27\" x 42\" (675 x 1050 mm), Class IV ft (m) minimum 1 / Source / Contract Certification: M170, ASTM C443; T88, T89, T90, T99 (Method C),",
+      "item": null,
+      "frequency": {
+        "kind": "per_source_contract",
+        "every": null,
+        "raw": "minimum 1 / Source / Contract"
+      },
+      "tests": "Certification: M170, ASTM C443; T88, T89, T90, T99 (Method C),",
+      "capacity_scenarios": {},
+      "source": "Table B-1 quantities list"
+    },
+    {
+      "id": "table-b1-t99-32\" x 49\" (800 x 1225 mm), Class IV ft (-minimum 1 / Source / Contract",
+      "rule_id": "full_t99_no_one_point",
+      "category": "testing_capacity_risk",
+      "severity": "high",
+      "note": "Table B-1 lists full AASHTO T99 without T272 / one-point alternative. On high-volume earthwork this can exceed field/lab capacity (RT 301 lesson: Tutor Perini exploited missed testing frequencies).",
+      "match": "T99 without T272/one-point",
+      "page": null,
+      "section_id": null,
+      "section_header": "32\" x 49\" (800 x 1225 mm), Class IV ft (m)",
+      "snippet": "32\" x 49\" (800 x 1225 mm), Class IV ft (m) minimum 1 / Source / Contract Certification: M170, ASTM C443; T88, T89, T90, T99 (Method C),",
+      "item": null,
+      "frequency": {
+        "kind": "per_source_contract",
+        "every": null,
+        "raw": "minimum 1 / Source / Contract"
+      },
+      "tests": "Certification: M170, ASTM C443; T88, T89, T90, T99 (Method C),",
+      "capacity_scenarios": {},
+      "source": "Table B-1 quantities list"
+    },
+    {
+      "id": "table-b1-t99-38\" x 60\" (950 x 1500 mm), Class IV ft (-minimum 1 / Source / Contract",
+      "rule_id": "full_t99_no_one_point",
+      "category": "testing_capacity_risk",
+      "severity": "high",
+      "note": "Table B-1 lists full AASHTO T99 without T272 / one-point alternative. On high-volume earthwork this can exceed field/lab capacity (RT 301 lesson: Tutor Perini exploited missed testing frequencies).",
+      "match": "T99 without T272/one-point",
+      "page": null,
+      "section_id": null,
+      "section_header": "38\" x 60\" (950 x 1500 mm), Class IV ft (m)",
+      "snippet": "38\" x 60\" (950 x 1500 mm), Class IV ft (m) minimum 1 / Source / Contract Certification: M170, ASTM C443; T88, T89, T90, T99 (Method C),",
+      "item": null,
+      "frequency": {
+        "kind": "per_source_contract",
+        "every": null,
+        "raw": "minimum 1 / Source / Contract"
+      },
+      "tests": "Certification: M170, ASTM C443; T88, T89, T90, T99 (Method C),",
+      "capacity_scenarios": {},
+      "source": "Table B-1 quantities list"
+    },
+    {
+      "id": "table-b1-t99-14\" x 23\" (350 x 575 mm), Class IV ft (m-minimum 1 / Source / Contract",
+      "rule_id": "full_t99_no_one_point",
+      "category": "testing_capacity_risk",
+      "severity": "high",
+      "note": "Table B-1 lists full AASHTO T99 without T272 / one-point alternative. On high-volume earthwork this can exceed field/lab capacity (RT 301 lesson: Tutor Perini exploited missed testing frequencies).",
+      "match": "T99 without T272/one-point",
+      "page": null,
+      "section_id": null,
+      "section_header": "14\" x 23\" (350 x 575 mm), Class IV ft (m)",
+      "snippet": "14\" x 23\" (350 x 575 mm), Class IV ft (m) minimum 1 / Source / Contract Certification: M170, ASTM C443; T88, T89, T90, T99 (Method C),",
+      "item": null,
+      "frequency": {
+        "kind": "per_source_contract",
+        "every": null,
+        "raw": "minimum 1 / Source / Contract"
+      },
+      "tests": "Certification: M170, ASTM C443; T88, T89, T90, T99 (Method C),",
+      "capacity_scenarios": {},
+      "source": "Table B-1 quantities list"
+    },
+    {
+      "id": "table-b1-t99-48\" x 76\" (1200 x 19 00mm), Class III ft-minimum 1 / Source / Contract",
+      "rule_id": "full_t99_no_one_point",
+      "category": "testing_capacity_risk",
+      "severity": "high",
+      "note": "Table B-1 lists full AASHTO T99 without T272 / one-point alternative. On high-volume earthwork this can exceed field/lab capacity (RT 301 lesson: Tutor Perini exploited missed testing frequencies).",
+      "match": "T99 without T272/one-point",
+      "page": null,
+      "section_id": null,
+      "section_header": "48\" x 76\" (1200 x 19 00mm), Class III ft (m)",
+      "snippet": "48\" x 76\" (1200 x 19 00mm), Class III ft (m) minimum 1 / Source / Contract Certification: M170, ASTM C443; T88, T89, T90, T99 (Method C),",
+      "item": null,
+      "frequency": {
+        "kind": "per_source_contract",
+        "every": null,
+        "raw": "minimum 1 / Source / Contract"
+      },
+      "tests": "Certification: M170, ASTM C443; T88, T89, T90, T99 (Method C),",
+      "capacity_scenarios": {},
+      "source": "Table B-1 quantities list"
+    },
+    {
+      "id": "table-b1-t99-24\" x 38\" (600 x 950 mm), Class IV ft (m-minimum 1 / Source / Contract",
+      "rule_id": "full_t99_no_one_point",
+      "category": "testing_capacity_risk",
+      "severity": "high",
+      "note": "Table B-1 lists full AASHTO T99 without T272 / one-point alternative. On high-volume earthwork this can exceed field/lab capacity (RT 301 lesson: Tutor Perini exploited missed testing frequencies).",
+      "match": "T99 without T272/one-point",
+      "page": null,
+      "section_id": null,
+      "section_header": "24\" x 38\" (600 x 950 mm), Class IV ft (m)",
+      "snippet": "24\" x 38\" (600 x 950 mm), Class IV ft (m) minimum 1 / Source / Contract Certification: M170, ASTM C4 43; T88, T89, T90, T99 (Method C),",
+      "item": null,
+      "frequency": {
+        "kind": "per_source_contract",
+        "every": null,
+        "raw": "minimum 1 / Source / Contract"
+      },
+      "tests": "Certification: M170, ASTM C4 43; T88, T89, T90, T99 (Method C),",
+      "capacity_scenarios": {},
+      "source": "Table B-1 quantities list"
+    },
+    {
+      "id": "table-b1-t99-29\" x 45\" (725 x 1125 mm), Class IV ft (-minimum 1 / Source / Contract",
+      "rule_id": "full_t99_no_one_point",
+      "category": "testing_capacity_risk",
+      "severity": "high",
+      "note": "Table B-1 lists full AASHTO T99 without T272 / one-point alternative. On high-volume earthwork this can exceed field/lab capacity (RT 301 lesson: Tutor Perini exploited missed testing frequencies).",
+      "match": "T99 without T272/one-point",
+      "page": null,
+      "section_id": null,
+      "section_header": "29\" x 45\" (725 x 1125 mm), Class IV ft (m)",
+      "snippet": "29\" x 45\" (725 x 1125 mm), Class IV ft (m) minimum 1 / Source / Contract Certification: M170, ASTM C443; T88, T89, T90, T99 (Method C),",
+      "item": null,
+      "frequency": {
+        "kind": "per_source_contract",
+        "every": null,
+        "raw": "minimum 1 / Source / Contract"
+      },
+      "tests": "Certification: M170, ASTM C443; T88, T89, T90, T99 (Method C),",
+      "capacity_scenarios": {},
+      "source": "Table B-1 quantities list"
+    },
+    {
+      "id": "table-b1-t99-48\" x 76\" (1200 x 1900 mm), Class IV ft -minimum 1 / Source / Contract",
+      "rule_id": "full_t99_no_one_point",
+      "category": "testing_capacity_risk",
+      "severity": "high",
+      "note": "Table B-1 lists full AASHTO T99 without T272 / one-point alternative. On high-volume earthwork this can exceed field/lab capacity (RT 301 lesson: Tutor Perini exploited missed testing frequencies).",
+      "match": "T99 without T272/one-point",
+      "page": null,
+      "section_id": null,
+      "section_header": "48\" x 76\" (1200 x 1900 mm), Class IV ft (m)",
+      "snippet": "48\" x 76\" (1200 x 1900 mm), Class IV ft (m) minimum 1 / Source / Contract Certification: M170, ASTM C443; T88, T89, T90, T99 (Method C),",
+      "item": null,
+      "frequency": {
+        "kind": "per_source_contract",
+        "every": null,
+        "raw": "minimum 1 / Source / Contract"
+      },
+      "tests": "Certification: M170, ASTM C443; T88, T89, T90, T99 (Method C),",
+      "capacity_scenarios": {},
+      "source": "Table B-1 quantities list"
+    },
+    {
+      "id": "table-b1-t99-ft (m)-minimum 1 / Source / Contract",
+      "rule_id": "full_t99_no_one_point",
+      "category": "testing_capacity_risk",
+      "severity": "high",
+      "note": "Table B-1 lists full AASHTO T99 without T272 / one-point alternative. On high-volume earthwork this can exceed field/lab capacity (RT 301 lesson: Tutor Perini exploited missed testing frequencies).",
+      "match": "T99 without T272/one-point",
+      "page": null,
+      "section_id": null,
+      "section_header": "ft (m)",
+      "snippet": "ft (m) minimum 1 / Source / Contract Certification: M36, M218, M274, M196, M190, T88, T89, T90, T99",
+      "item": null,
+      "frequency": {
+        "kind": "per_source_contract",
+        "every": null,
+        "raw": "minimum 1 / Source / Contract"
+      },
+      "tests": "Certification: M36, M218, M274, M196, M190, T88, T89, T90, T99",
+      "capacity_scenarios": {},
+      "source": "Table B-1 quantities list"
+    },
+    {
+      "id": "table-b1-t99-ft (m)-minimum 1 / Source / Contract",
+      "rule_id": "full_t99_no_one_point",
+      "category": "testing_capacity_risk",
+      "severity": "high",
+      "note": "Table B-1 lists full AASHTO T99 without T272 / one-point alternative. On high-volume earthwork this can exceed field/lab capacity (RT 301 lesson: Tutor Perini exploited missed testing frequencies).",
+      "match": "T99 without T272/one-point",
+      "page": null,
+      "section_id": null,
+      "section_header": "ft (m)",
+      "snippet": "ft (m) minimum 1 / Source / Contract Certification: M36, M218, M274, M196, M190, T88, T89 , T90, T99",
+      "item": null,
+      "frequency": {
+        "kind": "per_source_contract",
+        "every": null,
+        "raw": "minimum 1 / Source / Contract"
+      },
+      "tests": "Certification: M36, M218, M274, M196, M190, T88, T89 , T90, T99",
+      "capacity_scenarios": {},
+      "source": "Table B-1 quantities list"
+    },
+    {
+      "id": "table-b1-t99-ft (m)-minimum 1 / Source / Contract",
+      "rule_id": "full_t99_no_one_point",
+      "category": "testing_capacity_risk",
+      "severity": "high",
+      "note": "Table B-1 lists full AASHTO T99 without T272 / one-point alternative. On high-volume earthwork this can exceed field/lab capacity (RT 301 lesson: Tutor Perini exploited missed testing frequencies).",
+      "match": "T99 without T272/one-point",
+      "page": null,
+      "section_id": null,
+      "section_header": "ft (m)",
+      "snippet": "ft (m) minimum 1 / Source / Contract Certification: M36, M21 8, M274, M196, M190, T88, T89, T90, T99",
+      "item": null,
+      "frequency": {
+        "kind": "per_source_contract",
+        "every": null,
+        "raw": "minimum 1 / Source / Contract"
+      },
+      "tests": "Certification: M36, M21 8, M274, M196, M190, T88, T89, T90, T99",
+      "capacity_scenarios": {},
+      "source": "Table B-1 quantities list"
+    },
+    {
+      "id": "table-b1-t99-ft (m)-minimum 1 / Source / Contract",
+      "rule_id": "full_t99_no_one_point",
+      "category": "testing_capacity_risk",
+      "severity": "high",
+      "note": "Table B-1 lists full AASHTO T99 without T272 / one-point alternative. On high-volume earthwork this can exceed field/lab capacity (RT 301 lesson: Tutor Perini exploited missed testing frequencies).",
+      "match": "T99 without T272/one-point",
+      "page": null,
+      "section_id": null,
+      "section_header": "ft (m)",
+      "snippet": "ft (m) minimum 1 / Source / Contract Certification: M36, M218, M 274, M196, M190, T88, T89, T90, T99",
+      "item": null,
+      "frequency": {
+        "kind": "per_source_contract",
+        "every": null,
+        "raw": "minimum 1 / Source / Contract"
+      },
+      "tests": "Certification: M36, M218, M 274, M196, M190, T88, T89, T90, T99",
+      "capacity_scenarios": {},
+      "source": "Table B-1 quantities list"
+    },
+    {
+      "id": "table-b1-t99-ft (m)-minimum 1 / Source / Contract",
+      "rule_id": "full_t99_no_one_point",
+      "category": "testing_capacity_risk",
+      "severity": "high",
+      "note": "Table B-1 lists full AASHTO T99 without T272 / one-point alternative. On high-volume earthwork this can exceed field/lab capacity (RT 301 lesson: Tutor Perini exploited missed testing frequencies).",
+      "match": "T99 without T272/one-point",
+      "page": null,
+      "section_id": null,
+      "section_header": "ft (m)",
+      "snippet": "ft (m) minimum 1 / Source / Contract Certification: M36, M218, M274, M196, M190 , T88, T89, T90, T99",
+      "item": null,
+      "frequency": {
+        "kind": "per_source_contract",
+        "every": null,
+        "raw": "minimum 1 / Source / Contract"
+      },
+      "tests": "Certification: M36, M218, M274, M196, M190 , T88, T89, T90, T99",
+      "capacity_scenarios": {},
+      "source": "Table B-1 quantities list"
+    },
+    {
+      "id": "table-b1-t99-ft (m)-minimum 1 / Source / Contract",
+      "rule_id": "full_t99_no_one_point",
+      "category": "testing_capacity_risk",
+      "severity": "high",
+      "note": "Table B-1 lists full AASHTO T99 without T272 / one-point alternative. On high-volume earthwork this can exceed field/lab capacity (RT 301 lesson: Tutor Perini exploited missed testing frequencies).",
+      "match": "T99 without T272/one-point",
+      "page": null,
+      "section_id": null,
+      "section_header": "ft (m)",
+      "snippet": "ft (m) minimum 1 / Source / Contract Certification: M36, M218, M274, M196, M 190, T88, T89, T90, T99",
+      "item": null,
+      "frequency": {
+        "kind": "per_source_contract",
+        "every": null,
+        "raw": "minimum 1 / Source / Contract"
+      },
+      "tests": "Certification: M36, M218, M274, M196, M 190, T88, T89, T90, T99",
+      "capacity_scenarios": {},
+      "source": "Table B-1 quantities list"
+    },
+    {
+      "id": "table-b1-t99-ft (m)-minimum 1 / Source / Contract",
+      "rule_id": "full_t99_no_one_point",
+      "category": "testing_capacity_risk",
+      "severity": "high",
+      "note": "Table B-1 lists full AASHTO T99 without T272 / one-point alternative. On high-volume earthwork this can exceed field/lab capacity (RT 301 lesson: Tutor Perini exploited missed testing frequencies).",
+      "match": "T99 without T272/one-point",
+      "page": null,
+      "section_id": null,
+      "section_header": "ft (m)",
+      "snippet": "ft (m) minimum 1 / Source / Contract Certification: M36, M218, M274, M196, M190, T88, T89, T90, T 99",
+      "item": null,
+      "frequency": {
+        "kind": "per_source_contract",
+        "every": null,
+        "raw": "minimum 1 / Source / Contract"
+      },
+      "tests": "Certification: M36, M218, M274, M196, M190, T88, T89, T90, T 99",
+      "capacity_scenarios": {},
+      "source": "Table B-1 quantities list"
+    },
+    {
+      "id": "table-b1-t99-ft (m)-minimum 1 / Source / Contract",
+      "rule_id": "full_t99_no_one_point",
+      "category": "testing_capacity_risk",
+      "severity": "high",
+      "note": "Table B-1 lists full AASHTO T99 without T272 / one-point alternative. On high-volume earthwork this can exceed field/lab capacity (RT 301 lesson: Tutor Perini exploited missed testing frequencies).",
+      "match": "T99 without T272/one-point",
+      "page": null,
+      "section_id": null,
+      "section_header": "ft (m)",
+      "snippet": "ft (m) minimum 1 / Source / Contract Certification: M36, M218 , M274, M196, M190, T88, T89, T90, T99",
+      "item": null,
+      "frequency": {
+        "kind": "per_source_contract",
+        "every": null,
+        "raw": "minimum 1 / Source / Contract"
+      },
+      "tests": "Certification: M36, M218 , M274, M196, M190, T88, T89, T90, T99",
+      "capacity_scenarios": {},
+      "source": "Table B-1 quantities list"
+    },
+    {
+      "id": "table-b1-t99-ft (m)-minimum 1 / Source / Contract",
+      "rule_id": "full_t99_no_one_point",
+      "category": "testing_capacity_risk",
+      "severity": "high",
+      "note": "Table B-1 lists full AASHTO T99 without T272 / one-point alternative. On high-volume earthwork this can exceed field/lab capacity (RT 301 lesson: Tutor Perini exploited missed testing frequencies).",
+      "match": "T99 without T272/one-point",
+      "page": null,
+      "section_id": null,
+      "section_header": "ft (m)",
+      "snippet": "ft (m) minimum 1 / Source / Contract Certification: M36, M218, M274, M196 , M190, T88, T89, T90, T99",
+      "item": null,
+      "frequency": {
+        "kind": "per_source_contract",
+        "every": null,
+        "raw": "minimum 1 / Source / Contract"
+      },
+      "tests": "Certification: M36, M218, M274, M196 , M190, T88, T89, T90, T99",
+      "capacity_scenarios": {},
+      "source": "Table B-1 quantities list"
+    },
+    {
+      "id": "table-b1-t99-ft (m)-minimum 1 / Source / Contract",
+      "rule_id": "full_t99_no_one_point",
+      "category": "testing_capacity_risk",
+      "severity": "high",
+      "note": "Table B-1 lists full AASHTO T99 without T272 / one-point alternative. On high-volume earthwork this can exceed field/lab capacity (RT 301 lesson: Tutor Perini exploited missed testing frequencies).",
+      "match": "T99 without T272/one-point",
+      "page": null,
+      "section_id": null,
+      "section_header": "ft (m)",
+      "snippet": "ft (m) minimum 1 / Source / Contract Certification: M36, M218, M274, M196, M190, T88, T89, T 90, T99",
+      "item": null,
+      "frequency": {
+        "kind": "per_source_contract",
+        "every": null,
+        "raw": "minimum 1 / Source / Contract"
+      },
+      "tests": "Certification: M36, M218, M274, M196, M190, T88, T89, T 90, T99",
+      "capacity_scenarios": {},
+      "source": "Table B-1 quantities list"
+    },
+    {
+      "id": "table-b1-t99-ft (m)-minimum 1 / Source / Contract",
+      "rule_id": "full_t99_no_one_point",
+      "category": "testing_capacity_risk",
+      "severity": "high",
+      "note": "Table B-1 lists full AASHTO T99 without T272 / one-point alternative. On high-volume earthwork this can exceed field/lab capacity (RT 301 lesson: Tutor Perini exploited missed testing frequencies).",
+      "match": "T99 without T272/one-point",
+      "page": null,
+      "section_id": null,
+      "section_header": "ft (m)",
+      "snippet": "ft (m) minimum 1 / Source / Contract Certification: M36, M218, M274, M19 6, M190, T88, T89, T90, T99",
+      "item": null,
+      "frequency": {
+        "kind": "per_source_contract",
+        "every": null,
+        "raw": "minimum 1 / Source / Contract"
+      },
+      "tests": "Certification: M36, M218, M274, M19 6, M190, T88, T89, T90, T99",
+      "capacity_scenarios": {},
+      "source": "Table B-1 quantities list"
+    },
+    {
+      "id": "table-b1-t99-ft (m)-minimum 1 / Source / Contract",
+      "rule_id": "full_t99_no_one_point",
+      "category": "testing_capacity_risk",
+      "severity": "high",
+      "note": "Table B-1 lists full AASHTO T99 without T272 / one-point alternative. On high-volume earthwork this can exceed field/lab capacity (RT 301 lesson: Tutor Perini exploited missed testing frequencies).",
+      "match": "T99 without T272/one-point",
+      "page": null,
+      "section_id": null,
+      "section_header": "ft (m)",
+      "snippet": "ft (m) minimum 1 / Source / Contract Certification: M36, M218, M2 74, M196, M190, T88, T89, T90, T99",
+      "item": null,
+      "frequency": {
+        "kind": "per_source_contract",
+        "every": null,
+        "raw": "minimum 1 / Source / Contract"
+      },
+      "tests": "Certification: M36, M218, M2 74, M196, M190, T88, T89, T90, T99",
+      "capacity_scenarios": {},
+      "source": "Table B-1 quantities list"
+    },
+    {
+      "id": "table-b1-t99-ft (m)-minimum 1 / Source / Contract",
+      "rule_id": "full_t99_no_one_point",
+      "category": "testing_capacity_risk",
+      "severity": "high",
+      "note": "Table B-1 lists full AASHTO T99 without T272 / one-point alternative. On high-volume earthwork this can exceed field/lab capacity (RT 301 lesson: Tutor Perini exploited missed testing frequencies).",
+      "match": "T99 without T272/one-point",
+      "page": null,
+      "section_id": null,
+      "section_header": "ft (m)",
+      "snippet": "ft (m) minimum 1 / Source / Contract Certification: M36, M218, M274, M196, M190, T88, T 89, T90, T99",
+      "item": null,
+      "frequency": {
+        "kind": "per_source_contract",
+        "every": null,
+        "raw": "minimum 1 / Source / Contract"
+      },
+      "tests": "Certification: M36, M218, M274, M196, M190, T88, T 89, T90, T99",
+      "capacity_scenarios": {},
+      "source": "Table B-1 quantities list"
+    },
+    {
+      "id": "table-b1-t99-ft (m)-minimum 1 / Source / Contract",
+      "rule_id": "full_t99_no_one_point",
+      "category": "testing_capacity_risk",
+      "severity": "high",
+      "note": "Table B-1 lists full AASHTO T99 without T272 / one-point alternative. On high-volume earthwork this can exceed field/lab capacity (RT 301 lesson: Tutor Perini exploited missed testing frequencies).",
+      "match": "T99 without T272/one-point",
+      "page": null,
+      "section_id": null,
+      "section_header": "ft (m)",
+      "snippet": "ft (m) minimum 1 / Source / Contract Certification: M36, M218, M274, M196, M1 90, T88, T89, T90, T99",
+      "item": null,
+      "frequency": {
+        "kind": "per_source_contract",
+        "every": null,
+        "raw": "minimum 1 / Source / Contract"
+      },
+      "tests": "Certification: M36, M218, M274, M196, M1 90, T88, T89, T90, T99",
+      "capacity_scenarios": {},
+      "source": "Table B-1 quantities list"
+    },
+    {
+      "id": "table-b1-t99-ft (m)-minimum 1 / Source / Contract",
+      "rule_id": "full_t99_no_one_point",
+      "category": "testing_capacity_risk",
+      "severity": "high",
+      "note": "Table B-1 lists full AASHTO T99 without T272 / one-point alternative. On high-volume earthwork this can exceed field/lab capacity (RT 301 lesson: Tutor Perini exploited missed testing frequencies).",
+      "match": "T99 without T272/one-point",
+      "page": null,
+      "section_id": null,
+      "section_header": "ft (m)",
+      "snippet": "ft (m) minimum 1 / Source / Contract Certification: M36, M218, M274, M196, M190, T88, T89, T9 0, T99",
+      "item": null,
+      "frequency": {
+        "kind": "per_source_contract",
+        "every": null,
+        "raw": "minimum 1 / Source / Contract"
+      },
+      "tests": "Certification: M36, M218, M274, M196, M190, T88, T89, T9 0, T99",
+      "capacity_scenarios": {},
+      "source": "Table B-1 quantities list"
+    },
+    {
+      "id": "table-b1-t99-ft (m)-minimum 1 / Source / Contract",
+      "rule_id": "full_t99_no_one_point",
+      "category": "testing_capacity_risk",
+      "severity": "high",
+      "note": "Table B-1 lists full AASHTO T99 without T272 / one-point alternative. On high-volume earthwork this can exceed field/lab capacity (RT 301 lesson: Tutor Perini exploited missed testing frequencies).",
+      "match": "T99 without T272/one-point",
+      "page": null,
+      "section_id": null,
+      "section_header": "ft (m)",
+      "snippet": "ft (m) minimum 1 / Source / Contract Certification: M36, M2 18, M274, M196, M190, T88, T89, T90, T99",
+      "item": null,
+      "frequency": {
+        "kind": "per_source_contract",
+        "every": null,
+        "raw": "minimum 1 / Source / Contract"
+      },
+      "tests": "Certification: M36, M2 18, M274, M196, M190, T88, T89, T90, T99",
+      "capacity_scenarios": {},
+      "source": "Table B-1 quantities list"
+    }
+  ]
+}

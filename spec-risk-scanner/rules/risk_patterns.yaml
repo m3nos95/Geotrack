@@ -129,6 +129,46 @@ categories:
         regex: '\bequivalent\s+(?:product|material|method)\b'
         note: Equivalency criteria should be objective
 
+  testing_capacity_risk:
+    severity: high
+    description: >
+      Testing methods/frequencies that field and lab staff cannot realistically
+      perform at the stated rate — a known claims vector (RT 301 / Tutor Perini:
+      full T99 promised instead of one-point).
+    patterns:
+      - id: full_t99_method
+        severity: high
+        regex: '\b(?:AASHTO\s+)?T\s*-?\s*99(?:M)?\b(?:\s*\([^)]*Method\s*C[^)]*\))?'
+        note: >
+          Full multi-point T99 is slow. Confirm one-point / T272 family-of-curves
+          is allowed for production control, especially on high-yd³ earthwork.
+      - id: t180_proctor
+        severity: high
+        regex: '\b(?:AASHTO\s+)?T\s*-?\s*180\b'
+        note: Modified Proctor — even heavier than T99; check capacity and alts
+      - id: increase_sampling_rates
+        severity: high
+        regex: '\bincrease\s+the\s+sampling\s+rates?\b'
+        note: >
+          Engineer may raise rates above Table B-1 minimums — claims risk if
+          staffing cannot absorb the increase
+      - id: double_testing_frequency
+        severity: high
+        regex: '\bdouble\s+the\s+testing\s+frequency\b'
+        note: Automatic frequency doubling can blow past lab/field capacity
+      - id: materials_manual_deferral
+        severity: medium
+        regex: '\bMaterials\s+Manual\b'
+        note: >
+          Specs defer testing detail to Materials Manual / Table B-1 — scan those
+          docs for unrealistic T99 frequencies, not just the Standard Specs
+      - id: missing_one_point_language
+        severity: medium
+        regex: '\bmaximum\s+density\b'
+        note: >
+          "Maximum density" without citing one-point/T272 leaves Table B-1 full
+          T99 as the controlling method — verify operational path
+
 # Extra heuristics applied in code (not regex-only):
 heuristics:
   shall_will_proximity:
