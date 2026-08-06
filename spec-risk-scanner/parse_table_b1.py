@@ -226,7 +226,7 @@ def build_findings(rows: list[dict]) -> list[dict]:
                     "note": (
                         "Same Table B-1 row also lists full AASHTO T99 without T272/"
                         "one-point alt — adds Proctor lab load on top of Atterbergs. "
-                        "Related capacity risk; RT 301’s exploited miss was LL/PL."
+                        "Related package load. (Proctor was an example pattern; RT 301’s issue was LL/PL.)"
                     ),
                     "match": "T99 without T272/one-point",
                     "page": None,

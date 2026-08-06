@@ -6,9 +6,9 @@ Internal review tool that scans DelDOT **Standard Specifications** and **Materia
 
 ## Why this exists (RT 301)
 
-On US 301 the lab **could not sustain liquid/plastic limit testing (AASHTO T89/T90)**
-at Table B-1 rates. Tutor Perini later used those missed Atterbergs. Table B-1 still
-bundles `T88, T89, T90, T99…` on earthwork/borrow frequency slots.
+On US 301, **liquid/plastic limit (AASHTO T89/T90)** rates outran lab capacity.
+Same pattern can show up for other slow lab tests (Proctor was just an example).
+Table B-1 still bundles `T88, T89, T90, T99…` on earthwork/borrow frequency slots.
 
 See [`docs/lesson-rt301-atterberg-testing-capacity.md`](docs/lesson-rt301-atterberg-testing-capacity.md).
 

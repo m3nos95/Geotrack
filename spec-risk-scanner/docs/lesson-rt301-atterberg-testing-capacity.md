@@ -1,52 +1,43 @@
-# Lesson learned — unrealistic testing frequencies (RT 301 / Tutor Perini)
+# Lesson learned — testing frequency vs lab capacity (RT 301)
 
-## What happened (corrected)
-On **US 301**, the failure mode was **not** Proctor / one-point Proctor.
+## Pattern
+Large earthwork can outrun what the lab can actually finish. On **US 301**,
+**liquid and plastic limits (AASHTO T89 / T90)** were required at Table B-1 rates
+that field placement outpaced. Missed Atterbergs later became an issue in
+proceedings with the contractor.
 
-The lab **could not keep up with required liquid limit and plastic limit testing**
-(**AASHTO T89 / T90**, Atterberg limits) at the rates earthwork was placed.
-That shortfall — missed classification tests the Department’s own manuals
-promised — was later used against DelDOT in proceedings involving **Tutor Perini**.
+This is a **capacity / frequency design** problem, not a people problem. Techs
+were asked to hit a schedule the numbers didn’t support.
 
-Table B-1 still pairs those Atterberg methods with every earthwork/borrow
-frequency slot (typically `T88, T89, T90, T99 (Method C), T310`). So each
-“1 per N yd³” sample is not just a density check; it is a **full classification
-+ moisture-density package** the central lab has to finish.
+**(Proctor / one-point was only an example of the same pattern — not the RT 301
+issue.)**
 
-## Where the language lives
-- Index: https://deldot.gov/Publications/manuals/mat_research/index.shtml
-- Part B: `4b_min_test_and_cert_req.pdf` (Engineer may *increase* sampling rates)
-- **Table B-1**: `5-part_b_b-2-min_test_cert-quantities_list.pdf`
+## Where the rates live
+- https://deldot.gov/Publications/manuals/mat_research/index.shtml
+- Part B: `4b_min_test_and_cert_req.pdf`
+- Table B-1: `5-part_b_b-2-min_test_cert-quantities_list.pdf`
 
-| Item | Description | Frequency | Lab-heavy procedures |
-|------|-------------|-----------|----------------------|
-| 202000 | Excavation and Embankment | 1 / 1000 yd³ | **T89, T90** (+ T88, T99, T310) |
-| — | Trenches | 1 / 300 yd³ | **T89, T90** (+ …) |
-| 209002 | Borrow, Type B | 1 / 500 yd³ | **T89, T90** (+ T88, T99) |
-| 209003 | Borrow, Type C | 1 / 300 yd³ | **T89, T90** (+ …) |
+Typical earthwork/borrow row still looks like:
+`T88, T89, T90, T99 (Method C), T310` at 1 per 300–1000 yd³.
 
-## Why it is exploitable
-1. Manual states a **measurable QA obligation** (Atterbergs @ stated rate).
-2. Large earthwork pace outruns **lab Atterberg throughput**.
-3. Missed LL/PL → contractor uses the Department’s non-performance of its own
-   testing schedule in claims / acceptance disputes.
+So each frequency slot can mean a full classification package, not just a
+quick field density.
 
-Proctor (T99) volume is a related capacity risk on the same rows, but **RT 301’s
-actual bite was liquid and plastic limits**.
+## What to watch for
+- Atterbergs (T89/T90) tied to every density/quantity sample
+- Rates that ignore central-lab throughput on big yd³ jobs
+- “Engineer may increase sampling” with no capacity check
+- Specs that defer to the Materials Manual without a project-level staffing look
 
-## What the scanner should flag
-- Table B-1 rows requiring **T89 and/or T90** at per-quantity frequencies
-- Aggressive rates (e.g. 1/300 yd³) on borrow/trench items
-- Part B language allowing the Engineer to **increase** sampling with no
-  lab-capacity backstop
-- Companion T88/T99 packages that multiply lab load per sample event
+## Practical hardening (no blame)
+1. Decouple **LL/PL frequency** from every density test — run Atterbergs on
+   material/source change, visual change, or dispute.
+2. Before award on large earthwork, rough the Table B-1 sample count against
+   **lab Atterberg capacity**.
+3. If rates must rise, pause placement or add lab support — don’t silently
+   fall behind.
+4. Use Special Provisions on mega-jobs when statewide Table B-1 rates aren’t
+   realistic for that quantity.
 
-## Hardening pattern (Specs / M&R)
-1. Separate **acceptance density** frequency from **full Atterberg / classification**
-   frequency — do not require LL/PL on every density sample by default.
-2. Allow Atterbergs on **material/source change**, visual change, or dispute;
-   use prior results for continuous placement of the same material.
-3. Tie “Engineer may increase sampling” to **documented lab capacity** or pause
-   placement when the lab cannot keep up — do not silently accumulate a claims stack.
-4. Staff/schedule lab Atterberg capacity against plan quantities *before* award
-   on large earthwork jobs.
+The scanner flags these as **review prompts** for Specs / M&R / Construction —
+candidates to discuss, not findings of fault.

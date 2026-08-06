@@ -133,22 +133,22 @@ categories:
     severity: high
     description: >
       Testing methods/frequencies that field and lab staff cannot realistically
-      perform at the stated rate. RT 301 / Tutor Perini: lab could not sustain
-      liquid/plastic limits (AASHTO T89/T90) at Table B-1 rates.
+      perform at the stated rate. RT 301 pattern: liquid/plastic limits (AASHTO T89/T90) at Table B-1
+      rates can exceed lab throughput on large earthwork.
     patterns:
       - id: atterberg_limits
         severity: high
         regex: '\b(?:AASHTO\s+)?T\s*-?\s*89\b|\b(?:AASHTO\s+)?T\s*-?\s*90\b|\b(?:liquid|plastic)\s+limit|\bAtterberg\b|\bplasticity\s+index\b'
         note: >
-          Liquid/plastic limits (T89/T90) — RT 301 bottleneck. Confirm Table B-1
-          frequency is lab-sustainable; do not require LL/PL on every density sample
-          by default.
+          Liquid/plastic limits (T89/T90) — capacity-sensitive. Confirm Table B-1
+          frequency is lab-sustainable; consider not requiring LL/PL on every
+          density sample by default.
       - id: full_t99_method
         severity: medium
         regex: '\b(?:AASHTO\s+)?T\s*-?\s*99(?:M)?\b(?:\s*\([^)]*Method\s*C[^)]*\))?'
         note: >
           Full multi-point T99 adds lab load on the same Table B-1 sample events as
-          Atterbergs. Related capacity risk; RT 301’s exploited miss was LL/PL.
+          Atterbergs. Related package load (Proctor was an example; RT 301 was LL/PL).
       - id: t180_proctor
         severity: medium
         regex: '\b(?:AASHTO\s+)?T\s*-?\s*180\b'
