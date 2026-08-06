@@ -12,13 +12,17 @@ permissions:
 
 concurrency:
   group: pages
-  cancel-in-progress: true
+  cancel-in-progress: false
 
 jobs:
   build:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - name: Setup Pages
+        uses: actions/configure-pages@v5
+        with:
+          enablement: true
       - name: Prepare static site
         run: |
           mkdir -p _site
@@ -27,12 +31,15 @@ jobs:
             --exclude='node_modules' \
             --exclude='.github' \
             --exclude='supabase/scripts/node_modules' \
+            --exclude='docs/r18-reference' \
+            --exclude='**/__pycache__' \
             ./ _site/
-          # Clean GeoTrak URL: /Geotrack/geotrak/
+          # Clean GeoTrak URL: /Geotrack/geotrak/ serves the full app
           if [ -f geo-report-center/Geo_Report_Center.html ]; then
             mkdir -p _site/geotrak
             cp geo-report-center/Geo_Report_Center.html _site/geotrak/index.html
           fi
+          touch _site/.nojekyll
       - uses: actions/upload-pages-artifact@v3
         with:
           path: _site
