@@ -1,0 +1,912 @@
+{
+  "generated_at": "2026-08-06T01:00:27.248509+00:00",
+  "corpus": [
+    {
+      "id": "standard_specs_2026",
+      "name": "2026_DelDOT_Standard_Specifications.pdf",
+      "chars": 1761903,
+      "path": "/workspace/deldot-publications/files/engineeringsupport.deldot.gov/images/b/b1/2026_DelDOT_Standard_Specifications.pdf"
+    },
+    {
+      "id": "mat_part_b",
+      "name": "4b_min_test_and_cert_req.pdf",
+      "chars": 15164,
+      "path": "/workspace/deldot-publications/files/deldot.gov/Publications/manuals/mat_research/pdfs/4b_min_test_and_cert_req.pdf"
+    },
+    {
+      "id": "mat_table_b1",
+      "name": "5-part_b_b-2-min_test_cert-quantities_list.pdf",
+      "chars": 280323,
+      "path": "/workspace/deldot-publications/files/deldot.gov/Publications/manuals/mat_research/pdfs/5-part_b_b-2-min_test_cert-quantities_list.pdf"
+    },
+    {
+      "id": "mat_c200",
+      "name": "c200.pdf",
+      "chars": 11034,
+      "path": "/workspace/deldot-publications/files/deldot.gov/Publications/manuals/mat_research/pdfs/part_c/c200.pdf"
+    },
+    {
+      "id": "mat_c300",
+      "name": "c300.pdf",
+      "chars": 9985,
+      "path": "/workspace/deldot-publications/files/deldot.gov/Publications/manuals/mat_research/pdfs/part_c/c300.pdf"
+    },
+    {
+      "id": "mat_c400",
+      "name": "c400.pdf",
+      "chars": 14173,
+      "path": "/workspace/deldot-publications/files/deldot.gov/Publications/manuals/mat_research/pdfs/part_c/c400.pdf"
+    },
+    {
+      "id": "mat_glossary",
+      "name": "6f_glossary.pdf",
+      "chars": 52323,
+      "path": "/workspace/deldot-publications/files/deldot.gov/Publications/manuals/mat_research/pdfs/6f_glossary.pdf"
+    },
+    {
+      "id": "construction_part_b",
+      "name": "04-construction_manual-part_b.pdf",
+      "chars": 145501,
+      "path": "/workspace/deldot-publications/files/deldot.gov/Publications/manuals/construction_manual/pdfs/04-construction_manual-part_b.pdf"
+    },
+    {
+      "id": "construction_part_c",
+      "name": "05-construction_manual-part_c.pdf",
+      "chars": 45997,
+      "path": "/workspace/deldot-publications/files/deldot.gov/Publications/manuals/construction_manual/pdfs/05-construction_manual-part_c.pdf"
+    },
+    {
+      "id": "construction_part_d",
+      "name": "06-construction_manual-part_d.pdf",
+      "chars": 73186,
+      "path": "/workspace/deldot-publications/files/deldot.gov/Publications/manuals/construction_manual/pdfs/06-construction_manual-part_d.pdf"
+    },
+    {
+      "id": "construction_part_e",
+      "name": "07-construction_manual-part_e.pdf",
+      "chars": 454106,
+      "path": "/workspace/deldot-publications/files/deldot.gov/Publications/manuals/construction_manual/pdfs/07-construction_manual-part_e.pdf"
+    }
+  ],
+  "finding_count": 14,
+  "by_severity": {
+    "high": 2,
+    "medium": 4,
+    "low": 8
+  },
+  "findings": [
+    {
+      "id": "xref-atterberg-specs-vs-b1",
+      "severity": "high",
+      "kind": "cross_doc_gap",
+      "topic": "atterberg_limits",
+      "title": "Standard Specs defer density; Table B-1 requires T89/T90 at rate",
+      "summary": "Earthwork acceptance in Standard Specs often says only 'compact to X% of maximum density' and points to the Materials Manual, while Table B-1 assigns liquid/plastic limits (T89/T90) at per-yd\u00b3 frequencies. That split is easy to miss in project staffing and is ambiguous about whether every density sample also needs Atterbergs.",
+      "docs": {
+        "standard_specs_2026": [
+          {
+            "match": "maximum density",
+            "page": 116,
+            "snippet": "e. C. Prior to placing subsequent lifts of material, proof roll the subgrade in the presence of and as directed by the engineer in accordance with Section 202.3.6. D. Compact the subgrade to 95 percent or more of the maximum density. E. Ensure the finished subgrade surface is uniform and smooth and conforms to prescribed elevations before constructing the base or surface course. Limit the maximum variation from the subgrade elevation to the pres"
+          },
+          {
+            "match": "maximum density",
+            "page": 120,
+            "snippet": "or rolling at the edges and progress toward the center of the embankment. Continue compaction until each lift is thoroughly and uniformly compacted to the full width of the embankment and to 95 percent or more of the maximum density. 1. The Department will consider the ordinary use of trucks, carryalls, scrapers, tractors, or other construction equipment for compaction as long as the traffic of hauling equipment is evenly distributed over the fi"
+          },
+          {
+            "match": "maximum density",
+            "page": 128,
+            "snippet": "d compact borrow in accordance with Section 202.3.8 and the following: a. Place and spread backfill material in uniform horizontal lifts no greater than 8 inches loose measurement. Compact to 95 percent or more of the maximum density, before placing the next lift. Maintain proper moisture content to achieve the required density. b. Compact backfill material without causing damage or applying excessive pressure against structures. Place fill adjac"
+          },
+          {
+            "match": "maximum density",
+            "page": 137,
+            "snippet": "rial in successive layers, with a maximum layer thickness of 8 uncompacted inches to prevent segregation and with a maximum surface deviation of 1/2-inch in 10-feet. D. Compact each layer to 98 percent or more of the maximum density. 1. If bituminous millings are used as GABC within the roadway pavement box, compact with a sheepsfoot roller to the satisfaction of the engineer. E. When using GABC from different sources, keep materials for a singl"
+          }
+        ],
+        "mat_table_b1": [
+          {
+            "match": "T89",
+            "page": 1,
+            "snippet": "mum Testing Frequencies and Test Procedures MINIMUM TESTING FREQUENCY ITEM DESCRIPTION UNIT SAMPLES / UNIT TEST PROCEDURE (AASHTO or as Noted) 202000 Excavation and Embankment yd3 (m3) 1 / 1000 ( 1 / 750 ) T88, T89, T90, T99 (M ethod C), T310 202534 Clay Liner yd2 (m2) minimum 1 / 1000 ( 1 / 750 ) T88, T89, T90 202543 Clay Fill yd3 (m3) minimum 1 / 1000 ( 1 / 750 ) T88, T89, T90 207000 Excavation and Backfill for Structures"
+          },
+          {
+            "match": "T89",
+            "page": 1,
+            "snippet": "1 / 300 ( 1 / 200 ) T88, T89, T90, T99 (Method C), T310 208500 Flowable Fill yd3 (m3) 2 / 500 ( 2 / 400 ) T22, T23 or ASTM C39 208508 Excavation and Backfill for Common Trenche s yd3 (m3) 1 / 1000 ( 1 / 750 ) T88, T89, T90, T99 (Method C), T310 208510 Special Excavation and Backfill for Trenches yd3 (m3) 1 / 1000 ( 1 / 750 ) T88, T89, T90, T99 (Method C), T310 209001 Borrow, Type A yd3 (m3) 1 / 750 ( 1 / 600 ) T88, T89, T90,"
+          },
+          {
+            "match": "T89",
+            "page": 1,
+            "snippet": ", Type F yd3 (m3) 1 / 1000 ( 1 / 750 ) T88, T89, T90, T99 (Method C), T310 209007 Borrow, Type G yd3 (m3) 1 / 500 ( 1 / 400 ) T88, T89, T90, T99 (Method C), T310 209500 Coal Ash yd3 (m3) 1 / 1000 ( 1 / 750 ) T88, T89, T90, T99 (Method C) 209503 Lightweight Fill yd3 (m3) minimum 1 / 1000 ( 1 / 750 ) T88, T89, T90, T310 210000 Furnishing Borrow Type C for Pipe, Utility Trench, and Structure Backfill yd3 (m3) 1 / 500 ( 1 / 400"
+          },
+          {
+            "match": "T89",
+            "page": 1,
+            "snippet": "0 ) T88, T89, T90, T99 (Method C), T310 212000 Undercut Excavation yd3 (m3) 1 / 1000 ( 1 / 750 ) T88, T89, T90, T99 (Method C), T267, T310 212001 Undercut Excavation, Patching yd3 (m3) 1 / 1000 ( 1 / 750 ) T88, T89, T90, T99 (Method C), T267, T310 B-6 251000 Silt Fence ft (m) minimum 1 / Source / Contract Certification of Posts to Meet Size Requirements, Wire Mesh to AASHTO M 55 Steel Used Must be Schedule 40 P ipe or a Stan"
+          }
+        ],
+        "mat_part_b": [
+          {
+            "match": "testing frequenc",
+            "page": 2,
+            "snippet": "ed appropriate. B3.02 Sampling and Testing Procedures. All materials used on State projects are sampled and tested at consistent rates, typically based on project plan quantities. Table B-1 lists the minimum testing frequencies for materials used on State proj ects. In addition to th e testing frequency of the materials, test procedures performed are also listed. On any DelDOT project, the Engineer reserves th e right to increase the sa"
+          },
+          {
+            "match": "testing frequenc",
+            "page": 2,
+            "snippet": "ed on State projects are sampled and tested at consistent rates, typically based on project plan quantities. Table B-1 lists the minimum testing frequencies for materials used on State proj ects. In addition to th e testing frequency of the materials, test procedures performed are also listed. On any DelDOT project, the Engineer reserves th e right to increase the sampling rates from the minimums when conditions warrant. All materials are samp"
+          }
+        ]
+      }
+    },
+    {
+      "id": "xref-increase-sampling-no-capacity-backstop",
+      "severity": "high",
+      "kind": "ambiguous_authority",
+      "topic": "testing_frequency",
+      "title": "Part B allows increasing sampling rates with no capacity backstop in Specs",
+      "summary": "Materials Manual Part B lets the Engineer raise sampling above Table B-1 minimums. Standard Specs do not pair that authority with a placement pause or lab-capacity check \u2014 rates can climb while testing falls behind.",
+      "docs": {
+        "mat_part_b": [
+          {
+            "match": "increase the sampling rates",
+            "page": 2,
+            "snippet": "esting frequencies for materials used on State proj ects. In addition to th e testing frequency of the materials, test procedures performed are also listed. On any DelDOT project, the Engineer reserves th e right to increase the sampling rates from the minimums when conditions warrant. All materials are sampled at a project rate, not by total job rate. Sampling and testing is performed throughout the project by cross-section to assure all materials are"
+          }
+        ],
+        "standard_specs_2026": [
+          {
+            "match": "Materials Manual",
+            "page": 61,
+            "snippet": "date of the advertisement. When a specification or test is identified in the form of an AASHTO or ASTM number indicated as \"modified,\" it refers to an AASHTO or ASTM specification or test modified by the Department's Materials Manual in effect on the date of advertisement. If there is a procedural difference in the DOH, AASHTO, or ASTM test methods, the Department will follow this order of precedence: 1. Materials Manual 2. AASHTO 3. ASTM C. Th"
+          },
+          {
+            "match": "Materials Manual",
+            "page": 62,
+            "snippet": "erials not in conformance with the contract in accordance with Section 105.11, Removal of Defective and Unauthorized Work. C. Distribute the compliance certificates in accordance with the contract or the Department\u2019s Materials Manual. 106.4 Manufacturing Plant Inspection. A. The Department may inspect manufacturing plants for compliance with specified manufacturing methods. The contractor and the material producer shall cooperate and assist the e"
+          },
+          {
+            "match": "Materials Manual",
+            "page": 641,
+            "snippet": "ENERAL SECTION 1000 631 DIVISION 1000 \u2014 MATERIALS 1000.1 General. Perform sampling, testing, and inspection of all materials included in this division in accordance with the guidelines set forth in the Department\u2019s Materials Manual, latest edition, unless otherwise specified in the contract. Submit and track the proposed sources of all materials incorporated in the project. Material must conform as included and approved on the \u201csource of supply"
+          }
+        ]
+      }
+    },
+    {
+      "id": "xref-compaction-percent-variance",
+      "severity": "medium",
+      "kind": "possible_conflict",
+      "topic": "proctor_density",
+      "title": "Compaction percent requirements vary across manuals (95%, 98%)",
+      "summary": "Different manuals state different 'percent of maximum density' targets. Confirm which applies by work type (subgrade vs embankment vs backfill) and that Construction Manual guidance matches Specs.",
+      "docs": {
+        "standard_specs_2026": [
+          {
+            "match": "95%, 98%",
+            "page": null,
+            "snippet": "Document uses 95%, 98% of maximum density / Proctor language."
+          }
+        ]
+      },
+      "values_by_doc": {
+        "standard_specs_2026": [
+          "95",
+          "98"
+        ],
+        "mat_part_b": [],
+        "mat_table_b1": [],
+        "mat_c200": [],
+        "mat_c300": [],
+        "mat_c400": [],
+        "mat_glossary": [],
+        "construction_part_b": [],
+        "construction_part_c": [],
+        "construction_part_d": [],
+        "construction_part_e": []
+      }
+    },
+    {
+      "id": "xref-incidental-multi-manual",
+      "severity": "medium",
+      "kind": "ambiguous_overlap",
+      "topic": "incidental_payment",
+      "title": "Incidental / no-separate-payment language appears in multiple manuals",
+      "summary": "Payment-shift phrases show up in Specs and Construction Manual guidance. Cross-check that Construction Manual examples do not expand 'incidental' work beyond what Specs Method of Measurement / Basis of Payment allow.",
+      "docs": {
+        "standard_specs_2026": [
+          {
+            "match": "incidental",
+            "page": 29,
+            "snippet": "the escrowed bid documents. The contractor shall have no right to add documents to the escrowed bid documents except upon the Department\u2019s request. 13. The Department considers the cost for complying with this section incidental to the contract. The Department will bear the storage costs for the documents. The Department will provide escrow instructions to the document depository consistent with this section. ===== PAGE 30 ===== SCOPE OF W"
+          },
+          {
+            "match": "incidental",
+            "page": 38,
+            "snippet": "===== PAGE 38 ===== SCOPE OF WORK SECTION 104 28 areas affected by the contractor in connection with the work within the right-of-way. Cut all grass and weeds taller than 6-inches. The cost of the final cleanup is incidental to Item 763000. B. Install erosion and sediment control measures that comply with stormwater regulations for staging areas. Restore areas used for staging operations to their original conditions. Perform restoration"
+          },
+          {
+            "match": "incidental",
+            "page": 38,
+            "snippet": "h Section 202, Excavation and Embankment, and Section 908, Soil Stabilization Practices. The Department will consider costs associated with restoration of staging areas and establishing an acceptable stand of grass as incidental to Item 763000, Initial Expense, De-Mobilization. 104.13 Contractor's Responsibility for the Work. A. The contractor is solely and absolutely responsible for the work. Provide for the protection and safety of all ag"
+          }
+        ],
+        "construction_part_c": [
+          {
+            "match": "Incidental",
+            "page": 6,
+            "snippet": "Field Reports (1) Daily Reports (pocket) (2) Weekly Reports (pocket) (3) Monthly Reports (pocket) (D) Construction Correspondence (1) Earthwork (2) Base Course (3) Surface Course and Pavement (4) Structures (5) Incidental Construction (E) Change Orders (pocket, with a se parate folder for each change order) (F) Estimates (pocket, with a separate folder for each estimate) (G) Complaints (folder) (H) Plan Revision Letters (folder) (I)"
+          }
+        ],
+        "construction_part_e": [
+          {
+            "match": "incidental",
+            "page": 36,
+            "snippet": "n of rock will be paid for under Section 206 of the Specifications. No measurement for excavation and backf ill for pipes under 24\" (600 mm) nominal inside diameter will be made. Excavation and back filling will be incidental to the bid price for the pipe. [612.11] When trench excavation meets or reaches a catch basin or manhole, the limits for measurement and payment will be to the outside wall of the drainage structure. However, when"
+          },
+          {
+            "match": "incidental",
+            "page": 84,
+            "snippet": "terials should be handled carefully during erection to prevent damage. SECTION E602 \u2013 CONCRETE STRUCTURES E602.01 General. This work consists of furnishing and placing portland cement concrete for structures and incidental construction. The basic ingredients for concrete are cement, fine aggregate, usually in the form of sand, coarse aggregate, and water. The coarse aggregate may be proportioned into two sizes. The Engineer may autho"
+          },
+          {
+            "match": "incidental",
+            "page": 133,
+            "snippet": "oject f iles. Guardrail sections within the limits of payment for gu ardrail end anchorages, buried end sections, attenuators, guardrail over culver ts, guardrail to barrier connections and bridge rail retrofits are incidental to the associated items and should not be paid under the guardrail item. ===== PAGE 134 ===== E727 \u2013 FENCES AND GATES Revised: January 2004 E-134 SECTION E727 \u2013 FENCES AND GATES E727.01 General. This work con"
+          }
+        ]
+      }
+    },
+    {
+      "id": "xref-precedence-only-in-specs",
+      "severity": "medium",
+      "kind": "clarity_gap",
+      "topic": "order_of_precedence",
+      "title": "Conflict hierarchy lives in Specs; manuals may still contradict without saying who wins",
+      "summary": "Order-of-precedence language is concentrated in Standard Specs. Materials / Construction Manual text can still conflict with Specs on methods or frequencies; readers need an explicit reminder that project Special Provisions and Specs beat manual guidance unless incorporated.",
+      "docs": {
+        "standard_specs_2026": [
+          {
+            "match": "order of precedence",
+            "page": 43,
+            "snippet": "irement occurring in one is binding as though occurring in all. The contract documents are complementary and describe and provide for a complete contract. In the case of a conflict between the contract documents, the order of precedence is as follows: 1. General Description ===== PAGE 44 ===== RESPONSIBILITIES OF THE DEPARTMENT; INTERPRETATION SECTION 105 OF THE CONTRACT DOCUMENTS; MAINTENANCE DURING CONSTRUCTION; CLAIMS; PROJECT ACCEPTANCE 34 2"
+          },
+          {
+            "match": "order of precedence",
+            "page": 61,
+            "snippet": "specification or test modified by the Department's Materials Manual in effect on the date of advertisement. If there is a procedural difference in the DOH, AASHTO, or ASTM test methods, the Department will follow this order of precedence: 1. Materials Manual 2. AASHTO 3. ASTM C. The engineer will set forth minimum requirements for material quality assurance sampling and testing on each contract. Ensure that the engineer has the access and time need"
+          },
+          {
+            "match": "take precedence",
+            "page": 26,
+            "snippet": "es based on the totals of the extended unit prices. The Department will post the bid tabulations after awarding the project. In the event of a discrepancy between unit prices and the extensions, the unit prices shall take precedence. The Department reserves the right to reject proposals, waive technicalities, reject all bids and advertise the project for rebidding, or reject all bids and not rebid the work. Maximum price provisions, noted elsewhe"
+          }
+        ],
+        "construction_part_b": [
+          {
+            "match": "discrepancy",
+            "page": 5,
+            "snippet": "atively accurate time requirement for the execution of individual items of work. It should be pointed out, however, that the scheduled completion date must always be in accordance with the Contract, and in case of a discrepancy, the Contractor must change the Schedule of Work to reflect the Contract completion date. [108.04] Two types of schedules are acceptable to th e Department, the bar chart schedule and the critical path method (CPM"
+          },
+          {
+            "match": "discrepancy",
+            "page": 14,
+            "snippet": "de a set of specifications that are usually applicable for construction. These Sp ecifications should be adhered to throughout the Project unless supplemented or superseded by another Contract document. If there is a discrepancy between two or more Contract documents, the governing ranking is: 1. General Notices 2. Special Provisions 3. Plans 4. Supplemental Specifications 5. Standard Construction Details 6. Standard Specifications [105.0"
+          },
+          {
+            "match": "discrepancies",
+            "page": 15,
+            "snippet": "Construction Engineer. All Inspectors on the Project are expected to be familiar with the Plans. They should study and review each detail shown and understand how it fits into the overall Project. Whenever errors or discrepancies are disc overed, or if improvements can be suggested to clarify the Plans, they should be discussed with the Resident Engineer/Project Supervisor. If necessary, the ===== PAGE 16 ===== B9.00 \u2013 PLANS AND SPECIFICATIONS"
+          }
+        ]
+      }
+    },
+    {
+      "id": "xref-t272-in-b1-not-in-specs",
+      "severity": "medium",
+      "kind": "inconsistent_methods",
+      "topic": "proctor_density",
+      "title": "Table B-1 mentions T272 for some items; 2026 Specs earthwork path does not",
+      "summary": "Some base/GABC Table B-1 rows list T272 (family of curves) with T99, but 2026 Standard Specs earthwork language does not surface a one-point / T272 production path. Method availability looks inconsistent across item types \u2014 worth aligning for clarity (example of the pattern, not the RT 301 Atterberg issue).",
+      "docs": {
+        "mat_table_b1": [
+          {
+            "match": "T272",
+            "page": 6,
+            "snippet": "301000 Select Borrow Base Course yd3 (m3) 1 / 500 ( 1 / 400 ) T88, T89, T90, T99 (Method C), T310 302005 Graded Aggregate Base Course, Type B Ton (t) 1 / 1350 ( 1 / 1200 ) T2, T27, T96, T99 (Met hod C), T191, T224, T272, T310 302006 Graded Aggregate Base Course, Type B, Patching Ton (t) 1 / 1350 ( 1 / 1200 ) T2, T27, T96, T99 (Method C), T191, T224, T272, T310 302007 Graded Aggregate Base Course, Type B yd3 (m3) 1 / 550 ( 1 / 50"
+          },
+          {
+            "match": "T272",
+            "page": 7,
+            "snippet": "t Certification that Support System is \"Turf Pavers\" (E.P. Henry Corporation), \"Geoblock\" (Presto Products Company) or approved equal, Topsoil T194, Graded Aggregate T2, T27, T96, T99 (Meth od C), T191, T224, T310, T272 401517 Stone Matrix Asphalt Wearing Surface Ton (t) See Division 400 See Division 400 401577 Paver-Laid Ultrathin Hot -Mix yd2 (m2) See Division 400 See Division 400 401636 Cold Recycled Bituminous Pavement yd2-i"
+          }
+        ],
+        "standard_specs_2026": [
+          {
+            "match": "maximum density",
+            "page": 116,
+            "snippet": "e. C. Prior to placing subsequent lifts of material, proof roll the subgrade in the presence of and as directed by the engineer in accordance with Section 202.3.6. D. Compact the subgrade to 95 percent or more of the maximum density. E. Ensure the finished subgrade surface is uniform and smooth and conforms to prescribed elevations before constructing the base or surface course. Limit the maximum variation from the subgrade elevation to the pres"
+          },
+          {
+            "match": "maximum density",
+            "page": 120,
+            "snippet": "or rolling at the edges and progress toward the center of the embankment. Continue compaction until each lift is thoroughly and uniformly compacted to the full width of the embankment and to 95 percent or more of the maximum density. 1. The Department will consider the ordinary use of trucks, carryalls, scrapers, tractors, or other construction equipment for compaction as long as the traffic of hauling equipment is evenly distributed over the fi"
+          },
+          {
+            "match": "maximum density",
+            "page": 128,
+            "snippet": "d compact borrow in accordance with Section 202.3.8 and the following: a. Place and spread backfill material in uniform horizontal lifts no greater than 8 inches loose measurement. Compact to 95 percent or more of the maximum density, before placing the next lift. Maintain proper moisture content to achieve the required density. b. Compact backfill material without causing damage or applying excessive pressure against structures. Place fill adjac"
+          }
+        ]
+      }
+    },
+    {
+      "id": "xref-coverage-atterberg_limits",
+      "severity": "low",
+      "kind": "topic_coverage",
+      "topic": "atterberg_limits",
+      "title": "Topic covered in 6 manuals: Liquid / plastic limits (Atterberg)",
+      "summary": "Same topic appears in multiple publications \u2014 review snippets for wording that pulls in different directions (methods, rates, who decides).",
+      "docs": {
+        "standard_specs_2026": [
+          {
+            "match": "T89",
+            "page": 646,
+            "snippet": "Gradation Requirements 1 See Table 1004.2-3 for additional requirements for Bituminous Millings and RCA (Crushed Concrete ) Table 1004.2-3. Additional Requirements for Recycled Materials Property Range Liquid Limit (T89) A 30 max Plasticity Index (T90) A 4 max Sand Equivalency A 25 min Asphalt materials B (RCA ONLY) 5% max Brick B 5% max Wood B 0.1% max Metals B 0.1% max Plaster B 0.1% max Deleterious materials B 0.1% m"
+          },
+          {
+            "match": "T90",
+            "page": 646,
+            "snippet": "e 1004.2-3 for additional requirements for Bituminous Millings and RCA (Crushed Concrete ) Table 1004.2-3. Additional Requirements for Recycled Materials Property Range Liquid Limit (T89) A 30 max Plasticity Index (T90) A 4 max Sand Equivalency A 25 min Asphalt materials B (RCA ONLY) 5% max Brick B 5% max Wood B 0.1% max Metals B 0.1% max Plaster B 0.1% max Deleterious materials B 0.1% max A Minus 0.425 mm (#40) sieve m"
+          }
+        ],
+        "mat_table_b1": [
+          {
+            "match": "T89",
+            "page": 1,
+            "snippet": "mum Testing Frequencies and Test Procedures MINIMUM TESTING FREQUENCY ITEM DESCRIPTION UNIT SAMPLES / UNIT TEST PROCEDURE (AASHTO or as Noted) 202000 Excavation and Embankment yd3 (m3) 1 / 1000 ( 1 / 750 ) T88, T89, T90, T99 (M ethod C), T310 202534 Clay Liner yd2 (m2) minimum 1 / 1000 ( 1 / 750 ) T88, T89, T90 202543 Clay Fill yd3 (m3) minimum 1 / 1000 ( 1 / 750 ) T88, T89, T90 207000 Excavation and Backfill for Structures"
+          },
+          {
+            "match": "T89",
+            "page": 1,
+            "snippet": "1 / 300 ( 1 / 200 ) T88, T89, T90, T99 (Method C), T310 208500 Flowable Fill yd3 (m3) 2 / 500 ( 2 / 400 ) T22, T23 or ASTM C39 208508 Excavation and Backfill for Common Trenche s yd3 (m3) 1 / 1000 ( 1 / 750 ) T88, T89, T90, T99 (Method C), T310 208510 Special Excavation and Backfill for Trenches yd3 (m3) 1 / 1000 ( 1 / 750 ) T88, T89, T90, T99 (Method C), T310 209001 Borrow, Type A yd3 (m3) 1 / 750 ( 1 / 600 ) T88, T89, T90,"
+          }
+        ],
+        "mat_c200": [
+          {
+            "match": "T89",
+            "page": 5,
+            "snippet": "and Coarse Aggregates AASHTO T85 Specific Gravity and Absorption of Coarse Aggregate AASHTO T87 Dry Preparation of Disturbed Soil and Soil Aggregate Samples for Test AASHTO T88 Particle Size Analysis of Soils AASHTO T89 Determining the Liquid Limit of Soils AASHTO T90 Determining the Plastic Limit and Plasticity Index of Soils AASHTO T96 Resistance to degradation of Small-Size Coarse Aggregate by Abrasion and Impact in the Los Angel"
+          },
+          {
+            "match": "T90",
+            "page": 5,
+            "snippet": "and Absorption of Coarse Aggregate AASHTO T87 Dry Preparation of Disturbed Soil and Soil Aggregate Samples for Test AASHTO T88 Particle Size Analysis of Soils AASHTO T89 Determining the Liquid Limit of Soils AASHTO T90 Determining the Plastic Limit and Plasticity Index of Soils AASHTO T96 Resistance to degradation of Small-Size Coarse Aggregate by Abrasion and Impact in the Los Angeles Machine AASHTO T99 Moisture-Density Relations"
+          }
+        ],
+        "mat_c300": [
+          {
+            "match": "T89",
+            "page": 5,
+            "snippet": "ed Asphalts AASHTO T72 Saybolt Viscosity AASHTO T84 Specific Gravity and Absorption of Fine Aggregate AASHTO T85 Specific Gravity and Absorption of Coarse Aggregate AASHTO T88 Particle Size Analysis of Soils AASHTO T89 Determining the Liquid Limit of Soils AASHTO T90 Determining the Plastic Limit and Plasticity Index of Soils AASHTO T96 Resistance to Degradation of Small Size Coarse Aggregate by Abrasion and Impact in the Los Angel"
+          },
+          {
+            "match": "T90",
+            "page": 5,
+            "snippet": "T84 Specific Gravity and Absorption of Fine Aggregate AASHTO T85 Specific Gravity and Absorption of Coarse Aggregate AASHTO T88 Particle Size Analysis of Soils AASHTO T89 Determining the Liquid Limit of Soils AASHTO T90 Determining the Plastic Limit and Plasticity Index of Soils AASHTO T96 Resistance to Degradation of Small Size Coarse Aggregate by Abrasion and Impact in the Los Angeles Machine AASHTO T99 Moisture-Density Relations"
+          }
+        ],
+        "mat_glossary": [
+          {
+            "match": "Liquid Limit",
+            "page": 13,
+            "snippet": "endicular to the centerline of the road. F-12 ===== PAGE 13 ===== Lift. (1) A layer of soil placed as part of an embankment. (2) A spread and compacted layer of bituminous concrete or cement concrete in a form. Liquid Limit. The moisture content corresponding to an arbitrary limit at which a soil moves from a plastic state to a liquid state of consistency. Lot. From an acceptance plan perspective, an isolat ed quantity of material fro"
+          },
+          {
+            "match": "liquid limit",
+            "page": 15,
+            "snippet": "to an arbitrary limit at which a soil moves from a plastic state to a semisolid state of consistency. Plasticity Index. A measure of the cohesive properties of a soil. Numerically, it is the difference between the liquid limit and plastic limit. Portland cement. This is the type of cement most widely used in construction and the one that is usually meant when the term \u201c cement\u201d is used. Portland cement is produced in five types, describe"
+          }
+        ],
+        "construction_part_e": [
+          {
+            "match": "T-89",
+            "page": 39,
+            "snippet": "ne that is neither so dry that it cracks nor so moist that it flows freely. (c) Liquid Limit (LL) . The Liquid Limit of a soil is the water content, as determined in accordance with the procedure specified in AASHTO T-89, at which the soil passes from a plastic to a liquid state. (d) Plasticity Index (PI) . The Plasticity Index of a soil is the numerical difference between its liquid limit and its plastic limit, and is calculated as"
+          },
+          {
+            "match": "T-90",
+            "page": 39,
+            "snippet": "ating to gradation. [813] Refer to AASHTO T-88 for more information. (b) Plastic Limit (PL) . The Plastic Limit of a soil is the lowest water content, determined in accordance with the pro cedure specified in AASHTO T-90, at which the soil remains plastic. A plastic soil is one that is neither so dry that it cracks nor so moist that it flows freely. (c) Liquid Limit (LL) . The Liquid Limit of a soil is the water content, as determin"
+          }
+        ]
+      }
+    },
+    {
+      "id": "xref-coverage-borrow_earthwork_acceptance",
+      "severity": "low",
+      "kind": "topic_coverage",
+      "topic": "borrow_earthwork_acceptance",
+      "title": "Topic covered in 9 manuals: Borrow / embankment acceptance",
+      "summary": "Same topic appears in multiple publications \u2014 review snippets for wording that pulls in different directions (methods, rates, who decides).",
+      "docs": {
+        "standard_specs_2026": [
+          {
+            "match": "Borrow",
+            "page": 15,
+            "snippet": "isters the contract. District Engineer. The district engineer is the Department head of the district administering the contract. Embankment. A structure constructed of material meeting the requirements of Section 209, Borrow, as described in Section 202, Excavation and Embankment. Engineer. The Chief Engineer of the Department, acting directly or through an assistant or other authorized representative. The engineer is responsible for eng"
+          },
+          {
+            "match": "borrow",
+            "page": 37,
+            "snippet": "12 Final Cleaning of Project Site; Maintenance and Cleanup of Staging Areas. A. Before primary inspection, clean rubbish, excess materials, temporary structures, and equipment from the project, from any publicly owned borrow source used to complete the work, and from ===== PAGE 38 ===== SCOPE OF WORK SECTION 104 28 areas affected by the contractor in connection with the work within the right-of-way. Cut all grass and weeds taller than"
+          }
+        ],
+        "mat_table_b1": [
+          {
+            "match": "Borrow",
+            "page": 1,
+            "snippet": "or Common Trenche s yd3 (m3) 1 / 1000 ( 1 / 750 ) T88, T89, T90, T99 (Method C), T310 208510 Special Excavation and Backfill for Trenches yd3 (m3) 1 / 1000 ( 1 / 750 ) T88, T89, T90, T99 (Method C), T310 209001 Borrow, Type A yd3 (m3) 1 / 750 ( 1 / 600 ) T88, T89, T90, T99 (Method C), T310 209002 Borrow, Type B yd3 (m3) 1 / 500 ( 1 / 400 ) T88, T89, T90, T99 (Method C) 209003 Borrow, Type C yd3 (m3) 1 / 300 ( 1 / 200 ) T88, T89,"
+          },
+          {
+            "match": "Borrow",
+            "page": 1,
+            "snippet": "8, T89, T90, T99 (Method C), T310 209500 Coal Ash yd3 (m3) 1 / 1000 ( 1 / 750 ) T88, T89, T90, T99 (Method C) 209503 Lightweight Fill yd3 (m3) minimum 1 / 1000 ( 1 / 750 ) T88, T89, T90, T310 210000 Furnishing Borrow Type C for Pipe, Utility Trench, and Structure Backfill yd3 (m3) 1 / 500 ( 1 / 400 ) T88, T89, T90, T99 (Method C), T310 210001 Furnishing Borrow Type F for Pipe, Utility Trench, and Structure Backfill yd3 (m3)"
+          }
+        ],
+        "mat_c200": [
+          {
+            "match": "Borrow",
+            "page": 2,
+            "snippet": "c soil sample are listed in Table C-3. Test information for soils is recorded on specific form s for consistency. Auger boring test results are recorded on Form LB-41, while deep borings are recorded on Form LB-43. Borrow pit sample information is documented on Form LB-42. Field control sampling is recorded on Form LB-44. Moisture-Density tests are documented on Form LB-48. Form LB-45 is used to record the specific gravity of soils."
+          },
+          {
+            "match": "Borrow",
+            "page": 4,
+            "snippet": "ided for any other section is handled as the situation dictates. C-3 ===== PAGE 4 ===== Table C-1: Division 200 - Sampling Methods Method ID Method Name DOH 3 Sampling Soil and Aggregate Base DOH 4 Borrow Pit Sampling for Source Approval DOH 18 Soil Investigation & Sampling with a 25 mm Retractable Plug Sampler AASHTO T86 Investigations and Sampling Soils and Rock for Engineering Purposes AASHTO T206 Penetration Test"
+          }
+        ],
+        "mat_c300": [
+          {
+            "match": "Borrow",
+            "page": 4,
+            "snippet": "ob Control Supervisor Contract File Original to Aggregate Supervisor C-9 ===== PAGE 4 ===== Table C-6: Division 300 - Sampling Methods Method ID Method Name DOH 3 Sampling Soil and Aggregate Base DOH 4 Borrow Pit Sampling for Source Approval DOH 5 Sampling Stone, Slag, Gravel, Sand, and Stone Block for Use as Highway Materials AASHTO T2 Sampling of Aggregates AASHTO T40 Sampling Bituminous Material AASHTO T248 Reducing"
+          }
+        ],
+        "mat_glossary": [
+          {
+            "match": "Borrow",
+            "page": 5,
+            "snippet": "s soil are determined for design purposes. The soil samples obtained in the drilling operation are tested for physical, index, and engineering properties to facilitate in forming decisions on construction issues. Borrow. Soil removed from a designated location, called a borrow pit, for the purpose of providing fill on a given area. Borrow (common). Borrow that is not suitable for use as select borrow but is suitable for less crit"
+          },
+          {
+            "match": "borrow",
+            "page": 14,
+            "snippet": "or aggregate can reach its maximum dry density with standard compactive effort. Organic. Plant and animal residue in the soil that is in various stages of decomposition. Overburden. The top layer of material in a borrow pit that is removed prior to the removal of the underlying, acceptable borrow. Parapet. An outside wall, usually of concrete, that extends above the finished surface of a bridge and runs parallel to the centerline"
+          }
+        ],
+        "construction_part_b": [
+          {
+            "match": "Borrow",
+            "page": 9,
+            "snippet": "-------- 5 1 1 Notice to Proceed 15OCT98 15OCT98 15OCT98 15OCT98 0 10 25 25 Clearing & Grubbing 16OCT98 19NOV98 16OCT98 19NOV98 0 20 40 40 Roadway Excavation 20NOV98 14JAN99 20NOV98 14JAN99 0 30 50 50 Common Borrow 15JAN99 25MAR99 15JAN99 25MAR99 0 40 35 35 Select Borrow 15JAN99 4MAR99 5FEB99 25MAR99 15 70 20 20 Roadway Drainage 15JAN99 11FEB99 26FEB99 25MAR99 30 50 30 30 PCC Base Course 26MAR99 6MAY99 26MAR99 6MAY99 0"
+          },
+          {
+            "match": "Borrow",
+            "page": 9,
+            "snippet": "15OCT98 0 10 25 25 Clearing & Grubbing 16OCT98 19NOV98 16OCT98 19NOV98 0 20 40 40 Roadway Excavation 20NOV98 14JAN99 20NOV98 14JAN99 0 30 50 50 Common Borrow 15JAN99 25MAR99 15JAN99 25MAR99 0 40 35 35 Select Borrow 15JAN99 4MAR99 5FEB99 25MAR99 15 70 20 20 Roadway Drainage 15JAN99 11FEB99 26FEB99 25MAR99 30 50 30 30 PCC Base Course 26MAR99 6MAY99 26MAR99 6MAY99 0 60 35 35 Hot-Mix Wearing Course 7MAY99 24JUN99 7MAY99 24JUN"
+          }
+        ],
+        "construction_part_c": [
+          {
+            "match": "borrow",
+            "page": 3,
+            "snippet": "of work completed or in progress (such as piles in place) (8) Any other information that pertains to administrative aspects of the work (b) Material delivery records (1) Tickets a. Quantity control (for example, borrow by weight) b. Quality control (for example, central mixed concrete) (2) Evidence of shipment a nd inspection (letter by mail) (c) Performance records (1) Materials and Research information such as soil density, soil"
+          },
+          {
+            "match": "subgrade",
+            "page": 3,
+            "snippet": "(for example, central mixed concrete) (2) Evidence of shipment a nd inspection (letter by mail) (c) Performance records (1) Materials and Research information such as soil density, soil analysis, materials analysis, subgrade pretests , cylinder and core records, and hot- mix production (see Part H) (2) Materials used in field with or without Materials and Research inspection (3) Test pile and bearing pile records (4) Material safety dat"
+          }
+        ],
+        "construction_part_d": [
+          {
+            "match": "Borrow",
+            "page": 9,
+            "snippet": "excavation, such as structure, channel, and muck excavation. Where Plan quantities are estimated, complete pre-construction cross sections must be taken for accurate quantity calculations. D4.07 Cross Sections for Borrow. Places from which borrow is to be obtained must be cross sectioned before and after borrow excavation in order to compute the quantity of material excavated. Where the site for a borrow pit is no t close enough to t"
+          },
+          {
+            "match": "borrow",
+            "page": 9,
+            "snippet": ". D4.07 Cross Sections for Borrow. Places from which borrow is to be obtained must be cross sectioned before and after borrow excavation in order to compute the quantity of material excavated. Where the site for a borrow pit is no t close enough to the roadway, an independent baseline should be established that passes thr ough the approximate center of the borrow pit, and sufficient cross sections should be referred to this baselin e."
+          }
+        ],
+        "construction_part_e": [
+          {
+            "match": "borrow",
+            "page": 3,
+            "snippet": "rosion and sediment control methods ar e going to be sufficient to protect adjacent property, ditches, streams, rivers, and wetlands. (d) Material: Be familiar with the material on site and the material in designated borrow sources. Verify that material used on the Project is coming from approved sources. Be able to recognize any significant change in material coming to the Project that may affect embankment pl acement and compaction. Be"
+          },
+          {
+            "match": "borrow",
+            "page": 9,
+            "snippet": "on together with suitable excess channe l and structural excavation to complete the embankment to the required line and grade, th en material must be imported to make up the difference. The imported material is called borrow. Under certain conditions, it may be necessary to obtain excavated earth material from under water. In this operation, a hydraulic dredge may be used to move the material into place. When the Contractor plans dredging"
+          }
+        ]
+      }
+    },
+    {
+      "id": "xref-coverage-incidental_payment",
+      "severity": "low",
+      "kind": "topic_coverage",
+      "topic": "incidental_payment",
+      "title": "Topic covered in 3 manuals: Incidental / no separate payment",
+      "summary": "Same topic appears in multiple publications \u2014 review snippets for wording that pulls in different directions (methods, rates, who decides).",
+      "docs": {
+        "standard_specs_2026": [
+          {
+            "match": "incidental",
+            "page": 29,
+            "snippet": "the escrowed bid documents. The contractor shall have no right to add documents to the escrowed bid documents except upon the Department\u2019s request. 13. The Department considers the cost for complying with this section incidental to the contract. The Department will bear the storage costs for the documents. The Department will provide escrow instructions to the document depository consistent with this section. ===== PAGE 30 ===== SCOPE OF W"
+          },
+          {
+            "match": "incidental",
+            "page": 38,
+            "snippet": "===== PAGE 38 ===== SCOPE OF WORK SECTION 104 28 areas affected by the contractor in connection with the work within the right-of-way. Cut all grass and weeds taller than 6-inches. The cost of the final cleanup is incidental to Item 763000. B. Install erosion and sediment control measures that comply with stormwater regulations for staging areas. Restore areas used for staging operations to their original conditions. Perform restoration"
+          }
+        ],
+        "construction_part_c": [
+          {
+            "match": "Incidental",
+            "page": 6,
+            "snippet": "Field Reports (1) Daily Reports (pocket) (2) Weekly Reports (pocket) (3) Monthly Reports (pocket) (D) Construction Correspondence (1) Earthwork (2) Base Course (3) Surface Course and Pavement (4) Structures (5) Incidental Construction (E) Change Orders (pocket, with a se parate folder for each change order) (F) Estimates (pocket, with a separate folder for each estimate) (G) Complaints (folder) (H) Plan Revision Letters (folder) (I)"
+          }
+        ],
+        "construction_part_e": [
+          {
+            "match": "incidental",
+            "page": 36,
+            "snippet": "n of rock will be paid for under Section 206 of the Specifications. No measurement for excavation and backf ill for pipes under 24\" (600 mm) nominal inside diameter will be made. Excavation and back filling will be incidental to the bid price for the pipe. [612.11] When trench excavation meets or reaches a catch basin or manhole, the limits for measurement and payment will be to the outside wall of the drainage structure. However, when"
+          },
+          {
+            "match": "incidental",
+            "page": 84,
+            "snippet": "terials should be handled carefully during erection to prevent damage. SECTION E602 \u2013 CONCRETE STRUCTURES E602.01 General. This work consists of furnishing and placing portland cement concrete for structures and incidental construction. The basic ingredients for concrete are cement, fine aggregate, usually in the form of sand, coarse aggregate, and water. The coarse aggregate may be proportioned into two sizes. The Engineer may autho"
+          }
+        ]
+      }
+    },
+    {
+      "id": "xref-coverage-materials_manual_deferral",
+      "severity": "low",
+      "kind": "topic_coverage",
+      "topic": "materials_manual_deferral",
+      "title": "Topic covered in 3 manuals: Deferral to Materials Manual",
+      "summary": "Same topic appears in multiple publications \u2014 review snippets for wording that pulls in different directions (methods, rates, who decides).",
+      "docs": {
+        "standard_specs_2026": [
+          {
+            "match": "Materials Manual",
+            "page": 61,
+            "snippet": "date of the advertisement. When a specification or test is identified in the form of an AASHTO or ASTM number indicated as \"modified,\" it refers to an AASHTO or ASTM specification or test modified by the Department's Materials Manual in effect on the date of advertisement. If there is a procedural difference in the DOH, AASHTO, or ASTM test methods, the Department will follow this order of precedence: 1. Materials Manual 2. AASHTO 3. ASTM C. Th"
+          },
+          {
+            "match": "Materials Manual",
+            "page": 62,
+            "snippet": "erials not in conformance with the contract in accordance with Section 105.11, Removal of Defective and Unauthorized Work. C. Distribute the compliance certificates in accordance with the contract or the Department\u2019s Materials Manual. 106.4 Manufacturing Plant Inspection. A. The Department may inspect manufacturing plants for compliance with specified manufacturing methods. The contractor and the material producer shall cooperate and assist the e"
+          }
+        ],
+        "mat_table_b1": [
+          {
+            "match": "Materials Manual",
+            "page": 12,
+            "snippet": "gal (L) minimum 1 / Source / Contract Certified to meet M282 and M301 501001 Portland Cement Concrete Pavement, 8\" (200mm) yd2 (m2) See Division 500 T22, T23 or ASTM C39 -86, also Division 500 Requirements in the Materials Manual 501002 Portland Cement Concrete Pavement, 9\" (225mm) yd2 (m2) See Division 500 T22, T23 or ASTM C39 -86, also Division 500 Requirements in the Materials Manual 501004 Portland Cement Concrete Pavement, 10\" (250mm"
+          },
+          {
+            "match": "Materials Manual",
+            "page": 12,
+            "snippet": "r ASTM C39 -86, also Division 500 Requirements in the Materials Manual 501005 Portland Cement Concrete Pavement, 11\" (275mm) yd2 (m2) See Division 500 T22, T23 or ASTM C39 -86, also Division 500 Requirements in the Materials Manual 501006 Portland Cement Concrete Pavement, 12\" (300mm) yd2 (m2) See Division 500 T22, T23 or ASTM C39 -86, also Division 500 Requirements in the Materials Manual 501007 Portland Cement Concrete Shoulder, 8\" (200mm)"
+          }
+        ],
+        "construction_part_e": [
+          {
+            "match": "Materials \nManual",
+            "page": 39,
+            "snippet": "therefor e, the Inspector should have some idea as to how these results were de termined. The following is a brief description of these tests. Additional information concerning testing procedures can be found in the Materials Manual. (a) Gradation: The determination of grain size di stribution, which is the proportion of material of each grain size in a given soil. (1) Procedure: a. Weigh the sample to be tested. b. Shake the material th"
+          },
+          {
+            "match": "Materials Manual",
+            "page": 43,
+            "snippet": "ples are taken and tested prior to beginn ing construction. Sampling and testing of the proposed material will be d one by Materials and Research personnel in accordance with The Delaware Department of Tr ansportation Materials Manual. A sample Coarse Aggregate Report is in Part H. [106.02] ===== PAGE 44 ===== E300 \u2013 GENERAL INFORMATION Revised: January 2004 E-44 E300.04 Placing. Prior to placing the base course and after test rolling, the"
+          }
+        ]
+      }
+    },
+    {
+      "id": "xref-coverage-order_of_precedence",
+      "severity": "low",
+      "kind": "topic_coverage",
+      "topic": "order_of_precedence",
+      "title": "Topic covered in 2 manuals: Order of precedence / document conflicts",
+      "summary": "Same topic appears in multiple publications \u2014 review snippets for wording that pulls in different directions (methods, rates, who decides).",
+      "docs": {
+        "standard_specs_2026": [
+          {
+            "match": "order of precedence",
+            "page": 43,
+            "snippet": "irement occurring in one is binding as though occurring in all. The contract documents are complementary and describe and provide for a complete contract. In the case of a conflict between the contract documents, the order of precedence is as follows: 1. General Description ===== PAGE 44 ===== RESPONSIBILITIES OF THE DEPARTMENT; INTERPRETATION SECTION 105 OF THE CONTRACT DOCUMENTS; MAINTENANCE DURING CONSTRUCTION; CLAIMS; PROJECT ACCEPTANCE 34 2"
+          },
+          {
+            "match": "order of precedence",
+            "page": 61,
+            "snippet": "specification or test modified by the Department's Materials Manual in effect on the date of advertisement. If there is a procedural difference in the DOH, AASHTO, or ASTM test methods, the Department will follow this order of precedence: 1. Materials Manual 2. AASHTO 3. ASTM C. The engineer will set forth minimum requirements for material quality assurance sampling and testing on each contract. Ensure that the engineer has the access and time need"
+          }
+        ],
+        "construction_part_b": [
+          {
+            "match": "discrepancy",
+            "page": 5,
+            "snippet": "atively accurate time requirement for the execution of individual items of work. It should be pointed out, however, that the scheduled completion date must always be in accordance with the Contract, and in case of a discrepancy, the Contractor must change the Schedule of Work to reflect the Contract completion date. [108.04] Two types of schedules are acceptable to th e Department, the bar chart schedule and the critical path method (CPM"
+          },
+          {
+            "match": "discrepancy",
+            "page": 14,
+            "snippet": "de a set of specifications that are usually applicable for construction. These Sp ecifications should be adhered to throughout the Project unless supplemented or superseded by another Contract document. If there is a discrepancy between two or more Contract documents, the governing ranking is: 1. General Notices 2. Special Provisions 3. Plans 4. Supplemental Specifications 5. Standard Construction Details 6. Standard Specifications [105.0"
+          }
+        ]
+      }
+    },
+    {
+      "id": "xref-coverage-proctor_density",
+      "severity": "low",
+      "kind": "topic_coverage",
+      "topic": "proctor_density",
+      "title": "Topic covered in 7 manuals: Proctor / maximum density / compaction %",
+      "summary": "Same topic appears in multiple publications \u2014 review snippets for wording that pulls in different directions (methods, rates, who decides).",
+      "docs": {
+        "standard_specs_2026": [
+          {
+            "match": "T99",
+            "page": 724,
+            "snippet": "f internal friction of not less than 34-degrees, as determined by the standard direct sheer test AASHTO T236 on the portion finer than the No. 10 sieve, using a sample of the material compacted to 95 percent of AASHTO T99, Methods C or D, (with oversized correction at optimum moisture content). e. Electrochemical properties in accordance with the following: Table 1048.1-1. Electrochemical Soil Properties Property Value pH 5 to 10"
+          },
+          {
+            "match": "maximum density",
+            "page": 116,
+            "snippet": "e. C. Prior to placing subsequent lifts of material, proof roll the subgrade in the presence of and as directed by the engineer in accordance with Section 202.3.6. D. Compact the subgrade to 95 percent or more of the maximum density. E. Ensure the finished subgrade surface is uniform and smooth and conforms to prescribed elevations before constructing the base or surface course. Limit the maximum variation from the subgrade elevation to the pres"
+          }
+        ],
+        "mat_table_b1": [
+          {
+            "match": "T99",
+            "page": 1,
+            "snippet": "g Frequencies and Test Procedures MINIMUM TESTING FREQUENCY ITEM DESCRIPTION UNIT SAMPLES / UNIT TEST PROCEDURE (AASHTO or as Noted) 202000 Excavation and Embankment yd3 (m3) 1 / 1000 ( 1 / 750 ) T88, T89, T90, T99 (M ethod C), T310 202534 Clay Liner yd2 (m2) minimum 1 / 1000 ( 1 / 750 ) T88, T89, T90 202543 Clay Fill yd3 (m3) minimum 1 / 1000 ( 1 / 750 ) T88, T89, T90 207000 Excavation and Backfill for Structures yd3 (m3)"
+          },
+          {
+            "match": "T99",
+            "page": 1,
+            "snippet": "1 / 200 ) T88, T89, T90, T99 (Method C), T310 208500 Flowable Fill yd3 (m3) 2 / 500 ( 2 / 400 ) T22, T23 or ASTM C39 208508 Excavation and Backfill for Common Trenche s yd3 (m3) 1 / 1000 ( 1 / 750 ) T88, T89, T90, T99 (Method C), T310 208510 Special Excavation and Backfill for Trenches yd3 (m3) 1 / 1000 ( 1 / 750 ) T88, T89, T90, T99 (Method C), T310 209001 Borrow, Type A yd3 (m3) 1 / 750 ( 1 / 600 ) T88, T89, T90, T99 (Metho"
+          }
+        ],
+        "mat_c200": [
+          {
+            "match": "T99",
+            "page": 5,
+            "snippet": "quid Limit of Soils AASHTO T90 Determining the Plastic Limit and Plasticity Index of Soils AASHTO T96 Resistance to degradation of Small-Size Coarse Aggregate by Abrasion and Impact in the Los Angeles Machine AASHTO T99 Moisture-Density Relations of Soils Using a 2.5-kg (5.5-lb) Rammer and a 305-mm (12-in) Drop AASHTO T100 Specific Gravity of Soils AASHTO T134 Moisture-Density Relations of Soil-Cement Mixtures AASHTO T180 Moisture-"
+          },
+          {
+            "match": "T180",
+            "page": 5,
+            "snippet": "ne AASHTO T99 Moisture-Density Relations of Soils Using a 2.5-kg (5.5-lb) Rammer and a 305-mm (12-in) Drop AASHTO T100 Specific Gravity of Soils AASHTO T134 Moisture-Density Relations of Soil-Cement Mixtures AASHTO T180 Moisture-Density Relations of Soils Using a 4.54-kg (10-lb) Rammer and a 457-mm (18-in) Drop AASHTO T208 Unconfined Compressive Strength of Cohesive Soil AASHTO T216 One-Dimensional Consolidation Properties of Soils"
+          }
+        ],
+        "mat_c300": [
+          {
+            "match": "T99",
+            "page": 5,
+            "snippet": "quid Limit of Soils AASHTO T90 Determining the Plastic Limit and Plasticity Index of Soils AASHTO T96 Resistance to Degradation of Small Size Coarse Aggregate by Abrasion and Impact in the Los Angeles Machine AASHTO T99 Moisture-Density Relations of Soils Using a 2.5-kg (5.5-lb) Rammer and a 305-mm (12-in) Drop AASHTO T164 Quantitative Extraction of Bitumen from Bituminous Paving Mixtures AASHTO T166 Bulk Specific Gravity of Compact"
+          },
+          {
+            "match": "Maximum Density",
+            "page": 5,
+            "snippet": "ates the year 2002, 001 represents the data number C-10 ===== PAGE 5 ===== Table C-8: Division 300 - Test Methods Test ID Test Name DOH 6 Approval of Sources of Fine and Coarse Aggregate DOH 16 Determining Maximum Density for Bituminous Concrete Utilizing the Control Strip Procedure ASTM C39 Standard Test Method for Compressive Strength of Cylindrical Concrete Specimens ASTM D2901 Cement Content of Freshly Mixed Soil-Cement AASHTO R"
+          }
+        ],
+        "mat_c400": [
+          {
+            "match": "T272",
+            "page": 6,
+            "snippet": "on for Coarse Particles in the Soil Compaction Test AASHTO T228 Specific Gravity of semi-Solid Bituminous Materials AASHTO T240 Effect of Heat and Air on a Moving Film of Asphalt (Rolling Thin-Film Oven Test) AASHTO T272 Family of Curves - One Point Method AASHTO T308 Determining the Asphalt Binder Content of Hot-Mix Asphalt (HMA) by the Ignition Method AASHTO T-312 Standard Method for Preparing and Determining the Density of Hot-Mi"
+          },
+          {
+            "match": "One Point",
+            "page": 6,
+            "snippet": "in the Soil Compaction Test AASHTO T228 Specific Gravity of semi-Solid Bituminous Materials AASHTO T240 Effect of Heat and Air on a Moving Film of Asphalt (Rolling Thin-Film Oven Test) AASHTO T272 Family of Curves - One Point Method AASHTO T308 Determining the Asphalt Binder Content of Hot-Mix Asphalt (HMA) by the Ignition Method AASHTO T-312 Standard Method for Preparing and Determining the Density of Hot-Mix Asphalt (HMA) Specimens by"
+          }
+        ],
+        "mat_glossary": [
+          {
+            "match": "T-99",
+            "page": 16,
+            "snippet": "). A test to determine the interrelationship between dry density and changing moisture contents of a soil . The maximum dry density and optimum moisture content of a soil is determined in this test. Refer to AASHTO T-99 and T-180 for more information. Proficiency samples. Samples sent either by AMRL or CCRL for testing and the results are used to grade the performance of the laboratory\u2019s testing operation. Polymer Modified Asp"
+          },
+          {
+            "match": "T-180",
+            "page": 16,
+            "snippet": "to determine the interrelationship between dry density and changing moisture contents of a soil . The maximum dry density and optimum moisture content of a soil is determined in this test. Refer to AASHTO T-99 and T-180 for more information. Proficiency samples. Samples sent either by AMRL or CCRL for testing and the results are used to grade the performance of the laboratory\u2019s testing operation. Polymer Modified Asphalt. Asp"
+          }
+        ],
+        "construction_part_e": [
+          {
+            "match": "T-99",
+            "page": 40,
+            "snippet": "is repeated several times, and a graph is created that relates the moisture content to the dry density of the soil. The maximum dry density and optimum moisture content are determined from the graph. Refer to AASHTO T-99 for more information. (2) Results. The results of moisture-density tests are reported as follows: a. Optimum Moisture Content: The moisture content in the soil at which a given compactive effort will produce the m"
+          },
+          {
+            "match": "Maximum Density",
+            "page": 44,
+            "snippet": "line that that tonna ge should cover. These computations should be checked by the Inspector . The spread rate should be based on the wet density at 2 percent or so above minimum density. Example: ENGLISH METRIC Maximum Density (Dry) 135 lb/ft 3 2160 kg/m 3 Optimum Moisture 8.0% 8.0% Maximum Density (Wet) 146 lb/ft 3 2333 kg/m3 Minimum Density (95%) 139 lb/ft 3 2216 kg/m3 Target Density (97%) 142 lb/ft 3 2263 kg/m3 Spread Depth 6 in 150 m"
+          }
+        ]
+      }
+    },
+    {
+      "id": "xref-coverage-shall_will_definitions",
+      "severity": "low",
+      "kind": "topic_coverage",
+      "topic": "shall_will_definitions",
+      "title": "Topic covered in 5 manuals: Shall / will / satisfactory definitions",
+      "summary": "Same topic appears in multiple publications \u2014 review snippets for wording that pulls in different directions (methods, rates, who decides).",
+      "docs": {
+        "standard_specs_2026": [
+          {
+            "match": "The word \"will",
+            "page": 11,
+            "snippet": "the interpretation of the specifications that follow. 2. When the Department specifies a publication, the most recent issue of the publication before the date of advertisement governs, unless otherwise specified. 3. The word \"will\" applies to the decisions, actions, or responsibilities of the Department. 4. The word \"shall\" applies to the obligations of the contractor. 5. The following words: contemplated, required, determined, directed, specif"
+          },
+          {
+            "match": "The word \"shall",
+            "page": 11,
+            "snippet": "lication, the most recent issue of the publication before the date of advertisement governs, unless otherwise specified. 3. The word \"will\" applies to the decisions, actions, or responsibilities of the Department. 4. The word \"shall\" applies to the obligations of the contractor. 5. The following words: contemplated, required, determined, directed, specified, authorized, ordered, given, designated, indicated, considered necessary, deemed necessary"
+          }
+        ],
+        "mat_part_b": [
+          {
+            "match": "satisfactory",
+            "page": 3,
+            "snippet": "ted life of the Project. The C ontractor shall warrant that all materials used in the work or Project shall be made, manufactured, pr ocessed, or produced by suitable means, that all materials have been tested with satisfactory results, and that all materials may be compatibly incorporated into the work or Project without defect. Participation in the Quality Control/Quality Assurance program is dependent upon the contractor fulfilling all"
+          }
+        ],
+        "mat_glossary": [
+          {
+            "match": "satisfactory",
+            "page": 8,
+            "snippet": "r to give greater strength and area or to provide protection. Curing. The protection of concrete against moisture loss es and extremes of temperatures that enables the chemical reaction to progress to a point where satisfactory performance of the concrete in the structure is ensured. Cut-back asphalt. Asphalt cement that has been rendered fluid by fluxing it with a light volatile petroleum distillate. Upon exposure to atmospheric conditio"
+          }
+        ],
+        "construction_part_b": [
+          {
+            "match": "satisfactory",
+            "page": 9,
+            "snippet": "rials will undergo preliminary testing. These test results, in the form of Materials and Research reports or certified analysis reports, should also become a part of the Project reco rds. These test results should be satisfactory before the materials are used on the Project. When, and only when, materials pass the Department\u2019s preliminary tests will they be approved for use. ===== PAGE 10 ===== B6.00 \u2013 CONTROL OF MATERIAL Revised: January 2"
+          },
+          {
+            "match": "satisfactory",
+            "page": 10,
+            "snippet": "n, materials pass the Department\u2019s preliminary tests will they be approved for use. ===== PAGE 10 ===== B6.00 \u2013 CONTROL OF MATERIAL Revised: January 2004 B-10 The final approval of all materials is dependent upon satisfactory performance in the field. In other words, approval by initial testing analysis is only valid when the material functions in the field as specified. B6.03 Inspector\u2019s Responsibility. It is the direct responsibility"
+          }
+        ],
+        "construction_part_e": [
+          {
+            "match": "satisfactory",
+            "page": 5,
+            "snippet": "stumps , except those trees and shrubs designated to remain in place, should be cleared and grubbed. The choice of equipment is usually left to the Contra ctor as long as the equipment used will perform the work in a satisfactory manner. Occasionally, there are limitations to this choice of equipment dictated by th e Specifications or common sense. For example, the use of explosives in congested areas should be controlled. If blasting is req"
+          },
+          {
+            "match": "satisfactory",
+            "page": 11,
+            "snippet": "d not be used and are normally wasted, unless an economical method of treatment is availa ble to make them suitable. It may also be ===== PAGE 11 ===== E202 \u2013 EXCAVATION AND EMBANKMENT Revised: January 2004 E-11 satisfactory to incorporate some less suitable soils in the bottom or lower center of embankments, where any detrimental effects will be minimized. Unsuitable material may also be used to flatten slopes. If the planned grade is"
+          }
+        ]
+      }
+    },
+    {
+      "id": "xref-coverage-testing_frequency",
+      "severity": "low",
+      "kind": "topic_coverage",
+      "topic": "testing_frequency",
+      "title": "Topic covered in 8 manuals: Sampling / testing frequency",
+      "summary": "Same topic appears in multiple publications \u2014 review snippets for wording that pulls in different directions (methods, rates, who decides).",
+      "docs": {
+        "standard_specs_2026": [
+          {
+            "match": "testing frequenc",
+            "page": 316,
+            "snippet": "ructures. iii. 100 percent of the groove weld length on at least 25 percent of the number of similar-type connections of web members to the truss chords. (1) If any defect is found that warrants rejection, double the testing frequency until no defects warranting rejection are found. c. Perform the following minimum magnetic particle inspection (MT) of fillet welds and partial joint penetration (PJP) groove welds. i. For intermediate member conne"
+          },
+          {
+            "match": "testing frequenc",
+            "page": 316,
+            "snippet": "iate member connections, perform MT on 100 percent of the weldment length on at least 25 percent of the total number of connections on trusses and towers. (1) If any defect is found that warrants rejection, double the testing frequency until no defects warranting rejection are found. ii. For welds on truss seat plates, base plates, cantilever and center-mount sleeves, and alternate press-break members and fillet welds connecting backing rings to b"
+          }
+        ],
+        "mat_part_b": [
+          {
+            "match": "testing frequenc",
+            "page": 2,
+            "snippet": "ed appropriate. B3.02 Sampling and Testing Procedures. All materials used on State projects are sampled and tested at consistent rates, typically based on project plan quantities. Table B-1 lists the minimum testing frequencies for materials used on State proj ects. In addition to th e testing frequency of the materials, test procedures performed are also listed. On any DelDOT project, the Engineer reserves th e right to increase the sa"
+          },
+          {
+            "match": "testing frequenc",
+            "page": 2,
+            "snippet": "ed on State projects are sampled and tested at consistent rates, typically based on project plan quantities. Table B-1 lists the minimum testing frequencies for materials used on State proj ects. In addition to th e testing frequency of the materials, test procedures performed are also listed. On any DelDOT project, the Engineer reserves th e right to increase the sampling rates from the minimums when conditions warrant. All materials are samp"
+          }
+        ],
+        "mat_table_b1": [
+          {
+            "match": "Testing Frequenc",
+            "page": 1,
+            "snippet": "===== PAGE 1 ===== Table B-1: Minimum Testing Frequencies and Test Procedures MINIMUM TESTING FREQUENCY ITEM DESCRIPTION UNIT SAMPLES / UNIT TEST PROCEDURE (AASHTO or as Noted) 202000 Excavation and Embankment yd3 (m3) 1 / 1000 ( 1 / 750 ) T88, T89, T90, T99 (M eth"
+          },
+          {
+            "match": "Testing Frequenc",
+            "page": 2,
+            "snippet": "Inspection of Seed, Geotextile Certified by ASTM D4632, D3786, D4533, D3776, D4355, VA DOT VTM51; Should Prefabricated Fence Be Used it Shall Consist of the Same Materials ===== PAGE 2 ===== Table B-1: Minimum Testing Frequencies and Test Procedures MINIMUM TESTING FREQUENCY ITEM DESCRIPTION UNIT SAMPLES / UNIT TEST PROCEDURE (AASHTO or as Noted) 251001 Reinforced Silt Fence ft (m) minimum 1 / Source / Contract Certification of Post"
+          }
+        ],
+        "mat_c300": [
+          {
+            "match": "Table B-1",
+            "page": 2,
+            "snippet": "ampling procedures followed for aggregate ma terials and other items included in Division 300 are listed in Table C-6. Recommended quan tities for sampling and testing, based on total usage at the site, are listed in Table B-1. C300.04 Handling, Packaging, and Shipping. Aggregate samples taken in the field are carefully transported to the Mate rials & Research Laboratory for te sting. A great deal of care is taken to ensure that the mat"
+          }
+        ],
+        "mat_c400": [
+          {
+            "match": "testing frequenc",
+            "page": 3,
+            "snippet": "ction E. These materials are then tested by the test methods listed in Table B-1 . (b) Hot-Mix Asphalt. Acceptance of hot-mix asphalt is based on tests performed in the field and in the laboratory. The tests and testing frequencies are listed in Table B-1 and must be performed at the rates listed in Section 400.03 and following the test methods listed in Table C-12. SuperPave Gyratory specimens must be made and tested at either the producer\u2019"
+          },
+          {
+            "match": "Table B-1",
+            "page": 3,
+            "snippet": "test report. An example of a complete test report for both emulsified asphalts (Form LB-71) and cutback asphalts (Form LB-72) is provided in Section E. These materials are then tested by the test methods listed in Table B-1 . (b) Hot-Mix Asphalt. Acceptance of hot-mix asphalt is based on tests performed in the field and in the laboratory. The tests and testing frequencies are listed in Table B-1 and must be performed at the rates li"
+          }
+        ],
+        "mat_glossary": [
+          {
+            "match": "1/8",
+            "page": 8,
+            "snippet": "drilling.) The procedure used to obtain core samples of rock that cannot be penetrated by conventional sampling techniques. Typically, rock cores are obtained with diamond bits that yield a core sample diameter of 2 1/8\u201d (NX barrel). Cover plate. A plate used in building up flanges of a steel beam or girder to give greater strength and area or to provide protection. Curing. The protection of concrete against moisture loss es and"
+          }
+        ],
+        "construction_part_c": [
+          {
+            "match": "1/4",
+            "page": 10,
+            "snippet": "vement quantities. The area of the pavement should be figured and kept in square yards (square meters). Measurements must be taken down th e centerline of concrete pavement. Measurements must be made to the near est 1/4\" (5 mm). Dimensions for the sketches should be shown the same way, keeping the mainline paving one unit or group. The odd-shaped sections of paveme nt should then be grouped together. Appendix B in Part J of this Man"
+          },
+          {
+            "match": "1/ 4",
+            "page": 12,
+            "snippet": "11/ 16/ 1998 12/ 14/ 1998 D .M . STO LTZFUS JAN 11, '98 APR 11, '99 MAT E R I AL SO URC E D .M . STO LTZFUS 22.56 45.13 ACCUM. TO TAL QU ANT I T Y ACCU M. 22.56 22.57 FINAL QUANT IT Y 171.17 EST. # M O N THLY TO TAL 1/ 4/ 1999 S HELL ENT RANCE P-17 D/ W's 3 + 12 T O 3 + 50 RT c / l LO C A TIO N A - 3 + 00 LT c / l D/ W 4 + 00 T O 5 + 00 RT c / l D/ W's DAT E 49.13 33.90 4 + 50 +/ - RT c / l D/ W 1 +"
+          }
+        ],
+        "construction_part_e": [
+          {
+            "match": "1/2",
+            "page": 25,
+            "snippet": "0 mm increments) for the tide range of the area. (f) Probing Rod: A probing rod is a device that can be used to determine the depth of cut and to determine the condition of the bottom. A probing rod can be made of 1 1/2\" (37.5 mm) diameter alum inum rod in 10 to 12' (3 to 3.7 m) sections with provisions for coupling any num ber of sections together. The rod is graduated in either feet or 300-mm increments. The us e of the probing rod"
+          },
+          {
+            "match": "1/3",
+            "page": 27,
+            "snippet": "f soil. It does not in clude soft rock or rock shattere d in its natural position that can be torn loose and moved by methods other than blasting and ripping. [205.02] Boulders having a volume equal to or greater than 1/3 yd 3 (0.30 m3) (slightly larger than a 55-gallon drum) will be paid for in accordance with the Specifications. [205.06] Boulders can sometimes be removed without blasting. E205.02 Limits. In roadway construction, r"
+          }
+        ]
+      }
+    }
+  ]
+}
