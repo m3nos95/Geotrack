@@ -27,11 +27,14 @@ See [`docs/lesson-rt301-atterberg-testing-capacity.md`](docs/lesson-rt301-atterb
 cd spec-risk-scanner
 pip install -r requirements.txt
 python download_specs.py          # Standard Specs + Part B + Table B-1 + C200/C300
-python parse_table_b1.py          # structured T99 capacity findings
-python scan.py                    # combined HTML/JSON under reports/
+python parse_table_b1.py          # structured capacity findings
+python scan.py                    # within-doc HTML/JSON under reports/
+python cross_ref.py               # Specs ↔ Materials ↔ Construction Manual conflicts
 ```
 
-Open `reports/spec_risk_findings.html`.
+Open:
+- `reports/spec_risk_findings.html` — phrase / capacity flags
+- `reports/cross_pub_conflicts.html` — **cross-manual contradictions and gaps**
 
 ## What it flags
 
