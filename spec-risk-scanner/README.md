@@ -29,12 +29,14 @@ pip install -r requirements.txt
 python download_specs.py          # Standard Specs + Part B + Table B-1 + C200/C300
 python parse_table_b1.py          # structured capacity findings
 python scan.py                    # within-doc HTML/JSON under reports/
-python cross_ref.py               # Specs ↔ Materials ↔ Construction Manual conflicts
+python cross_ref.py               # numeric / definition checks + ROI neighborhoods
+python absence_scan.py            # missing closing clauses (primary findings)
 ```
 
-Open:
+Open `reports/index.html`, or:
+- `reports/absence_findings.html` — **missing closing clauses** (start here)
+- `reports/cross_pub_conflicts.html` — numeric mismatches; dual-actor items are ROI only
 - `reports/spec_risk_findings.html` — phrase / capacity flags
-- `reports/cross_pub_conflicts.html` — **cross-manual contradictions and gaps**
 
 ## What it flags
 

@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-08-06T01:40:33.972981+00:00",
+  "generated_at": "2026-08-06T16:37:18.170035+00:00",
   "corpus": [
     {
       "id": "standard_specs_2026",
@@ -86,18 +86,17 @@
       "path": "/workspace/deldot-publications/files/deldot.gov/Publications/manuals/construction_manual/pdfs/09-construction_manual-part_g.pdf"
     }
   ],
-  "finding_count": 49,
+  "finding_count": 46,
   "by_severity": {
-    "high": 14,
-    "medium": 35,
+    "high": 12,
+    "medium": 28,
     "low": 0
   },
   "by_kind": {
     "ambiguous_authority": 1,
     "cross_doc_gap": 1,
-    "duty_ambiguity": 5,
     "numeric_conflict": 38,
-    "opposing_phrases": 4
+    "region_of_interest": 6
   },
   "by_topic": {
     "acceptance_rejection": 1,
@@ -107,9 +106,9 @@
     "concrete_pcc": 5,
     "curing_concrete": 1,
     "department_test_vs_contractor_test": 1,
-    "environmental": 4,
+    "environmental": 3,
     "moisture_content": 3,
-    "payment_measurement": 2,
+    "payment_measurement": 1,
     "qc_qa_responsibility": 1,
     "required_vs_optional": 1,
     "safety_osha": 2,
@@ -119,7 +118,7 @@
     "time_notice": 1,
     "tolerances_dimensions": 2,
     "utilities": 1,
-    "weather_season": 4
+    "weather_season": 3
   },
   "findings": [
     {
@@ -625,392 +624,6 @@
             "match": "28 days",
             "page": 89,
             "snippet": "own in Part H. Typically, entrained air and slump test results will be available immediat ely in the field. Two compressive tests each are performed at 7 and 28 days. If early strength tests are needed, the Materials and Research Section ===== PAGE 90 ===== E602 \u2013 CONCRETE STRUCTURES Revised: January 2004 E-90 must"
-          }
-        ]
-      }
-    },
-    {
-      "id": "opp-approved_equal_vs_no_sub",
-      "severity": "high",
-      "kind": "opposing_phrases",
-      "topic": "approved_equal_vs_no_sub",
-      "title": "Or-equal / substitution path vs no-substitute / sole-source language",
-      "summary": "Opposing cues appear across the corpus. Docs emphasizing A: mat_table_b1. Docs emphasizing B: construction_part_b.",
-      "docs": {
-        "standard_specs_2026 [A]": [
-          {
-            "match": "or equal",
-            "page": 11,
-            "snippet": "isfactory, unsatisfactory, sufficient, insufficient, rejected, condemned, or words with similar intent; mean by or to the Department. 6. The words \"or equal,\" referring to a product, material, or process, means \"equal as determined by the engineer.\" 7. The specifications may present numerical values in "
-          },
-          {
-            "match": "or equal",
-            "page": 52,
-            "snippet": "e notice of intent to file a claim. 2. Prepare a written claim submittal containing at a minimum the following information. a. For claims less than or equal to $250,000: i. A narrative with sufficient information to allow a third party to understand the issue in dispute and its effect on the work. ii. "
-          },
-          {
-            "match": "or equal",
-            "page": 56,
-            "snippet": "actor may appeal the District\u2019s decision to the Department\u2019s Claims Committee. 2. If the amount of the unresolved portion of the claim is less than or equal to $100,000 after the completion of the District\u2019s review, the contractor may appeal the District\u2019s decision to the Secretary for the Secretary\u2019s D"
-          }
-        ],
-        "mat_table_b1 [A]": [
-          {
-            "match": "Approved Equal",
-            "page": 2,
-            "snippet": "ls 251500 Dewatering Filter Fence ft (m) minimum 1 / Source / Contract Certification that Material is Mirafi 140N, Exxon GTF 130D, Amoco 4545 or Approved Equal, Certified to Meet Size Requ irements 252000 Inlet Sediment Control, Drainage Inlet Each minimum 1 / Source / Contract Certification of Geotexti"
-          },
-          {
-            "match": "approved \nequal",
-            "page": 3,
-            "snippet": "otextile to be Mirafi 700X or Erosion 1 (Synthetic Industries), Linq GTF 400E or Poly - Filter X (Carthage Mills), Te rraTex Ep (WEBTEC, Inc.) or an approved equal 259000 Perimeter Dike / Swale, Type A -1 ft (m) minimum 1 / Source / Contract Certification of Mulch, Visual Inspection of Seed, Certification of "
-          },
-          {
-            "match": "approved equal",
-            "page": 3,
-            "snippet": "eotextile to be Mirafi 700X or Erosion 1 (Synthetic Industries ), Linq GTF 400E or Poly-Filter X (Carthage Mills), TerraTex Ep (WEBTEC, Inc.) or an approved equal, Visual Inspection of Riprap for Gradation Requirements 259001 Perimeter Dike / Swale, Type A -2 ft (m) minimum 1 / Source / Contract Certificat"
-          }
-        ],
-        "standard_specs_2026 [B]": [
-          {
-            "match": "Do not substitute",
-            "page": 260,
-            "snippet": ". Do not splice bars, except as indicated in the contract. If allowed, lap the reinforcement bars in accordance with the contract and wire together. Do not substitute alternate bars unless approved by the engineer. 6. In lapped splices, place and wire the bars maintaining the minimum distance to the surface of t"
-          },
-          {
-            "match": "No substitut",
-            "page": 633,
-            "snippet": " shall conform to names accepted in the nursery trade. Size and grading shall conform to those listed in AAN's American Standards for Nursery Stock. No substitutions are allowed except by written permission of the engineer. E. Availability The engineer, after receiving a written request from the contractor "
-          }
-        ],
-        "construction_part_b [B]": [
-          {
-            "match": "No substitut",
-            "page": 12,
-            "snippet": " make a recommendation in the usual manner, but must eval uate the request in the light of whether the change is in the best interest of the State. No substitution for an approved DBE subcontractor will be allowed without approval from the Contract Administration Section. It is stressed that such substituti"
-          }
-        ]
-      }
-    },
-    {
-      "id": "opp-department_test_vs_contractor_test",
-      "severity": "high",
-      "kind": "opposing_phrases",
-      "topic": "department_test_vs_contractor_test",
-      "title": "Who tests: Department/engineer vs contractor",
-      "summary": "Opposing cues appear across the corpus. Docs emphasizing A: standard_specs_2026. Docs emphasizing B: mat_part_b.",
-      "docs": {
-        "standard_specs_2026 [A]": [
-          {
-            "match": "Department will perform",
-            "page": 48,
-            "snippet": "ion. A. Maintain the work during construction every day to keep the roadway and structures in an acceptable condition until project acceptance. The Department will perform snow removal unless the contract specifically assigns this responsibility to the contractor. The Department will mow the grass outside the LOC. B."
-          },
-          {
-            "match": "Department will perform",
-            "page": 61,
-            "snippet": " and acceptance of the work. Material quality control is the contractor\u2019s responsibility as stated in Division 1000 of these specifications. B. The Department will perform material tests in accordance with the Department of Highway (DOH), AASHTO, or ASTM test methods current on the date of the advertisement. When a sp"
-          },
-          {
-            "match": "Department will perform",
-            "page": 114,
-            "snippet": "ent of the natural ground under the embankment. 2. Compact lifts in embankment areas, other than rock, in accordance with Section 202.3.8.D. 3. The Department will perform compaction and moisture tests once the contractor tests the stability of the lift in accordance with Section 202.3.8.F. 202.3.3 Excavation. A. Exc"
-          }
-        ],
-        "mat_part_b [B]": [
-          {
-            "match": "Contractor shall perform all tests required by \nthe Contract and other tests the",
-            "page": 3,
-            "snippet": " ===== SECTION B4.00 \u2013 QUALITY CONTROL, QUALITY ASSURANCE, AND INDEPENDENT ASSURANCE TESTING PROGRAMS B4.01 Quality Control (QC) Requirements. The Contractor shall perform all tests required by the Contract and other tests the Contractor determines are necessary to verify the quality and suitability of all materials used in the Project. For all required tests, the Contractor shall submit test results or samples as re"
-          }
-        ]
-      }
-    },
-    {
-      "id": "duty-acceptance_rejection",
-      "severity": "medium",
-      "kind": "duty_ambiguity",
-      "topic": "acceptance_rejection",
-      "title": "Duty / modality tension on acceptance rejection",
-      "summary": "hard duties split across contractor vs Department/engineer \u2014 verify who owns the action. Check snippets for who must act.",
-      "docs": {
-        "standard_specs_2026": [
-          {
-            "match": "Department will",
-            "page": 22,
-            "snippet": "signs the bid proposal and follows each signature with the title \"Joint Venturer.\" 102.7 Irregular Proposals. A. The Department will consider proposals as irregular and will reject the proposals as non- responsive for any of the following reasons if the bidder: 1. Submits proposals on a for"
-          },
-          {
-            "match": "Department may",
-            "page": 24,
-            "snippet": "pen and read proposals publicly at the location and time set for the opening. 102.12 Bidder Disqualification. A. The Department may disqualify a bidder and reject future proposal submissions from the bidder for the following reasons: 1. The bidder defaulted on a previous contract. 2. The"
-          }
-        ],
-        "construction_part_b": [
-          {
-            "match": "Inspector in \ncharge should",
-            "page": 9,
-            "snippet": "terials should be submitted to the Materials and Research Section for approval well in advance of the time of use. The Inspector in charge should ensure that this has been done. The Materials and Research Section, by letter to the Contractor, will approve or reject each sour ce of material. The Inspect"
-          },
-          {
-            "match": "Contractor, will",
-            "page": 9,
-            "snippet": "The Inspector in charge should ensure that this has been done. The Materials and Research Section, by letter to the Contractor, will approve or reject each sour ce of material. The Inspector should include copies of the material approval or disapproval lette rs for all materials in the Proj"
-          }
-        ],
-        "construction_part_d": [
-          {
-            "match": "will be used \nto accomplish the work. The Inspector",
-            "page": 1,
-            "snippet": "d the methods to be used for upcoming stages of construction so that both know what work will be done and what methods will be used to accomplish the work. The Inspector should not wa it to see what the C ontractor is going to do next and how it is going to be done before telli ng the Contractor that its plan is unacceptable."
-          },
-          {
-            "match": "Engineer/Project Supervisor should",
-            "page": 1,
-            "snippet": "ere is a very definite area of Contr actor responsibility, and as long as the Contract is being followed, the Resident Engineer/Project Supervisor should not reje ct the Contractor \u2018s planned means and methods unless they are cl early unsound or unsafe . By rejecting the Contractor\u2019s means or methods, the Resi"
-          }
-        ],
-        "construction_part_e": [
-          {
-            "match": "must be \ninsulated or, if approved by the Engineer",
-            "page": 57,
-            "snippet": "s concrete, making it unacceptable for placement. Trucks hauling bituminous concrete between September 30 and March 31 must be insulated or, if approved by the Engineer, the truck beds may be heated. [401.04] (b) Paving Machines: It is strongly suggested that the Inspector become familiar with the mechanical features of the"
-          },
-          {
-            "match": "Inspector should",
-            "page": 59,
-            "snippet": ", deduct excessive weight as discussed in Subsection D2.02, and record the location where the mixture is placed. The Inspector should check each load for uniformity and check the temperature of the mixtures. [401.03] A truckload of bituminous concrete may be rejected for the following reaso"
-          }
-        ]
-      }
-    },
-    {
-      "id": "duty-environmental",
-      "severity": "medium",
-      "kind": "duty_ambiguity",
-      "topic": "environmental",
-      "title": "Duty / modality tension on environmental",
-      "summary": "contractor shall/must in some manuals vs contractor may in others. Check snippets for who must act.",
-      "docs": {
-        "standard_specs_2026": [
-          {
-            "match": "must secure a \npermit from the Department",
-            "page": 35,
-            "snippet": "or any delay caused by the damage. B. Any individual, firm, or corporation wishing to make an opening in the highway must secure a permit from the Department. The Department will allow parties bearing such permits, and only those parties, to make openings in the highway. Make all necessary repairs resulting from op"
-          },
-          {
-            "match": "Department will",
-            "page": 35,
-            "snippet": "dividual, firm, or corporation wishing to make an opening in the highway must secure a permit from the Department. The Department will allow parties bearing such permits, and only those parties, to make openings in the highway. Make all necessary repairs resulting from opening the highway wh"
-          }
-        ],
-        "mat_c500": [
-          {
-            "match": "technician or representative shall",
-            "page": 3,
-            "snippet": "esting facilities available to the Department for insp ection. Thereafter, the Department\u2019s C-21 ===== PAGE 3 ===== technician or representative shall be permitted, at any time, to make additional inspections as deemed necessary by the Engineer. (d) The manufacturer is to submit a 10 lb (5 kg) sample of"
-          }
-        ],
-        "construction_part_b": [
-          {
-            "match": "should normally be \ninitiated by the Contractor",
-            "page": 30,
-            "snippet": "r/Construction Manager or if permitted by the Special Provisions. Requests to work on Sundays and State legal holidays should normally be initiated by the Contractor via a letter to the Construction Engineer. This should be followed by the District\u2019s approval or rejection in a letter to the Contractor. The Standard Specif"
-          },
-          {
-            "match": "Engineer. \nThe Construction Engineer, in turn, will",
-            "page": 34,
-            "snippet": "untered dur ing construction, the Inspector should immediately take steps to preserve them and notify the Construction Engineer. The Construction Engineer, in turn, will advi se the appropriate authorities within the State of the situation and permit them to inspect the site to determine the advisability of salvaging the obj"
-          }
-        ],
-        "construction_part_d": [
-          {
-            "match": "should telephone \nthe Resident Engineer",
-            "page": 4,
-            "snippet": "county and city annotated codes. [107.06] [107.07] (k) Inspectors who are sick or otherwise unable to report for work should telephone the Resident Engineer/Project Supervisor prior to the start of the workday to permit reassignment of personnel for adequate inspection coverage. D1.07 Use of Photographs and Vi"
-          }
-        ],
-        "construction_part_e": [
-          {
-            "match": "should be \nmade clear to the Contractor",
-            "page": 1,
-            "snippet": "survey stakes. These boundaries include right- of-way lines, limit-of-cons truction lines, and wetland boundaries. It should be made clear to the Contractor and adj acent property owners what ingress and egress has been provided for their access to the Project. [105.10] ===== PAGE 2 ===== E200 \u2013 GENERAL EARTHWORK"
-          },
-          {
-            "match": "Inspector should",
-            "page": 5,
-            "snippet": "aring and grubbing, or an y other work, until it has installed all required erosion and sediment control measures. The Inspector should ensure that all erosion and sediment control in stallations are complete and in accordance with the Plans and Specifications before allowing the Contractor t"
-          }
-        ],
-        "construction_part_f": [
-          {
-            "match": "Contractor, although the plant must",
-            "page": 4,
-            "snippet": "f the revolving drum, which affords a mixing action as the drum rotates. The design of the mix plant is left to the Contractor, although the plant must be approved before use. Special Provision 304502 requires that the mix plant should not permit water to be mixed with the cement until the cement has been m"
-          }
-        ]
-      }
-    },
-    {
-      "id": "duty-payment_measurement",
-      "severity": "medium",
-      "kind": "duty_ambiguity",
-      "topic": "payment_measurement",
-      "title": "Duty / modality tension on payment measurement",
-      "summary": "hard duties split across contractor vs Department/engineer \u2014 verify who owns the action. Check snippets for who must act.",
-      "docs": {
-        "standard_specs_2026": [
-          {
-            "match": "Department will",
-            "page": 22,
-            "snippet": "In case of a discrepancy between the electronically printed unit prices and the electronically printed bid amount, the Department will use the electronically printed unit price. In case of a discrepancy between the unit prices contained on the approved electronic media and the unit prices on"
-          },
-          {
-            "match": "Department will",
-            "page": 22,
-            "snippet": "ontained on the approved electronic media and the unit prices on the hard copy generated by the electronic medium, the Department will use the hard copy unit prices. B. Bidders may make last minute substitutions of unit prices on the bid proposal forms by striking a single line through the"
-          }
-        ],
-        "construction_part_b": [
-          {
-            "match": "Contractor must",
-            "page": 3,
-            "snippet": "ormed in conjunction with the Project, and this work is not shown on th e Plans or covered in the Specifications, the Contractor must perform the additional work as requested by the Engineer. Payment for this Additional Work is made at the same Unit Prices contained in the original Proposa"
-          },
-          {
-            "match": "should be noted on the Inspector",
-            "page": 23,
-            "snippet": "k as for the Contract work. However, it ===== PAGE 23 ===== B10.00 \u2013 CONTRACT CHANGES Revised: January 2004 B-23 should be noted on the Inspector\u2019s Daily Reports what portion of an item was Change Order work so that the Contractor is paid only for the work agreed to in the Change Order. (b) Lump Sum."
-          }
-        ],
-        "construction_part_e": [
-          {
-            "match": "Inspector should",
-            "page": 38,
-            "snippet": "are required to be salvaged should have matching co mponents clearly marked immediately prior to disassembly. The Inspector should study all governing speci fications before the Contractor proceeds with this type of work. If the removal is not a lump sum item and is to be paid by measurem"
-          },
-          {
-            "match": "should be the property of the Department",
-            "page": 53,
-            "snippet": "e hatch to the bottom of the distributor. It should be clearly and permanently marked in 1/4\" (mm) increments, and it should be the property of the Department. (b) Method of Measurement or \u201cSticking.\u201d All distributors must be measured or \u201cstuck\u201d before applying the asphalt and again immediately after asphalt dist"
-          }
-        ]
-      }
-    },
-    {
-      "id": "duty-qc_qa_responsibility",
-      "severity": "medium",
-      "kind": "duty_ambiguity",
-      "topic": "qc_qa_responsibility",
-      "title": "Duty / modality tension on qc qa responsibility",
-      "summary": "hard duties split across contractor vs Department/engineer \u2014 verify who owns the action. Check snippets for who must act.",
-      "docs": {
-        "standard_specs_2026": [
-          {
-            "match": "engineer may",
-            "page": 61,
-            "snippet": "ove or correct the materials to comply with the contract. 106.2 Samples, Tests, and Referenced Specifications. A. The engineer may inspect and test materials at any time before, during, or after use in the work. Tests performed by the engineer are for quality assurance and acceptance of t"
-          },
-          {
-            "match": "Department will",
-            "page": 61,
-            "snippet": "aterial quality control is the contractor\u2019s responsibility as stated in Division 1000 of these specifications. B. The Department will perform material tests in accordance with the Department of Highway (DOH), AASHTO, or ASTM test methods current on the date of the advertisement. When a spec"
-          }
-        ],
-        "mat_part_b": [
-          {
-            "match": "Contractor shall",
-            "page": 3,
-            "snippet": "CONTROL, QUALITY ASSURANCE, AND INDEPENDENT ASSURANCE TESTING PROGRAMS B4.01 Quality Control (QC) Requirements. The Contractor shall perform all tests required by the Contract and other tests the Contractor determines are necessary to verify the quality and suitability of all materials use"
-          },
-          {
-            "match": "Engineer.  The contractor\u2019s QC/QA plan \nmust",
-            "page": 3,
-            "snippet": "l/Quality Assurance program is dependent upon the contractor fulfilling all requirements established by the Materi als Engineer. The contractor\u2019s QC/QA plan must be submitted to the Department and will be approved based on conformance to the program. B4.02 Quality Assurance (QA) and Independent Assurance (IA) Requir"
-          }
-        ],
-        "mat_c500": [
-          {
-            "match": "Department may",
-            "page": 2,
-            "snippet": "quality control at any time requested by the Engineer. (c) Before granting approval to furnish certi fied cement, the Department may request that the manufacturer make all production, sampling, and testing facilities available to the Department for insp ection. Thereafter, the Department\u2019"
-          }
-        ]
-      }
-    },
-    {
-      "id": "duty-weather_season",
-      "severity": "medium",
-      "kind": "duty_ambiguity",
-      "topic": "weather_season",
-      "title": "Duty / modality tension on weather season",
-      "summary": "contractor shall/must in some manuals vs contractor may in others. Check snippets for who must act.",
-      "docs": {
-        "standard_specs_2026": [
-          {
-            "match": "engineer may",
-            "page": 75,
-            "snippet": "==== SUBCONTRACTING, NTP, PROGRESS SCHEDULES, SECTION 108 TIME EXTENSIONS; LIQUIDATED DAMAGES; TERMINATION 65 i. The engineer may withhold payment of the Initial Expense pay item until the initial barchart schedule or initial baseline schedule is approved. j. Incorporate weather into th"
-          },
-          {
-            "match": "contractor may",
-            "page": 75,
-            "snippet": "al barchart schedule or initial baseline schedule is approved. j. Incorporate weather into the progress schedule. The contractor may include weather by providing weather days in the schedule calendar or by increasing activity durations. The Department will not allow the contractor to inclu"
-          }
-        ],
-        "construction_part_b": [
-          {
-            "match": "Engineer/Supervisor must",
-            "page": 18,
-            "snippet": "puting excavation or fill quan tities and for identifying potential drainage problems, among other uses. The Project Engineer/Supervisor must ensu re that all preliminary and intermediate crosssections have been taken and recorded before these areas are disturbed. This work must be done by state f"
-          },
-          {
-            "match": "Inspector should",
-            "page": 21,
-            "snippet": "roject site should be recorded, including ma terials stockpiled and completi on percentages for work in progress. The Inspector should also record all wo rk necessary to shut down the Project, such as drainage, weather protection, traffic controls, and security measures. Contract time exten"
-          }
-        ],
-        "construction_part_d": [
-          {
-            "match": "Inspector should",
-            "page": 2,
-            "snippet": "ence and an understanding of the principl es involved in the type of construction to which he or she is assigned. The Inspector should know both how the work is to be done and why it is to be done in a certain wa y. Even technically trained persons should serve for a period under the supervi"
-          },
-          {
-            "match": "will be required on most contracts.  Inspector",
-            "page": 5,
-            "snippet": "nning. As well as other things, pavement markers can be properly located. Videotaping of underdrain and storm sewers will be required on most contracts. Inspector\u2019s supervision of this work is imperative. SECTION D2.00 \u2013 TICKET CONTROL D2.01 General. \u201cTickets,\u201d as the word is used here, should not be confused wit"
-          }
-        ],
-        "construction_part_e": [
-          {
-            "match": "should be the Contractor",
-            "page": 2,
-            "snippet": "ke good such damage or injury at its expense. The manner in which a Contract or preserves and protects such property should be the Contractor\u2019s ch oice as long as it is reas onable and consistent with good construction practice. The Engineer will refrain from directing how this protection should be"
-          },
-          {
-            "match": "Engineer will",
-            "page": 2,
-            "snippet": "y should be the Contractor\u2019s ch oice as long as it is reas onable and consistent with good construction practice. The Engineer will refrain from directing how this protection should be accomplished unles s it is stated in the Plans and Specifications. [107.09] [201.01] [201.03] (f) Care"
-          }
-        ],
-        "construction_part_f": [
-          {
-            "match": "Inspector should",
-            "page": 12,
-            "snippet": "PAGE 12 ===== F715501 \u2013 WICK DRAINS Revised: January 2004 F-12 the Engineer two weeks to review the material. The Inspector should ensure that the Contractor has submitted these samples. The Inspector should also ensure that all other materials have been approved by the Materials and Res"
-          },
-          {
-            "match": "Inspector should",
-            "page": 12,
-            "snippet": "e sequence and method of installation of the wick drains at least two weeks before work begins on this operation. The Inspector should review the sequence and me thod of installation and ensure that the Contractor does not vary from its plan without prior approval from the Engineer. Install"
-          }
-        ],
-        "construction_part_g": [
-          {
-            "match": "Contractor will",
-            "page": 34,
-            "snippet": "rms are out of alignment or not firmly set on the subgrade, there will be variations in the pavement surface that the Contractor will have to correct. A fixed-form paver will typically consist of steel wheels to ride on the forms, a power train, spreading and finishing equipment, and two br"
           }
         ]
       }
@@ -2545,12 +2158,208 @@
       }
     },
     {
-      "id": "opp-required_vs_optional",
-      "severity": "medium",
-      "kind": "opposing_phrases",
+      "id": "roi-duty-acceptance_rejection",
+      "severity": "info",
+      "kind": "region_of_interest",
+      "topic": "acceptance_rejection",
+      "title": "Region of interest: dual actors on acceptance rejection (not an asserted contradiction)",
+      "summary": "Contractor shall\u2026 and Department/engineer will\u2026 both appear here. Often a complementary role split. Use as a pointer \u2014 then absence-scan for QC/QA tiebreaker, Department test response time, and work-continuation while awaiting tests.",
+      "docs": {
+        "standard_specs_2026": [
+          {
+            "match": "Department will",
+            "page": 22,
+            "snippet": "signs the bid proposal and follows each signature with the title \"Joint Venturer.\" 102.7 Irregular Proposals. A. The Department will consider proposals as irregular and will reject the proposals as non- responsive for any of the following reasons if the bidder: 1. Submits proposals on a for"
+          },
+          {
+            "match": "Department may",
+            "page": 24,
+            "snippet": "pen and read proposals publicly at the location and time set for the opening. 102.12 Bidder Disqualification. A. The Department may disqualify a bidder and reject future proposal submissions from the bidder for the following reasons: 1. The bidder defaulted on a previous contract. 2. The"
+          }
+        ],
+        "construction_part_b": [
+          {
+            "match": "Inspector in \ncharge should",
+            "page": 9,
+            "snippet": "terials should be submitted to the Materials and Research Section for approval well in advance of the time of use. The Inspector in charge should ensure that this has been done. The Materials and Research Section, by letter to the Contractor, will approve or reject each sour ce of material. The Inspect"
+          },
+          {
+            "match": "Contractor, will",
+            "page": 9,
+            "snippet": "The Inspector in charge should ensure that this has been done. The Materials and Research Section, by letter to the Contractor, will approve or reject each sour ce of material. The Inspector should include copies of the material approval or disapproval lette rs for all materials in the Proj"
+          }
+        ],
+        "construction_part_d": [
+          {
+            "match": "will be used \nto accomplish the work. The Inspector",
+            "page": 1,
+            "snippet": "d the methods to be used for upcoming stages of construction so that both know what work will be done and what methods will be used to accomplish the work. The Inspector should not wa it to see what the C ontractor is going to do next and how it is going to be done before telli ng the Contractor that its plan is unacceptable."
+          },
+          {
+            "match": "Engineer/Project Supervisor should",
+            "page": 1,
+            "snippet": "ere is a very definite area of Contr actor responsibility, and as long as the Contract is being followed, the Resident Engineer/Project Supervisor should not reje ct the Contractor \u2018s planned means and methods unless they are cl early unsound or unsafe . By rejecting the Contractor\u2019s means or methods, the Resi"
+          }
+        ],
+        "construction_part_e": [
+          {
+            "match": "must be \ninsulated or, if approved by the Engineer",
+            "page": 57,
+            "snippet": "s concrete, making it unacceptable for placement. Trucks hauling bituminous concrete between September 30 and March 31 must be insulated or, if approved by the Engineer, the truck beds may be heated. [401.04] (b) Paving Machines: It is strongly suggested that the Inspector become familiar with the mechanical features of the"
+          },
+          {
+            "match": "Inspector should",
+            "page": 59,
+            "snippet": ", deduct excessive weight as discussed in Subsection D2.02, and record the location where the mixture is placed. The Inspector should check each load for uniformity and check the temperature of the mixtures. [401.03] A truckload of bituminous concrete may be rejected for the following reaso"
+          }
+        ]
+      }
+    },
+    {
+      "id": "roi-duty-qc_qa_responsibility",
+      "severity": "info",
+      "kind": "region_of_interest",
+      "topic": "qc_qa_responsibility",
+      "title": "Region of interest: dual actors on qc qa responsibility (not an asserted contradiction)",
+      "summary": "Contractor shall\u2026 and Department/engineer will\u2026 both appear here. Often a complementary role split. Use as a pointer \u2014 then absence-scan for QC/QA tiebreaker, Department test response time, and work-continuation while awaiting tests.",
+      "docs": {
+        "standard_specs_2026": [
+          {
+            "match": "engineer may",
+            "page": 61,
+            "snippet": "ove or correct the materials to comply with the contract. 106.2 Samples, Tests, and Referenced Specifications. A. The engineer may inspect and test materials at any time before, during, or after use in the work. Tests performed by the engineer are for quality assurance and acceptance of t"
+          },
+          {
+            "match": "Department will",
+            "page": 61,
+            "snippet": "aterial quality control is the contractor\u2019s responsibility as stated in Division 1000 of these specifications. B. The Department will perform material tests in accordance with the Department of Highway (DOH), AASHTO, or ASTM test methods current on the date of the advertisement. When a spec"
+          }
+        ],
+        "mat_part_b": [
+          {
+            "match": "Contractor shall",
+            "page": 3,
+            "snippet": "CONTROL, QUALITY ASSURANCE, AND INDEPENDENT ASSURANCE TESTING PROGRAMS B4.01 Quality Control (QC) Requirements. The Contractor shall perform all tests required by the Contract and other tests the Contractor determines are necessary to verify the quality and suitability of all materials use"
+          },
+          {
+            "match": "Engineer.  The contractor\u2019s QC/QA plan \nmust",
+            "page": 3,
+            "snippet": "l/Quality Assurance program is dependent upon the contractor fulfilling all requirements established by the Materi als Engineer. The contractor\u2019s QC/QA plan must be submitted to the Department and will be approved based on conformance to the program. B4.02 Quality Assurance (QA) and Independent Assurance (IA) Requir"
+          }
+        ],
+        "mat_c500": [
+          {
+            "match": "Department may",
+            "page": 2,
+            "snippet": "quality control at any time requested by the Engineer. (c) Before granting approval to furnish certi fied cement, the Department may request that the manufacturer make all production, sampling, and testing facilities available to the Department for insp ection. Thereafter, the Department\u2019"
+          }
+        ]
+      }
+    },
+    {
+      "id": "roi-opp-approved_equal_vs_no_sub",
+      "severity": "info",
+      "kind": "region_of_interest",
+      "topic": "approved_equal_vs_no_sub",
+      "title": "Region of interest: or-equal language near no-substitute / sole-source cues",
+      "summary": "Two cue families appear in the corpus. This is a review neighborhood, not an asserted contradiction. Skim snippets; escalate only if the same work item is pulled both ways. A-leaning docs: mat_table_b1. B-leaning docs: construction_part_b.",
+      "docs": {
+        "standard_specs_2026 [A]": [
+          {
+            "match": "or equal",
+            "page": 11,
+            "snippet": "isfactory, unsatisfactory, sufficient, insufficient, rejected, condemned, or words with similar intent; mean by or to the Department. 6. The words \"or equal,\" referring to a product, material, or process, means \"equal as determined by the engineer.\" 7. The specifications may present numerical values in "
+          },
+          {
+            "match": "or equal",
+            "page": 52,
+            "snippet": "e notice of intent to file a claim. 2. Prepare a written claim submittal containing at a minimum the following information. a. For claims less than or equal to $250,000: i. A narrative with sufficient information to allow a third party to understand the issue in dispute and its effect on the work. ii. "
+          },
+          {
+            "match": "or equal",
+            "page": 56,
+            "snippet": "actor may appeal the District\u2019s decision to the Department\u2019s Claims Committee. 2. If the amount of the unresolved portion of the claim is less than or equal to $100,000 after the completion of the District\u2019s review, the contractor may appeal the District\u2019s decision to the Secretary for the Secretary\u2019s D"
+          }
+        ],
+        "mat_table_b1 [A]": [
+          {
+            "match": "Approved Equal",
+            "page": 2,
+            "snippet": "ls 251500 Dewatering Filter Fence ft (m) minimum 1 / Source / Contract Certification that Material is Mirafi 140N, Exxon GTF 130D, Amoco 4545 or Approved Equal, Certified to Meet Size Requ irements 252000 Inlet Sediment Control, Drainage Inlet Each minimum 1 / Source / Contract Certification of Geotexti"
+          },
+          {
+            "match": "approved \nequal",
+            "page": 3,
+            "snippet": "otextile to be Mirafi 700X or Erosion 1 (Synthetic Industries), Linq GTF 400E or Poly - Filter X (Carthage Mills), Te rraTex Ep (WEBTEC, Inc.) or an approved equal 259000 Perimeter Dike / Swale, Type A -1 ft (m) minimum 1 / Source / Contract Certification of Mulch, Visual Inspection of Seed, Certification of "
+          },
+          {
+            "match": "approved equal",
+            "page": 3,
+            "snippet": "eotextile to be Mirafi 700X or Erosion 1 (Synthetic Industries ), Linq GTF 400E or Poly-Filter X (Carthage Mills), TerraTex Ep (WEBTEC, Inc.) or an approved equal, Visual Inspection of Riprap for Gradation Requirements 259001 Perimeter Dike / Swale, Type A -2 ft (m) minimum 1 / Source / Contract Certificat"
+          }
+        ],
+        "standard_specs_2026 [B]": [
+          {
+            "match": "Do not substitute",
+            "page": 260,
+            "snippet": ". Do not splice bars, except as indicated in the contract. If allowed, lap the reinforcement bars in accordance with the contract and wire together. Do not substitute alternate bars unless approved by the engineer. 6. In lapped splices, place and wire the bars maintaining the minimum distance to the surface of t"
+          },
+          {
+            "match": "No substitut",
+            "page": 633,
+            "snippet": " shall conform to names accepted in the nursery trade. Size and grading shall conform to those listed in AAN's American Standards for Nursery Stock. No substitutions are allowed except by written permission of the engineer. E. Availability The engineer, after receiving a written request from the contractor "
+          }
+        ],
+        "construction_part_b [B]": [
+          {
+            "match": "No substitut",
+            "page": 12,
+            "snippet": " make a recommendation in the usual manner, but must eval uate the request in the light of whether the change is in the best interest of the State. No substitution for an approved DBE subcontractor will be allowed without approval from the Contract Administration Section. It is stressed that such substituti"
+          }
+        ]
+      }
+    },
+    {
+      "id": "roi-opp-department_test_vs_contractor_test",
+      "severity": "info",
+      "kind": "region_of_interest",
+      "topic": "department_test_vs_contractor_test",
+      "title": "Region of interest: dual testing actors (usually complementary \u2014 not a contradiction)",
+      "summary": "Two cue families appear in the corpus. This is a review neighborhood, not an asserted contradiction. Default reading: complementary roles (who tests what). Next step: absence-scan for tiebreaker, response time, work-continuation. A-leaning docs: standard_specs_2026. B-leaning docs: mat_part_b.",
+      "docs": {
+        "standard_specs_2026 [A]": [
+          {
+            "match": "Department will perform",
+            "page": 48,
+            "snippet": "ion. A. Maintain the work during construction every day to keep the roadway and structures in an acceptable condition until project acceptance. The Department will perform snow removal unless the contract specifically assigns this responsibility to the contractor. The Department will mow the grass outside the LOC. B."
+          },
+          {
+            "match": "Department will perform",
+            "page": 61,
+            "snippet": " and acceptance of the work. Material quality control is the contractor\u2019s responsibility as stated in Division 1000 of these specifications. B. The Department will perform material tests in accordance with the Department of Highway (DOH), AASHTO, or ASTM test methods current on the date of the advertisement. When a sp"
+          },
+          {
+            "match": "Department will perform",
+            "page": 114,
+            "snippet": "ent of the natural ground under the embankment. 2. Compact lifts in embankment areas, other than rock, in accordance with Section 202.3.8.D. 3. The Department will perform compaction and moisture tests once the contractor tests the stability of the lift in accordance with Section 202.3.8.F. 202.3.3 Excavation. A. Exc"
+          }
+        ],
+        "mat_part_b [B]": [
+          {
+            "match": "Contractor shall perform all tests required by \nthe Contract and other tests the",
+            "page": 3,
+            "snippet": " ===== SECTION B4.00 \u2013 QUALITY CONTROL, QUALITY ASSURANCE, AND INDEPENDENT ASSURANCE TESTING PROGRAMS B4.01 Quality Control (QC) Requirements. The Contractor shall perform all tests required by the Contract and other tests the Contractor determines are necessary to verify the quality and suitability of all materials used in the Project. For all required tests, the Contractor shall submit test results or samples as re"
+          }
+        ]
+      }
+    },
+    {
+      "id": "roi-opp-required_vs_optional",
+      "severity": "info",
+      "kind": "region_of_interest",
       "topic": "required_vs_optional",
-      "title": "Required-language in one manual vs optional-language in another",
-      "summary": "Opposing cues appear across the corpus. Docs emphasizing A: construction_part_b, construction_part_f, mat_part_b. ",
+      "title": "Region of interest: required-language near optional-language",
+      "summary": "Two cue families appear in the corpus. This is a review neighborhood, not an asserted contradiction. Skim snippets; escalate only if the same work item is pulled both ways. A-leaning docs: construction_part_b, construction_part_f, mat_part_b. B-leaning docs: \u2014.",
       "docs": {
         "standard_specs_2026 [A]": [
           {
@@ -2736,12 +2545,12 @@
       }
     },
     {
-      "id": "opp-stop_work_vs_continue",
-      "severity": "medium",
-      "kind": "opposing_phrases",
+      "id": "roi-opp-stop_work_vs_continue",
+      "severity": "info",
+      "kind": "region_of_interest",
       "topic": "stop_work_vs_continue",
-      "title": "Stop/suspend work vs continue/do-not-delay cues",
-      "summary": "Opposing cues appear across the corpus. Docs emphasizing A: construction_part_b, construction_part_e, construction_part_f. ",
+      "title": "Region of interest: stop/suspend cues near continue/do-not-delay cues",
+      "summary": "Two cue families appear in the corpus. This is a review neighborhood, not an asserted contradiction. Skim snippets; escalate only if the same work item is pulled both ways. A-leaning docs: construction_part_b, construction_part_e, construction_part_f. B-leaning docs: \u2014.",
       "docs": {
         "standard_specs_2026 [A]": [
           {

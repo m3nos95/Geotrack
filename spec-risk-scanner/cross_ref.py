@@ -303,7 +303,7 @@ def find_numeric_conflicts(claims: list[dict]) -> list[dict]:
 
 
 def find_duty_conflicts(claims: list[dict]) -> list[dict]:
-    """Same topic: one doc says contractor shall, another says department will / may."""
+    """Multi-actor duty clusters → regions of interest (NOT asserted contradictions)."""
     by_topic: dict[str, list] = defaultdict(list)
     for c in claims:
         for topic in c["topics"]:
@@ -312,10 +312,7 @@ def find_duty_conflicts(claims: list[dict]) -> list[dict]:
             by_topic[topic].append(c)
 
     findings = []
-    hard = {"shall", "must", "will"}
-    soft = {"may", "should"}
     for topic, items in by_topic.items():
-        # actor+modal pairs by doc
         pairs_by_doc: dict[str, set] = defaultdict(set)
         examples: dict[str, list] = defaultdict(list)
         for c in items:
@@ -325,35 +322,17 @@ def find_duty_conflicts(claims: list[dict]) -> list[dict]:
         if len(pairs_by_doc) < 2:
             continue
 
-        # Look for contractor hard-duty in one doc and department hard-duty or soft contractor in another
-        conflict = False
-        detail = []
         docs_with_contractor_shall = {
-            d for d, pairs in pairs_by_doc.items() if ("contractor", "shall") in pairs or ("contractor", "must") in pairs
+            d for d, pairs in pairs_by_doc.items()
+            if ("contractor", "shall") in pairs or ("contractor", "must") in pairs
         }
-        docs_with_contractor_may = {
-            d for d, pairs in pairs_by_doc.items() if ("contractor", "may") in pairs
+        docs_with_dept_will = {
+            d for d, pairs in pairs_by_doc.items()
+            if ("department", "will") in pairs or ("engineer", "will") in pairs
         }
-        docs_with_dept_shall = {
-            d
-            for d, pairs in pairs_by_doc.items()
-            if ("department", "shall") in pairs
-            or ("department", "will") in pairs
-            or ("engineer", "will") in pairs
-        }
-        if docs_with_contractor_shall and docs_with_contractor_may and docs_with_contractor_shall != docs_with_contractor_may:
-            # only flag if a doc exclusive to may exists
-            if docs_with_contractor_may - docs_with_contractor_shall:
-                conflict = True
-                detail.append("contractor shall/must in some manuals vs contractor may in others")
-        if docs_with_contractor_shall and docs_with_dept_shall:
-            # both claiming hard duty on same topic — often OK (split roles) but worth review when snippets conflict
-            # Flag when same topic has contractor shall AND engineer will for testing/acceptance
-            if topic in {"qc_qa_responsibility", "acceptance_rejection", "sampling_frequency", "payment_measurement"}:
-                conflict = True
-                detail.append("hard duties split across contractor vs Department/engineer — verify who owns the action")
-
-        if not conflict:
+        if topic not in {"qc_qa_responsibility", "acceptance_rejection", "sampling_frequency"}:
+            continue
+        if not (docs_with_contractor_shall and docs_with_dept_will):
             continue
 
         docs_payload = {
@@ -362,12 +341,20 @@ def find_duty_conflicts(claims: list[dict]) -> list[dict]:
         }
         findings.append(
             {
-                "id": f"duty-{topic}",
-                "severity": "medium",
-                "kind": "duty_ambiguity",
+                "id": f"roi-duty-{topic}",
+                "severity": "info",
+                "kind": "region_of_interest",
                 "topic": topic,
-                "title": f"Duty / modality tension on {topic.replace('_',' ')}",
-                "summary": "; ".join(detail) + ". Check snippets for who must act.",
+                "title": (
+                    f"Region of interest: dual actors on {topic.replace('_', ' ')} "
+                    "(not an asserted contradiction)"
+                ),
+                "summary": (
+                    "Contractor shall… and Department/engineer will… both appear here. "
+                    "Often a complementary role split. Use as a pointer — then absence-scan "
+                    "for QC/QA tiebreaker, Department test response time, and work-continuation "
+                    "while awaiting tests."
+                ),
                 "docs": docs_payload,
             }
         )
@@ -383,7 +370,6 @@ def find_glossary_vs_specs(docs: dict[str, dict]) -> list[dict]:
 
     def definitions(text: str) -> dict[str, str]:
         defs = {}
-        # Lines like "Term. Definition..." or "Term - Definition"
         for m in re.finditer(
             r"(?m)^(?P<term>[A-Z][A-Za-z0-9 /\-()]{2,60})\.\s+(?P<body>.{20,400})",
             text,
@@ -395,7 +381,6 @@ def find_glossary_vs_specs(docs: dict[str, dict]) -> list[dict]:
         return defs
 
     gdefs = definitions(gloss)
-    # Specs definitions section — search around 101.3
     idx = specs.lower().find("101.3 definitions")
     chunk = specs[idx : idx + 50000] if idx >= 0 else specs[:80000]
     sdefs = definitions(chunk)
@@ -405,7 +390,6 @@ def find_glossary_vs_specs(docs: dict[str, dict]) -> list[dict]:
     for term in sorted(shared)[:80]:
         g = gdefs[term].lower()
         s = sdefs[term].lower()
-        # crude dissimilarity: low token overlap
         gt = set(re.findall(r"[a-z]{4,}", g))
         st = set(re.findall(r"[a-z]{4,}", s))
         if not gt or not st:
@@ -436,48 +420,53 @@ def find_glossary_vs_specs(docs: dict[str, dict]) -> list[dict]:
 
 
 def find_phrase_oppositions(docs: dict[str, dict]) -> list[dict]:
-    """Classic opposing phrase pairs across different docs."""
+    """Phrase co-occurrence neighborhoods → regions of interest (not contradictions)."""
     pairs = [
         (
             "required_vs_optional",
             r"\b(?:is\s+required|shall\s+be\s+required|must\s+be\s+provided)\b",
             r"\b(?:optional|not\s+required|at\s+the\s+contractor.?s\s+option|may\s+be\s+omitted)\b",
-            "Required-language in one manual vs optional-language in another",
+            "Region of interest: required-language near optional-language",
+            False,
         ),
         (
             "approved_equal_vs_no_sub",
             r"\bor\s+equal\b|\bapproved\s+equal\b",
             r"\bno\s+substitut|\bdo\s+not\s+substitute|\bsole\s+source\b",
-            "Or-equal / substitution path vs no-substitute / sole-source language",
+            "Region of interest: or-equal language near no-substitute / sole-source cues",
+            False,
         ),
         (
             "department_test_vs_contractor_test",
             r"\bdepartment\s+will\s+(?:test|sample|perform)\b|\bengineer\s+will\s+(?:test|sample)\b",
             r"\bcontractor\s+shall\s+(?:test|sample|perform\s+.*test)",
-            "Who tests: Department/engineer vs contractor",
+            "Region of interest: dual testing actors (usually complementary — not a contradiction)",
+            True,
         ),
         (
             "stop_work_vs_continue",
             r"\bstop\s+work\b|\bsuspend\s+(?:work|operations)\b|\bdo\s+not\s+proceed\b",
             r"\bcontinue\s+work\b|\bwork\s+may\s+proceed\b|\bdo\s+not\s+delay\b",
-            "Stop/suspend work vs continue/do-not-delay cues",
+            "Region of interest: stop/suspend cues near continue/do-not-delay cues",
+            False,
         ),
         (
             "weather_pay_vs_no_pay",
             r"\bweather\b.{0,60}\b(?:time\s+extension|additional\s+compensation|excusable)\b",
             r"\bweather\b.{0,60}\b(?:no\s+additional\s+compensation|non-?excusable|at\s+the\s+contractor.?s\s+expense)\b",
-            "Weather treated as excusable/compensable vs contractor risk",
+            "Region of interest: weather treated as excusable near contractor-risk cues",
+            False,
         ),
     ]
     findings = []
-    for pid, pat_a, pat_b, title in pairs:
+    for pid, pat_a, pat_b, title, complementary_default in pairs:
         docs_a = {}
         docs_b = {}
         for doc_id, doc in docs.items():
             text = doc.get("text") or ""
             if not text:
                 continue
-            for label, pat, bucket in (("a", pat_a, docs_a), ("b", pat_b, docs_b)):
+            for pat, bucket in ((pat_a, docs_a), (pat_b, docs_b)):
                 hits = []
                 for m in re.finditer(pat, text, re.I | re.S):
                     local = text[max(0, m.start() - 30) : m.end() + 30]
@@ -496,35 +485,42 @@ def find_phrase_oppositions(docs: dict[str, dict]) -> list[dict]:
                         break
                 if hits:
                     bucket[doc_id] = hits
-        # Need opposing phrases in different doc sets
         if not docs_a or not docs_b:
             continue
-        if set(docs_a) & set(docs_b) == set(docs_a) | set(docs_b) and len(docs_a) == 1:
-            # only one doc has both — weaker
-            sev = "low"
-        else:
-            sev = "medium"
-        # Prefer cases where some docs only on A and some only on B
         only_a = set(docs_a) - set(docs_b)
         only_b = set(docs_b) - set(docs_a)
-        if only_a and only_b:
-            sev = "high"
+        summary = (
+            "Two cue families appear in the corpus. "
+            "This is a review neighborhood, not an asserted contradiction. "
+        )
+        if complementary_default:
+            summary += (
+                "Default reading: complementary roles (who tests what). "
+                "Next step: absence-scan for tiebreaker, response time, work-continuation. "
+            )
+        else:
+            summary += "Skim snippets; escalate only if the same work item is pulled both ways. "
+        if only_a or only_b:
+            summary += (
+                f"A-leaning docs: {', '.join(sorted(only_a)[:5]) or '—'}. "
+                f"B-leaning docs: {', '.join(sorted(only_b)[:5]) or '—'}."
+            )
         findings.append(
             {
-                "id": f"opp-{pid}",
-                "severity": sev,
-                "kind": "opposing_phrases",
+                "id": f"roi-opp-{pid}",
+                "severity": "info",
+                "kind": "region_of_interest",
                 "topic": pid,
                 "title": title,
-                "summary": (
-                    "Opposing cues appear across the corpus. "
-                    + (f"Docs emphasizing A: {', '.join(sorted(only_a)[:5])}. " if only_a else "")
-                    + (f"Docs emphasizing B: {', '.join(sorted(only_b)[:5])}." if only_b else "")
-                ),
-                "docs": {**{f"{d} [A]": h for d, h in docs_a.items()}, **{f"{d} [B]": h for d, h in docs_b.items()}},
+                "summary": summary,
+                "docs": {
+                    **{f"{d} [A]": h for d, h in docs_a.items()},
+                    **{f"{d} [B]": h for d, h in docs_b.items()},
+                },
             }
         )
     return findings
+
 
 
 def load_corpus() -> dict[str, dict]:
@@ -625,6 +621,7 @@ def _snips(text: str, pats: list[str], limit: int) -> list[dict]:
 def render_html(findings: list[dict], docs_meta: list[dict]) -> str:
     # Focus HTML on high/medium; include low count in stats
     focus = [f for f in findings if f["severity"] in ("high", "medium")]
+    rois = [f for f in findings if f.get("kind") == "region_of_interest"]
     cards = []
     for f in focus:
         doc_blocks = []
@@ -653,6 +650,7 @@ def render_html(findings: list[dict], docs_meta: list[dict]) -> str:
     high = sum(1 for f in findings if f["severity"] == "high")
     med = sum(1 for f in findings if f["severity"] == "medium")
     low = sum(1 for f in findings if f["severity"] == "low")
+    info = sum(1 for f in findings if f["severity"] == "info")
     by_kind = defaultdict(int)
     by_topic = defaultdict(int)
     for f in findings:
@@ -696,13 +694,14 @@ code {{ background:#eef3f0; padding:0 .25rem; }}
 <header>
   <div class="brand">DelDOT · Cross-publication discovery</div>
   <h1>Inconsistencies beyond a single theme</h1>
-  <p class="sub">Automated sweep for numeric mismatches, duty/modality tension,
-  opposing phrases, and definition drift across Specs, Materials Manual, and
-  Construction Manual. Review prompts — not fault findings.</p>
+  <p class="sub">Automated sweep for numeric mismatches and definition drift.
+  Dual-actor / phrase neighborhoods are labeled <em>regions of interest</em>
+  (not contradictions). For missing closing clauses, use absence_scan.py.</p>
   <div class="stats">
     <div class="stat"><b>{high}</b> high</div>
     <div class="stat"><b>{med}</b> medium</div>
     <div class="stat"><b>{low}</b> low</div>
+    <div class="stat"><b>{info}</b> ROI / info</div>
     <div class="stat"><b>{len(findings)}</b> total</div>
   </div>
   <div class="columns">
@@ -712,7 +711,8 @@ code {{ background:#eef3f0; padding:0 .25rem; }}
   <p><strong>Corpus</strong></p><ul>{doc_list}</ul>
 </header>
 <main>
-  <p class="sub">Showing high/medium findings ({len(focus)}). Full set in JSON.</p>
+  <p class="sub">Showing high/medium findings ({len(focus)}). ROI items are in JSON
+  (severity=info) — use absence_findings.html for missing closing clauses.</p>
   {''.join(cards)}
 </main>
 <footer>Generated {html.escape(datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M UTC'))}</footer>

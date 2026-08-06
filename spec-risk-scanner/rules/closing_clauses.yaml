@@ -1,0 +1,126 @@
+# Expected "closing clauses" — provisions that close a known claims exposure.
+# Absence scan reports where these are NOT found (or only weakly present).
+# Review prompts, not legal conclusions.
+
+clauses:
+  - id: covering_work_notice
+    title: Notice before covering work / opportunity to inspect
+    risk: >
+      Without a clear contractor duty to notify before covering, and a right
+      for the Department to inspect before cover-up, disputes arise over
+      buried work and uncovering costs.
+    severity_if_absent: high
+    # Strong closers — any one found = present
+    present_patterns:
+      - '\bbefore\s+covering\b'
+      - '\bnotice\s+before\s+(?:covering|placing|concealing)\b'
+      - '\buncover\s+finished\s+work\b'
+      - '\bopportunity\s+to\s+inspect\b'
+      - '\bwithout\s+inspection\b.{0,80}\b(?:removed|replace|expense)\b'
+    # Docs where we most expect this (used for severity / notes)
+    expect_in:
+      - standard_specs_2026
+    related_sections: ["105", "106"]
+
+  - id: dept_test_response_time
+    title: Stated response / turnaround time for Department testing or inspection
+    risk: >
+      If Specs assign tests to the Department but give no clock for results
+      or inspection, contractors claim delay/standby while waiting on QA.
+    severity_if_absent: high
+    present_patterns:
+      # Must tie a numeric time to Department/engineer testing or inspection action
+      - '\b(?:department|engineer)\s+will\s+(?:test|sample|inspect|respond|complete).{0,80}\bwithin\s+\d+\s+(?:working\s+)?(?:days?|hours?)\b'
+      - '\bwithin\s+\d+\s+(?:working\s+)?(?:days?|hours?).{0,80}\b(?:department|engineer)\s+will\s+(?:test|sample|inspect|respond)\b'
+      - '\btesting\s+(?:turnaround|response)\s+time\b'
+      - '\bresults?\s+(?:within|in)\s+\d+\s+(?:working\s+)?(?:days?|hours?)\b.{0,60}\b(?:department|engineer|laboratory)\b'
+    expect_in:
+      - standard_specs_2026
+      - mat_part_b
+    related_sections: ["105", "106", "108", "B4"]
+
+  - id: work_continuation_awaiting_tests
+    title: Work-continuation / standby rule while awaiting Department tests
+    risk: >
+      Missing rule for whether placement may proceed, must wait, or earns
+      standby/time when waiting on Department sampling/testing.
+    severity_if_absent: high
+    present_patterns:
+      - '\b(?:may|shall)\s+(?:not\s+)?proceed.{0,60}\b(?:until|pending|before).{0,40}\b(?:test|sample|inspect|approval)\b'
+      - '\bawait(?:ing)?\s+(?:test|sampling|inspection|approval)\b'
+      - '\bstandby\b.{0,80}\b(?:test|sampling|inspection)\b'
+      - '\b(?:test|sampling|inspection)\b.{0,80}\bstandby\b'
+      - '\bdelay\b.{0,60}\b(?:test|sampling|inspection)\b.{0,60}\b(?:time\s+extension|compensat)'
+      - '\bdo\s+not\s+(?:place|cover|proceed).{0,40}\buntil.{0,40}\b(?:tested|sampled|inspected|approved)\b'
+    expect_in:
+      - standard_specs_2026
+    related_sections: ["105", "106", "108", "109"]
+
+  - id: qc_qa_tiebreaker
+    title: Tiebreaker when QC and QA (or split-sample) results disagree
+    risk: >
+      Dual testing programs without a stated governing result, retest path,
+      or referee method leave acceptance fights open-ended.
+    severity_if_absent: high
+    present_patterns:
+      - '\b(?:QC|quality\s+control).{0,60}\b(?:QA|quality\s+assurance).{0,60}\b(?:disagree|discrepan|conflict|differ)\b'
+      - '\b(?:disagree|discrepan|conflict).{0,60}\b(?:QC|QA|test\s+result|split\s+sample)\b'
+      - '\btie.?breaker\b'
+      - '\breferee\s+(?:lab|test|sample)\b'
+      - '\bindependent\s+(?:lab|laboratory|third.party).{0,40}\b(?:decide|govern|resolve)\b'
+      - '\bgoverning\s+(?:test|result|sample)\b'
+      - '\bIA\b.{0,80}\b(?:disagree|discrepan|comparison|investigate)\b'
+      - '\bsplit\s+sample.{0,80}\b(?:disagree|discrepan|investigate|resolve)\b'
+    expect_in:
+      - standard_specs_2026
+      - mat_part_b
+    related_sections: ["106", "B4"]
+
+  - id: retest_procedure
+    title: Retest procedure after failing or disputed results
+    risk: >
+      Without who orders retest, who pays, and what governs after retest,
+      failed materials become negotiation instead of process.
+    severity_if_absent: medium
+    present_patterns:
+      - '\bre-?test\b'
+      - '\bre-?sample\b'
+      - '\bre-?inspect\b'
+      - '\bfailing\s+(?:test|sample|result).{0,100}\b(?:re-?test|remove|replace)\b'
+      - '\bat\s+the\s+contractor.?s\s+(?:expense|cost).{0,40}\bre-?test\b'
+      - '\bre-?test.{0,40}\bat\s+the\s+contractor.?s\s+(?:expense|cost)\b'
+    expect_in:
+      - standard_specs_2026
+      - mat_part_b
+    related_sections: ["106"]
+
+  - id: dispute_resolution_testing
+    title: Dispute-resolution / referee testing path
+    risk: >
+      No path to an agreed third-party or stated resolution method when
+      acceptance testing is contested.
+    severity_if_absent: medium
+    present_patterns:
+      - '\breferee\b'
+      - '\bthird.party\s+(?:lab|laboratory|test)\b'
+      - '\bAASHTO.accredited\b.{0,60}\b(?:dispute|referee|independent)\b'
+      - '\bdispute.{0,40}\b(?:test|sample|lab)\b'
+      - '\bresolution.{0,40}\b(?:test|sample)\b'
+    expect_in:
+      - standard_specs_2026
+      - mat_part_b
+    related_sections: ["105", "106"]
+
+  - id: testing_delay_time_extension
+    title: Time extension / compensation when Department testing causes delay
+    risk: >
+      Silence on whether Department-caused testing delay is excusable or
+      compensable leaves standby/delay claims under-specified (check §108/§109).
+    severity_if_absent: medium
+    present_patterns:
+      - '\bdelay\b.{0,80}\b(?:testing|sampling|inspection)\b.{0,80}\b(?:time\s+extension|excusable|compensat)'
+      - '\b(?:testing|sampling|inspection)\b.{0,80}\bdelay\b.{0,80}\b(?:time\s+extension|excusable|compensat)'
+      - '\bDepartment\s+will\s+(?:grant|pay).{0,40}\b(?:time\s+extension|standby|delay).{0,60}\b(?:test|inspect)'
+    expect_in:
+      - standard_specs_2026
+    related_sections: ["108", "109"]
