@@ -133,25 +133,32 @@ categories:
     severity: high
     description: >
       Testing methods/frequencies that field and lab staff cannot realistically
-      perform at the stated rate — a known claims vector (RT 301 / Tutor Perini:
-      full T99 promised instead of one-point).
+      perform at the stated rate. RT 301 / Tutor Perini: lab could not sustain
+      liquid/plastic limits (AASHTO T89/T90) at Table B-1 rates.
     patterns:
-      - id: full_t99_method
+      - id: atterberg_limits
         severity: high
+        regex: '\b(?:AASHTO\s+)?T\s*-?\s*89\b|\b(?:AASHTO\s+)?T\s*-?\s*90\b|\b(?:liquid|plastic)\s+limit|\bAtterberg\b|\bplasticity\s+index\b'
+        note: >
+          Liquid/plastic limits (T89/T90) — RT 301 bottleneck. Confirm Table B-1
+          frequency is lab-sustainable; do not require LL/PL on every density sample
+          by default.
+      - id: full_t99_method
+        severity: medium
         regex: '\b(?:AASHTO\s+)?T\s*-?\s*99(?:M)?\b(?:\s*\([^)]*Method\s*C[^)]*\))?'
         note: >
-          Full multi-point T99 is slow. Confirm one-point / T272 family-of-curves
-          is allowed for production control, especially on high-yd³ earthwork.
+          Full multi-point T99 adds lab load on the same Table B-1 sample events as
+          Atterbergs. Related capacity risk; RT 301’s exploited miss was LL/PL.
       - id: t180_proctor
-        severity: high
+        severity: medium
         regex: '\b(?:AASHTO\s+)?T\s*-?\s*180\b'
-        note: Modified Proctor — even heavier than T99; check capacity and alts
+        note: Modified Proctor — heavy companion test; check capacity
       - id: increase_sampling_rates
         severity: high
         regex: '\bincrease\s+the\s+sampling\s+rates?\b'
         note: >
-          Engineer may raise rates above Table B-1 minimums — claims risk if
-          staffing cannot absorb the increase
+          Engineer may raise rates above Table B-1 minimums — claims risk if lab
+          (esp. Atterbergs) cannot absorb the increase
       - id: double_testing_frequency
         severity: high
         regex: '\bdouble\s+the\s+testing\s+frequency\b'
@@ -161,13 +168,13 @@ categories:
         regex: '\bMaterials\s+Manual\b'
         note: >
           Specs defer testing detail to Materials Manual / Table B-1 — scan those
-          docs for unrealistic T99 frequencies, not just the Standard Specs
+          docs for Atterberg (T89/T90) frequencies, not just the Standard Specs
       - id: missing_one_point_language
-        severity: medium
+        severity: low
         regex: '\bmaximum\s+density\b'
         note: >
-          "Maximum density" without citing one-point/T272 leaves Table B-1 full
-          T99 as the controlling method — verify operational path
+          Density acceptance language — verify whether companion Atterbergs are
+          required at the same frequency in Table B-1
 
 # Extra heuristics applied in code (not regex-only):
 heuristics:

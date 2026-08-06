@@ -1,16 +1,63 @@
 {
   "summary": {
+    "rows_parsed": 150,
+    "rows_with_atterberg": 146,
     "rows_with_t99": 107,
     "full_t99_without_alt": 103,
-    "t99_with_t272_alt": 4
+    "atterberg_findings": 24,
+    "t99_findings": 103
   },
   "findings": [
     {
-      "id": "table-b1-t99-202000-1 / 1000 ( 1 / 750 )",
-      "rule_id": "full_t99_no_one_point",
+      "id": "table-b1-atterberg-0-202000-1 / 1000 ( 1 / 750 )",
+      "rule_id": "atterberg_at_frequency",
       "category": "testing_capacity_risk",
       "severity": "high",
-      "note": "Table B-1 lists full AASHTO T99 without T272 / one-point alternative. On high-volume earthwork this can exceed field/lab capacity (RT 301 lesson: Tutor Perini exploited missed testing frequencies).",
+      "note": "Table B-1 requires liquid/plastic limits (AASHTO T89/T90) at this frequency. RT 301 lesson: the lab could not sustain Atterberg throughput; Tutor Perini later exploited missed LL/PL testing.",
+      "match": "T89/T90 at Table B-1 frequency",
+      "page": null,
+      "section_id": "202000",
+      "section_header": "Excavation and Embankment yd3 (m3)",
+      "snippet": "202000 Excavation and Embankment yd3 (m3) 1 / 1000 ( 1 / 750 ) T88, T89, T90, T99 (M ethod C), T310",
+      "item": "202000",
+      "frequency": {
+        "kind": "per_unit",
+        "every": 1000,
+        "raw": "1 / 1000 ( 1 / 750 )"
+      },
+      "tests": "T88, T89, T90, T99 (M ethod C), T310",
+      "capacity_scenarios": {
+        "medium_earthwork_50k_cy": {
+          "samples": 50,
+          "every": 1000,
+          "quantity": 50000,
+          "proctor_mode": "full_t99",
+          "est_atterberg_lab_hours": 175.0,
+          "est_proctor_lab_hours": 250.0,
+          "est_field_density_hours": 25.0,
+          "est_total_lab_hours": 425.0,
+          "label": "50,000 yd\u00b3 embankment/borrow"
+        },
+        "large_earthwork_200k_cy": {
+          "samples": 200,
+          "every": 1000,
+          "quantity": 200000,
+          "proctor_mode": "full_t99",
+          "est_atterberg_lab_hours": 700.0,
+          "est_proctor_lab_hours": 1000.0,
+          "est_field_density_hours": 100.0,
+          "est_total_lab_hours": 1700.0,
+          "label": "200,000 yd\u00b3 embankment/borrow (RT-301-scale)"
+        }
+      },
+      "source": "Table B-1 quantities list"
+    },
+    {
+      "id": "table-b1-t99-0-202000-1 / 1000 ( 1 / 750 )",
+      "rule_id": "full_t99_no_one_point",
+      "category": "testing_capacity_risk",
+      "severity": "medium",
+      "note": "Same Table B-1 row also lists full AASHTO T99 without T272/one-point alt \u2014 adds Proctor lab load on top of Atterbergs. Related capacity risk; RT 301\u2019s exploited miss was LL/PL.",
       "match": "T99 without T272/one-point",
       "page": null,
       "section_id": "202000",
@@ -26,31 +73,167 @@
       "capacity_scenarios": {
         "medium_earthwork_50k_cy": {
           "samples": 50,
-          "mode": "full_t99",
-          "est_lab_hours": 350.0,
-          "est_field_density_hours": 25.0,
-          "quantity": 50000,
           "every": 1000,
+          "quantity": 50000,
+          "proctor_mode": "full_t99",
+          "est_atterberg_lab_hours": 175.0,
+          "est_proctor_lab_hours": 250.0,
+          "est_field_density_hours": 25.0,
+          "est_total_lab_hours": 425.0,
           "label": "50,000 yd\u00b3 embankment/borrow"
         },
         "large_earthwork_200k_cy": {
           "samples": 200,
-          "mode": "full_t99",
-          "est_lab_hours": 1400.0,
-          "est_field_density_hours": 100.0,
-          "quantity": 200000,
           "every": 1000,
+          "quantity": 200000,
+          "proctor_mode": "full_t99",
+          "est_atterberg_lab_hours": 700.0,
+          "est_proctor_lab_hours": 1000.0,
+          "est_field_density_hours": 100.0,
+          "est_total_lab_hours": 1700.0,
           "label": "200,000 yd\u00b3 embankment/borrow (RT-301-scale)"
         }
       },
       "source": "Table B-1 quantities list"
     },
     {
-      "id": "table-b1-t99-Structures yd3 (m3)-1 / 1000 ( 1 / 750 )",
-      "rule_id": "full_t99_no_one_point",
+      "id": "table-b1-atterberg-1-202534-1 / 1000 ( 1 / 750 )",
+      "rule_id": "atterberg_at_frequency",
       "category": "testing_capacity_risk",
       "severity": "high",
-      "note": "Table B-1 lists full AASHTO T99 without T272 / one-point alternative. On high-volume earthwork this can exceed field/lab capacity (RT 301 lesson: Tutor Perini exploited missed testing frequencies).",
+      "note": "Table B-1 requires liquid/plastic limits (AASHTO T89/T90) at this frequency. RT 301 lesson: the lab could not sustain Atterberg throughput; Tutor Perini later exploited missed LL/PL testing.",
+      "match": "T89/T90 at Table B-1 frequency",
+      "page": null,
+      "section_id": "202534",
+      "section_header": "Clay Liner yd2 (m2) minimum",
+      "snippet": "202534 Clay Liner yd2 (m2) minimum 1 / 1000 ( 1 / 750 ) T88, T89, T90",
+      "item": "202534",
+      "frequency": {
+        "kind": "per_unit",
+        "every": 1000,
+        "raw": "1 / 1000 ( 1 / 750 )"
+      },
+      "tests": "T88, T89, T90",
+      "capacity_scenarios": {
+        "medium_earthwork_50k_cy": {
+          "samples": 50,
+          "every": 1000,
+          "quantity": 50000,
+          "proctor_mode": "none",
+          "est_atterberg_lab_hours": 175.0,
+          "est_proctor_lab_hours": 0.0,
+          "est_field_density_hours": 0.0,
+          "est_total_lab_hours": 175.0,
+          "label": "50,000 yd\u00b3 embankment/borrow"
+        },
+        "large_earthwork_200k_cy": {
+          "samples": 200,
+          "every": 1000,
+          "quantity": 200000,
+          "proctor_mode": "none",
+          "est_atterberg_lab_hours": 700.0,
+          "est_proctor_lab_hours": 0.0,
+          "est_field_density_hours": 0.0,
+          "est_total_lab_hours": 700.0,
+          "label": "200,000 yd\u00b3 embankment/borrow (RT-301-scale)"
+        }
+      },
+      "source": "Table B-1 quantities list"
+    },
+    {
+      "id": "table-b1-atterberg-2-202543-1 / 1000 ( 1 / 750 )",
+      "rule_id": "atterberg_at_frequency",
+      "category": "testing_capacity_risk",
+      "severity": "high",
+      "note": "Table B-1 requires liquid/plastic limits (AASHTO T89/T90) at this frequency. RT 301 lesson: the lab could not sustain Atterberg throughput; Tutor Perini later exploited missed LL/PL testing.",
+      "match": "T89/T90 at Table B-1 frequency",
+      "page": null,
+      "section_id": "202543",
+      "section_header": "Clay Fill yd3 (m3) minimum",
+      "snippet": "202543 Clay Fill yd3 (m3) minimum 1 / 1000 ( 1 / 750 ) T88, T89, T90",
+      "item": "202543",
+      "frequency": {
+        "kind": "per_unit",
+        "every": 1000,
+        "raw": "1 / 1000 ( 1 / 750 )"
+      },
+      "tests": "T88, T89, T90",
+      "capacity_scenarios": {
+        "medium_earthwork_50k_cy": {
+          "samples": 50,
+          "every": 1000,
+          "quantity": 50000,
+          "proctor_mode": "none",
+          "est_atterberg_lab_hours": 175.0,
+          "est_proctor_lab_hours": 0.0,
+          "est_field_density_hours": 0.0,
+          "est_total_lab_hours": 175.0,
+          "label": "50,000 yd\u00b3 embankment/borrow"
+        },
+        "large_earthwork_200k_cy": {
+          "samples": 200,
+          "every": 1000,
+          "quantity": 200000,
+          "proctor_mode": "none",
+          "est_atterberg_lab_hours": 700.0,
+          "est_proctor_lab_hours": 0.0,
+          "est_field_density_hours": 0.0,
+          "est_total_lab_hours": 700.0,
+          "label": "200,000 yd\u00b3 embankment/borrow (RT-301-scale)"
+        }
+      },
+      "source": "Table B-1 quantities list"
+    },
+    {
+      "id": "table-b1-atterberg-3-Structures yd3 (m3)-1 / 1000 ( 1 / 750 )",
+      "rule_id": "atterberg_at_frequency",
+      "category": "testing_capacity_risk",
+      "severity": "high",
+      "note": "Table B-1 requires liquid/plastic limits (AASHTO T89/T90) at this frequency. RT 301 lesson: the lab could not sustain Atterberg throughput; Tutor Perini later exploited missed LL/PL testing.",
+      "match": "T89/T90 at Table B-1 frequency",
+      "page": null,
+      "section_id": null,
+      "section_header": "Structures yd3 (m3)",
+      "snippet": "Structures yd3 (m3) 1 / 1000 ( 1 / 750 ) T88, T89, T90, T99 ( Method C), T310",
+      "item": null,
+      "frequency": {
+        "kind": "per_unit",
+        "every": 1000,
+        "raw": "1 / 1000 ( 1 / 750 )"
+      },
+      "tests": "T88, T89, T90, T99 ( Method C), T310",
+      "capacity_scenarios": {
+        "medium_earthwork_50k_cy": {
+          "samples": 50,
+          "every": 1000,
+          "quantity": 50000,
+          "proctor_mode": "full_t99",
+          "est_atterberg_lab_hours": 175.0,
+          "est_proctor_lab_hours": 250.0,
+          "est_field_density_hours": 25.0,
+          "est_total_lab_hours": 425.0,
+          "label": "50,000 yd\u00b3 embankment/borrow"
+        },
+        "large_earthwork_200k_cy": {
+          "samples": 200,
+          "every": 1000,
+          "quantity": 200000,
+          "proctor_mode": "full_t99",
+          "est_atterberg_lab_hours": 700.0,
+          "est_proctor_lab_hours": 1000.0,
+          "est_field_density_hours": 100.0,
+          "est_total_lab_hours": 1700.0,
+          "label": "200,000 yd\u00b3 embankment/borrow (RT-301-scale)"
+        }
+      },
+      "source": "Table B-1 quantities list"
+    },
+    {
+      "id": "table-b1-t99-3-Structures yd3 (m3)-1 / 1000 ( 1 / 750 )",
+      "rule_id": "full_t99_no_one_point",
+      "category": "testing_capacity_risk",
+      "severity": "medium",
+      "note": "Same Table B-1 row also lists full AASHTO T99 without T272/one-point alt \u2014 adds Proctor lab load on top of Atterbergs. Related capacity risk; RT 301\u2019s exploited miss was LL/PL.",
       "match": "T99 without T272/one-point",
       "page": null,
       "section_id": null,
@@ -66,31 +249,79 @@
       "capacity_scenarios": {
         "medium_earthwork_50k_cy": {
           "samples": 50,
-          "mode": "full_t99",
-          "est_lab_hours": 350.0,
-          "est_field_density_hours": 25.0,
-          "quantity": 50000,
           "every": 1000,
+          "quantity": 50000,
+          "proctor_mode": "full_t99",
+          "est_atterberg_lab_hours": 175.0,
+          "est_proctor_lab_hours": 250.0,
+          "est_field_density_hours": 25.0,
+          "est_total_lab_hours": 425.0,
           "label": "50,000 yd\u00b3 embankment/borrow"
         },
         "large_earthwork_200k_cy": {
           "samples": 200,
-          "mode": "full_t99",
-          "est_lab_hours": 1400.0,
-          "est_field_density_hours": 100.0,
-          "quantity": 200000,
           "every": 1000,
+          "quantity": 200000,
+          "proctor_mode": "full_t99",
+          "est_atterberg_lab_hours": 700.0,
+          "est_proctor_lab_hours": 1000.0,
+          "est_field_density_hours": 100.0,
+          "est_total_lab_hours": 1700.0,
           "label": "200,000 yd\u00b3 embankment/borrow (RT-301-scale)"
         }
       },
       "source": "Table B-1 quantities list"
     },
     {
-      "id": "table-b1-t99-Trenches yd3 (m3)-1 / 300 ( 1 / 200 )",
-      "rule_id": "full_t99_no_one_point",
+      "id": "table-b1-atterberg-4-Trenches yd3 (m3)-1 / 300 ( 1 / 200 )",
+      "rule_id": "atterberg_at_frequency",
       "category": "testing_capacity_risk",
       "severity": "high",
-      "note": "Table B-1 lists full AASHTO T99 without T272 / one-point alternative. On high-volume earthwork this can exceed field/lab capacity (RT 301 lesson: Tutor Perini exploited missed testing frequencies). Frequency is aggressive: 1 per 300 units.",
+      "note": "Table B-1 requires liquid/plastic limits (AASHTO T89/T90) at this frequency. RT 301 lesson: the lab could not sustain Atterberg throughput; Tutor Perini later exploited missed LL/PL testing. Aggressive rate: 1 per 300 units.",
+      "match": "T89/T90 at Table B-1 frequency",
+      "page": null,
+      "section_id": null,
+      "section_header": "Trenches yd3 (m3)",
+      "snippet": "Trenches yd3 (m3) 1 / 300 ( 1 / 200 ) T88, T89, T90, T99 (Method C), T310",
+      "item": null,
+      "frequency": {
+        "kind": "per_unit",
+        "every": 300,
+        "raw": "1 / 300 ( 1 / 200 )"
+      },
+      "tests": "T88, T89, T90, T99 (Method C), T310",
+      "capacity_scenarios": {
+        "medium_earthwork_50k_cy": {
+          "samples": 167,
+          "every": 300,
+          "quantity": 50000,
+          "proctor_mode": "full_t99",
+          "est_atterberg_lab_hours": 584.5,
+          "est_proctor_lab_hours": 835.0,
+          "est_field_density_hours": 83.5,
+          "est_total_lab_hours": 1419.5,
+          "label": "50,000 yd\u00b3 embankment/borrow"
+        },
+        "large_earthwork_200k_cy": {
+          "samples": 667,
+          "every": 300,
+          "quantity": 200000,
+          "proctor_mode": "full_t99",
+          "est_atterberg_lab_hours": 2334.5,
+          "est_proctor_lab_hours": 3335.0,
+          "est_field_density_hours": 333.5,
+          "est_total_lab_hours": 5669.5,
+          "label": "200,000 yd\u00b3 embankment/borrow (RT-301-scale)"
+        }
+      },
+      "source": "Table B-1 quantities list"
+    },
+    {
+      "id": "table-b1-t99-4-Trenches yd3 (m3)-1 / 300 ( 1 / 200 )",
+      "rule_id": "full_t99_no_one_point",
+      "category": "testing_capacity_risk",
+      "severity": "medium",
+      "note": "Same Table B-1 row also lists full AASHTO T99 without T272/one-point alt \u2014 adds Proctor lab load on top of Atterbergs. Related capacity risk; RT 301\u2019s exploited miss was LL/PL.",
       "match": "T99 without T272/one-point",
       "page": null,
       "section_id": null,
@@ -106,31 +337,79 @@
       "capacity_scenarios": {
         "medium_earthwork_50k_cy": {
           "samples": 167,
-          "mode": "full_t99",
-          "est_lab_hours": 1169.0,
-          "est_field_density_hours": 83.5,
-          "quantity": 50000,
           "every": 300,
+          "quantity": 50000,
+          "proctor_mode": "full_t99",
+          "est_atterberg_lab_hours": 584.5,
+          "est_proctor_lab_hours": 835.0,
+          "est_field_density_hours": 83.5,
+          "est_total_lab_hours": 1419.5,
           "label": "50,000 yd\u00b3 embankment/borrow"
         },
         "large_earthwork_200k_cy": {
           "samples": 667,
-          "mode": "full_t99",
-          "est_lab_hours": 4669.0,
-          "est_field_density_hours": 333.5,
-          "quantity": 200000,
           "every": 300,
+          "quantity": 200000,
+          "proctor_mode": "full_t99",
+          "est_atterberg_lab_hours": 2334.5,
+          "est_proctor_lab_hours": 3335.0,
+          "est_field_density_hours": 333.5,
+          "est_total_lab_hours": 5669.5,
           "label": "200,000 yd\u00b3 embankment/borrow (RT-301-scale)"
         }
       },
       "source": "Table B-1 quantities list"
     },
     {
-      "id": "table-b1-t99-Common Trenche s yd3 (m3)-1 / 1000 ( 1 / 750 )",
-      "rule_id": "full_t99_no_one_point",
+      "id": "table-b1-atterberg-5-Common Trenche s yd3 (m3)-1 / 1000 ( 1 / 750 )",
+      "rule_id": "atterberg_at_frequency",
       "category": "testing_capacity_risk",
       "severity": "high",
-      "note": "Table B-1 lists full AASHTO T99 without T272 / one-point alternative. On high-volume earthwork this can exceed field/lab capacity (RT 301 lesson: Tutor Perini exploited missed testing frequencies).",
+      "note": "Table B-1 requires liquid/plastic limits (AASHTO T89/T90) at this frequency. RT 301 lesson: the lab could not sustain Atterberg throughput; Tutor Perini later exploited missed LL/PL testing.",
+      "match": "T89/T90 at Table B-1 frequency",
+      "page": null,
+      "section_id": null,
+      "section_header": "Common Trenche s yd3 (m3)",
+      "snippet": "Common Trenche s yd3 (m3) 1 / 1000 ( 1 / 750 ) T88, T89, T90, T99 (Method C), T310",
+      "item": null,
+      "frequency": {
+        "kind": "per_unit",
+        "every": 1000,
+        "raw": "1 / 1000 ( 1 / 750 )"
+      },
+      "tests": "T88, T89, T90, T99 (Method C), T310",
+      "capacity_scenarios": {
+        "medium_earthwork_50k_cy": {
+          "samples": 50,
+          "every": 1000,
+          "quantity": 50000,
+          "proctor_mode": "full_t99",
+          "est_atterberg_lab_hours": 175.0,
+          "est_proctor_lab_hours": 250.0,
+          "est_field_density_hours": 25.0,
+          "est_total_lab_hours": 425.0,
+          "label": "50,000 yd\u00b3 embankment/borrow"
+        },
+        "large_earthwork_200k_cy": {
+          "samples": 200,
+          "every": 1000,
+          "quantity": 200000,
+          "proctor_mode": "full_t99",
+          "est_atterberg_lab_hours": 700.0,
+          "est_proctor_lab_hours": 1000.0,
+          "est_field_density_hours": 100.0,
+          "est_total_lab_hours": 1700.0,
+          "label": "200,000 yd\u00b3 embankment/borrow (RT-301-scale)"
+        }
+      },
+      "source": "Table B-1 quantities list"
+    },
+    {
+      "id": "table-b1-t99-5-Common Trenche s yd3 (m3)-1 / 1000 ( 1 / 750 )",
+      "rule_id": "full_t99_no_one_point",
+      "category": "testing_capacity_risk",
+      "severity": "medium",
+      "note": "Same Table B-1 row also lists full AASHTO T99 without T272/one-point alt \u2014 adds Proctor lab load on top of Atterbergs. Related capacity risk; RT 301\u2019s exploited miss was LL/PL.",
       "match": "T99 without T272/one-point",
       "page": null,
       "section_id": null,
@@ -146,31 +425,79 @@
       "capacity_scenarios": {
         "medium_earthwork_50k_cy": {
           "samples": 50,
-          "mode": "full_t99",
-          "est_lab_hours": 350.0,
-          "est_field_density_hours": 25.0,
-          "quantity": 50000,
           "every": 1000,
+          "quantity": 50000,
+          "proctor_mode": "full_t99",
+          "est_atterberg_lab_hours": 175.0,
+          "est_proctor_lab_hours": 250.0,
+          "est_field_density_hours": 25.0,
+          "est_total_lab_hours": 425.0,
           "label": "50,000 yd\u00b3 embankment/borrow"
         },
         "large_earthwork_200k_cy": {
           "samples": 200,
-          "mode": "full_t99",
-          "est_lab_hours": 1400.0,
-          "est_field_density_hours": 100.0,
-          "quantity": 200000,
           "every": 1000,
+          "quantity": 200000,
+          "proctor_mode": "full_t99",
+          "est_atterberg_lab_hours": 700.0,
+          "est_proctor_lab_hours": 1000.0,
+          "est_field_density_hours": 100.0,
+          "est_total_lab_hours": 1700.0,
           "label": "200,000 yd\u00b3 embankment/borrow (RT-301-scale)"
         }
       },
       "source": "Table B-1 quantities list"
     },
     {
-      "id": "table-b1-t99-Trenches yd3 (m3)-1 / 1000 ( 1 / 750 )",
-      "rule_id": "full_t99_no_one_point",
+      "id": "table-b1-atterberg-6-Trenches yd3 (m3)-1 / 1000 ( 1 / 750 )",
+      "rule_id": "atterberg_at_frequency",
       "category": "testing_capacity_risk",
       "severity": "high",
-      "note": "Table B-1 lists full AASHTO T99 without T272 / one-point alternative. On high-volume earthwork this can exceed field/lab capacity (RT 301 lesson: Tutor Perini exploited missed testing frequencies).",
+      "note": "Table B-1 requires liquid/plastic limits (AASHTO T89/T90) at this frequency. RT 301 lesson: the lab could not sustain Atterberg throughput; Tutor Perini later exploited missed LL/PL testing.",
+      "match": "T89/T90 at Table B-1 frequency",
+      "page": null,
+      "section_id": null,
+      "section_header": "Trenches yd3 (m3)",
+      "snippet": "Trenches yd3 (m3) 1 / 1000 ( 1 / 750 ) T88, T89, T90, T99 (Method C), T310",
+      "item": null,
+      "frequency": {
+        "kind": "per_unit",
+        "every": 1000,
+        "raw": "1 / 1000 ( 1 / 750 )"
+      },
+      "tests": "T88, T89, T90, T99 (Method C), T310",
+      "capacity_scenarios": {
+        "medium_earthwork_50k_cy": {
+          "samples": 50,
+          "every": 1000,
+          "quantity": 50000,
+          "proctor_mode": "full_t99",
+          "est_atterberg_lab_hours": 175.0,
+          "est_proctor_lab_hours": 250.0,
+          "est_field_density_hours": 25.0,
+          "est_total_lab_hours": 425.0,
+          "label": "50,000 yd\u00b3 embankment/borrow"
+        },
+        "large_earthwork_200k_cy": {
+          "samples": 200,
+          "every": 1000,
+          "quantity": 200000,
+          "proctor_mode": "full_t99",
+          "est_atterberg_lab_hours": 700.0,
+          "est_proctor_lab_hours": 1000.0,
+          "est_field_density_hours": 100.0,
+          "est_total_lab_hours": 1700.0,
+          "label": "200,000 yd\u00b3 embankment/borrow (RT-301-scale)"
+        }
+      },
+      "source": "Table B-1 quantities list"
+    },
+    {
+      "id": "table-b1-t99-6-Trenches yd3 (m3)-1 / 1000 ( 1 / 750 )",
+      "rule_id": "full_t99_no_one_point",
+      "category": "testing_capacity_risk",
+      "severity": "medium",
+      "note": "Same Table B-1 row also lists full AASHTO T99 without T272/one-point alt \u2014 adds Proctor lab load on top of Atterbergs. Related capacity risk; RT 301\u2019s exploited miss was LL/PL.",
       "match": "T99 without T272/one-point",
       "page": null,
       "section_id": null,
@@ -186,31 +513,79 @@
       "capacity_scenarios": {
         "medium_earthwork_50k_cy": {
           "samples": 50,
-          "mode": "full_t99",
-          "est_lab_hours": 350.0,
-          "est_field_density_hours": 25.0,
-          "quantity": 50000,
           "every": 1000,
+          "quantity": 50000,
+          "proctor_mode": "full_t99",
+          "est_atterberg_lab_hours": 175.0,
+          "est_proctor_lab_hours": 250.0,
+          "est_field_density_hours": 25.0,
+          "est_total_lab_hours": 425.0,
           "label": "50,000 yd\u00b3 embankment/borrow"
         },
         "large_earthwork_200k_cy": {
           "samples": 200,
-          "mode": "full_t99",
-          "est_lab_hours": 1400.0,
-          "est_field_density_hours": 100.0,
-          "quantity": 200000,
           "every": 1000,
+          "quantity": 200000,
+          "proctor_mode": "full_t99",
+          "est_atterberg_lab_hours": 700.0,
+          "est_proctor_lab_hours": 1000.0,
+          "est_field_density_hours": 100.0,
+          "est_total_lab_hours": 1700.0,
           "label": "200,000 yd\u00b3 embankment/borrow (RT-301-scale)"
         }
       },
       "source": "Table B-1 quantities list"
     },
     {
-      "id": "table-b1-t99-209001-1 / 750 ( 1 / 600 )",
-      "rule_id": "full_t99_no_one_point",
+      "id": "table-b1-atterberg-7-209001-1 / 750 ( 1 / 600 )",
+      "rule_id": "atterberg_at_frequency",
       "category": "testing_capacity_risk",
       "severity": "high",
-      "note": "Table B-1 lists full AASHTO T99 without T272 / one-point alternative. On high-volume earthwork this can exceed field/lab capacity (RT 301 lesson: Tutor Perini exploited missed testing frequencies).",
+      "note": "Table B-1 requires liquid/plastic limits (AASHTO T89/T90) at this frequency. RT 301 lesson: the lab could not sustain Atterberg throughput; Tutor Perini later exploited missed LL/PL testing.",
+      "match": "T89/T90 at Table B-1 frequency",
+      "page": null,
+      "section_id": "209001",
+      "section_header": "Borrow, Type A yd3 (m3)",
+      "snippet": "209001 Borrow, Type A yd3 (m3) 1 / 750 ( 1 / 600 ) T88, T89, T90, T99 (Method C), T310",
+      "item": "209001",
+      "frequency": {
+        "kind": "per_unit",
+        "every": 750,
+        "raw": "1 / 750 ( 1 / 600 )"
+      },
+      "tests": "T88, T89, T90, T99 (Method C), T310",
+      "capacity_scenarios": {
+        "medium_earthwork_50k_cy": {
+          "samples": 67,
+          "every": 750,
+          "quantity": 50000,
+          "proctor_mode": "full_t99",
+          "est_atterberg_lab_hours": 234.5,
+          "est_proctor_lab_hours": 335.0,
+          "est_field_density_hours": 33.5,
+          "est_total_lab_hours": 569.5,
+          "label": "50,000 yd\u00b3 embankment/borrow"
+        },
+        "large_earthwork_200k_cy": {
+          "samples": 267,
+          "every": 750,
+          "quantity": 200000,
+          "proctor_mode": "full_t99",
+          "est_atterberg_lab_hours": 934.5,
+          "est_proctor_lab_hours": 1335.0,
+          "est_field_density_hours": 133.5,
+          "est_total_lab_hours": 2269.5,
+          "label": "200,000 yd\u00b3 embankment/borrow (RT-301-scale)"
+        }
+      },
+      "source": "Table B-1 quantities list"
+    },
+    {
+      "id": "table-b1-t99-7-209001-1 / 750 ( 1 / 600 )",
+      "rule_id": "full_t99_no_one_point",
+      "category": "testing_capacity_risk",
+      "severity": "medium",
+      "note": "Same Table B-1 row also lists full AASHTO T99 without T272/one-point alt \u2014 adds Proctor lab load on top of Atterbergs. Related capacity risk; RT 301\u2019s exploited miss was LL/PL.",
       "match": "T99 without T272/one-point",
       "page": null,
       "section_id": "209001",
@@ -226,31 +601,79 @@
       "capacity_scenarios": {
         "medium_earthwork_50k_cy": {
           "samples": 67,
-          "mode": "full_t99",
-          "est_lab_hours": 469.0,
-          "est_field_density_hours": 33.5,
-          "quantity": 50000,
           "every": 750,
+          "quantity": 50000,
+          "proctor_mode": "full_t99",
+          "est_atterberg_lab_hours": 234.5,
+          "est_proctor_lab_hours": 335.0,
+          "est_field_density_hours": 33.5,
+          "est_total_lab_hours": 569.5,
           "label": "50,000 yd\u00b3 embankment/borrow"
         },
         "large_earthwork_200k_cy": {
           "samples": 267,
-          "mode": "full_t99",
-          "est_lab_hours": 1869.0,
-          "est_field_density_hours": 133.5,
-          "quantity": 200000,
           "every": 750,
+          "quantity": 200000,
+          "proctor_mode": "full_t99",
+          "est_atterberg_lab_hours": 934.5,
+          "est_proctor_lab_hours": 1335.0,
+          "est_field_density_hours": 133.5,
+          "est_total_lab_hours": 2269.5,
           "label": "200,000 yd\u00b3 embankment/borrow (RT-301-scale)"
         }
       },
       "source": "Table B-1 quantities list"
     },
     {
-      "id": "table-b1-t99-209002-1 / 500 ( 1 / 400 )",
-      "rule_id": "full_t99_no_one_point",
+      "id": "table-b1-atterberg-8-209002-1 / 500 ( 1 / 400 )",
+      "rule_id": "atterberg_at_frequency",
       "category": "testing_capacity_risk",
       "severity": "high",
-      "note": "Table B-1 lists full AASHTO T99 without T272 / one-point alternative. On high-volume earthwork this can exceed field/lab capacity (RT 301 lesson: Tutor Perini exploited missed testing frequencies). Frequency is aggressive: 1 per 500 units.",
+      "note": "Table B-1 requires liquid/plastic limits (AASHTO T89/T90) at this frequency. RT 301 lesson: the lab could not sustain Atterberg throughput; Tutor Perini later exploited missed LL/PL testing. Aggressive rate: 1 per 500 units.",
+      "match": "T89/T90 at Table B-1 frequency",
+      "page": null,
+      "section_id": "209002",
+      "section_header": "Borrow, Type B yd3 (m3)",
+      "snippet": "209002 Borrow, Type B yd3 (m3) 1 / 500 ( 1 / 400 ) T88, T89, T90, T99 (Method C)",
+      "item": "209002",
+      "frequency": {
+        "kind": "per_unit",
+        "every": 500,
+        "raw": "1 / 500 ( 1 / 400 )"
+      },
+      "tests": "T88, T89, T90, T99 (Method C)",
+      "capacity_scenarios": {
+        "medium_earthwork_50k_cy": {
+          "samples": 100,
+          "every": 500,
+          "quantity": 50000,
+          "proctor_mode": "full_t99",
+          "est_atterberg_lab_hours": 350.0,
+          "est_proctor_lab_hours": 500.0,
+          "est_field_density_hours": 0.0,
+          "est_total_lab_hours": 850.0,
+          "label": "50,000 yd\u00b3 embankment/borrow"
+        },
+        "large_earthwork_200k_cy": {
+          "samples": 400,
+          "every": 500,
+          "quantity": 200000,
+          "proctor_mode": "full_t99",
+          "est_atterberg_lab_hours": 1400.0,
+          "est_proctor_lab_hours": 2000.0,
+          "est_field_density_hours": 0.0,
+          "est_total_lab_hours": 3400.0,
+          "label": "200,000 yd\u00b3 embankment/borrow (RT-301-scale)"
+        }
+      },
+      "source": "Table B-1 quantities list"
+    },
+    {
+      "id": "table-b1-t99-8-209002-1 / 500 ( 1 / 400 )",
+      "rule_id": "full_t99_no_one_point",
+      "category": "testing_capacity_risk",
+      "severity": "medium",
+      "note": "Same Table B-1 row also lists full AASHTO T99 without T272/one-point alt \u2014 adds Proctor lab load on top of Atterbergs. Related capacity risk; RT 301\u2019s exploited miss was LL/PL.",
       "match": "T99 without T272/one-point",
       "page": null,
       "section_id": "209002",
@@ -266,31 +689,79 @@
       "capacity_scenarios": {
         "medium_earthwork_50k_cy": {
           "samples": 100,
-          "mode": "full_t99",
-          "est_lab_hours": 700.0,
-          "est_field_density_hours": 0,
-          "quantity": 50000,
           "every": 500,
+          "quantity": 50000,
+          "proctor_mode": "full_t99",
+          "est_atterberg_lab_hours": 350.0,
+          "est_proctor_lab_hours": 500.0,
+          "est_field_density_hours": 0.0,
+          "est_total_lab_hours": 850.0,
           "label": "50,000 yd\u00b3 embankment/borrow"
         },
         "large_earthwork_200k_cy": {
           "samples": 400,
-          "mode": "full_t99",
-          "est_lab_hours": 2800.0,
-          "est_field_density_hours": 0,
-          "quantity": 200000,
           "every": 500,
+          "quantity": 200000,
+          "proctor_mode": "full_t99",
+          "est_atterberg_lab_hours": 1400.0,
+          "est_proctor_lab_hours": 2000.0,
+          "est_field_density_hours": 0.0,
+          "est_total_lab_hours": 3400.0,
           "label": "200,000 yd\u00b3 embankment/borrow (RT-301-scale)"
         }
       },
       "source": "Table B-1 quantities list"
     },
     {
-      "id": "table-b1-t99-209003-1 / 300 ( 1 / 200 )",
-      "rule_id": "full_t99_no_one_point",
+      "id": "table-b1-atterberg-9-209003-1 / 300 ( 1 / 200 )",
+      "rule_id": "atterberg_at_frequency",
       "category": "testing_capacity_risk",
       "severity": "high",
-      "note": "Table B-1 lists full AASHTO T99 without T272 / one-point alternative. On high-volume earthwork this can exceed field/lab capacity (RT 301 lesson: Tutor Perini exploited missed testing frequencies). Frequency is aggressive: 1 per 300 units.",
+      "note": "Table B-1 requires liquid/plastic limits (AASHTO T89/T90) at this frequency. RT 301 lesson: the lab could not sustain Atterberg throughput; Tutor Perini later exploited missed LL/PL testing. Aggressive rate: 1 per 300 units.",
+      "match": "T89/T90 at Table B-1 frequency",
+      "page": null,
+      "section_id": "209003",
+      "section_header": "Borrow, Type C yd3 (m3)",
+      "snippet": "209003 Borrow, Type C yd3 (m3) 1 / 300 ( 1 / 200 ) T88, T89, T90, T99 (Method C), T310",
+      "item": "209003",
+      "frequency": {
+        "kind": "per_unit",
+        "every": 300,
+        "raw": "1 / 300 ( 1 / 200 )"
+      },
+      "tests": "T88, T89, T90, T99 (Method C), T310",
+      "capacity_scenarios": {
+        "medium_earthwork_50k_cy": {
+          "samples": 167,
+          "every": 300,
+          "quantity": 50000,
+          "proctor_mode": "full_t99",
+          "est_atterberg_lab_hours": 584.5,
+          "est_proctor_lab_hours": 835.0,
+          "est_field_density_hours": 83.5,
+          "est_total_lab_hours": 1419.5,
+          "label": "50,000 yd\u00b3 embankment/borrow"
+        },
+        "large_earthwork_200k_cy": {
+          "samples": 667,
+          "every": 300,
+          "quantity": 200000,
+          "proctor_mode": "full_t99",
+          "est_atterberg_lab_hours": 2334.5,
+          "est_proctor_lab_hours": 3335.0,
+          "est_field_density_hours": 333.5,
+          "est_total_lab_hours": 5669.5,
+          "label": "200,000 yd\u00b3 embankment/borrow (RT-301-scale)"
+        }
+      },
+      "source": "Table B-1 quantities list"
+    },
+    {
+      "id": "table-b1-t99-9-209003-1 / 300 ( 1 / 200 )",
+      "rule_id": "full_t99_no_one_point",
+      "category": "testing_capacity_risk",
+      "severity": "medium",
+      "note": "Same Table B-1 row also lists full AASHTO T99 without T272/one-point alt \u2014 adds Proctor lab load on top of Atterbergs. Related capacity risk; RT 301\u2019s exploited miss was LL/PL.",
       "match": "T99 without T272/one-point",
       "page": null,
       "section_id": "209003",
@@ -306,31 +777,79 @@
       "capacity_scenarios": {
         "medium_earthwork_50k_cy": {
           "samples": 167,
-          "mode": "full_t99",
-          "est_lab_hours": 1169.0,
-          "est_field_density_hours": 83.5,
-          "quantity": 50000,
           "every": 300,
+          "quantity": 50000,
+          "proctor_mode": "full_t99",
+          "est_atterberg_lab_hours": 584.5,
+          "est_proctor_lab_hours": 835.0,
+          "est_field_density_hours": 83.5,
+          "est_total_lab_hours": 1419.5,
           "label": "50,000 yd\u00b3 embankment/borrow"
         },
         "large_earthwork_200k_cy": {
           "samples": 667,
-          "mode": "full_t99",
-          "est_lab_hours": 4669.0,
-          "est_field_density_hours": 333.5,
-          "quantity": 200000,
           "every": 300,
+          "quantity": 200000,
+          "proctor_mode": "full_t99",
+          "est_atterberg_lab_hours": 2334.5,
+          "est_proctor_lab_hours": 3335.0,
+          "est_field_density_hours": 333.5,
+          "est_total_lab_hours": 5669.5,
           "label": "200,000 yd\u00b3 embankment/borrow (RT-301-scale)"
         }
       },
       "source": "Table B-1 quantities list"
     },
     {
-      "id": "table-b1-t99-209004-1 / 1000 ( 1 / 750 )",
-      "rule_id": "full_t99_no_one_point",
+      "id": "table-b1-atterberg-10-209004-1 / 1000 ( 1 / 750 )",
+      "rule_id": "atterberg_at_frequency",
       "category": "testing_capacity_risk",
       "severity": "high",
-      "note": "Table B-1 lists full AASHTO T99 without T272 / one-point alternative. On high-volume earthwork this can exceed field/lab capacity (RT 301 lesson: Tutor Perini exploited missed testing frequencies).",
+      "note": "Table B-1 requires liquid/plastic limits (AASHTO T89/T90) at this frequency. RT 301 lesson: the lab could not sustain Atterberg throughput; Tutor Perini later exploited missed LL/PL testing.",
+      "match": "T89/T90 at Table B-1 frequency",
+      "page": null,
+      "section_id": "209004",
+      "section_header": "Borrow, Type D yd3 (m3)",
+      "snippet": "209004 Borrow, Type D yd3 (m3) 1 / 1000 ( 1 / 750 ) T88, T89, T90, T99 (Method C), T310",
+      "item": "209004",
+      "frequency": {
+        "kind": "per_unit",
+        "every": 1000,
+        "raw": "1 / 1000 ( 1 / 750 )"
+      },
+      "tests": "T88, T89, T90, T99 (Method C), T310",
+      "capacity_scenarios": {
+        "medium_earthwork_50k_cy": {
+          "samples": 50,
+          "every": 1000,
+          "quantity": 50000,
+          "proctor_mode": "full_t99",
+          "est_atterberg_lab_hours": 175.0,
+          "est_proctor_lab_hours": 250.0,
+          "est_field_density_hours": 25.0,
+          "est_total_lab_hours": 425.0,
+          "label": "50,000 yd\u00b3 embankment/borrow"
+        },
+        "large_earthwork_200k_cy": {
+          "samples": 200,
+          "every": 1000,
+          "quantity": 200000,
+          "proctor_mode": "full_t99",
+          "est_atterberg_lab_hours": 700.0,
+          "est_proctor_lab_hours": 1000.0,
+          "est_field_density_hours": 100.0,
+          "est_total_lab_hours": 1700.0,
+          "label": "200,000 yd\u00b3 embankment/borrow (RT-301-scale)"
+        }
+      },
+      "source": "Table B-1 quantities list"
+    },
+    {
+      "id": "table-b1-t99-10-209004-1 / 1000 ( 1 / 750 )",
+      "rule_id": "full_t99_no_one_point",
+      "category": "testing_capacity_risk",
+      "severity": "medium",
+      "note": "Same Table B-1 row also lists full AASHTO T99 without T272/one-point alt \u2014 adds Proctor lab load on top of Atterbergs. Related capacity risk; RT 301\u2019s exploited miss was LL/PL.",
       "match": "T99 without T272/one-point",
       "page": null,
       "section_id": "209004",
@@ -346,31 +865,79 @@
       "capacity_scenarios": {
         "medium_earthwork_50k_cy": {
           "samples": 50,
-          "mode": "full_t99",
-          "est_lab_hours": 350.0,
-          "est_field_density_hours": 25.0,
-          "quantity": 50000,
           "every": 1000,
+          "quantity": 50000,
+          "proctor_mode": "full_t99",
+          "est_atterberg_lab_hours": 175.0,
+          "est_proctor_lab_hours": 250.0,
+          "est_field_density_hours": 25.0,
+          "est_total_lab_hours": 425.0,
           "label": "50,000 yd\u00b3 embankment/borrow"
         },
         "large_earthwork_200k_cy": {
           "samples": 200,
-          "mode": "full_t99",
-          "est_lab_hours": 1400.0,
-          "est_field_density_hours": 100.0,
-          "quantity": 200000,
           "every": 1000,
+          "quantity": 200000,
+          "proctor_mode": "full_t99",
+          "est_atterberg_lab_hours": 700.0,
+          "est_proctor_lab_hours": 1000.0,
+          "est_field_density_hours": 100.0,
+          "est_total_lab_hours": 1700.0,
           "label": "200,000 yd\u00b3 embankment/borrow (RT-301-scale)"
         }
       },
       "source": "Table B-1 quantities list"
     },
     {
-      "id": "table-b1-t99-209005-1 / 1000 ( 1 / 750 )",
-      "rule_id": "full_t99_no_one_point",
+      "id": "table-b1-atterberg-11-209005-1 / 1000 ( 1 / 750 )",
+      "rule_id": "atterberg_at_frequency",
       "category": "testing_capacity_risk",
       "severity": "high",
-      "note": "Table B-1 lists full AASHTO T99 without T272 / one-point alternative. On high-volume earthwork this can exceed field/lab capacity (RT 301 lesson: Tutor Perini exploited missed testing frequencies).",
+      "note": "Table B-1 requires liquid/plastic limits (AASHTO T89/T90) at this frequency. RT 301 lesson: the lab could not sustain Atterberg throughput; Tutor Perini later exploited missed LL/PL testing.",
+      "match": "T89/T90 at Table B-1 frequency",
+      "page": null,
+      "section_id": "209005",
+      "section_header": "Borrow, Type E yd3 (m3)",
+      "snippet": "209005 Borrow, Type E yd3 (m3) 1 / 1000 ( 1 / 750 ) T88, T89, T90, T99 (Method C), T310",
+      "item": "209005",
+      "frequency": {
+        "kind": "per_unit",
+        "every": 1000,
+        "raw": "1 / 1000 ( 1 / 750 )"
+      },
+      "tests": "T88, T89, T90, T99 (Method C), T310",
+      "capacity_scenarios": {
+        "medium_earthwork_50k_cy": {
+          "samples": 50,
+          "every": 1000,
+          "quantity": 50000,
+          "proctor_mode": "full_t99",
+          "est_atterberg_lab_hours": 175.0,
+          "est_proctor_lab_hours": 250.0,
+          "est_field_density_hours": 25.0,
+          "est_total_lab_hours": 425.0,
+          "label": "50,000 yd\u00b3 embankment/borrow"
+        },
+        "large_earthwork_200k_cy": {
+          "samples": 200,
+          "every": 1000,
+          "quantity": 200000,
+          "proctor_mode": "full_t99",
+          "est_atterberg_lab_hours": 700.0,
+          "est_proctor_lab_hours": 1000.0,
+          "est_field_density_hours": 100.0,
+          "est_total_lab_hours": 1700.0,
+          "label": "200,000 yd\u00b3 embankment/borrow (RT-301-scale)"
+        }
+      },
+      "source": "Table B-1 quantities list"
+    },
+    {
+      "id": "table-b1-t99-11-209005-1 / 1000 ( 1 / 750 )",
+      "rule_id": "full_t99_no_one_point",
+      "category": "testing_capacity_risk",
+      "severity": "medium",
+      "note": "Same Table B-1 row also lists full AASHTO T99 without T272/one-point alt \u2014 adds Proctor lab load on top of Atterbergs. Related capacity risk; RT 301\u2019s exploited miss was LL/PL.",
       "match": "T99 without T272/one-point",
       "page": null,
       "section_id": "209005",
@@ -386,31 +953,79 @@
       "capacity_scenarios": {
         "medium_earthwork_50k_cy": {
           "samples": 50,
-          "mode": "full_t99",
-          "est_lab_hours": 350.0,
-          "est_field_density_hours": 25.0,
-          "quantity": 50000,
           "every": 1000,
+          "quantity": 50000,
+          "proctor_mode": "full_t99",
+          "est_atterberg_lab_hours": 175.0,
+          "est_proctor_lab_hours": 250.0,
+          "est_field_density_hours": 25.0,
+          "est_total_lab_hours": 425.0,
           "label": "50,000 yd\u00b3 embankment/borrow"
         },
         "large_earthwork_200k_cy": {
           "samples": 200,
-          "mode": "full_t99",
-          "est_lab_hours": 1400.0,
-          "est_field_density_hours": 100.0,
-          "quantity": 200000,
           "every": 1000,
+          "quantity": 200000,
+          "proctor_mode": "full_t99",
+          "est_atterberg_lab_hours": 700.0,
+          "est_proctor_lab_hours": 1000.0,
+          "est_field_density_hours": 100.0,
+          "est_total_lab_hours": 1700.0,
           "label": "200,000 yd\u00b3 embankment/borrow (RT-301-scale)"
         }
       },
       "source": "Table B-1 quantities list"
     },
     {
-      "id": "table-b1-t99-209006-1 / 1000 ( 1 / 750 )",
-      "rule_id": "full_t99_no_one_point",
+      "id": "table-b1-atterberg-12-209006-1 / 1000 ( 1 / 750 )",
+      "rule_id": "atterberg_at_frequency",
       "category": "testing_capacity_risk",
       "severity": "high",
-      "note": "Table B-1 lists full AASHTO T99 without T272 / one-point alternative. On high-volume earthwork this can exceed field/lab capacity (RT 301 lesson: Tutor Perini exploited missed testing frequencies).",
+      "note": "Table B-1 requires liquid/plastic limits (AASHTO T89/T90) at this frequency. RT 301 lesson: the lab could not sustain Atterberg throughput; Tutor Perini later exploited missed LL/PL testing.",
+      "match": "T89/T90 at Table B-1 frequency",
+      "page": null,
+      "section_id": "209006",
+      "section_header": "Borrow, Type F yd3 (m3)",
+      "snippet": "209006 Borrow, Type F yd3 (m3) 1 / 1000 ( 1 / 750 ) T88, T89, T90, T99 (Method C), T310",
+      "item": "209006",
+      "frequency": {
+        "kind": "per_unit",
+        "every": 1000,
+        "raw": "1 / 1000 ( 1 / 750 )"
+      },
+      "tests": "T88, T89, T90, T99 (Method C), T310",
+      "capacity_scenarios": {
+        "medium_earthwork_50k_cy": {
+          "samples": 50,
+          "every": 1000,
+          "quantity": 50000,
+          "proctor_mode": "full_t99",
+          "est_atterberg_lab_hours": 175.0,
+          "est_proctor_lab_hours": 250.0,
+          "est_field_density_hours": 25.0,
+          "est_total_lab_hours": 425.0,
+          "label": "50,000 yd\u00b3 embankment/borrow"
+        },
+        "large_earthwork_200k_cy": {
+          "samples": 200,
+          "every": 1000,
+          "quantity": 200000,
+          "proctor_mode": "full_t99",
+          "est_atterberg_lab_hours": 700.0,
+          "est_proctor_lab_hours": 1000.0,
+          "est_field_density_hours": 100.0,
+          "est_total_lab_hours": 1700.0,
+          "label": "200,000 yd\u00b3 embankment/borrow (RT-301-scale)"
+        }
+      },
+      "source": "Table B-1 quantities list"
+    },
+    {
+      "id": "table-b1-t99-12-209006-1 / 1000 ( 1 / 750 )",
+      "rule_id": "full_t99_no_one_point",
+      "category": "testing_capacity_risk",
+      "severity": "medium",
+      "note": "Same Table B-1 row also lists full AASHTO T99 without T272/one-point alt \u2014 adds Proctor lab load on top of Atterbergs. Related capacity risk; RT 301\u2019s exploited miss was LL/PL.",
       "match": "T99 without T272/one-point",
       "page": null,
       "section_id": "209006",
@@ -426,31 +1041,79 @@
       "capacity_scenarios": {
         "medium_earthwork_50k_cy": {
           "samples": 50,
-          "mode": "full_t99",
-          "est_lab_hours": 350.0,
-          "est_field_density_hours": 25.0,
-          "quantity": 50000,
           "every": 1000,
+          "quantity": 50000,
+          "proctor_mode": "full_t99",
+          "est_atterberg_lab_hours": 175.0,
+          "est_proctor_lab_hours": 250.0,
+          "est_field_density_hours": 25.0,
+          "est_total_lab_hours": 425.0,
           "label": "50,000 yd\u00b3 embankment/borrow"
         },
         "large_earthwork_200k_cy": {
           "samples": 200,
-          "mode": "full_t99",
-          "est_lab_hours": 1400.0,
-          "est_field_density_hours": 100.0,
-          "quantity": 200000,
           "every": 1000,
+          "quantity": 200000,
+          "proctor_mode": "full_t99",
+          "est_atterberg_lab_hours": 700.0,
+          "est_proctor_lab_hours": 1000.0,
+          "est_field_density_hours": 100.0,
+          "est_total_lab_hours": 1700.0,
           "label": "200,000 yd\u00b3 embankment/borrow (RT-301-scale)"
         }
       },
       "source": "Table B-1 quantities list"
     },
     {
-      "id": "table-b1-t99-209007-1 / 500 ( 1 / 400 )",
-      "rule_id": "full_t99_no_one_point",
+      "id": "table-b1-atterberg-13-209007-1 / 500 ( 1 / 400 )",
+      "rule_id": "atterberg_at_frequency",
       "category": "testing_capacity_risk",
       "severity": "high",
-      "note": "Table B-1 lists full AASHTO T99 without T272 / one-point alternative. On high-volume earthwork this can exceed field/lab capacity (RT 301 lesson: Tutor Perini exploited missed testing frequencies). Frequency is aggressive: 1 per 500 units.",
+      "note": "Table B-1 requires liquid/plastic limits (AASHTO T89/T90) at this frequency. RT 301 lesson: the lab could not sustain Atterberg throughput; Tutor Perini later exploited missed LL/PL testing. Aggressive rate: 1 per 500 units.",
+      "match": "T89/T90 at Table B-1 frequency",
+      "page": null,
+      "section_id": "209007",
+      "section_header": "Borrow, Type G yd3 (m3)",
+      "snippet": "209007 Borrow, Type G yd3 (m3) 1 / 500 ( 1 / 400 ) T88, T89, T90, T99 (Method C), T310",
+      "item": "209007",
+      "frequency": {
+        "kind": "per_unit",
+        "every": 500,
+        "raw": "1 / 500 ( 1 / 400 )"
+      },
+      "tests": "T88, T89, T90, T99 (Method C), T310",
+      "capacity_scenarios": {
+        "medium_earthwork_50k_cy": {
+          "samples": 100,
+          "every": 500,
+          "quantity": 50000,
+          "proctor_mode": "full_t99",
+          "est_atterberg_lab_hours": 350.0,
+          "est_proctor_lab_hours": 500.0,
+          "est_field_density_hours": 50.0,
+          "est_total_lab_hours": 850.0,
+          "label": "50,000 yd\u00b3 embankment/borrow"
+        },
+        "large_earthwork_200k_cy": {
+          "samples": 400,
+          "every": 500,
+          "quantity": 200000,
+          "proctor_mode": "full_t99",
+          "est_atterberg_lab_hours": 1400.0,
+          "est_proctor_lab_hours": 2000.0,
+          "est_field_density_hours": 200.0,
+          "est_total_lab_hours": 3400.0,
+          "label": "200,000 yd\u00b3 embankment/borrow (RT-301-scale)"
+        }
+      },
+      "source": "Table B-1 quantities list"
+    },
+    {
+      "id": "table-b1-t99-13-209007-1 / 500 ( 1 / 400 )",
+      "rule_id": "full_t99_no_one_point",
+      "category": "testing_capacity_risk",
+      "severity": "medium",
+      "note": "Same Table B-1 row also lists full AASHTO T99 without T272/one-point alt \u2014 adds Proctor lab load on top of Atterbergs. Related capacity risk; RT 301\u2019s exploited miss was LL/PL.",
       "match": "T99 without T272/one-point",
       "page": null,
       "section_id": "209007",
@@ -466,31 +1129,79 @@
       "capacity_scenarios": {
         "medium_earthwork_50k_cy": {
           "samples": 100,
-          "mode": "full_t99",
-          "est_lab_hours": 700.0,
-          "est_field_density_hours": 50.0,
-          "quantity": 50000,
           "every": 500,
+          "quantity": 50000,
+          "proctor_mode": "full_t99",
+          "est_atterberg_lab_hours": 350.0,
+          "est_proctor_lab_hours": 500.0,
+          "est_field_density_hours": 50.0,
+          "est_total_lab_hours": 850.0,
           "label": "50,000 yd\u00b3 embankment/borrow"
         },
         "large_earthwork_200k_cy": {
           "samples": 400,
-          "mode": "full_t99",
-          "est_lab_hours": 2800.0,
-          "est_field_density_hours": 200.0,
-          "quantity": 200000,
           "every": 500,
+          "quantity": 200000,
+          "proctor_mode": "full_t99",
+          "est_atterberg_lab_hours": 1400.0,
+          "est_proctor_lab_hours": 2000.0,
+          "est_field_density_hours": 200.0,
+          "est_total_lab_hours": 3400.0,
           "label": "200,000 yd\u00b3 embankment/borrow (RT-301-scale)"
         }
       },
       "source": "Table B-1 quantities list"
     },
     {
-      "id": "table-b1-t99-209500-1 / 1000 ( 1 / 750 )",
-      "rule_id": "full_t99_no_one_point",
+      "id": "table-b1-atterberg-14-209500-1 / 1000 ( 1 / 750 )",
+      "rule_id": "atterberg_at_frequency",
       "category": "testing_capacity_risk",
       "severity": "high",
-      "note": "Table B-1 lists full AASHTO T99 without T272 / one-point alternative. On high-volume earthwork this can exceed field/lab capacity (RT 301 lesson: Tutor Perini exploited missed testing frequencies).",
+      "note": "Table B-1 requires liquid/plastic limits (AASHTO T89/T90) at this frequency. RT 301 lesson: the lab could not sustain Atterberg throughput; Tutor Perini later exploited missed LL/PL testing.",
+      "match": "T89/T90 at Table B-1 frequency",
+      "page": null,
+      "section_id": "209500",
+      "section_header": "Coal Ash yd3 (m3)",
+      "snippet": "209500 Coal Ash yd3 (m3) 1 / 1000 ( 1 / 750 ) T88, T89, T90, T99 (Method C)",
+      "item": "209500",
+      "frequency": {
+        "kind": "per_unit",
+        "every": 1000,
+        "raw": "1 / 1000 ( 1 / 750 )"
+      },
+      "tests": "T88, T89, T90, T99 (Method C)",
+      "capacity_scenarios": {
+        "medium_earthwork_50k_cy": {
+          "samples": 50,
+          "every": 1000,
+          "quantity": 50000,
+          "proctor_mode": "full_t99",
+          "est_atterberg_lab_hours": 175.0,
+          "est_proctor_lab_hours": 250.0,
+          "est_field_density_hours": 0.0,
+          "est_total_lab_hours": 425.0,
+          "label": "50,000 yd\u00b3 embankment/borrow"
+        },
+        "large_earthwork_200k_cy": {
+          "samples": 200,
+          "every": 1000,
+          "quantity": 200000,
+          "proctor_mode": "full_t99",
+          "est_atterberg_lab_hours": 700.0,
+          "est_proctor_lab_hours": 1000.0,
+          "est_field_density_hours": 0.0,
+          "est_total_lab_hours": 1700.0,
+          "label": "200,000 yd\u00b3 embankment/borrow (RT-301-scale)"
+        }
+      },
+      "source": "Table B-1 quantities list"
+    },
+    {
+      "id": "table-b1-t99-14-209500-1 / 1000 ( 1 / 750 )",
+      "rule_id": "full_t99_no_one_point",
+      "category": "testing_capacity_risk",
+      "severity": "medium",
+      "note": "Same Table B-1 row also lists full AASHTO T99 without T272/one-point alt \u2014 adds Proctor lab load on top of Atterbergs. Related capacity risk; RT 301\u2019s exploited miss was LL/PL.",
       "match": "T99 without T272/one-point",
       "page": null,
       "section_id": "209500",
@@ -506,31 +1217,123 @@
       "capacity_scenarios": {
         "medium_earthwork_50k_cy": {
           "samples": 50,
-          "mode": "full_t99",
-          "est_lab_hours": 350.0,
-          "est_field_density_hours": 0,
-          "quantity": 50000,
           "every": 1000,
+          "quantity": 50000,
+          "proctor_mode": "full_t99",
+          "est_atterberg_lab_hours": 175.0,
+          "est_proctor_lab_hours": 250.0,
+          "est_field_density_hours": 0.0,
+          "est_total_lab_hours": 425.0,
           "label": "50,000 yd\u00b3 embankment/borrow"
         },
         "large_earthwork_200k_cy": {
           "samples": 200,
-          "mode": "full_t99",
-          "est_lab_hours": 1400.0,
-          "est_field_density_hours": 0,
-          "quantity": 200000,
           "every": 1000,
+          "quantity": 200000,
+          "proctor_mode": "full_t99",
+          "est_atterberg_lab_hours": 700.0,
+          "est_proctor_lab_hours": 1000.0,
+          "est_field_density_hours": 0.0,
+          "est_total_lab_hours": 1700.0,
           "label": "200,000 yd\u00b3 embankment/borrow (RT-301-scale)"
         }
       },
       "source": "Table B-1 quantities list"
     },
     {
-      "id": "table-b1-t99-yd3 (m3)-1 / 500 ( 1 / 400 )",
-      "rule_id": "full_t99_no_one_point",
+      "id": "table-b1-atterberg-15-209503-1 / 1000 ( 1 / 750 )",
+      "rule_id": "atterberg_at_frequency",
       "category": "testing_capacity_risk",
       "severity": "high",
-      "note": "Table B-1 lists full AASHTO T99 without T272 / one-point alternative. On high-volume earthwork this can exceed field/lab capacity (RT 301 lesson: Tutor Perini exploited missed testing frequencies). Frequency is aggressive: 1 per 500 units.",
+      "note": "Table B-1 requires liquid/plastic limits (AASHTO T89/T90) at this frequency. RT 301 lesson: the lab could not sustain Atterberg throughput; Tutor Perini later exploited missed LL/PL testing.",
+      "match": "T89/T90 at Table B-1 frequency",
+      "page": null,
+      "section_id": "209503",
+      "section_header": "Lightweight Fill yd3 (m3) minimum",
+      "snippet": "209503 Lightweight Fill yd3 (m3) minimum 1 / 1000 ( 1 / 750 ) T88, T89, T90, T310",
+      "item": "209503",
+      "frequency": {
+        "kind": "per_unit",
+        "every": 1000,
+        "raw": "1 / 1000 ( 1 / 750 )"
+      },
+      "tests": "T88, T89, T90, T310",
+      "capacity_scenarios": {
+        "medium_earthwork_50k_cy": {
+          "samples": 50,
+          "every": 1000,
+          "quantity": 50000,
+          "proctor_mode": "none",
+          "est_atterberg_lab_hours": 175.0,
+          "est_proctor_lab_hours": 0.0,
+          "est_field_density_hours": 25.0,
+          "est_total_lab_hours": 175.0,
+          "label": "50,000 yd\u00b3 embankment/borrow"
+        },
+        "large_earthwork_200k_cy": {
+          "samples": 200,
+          "every": 1000,
+          "quantity": 200000,
+          "proctor_mode": "none",
+          "est_atterberg_lab_hours": 700.0,
+          "est_proctor_lab_hours": 0.0,
+          "est_field_density_hours": 100.0,
+          "est_total_lab_hours": 700.0,
+          "label": "200,000 yd\u00b3 embankment/borrow (RT-301-scale)"
+        }
+      },
+      "source": "Table B-1 quantities list"
+    },
+    {
+      "id": "table-b1-atterberg-16-yd3 (m3)-1 / 500 ( 1 / 400 )",
+      "rule_id": "atterberg_at_frequency",
+      "category": "testing_capacity_risk",
+      "severity": "high",
+      "note": "Table B-1 requires liquid/plastic limits (AASHTO T89/T90) at this frequency. RT 301 lesson: the lab could not sustain Atterberg throughput; Tutor Perini later exploited missed LL/PL testing. Aggressive rate: 1 per 500 units.",
+      "match": "T89/T90 at Table B-1 frequency",
+      "page": null,
+      "section_id": null,
+      "section_header": "yd3 (m3)",
+      "snippet": "yd3 (m3) 1 / 500 ( 1 / 400 ) T88, T89, T90, T99 (Method C), T310",
+      "item": null,
+      "frequency": {
+        "kind": "per_unit",
+        "every": 500,
+        "raw": "1 / 500 ( 1 / 400 )"
+      },
+      "tests": "T88, T89, T90, T99 (Method C), T310",
+      "capacity_scenarios": {
+        "medium_earthwork_50k_cy": {
+          "samples": 100,
+          "every": 500,
+          "quantity": 50000,
+          "proctor_mode": "full_t99",
+          "est_atterberg_lab_hours": 350.0,
+          "est_proctor_lab_hours": 500.0,
+          "est_field_density_hours": 50.0,
+          "est_total_lab_hours": 850.0,
+          "label": "50,000 yd\u00b3 embankment/borrow"
+        },
+        "large_earthwork_200k_cy": {
+          "samples": 400,
+          "every": 500,
+          "quantity": 200000,
+          "proctor_mode": "full_t99",
+          "est_atterberg_lab_hours": 1400.0,
+          "est_proctor_lab_hours": 2000.0,
+          "est_field_density_hours": 200.0,
+          "est_total_lab_hours": 3400.0,
+          "label": "200,000 yd\u00b3 embankment/borrow (RT-301-scale)"
+        }
+      },
+      "source": "Table B-1 quantities list"
+    },
+    {
+      "id": "table-b1-t99-16-yd3 (m3)-1 / 500 ( 1 / 400 )",
+      "rule_id": "full_t99_no_one_point",
+      "category": "testing_capacity_risk",
+      "severity": "medium",
+      "note": "Same Table B-1 row also lists full AASHTO T99 without T272/one-point alt \u2014 adds Proctor lab load on top of Atterbergs. Related capacity risk; RT 301\u2019s exploited miss was LL/PL.",
       "match": "T99 without T272/one-point",
       "page": null,
       "section_id": null,
@@ -546,31 +1349,79 @@
       "capacity_scenarios": {
         "medium_earthwork_50k_cy": {
           "samples": 100,
-          "mode": "full_t99",
-          "est_lab_hours": 700.0,
-          "est_field_density_hours": 50.0,
-          "quantity": 50000,
           "every": 500,
+          "quantity": 50000,
+          "proctor_mode": "full_t99",
+          "est_atterberg_lab_hours": 350.0,
+          "est_proctor_lab_hours": 500.0,
+          "est_field_density_hours": 50.0,
+          "est_total_lab_hours": 850.0,
           "label": "50,000 yd\u00b3 embankment/borrow"
         },
         "large_earthwork_200k_cy": {
           "samples": 400,
-          "mode": "full_t99",
-          "est_lab_hours": 2800.0,
-          "est_field_density_hours": 200.0,
-          "quantity": 200000,
           "every": 500,
+          "quantity": 200000,
+          "proctor_mode": "full_t99",
+          "est_atterberg_lab_hours": 1400.0,
+          "est_proctor_lab_hours": 2000.0,
+          "est_field_density_hours": 200.0,
+          "est_total_lab_hours": 3400.0,
           "label": "200,000 yd\u00b3 embankment/borrow (RT-301-scale)"
         }
       },
       "source": "Table B-1 quantities list"
     },
     {
-      "id": "table-b1-t99-yd3 (m3)-1 / 1000 ( 1 / 750 )",
-      "rule_id": "full_t99_no_one_point",
+      "id": "table-b1-atterberg-17-yd3 (m3)-1 / 1000 ( 1 / 750 )",
+      "rule_id": "atterberg_at_frequency",
       "category": "testing_capacity_risk",
       "severity": "high",
-      "note": "Table B-1 lists full AASHTO T99 without T272 / one-point alternative. On high-volume earthwork this can exceed field/lab capacity (RT 301 lesson: Tutor Perini exploited missed testing frequencies).",
+      "note": "Table B-1 requires liquid/plastic limits (AASHTO T89/T90) at this frequency. RT 301 lesson: the lab could not sustain Atterberg throughput; Tutor Perini later exploited missed LL/PL testing.",
+      "match": "T89/T90 at Table B-1 frequency",
+      "page": null,
+      "section_id": null,
+      "section_header": "yd3 (m3)",
+      "snippet": "yd3 (m3) 1 / 1000 ( 1 / 750 ) T88, T89, T90, T99 (Method C), T310",
+      "item": null,
+      "frequency": {
+        "kind": "per_unit",
+        "every": 1000,
+        "raw": "1 / 1000 ( 1 / 750 )"
+      },
+      "tests": "T88, T89, T90, T99 (Method C), T310",
+      "capacity_scenarios": {
+        "medium_earthwork_50k_cy": {
+          "samples": 50,
+          "every": 1000,
+          "quantity": 50000,
+          "proctor_mode": "full_t99",
+          "est_atterberg_lab_hours": 175.0,
+          "est_proctor_lab_hours": 250.0,
+          "est_field_density_hours": 25.0,
+          "est_total_lab_hours": 425.0,
+          "label": "50,000 yd\u00b3 embankment/borrow"
+        },
+        "large_earthwork_200k_cy": {
+          "samples": 200,
+          "every": 1000,
+          "quantity": 200000,
+          "proctor_mode": "full_t99",
+          "est_atterberg_lab_hours": 700.0,
+          "est_proctor_lab_hours": 1000.0,
+          "est_field_density_hours": 100.0,
+          "est_total_lab_hours": 1700.0,
+          "label": "200,000 yd\u00b3 embankment/borrow (RT-301-scale)"
+        }
+      },
+      "source": "Table B-1 quantities list"
+    },
+    {
+      "id": "table-b1-t99-17-yd3 (m3)-1 / 1000 ( 1 / 750 )",
+      "rule_id": "full_t99_no_one_point",
+      "category": "testing_capacity_risk",
+      "severity": "medium",
+      "note": "Same Table B-1 row also lists full AASHTO T99 without T272/one-point alt \u2014 adds Proctor lab load on top of Atterbergs. Related capacity risk; RT 301\u2019s exploited miss was LL/PL.",
       "match": "T99 without T272/one-point",
       "page": null,
       "section_id": null,
@@ -586,31 +1437,79 @@
       "capacity_scenarios": {
         "medium_earthwork_50k_cy": {
           "samples": 50,
-          "mode": "full_t99",
-          "est_lab_hours": 350.0,
-          "est_field_density_hours": 25.0,
-          "quantity": 50000,
           "every": 1000,
+          "quantity": 50000,
+          "proctor_mode": "full_t99",
+          "est_atterberg_lab_hours": 175.0,
+          "est_proctor_lab_hours": 250.0,
+          "est_field_density_hours": 25.0,
+          "est_total_lab_hours": 425.0,
           "label": "50,000 yd\u00b3 embankment/borrow"
         },
         "large_earthwork_200k_cy": {
           "samples": 200,
-          "mode": "full_t99",
-          "est_lab_hours": 1400.0,
-          "est_field_density_hours": 100.0,
-          "quantity": 200000,
           "every": 1000,
+          "quantity": 200000,
+          "proctor_mode": "full_t99",
+          "est_atterberg_lab_hours": 700.0,
+          "est_proctor_lab_hours": 1000.0,
+          "est_field_density_hours": 100.0,
+          "est_total_lab_hours": 1700.0,
           "label": "200,000 yd\u00b3 embankment/borrow (RT-301-scale)"
         }
       },
       "source": "Table B-1 quantities list"
     },
     {
-      "id": "table-b1-t99-212000-1 / 1000 ( 1 / 750 )",
-      "rule_id": "full_t99_no_one_point",
+      "id": "table-b1-atterberg-18-212000-1 / 1000 ( 1 / 750 )",
+      "rule_id": "atterberg_at_frequency",
       "category": "testing_capacity_risk",
       "severity": "high",
-      "note": "Table B-1 lists full AASHTO T99 without T272 / one-point alternative. On high-volume earthwork this can exceed field/lab capacity (RT 301 lesson: Tutor Perini exploited missed testing frequencies).",
+      "note": "Table B-1 requires liquid/plastic limits (AASHTO T89/T90) at this frequency. RT 301 lesson: the lab could not sustain Atterberg throughput; Tutor Perini later exploited missed LL/PL testing.",
+      "match": "T89/T90 at Table B-1 frequency",
+      "page": null,
+      "section_id": "212000",
+      "section_header": "Undercut Excavation yd3 (m3)",
+      "snippet": "212000 Undercut Excavation yd3 (m3) 1 / 1000 ( 1 / 750 ) T88, T89, T90, T99 (Method C), T267, T310",
+      "item": "212000",
+      "frequency": {
+        "kind": "per_unit",
+        "every": 1000,
+        "raw": "1 / 1000 ( 1 / 750 )"
+      },
+      "tests": "T88, T89, T90, T99 (Method C), T267, T310",
+      "capacity_scenarios": {
+        "medium_earthwork_50k_cy": {
+          "samples": 50,
+          "every": 1000,
+          "quantity": 50000,
+          "proctor_mode": "full_t99",
+          "est_atterberg_lab_hours": 175.0,
+          "est_proctor_lab_hours": 250.0,
+          "est_field_density_hours": 25.0,
+          "est_total_lab_hours": 425.0,
+          "label": "50,000 yd\u00b3 embankment/borrow"
+        },
+        "large_earthwork_200k_cy": {
+          "samples": 200,
+          "every": 1000,
+          "quantity": 200000,
+          "proctor_mode": "full_t99",
+          "est_atterberg_lab_hours": 700.0,
+          "est_proctor_lab_hours": 1000.0,
+          "est_field_density_hours": 100.0,
+          "est_total_lab_hours": 1700.0,
+          "label": "200,000 yd\u00b3 embankment/borrow (RT-301-scale)"
+        }
+      },
+      "source": "Table B-1 quantities list"
+    },
+    {
+      "id": "table-b1-t99-18-212000-1 / 1000 ( 1 / 750 )",
+      "rule_id": "full_t99_no_one_point",
+      "category": "testing_capacity_risk",
+      "severity": "medium",
+      "note": "Same Table B-1 row also lists full AASHTO T99 without T272/one-point alt \u2014 adds Proctor lab load on top of Atterbergs. Related capacity risk; RT 301\u2019s exploited miss was LL/PL.",
       "match": "T99 without T272/one-point",
       "page": null,
       "section_id": "212000",
@@ -626,31 +1525,79 @@
       "capacity_scenarios": {
         "medium_earthwork_50k_cy": {
           "samples": 50,
-          "mode": "full_t99",
-          "est_lab_hours": 350.0,
-          "est_field_density_hours": 25.0,
-          "quantity": 50000,
           "every": 1000,
+          "quantity": 50000,
+          "proctor_mode": "full_t99",
+          "est_atterberg_lab_hours": 175.0,
+          "est_proctor_lab_hours": 250.0,
+          "est_field_density_hours": 25.0,
+          "est_total_lab_hours": 425.0,
           "label": "50,000 yd\u00b3 embankment/borrow"
         },
         "large_earthwork_200k_cy": {
           "samples": 200,
-          "mode": "full_t99",
-          "est_lab_hours": 1400.0,
-          "est_field_density_hours": 100.0,
-          "quantity": 200000,
           "every": 1000,
+          "quantity": 200000,
+          "proctor_mode": "full_t99",
+          "est_atterberg_lab_hours": 700.0,
+          "est_proctor_lab_hours": 1000.0,
+          "est_field_density_hours": 100.0,
+          "est_total_lab_hours": 1700.0,
           "label": "200,000 yd\u00b3 embankment/borrow (RT-301-scale)"
         }
       },
       "source": "Table B-1 quantities list"
     },
     {
-      "id": "table-b1-t99-212001-1 / 1000 ( 1 / 750 )",
-      "rule_id": "full_t99_no_one_point",
+      "id": "table-b1-atterberg-19-212001-1 / 1000 ( 1 / 750 )",
+      "rule_id": "atterberg_at_frequency",
       "category": "testing_capacity_risk",
       "severity": "high",
-      "note": "Table B-1 lists full AASHTO T99 without T272 / one-point alternative. On high-volume earthwork this can exceed field/lab capacity (RT 301 lesson: Tutor Perini exploited missed testing frequencies).",
+      "note": "Table B-1 requires liquid/plastic limits (AASHTO T89/T90) at this frequency. RT 301 lesson: the lab could not sustain Atterberg throughput; Tutor Perini later exploited missed LL/PL testing.",
+      "match": "T89/T90 at Table B-1 frequency",
+      "page": null,
+      "section_id": "212001",
+      "section_header": "Undercut Excavation, Patching yd3 (m3)",
+      "snippet": "212001 Undercut Excavation, Patching yd3 (m3) 1 / 1000 ( 1 / 750 ) T88, T89, T90, T99 (Method C), T267, T310",
+      "item": "212001",
+      "frequency": {
+        "kind": "per_unit",
+        "every": 1000,
+        "raw": "1 / 1000 ( 1 / 750 )"
+      },
+      "tests": "T88, T89, T90, T99 (Method C), T267, T310",
+      "capacity_scenarios": {
+        "medium_earthwork_50k_cy": {
+          "samples": 50,
+          "every": 1000,
+          "quantity": 50000,
+          "proctor_mode": "full_t99",
+          "est_atterberg_lab_hours": 175.0,
+          "est_proctor_lab_hours": 250.0,
+          "est_field_density_hours": 25.0,
+          "est_total_lab_hours": 425.0,
+          "label": "50,000 yd\u00b3 embankment/borrow"
+        },
+        "large_earthwork_200k_cy": {
+          "samples": 200,
+          "every": 1000,
+          "quantity": 200000,
+          "proctor_mode": "full_t99",
+          "est_atterberg_lab_hours": 700.0,
+          "est_proctor_lab_hours": 1000.0,
+          "est_field_density_hours": 100.0,
+          "est_total_lab_hours": 1700.0,
+          "label": "200,000 yd\u00b3 embankment/borrow (RT-301-scale)"
+        }
+      },
+      "source": "Table B-1 quantities list"
+    },
+    {
+      "id": "table-b1-t99-19-212001-1 / 1000 ( 1 / 750 )",
+      "rule_id": "full_t99_no_one_point",
+      "category": "testing_capacity_risk",
+      "severity": "medium",
+      "note": "Same Table B-1 row also lists full AASHTO T99 without T272/one-point alt \u2014 adds Proctor lab load on top of Atterbergs. Related capacity risk; RT 301\u2019s exploited miss was LL/PL.",
       "match": "T99 without T272/one-point",
       "page": null,
       "section_id": "212001",
@@ -666,31 +1613,35 @@
       "capacity_scenarios": {
         "medium_earthwork_50k_cy": {
           "samples": 50,
-          "mode": "full_t99",
-          "est_lab_hours": 350.0,
-          "est_field_density_hours": 25.0,
-          "quantity": 50000,
           "every": 1000,
+          "quantity": 50000,
+          "proctor_mode": "full_t99",
+          "est_atterberg_lab_hours": 175.0,
+          "est_proctor_lab_hours": 250.0,
+          "est_field_density_hours": 25.0,
+          "est_total_lab_hours": 425.0,
           "label": "50,000 yd\u00b3 embankment/borrow"
         },
         "large_earthwork_200k_cy": {
           "samples": 200,
-          "mode": "full_t99",
-          "est_lab_hours": 1400.0,
-          "est_field_density_hours": 100.0,
-          "quantity": 200000,
           "every": 1000,
+          "quantity": 200000,
+          "proctor_mode": "full_t99",
+          "est_atterberg_lab_hours": 700.0,
+          "est_proctor_lab_hours": 1000.0,
+          "est_field_density_hours": 100.0,
+          "est_total_lab_hours": 1700.0,
           "label": "200,000 yd\u00b3 embankment/borrow (RT-301-scale)"
         }
       },
       "source": "Table B-1 quantities list"
     },
     {
-      "id": "table-b1-t99-Management Pond, Type I yd3 (m3)-minimum 1 / Source / Contract",
+      "id": "table-b1-t99-20-Management Pond, Type I yd3 (m3)-minimum 1 / Source / Contract",
       "rule_id": "full_t99_no_one_point",
       "category": "testing_capacity_risk",
-      "severity": "high",
-      "note": "Table B-1 lists full AASHTO T99 without T272 / one-point alternative. On high-volume earthwork this can exceed field/lab capacity (RT 301 lesson: Tutor Perini exploited missed testing frequencies).",
+      "severity": "medium",
+      "note": "Same Table B-1 row also lists full AASHTO T99 without T272/one-point alt \u2014 adds Proctor lab load on top of Atterbergs. Related capacity risk; RT 301\u2019s exploited miss was LL/PL.",
       "match": "T99 without T272/one-point",
       "page": null,
       "section_id": null,
@@ -707,11 +1658,11 @@
       "source": "Table B-1 quantities list"
     },
     {
-      "id": "table-b1-t99-Management Pond, Type II yd3 (m3)-minimum 1 / Source / Contract",
+      "id": "table-b1-t99-21-Management Pond, Type II yd3 (m3)-minimum 1 / Source / Contract",
       "rule_id": "full_t99_no_one_point",
       "category": "testing_capacity_risk",
-      "severity": "high",
-      "note": "Table B-1 lists full AASHTO T99 without T272 / one-point alternative. On high-volume earthwork this can exceed field/lab capacity (RT 301 lesson: Tutor Perini exploited missed testing frequencies).",
+      "severity": "medium",
+      "note": "Same Table B-1 row also lists full AASHTO T99 without T272/one-point alt \u2014 adds Proctor lab load on top of Atterbergs. Related capacity risk; RT 301\u2019s exploited miss was LL/PL.",
       "match": "T99 without T272/one-point",
       "page": null,
       "section_id": null,
@@ -728,11 +1679,55 @@
       "source": "Table B-1 quantities list"
     },
     {
-      "id": "table-b1-t99-301000-1 / 500 ( 1 / 400 )",
-      "rule_id": "full_t99_no_one_point",
+      "id": "table-b1-atterberg-22-301000-1 / 500 ( 1 / 400 )",
+      "rule_id": "atterberg_at_frequency",
       "category": "testing_capacity_risk",
       "severity": "high",
-      "note": "Table B-1 lists full AASHTO T99 without T272 / one-point alternative. On high-volume earthwork this can exceed field/lab capacity (RT 301 lesson: Tutor Perini exploited missed testing frequencies). Frequency is aggressive: 1 per 500 units.",
+      "note": "Table B-1 requires liquid/plastic limits (AASHTO T89/T90) at this frequency. RT 301 lesson: the lab could not sustain Atterberg throughput; Tutor Perini later exploited missed LL/PL testing. Aggressive rate: 1 per 500 units.",
+      "match": "T89/T90 at Table B-1 frequency",
+      "page": null,
+      "section_id": "301000",
+      "section_header": "Select Borrow Base Course yd3 (m3)",
+      "snippet": "301000 Select Borrow Base Course yd3 (m3) 1 / 500 ( 1 / 400 ) T88, T89, T90, T99 (Method C), T310",
+      "item": "301000",
+      "frequency": {
+        "kind": "per_unit",
+        "every": 500,
+        "raw": "1 / 500 ( 1 / 400 )"
+      },
+      "tests": "T88, T89, T90, T99 (Method C), T310",
+      "capacity_scenarios": {
+        "medium_earthwork_50k_cy": {
+          "samples": 100,
+          "every": 500,
+          "quantity": 50000,
+          "proctor_mode": "full_t99",
+          "est_atterberg_lab_hours": 350.0,
+          "est_proctor_lab_hours": 500.0,
+          "est_field_density_hours": 50.0,
+          "est_total_lab_hours": 850.0,
+          "label": "50,000 yd\u00b3 embankment/borrow"
+        },
+        "large_earthwork_200k_cy": {
+          "samples": 400,
+          "every": 500,
+          "quantity": 200000,
+          "proctor_mode": "full_t99",
+          "est_atterberg_lab_hours": 1400.0,
+          "est_proctor_lab_hours": 2000.0,
+          "est_field_density_hours": 200.0,
+          "est_total_lab_hours": 3400.0,
+          "label": "200,000 yd\u00b3 embankment/borrow (RT-301-scale)"
+        }
+      },
+      "source": "Table B-1 quantities list"
+    },
+    {
+      "id": "table-b1-t99-22-301000-1 / 500 ( 1 / 400 )",
+      "rule_id": "full_t99_no_one_point",
+      "category": "testing_capacity_risk",
+      "severity": "medium",
+      "note": "Same Table B-1 row also lists full AASHTO T99 without T272/one-point alt \u2014 adds Proctor lab load on top of Atterbergs. Related capacity risk; RT 301\u2019s exploited miss was LL/PL.",
       "match": "T99 without T272/one-point",
       "page": null,
       "section_id": "301000",
@@ -748,31 +1743,79 @@
       "capacity_scenarios": {
         "medium_earthwork_50k_cy": {
           "samples": 100,
-          "mode": "full_t99",
-          "est_lab_hours": 700.0,
-          "est_field_density_hours": 50.0,
-          "quantity": 50000,
           "every": 500,
+          "quantity": 50000,
+          "proctor_mode": "full_t99",
+          "est_atterberg_lab_hours": 350.0,
+          "est_proctor_lab_hours": 500.0,
+          "est_field_density_hours": 50.0,
+          "est_total_lab_hours": 850.0,
           "label": "50,000 yd\u00b3 embankment/borrow"
         },
         "large_earthwork_200k_cy": {
           "samples": 400,
-          "mode": "full_t99",
-          "est_lab_hours": 2800.0,
-          "est_field_density_hours": 200.0,
-          "quantity": 200000,
           "every": 500,
+          "quantity": 200000,
+          "proctor_mode": "full_t99",
+          "est_atterberg_lab_hours": 1400.0,
+          "est_proctor_lab_hours": 2000.0,
+          "est_field_density_hours": 200.0,
+          "est_total_lab_hours": 3400.0,
           "label": "200,000 yd\u00b3 embankment/borrow (RT-301-scale)"
         }
       },
       "source": "Table B-1 quantities list"
     },
     {
-      "id": "table-b1-t99-mm) yd2 (m2)-1 / 500 ( 1 / 400 )",
-      "rule_id": "full_t99_no_one_point",
+      "id": "table-b1-atterberg-27-mm) yd2 (m2)-1 / 500 ( 1 / 400 )",
+      "rule_id": "atterberg_at_frequency",
       "category": "testing_capacity_risk",
       "severity": "high",
-      "note": "Table B-1 lists full AASHTO T99 without T272 / one-point alternative. On high-volume earthwork this can exceed field/lab capacity (RT 301 lesson: Tutor Perini exploited missed testing frequencies). Frequency is aggressive: 1 per 500 units.",
+      "note": "Table B-1 requires liquid/plastic limits (AASHTO T89/T90) at this frequency. RT 301 lesson: the lab could not sustain Atterberg throughput; Tutor Perini later exploited missed LL/PL testing. Aggressive rate: 1 per 500 units.",
+      "match": "T89/T90 at Table B-1 frequency",
+      "page": null,
+      "section_id": null,
+      "section_header": "mm) yd2 (m2)",
+      "snippet": "mm) yd2 (m2) 1 / 500 ( 1 / 400 ) T88, T89, T90, T99 (Method C), T22, T23, or ASTM C39",
+      "item": null,
+      "frequency": {
+        "kind": "per_unit",
+        "every": 500,
+        "raw": "1 / 500 ( 1 / 400 )"
+      },
+      "tests": "T88, T89, T90, T99 (Method C), T22, T23, or ASTM C39",
+      "capacity_scenarios": {
+        "medium_earthwork_50k_cy": {
+          "samples": 100,
+          "every": 500,
+          "quantity": 50000,
+          "proctor_mode": "full_t99",
+          "est_atterberg_lab_hours": 350.0,
+          "est_proctor_lab_hours": 500.0,
+          "est_field_density_hours": 0.0,
+          "est_total_lab_hours": 850.0,
+          "label": "50,000 yd\u00b3 embankment/borrow"
+        },
+        "large_earthwork_200k_cy": {
+          "samples": 400,
+          "every": 500,
+          "quantity": 200000,
+          "proctor_mode": "full_t99",
+          "est_atterberg_lab_hours": 1400.0,
+          "est_proctor_lab_hours": 2000.0,
+          "est_field_density_hours": 0.0,
+          "est_total_lab_hours": 3400.0,
+          "label": "200,000 yd\u00b3 embankment/borrow (RT-301-scale)"
+        }
+      },
+      "source": "Table B-1 quantities list"
+    },
+    {
+      "id": "table-b1-t99-27-mm) yd2 (m2)-1 / 500 ( 1 / 400 )",
+      "rule_id": "full_t99_no_one_point",
+      "category": "testing_capacity_risk",
+      "severity": "medium",
+      "note": "Same Table B-1 row also lists full AASHTO T99 without T272/one-point alt \u2014 adds Proctor lab load on top of Atterbergs. Related capacity risk; RT 301\u2019s exploited miss was LL/PL.",
       "match": "T99 without T272/one-point",
       "page": null,
       "section_id": null,
@@ -788,31 +1831,79 @@
       "capacity_scenarios": {
         "medium_earthwork_50k_cy": {
           "samples": 100,
-          "mode": "full_t99",
-          "est_lab_hours": 700.0,
-          "est_field_density_hours": 0,
-          "quantity": 50000,
           "every": 500,
+          "quantity": 50000,
+          "proctor_mode": "full_t99",
+          "est_atterberg_lab_hours": 350.0,
+          "est_proctor_lab_hours": 500.0,
+          "est_field_density_hours": 0.0,
+          "est_total_lab_hours": 850.0,
           "label": "50,000 yd\u00b3 embankment/borrow"
         },
         "large_earthwork_200k_cy": {
           "samples": 400,
-          "mode": "full_t99",
-          "est_lab_hours": 2800.0,
-          "est_field_density_hours": 0,
-          "quantity": 200000,
           "every": 500,
+          "quantity": 200000,
+          "proctor_mode": "full_t99",
+          "est_atterberg_lab_hours": 1400.0,
+          "est_proctor_lab_hours": 2000.0,
+          "est_field_density_hours": 0.0,
+          "est_total_lab_hours": 3400.0,
           "label": "200,000 yd\u00b3 embankment/borrow (RT-301-scale)"
         }
       },
       "source": "Table B-1 quantities list"
     },
     {
-      "id": "table-b1-t99--1 / 500 ( 1 / 400 )",
-      "rule_id": "full_t99_no_one_point",
+      "id": "table-b1-atterberg-28--1 / 500 ( 1 / 400 )",
+      "rule_id": "atterberg_at_frequency",
       "category": "testing_capacity_risk",
       "severity": "high",
-      "note": "Table B-1 lists full AASHTO T99 without T272 / one-point alternative. On high-volume earthwork this can exceed field/lab capacity (RT 301 lesson: Tutor Perini exploited missed testing frequencies). Frequency is aggressive: 1 per 500 units.",
+      "note": "Table B-1 requires liquid/plastic limits (AASHTO T89/T90) at this frequency. RT 301 lesson: the lab could not sustain Atterberg throughput; Tutor Perini later exploited missed LL/PL testing. Aggressive rate: 1 per 500 units.",
+      "match": "T89/T90 at Table B-1 frequency",
+      "page": null,
+      "section_id": null,
+      "section_header": "",
+      "snippet": "1 / 500 ( 1 / 400 ) T88, T89, T90, T99 (Method C), T22, T23, or ASTM C39",
+      "item": null,
+      "frequency": {
+        "kind": "per_unit",
+        "every": 500,
+        "raw": "1 / 500 ( 1 / 400 )"
+      },
+      "tests": "T88, T89, T90, T99 (Method C), T22, T23, or ASTM C39",
+      "capacity_scenarios": {
+        "medium_earthwork_50k_cy": {
+          "samples": 100,
+          "every": 500,
+          "quantity": 50000,
+          "proctor_mode": "full_t99",
+          "est_atterberg_lab_hours": 350.0,
+          "est_proctor_lab_hours": 500.0,
+          "est_field_density_hours": 0.0,
+          "est_total_lab_hours": 850.0,
+          "label": "50,000 yd\u00b3 embankment/borrow"
+        },
+        "large_earthwork_200k_cy": {
+          "samples": 400,
+          "every": 500,
+          "quantity": 200000,
+          "proctor_mode": "full_t99",
+          "est_atterberg_lab_hours": 1400.0,
+          "est_proctor_lab_hours": 2000.0,
+          "est_field_density_hours": 0.0,
+          "est_total_lab_hours": 3400.0,
+          "label": "200,000 yd\u00b3 embankment/borrow (RT-301-scale)"
+        }
+      },
+      "source": "Table B-1 quantities list"
+    },
+    {
+      "id": "table-b1-t99-28--1 / 500 ( 1 / 400 )",
+      "rule_id": "full_t99_no_one_point",
+      "category": "testing_capacity_risk",
+      "severity": "medium",
+      "note": "Same Table B-1 row also lists full AASHTO T99 without T272/one-point alt \u2014 adds Proctor lab load on top of Atterbergs. Related capacity risk; RT 301\u2019s exploited miss was LL/PL.",
       "match": "T99 without T272/one-point",
       "page": null,
       "section_id": null,
@@ -828,31 +1919,79 @@
       "capacity_scenarios": {
         "medium_earthwork_50k_cy": {
           "samples": 100,
-          "mode": "full_t99",
-          "est_lab_hours": 700.0,
-          "est_field_density_hours": 0,
-          "quantity": 50000,
           "every": 500,
+          "quantity": 50000,
+          "proctor_mode": "full_t99",
+          "est_atterberg_lab_hours": 350.0,
+          "est_proctor_lab_hours": 500.0,
+          "est_field_density_hours": 0.0,
+          "est_total_lab_hours": 850.0,
           "label": "50,000 yd\u00b3 embankment/borrow"
         },
         "large_earthwork_200k_cy": {
           "samples": 400,
-          "mode": "full_t99",
-          "est_lab_hours": 2800.0,
-          "est_field_density_hours": 0,
-          "quantity": 200000,
           "every": 500,
+          "quantity": 200000,
+          "proctor_mode": "full_t99",
+          "est_atterberg_lab_hours": 1400.0,
+          "est_proctor_lab_hours": 2000.0,
+          "est_field_density_hours": 0.0,
+          "est_total_lab_hours": 3400.0,
           "label": "200,000 yd\u00b3 embankment/borrow (RT-301-scale)"
         }
       },
       "source": "Table B-1 quantities list"
     },
     {
-      "id": "table-b1-t99-mm) yd2 (m2)-1 / 500",
-      "rule_id": "full_t99_no_one_point",
+      "id": "table-b1-atterberg-29-mm) yd2 (m2)-1 / 500",
+      "rule_id": "atterberg_at_frequency",
       "category": "testing_capacity_risk",
       "severity": "high",
-      "note": "Table B-1 lists full AASHTO T99 without T272 / one-point alternative. On high-volume earthwork this can exceed field/lab capacity (RT 301 lesson: Tutor Perini exploited missed testing frequencies). Frequency is aggressive: 1 per 500 units.",
+      "note": "Table B-1 requires liquid/plastic limits (AASHTO T89/T90) at this frequency. RT 301 lesson: the lab could not sustain Atterberg throughput; Tutor Perini later exploited missed LL/PL testing. Aggressive rate: 1 per 500 units.",
+      "match": "T89/T90 at Table B-1 frequency",
+      "page": null,
+      "section_id": null,
+      "section_header": "mm) yd2 (m2)",
+      "snippet": "mm) yd2 (m2) 1 / 500 ( 1 / 4 00 ) T88, T89, T90, T99 (Method C), T22, T23, or ASTM C39",
+      "item": null,
+      "frequency": {
+        "kind": "per_unit",
+        "every": 500,
+        "raw": "1 / 500"
+      },
+      "tests": "( 1 / 4 00 ) T88, T89, T90, T99 (Method C), T22, T23, or ASTM C39",
+      "capacity_scenarios": {
+        "medium_earthwork_50k_cy": {
+          "samples": 100,
+          "every": 500,
+          "quantity": 50000,
+          "proctor_mode": "full_t99",
+          "est_atterberg_lab_hours": 350.0,
+          "est_proctor_lab_hours": 500.0,
+          "est_field_density_hours": 0.0,
+          "est_total_lab_hours": 850.0,
+          "label": "50,000 yd\u00b3 embankment/borrow"
+        },
+        "large_earthwork_200k_cy": {
+          "samples": 400,
+          "every": 500,
+          "quantity": 200000,
+          "proctor_mode": "full_t99",
+          "est_atterberg_lab_hours": 1400.0,
+          "est_proctor_lab_hours": 2000.0,
+          "est_field_density_hours": 0.0,
+          "est_total_lab_hours": 3400.0,
+          "label": "200,000 yd\u00b3 embankment/borrow (RT-301-scale)"
+        }
+      },
+      "source": "Table B-1 quantities list"
+    },
+    {
+      "id": "table-b1-t99-29-mm) yd2 (m2)-1 / 500",
+      "rule_id": "full_t99_no_one_point",
+      "category": "testing_capacity_risk",
+      "severity": "medium",
+      "note": "Same Table B-1 row also lists full AASHTO T99 without T272/one-point alt \u2014 adds Proctor lab load on top of Atterbergs. Related capacity risk; RT 301\u2019s exploited miss was LL/PL.",
       "match": "T99 without T272/one-point",
       "page": null,
       "section_id": null,
@@ -868,31 +2007,35 @@
       "capacity_scenarios": {
         "medium_earthwork_50k_cy": {
           "samples": 100,
-          "mode": "full_t99",
-          "est_lab_hours": 700.0,
-          "est_field_density_hours": 0,
-          "quantity": 50000,
           "every": 500,
+          "quantity": 50000,
+          "proctor_mode": "full_t99",
+          "est_atterberg_lab_hours": 350.0,
+          "est_proctor_lab_hours": 500.0,
+          "est_field_density_hours": 0.0,
+          "est_total_lab_hours": 850.0,
           "label": "50,000 yd\u00b3 embankment/borrow"
         },
         "large_earthwork_200k_cy": {
           "samples": 400,
-          "mode": "full_t99",
-          "est_lab_hours": 2800.0,
-          "est_field_density_hours": 0,
-          "quantity": 200000,
           "every": 500,
+          "quantity": 200000,
+          "proctor_mode": "full_t99",
+          "est_atterberg_lab_hours": 1400.0,
+          "est_proctor_lab_hours": 2000.0,
+          "est_field_density_hours": 0.0,
+          "est_total_lab_hours": 3400.0,
           "label": "200,000 yd\u00b3 embankment/borrow (RT-301-scale)"
         }
       },
       "source": "Table B-1 quantities list"
     },
     {
-      "id": "table-b1-t99-(300mm), Class III ft (m)-minimum 1 / Source / Contract",
+      "id": "table-b1-t99-30-(300mm), Class III ft (m)-minimum 1 / Source / Contract",
       "rule_id": "full_t99_no_one_point",
       "category": "testing_capacity_risk",
-      "severity": "high",
-      "note": "Table B-1 lists full AASHTO T99 without T272 / one-point alternative. On high-volume earthwork this can exceed field/lab capacity (RT 301 lesson: Tutor Perini exploited missed testing frequencies).",
+      "severity": "medium",
+      "note": "Same Table B-1 row also lists full AASHTO T99 without T272/one-point alt \u2014 adds Proctor lab load on top of Atterbergs. Related capacity risk; RT 301\u2019s exploited miss was LL/PL.",
       "match": "T99 without T272/one-point",
       "page": null,
       "section_id": null,
@@ -909,11 +2052,11 @@
       "source": "Table B-1 quantities list"
     },
     {
-      "id": "table-b1-t99-(375mm), Class III ft (m)-minimum 1 / Source / Contract",
+      "id": "table-b1-t99-31-(375mm), Class III ft (m)-minimum 1 / Source / Contract",
       "rule_id": "full_t99_no_one_point",
       "category": "testing_capacity_risk",
-      "severity": "high",
-      "note": "Table B-1 lists full AASHTO T99 without T272 / one-point alternative. On high-volume earthwork this can exceed field/lab capacity (RT 301 lesson: Tutor Perini exploited missed testing frequencies).",
+      "severity": "medium",
+      "note": "Same Table B-1 row also lists full AASHTO T99 without T272/one-point alt \u2014 adds Proctor lab load on top of Atterbergs. Related capacity risk; RT 301\u2019s exploited miss was LL/PL.",
       "match": "T99 without T272/one-point",
       "page": null,
       "section_id": null,
@@ -930,11 +2073,11 @@
       "source": "Table B-1 quantities list"
     },
     {
-      "id": "table-b1-t99-(525mm), Class III ft (m)-minimum 1 / Source / Contract",
+      "id": "table-b1-t99-32-(525mm), Class III ft (m)-minimum 1 / Source / Contract",
       "rule_id": "full_t99_no_one_point",
       "category": "testing_capacity_risk",
-      "severity": "high",
-      "note": "Table B-1 lists full AASHTO T99 without T272 / one-point alternative. On high-volume earthwork this can exceed field/lab capacity (RT 301 lesson: Tutor Perini exploited missed testing frequencies).",
+      "severity": "medium",
+      "note": "Same Table B-1 row also lists full AASHTO T99 without T272/one-point alt \u2014 adds Proctor lab load on top of Atterbergs. Related capacity risk; RT 301\u2019s exploited miss was LL/PL.",
       "match": "T99 without T272/one-point",
       "page": null,
       "section_id": null,
@@ -951,11 +2094,11 @@
       "source": "Table B-1 quantities list"
     },
     {
-      "id": "table-b1-t99-(600mm), Class III ft (m)-minimum 1 / Source / Contract",
+      "id": "table-b1-t99-33-(600mm), Class III ft (m)-minimum 1 / Source / Contract",
       "rule_id": "full_t99_no_one_point",
       "category": "testing_capacity_risk",
-      "severity": "high",
-      "note": "Table B-1 lists full AASHTO T99 without T272 / one-point alternative. On high-volume earthwork this can exceed field/lab capacity (RT 301 lesson: Tutor Perini exploited missed testing frequencies).",
+      "severity": "medium",
+      "note": "Same Table B-1 row also lists full AASHTO T99 without T272/one-point alt \u2014 adds Proctor lab load on top of Atterbergs. Related capacity risk; RT 301\u2019s exploited miss was LL/PL.",
       "match": "T99 without T272/one-point",
       "page": null,
       "section_id": null,
@@ -972,11 +2115,11 @@
       "source": "Table B-1 quantities list"
     },
     {
-      "id": "table-b1-t99-(675mm), Class III ft (m)-minimum 1 / Source / Contract",
+      "id": "table-b1-t99-34-(675mm), Class III ft (m)-minimum 1 / Source / Contract",
       "rule_id": "full_t99_no_one_point",
       "category": "testing_capacity_risk",
-      "severity": "high",
-      "note": "Table B-1 lists full AASHTO T99 without T272 / one-point alternative. On high-volume earthwork this can exceed field/lab capacity (RT 301 lesson: Tutor Perini exploited missed testing frequencies).",
+      "severity": "medium",
+      "note": "Same Table B-1 row also lists full AASHTO T99 without T272/one-point alt \u2014 adds Proctor lab load on top of Atterbergs. Related capacity risk; RT 301\u2019s exploited miss was LL/PL.",
       "match": "T99 without T272/one-point",
       "page": null,
       "section_id": null,
@@ -993,11 +2136,11 @@
       "source": "Table B-1 quantities list"
     },
     {
-      "id": "table-b1-t99-(825mm), Class III ft (m)-minimum 1 / Source / Contract",
+      "id": "table-b1-t99-35-(825mm), Class III ft (m)-minimum 1 / Source / Contract",
       "rule_id": "full_t99_no_one_point",
       "category": "testing_capacity_risk",
-      "severity": "high",
-      "note": "Table B-1 lists full AASHTO T99 without T272 / one-point alternative. On high-volume earthwork this can exceed field/lab capacity (RT 301 lesson: Tutor Perini exploited missed testing frequencies).",
+      "severity": "medium",
+      "note": "Same Table B-1 row also lists full AASHTO T99 without T272/one-point alt \u2014 adds Proctor lab load on top of Atterbergs. Related capacity risk; RT 301\u2019s exploited miss was LL/PL.",
       "match": "T99 without T272/one-point",
       "page": null,
       "section_id": null,
@@ -1014,11 +2157,11 @@
       "source": "Table B-1 quantities list"
     },
     {
-      "id": "table-b1-t99-(900mm), Class III ft (m)-minimum 1 / Source / Contract",
+      "id": "table-b1-t99-36-(900mm), Class III ft (m)-minimum 1 / Source / Contract",
       "rule_id": "full_t99_no_one_point",
       "category": "testing_capacity_risk",
-      "severity": "high",
-      "note": "Table B-1 lists full AASHTO T99 without T272 / one-point alternative. On high-volume earthwork this can exceed field/lab capacity (RT 301 lesson: Tutor Perini exploited missed testing frequencies).",
+      "severity": "medium",
+      "note": "Same Table B-1 row also lists full AASHTO T99 without T272/one-point alt \u2014 adds Proctor lab load on top of Atterbergs. Related capacity risk; RT 301\u2019s exploited miss was LL/PL.",
       "match": "T99 without T272/one-point",
       "page": null,
       "section_id": null,
@@ -1035,11 +2178,11 @@
       "source": "Table B-1 quantities list"
     },
     {
-      "id": "table-b1-t99-(1050mm), Class III ft (m)-minimum 1 / Source / Contract",
+      "id": "table-b1-t99-37-(1050mm), Class III ft (m)-minimum 1 / Source / Contract",
       "rule_id": "full_t99_no_one_point",
       "category": "testing_capacity_risk",
-      "severity": "high",
-      "note": "Table B-1 lists full AASHTO T99 without T272 / one-point alternative. On high-volume earthwork this can exceed field/lab capacity (RT 301 lesson: Tutor Perini exploited missed testing frequencies).",
+      "severity": "medium",
+      "note": "Same Table B-1 row also lists full AASHTO T99 without T272/one-point alt \u2014 adds Proctor lab load on top of Atterbergs. Related capacity risk; RT 301\u2019s exploited miss was LL/PL.",
       "match": "T99 without T272/one-point",
       "page": null,
       "section_id": null,
@@ -1056,11 +2199,11 @@
       "source": "Table B-1 quantities list"
     },
     {
-      "id": "table-b1-t99-(1200mm), Class III ft (m)-minimum 1 / Source / Contract",
+      "id": "table-b1-t99-38-(1200mm), Class III ft (m)-minimum 1 / Source / Contract",
       "rule_id": "full_t99_no_one_point",
       "category": "testing_capacity_risk",
-      "severity": "high",
-      "note": "Table B-1 lists full AASHTO T99 without T272 / one-point alternative. On high-volume earthwork this can exceed field/lab capacity (RT 301 lesson: Tutor Perini exploited missed testing frequencies).",
+      "severity": "medium",
+      "note": "Same Table B-1 row also lists full AASHTO T99 without T272/one-point alt \u2014 adds Proctor lab load on top of Atterbergs. Related capacity risk; RT 301\u2019s exploited miss was LL/PL.",
       "match": "T99 without T272/one-point",
       "page": null,
       "section_id": null,
@@ -1077,11 +2220,11 @@
       "source": "Table B-1 quantities list"
     },
     {
-      "id": "table-b1-t99-(1350mm), Class III ft (m)-minimum 1 / Source / Contract",
+      "id": "table-b1-t99-39-(1350mm), Class III ft (m)-minimum 1 / Source / Contract",
       "rule_id": "full_t99_no_one_point",
       "category": "testing_capacity_risk",
-      "severity": "high",
-      "note": "Table B-1 lists full AASHTO T99 without T272 / one-point alternative. On high-volume earthwork this can exceed field/lab capacity (RT 301 lesson: Tutor Perini exploited missed testing frequencies).",
+      "severity": "medium",
+      "note": "Same Table B-1 row also lists full AASHTO T99 without T272/one-point alt \u2014 adds Proctor lab load on top of Atterbergs. Related capacity risk; RT 301\u2019s exploited miss was LL/PL.",
       "match": "T99 without T272/one-point",
       "page": null,
       "section_id": null,
@@ -1098,11 +2241,11 @@
       "source": "Table B-1 quantities list"
     },
     {
-      "id": "table-b1-t99-(1500mm), Class III ft (m)-minimum 1 / Source / Contract",
+      "id": "table-b1-t99-40-(1500mm), Class III ft (m)-minimum 1 / Source / Contract",
       "rule_id": "full_t99_no_one_point",
       "category": "testing_capacity_risk",
-      "severity": "high",
-      "note": "Table B-1 lists full AASHTO T99 without T272 / one-point alternative. On high-volume earthwork this can exceed field/lab capacity (RT 301 lesson: Tutor Perini exploited missed testing frequencies).",
+      "severity": "medium",
+      "note": "Same Table B-1 row also lists full AASHTO T99 without T272/one-point alt \u2014 adds Proctor lab load on top of Atterbergs. Related capacity risk; RT 301\u2019s exploited miss was LL/PL.",
       "match": "T99 without T272/one-point",
       "page": null,
       "section_id": null,
@@ -1119,11 +2262,11 @@
       "source": "Table B-1 quantities list"
     },
     {
-      "id": "table-b1-t99-(1650mm), Class III ft (m)-minimum 1 / Source / Contract",
+      "id": "table-b1-t99-41-(1650mm), Class III ft (m)-minimum 1 / Source / Contract",
       "rule_id": "full_t99_no_one_point",
       "category": "testing_capacity_risk",
-      "severity": "high",
-      "note": "Table B-1 lists full AASHTO T99 without T272 / one-point alternative. On high-volume earthwork this can exceed field/lab capacity (RT 301 lesson: Tutor Perini exploited missed testing frequencies).",
+      "severity": "medium",
+      "note": "Same Table B-1 row also lists full AASHTO T99 without T272/one-point alt \u2014 adds Proctor lab load on top of Atterbergs. Related capacity risk; RT 301\u2019s exploited miss was LL/PL.",
       "match": "T99 without T272/one-point",
       "page": null,
       "section_id": null,
@@ -1140,11 +2283,11 @@
       "source": "Table B-1 quantities list"
     },
     {
-      "id": "table-b1-t99-(1800mm), Class III ft (m)-minimum 1 / Source / Contract",
+      "id": "table-b1-t99-42-(1800mm), Class III ft (m)-minimum 1 / Source / Contract",
       "rule_id": "full_t99_no_one_point",
       "category": "testing_capacity_risk",
-      "severity": "high",
-      "note": "Table B-1 lists full AASHTO T99 without T272 / one-point alternative. On high-volume earthwork this can exceed field/lab capacity (RT 301 lesson: Tutor Perini exploited missed testing frequencies).",
+      "severity": "medium",
+      "note": "Same Table B-1 row also lists full AASHTO T99 without T272/one-point alt \u2014 adds Proctor lab load on top of Atterbergs. Related capacity risk; RT 301\u2019s exploited miss was LL/PL.",
       "match": "T99 without T272/one-point",
       "page": null,
       "section_id": null,
@@ -1161,11 +2304,11 @@
       "source": "Table B-1 quantities list"
     },
     {
-      "id": "table-b1-t99-(1950mm), Class III ft (m)-minimum 1 / Source / Contract",
+      "id": "table-b1-t99-43-(1950mm), Class III ft (m)-minimum 1 / Source / Contract",
       "rule_id": "full_t99_no_one_point",
       "category": "testing_capacity_risk",
-      "severity": "high",
-      "note": "Table B-1 lists full AASHTO T99 without T272 / one-point alternative. On high-volume earthwork this can exceed field/lab capacity (RT 301 lesson: Tutor Perini exploited missed testing frequencies).",
+      "severity": "medium",
+      "note": "Same Table B-1 row also lists full AASHTO T99 without T272/one-point alt \u2014 adds Proctor lab load on top of Atterbergs. Related capacity risk; RT 301\u2019s exploited miss was LL/PL.",
       "match": "T99 without T272/one-point",
       "page": null,
       "section_id": null,
@@ -1182,11 +2325,11 @@
       "source": "Table B-1 quantities list"
     },
     {
-      "id": "table-b1-t99-(2100mm), Class III ft (m)-minimum 1 / Source / Contract",
+      "id": "table-b1-t99-44-(2100mm), Class III ft (m)-minimum 1 / Source / Contract",
       "rule_id": "full_t99_no_one_point",
       "category": "testing_capacity_risk",
-      "severity": "high",
-      "note": "Table B-1 lists full AASHTO T99 without T272 / one-point alternative. On high-volume earthwork this can exceed field/lab capacity (RT 301 lesson: Tutor Perini exploited missed testing frequencies).",
+      "severity": "medium",
+      "note": "Same Table B-1 row also lists full AASHTO T99 without T272/one-point alt \u2014 adds Proctor lab load on top of Atterbergs. Related capacity risk; RT 301\u2019s exploited miss was LL/PL.",
       "match": "T99 without T272/one-point",
       "page": null,
       "section_id": null,
@@ -1203,11 +2346,11 @@
       "source": "Table B-1 quantities list"
     },
     {
-      "id": "table-b1-t99-(2250mm), Class III ft (m)-minimum 1 / Source / Contract",
+      "id": "table-b1-t99-45-(2250mm), Class III ft (m)-minimum 1 / Source / Contract",
       "rule_id": "full_t99_no_one_point",
       "category": "testing_capacity_risk",
-      "severity": "high",
-      "note": "Table B-1 lists full AASHTO T99 without T272 / one-point alternative. On high-volume earthwork this can exceed field/lab capacity (RT 301 lesson: Tutor Perini exploited missed testing frequencies).",
+      "severity": "medium",
+      "note": "Same Table B-1 row also lists full AASHTO T99 without T272/one-point alt \u2014 adds Proctor lab load on top of Atterbergs. Related capacity risk; RT 301\u2019s exploited miss was LL/PL.",
       "match": "T99 without T272/one-point",
       "page": null,
       "section_id": null,
@@ -1224,11 +2367,11 @@
       "source": "Table B-1 quantities list"
     },
     {
-      "id": "table-b1-t99-(2400mm), Class III ft (m)-minimum 1 / Source / Contract",
+      "id": "table-b1-t99-46-(2400mm), Class III ft (m)-minimum 1 / Source / Contract",
       "rule_id": "full_t99_no_one_point",
       "category": "testing_capacity_risk",
-      "severity": "high",
-      "note": "Table B-1 lists full AASHTO T99 without T272 / one-point alternative. On high-volume earthwork this can exceed field/lab capacity (RT 301 lesson: Tutor Perini exploited missed testing frequencies).",
+      "severity": "medium",
+      "note": "Same Table B-1 row also lists full AASHTO T99 without T272/one-point alt \u2014 adds Proctor lab load on top of Atterbergs. Related capacity risk; RT 301\u2019s exploited miss was LL/PL.",
       "match": "T99 without T272/one-point",
       "page": null,
       "section_id": null,
@@ -1245,11 +2388,11 @@
       "source": "Table B-1 quantities list"
     },
     {
-      "id": "table-b1-t99-(300mm), Class IV ft (m)-minimum 1 / Source / Contract",
+      "id": "table-b1-t99-47-(300mm), Class IV ft (m)-minimum 1 / Source / Contract",
       "rule_id": "full_t99_no_one_point",
       "category": "testing_capacity_risk",
-      "severity": "high",
-      "note": "Table B-1 lists full AASHTO T99 without T272 / one-point alternative. On high-volume earthwork this can exceed field/lab capacity (RT 301 lesson: Tutor Perini exploited missed testing frequencies).",
+      "severity": "medium",
+      "note": "Same Table B-1 row also lists full AASHTO T99 without T272/one-point alt \u2014 adds Proctor lab load on top of Atterbergs. Related capacity risk; RT 301\u2019s exploited miss was LL/PL.",
       "match": "T99 without T272/one-point",
       "page": null,
       "section_id": null,
@@ -1266,11 +2409,11 @@
       "source": "Table B-1 quantities list"
     },
     {
-      "id": "table-b1-t99-(375mm), Class IV ft (m)-minimum 1 / Source / Contract",
+      "id": "table-b1-t99-48-(375mm), Class IV ft (m)-minimum 1 / Source / Contract",
       "rule_id": "full_t99_no_one_point",
       "category": "testing_capacity_risk",
-      "severity": "high",
-      "note": "Table B-1 lists full AASHTO T99 without T272 / one-point alternative. On high-volume earthwork this can exceed field/lab capacity (RT 301 lesson: Tutor Perini exploited missed testing frequencies).",
+      "severity": "medium",
+      "note": "Same Table B-1 row also lists full AASHTO T99 without T272/one-point alt \u2014 adds Proctor lab load on top of Atterbergs. Related capacity risk; RT 301\u2019s exploited miss was LL/PL.",
       "match": "T99 without T272/one-point",
       "page": null,
       "section_id": null,
@@ -1287,11 +2430,11 @@
       "source": "Table B-1 quantities list"
     },
     {
-      "id": "table-b1-t99-(450mm), Class IV ft (m)-minimum 1 / Source / Contract",
+      "id": "table-b1-t99-49-(450mm), Class IV ft (m)-minimum 1 / Source / Contract",
       "rule_id": "full_t99_no_one_point",
       "category": "testing_capacity_risk",
-      "severity": "high",
-      "note": "Table B-1 lists full AASHTO T99 without T272 / one-point alternative. On high-volume earthwork this can exceed field/lab capacity (RT 301 lesson: Tutor Perini exploited missed testing frequencies).",
+      "severity": "medium",
+      "note": "Same Table B-1 row also lists full AASHTO T99 without T272/one-point alt \u2014 adds Proctor lab load on top of Atterbergs. Related capacity risk; RT 301\u2019s exploited miss was LL/PL.",
       "match": "T99 without T272/one-point",
       "page": null,
       "section_id": null,
@@ -1308,11 +2451,11 @@
       "source": "Table B-1 quantities list"
     },
     {
-      "id": "table-b1-t99-(600mm), Class IV ft (m)-minimum 1 / Source / Contract",
+      "id": "table-b1-t99-50-(600mm), Class IV ft (m)-minimum 1 / Source / Contract",
       "rule_id": "full_t99_no_one_point",
       "category": "testing_capacity_risk",
-      "severity": "high",
-      "note": "Table B-1 lists full AASHTO T99 without T272 / one-point alternative. On high-volume earthwork this can exceed field/lab capacity (RT 301 lesson: Tutor Perini exploited missed testing frequencies).",
+      "severity": "medium",
+      "note": "Same Table B-1 row also lists full AASHTO T99 without T272/one-point alt \u2014 adds Proctor lab load on top of Atterbergs. Related capacity risk; RT 301\u2019s exploited miss was LL/PL.",
       "match": "T99 without T272/one-point",
       "page": null,
       "section_id": null,
@@ -1329,11 +2472,11 @@
       "source": "Table B-1 quantities list"
     },
     {
-      "id": "table-b1-t99-(675mm), Class IV ft (m)-minimum 1 / Source / Contract",
+      "id": "table-b1-t99-51-(675mm), Class IV ft (m)-minimum 1 / Source / Contract",
       "rule_id": "full_t99_no_one_point",
       "category": "testing_capacity_risk",
-      "severity": "high",
-      "note": "Table B-1 lists full AASHTO T99 without T272 / one-point alternative. On high-volume earthwork this can exceed field/lab capacity (RT 301 lesson: Tutor Perini exploited missed testing frequencies).",
+      "severity": "medium",
+      "note": "Same Table B-1 row also lists full AASHTO T99 without T272/one-point alt \u2014 adds Proctor lab load on top of Atterbergs. Related capacity risk; RT 301\u2019s exploited miss was LL/PL.",
       "match": "T99 without T272/one-point",
       "page": null,
       "section_id": null,
@@ -1350,11 +2493,11 @@
       "source": "Table B-1 quantities list"
     },
     {
-      "id": "table-b1-t99-(750mm), Class IV ft (m)-minimum 1 / Source / Contract",
+      "id": "table-b1-t99-52-(750mm), Class IV ft (m)-minimum 1 / Source / Contract",
       "rule_id": "full_t99_no_one_point",
       "category": "testing_capacity_risk",
-      "severity": "high",
-      "note": "Table B-1 lists full AASHTO T99 without T272 / one-point alternative. On high-volume earthwork this can exceed field/lab capacity (RT 301 lesson: Tutor Perini exploited missed testing frequencies).",
+      "severity": "medium",
+      "note": "Same Table B-1 row also lists full AASHTO T99 without T272/one-point alt \u2014 adds Proctor lab load on top of Atterbergs. Related capacity risk; RT 301\u2019s exploited miss was LL/PL.",
       "match": "T99 without T272/one-point",
       "page": null,
       "section_id": null,
@@ -1371,11 +2514,11 @@
       "source": "Table B-1 quantities list"
     },
     {
-      "id": "table-b1-t99-(750mm), Class V ft (m)-minimum 1 / Source / Contract",
+      "id": "table-b1-t99-53-(750mm), Class V ft (m)-minimum 1 / Source / Contract",
       "rule_id": "full_t99_no_one_point",
       "category": "testing_capacity_risk",
-      "severity": "high",
-      "note": "Table B-1 lists full AASHTO T99 without T272 / one-point alternative. On high-volume earthwork this can exceed field/lab capacity (RT 301 lesson: Tutor Perini exploited missed testing frequencies).",
+      "severity": "medium",
+      "note": "Same Table B-1 row also lists full AASHTO T99 without T272/one-point alt \u2014 adds Proctor lab load on top of Atterbergs. Related capacity risk; RT 301\u2019s exploited miss was LL/PL.",
       "match": "T99 without T272/one-point",
       "page": null,
       "section_id": null,
@@ -1392,11 +2535,11 @@
       "source": "Table B-1 quantities list"
     },
     {
-      "id": "table-b1-t99-(1050mm), Class IV ft (m)-minimum 1 / Source / Contract",
+      "id": "table-b1-t99-54-(1050mm), Class IV ft (m)-minimum 1 / Source / Contract",
       "rule_id": "full_t99_no_one_point",
       "category": "testing_capacity_risk",
-      "severity": "high",
-      "note": "Table B-1 lists full AASHTO T99 without T272 / one-point alternative. On high-volume earthwork this can exceed field/lab capacity (RT 301 lesson: Tutor Perini exploited missed testing frequencies).",
+      "severity": "medium",
+      "note": "Same Table B-1 row also lists full AASHTO T99 without T272/one-point alt \u2014 adds Proctor lab load on top of Atterbergs. Related capacity risk; RT 301\u2019s exploited miss was LL/PL.",
       "match": "T99 without T272/one-point",
       "page": null,
       "section_id": null,
@@ -1413,11 +2556,11 @@
       "source": "Table B-1 quantities list"
     },
     {
-      "id": "table-b1-t99-(1200mm), Class IV ft (m)-minimum 1 / Source / Contract",
+      "id": "table-b1-t99-55-(1200mm), Class IV ft (m)-minimum 1 / Source / Contract",
       "rule_id": "full_t99_no_one_point",
       "category": "testing_capacity_risk",
-      "severity": "high",
-      "note": "Table B-1 lists full AASHTO T99 without T272 / one-point alternative. On high-volume earthwork this can exceed field/lab capacity (RT 301 lesson: Tutor Perini exploited missed testing frequencies).",
+      "severity": "medium",
+      "note": "Same Table B-1 row also lists full AASHTO T99 without T272/one-point alt \u2014 adds Proctor lab load on top of Atterbergs. Related capacity risk; RT 301\u2019s exploited miss was LL/PL.",
       "match": "T99 without T272/one-point",
       "page": null,
       "section_id": null,
@@ -1434,11 +2577,11 @@
       "source": "Table B-1 quantities list"
     },
     {
-      "id": "table-b1-t99-(1350mm), Class IV ft (m)-minimum 1 / Source / Contract",
+      "id": "table-b1-t99-56-(1350mm), Class IV ft (m)-minimum 1 / Source / Contract",
       "rule_id": "full_t99_no_one_point",
       "category": "testing_capacity_risk",
-      "severity": "high",
-      "note": "Table B-1 lists full AASHTO T99 without T272 / one-point alternative. On high-volume earthwork this can exceed field/lab capacity (RT 301 lesson: Tutor Perini exploited missed testing frequencies).",
+      "severity": "medium",
+      "note": "Same Table B-1 row also lists full AASHTO T99 without T272/one-point alt \u2014 adds Proctor lab load on top of Atterbergs. Related capacity risk; RT 301\u2019s exploited miss was LL/PL.",
       "match": "T99 without T272/one-point",
       "page": null,
       "section_id": null,
@@ -1455,11 +2598,11 @@
       "source": "Table B-1 quantities list"
     },
     {
-      "id": "table-b1-t99-(450mm), Class V ft (m)-minimum 1 / Source / Contract",
+      "id": "table-b1-t99-57-(450mm), Class V ft (m)-minimum 1 / Source / Contract",
       "rule_id": "full_t99_no_one_point",
       "category": "testing_capacity_risk",
-      "severity": "high",
-      "note": "Table B-1 lists full AASHTO T99 without T272 / one-point alternative. On high-volume earthwork this can exceed field/lab capacity (RT 301 lesson: Tutor Perini exploited missed testing frequencies).",
+      "severity": "medium",
+      "note": "Same Table B-1 row also lists full AASHTO T99 without T272/one-point alt \u2014 adds Proctor lab load on top of Atterbergs. Related capacity risk; RT 301\u2019s exploited miss was LL/PL.",
       "match": "T99 without T272/one-point",
       "page": null,
       "section_id": null,
@@ -1476,11 +2619,11 @@
       "source": "Table B-1 quantities list"
     },
     {
-      "id": "table-b1-t99-(600mm), Class V ft (m)-minimum 1 / Source / Contract",
+      "id": "table-b1-t99-58-(600mm), Class V ft (m)-minimum 1 / Source / Contract",
       "rule_id": "full_t99_no_one_point",
       "category": "testing_capacity_risk",
-      "severity": "high",
-      "note": "Table B-1 lists full AASHTO T99 without T272 / one-point alternative. On high-volume earthwork this can exceed field/lab capacity (RT 301 lesson: Tutor Perini exploited missed testing frequencies).",
+      "severity": "medium",
+      "note": "Same Table B-1 row also lists full AASHTO T99 without T272/one-point alt \u2014 adds Proctor lab load on top of Atterbergs. Related capacity risk; RT 301\u2019s exploited miss was LL/PL.",
       "match": "T99 without T272/one-point",
       "page": null,
       "section_id": null,
@@ -1497,11 +2640,11 @@
       "source": "Table B-1 quantities list"
     },
     {
-      "id": "table-b1-t99-(375mm), Class V ft (m)-minimum 1 / Source / Contract",
+      "id": "table-b1-t99-59-(375mm), Class V ft (m)-minimum 1 / Source / Contract",
       "rule_id": "full_t99_no_one_point",
       "category": "testing_capacity_risk",
-      "severity": "high",
-      "note": "Table B-1 lists full AASHTO T99 without T272 / one-point alternative. On high-volume earthwork this can exceed field/lab capacity (RT 301 lesson: Tutor Perini exploited missed testing frequencies).",
+      "severity": "medium",
+      "note": "Same Table B-1 row also lists full AASHTO T99 without T272/one-point alt \u2014 adds Proctor lab load on top of Atterbergs. Related capacity risk; RT 301\u2019s exploited miss was LL/PL.",
       "match": "T99 without T272/one-point",
       "page": null,
       "section_id": null,
@@ -1518,11 +2661,11 @@
       "source": "Table B-1 quantities list"
     },
     {
-      "id": "table-b1-t99-(525mm), Class IV ft (m)-minimum 1 / Source / Contract",
+      "id": "table-b1-t99-60-(525mm), Class IV ft (m)-minimum 1 / Source / Contract",
       "rule_id": "full_t99_no_one_point",
       "category": "testing_capacity_risk",
-      "severity": "high",
-      "note": "Table B-1 lists full AASHTO T99 without T272 / one-point alternative. On high-volume earthwork this can exceed field/lab capacity (RT 301 lesson: Tutor Perini exploited missed testing frequencies).",
+      "severity": "medium",
+      "note": "Same Table B-1 row also lists full AASHTO T99 without T272/one-point alt \u2014 adds Proctor lab load on top of Atterbergs. Related capacity risk; RT 301\u2019s exploited miss was LL/PL.",
       "match": "T99 without T272/one-point",
       "page": null,
       "section_id": null,
@@ -1539,11 +2682,11 @@
       "source": "Table B-1 quantities list"
     },
     {
-      "id": "table-b1-t99-(900mm), Class IV ft (m)-minimum 1 / Source / Contract",
+      "id": "table-b1-t99-61-(900mm), Class IV ft (m)-minimum 1 / Source / Contract",
       "rule_id": "full_t99_no_one_point",
       "category": "testing_capacity_risk",
-      "severity": "high",
-      "note": "Table B-1 lists full AASHTO T99 without T272 / one-point alternative. On high-volume earthwork this can exceed field/lab capacity (RT 301 lesson: Tutor Perini exploited missed testing frequencies).",
+      "severity": "medium",
+      "note": "Same Table B-1 row also lists full AASHTO T99 without T272/one-point alt \u2014 adds Proctor lab load on top of Atterbergs. Related capacity risk; RT 301\u2019s exploited miss was LL/PL.",
       "match": "T99 without T272/one-point",
       "page": null,
       "section_id": null,
@@ -1560,11 +2703,11 @@
       "source": "Table B-1 quantities list"
     },
     {
-      "id": "table-b1-t99-(1650mm), Class V ft (m)-minimum 1 / Source / Contract",
+      "id": "table-b1-t99-62-(1650mm), Class V ft (m)-minimum 1 / Source / Contract",
       "rule_id": "full_t99_no_one_point",
       "category": "testing_capacity_risk",
-      "severity": "high",
-      "note": "Table B-1 lists full AASHTO T99 without T272 / one-point alternative. On high-volume earthwork this can exceed field/lab capacity (RT 301 lesson: Tutor Perini exploited missed testing frequencies).",
+      "severity": "medium",
+      "note": "Same Table B-1 row also lists full AASHTO T99 without T272/one-point alt \u2014 adds Proctor lab load on top of Atterbergs. Related capacity risk; RT 301\u2019s exploited miss was LL/PL.",
       "match": "T99 without T272/one-point",
       "page": null,
       "section_id": null,
@@ -1581,11 +2724,11 @@
       "source": "Table B-1 quantities list"
     },
     {
-      "id": "table-b1-t99-(1200mm), Class V ft (m)-minimum 1 / Source / Contract",
+      "id": "table-b1-t99-63-(1200mm), Class V ft (m)-minimum 1 / Source / Contract",
       "rule_id": "full_t99_no_one_point",
       "category": "testing_capacity_risk",
-      "severity": "high",
-      "note": "Table B-1 lists full AASHTO T99 without T272 / one-point alternative. On high-volume earthwork this can exceed field/lab capacity (RT 301 lesson: Tutor Perini exploited missed testing frequencies).",
+      "severity": "medium",
+      "note": "Same Table B-1 row also lists full AASHTO T99 without T272/one-point alt \u2014 adds Proctor lab load on top of Atterbergs. Related capacity risk; RT 301\u2019s exploited miss was LL/PL.",
       "match": "T99 without T272/one-point",
       "page": null,
       "section_id": null,
@@ -1602,11 +2745,11 @@
       "source": "Table B-1 quantities list"
     },
     {
-      "id": "table-b1-t99-(1500mm), Class IV ft (m)-minimum 1 / Source / Contract",
+      "id": "table-b1-t99-64-(1500mm), Class IV ft (m)-minimum 1 / Source / Contract",
       "rule_id": "full_t99_no_one_point",
       "category": "testing_capacity_risk",
-      "severity": "high",
-      "note": "Table B-1 lists full AASHTO T99 without T272 / one-point alternative. On high-volume earthwork this can exceed field/lab capacity (RT 301 lesson: Tutor Perini exploited missed testing frequencies).",
+      "severity": "medium",
+      "note": "Same Table B-1 row also lists full AASHTO T99 without T272/one-point alt \u2014 adds Proctor lab load on top of Atterbergs. Related capacity risk; RT 301\u2019s exploited miss was LL/PL.",
       "match": "T99 without T272/one-point",
       "page": null,
       "section_id": null,
@@ -1623,11 +2766,11 @@
       "source": "Table B-1 quantities list"
     },
     {
-      "id": "table-b1-t99-(900mm), Class V ft (m)-minimum 1 / Source / Contract",
+      "id": "table-b1-t99-65-(900mm), Class V ft (m)-minimum 1 / Source / Contract",
       "rule_id": "full_t99_no_one_point",
       "category": "testing_capacity_risk",
-      "severity": "high",
-      "note": "Table B-1 lists full AASHTO T99 without T272 / one-point alternative. On high-volume earthwork this can exceed field/lab capacity (RT 301 lesson: Tutor Perini exploited missed testing frequencies).",
+      "severity": "medium",
+      "note": "Same Table B-1 row also lists full AASHTO T99 without T272/one-point alt \u2014 adds Proctor lab load on top of Atterbergs. Related capacity risk; RT 301\u2019s exploited miss was LL/PL.",
       "match": "T99 without T272/one-point",
       "page": null,
       "section_id": null,
@@ -1644,11 +2787,11 @@
       "source": "Table B-1 quantities list"
     },
     {
-      "id": "table-b1-t99-(1350mm), Class V ft (m)-minimum 1 / Source / Contract",
+      "id": "table-b1-t99-66-(1350mm), Class V ft (m)-minimum 1 / Source / Contract",
       "rule_id": "full_t99_no_one_point",
       "category": "testing_capacity_risk",
-      "severity": "high",
-      "note": "Table B-1 lists full AASHTO T99 without T272 / one-point alternative. On high-volume earthwork this can exceed field/lab capacity (RT 301 lesson: Tutor Perini exploited missed testing frequencies).",
+      "severity": "medium",
+      "note": "Same Table B-1 row also lists full AASHTO T99 without T272/one-point alt \u2014 adds Proctor lab load on top of Atterbergs. Related capacity risk; RT 301\u2019s exploited miss was LL/PL.",
       "match": "T99 without T272/one-point",
       "page": null,
       "section_id": null,
@@ -1665,11 +2808,11 @@
       "source": "Table B-1 quantities list"
     },
     {
-      "id": "table-b1-t99-(2550mm), Class III ft (m)-minimum 1 / Source / Contract",
+      "id": "table-b1-t99-67-(2550mm), Class III ft (m)-minimum 1 / Source / Contract",
       "rule_id": "full_t99_no_one_point",
       "category": "testing_capacity_risk",
-      "severity": "high",
-      "note": "Table B-1 lists full AASHTO T99 without T272 / one-point alternative. On high-volume earthwork this can exceed field/lab capacity (RT 301 lesson: Tutor Perini exploited missed testing frequencies).",
+      "severity": "medium",
+      "note": "Same Table B-1 row also lists full AASHTO T99 without T272/one-point alt \u2014 adds Proctor lab load on top of Atterbergs. Related capacity risk; RT 301\u2019s exploited miss was LL/PL.",
       "match": "T99 without T272/one-point",
       "page": null,
       "section_id": null,
@@ -1686,11 +2829,11 @@
       "source": "Table B-1 quantities list"
     },
     {
-      "id": "table-b1-t99-(1050mm), Class V ft (m)-minimum 1 / Source / Contract",
+      "id": "table-b1-t99-68-(1050mm), Class V ft (m)-minimum 1 / Source / Contract",
       "rule_id": "full_t99_no_one_point",
       "category": "testing_capacity_risk",
-      "severity": "high",
-      "note": "Table B-1 lists full AASHTO T99 without T272 / one-point alternative. On high-volume earthwork this can exceed field/lab capacity (RT 301 lesson: Tutor Perini exploited missed testing frequencies).",
+      "severity": "medium",
+      "note": "Same Table B-1 row also lists full AASHTO T99 without T272/one-point alt \u2014 adds Proctor lab load on top of Atterbergs. Related capacity risk; RT 301\u2019s exploited miss was LL/PL.",
       "match": "T99 without T272/one-point",
       "page": null,
       "section_id": null,
@@ -1707,11 +2850,11 @@
       "source": "Table B-1 quantities list"
     },
     {
-      "id": "table-b1-t99-(1650mm), Class IV ft (m)-minimum 1 / Source / Contract",
+      "id": "table-b1-t99-69-(1650mm), Class IV ft (m)-minimum 1 / Source / Contract",
       "rule_id": "full_t99_no_one_point",
       "category": "testing_capacity_risk",
-      "severity": "high",
-      "note": "Table B-1 lists full AASHTO T99 without T272 / one-point alternative. On high-volume earthwork this can exceed field/lab capacity (RT 301 lesson: Tutor Perini exploited missed testing frequencies).",
+      "severity": "medium",
+      "note": "Same Table B-1 row also lists full AASHTO T99 without T272/one-point alt \u2014 adds Proctor lab load on top of Atterbergs. Related capacity risk; RT 301\u2019s exploited miss was LL/PL.",
       "match": "T99 without T272/one-point",
       "page": null,
       "section_id": null,
@@ -1728,11 +2871,11 @@
       "source": "Table B-1 quantities list"
     },
     {
-      "id": "table-b1-t99-(975mm), Class IV ft (m)-minimum 1 / Source / Contract",
+      "id": "table-b1-t99-70-(975mm), Class IV ft (m)-minimum 1 / Source / Contract",
       "rule_id": "full_t99_no_one_point",
       "category": "testing_capacity_risk",
-      "severity": "high",
-      "note": "Table B-1 lists full AASHTO T99 without T272 / one-point alternative. On high-volume earthwork this can exceed field/lab capacity (RT 301 lesson: Tutor Perini exploited missed testing frequencies).",
+      "severity": "medium",
+      "note": "Same Table B-1 row also lists full AASHTO T99 without T272/one-point alt \u2014 adds Proctor lab load on top of Atterbergs. Related capacity risk; RT 301\u2019s exploited miss was LL/PL.",
       "match": "T99 without T272/one-point",
       "page": null,
       "section_id": null,
@@ -1749,11 +2892,11 @@
       "source": "Table B-1 quantities list"
     },
     {
-      "id": "table-b1-t99-(525mm), Class V ft (m)-minimum 1 / Source / Contract",
+      "id": "table-b1-t99-71-(525mm), Class V ft (m)-minimum 1 / Source / Contract",
       "rule_id": "full_t99_no_one_point",
       "category": "testing_capacity_risk",
-      "severity": "high",
-      "note": "Table B-1 lists full AASHTO T99 without T272 / one-point alternative. On high-volume earthwork this can exceed field/lab capacity (RT 301 lesson: Tutor Perini exploited missed testing frequencies).",
+      "severity": "medium",
+      "note": "Same Table B-1 row also lists full AASHTO T99 without T272/one-point alt \u2014 adds Proctor lab load on top of Atterbergs. Related capacity risk; RT 301\u2019s exploited miss was LL/PL.",
       "match": "T99 without T272/one-point",
       "page": null,
       "section_id": null,
@@ -1770,11 +2913,11 @@
       "source": "Table B-1 quantities list"
     },
     {
-      "id": "table-b1-t99-(675mm), Class V ft (m)-minimum 1 / Source / Contract",
+      "id": "table-b1-t99-72-(675mm), Class V ft (m)-minimum 1 / Source / Contract",
       "rule_id": "full_t99_no_one_point",
       "category": "testing_capacity_risk",
-      "severity": "high",
-      "note": "Table B-1 lists full AASHTO T99 without T272 / one-point alternative. On high-volume earthwork this can exceed field/lab capacity (RT 301 lesson: Tutor Perini exploited missed testing frequencies).",
+      "severity": "medium",
+      "note": "Same Table B-1 row also lists full AASHTO T99 without T272/one-point alt \u2014 adds Proctor lab load on top of Atterbergs. Related capacity risk; RT 301\u2019s exploited miss was LL/PL.",
       "match": "T99 without T272/one-point",
       "page": null,
       "section_id": null,
@@ -1791,11 +2934,11 @@
       "source": "Table B-1 quantities list"
     },
     {
-      "id": "table-b1-t99-(825mm), Class IV ft (m)-minimum 1 / Source / Contract",
+      "id": "table-b1-t99-73-(825mm), Class IV ft (m)-minimum 1 / Source / Contract",
       "rule_id": "full_t99_no_one_point",
       "category": "testing_capacity_risk",
-      "severity": "high",
-      "note": "Table B-1 lists full AASHTO T99 without T272 / one-point alternative. On high-volume earthwork this can exceed field/lab capacity (RT 301 lesson: Tutor Perini exploited missed testing frequencies).",
+      "severity": "medium",
+      "note": "Same Table B-1 row also lists full AASHTO T99 without T272/one-point alt \u2014 adds Proctor lab load on top of Atterbergs. Related capacity risk; RT 301\u2019s exploited miss was LL/PL.",
       "match": "T99 without T272/one-point",
       "page": null,
       "section_id": null,
@@ -1812,11 +2955,11 @@
       "source": "Table B-1 quantities list"
     },
     {
-      "id": "table-b1-t99-14\" x 23\" (350 x 575 mm), Class III ft (-minimum 1 / Source / Contract",
+      "id": "table-b1-t99-74-14\" x 23\" (350 x 575 mm), Class III ft (-minimum 1 / Source / Contract",
       "rule_id": "full_t99_no_one_point",
       "category": "testing_capacity_risk",
-      "severity": "high",
-      "note": "Table B-1 lists full AASHTO T99 without T272 / one-point alternative. On high-volume earthwork this can exceed field/lab capacity (RT 301 lesson: Tutor Perini exploited missed testing frequencies).",
+      "severity": "medium",
+      "note": "Same Table B-1 row also lists full AASHTO T99 without T272/one-point alt \u2014 adds Proctor lab load on top of Atterbergs. Related capacity risk; RT 301\u2019s exploited miss was LL/PL.",
       "match": "T99 without T272/one-point",
       "page": null,
       "section_id": null,
@@ -1833,11 +2976,11 @@
       "source": "Table B-1 quantities list"
     },
     {
-      "id": "table-b1-t99-19\" x 30\" (475 x 750 mm), Class III ft (-minimum 1 / Source / Contract",
+      "id": "table-b1-t99-75-19\" x 30\" (475 x 750 mm), Class III ft (-minimum 1 / Source / Contract",
       "rule_id": "full_t99_no_one_point",
       "category": "testing_capacity_risk",
-      "severity": "high",
-      "note": "Table B-1 lists full AASHTO T99 without T272 / one-point alternative. On high-volume earthwork this can exceed field/lab capacity (RT 301 lesson: Tutor Perini exploited missed testing frequencies).",
+      "severity": "medium",
+      "note": "Same Table B-1 row also lists full AASHTO T99 without T272/one-point alt \u2014 adds Proctor lab load on top of Atterbergs. Related capacity risk; RT 301\u2019s exploited miss was LL/PL.",
       "match": "T99 without T272/one-point",
       "page": null,
       "section_id": null,
@@ -1854,11 +2997,11 @@
       "source": "Table B-1 quantities list"
     },
     {
-      "id": "table-b1-t99-24\" x 38\" (600 x 950 mm), Class III ft (-minimum 1 / Source / Contract",
+      "id": "table-b1-t99-76-24\" x 38\" (600 x 950 mm), Class III ft (-minimum 1 / Source / Contract",
       "rule_id": "full_t99_no_one_point",
       "category": "testing_capacity_risk",
-      "severity": "high",
-      "note": "Table B-1 lists full AASHTO T99 without T272 / one-point alternative. On high-volume earthwork this can exceed field/lab capacity (RT 301 lesson: Tutor Perini exploited missed testing frequencies).",
+      "severity": "medium",
+      "note": "Same Table B-1 row also lists full AASHTO T99 without T272/one-point alt \u2014 adds Proctor lab load on top of Atterbergs. Related capacity risk; RT 301\u2019s exploited miss was LL/PL.",
       "match": "T99 without T272/one-point",
       "page": null,
       "section_id": null,
@@ -1875,11 +3018,11 @@
       "source": "Table B-1 quantities list"
     },
     {
-      "id": "table-b1-t99-ft (m)-minimum 1 / Source / Contract",
+      "id": "table-b1-t99-77-ft (m)-minimum 1 / Source / Contract",
       "rule_id": "full_t99_no_one_point",
       "category": "testing_capacity_risk",
-      "severity": "high",
-      "note": "Table B-1 lists full AASHTO T99 without T272 / one-point alternative. On high-volume earthwork this can exceed field/lab capacity (RT 301 lesson: Tutor Perini exploited missed testing frequencies).",
+      "severity": "medium",
+      "note": "Same Table B-1 row also lists full AASHTO T99 without T272/one-point alt \u2014 adds Proctor lab load on top of Atterbergs. Related capacity risk; RT 301\u2019s exploited miss was LL/PL.",
       "match": "T99 without T272/one-point",
       "page": null,
       "section_id": null,
@@ -1896,11 +3039,11 @@
       "source": "Table B-1 quantities list"
     },
     {
-      "id": "table-b1-t99-ft (m)-minimum 1 / Source / Contract",
+      "id": "table-b1-t99-78-ft (m)-minimum 1 / Source / Contract",
       "rule_id": "full_t99_no_one_point",
       "category": "testing_capacity_risk",
-      "severity": "high",
-      "note": "Table B-1 lists full AASHTO T99 without T272 / one-point alternative. On high-volume earthwork this can exceed field/lab capacity (RT 301 lesson: Tutor Perini exploited missed testing frequencies).",
+      "severity": "medium",
+      "note": "Same Table B-1 row also lists full AASHTO T99 without T272/one-point alt \u2014 adds Proctor lab load on top of Atterbergs. Related capacity risk; RT 301\u2019s exploited miss was LL/PL.",
       "match": "T99 without T272/one-point",
       "page": null,
       "section_id": null,
@@ -1917,11 +3060,11 @@
       "source": "Table B-1 quantities list"
     },
     {
-      "id": "table-b1-t99-19\" x 30\" (475 x 750 mm), Class IV ft (m-minimum 1 / Source / Contract",
+      "id": "table-b1-t99-79-19\" x 30\" (475 x 750 mm), Class IV ft (m-minimum 1 / Source / Contract",
       "rule_id": "full_t99_no_one_point",
       "category": "testing_capacity_risk",
-      "severity": "high",
-      "note": "Table B-1 lists full AASHTO T99 without T272 / one-point alternative. On high-volume earthwork this can exceed field/lab capacity (RT 301 lesson: Tutor Perini exploited missed testing frequencies).",
+      "severity": "medium",
+      "note": "Same Table B-1 row also lists full AASHTO T99 without T272/one-point alt \u2014 adds Proctor lab load on top of Atterbergs. Related capacity risk; RT 301\u2019s exploited miss was LL/PL.",
       "match": "T99 without T272/one-point",
       "page": null,
       "section_id": null,
@@ -1938,11 +3081,11 @@
       "source": "Table B-1 quantities list"
     },
     {
-      "id": "table-b1-t99-22\" x 34\" (550 x 850 mm), Class III ft (-minimum 1 / Source / Contract",
+      "id": "table-b1-t99-80-22\" x 34\" (550 x 850 mm), Class III ft (-minimum 1 / Source / Contract",
       "rule_id": "full_t99_no_one_point",
       "category": "testing_capacity_risk",
-      "severity": "high",
-      "note": "Table B-1 lists full AASHTO T99 without T272 / one-point alternative. On high-volume earthwork this can exceed field/lab capacity (RT 301 lesson: Tutor Perini exploited missed testing frequencies).",
+      "severity": "medium",
+      "note": "Same Table B-1 row also lists full AASHTO T99 without T272/one-point alt \u2014 adds Proctor lab load on top of Atterbergs. Related capacity risk; RT 301\u2019s exploited miss was LL/PL.",
       "match": "T99 without T272/one-point",
       "page": null,
       "section_id": null,
@@ -1959,11 +3102,11 @@
       "source": "Table B-1 quantities list"
     },
     {
-      "id": "table-b1-t99-29\" x 45\" (725 x 1125 mm), Class III ft -minimum 1 / Source / Contract",
+      "id": "table-b1-t99-81-29\" x 45\" (725 x 1125 mm), Class III ft -minimum 1 / Source / Contract",
       "rule_id": "full_t99_no_one_point",
       "category": "testing_capacity_risk",
-      "severity": "high",
-      "note": "Table B-1 lists full AASHTO T99 without T272 / one-point alternative. On high-volume earthwork this can exceed field/lab capacity (RT 301 lesson: Tutor Perini exploited missed testing frequencies).",
+      "severity": "medium",
+      "note": "Same Table B-1 row also lists full AASHTO T99 without T272/one-point alt \u2014 adds Proctor lab load on top of Atterbergs. Related capacity risk; RT 301\u2019s exploited miss was LL/PL.",
       "match": "T99 without T272/one-point",
       "page": null,
       "section_id": null,
@@ -1980,11 +3123,11 @@
       "source": "Table B-1 quantities list"
     },
     {
-      "id": "table-b1-t99-43\" x 68\" (1075 x 1700 mm), Class IV ft -minimum 1 / Source / Contract",
+      "id": "table-b1-t99-82-43\" x 68\" (1075 x 1700 mm), Class IV ft -minimum 1 / Source / Contract",
       "rule_id": "full_t99_no_one_point",
       "category": "testing_capacity_risk",
-      "severity": "high",
-      "note": "Table B-1 lists full AASHTO T99 without T272 / one-point alternative. On high-volume earthwork this can exceed field/lab capacity (RT 301 lesson: Tutor Perini exploited missed testing frequencies).",
+      "severity": "medium",
+      "note": "Same Table B-1 row also lists full AASHTO T99 without T272/one-point alt \u2014 adds Proctor lab load on top of Atterbergs. Related capacity risk; RT 301\u2019s exploited miss was LL/PL.",
       "match": "T99 without T272/one-point",
       "page": null,
       "section_id": null,
@@ -2001,11 +3144,11 @@
       "source": "Table B-1 quantities list"
     },
     {
-      "id": "table-b1-t99-27\" x 42\" (675 x 1050 mm), Class III ft -minimum 1 / Source / Contract",
+      "id": "table-b1-t99-83-27\" x 42\" (675 x 1050 mm), Class III ft -minimum 1 / Source / Contract",
       "rule_id": "full_t99_no_one_point",
       "category": "testing_capacity_risk",
-      "severity": "high",
-      "note": "Table B-1 lists full AASHTO T99 without T272 / one-point alternative. On high-volume earthwork this can exceed field/lab capacity (RT 301 lesson: Tutor Perini exploited missed testing frequencies).",
+      "severity": "medium",
+      "note": "Same Table B-1 row also lists full AASHTO T99 without T272/one-point alt \u2014 adds Proctor lab load on top of Atterbergs. Related capacity risk; RT 301\u2019s exploited miss was LL/PL.",
       "match": "T99 without T272/one-point",
       "page": null,
       "section_id": null,
@@ -2022,11 +3165,11 @@
       "source": "Table B-1 quantities list"
     },
     {
-      "id": "table-b1-t99-22\" x 34\" (550 x 850 mm), Class IV ft (m-minimum 1 / Source / Contract",
+      "id": "table-b1-t99-84-22\" x 34\" (550 x 850 mm), Class IV ft (m-minimum 1 / Source / Contract",
       "rule_id": "full_t99_no_one_point",
       "category": "testing_capacity_risk",
-      "severity": "high",
-      "note": "Table B-1 lists full AASHTO T99 without T272 / one-point alternative. On high-volume earthwork this can exceed field/lab capacity (RT 301 lesson: Tutor Perini exploited missed testing frequencies).",
+      "severity": "medium",
+      "note": "Same Table B-1 row also lists full AASHTO T99 without T272/one-point alt \u2014 adds Proctor lab load on top of Atterbergs. Related capacity risk; RT 301\u2019s exploited miss was LL/PL.",
       "match": "T99 without T272/one-point",
       "page": null,
       "section_id": null,
@@ -2043,11 +3186,11 @@
       "source": "Table B-1 quantities list"
     },
     {
-      "id": "table-b1-t99-38\" x 60\" (950 x 1500 mm) , Class III ft-minimum 1 / Source / Contract",
+      "id": "table-b1-t99-85-38\" x 60\" (950 x 1500 mm) , Class III ft-minimum 1 / Source / Contract",
       "rule_id": "full_t99_no_one_point",
       "category": "testing_capacity_risk",
-      "severity": "high",
-      "note": "Table B-1 lists full AASHTO T99 without T272 / one-point alternative. On high-volume earthwork this can exceed field/lab capacity (RT 301 lesson: Tutor Perini exploited missed testing frequencies).",
+      "severity": "medium",
+      "note": "Same Table B-1 row also lists full AASHTO T99 without T272/one-point alt \u2014 adds Proctor lab load on top of Atterbergs. Related capacity risk; RT 301\u2019s exploited miss was LL/PL.",
       "match": "T99 without T272/one-point",
       "page": null,
       "section_id": null,
@@ -2064,11 +3207,11 @@
       "source": "Table B-1 quantities list"
     },
     {
-      "id": "table-b1-t99-27\" x 42\" (675 x 1050 mm), Class IV ft (-minimum 1 / Source / Contract",
+      "id": "table-b1-t99-86-27\" x 42\" (675 x 1050 mm), Class IV ft (-minimum 1 / Source / Contract",
       "rule_id": "full_t99_no_one_point",
       "category": "testing_capacity_risk",
-      "severity": "high",
-      "note": "Table B-1 lists full AASHTO T99 without T272 / one-point alternative. On high-volume earthwork this can exceed field/lab capacity (RT 301 lesson: Tutor Perini exploited missed testing frequencies).",
+      "severity": "medium",
+      "note": "Same Table B-1 row also lists full AASHTO T99 without T272/one-point alt \u2014 adds Proctor lab load on top of Atterbergs. Related capacity risk; RT 301\u2019s exploited miss was LL/PL.",
       "match": "T99 without T272/one-point",
       "page": null,
       "section_id": null,
@@ -2085,11 +3228,11 @@
       "source": "Table B-1 quantities list"
     },
     {
-      "id": "table-b1-t99-32\" x 49\" (800 x 1225 mm), Class IV ft (-minimum 1 / Source / Contract",
+      "id": "table-b1-t99-87-32\" x 49\" (800 x 1225 mm), Class IV ft (-minimum 1 / Source / Contract",
       "rule_id": "full_t99_no_one_point",
       "category": "testing_capacity_risk",
-      "severity": "high",
-      "note": "Table B-1 lists full AASHTO T99 without T272 / one-point alternative. On high-volume earthwork this can exceed field/lab capacity (RT 301 lesson: Tutor Perini exploited missed testing frequencies).",
+      "severity": "medium",
+      "note": "Same Table B-1 row also lists full AASHTO T99 without T272/one-point alt \u2014 adds Proctor lab load on top of Atterbergs. Related capacity risk; RT 301\u2019s exploited miss was LL/PL.",
       "match": "T99 without T272/one-point",
       "page": null,
       "section_id": null,
@@ -2106,11 +3249,11 @@
       "source": "Table B-1 quantities list"
     },
     {
-      "id": "table-b1-t99-38\" x 60\" (950 x 1500 mm), Class IV ft (-minimum 1 / Source / Contract",
+      "id": "table-b1-t99-88-38\" x 60\" (950 x 1500 mm), Class IV ft (-minimum 1 / Source / Contract",
       "rule_id": "full_t99_no_one_point",
       "category": "testing_capacity_risk",
-      "severity": "high",
-      "note": "Table B-1 lists full AASHTO T99 without T272 / one-point alternative. On high-volume earthwork this can exceed field/lab capacity (RT 301 lesson: Tutor Perini exploited missed testing frequencies).",
+      "severity": "medium",
+      "note": "Same Table B-1 row also lists full AASHTO T99 without T272/one-point alt \u2014 adds Proctor lab load on top of Atterbergs. Related capacity risk; RT 301\u2019s exploited miss was LL/PL.",
       "match": "T99 without T272/one-point",
       "page": null,
       "section_id": null,
@@ -2127,11 +3270,11 @@
       "source": "Table B-1 quantities list"
     },
     {
-      "id": "table-b1-t99-14\" x 23\" (350 x 575 mm), Class IV ft (m-minimum 1 / Source / Contract",
+      "id": "table-b1-t99-89-14\" x 23\" (350 x 575 mm), Class IV ft (m-minimum 1 / Source / Contract",
       "rule_id": "full_t99_no_one_point",
       "category": "testing_capacity_risk",
-      "severity": "high",
-      "note": "Table B-1 lists full AASHTO T99 without T272 / one-point alternative. On high-volume earthwork this can exceed field/lab capacity (RT 301 lesson: Tutor Perini exploited missed testing frequencies).",
+      "severity": "medium",
+      "note": "Same Table B-1 row also lists full AASHTO T99 without T272/one-point alt \u2014 adds Proctor lab load on top of Atterbergs. Related capacity risk; RT 301\u2019s exploited miss was LL/PL.",
       "match": "T99 without T272/one-point",
       "page": null,
       "section_id": null,
@@ -2148,11 +3291,11 @@
       "source": "Table B-1 quantities list"
     },
     {
-      "id": "table-b1-t99-48\" x 76\" (1200 x 19 00mm), Class III ft-minimum 1 / Source / Contract",
+      "id": "table-b1-t99-90-48\" x 76\" (1200 x 19 00mm), Class III ft-minimum 1 / Source / Contract",
       "rule_id": "full_t99_no_one_point",
       "category": "testing_capacity_risk",
-      "severity": "high",
-      "note": "Table B-1 lists full AASHTO T99 without T272 / one-point alternative. On high-volume earthwork this can exceed field/lab capacity (RT 301 lesson: Tutor Perini exploited missed testing frequencies).",
+      "severity": "medium",
+      "note": "Same Table B-1 row also lists full AASHTO T99 without T272/one-point alt \u2014 adds Proctor lab load on top of Atterbergs. Related capacity risk; RT 301\u2019s exploited miss was LL/PL.",
       "match": "T99 without T272/one-point",
       "page": null,
       "section_id": null,
@@ -2169,11 +3312,11 @@
       "source": "Table B-1 quantities list"
     },
     {
-      "id": "table-b1-t99-24\" x 38\" (600 x 950 mm), Class IV ft (m-minimum 1 / Source / Contract",
+      "id": "table-b1-t99-91-24\" x 38\" (600 x 950 mm), Class IV ft (m-minimum 1 / Source / Contract",
       "rule_id": "full_t99_no_one_point",
       "category": "testing_capacity_risk",
-      "severity": "high",
-      "note": "Table B-1 lists full AASHTO T99 without T272 / one-point alternative. On high-volume earthwork this can exceed field/lab capacity (RT 301 lesson: Tutor Perini exploited missed testing frequencies).",
+      "severity": "medium",
+      "note": "Same Table B-1 row also lists full AASHTO T99 without T272/one-point alt \u2014 adds Proctor lab load on top of Atterbergs. Related capacity risk; RT 301\u2019s exploited miss was LL/PL.",
       "match": "T99 without T272/one-point",
       "page": null,
       "section_id": null,
@@ -2190,11 +3333,11 @@
       "source": "Table B-1 quantities list"
     },
     {
-      "id": "table-b1-t99-29\" x 45\" (725 x 1125 mm), Class IV ft (-minimum 1 / Source / Contract",
+      "id": "table-b1-t99-92-29\" x 45\" (725 x 1125 mm), Class IV ft (-minimum 1 / Source / Contract",
       "rule_id": "full_t99_no_one_point",
       "category": "testing_capacity_risk",
-      "severity": "high",
-      "note": "Table B-1 lists full AASHTO T99 without T272 / one-point alternative. On high-volume earthwork this can exceed field/lab capacity (RT 301 lesson: Tutor Perini exploited missed testing frequencies).",
+      "severity": "medium",
+      "note": "Same Table B-1 row also lists full AASHTO T99 without T272/one-point alt \u2014 adds Proctor lab load on top of Atterbergs. Related capacity risk; RT 301\u2019s exploited miss was LL/PL.",
       "match": "T99 without T272/one-point",
       "page": null,
       "section_id": null,
@@ -2211,11 +3354,11 @@
       "source": "Table B-1 quantities list"
     },
     {
-      "id": "table-b1-t99-48\" x 76\" (1200 x 1900 mm), Class IV ft -minimum 1 / Source / Contract",
+      "id": "table-b1-t99-93-48\" x 76\" (1200 x 1900 mm), Class IV ft -minimum 1 / Source / Contract",
       "rule_id": "full_t99_no_one_point",
       "category": "testing_capacity_risk",
-      "severity": "high",
-      "note": "Table B-1 lists full AASHTO T99 without T272 / one-point alternative. On high-volume earthwork this can exceed field/lab capacity (RT 301 lesson: Tutor Perini exploited missed testing frequencies).",
+      "severity": "medium",
+      "note": "Same Table B-1 row also lists full AASHTO T99 without T272/one-point alt \u2014 adds Proctor lab load on top of Atterbergs. Related capacity risk; RT 301\u2019s exploited miss was LL/PL.",
       "match": "T99 without T272/one-point",
       "page": null,
       "section_id": null,
@@ -2232,11 +3375,11 @@
       "source": "Table B-1 quantities list"
     },
     {
-      "id": "table-b1-t99-ft (m)-minimum 1 / Source / Contract",
+      "id": "table-b1-t99-94-ft (m)-minimum 1 / Source / Contract",
       "rule_id": "full_t99_no_one_point",
       "category": "testing_capacity_risk",
-      "severity": "high",
-      "note": "Table B-1 lists full AASHTO T99 without T272 / one-point alternative. On high-volume earthwork this can exceed field/lab capacity (RT 301 lesson: Tutor Perini exploited missed testing frequencies).",
+      "severity": "medium",
+      "note": "Same Table B-1 row also lists full AASHTO T99 without T272/one-point alt \u2014 adds Proctor lab load on top of Atterbergs. Related capacity risk; RT 301\u2019s exploited miss was LL/PL.",
       "match": "T99 without T272/one-point",
       "page": null,
       "section_id": null,
@@ -2253,11 +3396,11 @@
       "source": "Table B-1 quantities list"
     },
     {
-      "id": "table-b1-t99-ft (m)-minimum 1 / Source / Contract",
+      "id": "table-b1-t99-95-ft (m)-minimum 1 / Source / Contract",
       "rule_id": "full_t99_no_one_point",
       "category": "testing_capacity_risk",
-      "severity": "high",
-      "note": "Table B-1 lists full AASHTO T99 without T272 / one-point alternative. On high-volume earthwork this can exceed field/lab capacity (RT 301 lesson: Tutor Perini exploited missed testing frequencies).",
+      "severity": "medium",
+      "note": "Same Table B-1 row also lists full AASHTO T99 without T272/one-point alt \u2014 adds Proctor lab load on top of Atterbergs. Related capacity risk; RT 301\u2019s exploited miss was LL/PL.",
       "match": "T99 without T272/one-point",
       "page": null,
       "section_id": null,
@@ -2274,11 +3417,11 @@
       "source": "Table B-1 quantities list"
     },
     {
-      "id": "table-b1-t99-ft (m)-minimum 1 / Source / Contract",
+      "id": "table-b1-t99-96-ft (m)-minimum 1 / Source / Contract",
       "rule_id": "full_t99_no_one_point",
       "category": "testing_capacity_risk",
-      "severity": "high",
-      "note": "Table B-1 lists full AASHTO T99 without T272 / one-point alternative. On high-volume earthwork this can exceed field/lab capacity (RT 301 lesson: Tutor Perini exploited missed testing frequencies).",
+      "severity": "medium",
+      "note": "Same Table B-1 row also lists full AASHTO T99 without T272/one-point alt \u2014 adds Proctor lab load on top of Atterbergs. Related capacity risk; RT 301\u2019s exploited miss was LL/PL.",
       "match": "T99 without T272/one-point",
       "page": null,
       "section_id": null,
@@ -2295,11 +3438,11 @@
       "source": "Table B-1 quantities list"
     },
     {
-      "id": "table-b1-t99-ft (m)-minimum 1 / Source / Contract",
+      "id": "table-b1-t99-97-ft (m)-minimum 1 / Source / Contract",
       "rule_id": "full_t99_no_one_point",
       "category": "testing_capacity_risk",
-      "severity": "high",
-      "note": "Table B-1 lists full AASHTO T99 without T272 / one-point alternative. On high-volume earthwork this can exceed field/lab capacity (RT 301 lesson: Tutor Perini exploited missed testing frequencies).",
+      "severity": "medium",
+      "note": "Same Table B-1 row also lists full AASHTO T99 without T272/one-point alt \u2014 adds Proctor lab load on top of Atterbergs. Related capacity risk; RT 301\u2019s exploited miss was LL/PL.",
       "match": "T99 without T272/one-point",
       "page": null,
       "section_id": null,
@@ -2316,11 +3459,11 @@
       "source": "Table B-1 quantities list"
     },
     {
-      "id": "table-b1-t99-ft (m)-minimum 1 / Source / Contract",
+      "id": "table-b1-t99-98-ft (m)-minimum 1 / Source / Contract",
       "rule_id": "full_t99_no_one_point",
       "category": "testing_capacity_risk",
-      "severity": "high",
-      "note": "Table B-1 lists full AASHTO T99 without T272 / one-point alternative. On high-volume earthwork this can exceed field/lab capacity (RT 301 lesson: Tutor Perini exploited missed testing frequencies).",
+      "severity": "medium",
+      "note": "Same Table B-1 row also lists full AASHTO T99 without T272/one-point alt \u2014 adds Proctor lab load on top of Atterbergs. Related capacity risk; RT 301\u2019s exploited miss was LL/PL.",
       "match": "T99 without T272/one-point",
       "page": null,
       "section_id": null,
@@ -2337,11 +3480,11 @@
       "source": "Table B-1 quantities list"
     },
     {
-      "id": "table-b1-t99-ft (m)-minimum 1 / Source / Contract",
+      "id": "table-b1-t99-100-ft (m)-minimum 1 / Source / Contract",
       "rule_id": "full_t99_no_one_point",
       "category": "testing_capacity_risk",
-      "severity": "high",
-      "note": "Table B-1 lists full AASHTO T99 without T272 / one-point alternative. On high-volume earthwork this can exceed field/lab capacity (RT 301 lesson: Tutor Perini exploited missed testing frequencies).",
+      "severity": "medium",
+      "note": "Same Table B-1 row also lists full AASHTO T99 without T272/one-point alt \u2014 adds Proctor lab load on top of Atterbergs. Related capacity risk; RT 301\u2019s exploited miss was LL/PL.",
       "match": "T99 without T272/one-point",
       "page": null,
       "section_id": null,
@@ -2358,11 +3501,11 @@
       "source": "Table B-1 quantities list"
     },
     {
-      "id": "table-b1-t99-ft (m)-minimum 1 / Source / Contract",
+      "id": "table-b1-t99-101-ft (m)-minimum 1 / Source / Contract",
       "rule_id": "full_t99_no_one_point",
       "category": "testing_capacity_risk",
-      "severity": "high",
-      "note": "Table B-1 lists full AASHTO T99 without T272 / one-point alternative. On high-volume earthwork this can exceed field/lab capacity (RT 301 lesson: Tutor Perini exploited missed testing frequencies).",
+      "severity": "medium",
+      "note": "Same Table B-1 row also lists full AASHTO T99 without T272/one-point alt \u2014 adds Proctor lab load on top of Atterbergs. Related capacity risk; RT 301\u2019s exploited miss was LL/PL.",
       "match": "T99 without T272/one-point",
       "page": null,
       "section_id": null,
@@ -2379,11 +3522,11 @@
       "source": "Table B-1 quantities list"
     },
     {
-      "id": "table-b1-t99-ft (m)-minimum 1 / Source / Contract",
+      "id": "table-b1-t99-102-ft (m)-minimum 1 / Source / Contract",
       "rule_id": "full_t99_no_one_point",
       "category": "testing_capacity_risk",
-      "severity": "high",
-      "note": "Table B-1 lists full AASHTO T99 without T272 / one-point alternative. On high-volume earthwork this can exceed field/lab capacity (RT 301 lesson: Tutor Perini exploited missed testing frequencies).",
+      "severity": "medium",
+      "note": "Same Table B-1 row also lists full AASHTO T99 without T272/one-point alt \u2014 adds Proctor lab load on top of Atterbergs. Related capacity risk; RT 301\u2019s exploited miss was LL/PL.",
       "match": "T99 without T272/one-point",
       "page": null,
       "section_id": null,
@@ -2400,11 +3543,11 @@
       "source": "Table B-1 quantities list"
     },
     {
-      "id": "table-b1-t99-ft (m)-minimum 1 / Source / Contract",
+      "id": "table-b1-t99-103-ft (m)-minimum 1 / Source / Contract",
       "rule_id": "full_t99_no_one_point",
       "category": "testing_capacity_risk",
-      "severity": "high",
-      "note": "Table B-1 lists full AASHTO T99 without T272 / one-point alternative. On high-volume earthwork this can exceed field/lab capacity (RT 301 lesson: Tutor Perini exploited missed testing frequencies).",
+      "severity": "medium",
+      "note": "Same Table B-1 row also lists full AASHTO T99 without T272/one-point alt \u2014 adds Proctor lab load on top of Atterbergs. Related capacity risk; RT 301\u2019s exploited miss was LL/PL.",
       "match": "T99 without T272/one-point",
       "page": null,
       "section_id": null,
@@ -2421,11 +3564,11 @@
       "source": "Table B-1 quantities list"
     },
     {
-      "id": "table-b1-t99-ft (m)-minimum 1 / Source / Contract",
+      "id": "table-b1-t99-104-ft (m)-minimum 1 / Source / Contract",
       "rule_id": "full_t99_no_one_point",
       "category": "testing_capacity_risk",
-      "severity": "high",
-      "note": "Table B-1 lists full AASHTO T99 without T272 / one-point alternative. On high-volume earthwork this can exceed field/lab capacity (RT 301 lesson: Tutor Perini exploited missed testing frequencies).",
+      "severity": "medium",
+      "note": "Same Table B-1 row also lists full AASHTO T99 without T272/one-point alt \u2014 adds Proctor lab load on top of Atterbergs. Related capacity risk; RT 301\u2019s exploited miss was LL/PL.",
       "match": "T99 without T272/one-point",
       "page": null,
       "section_id": null,
@@ -2442,11 +3585,11 @@
       "source": "Table B-1 quantities list"
     },
     {
-      "id": "table-b1-t99-ft (m)-minimum 1 / Source / Contract",
+      "id": "table-b1-t99-105-ft (m)-minimum 1 / Source / Contract",
       "rule_id": "full_t99_no_one_point",
       "category": "testing_capacity_risk",
-      "severity": "high",
-      "note": "Table B-1 lists full AASHTO T99 without T272 / one-point alternative. On high-volume earthwork this can exceed field/lab capacity (RT 301 lesson: Tutor Perini exploited missed testing frequencies).",
+      "severity": "medium",
+      "note": "Same Table B-1 row also lists full AASHTO T99 without T272/one-point alt \u2014 adds Proctor lab load on top of Atterbergs. Related capacity risk; RT 301\u2019s exploited miss was LL/PL.",
       "match": "T99 without T272/one-point",
       "page": null,
       "section_id": null,
@@ -2463,11 +3606,11 @@
       "source": "Table B-1 quantities list"
     },
     {
-      "id": "table-b1-t99-ft (m)-minimum 1 / Source / Contract",
+      "id": "table-b1-t99-106-ft (m)-minimum 1 / Source / Contract",
       "rule_id": "full_t99_no_one_point",
       "category": "testing_capacity_risk",
-      "severity": "high",
-      "note": "Table B-1 lists full AASHTO T99 without T272 / one-point alternative. On high-volume earthwork this can exceed field/lab capacity (RT 301 lesson: Tutor Perini exploited missed testing frequencies).",
+      "severity": "medium",
+      "note": "Same Table B-1 row also lists full AASHTO T99 without T272/one-point alt \u2014 adds Proctor lab load on top of Atterbergs. Related capacity risk; RT 301\u2019s exploited miss was LL/PL.",
       "match": "T99 without T272/one-point",
       "page": null,
       "section_id": null,
@@ -2484,11 +3627,11 @@
       "source": "Table B-1 quantities list"
     },
     {
-      "id": "table-b1-t99-ft (m)-minimum 1 / Source / Contract",
+      "id": "table-b1-t99-107-ft (m)-minimum 1 / Source / Contract",
       "rule_id": "full_t99_no_one_point",
       "category": "testing_capacity_risk",
-      "severity": "high",
-      "note": "Table B-1 lists full AASHTO T99 without T272 / one-point alternative. On high-volume earthwork this can exceed field/lab capacity (RT 301 lesson: Tutor Perini exploited missed testing frequencies).",
+      "severity": "medium",
+      "note": "Same Table B-1 row also lists full AASHTO T99 without T272/one-point alt \u2014 adds Proctor lab load on top of Atterbergs. Related capacity risk; RT 301\u2019s exploited miss was LL/PL.",
       "match": "T99 without T272/one-point",
       "page": null,
       "section_id": null,
@@ -2505,11 +3648,11 @@
       "source": "Table B-1 quantities list"
     },
     {
-      "id": "table-b1-t99-ft (m)-minimum 1 / Source / Contract",
+      "id": "table-b1-t99-108-ft (m)-minimum 1 / Source / Contract",
       "rule_id": "full_t99_no_one_point",
       "category": "testing_capacity_risk",
-      "severity": "high",
-      "note": "Table B-1 lists full AASHTO T99 without T272 / one-point alternative. On high-volume earthwork this can exceed field/lab capacity (RT 301 lesson: Tutor Perini exploited missed testing frequencies).",
+      "severity": "medium",
+      "note": "Same Table B-1 row also lists full AASHTO T99 without T272/one-point alt \u2014 adds Proctor lab load on top of Atterbergs. Related capacity risk; RT 301\u2019s exploited miss was LL/PL.",
       "match": "T99 without T272/one-point",
       "page": null,
       "section_id": null,
@@ -2526,11 +3669,11 @@
       "source": "Table B-1 quantities list"
     },
     {
-      "id": "table-b1-t99-ft (m)-minimum 1 / Source / Contract",
+      "id": "table-b1-t99-109-ft (m)-minimum 1 / Source / Contract",
       "rule_id": "full_t99_no_one_point",
       "category": "testing_capacity_risk",
-      "severity": "high",
-      "note": "Table B-1 lists full AASHTO T99 without T272 / one-point alternative. On high-volume earthwork this can exceed field/lab capacity (RT 301 lesson: Tutor Perini exploited missed testing frequencies).",
+      "severity": "medium",
+      "note": "Same Table B-1 row also lists full AASHTO T99 without T272/one-point alt \u2014 adds Proctor lab load on top of Atterbergs. Related capacity risk; RT 301\u2019s exploited miss was LL/PL.",
       "match": "T99 without T272/one-point",
       "page": null,
       "section_id": null,
@@ -2547,11 +3690,11 @@
       "source": "Table B-1 quantities list"
     },
     {
-      "id": "table-b1-t99-ft (m)-minimum 1 / Source / Contract",
+      "id": "table-b1-t99-110-ft (m)-minimum 1 / Source / Contract",
       "rule_id": "full_t99_no_one_point",
       "category": "testing_capacity_risk",
-      "severity": "high",
-      "note": "Table B-1 lists full AASHTO T99 without T272 / one-point alternative. On high-volume earthwork this can exceed field/lab capacity (RT 301 lesson: Tutor Perini exploited missed testing frequencies).",
+      "severity": "medium",
+      "note": "Same Table B-1 row also lists full AASHTO T99 without T272/one-point alt \u2014 adds Proctor lab load on top of Atterbergs. Related capacity risk; RT 301\u2019s exploited miss was LL/PL.",
       "match": "T99 without T272/one-point",
       "page": null,
       "section_id": null,

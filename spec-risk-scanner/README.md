@@ -6,9 +6,11 @@ Internal review tool that scans DelDOT **Standard Specifications** and **Materia
 
 ## Why this exists (RT 301)
 
-Table B-1 required **full AASHTO T99 (Method C)** at rates like 1/300–1/1000 yd³ on earthwork/borrow, often **without** a one-point / T272 alternative. On US 301, techs could not keep up; **Tutor Perini** later used that gap in proceedings.
+On US 301 the lab **could not sustain liquid/plastic limit testing (AASHTO T89/T90)**
+at Table B-1 rates. Tutor Perini later used those missed Atterbergs. Table B-1 still
+bundles `T88, T89, T90, T99…` on earthwork/borrow frequency slots.
 
-See [`docs/lesson-rt301-t99-testing-capacity.md`](docs/lesson-rt301-t99-testing-capacity.md).
+See [`docs/lesson-rt301-atterberg-testing-capacity.md`](docs/lesson-rt301-atterberg-testing-capacity.md).
 
 ## Sources
 
@@ -35,7 +37,7 @@ Open `reports/spec_risk_findings.html`.
 
 | Category | Examples |
 |----------|----------|
-| **Testing capacity** | Full T99 w/o T272/one-point; “increase sampling rates”; “double the testing frequency” |
+| **Testing capacity** | **T89/T90 Atterbergs at Table B-1 rates** (RT 301); companion T99 package load; “increase sampling rates” |
 | Ambiguous obligation | as directed, as necessary, satisfactory, discretion |
 | Payment risk | incidental, no separate payment, included in unit price |
 | Measurement conflict | plan quantity, approximate |
@@ -46,4 +48,6 @@ Rules: `rules/risk_patterns.yaml`.
 
 ## Capacity scenarios
 
-For Table B-1 earthwork rows lacking a one-point alt, the parser estimates lab hours at 50k and 200k yd³ using screening defaults (full T99 ≈ 5 hr, one-point ≈ 0.75 hr). These are **review aids**, not time studies.
+For Table B-1 earthwork rows requiring Atterbergs, the parser estimates lab hours at
+50k and 200k yd³ using screening defaults (LL/PL ≈ 2.5 hr/sample). These are
+**review aids**, not time studies. Proctor hours are reported separately as related load.

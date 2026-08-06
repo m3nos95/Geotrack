@@ -1,8 +1,9 @@
 #!/usr/bin/env python3
 """Parse DelDOT M&R Table B-1 (minimum testing frequencies / quantities list).
 
-Flags pay items that require full AASHTO T99 without an alternate one-point /
-family-of-curves method (T272) — the RT 301 / Tutor Perini failure mode.
+Primary RT 301 lesson: Table B-1 requires liquid/plastic limits (AASHTO T89/T90)
+at per-quantity rates the lab could not sustain — Tutor Perini exploited that.
+Also flags companion full-T99 packages as related capacity load.
 """
 
 from __future__ import annotations
@@ -18,30 +19,27 @@ DATA_DIR = Path(__file__).resolve().parent / "data"
 MAT_DIR = DATA_DIR / "mat_research"
 DEFAULT_PDF = MAT_DIR / "5-part_b_b-2-min_test_cert-quantities_list.pdf"
 
-# Rough lab effort assumptions for capacity screening (hours per sample set).
-# Full multi-point T99 Method C is far heavier than a one-point / T272 check.
+# Screening lab effort (hours per sample event) — not a time study.
+HOURS_LL_PL = 2.5  # T89 + T90 Atterberg pair (RT 301 bottleneck)
+HOURS_T88 = 1.0  # particle-size when bundled
 HOURS_FULL_T99 = 5.0
 HOURS_ONE_POINT = 0.75
-HOURS_ATTERBERG_SET = 2.0  # T88/T89/T90 bundle rough
-HOURS_FIELD_DENSITY = 0.5  # T310 nuclear per location rough
+HOURS_FIELD_DENSITY = 0.5  # T310
 
-# Example project sizes for "what if we had to honor Table B-1 literally"
 SCENARIOS = {
     "medium_earthwork_50k_cy": {"yd3": 50_000, "label": "50,000 yd³ embankment/borrow"},
-    "large_earthwork_200k_cy": {"yd3": 200_000, "label": "200,000 yd³ embankment/borrow (RT-301-scale)"},
+    "large_earthwork_200k_cy": {
+        "yd3": 200_000,
+        "label": "200,000 yd³ embankment/borrow (RT-301-scale)",
+    },
 }
-
-ROW_RE = re.compile(
-    r"(?P<item>\d{6})?\s*"
-    r"(?P<desc>[A-Za-z][A-Za-z0-9 ,/\-\(\)]{3,80}?)\s+"
-    r"(?P<unit>yd3\s*\(m3\)|yd2\s*\(m2\)|Ton\s*\(t\)|ft\s*\(m\))\s+"
-    r"(?P<freq>1\s*/\s*\d+(?:\s*\(\s*1\s*/\s*\d+\s*\))?|minimum\s+1\s*/\s*Source\s*/\s*Contract)\s+"
-    r"(?P<tests>.+?)(?=(?:\d{6})|$)",
-    re.I | re.S,
-)
 
 T99_RE = re.compile(r"\bT\s*-?\s*99(?:M)?\b", re.I)
 T272_RE = re.compile(r"\bT\s*-?\s*272\b", re.I)
+T88_RE = re.compile(r"\bT\s*-?\s*88\b", re.I)
+T89_RE = re.compile(r"\bT\s*-?\s*89\b", re.I)
+T90_RE = re.compile(r"\bT\s*-?\s*90\b", re.I)
+T310_RE = re.compile(r"\bT\s*-?\s*310\b", re.I)
 ONE_POINT_RE = re.compile(r"one[-\s]?point|family\s+of\s+curves", re.I)
 
 
@@ -71,18 +69,17 @@ def parse_frequency(freq: str) -> dict:
 
 
 def parse_rows(text: str) -> list[dict]:
-    """Heuristic row parse focused on earthwork/borrow/base density items."""
+    """Parse Table B-1 lines that include Atterberg and/or T99 procedures."""
     text = normalize(text)
     rows: list[dict] = []
 
-    # Line-oriented pass: many rows survive extraction as single long lines
     for raw_line in text.splitlines():
         line = re.sub(r"\s+", " ", raw_line).strip()
-        if "T99" not in line.upper() and "T 99" not in line.upper():
-            # Also catch split "T99"
-            if not re.search(r"T\s*99", line, re.I):
-                continue
         if "MINIMUM TESTING FREQUENCY" in line.upper():
+            continue
+        has_atterberg = bool(T89_RE.search(line) or T90_RE.search(line))
+        has_t99 = bool(T99_RE.search(line))
+        if not has_atterberg and not has_t99:
             continue
 
         item_m = re.match(r"^(\d{6})\s+(.*)$", line)
@@ -106,11 +103,9 @@ def parse_rows(text: str) -> list[dict]:
             unit = unit_m.group(1) if unit_m else None
 
         tests = rest[freq_m.end() :].strip()
-        # Prefer tests portion after frequency; if empty, whole rest after desc
         if not tests:
             continue
 
-        has_t99 = bool(T99_RE.search(line))
         has_t272 = bool(T272_RE.search(line))
         has_one_point = bool(ONE_POINT_RE.search(line))
         freq = parse_frequency(freq_m.group(1))
@@ -122,14 +117,18 @@ def parse_rows(text: str) -> list[dict]:
                 "unit": unit,
                 "frequency": freq,
                 "tests": re.sub(r"\s+", " ", tests).strip(),
+                "requires_t89": bool(T89_RE.search(line)),
+                "requires_t90": bool(T90_RE.search(line)),
+                "requires_atterberg": has_atterberg,
+                "requires_t88": bool(T88_RE.search(line)),
                 "requires_t99": has_t99,
+                "requires_t310": bool(T310_RE.search(line)),
                 "allows_t272_or_one_point": has_t272 or has_one_point,
                 "full_t99_without_one_point_alt": has_t99 and not (has_t272 or has_one_point),
                 "source_line": line[:400],
             }
         )
 
-    # Deduplicate near-identical descriptions+freq+tests
     seen = set()
     uniq = []
     for r in rows:
@@ -147,45 +146,38 @@ def capacity_for_row(row: dict, quantity: float) -> dict | None:
         return None
     every = freq["every"]
     n = max(1, int((quantity + every - 1) // every))
-    # Conservative: if T99 listed, assume full curve unless T272 alt present
+
+    atterberg_hours = n * HOURS_LL_PL if row["requires_atterberg"] else 0.0
+    if row["requires_t88"]:
+        atterberg_hours += n * HOURS_T88
+
     if row["full_t99_without_one_point_alt"]:
-        lab_hours = n * (HOURS_FULL_T99 + HOURS_ATTERBERG_SET)
-        mode = "full_t99"
+        proctor_hours = n * HOURS_FULL_T99
+        proctor_mode = "full_t99"
     elif row["requires_t99"] and row["allows_t272_or_one_point"]:
-        lab_hours = n * (HOURS_ONE_POINT + HOURS_ATTERBERG_SET)
-        mode = "one_point_allowed"
+        proctor_hours = n * HOURS_ONE_POINT
+        proctor_mode = "one_point_allowed"
     else:
-        return None
-    field_hours = n * HOURS_FIELD_DENSITY if re.search(r"T\s*-?\s*310", row["tests"], re.I) else 0
+        proctor_hours = 0.0
+        proctor_mode = "none"
+
+    field_hours = n * HOURS_FIELD_DENSITY if row.get("requires_t310") else 0.0
     return {
         "samples": n,
-        "mode": mode,
-        "est_lab_hours": round(lab_hours, 1),
-        "est_field_density_hours": round(field_hours, 1),
-        "quantity": quantity,
         "every": every,
+        "quantity": quantity,
+        "proctor_mode": proctor_mode,
+        "est_atterberg_lab_hours": round(atterberg_hours, 1),
+        "est_proctor_lab_hours": round(proctor_hours, 1),
+        "est_field_density_hours": round(field_hours, 1),
+        "est_total_lab_hours": round(atterberg_hours + proctor_hours, 1),
     }
 
 
 def build_findings(rows: list[dict]) -> list[dict]:
     findings = []
     for idx, r in enumerate(rows):
-        if not r["full_t99_without_one_point_alt"]:
-            continue
         freq = r["frequency"]
-        sev = "high"
-        note = (
-            "Table B-1 lists full AASHTO T99 without T272 / one-point alternative. "
-            "On high-volume earthwork this can exceed field/lab capacity "
-            "(RT 301 lesson: Tutor Perini exploited missed testing frequencies)."
-        )
-        # Tighter frequencies are worse
-        if freq.get("every") and freq["every"] <= 500:
-            sev = "high"
-            note += f" Frequency is aggressive: 1 per {freq['every']} {r.get('unit') or 'units'}."
-        elif freq.get("every") and freq["every"] <= 1000:
-            sev = "high"
-
         scenarios = {}
         for key, sc in SCENARIOS.items():
             cap = capacity_for_row(r, sc["yd3"])
@@ -193,36 +185,68 @@ def build_findings(rows: list[dict]) -> list[dict]:
                 scenarios[key] = {**cap, "label": sc["label"]}
 
         item_key = r.get("item") or r["description"][:40]
-        findings.append(
-            {
-                "id": f"table-b1-t99-{idx}-{item_key}-{freq.get('raw')}",
-                "rule_id": "full_t99_no_one_point",
-                "category": "testing_capacity_risk",
-                "severity": sev,
-                "note": note,
-                "match": "T99 without T272/one-point",
-                "page": None,
-                "section_id": r.get("item"),
-                "section_header": r.get("description"),
-                "snippet": r["source_line"],
-                "item": r.get("item"),
-                "frequency": freq,
-                "tests": r["tests"],
-                "capacity_scenarios": scenarios,
-                "source": "Table B-1 quantities list",
-            }
-        )
+
+        # Primary: Atterberg (LL/PL) at frequency — the actual RT 301 failure
+        if r["requires_atterberg"] and freq.get("kind") == "per_unit":
+            note = (
+                "Table B-1 requires liquid/plastic limits (AASHTO T89/T90) at this "
+                "frequency. RT 301 lesson: the lab could not sustain Atterberg "
+                "throughput; Tutor Perini later exploited missed LL/PL testing."
+            )
+            if freq.get("every") and freq["every"] <= 500:
+                note += f" Aggressive rate: 1 per {freq['every']} {r.get('unit') or 'units'}."
+            findings.append(
+                {
+                    "id": f"table-b1-atterberg-{idx}-{item_key}-{freq.get('raw')}",
+                    "rule_id": "atterberg_at_frequency",
+                    "category": "testing_capacity_risk",
+                    "severity": "high",
+                    "note": note,
+                    "match": "T89/T90 at Table B-1 frequency",
+                    "page": None,
+                    "section_id": r.get("item"),
+                    "section_header": r.get("description"),
+                    "snippet": r["source_line"],
+                    "item": r.get("item"),
+                    "frequency": freq,
+                    "tests": r["tests"],
+                    "capacity_scenarios": scenarios,
+                    "source": "Table B-1 quantities list",
+                }
+            )
+
+        # Secondary: full T99 without one-point — related package load
+        if r["full_t99_without_one_point_alt"]:
+            findings.append(
+                {
+                    "id": f"table-b1-t99-{idx}-{item_key}-{freq.get('raw')}",
+                    "rule_id": "full_t99_no_one_point",
+                    "category": "testing_capacity_risk",
+                    "severity": "medium",
+                    "note": (
+                        "Same Table B-1 row also lists full AASHTO T99 without T272/"
+                        "one-point alt — adds Proctor lab load on top of Atterbergs. "
+                        "Related capacity risk; RT 301’s exploited miss was LL/PL."
+                    ),
+                    "match": "T99 without T272/one-point",
+                    "page": None,
+                    "section_id": r.get("item"),
+                    "section_header": r.get("description"),
+                    "snippet": r["source_line"],
+                    "item": r.get("item"),
+                    "frequency": freq,
+                    "tests": r["tests"],
+                    "capacity_scenarios": scenarios,
+                    "source": "Table B-1 quantities list",
+                }
+            )
     return findings
 
 
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--pdf", type=Path, default=DEFAULT_PDF)
-    parser.add_argument(
-        "--out",
-        type=Path,
-        default=DATA_DIR / "table_b1_parsed.json",
-    )
+    parser.add_argument("--out", type=Path, default=DATA_DIR / "table_b1_parsed.json")
     parser.add_argument(
         "--findings-out",
         type=Path,
@@ -231,18 +255,21 @@ def main() -> None:
     args = parser.parse_args()
 
     if not args.pdf.exists():
-        raise SystemExit(f"Missing {args.pdf}. Run: python download_specs.py --only table_b1_quantities")
+        raise SystemExit(
+            f"Missing {args.pdf}. Run: python download_specs.py --only table_b1_quantities"
+        )
 
     text = extract_text(args.pdf)
     rows = parse_rows(text)
     findings = build_findings(rows)
 
     summary = {
+        "rows_parsed": len(rows),
+        "rows_with_atterberg": sum(1 for r in rows if r["requires_atterberg"]),
         "rows_with_t99": sum(1 for r in rows if r["requires_t99"]),
         "full_t99_without_alt": sum(1 for r in rows if r["full_t99_without_one_point_alt"]),
-        "t99_with_t272_alt": sum(
-            1 for r in rows if r["requires_t99"] and r["allows_t272_or_one_point"]
-        ),
+        "atterberg_findings": sum(1 for f in findings if f["rule_id"] == "atterberg_at_frequency"),
+        "t99_findings": sum(1 for f in findings if f["rule_id"] == "full_t99_no_one_point"),
     }
 
     payload = {
@@ -251,11 +278,15 @@ def main() -> None:
         "rows": rows,
         "findings": findings,
         "assumptions": {
+            "hours_ll_pl": HOURS_LL_PL,
+            "hours_t88": HOURS_T88,
             "hours_full_t99": HOURS_FULL_T99,
-            "hours_one_point": HOURS_ONE_POINT,
-            "hours_atterberg_set": HOURS_ATTERBERG_SET,
-            "note": "Hour estimates are screening defaults for capacity review, not time studies.",
+            "note": (
+                "Hour estimates are screening defaults. RT 301 exploited miss was "
+                "liquid/plastic limits (T89/T90), not Proctor."
+            ),
         },
+        "lesson": "docs/lesson-rt301-atterberg-testing-capacity.md",
     }
     args.out.parent.mkdir(parents=True, exist_ok=True)
     args.out.write_text(json.dumps(payload, indent=2), encoding="utf-8")
@@ -264,30 +295,31 @@ def main() -> None:
         json.dumps({"summary": summary, "findings": findings}, indent=2), encoding="utf-8"
     )
 
-    print(f"Parsed T99-related rows: {summary['rows_with_t99']}")
-    print(f"Full T99 without T272/one-point alt: {summary['full_t99_without_alt']}")
-    print(f"T99 with T272 alt present: {summary['t99_with_t272_alt']}")
+    print(f"Rows: {summary['rows_parsed']}")
+    print(f"With Atterberg (T89/T90): {summary['rows_with_atterberg']}")
+    print(f"Atterberg frequency findings: {summary['atterberg_findings']}")
+    print(f"Full T99 without one-point alt: {summary['full_t99_without_alt']}")
     print(f"Wrote {args.out}")
     print(f"Wrote {args.findings_out}")
-    # Show worst earthwork examples
-    earth = [
-        f
-        for f in findings
-        if f.get("item")
-        and (
+    print("\nEarthwork/borrow Atterberg highlights:")
+    for f in findings:
+        if f["rule_id"] != "atterberg_at_frequency":
+            continue
+        if not f.get("item") or not (
             f["item"].startswith("202")
             or f["item"].startswith("209")
             or f["item"].startswith("212")
             or f["item"].startswith("301")
-        )
-    ]
-    print("\nEarthwork/borrow highlights:")
-    for f in earth[:12]:
+        ):
+            continue
         sc = f.get("capacity_scenarios", {}).get("large_earthwork_200k_cy")
         extra = ""
         if sc:
-            extra = f" | 200k yd³ → ~{sc['samples']} full T99s ≈ {sc['est_lab_hours']} lab-hrs"
-        print(f"  {f.get('item')} {f.get('section_header')[:50]} @ {f['frequency']['raw']}{extra}")
+            extra = (
+                f" | 200k yd³ → ~{sc['samples']} LL/PL sets ≈ "
+                f"{sc['est_atterberg_lab_hours']} Atterberg lab-hrs"
+            )
+        print(f"  {f.get('item')} {f.get('section_header')[:45]} @ {f['frequency']['raw']}{extra}")
 
 
 if __name__ == "__main__":

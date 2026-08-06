@@ -167,7 +167,10 @@ def dedupe_findings(findings: list[dict]) -> list[dict]:
     best = {}
     for f in findings:
         # Prefer stable id for Table B-1 / structured findings
-        if f.get("rule_id") == "full_t99_no_one_point" or f.get("capacity_scenarios"):
+        if f.get("rule_id") in {
+            "full_t99_no_one_point",
+            "atterberg_at_frequency",
+        } or f.get("capacity_scenarios"):
             key = ("structured", f.get("id") or f.get("snippet") or id(f))
         else:
             page = f.get("page")
@@ -202,10 +205,17 @@ def render_html(findings: list[dict], summary: dict, source_name: str) -> str:
         cap = f.get("capacity_scenarios") or {}
         cap_bits = []
         for sc in cap.values():
-            cap_bits.append(
-                f"{sc.get('label', '')}: ~{sc.get('samples')} samples / "
-                f"{sc.get('est_lab_hours')} lab-hrs ({sc.get('mode')})"
-            )
+            if "est_atterberg_lab_hours" in sc:
+                cap_bits.append(
+                    f"{sc.get('label', '')}: ~{sc.get('samples')} samples / "
+                    f"{sc.get('est_atterberg_lab_hours')} Atterberg-hrs"
+                    f" (+{sc.get('est_proctor_lab_hours', 0)} Proctor-hrs)"
+                )
+            else:
+                cap_bits.append(
+                    f"{sc.get('label', '')}: ~{sc.get('samples')} samples / "
+                    f"{sc.get('est_lab_hours')} lab-hrs ({sc.get('mode')})"
+                )
         cap_html = ("<br><em>" + html.escape(" | ".join(cap_bits)) + "</em>") if cap_bits else ""
         page = f.get("page")
         page_s = "" if page is None else str(page)
@@ -294,7 +304,7 @@ def render_html(findings: list[dict], summary: dict, source_name: str) -> str:
   <h1>Contract language review findings</h1>
   <p class="sub">Candidate issues in <strong>{html.escape(source_name)}</strong> —
   poor phrasing, payment shifts, document conflicts, and
-  <em>unrealistic testing frequencies</em> (full T99 vs one-point — RT 301 lesson).
+  <em>unrealistic testing frequencies</em> (Atterberg T89/T90 lab load — RT 301 lesson).
   For internal review only; not legal advice.</p>
 </header>
 <main>
@@ -430,7 +440,7 @@ def main() -> None:
         "generated_at": datetime.now(timezone.utc).isoformat(),
         "summary": summary,
         "findings": findings,
-        "lesson": "docs/lesson-rt301-t99-testing-capacity.md",
+        "lesson": "docs/lesson-rt301-atterberg-testing-capacity.md",
     }
     json_path = args.out_dir / "spec_risk_findings.json"
     html_path = args.out_dir / "spec_risk_findings.html"
