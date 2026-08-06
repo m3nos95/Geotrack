@@ -1,0 +1,58 @@
+name: Deploy to GitHub Pages
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# New deploys cancel stuck/queued ones in this group (helps clear zombie Pages deploys).
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Setup Pages
+        uses: actions/configure-pages@v5
+        with:
+          # Flip repo Pages source from legacy branch → Actions when this runs.
+          enablement: true
+      - name: Prepare static site
+        run: |
+          mkdir -p _site
+          rsync -a \
+            --exclude='.git' \
+            --exclude='node_modules' \
+            --exclude='.github' \
+            --exclude='supabase/scripts/node_modules' \
+            --exclude='docs/r18-reference' \
+            --exclude='**/__pycache__' \
+            ./ _site/
+          if [ -f geo-report-center/Geo_Report_Center.html ]; then
+            mkdir -p _site/geotrak
+            cp geo-report-center/Geo_Report_Center.html _site/geotrak/index.html
+          fi
+          touch _site/.nojekyll
+          # Bust CDN/edge caches that latch onto old GeoTrak builds
+          date -u +'%Y-%m-%dT%H:%M:%SZ' > _site/.pages-built-at
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: _site
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4
