@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-08-06T01:39:53.088800+00:00",
+  "generated_at": "2026-08-06T01:40:33.972981+00:00",
   "corpus": [
     {
       "id": "standard_specs_2026",
@@ -86,17 +86,17 @@
       "path": "/workspace/deldot-publications/files/deldot.gov/Publications/manuals/construction_manual/pdfs/09-construction_manual-part_g.pdf"
     }
   ],
-  "finding_count": 50,
+  "finding_count": 49,
   "by_severity": {
-    "high": 13,
-    "medium": 37,
+    "high": 14,
+    "medium": 35,
     "low": 0
   },
   "by_kind": {
     "ambiguous_authority": 1,
     "cross_doc_gap": 1,
     "duty_ambiguity": 5,
-    "numeric_conflict": 39,
+    "numeric_conflict": 38,
     "opposing_phrases": 4
   },
   "by_topic": {
@@ -108,7 +108,7 @@
     "curing_concrete": 1,
     "department_test_vs_contractor_test": 1,
     "environmental": 4,
-    "moisture_content": 4,
+    "moisture_content": 3,
     "payment_measurement": 2,
     "qc_qa_responsibility": 1,
     "required_vs_optional": 1,
@@ -275,6 +275,73 @@
       }
     },
     {
+      "id": "num-compaction_density-percent",
+      "severity": "high",
+      "kind": "numeric_conflict",
+      "topic": "compaction_density",
+      "title": "Numeric mismatch on compaction density (percent): 2 percent, 3 percent, 20 percent, 70 percent, 95 percent, 98 percent",
+      "summary": "Different publications state different percent values in compaction density contexts. Confirm which figure governs by work type / document hierarchy.",
+      "values_by_doc": {
+        "standard_specs_2026": [
+          2,
+          3,
+          70,
+          95,
+          98
+        ],
+        "construction_part_e": [
+          2,
+          20
+        ],
+        "construction_part_f": [
+          2
+        ]
+      },
+      "docs": {
+        "standard_specs_2026": [
+          {
+            "match": "95 percent",
+            "page": 116,
+            "snippet": "lifts of material, proof roll the subgrade in the presence of and as directed by the engineer in accordance with Section 202.3.6. D. Compact the subgrade to 95 percent or more of the maximum density. E. Ensure the finished subgrade surface is uniform and smooth and conforms to prescribed elevations before constructing the b"
+          },
+          {
+            "match": "2 percent",
+            "page": 119,
+            "snippet": "efore placing the next lift: a. Moisten or dry and thoroughly mix to the proper moisture content before compaction if the soil moisture content is not within 2 percent of optimum. b. Do not use frozen embankment material or place embankment material on frozen ground. Do not place rocks, broken concrete, and other solid mate"
+          },
+          {
+            "match": "95 percent",
+            "page": 120,
+            "snippet": "ess toward the center of the embankment. Continue compaction until each lift is thoroughly and uniformly compacted to the full width of the embankment and to 95 percent or more of the maximum density. 1. The Department will consider the ordinary use of trucks, carryalls, scrapers, tractors, or other construction equipment fo"
+          }
+        ],
+        "construction_part_e": [
+          {
+            "match": "2 percent",
+            "page": 20,
+            "snippet": "requirements of the Standard Specifications. To efficiently and successfully compact the soil to the required density, the moisture content must be within 2 percent of optimum. In the field, if it is noted that the soil is too dry and the moisture content obviously less than required, the Inspector must insist on the app"
+          },
+          {
+            "match": "2 percent",
+            "page": 44,
+            "snippet": "he ce nterline that that tonna ge should cover. These computations should be checked by the Inspector . The spread rate should be based on the wet density at 2 percent or so above minimum density. Example: ENGLISH METRIC Maximum Density (Dry) 135 lb/ft 3 2160 kg/m 3 Optimum Moisture 8.0% 8.0% Maximum Density (Wet) 14"
+          },
+          {
+            "match": "2 percent",
+            "page": 49,
+            "snippet": "sed: January 2004 E-49 The Specifications will state how much compaction will be required. The moisture content at the time of compaction is to be within 2 percent of the optimum moisture content. [301.06] E301.07 Measurement and Payment. The Specifications state the method the Inspector will use to measure the quant"
+          }
+        ],
+        "construction_part_f": [
+          {
+            "match": "2 percent",
+            "page": 5,
+            "snippet": "pread material in accordance with the Specifications. F304502.08 Compaction. At the start of compaction, the moisture content of the mixture must be within 2 percent of the optimum moisture cont ent, and must not be at a level that causes the soil cement layer to become unstable during co mpaction and finishing. Prior to b"
+          }
+        ]
+      }
+    },
+    {
       "id": "num-concrete_pcc-days",
       "severity": "high",
       "kind": "numeric_conflict",
@@ -331,11 +398,6 @@
             "match": "28 days",
             "page": 89,
             "snippet": "own in Part H. Typically, entrained air and slump test results will be available immediat ely in the field. Two compressive tests each are performed at 7 and 28 days. If early strength tests are needed, the Materials and Research Section ===== PAGE 90 ===== E602 \u2013 CONCRETE STRUCTURES Revised: January 2004 E-90 must"
-          },
-          {
-            "match": "28 days",
-            "page": 91,
-            "snippet": "and the surface is dry and cured to the extent that no moisture exists in the concrete. Most waterproofing materials require the concrete to have cured fo r 28 days prior to their appli cation. Only specified materials approved by the Materials and Re search Section are to be used. Records must be on file to indicate app"
           }
         ]
       }
@@ -1128,7 +1190,7 @@
       "severity": "medium",
       "kind": "numeric_conflict",
       "topic": "asphalt_hma",
-      "title": "Numeric mismatch on asphalt hma (percent): 0.4 percent, 2 percent, 10 percent, 25 percent, 45 percent, 98 percent, 100 percent, 110 percent, 269 percent",
+      "title": "Numeric mismatch on asphalt hma (percent): 0.4 percent, 2 percent, 10 percent, 25 percent, 45 percent, 98 percent, 100 percent, 110 percent",
       "summary": "Different publications state different percent values in asphalt hma contexts. Confirm which figure governs by work type / document hierarchy.",
       "values_by_doc": {
         "standard_specs_2026": [
@@ -1138,9 +1200,6 @@
           45,
           98,
           100
-        ],
-        "mat_c300": [
-          269
         ],
         "mat_glossary": [
           10
@@ -1165,13 +1224,6 @@
             "match": "45 percent",
             "page": 647,
             "snippet": "Type B: 1. Quarried Materials (GABC) per Section 1004 and a. Los Angeles Abrasion testing, per AASHTO T96, must show percent of wear less than or equal to 45 percent. b. Materials must be uniform in quality and composed solely of stone and stone dust. 2. RCA (Crushed Concrete) per Section 1004. 3. Bituminous millings per"
-          }
-        ],
-        "mat_c300": [
-          {
-            "match": "269 Percent",
-            "page": 5,
-            "snippet": "ixtures AASHTO T224 Correction for Coarse Particles in the Soil Compaction Test AASHTO T255 Total Evaporable Moisture Content of Aggregate by Drying AASHTO T269 Percent Air Voids in Compacted Dense and Open Bituminous Paving Mixtures C-11 ===== PAGE 6 ===== Table C-9: Division 300 - Certification Test Procedu"
           }
         ],
         "mat_glossary": [
@@ -1252,15 +1304,12 @@
       "severity": "medium",
       "kind": "numeric_conflict",
       "topic": "compaction_density",
-      "title": "Numeric mismatch on compaction density (inches): 0.08 inches, 3 inches, 6 inches, 8 inches, 310 inches",
+      "title": "Numeric mismatch on compaction density (inches): 0.08 inches, 3 inches, 6 inches, 8 inches",
       "summary": "Different publications state different inches values in compaction density contexts. Confirm which figure governs by work type / document hierarchy.",
       "values_by_doc": {
         "standard_specs_2026": [
           3,
           8
-        ],
-        "mat_c200": [
-          310
         ],
         "mat_glossary": [
           0.08
@@ -1287,13 +1336,6 @@
             "snippet": "n a junction well or base, in accordance with the Standard Construction Details. C. Place backfill material in level lifts of loose material, no greater than 8 inches. Compact the lifts in accordance with Section 207. Install underground warning tape over the conduit approximately 12-inches below the final grade. Compact t"
           }
         ],
-        "mat_c200": [
-          {
-            "match": "310 In",
-            "page": 5,
-            "snippet": "of Soils AASHTO T265 Laboratory Determination of Moisture Content of Soils AASHTO T267 Determination of Organic Content in Soils by Loss on Ignition AASHTO T310 In-Place Density and Moisture Content of Soil and Soil-Aggregate by Nuclear Methods (Shallow Depth) C-5 ===== PAGE 6 ===== Table C-4: Division 200 - Certifi"
-          }
-        ],
         "mat_glossary": [
           {
             "match": "0.08 inches",
@@ -1316,88 +1358,11 @@
       }
     },
     {
-      "id": "num-compaction_density-percent",
-      "severity": "medium",
-      "kind": "numeric_conflict",
-      "topic": "compaction_density",
-      "title": "Numeric mismatch on compaction density (percent): 2 percent, 3 percent, 20 percent, 70 percent, 95 percent, 98 percent, 269 percent",
-      "summary": "Different publications state different percent values in compaction density contexts. Confirm which figure governs by work type / document hierarchy.",
-      "values_by_doc": {
-        "standard_specs_2026": [
-          2,
-          3,
-          70,
-          95,
-          98
-        ],
-        "mat_c300": [
-          269
-        ],
-        "construction_part_e": [
-          2,
-          20
-        ],
-        "construction_part_f": [
-          2
-        ]
-      },
-      "docs": {
-        "standard_specs_2026": [
-          {
-            "match": "95 percent",
-            "page": 116,
-            "snippet": "lifts of material, proof roll the subgrade in the presence of and as directed by the engineer in accordance with Section 202.3.6. D. Compact the subgrade to 95 percent or more of the maximum density. E. Ensure the finished subgrade surface is uniform and smooth and conforms to prescribed elevations before constructing the b"
-          },
-          {
-            "match": "2 percent",
-            "page": 119,
-            "snippet": "efore placing the next lift: a. Moisten or dry and thoroughly mix to the proper moisture content before compaction if the soil moisture content is not within 2 percent of optimum. b. Do not use frozen embankment material or place embankment material on frozen ground. Do not place rocks, broken concrete, and other solid mate"
-          },
-          {
-            "match": "95 percent",
-            "page": 120,
-            "snippet": "ess toward the center of the embankment. Continue compaction until each lift is thoroughly and uniformly compacted to the full width of the embankment and to 95 percent or more of the maximum density. 1. The Department will consider the ordinary use of trucks, carryalls, scrapers, tractors, or other construction equipment fo"
-          }
-        ],
-        "mat_c300": [
-          {
-            "match": "269 Percent",
-            "page": 5,
-            "snippet": "ixtures AASHTO T224 Correction for Coarse Particles in the Soil Compaction Test AASHTO T255 Total Evaporable Moisture Content of Aggregate by Drying AASHTO T269 Percent Air Voids in Compacted Dense and Open Bituminous Paving Mixtures C-11 ===== PAGE 6 ===== Table C-9: Division 300 - Certification Test Procedu"
-          }
-        ],
-        "construction_part_e": [
-          {
-            "match": "2 percent",
-            "page": 20,
-            "snippet": "requirements of the Standard Specifications. To efficiently and successfully compact the soil to the required density, the moisture content must be within 2 percent of optimum. In the field, if it is noted that the soil is too dry and the moisture content obviously less than required, the Inspector must insist on the app"
-          },
-          {
-            "match": "2 percent",
-            "page": 44,
-            "snippet": "he ce nterline that that tonna ge should cover. These computations should be checked by the Inspector . The spread rate should be based on the wet density at 2 percent or so above minimum density. Example: ENGLISH METRIC Maximum Density (Dry) 135 lb/ft 3 2160 kg/m 3 Optimum Moisture 8.0% 8.0% Maximum Density (Wet) 14"
-          },
-          {
-            "match": "2 percent",
-            "page": 49,
-            "snippet": "sed: January 2004 E-49 The Specifications will state how much compaction will be required. The moisture content at the time of compaction is to be within 2 percent of the optimum moisture content. [301.06] E301.07 Measurement and Payment. The Specifications state the method the Inspector will use to measure the quant"
-          }
-        ],
-        "construction_part_f": [
-          {
-            "match": "2 percent",
-            "page": 5,
-            "snippet": "pread material in accordance with the Specifications. F304502.08 Compaction. At the start of compaction, the moisture content of the mixture must be within 2 percent of the optimum moisture cont ent, and must not be at a level that causes the soil cement layer to become unstable during co mpaction and finishing. Prior to b"
-          }
-        ]
-      }
-    },
-    {
       "id": "num-concrete_pcc-feet",
       "severity": "medium",
       "kind": "numeric_conflict",
       "topic": "concrete_pcc",
-      "title": "Numeric mismatch on concrete pcc (feet): 1 feet, 2 feet, 3 feet, 4 feet, 4.9 feet, 6 feet, 10 feet, 15 feet, 72 feet, 100 feet",
+      "title": "Numeric mismatch on concrete pcc (feet): 1 feet, 2 feet, 3 feet, 4 feet, 4.9 feet, 6 feet, 10 feet, 15 feet, 72 feet",
       "summary": "Different publications state different feet values in concrete pcc contexts. Confirm which figure governs by work type / document hierarchy.",
       "values_by_doc": {
         "standard_specs_2026": [
@@ -1406,8 +1371,7 @@
           6,
           10,
           15,
-          72,
-          100
+          72
         ],
         "mat_table_b1": [
           1,
@@ -1527,7 +1491,7 @@
       "severity": "medium",
       "kind": "numeric_conflict",
       "topic": "concrete_pcc",
-      "title": "Numeric mismatch on concrete pcc (inches): 0.08 inches, 2 inches, 3 inches, 4 inches, 5 inches, 8 inches, 10 inches, 12 inches, 18 inches, 237 inches, 660 inches, 1045.3 inches",
+      "title": "Numeric mismatch on concrete pcc (inches): 0.08 inches, 2 inches, 3 inches, 4 inches, 5 inches, 8 inches, 10 inches, 12 inches, 18 inches",
       "summary": "Different publications state different inches values in concrete pcc contexts. Confirm which figure governs by work type / document hierarchy.",
       "values_by_doc": {
         "standard_specs_2026": [
@@ -1537,10 +1501,7 @@
           8,
           10,
           12,
-          18,
-          237,
-          660,
-          1045.3
+          18
         ],
         "mat_table_b1": [
           5
@@ -1560,14 +1521,14 @@
             "snippet": "perate 1 or both sets of paving machine wheels or tracks on previously placed concrete, ensure that the wheels or tracks bearing on the concrete stay at least 3 inches from the previously placed pavement edge. The contractor may double flange the wheels when operating with 1 side of the machine on pavement and the other sid"
           },
           {
-            "match": "1045.3 in",
-            "page": 185,
-            "snippet": "ace exposed concrete ahead of sealing in accordance with Section 613.3.B. Seal surface exposed concrete with silane sealer meeting the requirements of Section 1045.3 in accordance with Section 613.3.D. ===== PAGE 186 ===== DRAINAGE STRUCTURES SECTION 602 176 C. Remove existing and provide new grates and frames for repair a"
+            "match": "3 inches",
+            "page": 217,
+            "snippet": "elled due to delays in the start of concrete placement, or has degraded because of slurry cake buildup. Over-ream a minimum of 1/2-inch deep and a maximum of 3 inches deep. Over-ream with a grooving tool, over-reaming bucket, or other equipment approved by the engineer. ===== PAGE 218 ===== DRILLED SHAFTS SECTION 606 208"
           },
           {
-            "match": "1045.3 in",
-            "page": 186,
-            "snippet": "e exposed concrete ahead of sealing in accordance with Section 613.3.B. Seal surface exposed concrete with a silane sealer meeting the requirements of Section 1045.3 in accordance with Section 613.3.D viii. Take removed drainage inlet frames, grates, manhole frames, and covers, to the Department's District Maintenance Yard"
+            "match": "12 inches",
+            "page": 219,
+            "snippet": "a stable excavation during excavation and concrete placement operations when: a. Water begins to enter the drilled shaft excavation at a rate of greater than 12 inches per hour; b. it becomes impossible to restrict the amount of water in the drilled shaft to less than 3-inches before concrete placement; or c. water pressur"
           }
         ],
         "mat_table_b1": [
@@ -1839,43 +1800,6 @@
       }
     },
     {
-      "id": "num-moisture_content-inches",
-      "severity": "medium",
-      "kind": "numeric_conflict",
-      "topic": "moisture_content",
-      "title": "Numeric mismatch on moisture content (inches): 8 inches, 310 inches",
-      "summary": "Different publications state different inches values in moisture content contexts. Confirm which figure governs by work type / document hierarchy.",
-      "values_by_doc": {
-        "standard_specs_2026": [
-          8
-        ],
-        "mat_c200": [
-          310
-        ]
-      },
-      "docs": {
-        "standard_specs_2026": [
-          {
-            "match": "8 inches",
-            "page": 128,
-            "snippet": "ace and compact borrow in accordance with Section 202.3.8 and the following: a. Place and spread backfill material in uniform horizontal lifts no greater than 8 inches loose measurement. Compact to 95 percent or more of the maximum density, before placing the next lift. Maintain proper moisture content to achieve the requir"
-          },
-          {
-            "match": "8 inches",
-            "page": 234,
-            "snippet": "de the acceptable range and rework until the moisture content is uniformly acceptable throughout the entire lift. D. The maximum compacted lift thickness is 8 inches. E. Achieve compaction within 3-feet of the back face of the wall facing using a lightweight mechanical tamper or hand tamp. Do not use a vibratory system w"
-          }
-        ],
-        "mat_c200": [
-          {
-            "match": "310 In",
-            "page": 5,
-            "snippet": "of Soils AASHTO T265 Laboratory Determination of Moisture Content of Soils AASHTO T267 Determination of Organic Content in Soils by Loss on Ignition AASHTO T310 In-Place Density and Moisture Content of Soil and Soil-Aggregate by Nuclear Methods (Shallow Depth) C-5 ===== PAGE 6 ===== Table C-4: Division 200 - Certifi"
-          }
-        ]
-      }
-    },
-    {
       "id": "num-moisture_content-mm",
       "severity": "medium",
       "kind": "numeric_conflict",
@@ -1934,7 +1858,7 @@
       "severity": "medium",
       "kind": "numeric_conflict",
       "topic": "moisture_content",
-      "title": "Numeric mismatch on moisture content (percent): 2 percent, 3 percent, 10 percent, 70 percent, 80 percent, 95 percent, 100 percent, 110 percent, 269 percent",
+      "title": "Numeric mismatch on moisture content (percent): 2 percent, 3 percent, 10 percent, 70 percent, 80 percent, 95 percent, 100 percent, 110 percent",
       "summary": "Different publications state different percent values in moisture content contexts. Confirm which figure governs by work type / document hierarchy.",
       "values_by_doc": {
         "standard_specs_2026": [
@@ -1944,9 +1868,6 @@
           80,
           95,
           100
-        ],
-        "mat_c300": [
-          269
         ],
         "mat_glossary": [
           10
@@ -1975,13 +1896,6 @@
             "match": "95 percent",
             "page": 234,
             "snippet": "panels. Place No. 57 stone for at least the first 3-feet perpendicular to the back face of the panel for the full height of the wall. B. Compact backfill to 95 percent or more of the maximum density. C. Ensure uniform distribution of the moisture content of the backfill material before and during compaction throughout each"
-          }
-        ],
-        "mat_c300": [
-          {
-            "match": "269 Percent",
-            "page": 5,
-            "snippet": "ixtures AASHTO T224 Correction for Coarse Particles in the Soil Compaction Test AASHTO T255 Total Evaporable Moisture Content of Aggregate by Drying AASHTO T269 Percent Air Voids in Compacted Dense and Open Bituminous Paving Mixtures C-11 ===== PAGE 6 ===== Table C-9: Division 300 - Certification Test Procedu"
           }
         ],
         "mat_glossary": [
@@ -2130,7 +2044,7 @@
       "severity": "medium",
       "kind": "numeric_conflict",
       "topic": "sampling_frequency",
-      "title": "Numeric mismatch on sampling frequency (feet): 0 feet, 2 feet, 3 feet, 9 feet, 10 feet, 15 feet, 20 feet, 100 feet",
+      "title": "Numeric mismatch on sampling frequency (feet): 0 feet, 2 feet, 3 feet, 9 feet, 10 feet, 15 feet, 20 feet",
       "summary": "Different publications state different feet values in sampling frequency contexts. Confirm which figure governs by work type / document hierarchy.",
       "values_by_doc": {
         "standard_specs_2026": [
@@ -2139,8 +2053,7 @@
           9,
           10,
           15,
-          20,
-          100
+          20
         ],
         "mat_table_b1": [
           2,
@@ -2160,9 +2073,9 @@
             "snippet": "anticipated pour pressures without leakage causing physical or visual defects and that do not compress more than 1/4-inch when poured vertically at a rate of 10 feet per hour; d. attach easily to the formwork system and are removable without causing concrete surface damage or weakness in the substrate; and e. capable of"
           },
           {
-            "match": "100 feet",
-            "page": 265,
-            "snippet": "tensioning, verify the tolerance for the assembled units is plus or minus 1-inch per 50 linear feet and a maximum of plus or minus 2-inches for culverts over 100 feet long. For rigid frame and arch structures, ensure that the outer edge of the frame units matches the outer edge of the footing units. 5. Connect each wingwal"
+            "match": "20 feet",
+            "page": 753,
+            "snippet": "ength of the tube: 1. Tolerance on hole size is \u00b1 1/64-inch. ===== PAGE 753 ===== SIGN POSTS SECTION 1072 743 2. Tolerance on hole spacing is \u00b1 1/8-inch in 20 feet. H. Fabrication: Provide straight members that have a smooth uniform finish, with all holes and cut off ends free from burs. Ensure that telescoping freely o"
           }
         ],
         "mat_table_b1": [
@@ -2592,15 +2505,13 @@
       "severity": "medium",
       "kind": "numeric_conflict",
       "topic": "weather_season",
-      "title": "Numeric mismatch on weather season (inches): 0.08 inches, 2 inches, 4 inches, 8 inches, 237 inches, 1045.3 inches",
+      "title": "Numeric mismatch on weather season (inches): 0.08 inches, 2 inches, 4 inches, 8 inches",
       "summary": "Different publications state different inches values in weather season contexts. Confirm which figure governs by work type / document hierarchy.",
       "values_by_doc": {
         "standard_specs_2026": [
           2,
           4,
-          8,
-          237,
-          1045.3
+          8
         ],
         "mat_glossary": [
           0.08
@@ -2609,19 +2520,19 @@
       "docs": {
         "standard_specs_2026": [
           {
-            "match": "1045.3 in",
-            "page": 185,
-            "snippet": "ace exposed concrete ahead of sealing in accordance with Section 613.3.B. Seal surface exposed concrete with silane sealer meeting the requirements of Section 1045.3 in accordance with Section 613.3.D. ===== PAGE 186 ===== DRAINAGE STRUCTURES SECTION 602 176 C. Remove existing and provide new grates and frames for repair a"
+            "match": "8 inches",
+            "page": 684,
+            "snippet": "Freeze-Thaw Resistance AASHTO T161 (Procedure A) (ASTM C666 (Procedure A)) 300 cycles Relative Dynamic Modulus of Elasticity > 95% Slump Flow ASTM C1437 8 inches (Minimum) 10 inches (Maximum) Effective Crack Strength AASHTO T397 \u2265 0.75 ksi Crack Localization Strength AASHTO T397 \u2265 ft,cr 1 Modify ASTM C1712 as follow"
           },
           {
-            "match": "1045.3 in",
-            "page": 186,
-            "snippet": "e exposed concrete ahead of sealing in accordance with Section 613.3.B. Seal surface exposed concrete with a silane sealer meeting the requirements of Section 1045.3 in accordance with Section 613.3.D viii. Take removed drainage inlet frames, grates, manhole frames, and covers, to the Department's District Maintenance Yard"
+            "match": "2 inches",
+            "page": 707,
+            "snippet": "hesives. Ensure that the grain of all laminations is approximately parallel longitudinally and that the maximum net thickness for the separate laminations is 2 inches. Laminations may consist of pieces end joined to form any length, pieces placed or glued edge-to-edge to make wider pieces, or pieces bent to a curved form du"
           },
           {
-            "match": "237 \ninches",
-            "page": 247,
-            "snippet": "r minus 1-inch, from the face of the parapet or curb line. If metal drainage inlets extend more than 18- ===== PAGE 247 ===== CONCRETE STRUCTURES SECTION 610 237 inches from the parapet or curb line, end all grooves on the bridge deck surface within 6- inches of the drainage inlet perimeter. At expansion joints, end all groove"
+            "match": "4 inches",
+            "page": 770,
+            "snippet": "D. Additional materials for wood pole installation: 1. 4 strain plates. 2. 16 galvanized screws, 1/4-inch x 2 1/2-inches. 3. 4 guy hooks. 4. 4, 5/8-inch x 4 inches lag screws. 1076.1.2 Dead End Messenger Wire Attachment. A. Materials for wood pole installation: 1. Galvanized eyebolt with a rod diameter of 3/4-inch and"
           }
         ],
         "mat_glossary": [
