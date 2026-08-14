@@ -1007,7 +1007,7 @@ const DELDOT_LOGO = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAPAAAADwCAYAA
    - Storage wrapper abstracted for future Supabase port
    ========================================================================= */
 const STORE_KEY = 'deldot_borelog_v2';
-const BORELOG_BUILD = '2026.08.06-sync-wipe-fix';
+const BORELOG_BUILD = '2026.08.14-desc-clayey-fix';
 const MAP_MIGRATE_KEY = 'deldot_borelog_gps_migrated_v2';
 const STORE_TS_KEY = 'deldot_borelog_v2_ts';
 const DE_STATE_PLANE = '+proj=lcc +lat_1=38.43333333333334 +lat_2=39.83333333333333 +lat_0=38 +lon_0=-75.41666666666666 +x_0=200000.99998984026 +y_0=0 +ellps=GRS80 +units=us-ft +no_defs';
@@ -2292,10 +2292,12 @@ function getGrainDescription(fines, fineSand, coarseSand, gravel, a, pi){
     let clayMod=''; const base=(aC==='A-4'||aC==='A-5')?'silt':'clay';
     if(pi>0){
       const piR=Math.round(pi);
-      if(piR>=6) clayMod='clayey ';
+      // "clayey clay" is invalid — plasticity is already implied by a clay base.
+      if(piR>=6 && base!=='clay') clayMod='clayey ';
       else if(piR>=4&&piR<=5) withSome.push('clay');
       else if(piR>=1&&piR<=3) traceList.push('clay');
     }
+    // "silty silt" is invalid — only prefix silty onto a non-silt base (e.g. silty clay).
     let siltyPre=''; if(['A-6','A-7'].includes(aC)&&fines>=60&&base==='clay') siltyPre='silty ';
     let gravMod=''; if(gravel>=21){ gravMod='fine gravelly '; used.add('fine gravel'); }
     let sandyMod='';
@@ -2311,7 +2313,20 @@ function getGrainDescription(fines, fineSand, coarseSand, gravel, a, pi){
     const sm = withSome.map(c=>c==='silt'?'fines':c);
     for(const [n,v] of comp){ if(used.has(n)||sm.includes(n))continue; if(v>0&&v<=10) traceList.push(n==='fines'?'silt':n); }
   } else { primary='soil'; }
-  return { primary, withSome, traceList };
+  return { primary: sanitizeSoilPrimaryPhrase(primary), withSome, traceList };
+}
+
+/** Strip redundant adjective+noun pairs (clayey clay, silty silt, sandy sand, gravelly gravel). */
+function sanitizeSoilPrimaryPhrase(primary){
+  if(!primary) return primary;
+  let p = String(primary).replace(/\s+/g, ' ').trim();
+  p = p.replace(/\bclayey\s+clay\b/gi, 'clay');
+  p = p.replace(/\bsilty\s+silt\b/gi, 'silt');
+  p = p.replace(/\b(?:fine to coarse|coarse to fine|fine|coarse)\s+sandy\s+sand\b/gi, (m) =>
+    m.replace(/\s+sandy\s+sand$/i, ' sand'));
+  p = p.replace(/\bsandy\s+sand\b/gi, 'sand');
+  p = p.replace(/\b(?:fine\s+)?gravelly\s+(?:fine\s+)?gravel\b/gi, 'fine gravel');
+  return p.replace(/\s+/g, ' ').trim();
 }
 function getOrganicTerm(o){
   o = parseFloat(o)||0;
