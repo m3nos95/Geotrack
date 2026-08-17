@@ -28973,6 +28973,7 @@ function buildInfilQualitativeAnalysis(P, E){
       const label=infilContributionLabel(c.id);
       let why='';
       if(c.id==='map') why='Primary soil-map prior — usually the largest share when HYDGRP/Ksat are present.';
+      else if(c.id==='aashto') why='Used only when map soils are absent; class from nearby boring columns.';
       else if(c.id==='horizon') why='Class (and P200) at the test / BMP invert depth — this term governs the blend when a facility depth is set.';
       else if(c.id==='septic') why='Converted from minutes/inch PercRate (not App.1 ASTM). Light weight; conflict with sandy map soils is down-weighted.';
       else if(c.id==='p200') why='Higher fines → lower prior rate and stronger pull / hard ceiling after the blend.';
