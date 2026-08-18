@@ -131,13 +131,13 @@ assert.ok(!/Johnson Seed/i.test(crack.srcName));
 assert.ok(crack.subItems.some(s => /Elastoflex/i.test(s)));
 assert.ok(/APL/i.test(crack.actionNotes));
 
-// CC includes DelDOT contact first, then district sampler, then M&R core
+// CC: form contact, district sampler (soil/stone), then material assignments
 assert.strictEqual(result.cc[0].name, 'James Smith');
-assert.ok(result.cc.some(c => c.name === 'Ray Glanden'));
-assert.ok(result.cc.some(c => c.name === 'Aaron Wieczorek'));
-assert.ok(result.cc.some(c => c.name === 'Mark Schafer'));
-assert.ok(result.cc.some(c => c.name === 'Jason Denson'));
-assert.ok(result.cc.some(c => c.name === 'James Kwasnieski'));
+assert.ok(result.cc.some(c => c.name === 'Ray Glanden'), 'South sampler on soil/stone letter');
+assert.ok(result.cc.some(c => c.name === 'Aaron Wieczorek'), 'lab results on soil/stone');
+assert.ok(result.cc.some(c => c.name === 'Mark Schafer'), 'HMA person on hot mix');
+assert.ok(!result.cc.some(c => c.name === 'Jason Denson'), 'core dump removed — assign by material');
+assert.ok(!result.cc.some(c => c.name === 'James Kwasnieski'));
 assert.strictEqual(Engine.samplerName('South'), 'Ray Glanden');
 assert.strictEqual(Engine.samplerName('North'), 'Damian Blakely');
 assert.strictEqual(Engine.samplerName('Canal'), 'Rich Taylor');
@@ -217,10 +217,30 @@ assert.ok(/302-593-7158/.test(northGabc.actionNotes));
 assert.ok(!/Ray Glanden/.test(northGabc.actionNotes));
 assert.strictEqual(northResult.cc[0].name, 'James Smith');
 assert.ok(northResult.cc.some(c => c.name === 'Damian Blakely'));
-assert.ok(northResult.cc.some(c => c.name === 'Ray Glanden'), 'Ray stays on the M&R core CC even for North jobs');
+assert.ok(northResult.cc.some(c => c.name === 'Aaron Wieczorek'));
+assert.ok(!northResult.cc.some(c => c.name === 'Ray Glanden'), 'South sampler is not copied on a North soil/stone letter');
+assert.ok(!northResult.cc.some(c => c.name === 'Mark Schafer'), 'no hot mix on this letter');
 
-const withAlways = Engine.processGrid(grid, {
-  lists: { ccAlways: [{ name: 'Hunter McCabe', org: 'DelDOT' }] },
+const hmaOnly = Engine.processGrid(gridFromObjects(FREY_HEADER, [FREY_ITEMS[0]]));
+assert.ok(hmaOnly.cc.some(c => c.name === 'Mark Schafer'));
+assert.ok(!hmaOnly.cc.some(c => c.name === 'Aaron Wieczorek'), 'no soil/stone on HMA-only letter');
+assert.ok(!hmaOnly.cc.some(c => c.name === 'Ray Glanden'));
+
+const renamed = Engine.processGrid(grid, {
+  lists: {
+    ccAssignments: [
+      { name: 'Pat Successor', org: 'DelDOT', groups: ['soil-stone'], role: 'results', phone: '302-555-0100' },
+      { name: 'Mark Schafer', org: 'DelDOT', groups: ['hma'] },
+    ],
+  },
+});
+assert.ok(renamed.cc.some(c => c.name === 'Pat Successor'));
+assert.ok(!renamed.cc.some(c => c.name === 'Aaron Wieczorek'));
+assert.ok(/Pat Successor/.test(renamed.items.find(i => i.family === 'aggregate').actionNotes));
+assert.ok(/302-555-0100/.test(renamed.items.find(i => i.family === 'aggregate').actionNotes));
+
+const withAlways = Engine.processGrid(gridFromObjects(FREY_HEADER, [FREY_ITEMS[0]]), {
+  lists: { ccAssignments: [{ name: 'Hunter McCabe', org: 'DelDOT', always: true }] },
 });
 assert.strictEqual(withAlways.cc[0].name, 'James Smith');
 assert.ok(withAlways.cc.some(c => c.name === 'Hunter McCabe'));

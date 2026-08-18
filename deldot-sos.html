@@ -188,16 +188,42 @@
     </div>
 
     <div class="tab-panel" id="tab-cc">
+      <div style="font-size:12px;color:var(--text-mid);line-height:1.5;margin:4px 0 10px;">
+        CC follows the materials on the letter. Soil / stone → lab results person; hot mix → HMA person.
+        Change the name if someone leaves. Check <strong>Always</strong> to copy someone on every letter.
+      </div>
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
+        <div style="font-size:10px;font-weight:700;color:var(--text-dim);letter-spacing:.08em;text-transform:uppercase;">Who to copy, by material</div>
+        <div style="display:flex;gap:6px;">
+          <button class="btn btn-ghost btn-sm" onclick="addCcRule()">+ Assignment</button>
+          <button class="btn btn-ghost btn-sm" onclick="resetCcRules()">Reset defaults</button>
+          <button class="btn btn-primary btn-sm" onclick="applyCcRulesToLetter()">Apply to this letter</button>
+        </div>
+      </div>
+      <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);overflow:auto;box-shadow:var(--shadow);margin-bottom:14px;">
+        <table class="items-table" id="cc-rules-table">
+          <thead>
+            <tr>
+              <th style="min-width:140px;">Name</th>
+              <th style="width:120px;">Phone</th>
+              <th>Copy when the letter has…</th>
+              <th style="width:40px;"></th>
+            </tr>
+          </thead>
+          <tbody id="cc-rules-tbody"></tbody>
+        </table>
+      </div>
+      <div style="font-size:10px;font-weight:700;color:var(--text-dim);letter-spacing:.08em;margin-bottom:6px;text-transform:uppercase;">District samplers (must-be-tested soil / stone)</div>
+      <div id="cc-sampler-fields" style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:14px;"></div>
       <div class="toolbar">
-        <button class="btn btn-primary btn-sm" onclick="openCCModal()">+ New Person</button>
-        <button class="btn btn-ghost btn-sm" onclick="addStandardCcToLetter()">+ M&amp;R core</button>
-        <button class="btn btn-ghost btn-sm" onclick="addHarvestedAlwaysToLetter()">+ Harvested always-list</button>
+        <button class="btn btn-ghost btn-sm" onclick="openCCModal()">+ Library person</button>
+        <button class="btn btn-ghost btn-sm" onclick="addHarvestedAlwaysToLetter()">+ Harvested names</button>
         <input class="lib-search" id="cc-lib-search" placeholder="Search library…" oninput="renderCCLib()" style="width:180px;">
       </div>
       <div id="cc-harvest-status" style="font-size:12px;color:var(--text-mid);margin:4px 0 10px;line-height:1.45;"></div>
       <div class="import-zone" id="cc-drop-zone" onclick="document.getElementById('cc-file-input').click()" style="margin-bottom:12px;padding:16px;">
-        <div class="import-zone-label">Drop SOS-cc.json here</div>
-        <div class="import-zone-sub">Run learn-sos.bat on the SOS Program folder, then drop the SOS-cc.json it writes next to the letters.</div>
+        <div class="import-zone-label">Drop SOS-cc.json here (optional library)</div>
+        <div class="import-zone-sub">Harvested names go into the library. Material assignments above decide who is actually copied on import.</div>
         <input type="file" id="cc-file-input" style="display:none" accept=".json" onchange="handleCcFile(this.files[0])">
       </div>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:4px;">

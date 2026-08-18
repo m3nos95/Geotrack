@@ -38,13 +38,43 @@
     secretary: 'Shanté A. Hastings',
   };
 
-  const STANDARD_CC = [
-    'Ray Glanden',
-    'Aaron Wieczorek',
-    'Mark Schafer',
-    'Jason Denson',
-    'James Kwasnieski',
+  /** Material groups used to decide who is copied on a letter. Editable in the CC tab. */
+  const CC_MATERIAL_GROUPS = [
+    { id: 'soil-stone', label: 'Soil / stone / GABC / borrow', families: ['borrow', 'aggregate', 'riprap', 'topsoil', 'geotextile'] },
+    { id: 'hma', label: 'Hot mix / Superpave / tack', families: ['hma-mix', 'tack'] },
+    { id: 'pcc', label: 'PCC curb / sidewalk', families: ['pcc'] },
+    { id: 'pipe-precast', label: 'RCP / precast / pipe', families: ['rcp', 'precast', 'hdpe', 'utility', 'castings'] },
+    { id: 'striping', label: 'Pavement marking', families: ['striping'] },
+    { id: 'other-apl', label: 'Crack seal / curing / TTC / APL', families: ['crack-seal', 'curing', 'ttc', 'signs', 'apl-product', 'erosion', 'expansion'] },
   ];
+
+  /**
+   * Default CC assignments. Change the name if someone leaves; checkboxes decide
+   * which letter items pull that person onto cc. role: 'results' also fills the
+   * "contact … for test results" sentence on must-be-tested soil/stone.
+   */
+  const CC_ASSIGNMENT_SEEDS = [
+    {
+      id: 'cc-aaron',
+      name: 'Aaron Wieczorek',
+      org: 'DelDOT',
+      phone: '302-760-2583',
+      role: 'results',
+      always: false,
+      groups: ['soil-stone'],
+    },
+    {
+      id: 'cc-mark',
+      name: 'Mark Schafer',
+      org: 'DelDOT',
+      phone: '',
+      role: '',
+      always: false,
+      groups: ['hma'],
+    },
+  ];
+
+  const STANDARD_CC = CC_ASSIGNMENT_SEEDS.filter(a => a.always).map(a => a.name);
 
   const CC_LIBRARY_SEEDS = [
     { name: 'Hunter McCabe', org: 'DelDOT' },
@@ -209,14 +239,62 @@
     notApproved: 'Not approved.',
   };
 
-  function testCoordinationNotes(district) {
+  function cloneContact(src, extra) {
+    return Object.assign({ name: '', phone: '', org: 'Materials & Research' }, src || {}, extra || {});
+  }
+
+  function resolveContacts(lists) {
+    const c = {
+      sampling: cloneContact(CONTACTS.sampling),
+      samplingNorth: cloneContact(CONTACTS.samplingNorth),
+      samplingCanal: cloneContact(CONTACTS.samplingCanal),
+      results: cloneContact(CONTACTS.results, { org: 'Materials & Research' }),
+    };
+    const ov = (lists && lists.contacts) || {};
+    ['sampling', 'samplingNorth', 'samplingCanal', 'results'].forEach(k => {
+      if (ov[k] && (ov[k].name || ov[k].phone)) c[k] = cloneContact(c[k], ov[k]);
+    });
+    const assignments = (lists && lists.ccAssignments) || CC_ASSIGNMENT_SEEDS;
+    const res = assignments.find(a => a.role === 'results' && a.name);
+    if (res) {
+      c.results = cloneContact(c.results, { name: res.name, phone: res.phone || c.results.phone });
+    }
+    return c;
+  }
+
+  function samplerForDistrict(district, lists) {
+    const c = resolveContacts(lists);
     const d = district || '';
-    let sampler = CONTACTS.sampling;
-    if (/canal/i.test(d)) sampler = CONTACTS.samplingCanal;
-    else if (/north/i.test(d)) sampler = CONTACTS.samplingNorth;
+    if (/canal/i.test(d)) return c.samplingCanal;
+    if (/north/i.test(d)) return c.samplingNorth;
+    return c.sampling;
+  }
+
+  function assignmentMatchesItems(assignment, items) {
+    if (!assignment || !assignment.name) return false;
+    if (assignment.always) return true;
+    const families = new Set((items || []).map(it => it && it.family).filter(Boolean));
+    const wanted = assignment.groups || assignment.families || [];
+    for (const w of wanted) {
+      if (families.has(w)) return true;
+      const g = CC_MATERIAL_GROUPS.find(x => x.id === w);
+      if (g && g.families.some(f => families.has(f))) return true;
+    }
+    return false;
+  }
+
+  function soilStoneOnLetter(items) {
+    const g = CC_MATERIAL_GROUPS.find(x => x.id === 'soil-stone');
+    const fams = g ? g.families : ['borrow', 'aggregate'];
+    return (items || []).some(it => fams.includes(it && it.family));
+  }
+
+  function testCoordinationNotes(district, lists) {
+    const sampler = samplerForDistrict(district, lists);
+    const results = resolveContacts(lists).results;
     return (
-      `Contact ${sampler.name}, ${sampler.org} at ${sampler.phone} at least ten (10) working days prior to shipment, from the source, for coordination of sampling. ` +
-      `Contact ${CONTACTS.results.name} at ${CONTACTS.results.phone}, for test results.`
+      `Contact ${sampler.name}, ${sampler.org || 'Materials & Research'} at ${sampler.phone} at least ten (10) working days prior to shipment, from the source, for coordination of sampling. ` +
+      `Contact ${results.name} at ${results.phone}, for test results.`
     );
   }
 
@@ -284,7 +362,13 @@
     APL_FOOTNOTE,
     CONTACTS,
     STANDARD_CC,
+    CC_MATERIAL_GROUPS,
+    CC_ASSIGNMENT_SEEDS,
     CC_LIBRARY_SEEDS,
+    resolveContacts,
+    samplerForDistrict,
+    assignmentMatchesItems,
+    soilStoneOnLetter,
     SPEC_CATALOG,
     SPEC_CORRECTIONS,
     TACK_COAT_APL,

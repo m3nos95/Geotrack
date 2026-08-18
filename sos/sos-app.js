@@ -16,6 +16,8 @@
     specs: 'deldot_sos_specs',
     warnings: 'deldot_sos_warnings_v2',
     lists: 'deldot_sos_lists_v1',
+    cc_rules: 'deldot_sos_cc_rules_v1',
+    cc_samplers: 'deldot_sos_cc_samplers_v1',
   };
 
   const actionMeta = {
@@ -42,6 +44,8 @@
   let items = ls_get(STORE.items, []);
   let ccList = ls_get(STORE.cc, []);
   let ccLib = [];
+  let ccAssignments = [];
+  let samplerContacts = {};
   let revisions = ls_get(STORE.revisions, []);
   let currentRev = ls_get(STORE.rev, 1);
   let sourceLib = [];
@@ -141,7 +145,15 @@
     ['ph-contract', 'ph-title', 'ph-contractor', 'ph-district', 'ph-contact', 'ph-date', 'ph-dockind'].forEach(id => {
       const el = document.getElementById(id);
       if (!el) return;
-      el.addEventListener('input', () => { persistProject(); updateContractWarn(); renderLetter(); renderWarnings(); });
+      el.addEventListener('input', () => {
+        persistProject();
+        updateContractWarn();
+        if (id === 'ph-district' || id === 'ph-contact') {
+          if (items.length) applyCcRulesToLetter();
+        }
+        renderLetter();
+        renderWarnings();
+      });
       el.addEventListener('blur', persistProject);
     });
   }
@@ -178,6 +190,169 @@
     }
   }
 
+  function cloneCcAssignments(list) {
+    return (list || []).map((a, i) => ({
+      id: a.id || ('cc-' + Date.now() + '-' + i),
+      name: a.name || '',
+      org: a.org || 'DelDOT',
+      phone: a.phone || '',
+      role: a.role || '',
+      always: !!a.always,
+      groups: Array.isArray(a.groups) ? a.groups.slice() : [],
+    }));
+  }
+
+  function loadCcRules() {
+    const saved = ls_get(STORE.cc_rules, null);
+    ccAssignments = cloneCcAssignments(saved && saved.length ? saved : SOSData.CC_ASSIGNMENT_SEEDS);
+    const sam = ls_get(STORE.cc_samplers, null);
+    samplerContacts = {
+      sampling: Object.assign({}, SOSData.CONTACTS.sampling, sam && sam.sampling),
+      samplingNorth: Object.assign({}, SOSData.CONTACTS.samplingNorth, sam && sam.samplingNorth),
+      samplingCanal: Object.assign({}, SOSData.CONTACTS.samplingCanal, sam && sam.samplingCanal),
+    };
+  }
+
+  function persistCcRules() {
+    ls_set(STORE.cc_rules, ccAssignments);
+    ls_set(STORE.cc_samplers, samplerContacts);
+  }
+
+  function listsForEngine() {
+    return Object.assign({}, liveLists, {
+      ccAssignments,
+      contacts: samplerContacts,
+    });
+  }
+
+  function currentProjectForCc() {
+    return {
+      contact: val('ph-contact'),
+      district: val('ph-district'),
+    };
+  }
+
+  window.applyCcRulesToLetter = function () {
+    ccList = SOSEngine.buildCcList(currentProjectForCc(), listsForEngine(), items);
+    persistAll();
+    renderCC();
+    renderCCLib();
+    renderLetter();
+  };
+
+  window.renderCcRules = function () {
+    const tbody = document.getElementById('cc-rules-tbody');
+    if (!tbody) return;
+    const groups = SOSData.CC_MATERIAL_GROUPS || [];
+    tbody.innerHTML = ccAssignments.map(a => {
+      const chips = groups.map(g => {
+        const on = (a.groups || []).includes(g.id);
+        return `<label style="display:inline-flex;align-items:center;gap:4px;margin:2px 8px 2px 0;font-size:11px;white-space:nowrap;">
+          <input type="checkbox" ${on ? 'checked' : ''} onchange="toggleCcRuleGroup('${esc(a.id)}','${g.id}',this.checked)"> ${esc(g.label)}
+        </label>`;
+      }).join('');
+      const always = a.always
+        ? 'checked' : '';
+      const results = a.role === 'results' ? 'checked' : '';
+      return `<tr>
+        <td>
+          <input class="form-input" value="${esc(a.name)}" onchange="setCcRuleField('${esc(a.id)}','name',this.value)" style="min-width:120px;">
+          <div style="font-size:10px;color:var(--text-dim);margin-top:4px;">
+            <label><input type="checkbox" ${results} onchange="setCcRuleField('${esc(a.id)}','role',this.checked?'results':'')"> Lab results (ACTION notes)</label>
+          </div>
+        </td>
+        <td><input class="form-input" value="${esc(a.phone)}" onchange="setCcRuleField('${esc(a.id)}','phone',this.value)" placeholder="optional"></td>
+        <td>
+          ${chips}
+          <label style="display:inline-flex;align-items:center;gap:4px;margin:2px 0;font-size:11px;font-weight:600;">
+            <input type="checkbox" ${always} onchange="setCcRuleField('${esc(a.id)}','always',this.checked)"> Always
+          </label>
+        </td>
+        <td><button class="btn btn-ghost btn-sm btn-icon" onclick="deleteCcRule('${esc(a.id)}')" style="color:var(--red);">✕</button></td>
+      </tr>`;
+    }).join('');
+    renderSamplerFields();
+  };
+
+  function renderSamplerFields() {
+    const el = document.getElementById('cc-sampler-fields');
+    if (!el) return;
+    const rows = [
+      ['sampling', 'South'],
+      ['samplingNorth', 'North'],
+      ['samplingCanal', 'Canal'],
+    ];
+    el.innerHTML = rows.map(([key, label]) => {
+      const c = samplerContacts[key] || {};
+      return `<div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:10px;">
+        <div style="font-size:11px;font-weight:700;margin-bottom:6px;">${label}</div>
+        <input class="form-input" value="${esc(c.name || '')}" onchange="setSamplerField('${key}','name',this.value)" placeholder="Name" style="margin-bottom:6px;">
+        <input class="form-input" value="${esc(c.phone || '')}" onchange="setSamplerField('${key}','phone',this.value)" placeholder="Phone">
+      </div>`;
+    }).join('');
+  }
+
+  window.setCcRuleField = function (id, field, value) {
+    const row = ccAssignments.find(a => a.id === id);
+    if (!row) return;
+    if (field === 'always') row.always = !!value;
+    else row[field] = value;
+    persistCcRules();
+    if (items.length) applyCcRulesToLetter();
+    else { renderLetter(); }
+  };
+
+  window.toggleCcRuleGroup = function (id, groupId, on) {
+    const row = ccAssignments.find(a => a.id === id);
+    if (!row) return;
+    const set = new Set(row.groups || []);
+    if (on) set.add(groupId); else set.delete(groupId);
+    row.groups = [...set];
+    persistCcRules();
+    if (items.length) applyCcRulesToLetter();
+  };
+
+  window.addCcRule = function () {
+    ccAssignments.push({
+      id: 'cc-' + Date.now(),
+      name: '',
+      org: 'DelDOT',
+      phone: '',
+      role: '',
+      always: false,
+      groups: [],
+    });
+    persistCcRules();
+    renderCcRules();
+  };
+
+  window.deleteCcRule = function (id) {
+    ccAssignments = ccAssignments.filter(a => a.id !== id);
+    persistCcRules();
+    renderCcRules();
+    if (items.length) applyCcRulesToLetter();
+  };
+
+  window.resetCcRules = function () {
+    ccAssignments = cloneCcAssignments(SOSData.CC_ASSIGNMENT_SEEDS);
+    samplerContacts = {
+      sampling: Object.assign({}, SOSData.CONTACTS.sampling),
+      samplingNorth: Object.assign({}, SOSData.CONTACTS.samplingNorth),
+      samplingCanal: Object.assign({}, SOSData.CONTACTS.samplingCanal),
+    };
+    persistCcRules();
+    renderCcRules();
+    if (items.length) applyCcRulesToLetter();
+  };
+
+  window.setSamplerField = function (key, field, value) {
+    if (!samplerContacts[key]) samplerContacts[key] = { name: '', phone: '', org: 'Materials & Research' };
+    samplerContacts[key][field] = value;
+    persistCcRules();
+    if (items.length) applyCcRulesToLetter();
+    renderWarnings();
+  };
+
   function autoSaveSource(name, loc, addr, phone) {
     if (!name) return;
     const exists = sourceLib.find(s => s.name.toLowerCase() === name.toLowerCase() && (s.loc || '').toLowerCase() === (loc || '').toLowerCase());
@@ -210,7 +385,7 @@
     document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
     (el || document.querySelector('.tab[data-tab="' + name + '"]')).classList.add('active');
     document.getElementById('tab-' + name).classList.add('active');
-    if (name === 'cc') { renderCCLib(); renderCCHarvestStatus(); }
+    if (name === 'cc') { renderCCLib(); renderCCHarvestStatus(); renderCcRules(); }
     if (name === 'sources') renderSourceLib();
     if (name === 'specs') renderSpecLibTab();
     if (name === 'lists') renderLists();
@@ -800,18 +975,15 @@
     const always = (harvest && harvest.always) || liveLists.ccAlways || [];
     const letters = harvest && harvest.letters;
     if (!always.length && !letters) {
-      el.textContent = 'No harvested CC list loaded. Run learn-sos.bat, then drop SOS-cc.json here. New imports still get the form contact, district sampler, and M&R core.';
+      el.textContent = 'Optional: run learn-sos.bat and drop SOS-cc.json to fill the name library. Who is copied on a letter comes from the material assignments above.';
       return;
     }
     const names = always.map(p => typeof p === 'string' ? p : p.name).filter(Boolean);
     el.textContent = (letters ? ('Read from ' + letters + ' issued letters. ') : '') +
-      'Names added automatically on import: ' + (names.join(', ') || '(none at 40% yet)');
+      'Library names: ' + (names.join(', ') || '(none)') + '. They are not auto-copied — assign materials above, or use + Harvested names.';
   }
 
-  window.addStandardCcToLetter = function () {
-    SOSData.STANDARD_CC.forEach(name => addPersonToLetter(name, 'DelDOT'));
-    persistAll(); renderCC(); renderCCLib(); renderLetter();
-  };
+  window.addStandardCcToLetter = window.applyCcRulesToLetter;
 
   window.addHarvestedAlwaysToLetter = function () {
     (liveLists.ccAlways || []).forEach(p => addPersonToLetter(typeof p === 'string' ? p : p.name, (p && p.org) || 'DelDOT'));
@@ -843,7 +1015,7 @@
 
   function applyListsToOpenLetter() {
     if (parsedImport && parsedImport.parsed) {
-      const result = SOSEngine.applyWorkflow(parsedImport.parsed, { lists: liveLists });
+      const result = SOSEngine.applyWorkflow(parsedImport.parsed, { lists: listsForEngine() });
       parsedImport = { parsed: parsedImport.parsed, ...result };
       warnings = result.warnings || [];
       renderImportPreview();
@@ -924,7 +1096,7 @@
       ['Pavement marking APL', liveLists.striping && liveLists.striping.modified, (liveLists.striping && (liveLists.striping.manufacturers || liveLists.striping.entries) || []).length],
       ['Crack seal APL', liveLists.crack && liveLists.crack.modified, (liveLists.crack && liveLists.crack.entries || []).length],
       ['Aggregate chart', liveLists.aggregate && liveLists.aggregate.file, (liveLists.aggregate && liveLists.aggregate.entries || []).length],
-      ['CC harvest (always)', (liveLists.ccAlways || []).length ? 'on import' : '', (liveLists.ccAlways || []).length],
+      ['CC harvest (library)', (liveLists.ccAlways || []).length ? 'library only' : '', (liveLists.ccAlways || []).length],
     ];
     tbody.innerHTML = rows.map(r => `<tr><td>${esc(r[0])}</td><td>${esc(r[1] || '—')}</td><td>${esc(String(r[2]))}</td></tr>`).join('');
     const n = (liveLists.aggregate && liveLists.aggregate.entries || []).length + (liveLists.tack && liveLists.tack.entries || []).length;
@@ -967,7 +1139,7 @@
         switchTab('lists', document.querySelector('.tab[data-tab="lists"]'));
         return;
       }
-      const result = SOSEngine.processGrid(grid, { filename: file.name, lists: liveLists });
+      const result = SOSEngine.processGrid(grid, { filename: file.name, lists: listsForEngine() });
       parsedImport = result;
       warnings = result.warnings || [];
       applyProjectToHeader(result.project);
@@ -1169,6 +1341,7 @@ hr { border: none; border-top: 1px solid #ccc; margin: 14pt 0; }
     loadSourceLib();
     loadSpecLib();
     loadCCLib();
+    loadCcRules();
     loadProjectHeader();
     wireProjectPersist();
     wireDropZone(document.getElementById('drop-zone'));
@@ -1180,6 +1353,7 @@ hr { border: none; border-top: 1px solid #ccc; margin: 14pt 0; }
     renderItems();
     renderCC();
     renderCCLib();
+    renderCcRules();
     renderCCHarvestStatus();
     renderRevisions();
     renderSourceLib();

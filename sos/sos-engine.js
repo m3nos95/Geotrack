@@ -17,8 +17,10 @@
     CRACK_SEAL_APL,
     ACTION_TEXT,
     APL_FOOTNOTE,
-    STANDARD_CC,
-    CONTACTS,
+    CC_ASSIGNMENT_SEEDS,
+    assignmentMatchesItems,
+    soilStoneOnLetter,
+    samplerForDistrict,
     testCoordinationNotes,
   } = DATA;
   const Lists = LISTS || {};
@@ -623,7 +625,7 @@
         }
         highlight = parts.some(x => x.highlight);
         actionNotes = parts.map(x => x.notes).join('\n');
-        if (action === 'test') actionNotes = actionNotes + '\n' + testCoordinationNotes(project.district);
+        if (action === 'test') actionNotes = actionNotes + '\n' + testCoordinationNotes(project.district, lists);
         testDate = p.date || (a && a.date) || testDate;
         rule = 'aggregate-chart';
       } else if (item.testDate) {
@@ -633,7 +635,7 @@
       } else {
         action = 'test';
         highlight = true;
-        actionNotes = ACTION_TEXT.test + '\n' + testCoordinationNotes(project.district);
+        actionNotes = ACTION_TEXT.test + '\n' + testCoordinationNotes(project.district, lists);
         rule = 'must-test-aggregate';
       }
     } else if (family === 'hma-mix') {
@@ -855,7 +857,7 @@
     }
     const items = groupItems(prepared.filter(it => !shouldOmitItem(it))).map((it, i) => ({ ...it, id: i + 1 }));
 
-    const cc = buildCcList(project, lists);
+    const cc = buildCcList(project, lists, items);
 
     return {
       project,
@@ -866,26 +868,27 @@
     };
   }
 
-  function samplerName(district) {
-    const d = district || '';
-    if (/canal/i.test(d)) return CONTACTS.samplingCanal.name;
-    if (/north/i.test(d)) return CONTACTS.samplingNorth.name;
-    return CONTACTS.sampling.name;
+  function samplerName(district, lists) {
+    return samplerForDistrict(district, lists).name;
   }
 
-  function buildCcList(project, lists) {
+  function buildCcList(project, lists, items) {
     const people = [];
-    const add = (name, org) => {
+    const add = (name, org, role) => {
       const n = cellStr(name);
       if (!n) return;
       if (people.some(p => p.name.toLowerCase() === n.toLowerCase())) return;
-      people.push({ id: people.length + 1, name: n, org: org || 'DelDOT', role: '' });
+      people.push({ id: people.length + 1, name: n, org: org || 'DelDOT', role: role || '' });
     };
     add(project && project.contact);
-    add(samplerName(project && project.district));
-    STANDARD_CC.forEach(n => add(n));
-    const extra = (lists && lists.ccAlways) || [];
-    extra.forEach(n => add(typeof n === 'string' ? n : n.name, (n && n.org) || 'DelDOT'));
+    if (soilStoneOnLetter(items)) {
+      const s = samplerForDistrict(project && project.district, lists);
+      add(s.name, 'DelDOT');
+    }
+    const assignments = (lists && lists.ccAssignments) || CC_ASSIGNMENT_SEEDS;
+    assignments.forEach(a => {
+      if (assignmentMatchesItems(a, items)) add(a.name, a.org || 'DelDOT', a.role || '');
+    });
     return people;
   }
 
