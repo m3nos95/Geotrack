@@ -293,4 +293,9 @@ assert.ok(/GABC \(CRUSHED CONCRETE\)/.test(Engine.letterPlainText(
   []
 )));
 
+const liveSnap = require('./lists/apl-snapshot.json');
+assert.ok(liveSnap.tack.entries.length >= 10, 'bundled tack APL snapshot');
+assert.strictEqual(require('./sos-lists.js').lookupTack(liveSnap.tack, 'Russell Standard', 'Baltimore MD', 'CRS-1').listed, true);
+assert.ok(require('./sos-lists.js').lookupTack(liveSnap.tack, 'Russell Standard', 'Chambersburg PA', 'CRS-1H Tack Coat').gradeMismatch);
+
 console.log('--- letter ---\n' + letter);

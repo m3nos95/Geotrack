@@ -2,11 +2,11 @@
    Works in the browser (global SOSEngine) and Node (module.exports). */
 (function (root, factory) {
   if (typeof module === 'object' && module.exports) {
-    module.exports = factory(require('./sos-data.js'));
+    module.exports = factory(require('./sos-data.js'), require('./sos-lists.js'));
   } else {
-    root.SOSEngine = factory(root.SOSData);
+    root.SOSEngine = factory(root.SOSData, root.SOSLists);
   }
-})(typeof globalThis !== 'undefined' ? globalThis : this, function (DATA) {
+})(typeof globalThis !== 'undefined' ? globalThis : this, function (DATA, LISTS) {
   'use strict';
 
   const {
@@ -20,6 +20,7 @@
     STANDARD_CC,
     testCoordinationNotes,
   } = DATA;
+  const Lists = LISTS || {};
 
   const STREET_RE = /^\d+\s|\b(rd|road|ave|avenue|st\.?|street|hwy|highway|blvd|boulevard|ln|lane|dr\.?|drive|ct|court|pkwy|pike|way|circle|pl|place|po box)\b/i;
   const CITY_STATE_RE = /^([A-Za-z .'-]+),\s*([A-Z]{2})(?:\s+\d{5}(?:-\d{4})?)?$/;
@@ -540,23 +541,34 @@
     };
   }
 
-  function applyAction(item, project, warnings) {
+  function applyAction(item, project, warnings, lists) {
+    lists = lists || {};
     const family = item.family;
     const oneSource = !!(item.altName && item.altName !== item.srcName) ||
       (item.altLoc && item.altLoc !== item.srcLoc);
     const product = (item.subItems || []).join(' ') + ' ' + (item.material || '');
+    const materialBlob = [item.desc, item.material, ...(item.subItems || [])].join(' ');
     let action = 'approved';
     let actionNotes = '';
     let apl = false;
     let highlight = false;
     let rule = family;
+    let testDate = item.testDate || '';
 
     if (family === 'tack') {
       apl = true;
-      const hit = matchAplList(TACK_COAT_APL, item.srcName, item.srcLoc, product);
-      if (hit.rejected || hit.locationMismatch) {
+      const liveTack = lists.tack && lists.tack.entries && lists.tack.entries.length;
+      const hit = liveTack
+        ? Lists.lookupTack(lists.tack, item.srcName, item.srcLoc, product)
+        : matchAplList(TACK_COAT_APL, item.srcName, item.srcLoc, product);
+      if (hit.rejected || hit.locationMismatch || hit.gradeMismatch || hit.listed === false) {
         action = 'not-approved';
-        actionNotes = `Not Approved. (${item.srcName} ${item.srcLoc || ''} not listed on tack coat APL)`.replace(/\s+/g, ' ').trim();
+        if (hit.gradeMismatch) {
+          const grade = hit.grade || Lists.extractGrade(product);
+          actionNotes = `Not Approved. (${grade || 'This grade'} not listed on tack coat APL for this source location)`;
+        } else {
+          actionNotes = `Not Approved. (${item.srcName} ${item.srcLoc || ''} not listed on tack coat APL)`.replace(/\s+/g, ' ').trim();
+        }
         rule = 'tack-not-on-apl';
         warnings.push(actionNotes);
       } else if (hit.listed) {
@@ -567,6 +579,11 @@
         action = 'submit';
         actionNotes = ACTION_TEXT.submitTack;
         rule = 'tack-missing-mfg';
+      } else if (liveTack) {
+        action = 'not-approved';
+        actionNotes = `Not Approved. (${item.srcName} ${item.srcLoc || ''} not listed on tack coat APL)`.replace(/\s+/g, ' ').trim();
+        rule = 'tack-not-on-apl';
+        warnings.push(actionNotes);
       } else {
         action = 'apl';
         actionNotes = ACTION_TEXT.apl;
@@ -574,7 +591,41 @@
         warnings.push(`Tack coat producer "${item.srcName}" is not in the local APL table — confirm on deldot.gov/Business/prodlists before issuing.`);
       }
     } else if (family === 'borrow' || family === 'aggregate') {
-      if (item.testDate) {
+      const chart = lists.aggregate;
+      if (chart && chart.entries && chart.entries.length && Lists.lookupAggregate) {
+        const primary = Lists.lookupAggregate(chart, item.srcName, item.srcLoc, materialBlob);
+        const altHit = item.altName ? Lists.lookupAggregate(chart, item.altName, item.altLoc, materialBlob) : null;
+        const part = (hit, label) => {
+          const who = label ? label + ' ' : '';
+          if (!hit || !hit.found) {
+            return { action: 'test', notes: who + ACTION_TEXT.test, date: '', highlight: true };
+          }
+          if (hit.status === 'rejected') {
+            return { action: 'not-approved', notes: who + 'Not approved on the current aggregate chart.', date: '', highlight: false };
+          }
+          if (hit.status === 'approved') {
+            return { action: 'approved', notes: who + ACTION_TEXT.approved, date: hit.testDate || '', highlight: false };
+          }
+          return { action: 'test', notes: who + ACTION_TEXT.test, date: '', highlight: true };
+        };
+        const p = part(primary, item.altName ? (item.srcName || 'Primary') : '');
+        const a = altHit ? part(altHit, item.altName) : null;
+        const parts = a ? [p, a] : [p];
+        if (parts.some(x => x.action === 'not-approved') && !parts.some(x => x.action === 'approved' || x.action === 'test')) {
+          action = 'not-approved';
+        } else if (parts.some(x => x.action === 'test')) {
+          action = 'test';
+        } else if (parts.every(x => x.action === 'approved')) {
+          action = 'approved';
+        } else {
+          action = parts[0].action;
+        }
+        highlight = parts.some(x => x.highlight);
+        actionNotes = parts.map(x => x.notes).join('\n');
+        if (action === 'test') actionNotes = actionNotes + '\n' + testCoordinationNotes(project.district);
+        testDate = p.date || (a && a.date) || testDate;
+        rule = 'aggregate-chart';
+      } else if (item.testDate) {
         action = 'approved';
         actionNotes = ACTION_TEXT.approved;
         rule = 'tested-aggregate';
@@ -604,7 +655,10 @@
       rule = 'pcc-mix-designs';
     } else if (family === 'striping') {
       apl = true;
-      const hit = matchAplList(STRIPING_APL, item.srcName, item.srcLoc, product);
+      const live = lists.striping && ((lists.striping.manufacturers || []).length || (lists.striping.entries || []).length);
+      const hit = live
+        ? Lists.lookupManufacturer(lists.striping, item.srcName)
+        : matchAplList(STRIPING_APL, item.srcName, item.srcLoc, product);
       if (/zone\s*strip|pavement\s*markings?/i.test(item.srcName || '') && hit.listed !== true) {
         action = 'submit';
         actionNotes = ACTION_TEXT.submitStriping;
@@ -639,7 +693,10 @@
         rule = 'expansion-aashto';
       }
     } else if (family === 'crack-seal') {
-      const hit = matchAplList(CRACK_SEAL_APL, item.srcName, item.srcLoc, product);
+      const live = lists.crack && lists.crack.entries && lists.crack.entries.length >= 2;
+      const hit = live
+        ? Lists.lookupCrack(lists.crack, item.srcName, product)
+        : matchAplList(CRACK_SEAL_APL, item.srcName, item.srcLoc, product);
       if (hit.listed !== false) {
         action = 'apl';
         apl = true;
@@ -699,7 +756,7 @@
       onFile: action === 'on-file',
       highlight,
       rule,
-      testDate: '',
+      testDate,
       sampleId: null,
     };
   }
@@ -772,15 +829,23 @@
     const project = { ...parsed.project };
     if (!project.docKind) project.docKind = detectDocKind(project.contract);
 
+    const lists = (opts && opts.lists) || {};
     const prepared = parsed.items.map((raw, idx) => {
       let item = { ...raw, id: raw.id || (idx + 1) };
       item = applySpecCorrections(item, warnings);
       item = enrichDescription(item);
       const src = pickLetterSource(item);
       item = { ...item, ...src };
-      item = applyAction(item, project, warnings);
+      item = applyAction(item, project, warnings, lists);
       return item;
     });
+
+    if (prepared.some(it => it.family === 'borrow' || it.family === 'aggregate')) {
+      const n = lists.aggregate && lists.aggregate.entries ? lists.aggregate.entries.length : 0;
+      if (!n) {
+        warnings.push('No aggregate chart loaded — GABC/borrow default to must-be-tested. Drop the current chart on the Lists tab (or run refresh-sos-lists.bat).');
+      }
+    }
 
     const omitted = prepared.filter(shouldOmitItem);
     if (omitted.length) {
