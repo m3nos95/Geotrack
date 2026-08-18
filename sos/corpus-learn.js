@@ -597,6 +597,14 @@ function loadListsForDir(dir) {
         bundle.ccAlways = harvest.always || [];
       } catch (e) {}
     }
+    const rulesFile = path.join(dir, 'SOS-cc-rules.json');
+    if (fs.existsSync(rulesFile)) {
+      try {
+        const rules = JSON.parse(fs.readFileSync(rulesFile, 'utf8'));
+        if (Array.isArray(rules.ccAssignments)) bundle.ccAssignments = rules.ccAssignments;
+        if (rules.contacts) bundle.contacts = rules.contacts;
+      } catch (e) {}
+    }
     try {
       const { findAggregateChart } = require('./fetch-lists.js');
       const chart = findAggregateChart(dir);
@@ -810,4 +818,9 @@ module.exports = {
   parseIssuedSections,
   parseCcPeople,
   harvestCcFromResults,
+  readGrid,
+  parseFormPdf,
+  inspectPdf,
+  loadListsForDir,
+  looksLikeContractorForm,
 };

@@ -38,6 +38,19 @@ Tack / pavement marking / crack seal check the live [Approved Product Lists](htt
 
 Spec `301003` submitted as GABC is issued as `#301001` (flagged in the review banner).
 
+## Outlook inbox (every 30 minutes)
+
+Contractor SOS forms that arrive by email can be processed on the office PC without Graph/API keys. Outlook desktop must be signed in (your mailbox, or a shared mailbox already in that Outlook profile).
+
+1. Copy `sos/SOS-watch.example.json` to `sos/SOS-watch.json` and set `outputDir` (default: Desktop **SOS Program\completed**).
+2. Double-click `watch-sos-inbox.bat` once to test. It saves `.xls` / `.xlsx` / contractor-form PDFs from Inbox, runs the letter engine, and writes a folder per job:
+   - `completed/ready/` — letter.html, letter.txt, copy of the form
+   - `completed/needs-review/` — blank application #, must-be-tested, or not-approved items (open REVIEW.txt)
+   - `completed/skipped/` — random PDFs / issued letters / non-SOS spreadsheets
+3. In **Task Scheduler**, run `watch-sos-inbox.bat --once` every 30 minutes (PC logged in, Outlook available). Or leave `watch-sos-inbox.bat --loop` running.
+
+Messages already tagged **DelDOT SOS** are not pulled again. This does **not** auto-send the letter — it stages a completed draft for you to check and issue.
+
 ## Files
 
 | File | Role |
@@ -51,6 +64,10 @@ Spec `301003` submitted as GABC is issued as `#301001` (flagged in the review ba
 | `corpus-learn.js` | Diff contractor `.xls` vs issued PDF (`node sos/corpus-learn.js`) |
 | `corpus-formpdf.py` | Read contractor SOS forms that were saved as PDF |
 | `corpus-learn.test.js` | Pairing tests (`node sos/corpus-learn.test.js`) |
+| `watch-inbox.js` | Process SOS attachments into completed letter folders |
+| `outlook-pull.ps1` | Save .xls/.xlsx/.pdf from the signed-in Outlook inbox |
+| `watch-sos-inbox.bat` | Pull + process (Task Scheduler every 30 min, or `--loop`) |
+| `letter-render.js` | HTML letter for the completed-folder draft |
 | `letterhead-header.jpg` | 2026 first-page seal + address (from Shanté Hastings letterhead) |
 | `letterhead-footer.png` | 2026 first-page DelDOT wordmark |
 
