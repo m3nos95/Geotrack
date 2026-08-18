@@ -13,6 +13,7 @@
     SPEC_CATALOG,
     SPEC_CORRECTIONS,
     TACK_COAT_APL,
+    STRIPING_APL,
     CRACK_SEAL_APL,
     ACTION_TEXT,
     APL_FOOTNOTE,
@@ -364,16 +365,21 @@
     return { project, items: parsed.items, warnings };
   }
 
+  const OMIT_SPECS = new Set(['#201000', '#202000', '#211000']);
+
+  function shouldOmitItem(item) {
+    if ((item.specs || []).some(s => OMIT_SPECS.has(s))) return true;
+    const blob = `${item.desc || ''} ${item.material || ''} ${(item.subItems || []).join(' ')}`.toLowerCase();
+    return /\bn\/?a\b/.test(blob) && /clearing|excavation and embankment|removal of structures/.test(blob);
+  }
+
   function familyFromSpec(spec, desc, material) {
-    const cat = SPEC_CATALOG[spec];
-    if (cat) {
-      if (isTack(desc, material, spec)) return 'tack';
-      return cat.family;
-    }
     const blob = `${desc} ${material}`.toLowerCase();
     if (isTack(desc, material, spec)) return 'tack';
+    if (/expansion/.test(blob) && !/crack|joint seal/.test(blob)) return 'expansion';
     if (/curing/.test(blob)) return 'curing';
-    if (/expansion/.test(blob)) return 'expansion';
+    const cat = SPEC_CATALOG[spec];
+    if (cat) return cat.family;
     if (/tack/.test(blob)) return 'tack';
     if (/superpave|hot mix|hma|pg\s*\d{2}/.test(blob)) return 'hma-mix';
     if (/borrow|backfill/.test(blob)) return 'borrow';
@@ -386,6 +392,8 @@
     if (/topsoil/.test(blob)) return 'topsoil';
     if (/silt fence|geotextile|erosion|inlet sediment|filter log/.test(blob)) return 'erosion';
     if (/crack|joint seal/.test(blob)) return 'crack-seal';
+    if (/riprap/.test(blob)) return 'riprap';
+    if (/pavement strip|thermoplastic arrow|alkyd-thermoplastic|epoxy resin paint/.test(blob)) return 'striping';
     if (/sign|barricade|attenuator|traffic/.test(blob)) return 'ttc';
     if (/pipe|hdpe|ads/.test(blob)) return 'hdpe';
     const prefix = (spec || '').replace('#', '').slice(0, 3);
@@ -395,8 +403,12 @@
       '401': 'hma-mix', '404': 'crack-seal', '504': 'crack-seal',
       '601': 'rcp', '602': 'precast',
       '701': 'pcc', '702': 'pcc', '705': 'pcc',
+      '707': 'riprap',
       '708': 'geotextile', '709': 'hdpe',
-      '808': 'ttc', '810': 'ttc', '813': 'ttc', '818': 'signs',
+      '710': 'utility', '711': 'utility',
+      '808': 'ttc', '810': 'ttc', '813': 'ttc',
+      '817': 'striping', '818': 'signs',
+      '861': 'striping', '862': 'striping',
       '905': 'erosion', '908': 'landscape',
     };
     return byPrefix[prefix] || 'other';
@@ -474,6 +486,11 @@
       letterSpecs = ['#701/705xxx'];
       sectionDesc = 'CONCRETE ITEMS';
       subItems = [(item.material || item.desc || 'Curing Compound') + '*'];
+    } else if (family === 'expansion') {
+      letterSpecs = ['#701/705xxx'];
+      sectionDesc = 'CONCRETE ITEMS';
+      const product = (item.material || item.desc || 'Expansion').replace(/\s+/g, ' ').trim();
+      subItems = [product];
     } else if (family === 'crack-seal') {
       const branded = (item.subItems || []).filter(s => /\d/.test(s) || /elastoflex|roadsaver|crackmaster|flex/i.test(s));
       if (branded.length) subItems = branded;
@@ -481,9 +498,6 @@
         subItems = [item.material];
       }
       if (catalogDescs[0]) sectionDesc = catalogDescs[0];
-    } else if (family === 'pcc' && /curing|expansion/.test((item.material || '').toLowerCase())) {
-      letterSpecs = ['#701/705xxx'];
-      sectionDesc = 'CONCRETE ITEMS';
     }
 
     subItems = subItems.filter(s => s && s.toLowerCase() !== sectionDesc.toLowerCase());
@@ -493,7 +507,7 @@
   function pickLetterSource(item) {
     // APL / manufactured products: manufacturer is the SOURCE.
     // Bulk plants: supplier name + plant city from manufacturer address column.
-    const manufactured = ['tack', 'crack-seal', 'curing', 'apl-product', 'ttc', 'signs', 'castings'].includes(item.family);
+    const manufactured = ['tack', 'crack-seal', 'curing', 'expansion', 'apl-product', 'ttc', 'signs', 'castings', 'striping'].includes(item.family);
     if (manufactured && item.mfgName) {
       return {
         srcName: cleanCompany(item.mfgName),
@@ -560,22 +574,70 @@
         warnings.push(`Tack coat producer "${item.srcName}" is not in the local APL table — confirm on deldot.gov/Business/prodlists before issuing.`);
       }
     } else if (family === 'borrow' || family === 'aggregate') {
-      action = 'test';
-      highlight = true;
-      actionNotes = ACTION_TEXT.test + '\n' + testCoordinationNotes(project.district);
-      rule = 'must-test-aggregate';
+      if (item.testDate) {
+        action = 'approved';
+        actionNotes = ACTION_TEXT.approved;
+        rule = 'tested-aggregate';
+      } else {
+        action = 'test';
+        highlight = true;
+        actionNotes = ACTION_TEXT.test + '\n' + testCoordinationNotes(project.district);
+        rule = 'must-test-aggregate';
+      }
     } else if (family === 'hma-mix') {
-      action = 'approved';
-      actionNotes = ACTION_TEXT.mixDesigns;
-      rule = 'hma-mix-designs';
+      if ((item.specs || []).includes('#401505') || (item.letterSpecs || []).includes('#401505')) {
+        action = 'not-approved';
+        actionNotes = ACTION_TEXT.pendingJmf;
+        rule = 'pending-jmf';
+      } else {
+        action = 'approved';
+        actionNotes = ACTION_TEXT.mixDesigns;
+        rule = 'hma-mix-designs';
+      }
     } else if (family === 'rcp' || family === 'precast') {
       action = 'on-file';
       actionNotes = ACTION_TEXT.stockOnFile;
       rule = 'state-inspected-stock';
     } else if (family === 'pcc') {
-      action = 'on-file';
-      actionNotes = ACTION_TEXT.pccOnFile;
-      rule = 'pcc-admixtures-on-file';
+      action = 'approved';
+      actionNotes = ACTION_TEXT.mixDesigns;
+      rule = 'pcc-mix-designs';
+    } else if (family === 'striping') {
+      apl = true;
+      const hit = matchAplList(STRIPING_APL, item.srcName, item.srcLoc, product);
+      if (/zone\s*strip|pavement\s*markings?/i.test(item.srcName || '') && hit.listed !== true) {
+        action = 'submit';
+        actionNotes = ACTION_TEXT.submitStriping;
+        rule = 'striping-subcontractor';
+      } else if (hit.listed === false) {
+        action = 'not-approved';
+        actionNotes = ACTION_TEXT.notApproved;
+        rule = 'striping-not-on-apl';
+      } else {
+        action = 'apl';
+        actionNotes = item.srcName
+          ? `${item.srcName} approved. (choose a product from the APL)`
+          : ACTION_TEXT.chooseApl;
+        rule = 'striping-apl';
+      }
+    } else if (family === 'utility') {
+      action = 'approved';
+      actionNotes = ACTION_TEXT.utility;
+      rule = 'utility-owner';
+    } else if (family === 'riprap') {
+      action = 'visual';
+      actionNotes = ACTION_TEXT.visual;
+      rule = 'riprap-visual';
+    } else if (family === 'expansion') {
+      if (!item.srcName) {
+        action = 'submit';
+        actionNotes = ACTION_TEXT.submitExpansion;
+        rule = 'expansion-submit';
+      } else {
+        action = 'approved';
+        actionNotes = ACTION_TEXT.expansionAashto;
+        rule = 'expansion-aashto';
+      }
     } else if (family === 'crack-seal') {
       const hit = matchAplList(CRACK_SEAL_APL, item.srcName, item.srcLoc, product);
       if (hit.listed !== false) {
@@ -612,15 +674,16 @@
       rule = 'castings-apl';
     } else if (family === 'erosion') {
       action = 'approved';
-      actionNotes = ACTION_TEXT.conforms;
-      rule = 'erosion-conforms';
+      const isSuperSilt = (item.specs || []).some(s => s === '#905007');
+      actionNotes = isSuperSilt ? ACTION_TEXT.approvedBare : ACTION_TEXT.conforms;
+      rule = isSuperSilt ? 'super-silt-fence' : 'erosion-conforms';
     } else {
       action = 'approved';
       actionNotes = ACTION_TEXT.conforms;
       rule = 'default-conforms';
     }
 
-    if (oneSource && !['tack', 'curing', 'crack-seal', 'apl-product', 'ttc', 'signs'].includes(family)) {
+    if (oneSource && !['tack', 'curing', 'expansion', 'crack-seal', 'apl-product', 'ttc', 'signs', 'striping'].includes(family)) {
       actionNotes = (actionNotes ? actionNotes + '\n' : '') + ACTION_TEXT.oneSource;
     }
     if (apl) {
@@ -653,6 +716,9 @@
   function canGroup(a, b) {
     if (a.family !== b.family) return false;
     if (['tack', 'curing', 'expansion', 'crack-seal', 'apl-product'].includes(a.family)) return false;
+    const specsOf = (it) => [...(it.specs || []), ...(it.letterSpecs || [])];
+    if (specsOf(a).includes('#401505') || specsOf(b).includes('#401505')) return false;
+    if (specsOf(a).includes('#905007') || specsOf(b).includes('#905007')) return false;
     return sourceKey(a) === sourceKey(b);
   }
 
@@ -675,9 +741,10 @@
     }
     const FAMILY_ORDER = {
       borrow: 10, aggregate: 20, 'hma-mix': 30, tack: 35, 'crack-seal': 40,
-      rcp: 50, hdpe: 55, precast: 60, castings: 65, pcc: 70, curing: 75, expansion: 76,
+      rcp: 50, riprap: 52, hdpe: 55, utility: 56, precast: 60, castings: 65,
+      pcc: 70, curing: 75, expansion: 76,
       'apl-product': 80, geotextile: 85, erosion: 90, seed: 95, topsoil: 96, landscape: 97,
-      ttc: 100, signs: 105, other: 200,
+      striping: 98, ttc: 100, signs: 105, other: 200,
     };
     groups.sort((a, b) => {
       const fa = FAMILY_ORDER[a.family] || 150;
@@ -715,7 +782,12 @@
       return item;
     });
 
-    const items = groupItems(prepared).map((it, i) => ({ ...it, id: i + 1 }));
+    const omitted = prepared.filter(shouldOmitItem);
+    if (omitted.length) {
+      const specs = [...new Set(omitted.flatMap(it => it.specs || []))];
+      warnings.push('Omitted N/A earthwork from letter: ' + specs.join(', '));
+    }
+    const items = groupItems(prepared.filter(it => !shouldOmitItem(it))).map((it, i) => ({ ...it, id: i + 1 }));
 
     const ccNames = [];
     const addCc = (name) => {
@@ -816,6 +888,7 @@
     letterSectionLines,
     letterPlainText,
     familyFromSpec,
+    shouldOmitItem,
     isCompanyName,
     isStreet,
     isCityState,

@@ -17,12 +17,17 @@ Open: [deldot-sos.html](../deldot-sos.html) (GitHub Pages: `/Geotrack/deldot-sos
 
 | Material family | Default ACTION |
 |---|---|
-| Borrow / GABC / stone | Must be tested (Ray Glanden sampling + Aaron Wieczorek results) |
-| Superpave / HMA mixes | Approved — only approved mix designs; one source at a time if an alt is listed |
-| Tack coat | Manufacturer is the SOURCE. On the local tack APL → approved (on APL). Russell Standard **Seaford** → not approved. Missing manufacturer → submit grade + producer |
+| Borrow / GABC / stone / channel bed fill | Must be tested until a test date is on the letter. South → Ray Glanden; North → Damian Blakely; Canal → Rich Taylor. Results → Aaron Wieczorek |
+| Superpave / HMA mixes | Approved — only approved mix designs; one source at a time if an alt is listed. `#401505` High Performance Bituminous → not approved (pending JMF) |
+| Tack coat | Manufacturer is the SOURCE. On the local tack APL → approved (on APL). Russell Standard **Seaford** or **Chambersburg** → not approved. Seaboard Asphalt / Specialty Emulsions listed. Missing manufacturer → submit grade + producer |
 | Crack / joint seal | Manufacturer SOURCE; Maxwell / Crafco products → APL |
 | RCP / precast inlets | Shipped from state-inspected stock; reports on file |
-| PCC curb / sidewalk | Mix / admixture certs on file |
+| PCC curb / sidewalk / pedestrian connection | Only approved mix designs; group like HMA |
+| Expansion joint | AASHTO M153 Type I, II, or IV (or submit that product if the form left it blank) |
+| Riprap | Visual inspection |
+| Water / sewer (710 / 711) | Conforms to the utility owner's specifications |
+| Pavement marking (817 / 861 / 862) | Ennis Flint (and similar) → choose a product from the APL. Striping subcontractor listed as SOURCE → submit manufacturer |
+| Clearing / excavation / removal (`#201000` / `#202000` / `#211000`) | Omitted when the contractor listed N/A |
 | Topsoil | Visual inspection |
 | Seed | Conforms to Standard Specifications table |
 | TTC / detectable warning / curing / branded erosion | APL + on-site TTC inspection where applicable |

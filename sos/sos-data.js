@@ -21,6 +21,11 @@
       phone: '302-593-7158',
       org: 'Materials & Research',
     },
+    samplingNorth: {
+      name: 'Damian Blakely',
+      phone: '302-593-7158',
+      org: 'Materials & Research',
+    },
     results: {
       name: 'Aaron Wieczorek',
       phone: '302-760-2583',
@@ -69,10 +74,11 @@
     '#207021': { desc: 'STRUCTURAL BACKFILL, (BORROW TYPE C)', family: 'borrow', tags: ['Borrow'] },
     '#209001': { desc: 'BORROW, TYPE A', family: 'borrow', tags: ['Borrow'] },
     '#209002': { desc: 'BORROW, TYPE B', family: 'borrow', tags: ['Borrow'] },
+    '#209004': { desc: 'BORROW, TYPE C', family: 'borrow', tags: ['Borrow'] },
     '#209006': { desc: 'BORROW, TYPE F', family: 'borrow', tags: ['Borrow'] },
     '#301001': { desc: 'GABC', family: 'aggregate', tags: ['GABC'] },
     '#301002': { desc: 'GABC, PATCHING', family: 'aggregate', tags: ['GABC'] },
-    '#301003': { desc: 'GABC', family: 'aggregate', tags: ['GABC'] },
+    '#301003': { desc: 'GABC (CRUSHED CONCRETE)', family: 'aggregate', tags: ['GABC'] },
     '#301007': { desc: 'RECYCLED CONCRETE AGGREGATE', family: 'aggregate', tags: ['GABC'] },
     '#302002': { desc: 'DELAWARE NO. 3 STONE', family: 'aggregate', tags: ['Stone'] },
     '#302005': { desc: 'DELAWARE NO. 57 STONE', family: 'aggregate', tags: ['Stone'] },
@@ -82,6 +88,7 @@
     '#401029': { desc: 'SUPERPAVE TYPE C, PG 64-22, PATCHING', family: 'hma-mix', tags: ['Asphalt'] },
     '#401030': { desc: 'SUPERPAVE TYPE B, PG 64-22, PATCHING', family: 'hma-mix', tags: ['Asphalt'] },
     '#401501': { desc: 'HMA ITEMS', family: 'tack', tags: ['Tack Coat', 'APL'] },
+    '#401505': { desc: 'HIGH PERFORMANCE BITUMINOUS CONCRETE (9.5MM)', family: 'hma-mix', tags: ['Asphalt'] },
     '#401506': { desc: 'SPEED HUMP', family: 'hma-mix', tags: ['Asphalt'] },
     '#404001': { desc: 'BITUMINOUS CRACK/JOINT SEALING < THAN 3/4-INCH WIDE', family: 'crack-seal', tags: ['Crack Sealing', 'APL'] },
     '#504001': { desc: 'CRACK AND JOINT SEALING LESS THAN 3/4 INCH WIDE', family: 'crack-seal', tags: ['Crack Sealing'] },
@@ -103,14 +110,29 @@
     '#705001': { desc: 'PCC SIDEWALK, 4"', family: 'pcc', tags: ['Concrete'] },
     '#705002': { desc: 'PCC SIDEWALK, 6"', family: 'pcc', tags: ['Concrete'] },
     '#705007': { desc: 'DETECTABLE WARNING SURFACE', family: 'apl-product', tags: ['Concrete', 'APL'] },
+    '#705008': { desc: 'PEDESTRIAN CONNECTION, TYPE 1', family: 'pcc', tags: ['Concrete'] },
+    '#705009': { desc: 'PEDESTRIAN CONNECTION, TYPE 2, 3, AND/OR 4', family: 'pcc', tags: ['Concrete'] },
     '#705013': { desc: 'TRUNCATED DOME DETECTABLE WARNING SURFACE', family: 'apl-product', tags: ['Concrete', 'APL'] },
+    '#707015': { desc: 'RIPRAP, R-4', family: 'riprap', tags: ['Riprap'] },
+    '#707021': { desc: 'CHANNEL BED FILL (LIGHT)', family: 'aggregate', tags: ['Stone'] },
     '#708003': { desc: 'GEOTEXTILES, RIPRAP', family: 'geotextile', tags: ['Geotextile'] },
     '#709001': { desc: 'PERFORATED PIPE UNDERDRAINS, 6"', family: 'hdpe', tags: ['Pipe', 'HDPE'] },
+    '#710030': { desc: 'PVC WATER MAIN, 8"', family: 'utility', tags: ['Pipe'] },
+    '#710378': { desc: 'STEEL CASING PIPE, 18"', family: 'utility', tags: ['Pipe'] },
+    '#710438': { desc: 'FIRE HYDRANTS', family: 'utility', tags: ['Pipe'] },
+    '#711009': { desc: 'INSTALLING SANITARY SEWER, PVC, 8"', family: 'utility', tags: ['Pipe'] },
+    '#817002': { desc: 'PERMANENT PAVEMENT STRIPING, SYMBOL/LEGEND, ALKYD-THERMOPLASTIC', family: 'striping', tags: ['APL'] },
+    '#817560': { desc: 'STRAIGHT ARROW THERMOPLASTIC', family: 'striping', tags: ['APL'] },
+    '#817561': { desc: 'RIGHT OR LEFT THERMOPLASTIC ARROW', family: 'striping', tags: ['APL'] },
+    '#861001': { desc: 'PERMANENT PAVEMENT STRIPING, EPOXY RESIN PAINT, 6"', family: 'striping', tags: ['APL'] },
+    '#862004': { desc: 'PERMANENT PAVEMENT STRIPING, ALKYD-THERMOPLASTIC, 12"', family: 'striping', tags: ['APL'] },
+    '#862005': { desc: 'PERMANENT PAVEMENT STRIPING, ALKYD-THERMOPLASTIC, 16"', family: 'striping', tags: ['APL'] },
     '#808002': { desc: 'PROVIDE/MAINTAIN TRUCK MOUNTED ATTENUATOR, T II', family: 'ttc', tags: ['Traffic Control', 'APL'] },
     '#810001': { desc: 'TEMPORARY WARNING SIGNS AND PLAQUES', family: 'ttc', tags: ['Signage', 'APL'] },
     '#813001': { desc: 'TEMPORARY BARRICADES, TYPE III', family: 'ttc', tags: ['Traffic Control', 'APL'] },
     '#818001': { desc: 'FLAT SHEET ALUMINUM SIGN PANEL, TYPE IV', family: 'signs', tags: ['Signage', 'APL'] },
     '#905001': { desc: 'SILT FENCE', family: 'erosion', tags: ['Erosion Control'] },
+    '#905007': { desc: 'SUPER SILT FENCE', family: 'erosion', tags: ['Erosion Control'] },
     '#905004': { desc: 'INLET SEDIMENT CONTROL, DRAINAGE INLET', family: 'erosion', tags: ['Erosion Control'] },
     '#908001': { desc: 'TOPSOIL', family: 'topsoil', tags: ['Topsoil'] },
     '#908004': { desc: 'TOPSOIL, 6" DEPTH', family: 'topsoil', tags: ['Topsoil'] },
@@ -135,9 +157,17 @@
   const TACK_COAT_APL = [
     { name: /asphalt emulsion industries/i, locations: null, label: 'Asphalt Emulsion Industries' },
     { name: /asphalt paving systems|\baps\b/i, locations: null, label: 'Asphalt Paving Systems' },
-    { name: /russell standard/i, locations: [/baltimore/i, /wilmington/i], reject: [/seaford/i], label: 'Russell Standard' },
+    { name: /russell standard/i, locations: [/baltimore/i, /wilmington/i], reject: [/seaford/i, /chambersburg/i], label: 'Russell Standard' },
+    { name: /seaboard asphalt/i, locations: null, label: 'Seaboard Asphalt Products' },
+    { name: /specialty emulsions/i, locations: null, label: 'Specialty Emulsions' },
     { name: /diamond materials/i, locations: [/wilmington/i], label: 'Diamond Materials' },
     { name: /gardner gibson/i, locations: null, label: 'Gardner Gibson' },
+  ];
+
+  const STRIPING_APL = [
+    { name: /ennis\s*flint/i, locations: null, label: 'Ennis Flint' },
+    { name: /crown\s*tech/i, locations: null, label: 'Crown Technologies' },
+    { name: /epoplex/i, locations: null, label: 'Epoplex' },
   ];
 
   const CRACK_SEAL_APL = [
@@ -162,6 +192,10 @@
     visual: 'Approved: Conduct a visual inspection to ensure specification compliance.',
     seed: 'Approved provided seed conforms to the applicable table in the Standard Specifications, unless otherwise stipulated in the plans.',
     conforms: 'Approved provided material conforms to the requirements of the specifications.',
+    utility: 'Approved provided material conforms to the utility owners specifications.',
+    chooseApl: 'Approved. (choose a product from the APL)',
+    pendingJmf: 'Not approved. (pending JMF approval)',
+    expansionAashto: 'Approved provided Preformed Expansion Joint Material meets AASHTO M153, Type I, II, or IV.',
     hdpeM294: 'Approved provided pipe meets all requirements of AASHTO M294. Verify compliance through the AASHTO Product Evaluation & Audit Solutions.',
     hdpeM252: 'Approved provided pipe meets all requirements of AASHTO M252. Verify compliance through the AASHTO Product Evaluation & Audit Solutions.',
     apl: 'Approved for use. (on APL)',
@@ -170,11 +204,16 @@
     oneSource: 'Only one source at a time may be used in a given area.',
     submitTack: 'Submit tack coat type (grade) and manufacturer.',
     submitCuring: 'Submit curing compound product name and manufacturer.',
-    submitExpansion: 'Submit expansion product name and manufacturer.',
+    submitExpansion: 'Submit Preformed Expansion Material meeting AASHTO M153 Type I, II, or IV.',
+    submitStriping: 'Submit manufacturer. (source listed is subcontractor)',
+    notApproved: 'Not approved.',
   };
 
   function testCoordinationNotes(district) {
-    const sampler = /canal/i.test(district || '') ? CONTACTS.samplingCanal : CONTACTS.sampling;
+    const d = district || '';
+    let sampler = CONTACTS.sampling;
+    if (/canal/i.test(d)) sampler = CONTACTS.samplingCanal;
+    else if (/north/i.test(d)) sampler = CONTACTS.samplingNorth;
     return (
       `Contact ${sampler.name}, ${sampler.org} at ${sampler.phone} at least ten (10) working days prior to shipment, from the source, for coordination of sampling. ` +
       `Contact ${CONTACTS.results.name} at ${CONTACTS.results.phone}, for test results.`
@@ -196,6 +235,10 @@
     { name: 'Russell Standard', loc: 'Baltimore MD', addr: '3450 Asiatic Ave', phone: '', tags: ['Tack Coat', 'Asphalt', 'APL'] },
     { name: 'Russell Standard', loc: 'Seaford DE', addr: '', phone: '', tags: ['Tack Coat', 'Asphalt'] },
     { name: 'Russell Standard', loc: 'Wilmington DE', addr: '', phone: '', tags: ['Tack Coat', 'Asphalt', 'APL'] },
+    { name: 'Russell Standard', loc: 'Chambersburg PA', addr: '', phone: '', tags: ['Tack Coat', 'Asphalt'] },
+    { name: 'Seaboard Asphalt Products', loc: 'Baltimore MD', addr: '', phone: '', tags: ['Tack Coat', 'Asphalt', 'APL'] },
+    { name: 'Specialty Emulsions', loc: 'York PA', addr: '', phone: '', tags: ['Tack Coat', 'Asphalt', 'APL'] },
+    { name: 'Ennis Flint', loc: 'Greensboro NC', addr: '4161 Piedmont Pkwy Suite 370', phone: '', tags: ['APL'] },
     { name: 'Maxwell Products', loc: 'Salt Lake City UT', addr: '650 South Delong St', phone: '1-800-266-2090', tags: ['Crack Sealing', 'APL'] },
     { name: 'Crafco', loc: 'Chandler AZ', addr: '', phone: '', tags: ['Crack Sealing', 'APL'] },
     { name: 'Allan Myers', loc: 'Elk Mills MD', addr: '896 Elk Mill Road', phone: '', tags: ['GABC', 'Stone', 'Asphalt'] },
@@ -245,6 +288,7 @@
     SPEC_CATALOG,
     SPEC_CORRECTIONS,
     TACK_COAT_APL,
+    STRIPING_APL,
     CRACK_SEAL_APL,
     CURING_APL,
     ACTION_TEXT,

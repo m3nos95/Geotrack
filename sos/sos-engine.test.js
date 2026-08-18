@@ -199,4 +199,98 @@ assert.ok(/#401xxx/.test(letter) && /CRS-1 Tack Coat/.test(letter));
 assert.ok(/Russell Standard - Baltimore/.test(letter));
 assert.ok(/Elastoflex 61/.test(letter));
 assert.ok(/James Smith/.test(letter));
+
+// North district sampler is Damian Blakely (not Ray Glanden)
+const northHeader = FREY_HEADER.map(r => ({ ...r }));
+northHeader[8] = { 1: 'District: North ' };
+const northGrid = gridFromObjects(northHeader, [FREY_ITEMS[4]]);
+const northGabc = Engine.processGrid(northGrid).items.find(i => i.family === 'aggregate');
+assert.ok(/Damian Blakely/.test(northGabc.actionNotes));
+assert.ok(/302-593-7158/.test(northGabc.actionNotes));
+assert.ok(!/Ray Glanden/.test(northGabc.actionNotes));
+
+// Russell Standard Chambersburg tack is not on APL
+const chambersburgGrid = gridFromObjects(FREY_HEADER, [[
+  ['', 401501.0, 'Tack Coat', '', 'CRS-1H', 'Tri County', '', 'Russell Standard', ''],
+  ['', '', '', '', '', '', '', 'Chambersburg, PA 17201', ''],
+]]);
+const chambersburgTack = Engine.processGrid(chambersburgGrid).items.find(i => i.family === 'tack');
+assert.strictEqual(chambersburgTack.action, 'not-approved');
+
+// Seaboard Asphalt is on the tack APL
+const seaboardGrid = gridFromObjects(FREY_HEADER, [[
+  ['', 401501.0, 'Tack Coat', '', 'EM-50-TT', 'Tri County', '', 'Seaboard Asphalt Products', ''],
+  ['', '', '', '', '', '', '', 'Baltimore, MD 21226', ''],
+]]);
+const seaboardTack = Engine.processGrid(seaboardGrid).items.find(i => i.family === 'tack');
+assert.ok(seaboardTack.action === 'apl' || seaboardTack.action === 'approved');
+assert.ok(!/not approved/i.test(seaboardTack.actionNotes));
+
+// PCC curb / sidewalk uses mix-design language (not admixture certs)
+const pccGrid = gridFromObjects(FREY_HEADER, [[
+  ['', 705001.0, 'PCC Sidewalk, 4"', '', 'Class B Concrete', 'Heritage Concrete', '', 'Wilmington, DE', 'Bear Concrete'],
+  ['', '', '', '', '', '', '', '', 'Newark, DE'],
+], [
+  ['', 701013.0, 'PCC Curb, Type 1-8', '', 'Class B Concrete', 'Heritage Concrete', '', 'Wilmington, DE', 'Bear Concrete'],
+  ['', '', '', '', '', '', '', '', 'Newark, DE'],
+]]);
+const pcc = Engine.processGrid(pccGrid).items.find(i => i.family === 'pcc');
+assert.ok(pcc, 'PCC item present');
+assert.ok(pcc.specs.includes('#705001') && pcc.specs.includes('#701013'));
+assert.ok(/mix designs/i.test(pcc.actionNotes));
+assert.ok(!/admixture/i.test(pcc.actionNotes));
+
+// Clearing / excavation / removal listed N/A are omitted
+const skipGrid = gridFromObjects(FREY_HEADER, [[
+  ['', 201000.0, 'Clearing and Grubbing', '', 'N/A', 'N/A', '', '', ''],
+], [
+  ['', 202000.0, 'Excavation and Embankment', '', 'N/A', 'N/A', '', '', ''],
+], [
+  ['', 211000.0, 'Removal of Structures and Obstructions', '', 'N/A', 'N/A', '', '', ''],
+], [
+  ['', 301001.0, 'GABC', '', 'GABC', 'Vulcan Materials', '', 'Salisbury, MD', ''],
+]]);
+const skipped = Engine.processGrid(skipGrid);
+assert.ok(!skipped.items.some(i => (i.specs || []).some(s => /#201000|#202000|#211000/.test(s))));
+assert.ok(skipped.warnings.some(w => /Omitted N\/A earthwork/i.test(w)));
+assert.ok(skipped.items.some(i => i.family === 'aggregate'));
+
+// High Performance Bituminous is pending JMF, not grouped with Superpave
+const jmfGrid = gridFromObjects(FREY_HEADER, [[
+  ['', 401005.0, 'Superpave Type C', '', 'Superpave Type C', 'Allan Myers', '', 'Dover, DE', ''],
+], [
+  ['', 401505.0, 'High Performance Bituminous Concrete (9.5mm)', '', 'HP Bituminous', 'Allan Myers', '', 'Dover, DE', ''],
+]]);
+const jmfItems = Engine.processGrid(jmfGrid).items;
+const hp = jmfItems.find(i => (i.specs || []).includes('#401505'));
+const mix = jmfItems.find(i => (i.specs || []).includes('#401005'));
+assert.ok(hp && mix);
+assert.strictEqual(hp.action, 'not-approved');
+assert.ok(/pending JMF/i.test(hp.actionNotes));
+assert.ok(/mix designs/i.test(mix.actionNotes));
+
+// Riprap visual; water/sewer utility-owner language; Ennis Flint striping APL
+const miscGrid = gridFromObjects(FREY_HEADER, [[
+  ['', 707015.0, 'Riprap, R-4', '', 'R-4', 'Vulcan Materials', '', 'Seaford, DE', ''],
+], [
+  ['', 710030.0, 'PVC Water Main, 8"', '', 'PVC', 'Fortline Waterworks', '', 'Frankford, DE', ''],
+], [
+  ['', 817560.0, 'Straight Arrow Thermoplastic', '', 'Thermoplastic Striping', 'Zone Striping', '', 'Ennis Flint', ''],
+  ['', '', '', '', '', '', '', 'Greensboro, NC', ''],
+]]);
+const misc = Engine.processGrid(miscGrid).items;
+const riprap = misc.find(i => i.family === 'riprap');
+const util = misc.find(i => i.family === 'utility');
+const stripe = misc.find(i => i.family === 'striping');
+assert.ok(riprap && /visual inspection/i.test(riprap.actionNotes));
+assert.ok(util && /utility owners/i.test(util.actionNotes));
+assert.ok(stripe && /Ennis Flint/i.test(stripe.srcName));
+assert.ok(/choose a product from the APL/i.test(stripe.actionNotes));
+
+assert.ok(/GABC \(CRUSHED CONCRETE\)/.test(Engine.letterPlainText(
+  { contract: '644071456', title: 'MCDONALDS', docKind: 'application' },
+  [crush],
+  []
+)));
+
 console.log('--- letter ---\n' + letter);
