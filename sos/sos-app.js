@@ -139,7 +139,7 @@
     ['ph-contract', 'ph-title', 'ph-contractor', 'ph-district', 'ph-contact', 'ph-date', 'ph-dockind'].forEach(id => {
       const el = document.getElementById(id);
       if (!el) return;
-      el.addEventListener('change', () => { persistProject(); updateContractWarn(); renderLetter(); renderWarnings(); });
+      el.addEventListener('input', () => { persistProject(); updateContractWarn(); renderLetter(); renderWarnings(); });
       el.addEventListener('blur', persistProject);
     });
   }
@@ -409,8 +409,12 @@
 
   window.renderWarnings = function () {
     const box = document.getElementById('warn-box');
-    const list = [...warnings];
-    if (!val('ph-contract').trim() && items.length) {
+    const contractFilled = !!val('ph-contract').trim();
+    const list = [...warnings].filter(w => {
+      if (!contractFilled) return true;
+      return !/blank on the form|application \/ contract number is blank/i.test(w);
+    });
+    if (!contractFilled && items.length && !list.some(w => /blank/i.test(w))) {
       list.unshift('Application / contract number is blank — required on the issued letter.');
     }
     if (!list.length) { box.style.display = 'none'; box.innerHTML = ''; return; }
