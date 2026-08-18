@@ -149,6 +149,15 @@ const seafordTack = seaford.items.find(i => i.family === 'tack');
 assert.strictEqual(seafordTack.action, 'not-approved');
 assert.ok(/not listed on tack coat APL/i.test(seafordTack.actionNotes));
 
+// 301003 crushed concrete stays 301003 (not rewritten to 301001 GABC)
+const crushGrid = gridFromObjects(FREY_HEADER, [[
+  ['', 301003.0, 'Graded Aggregate Base Course', '', 'Crushed Concrete', 'Porter Road Materials', '', '1250 Porter Road', ''],
+  ['', '', '', '', '', '', '', 'Bear, DE 19701', ''],
+]]);
+const crush = Engine.processGrid(crushGrid).items.find(i => i.family === 'aggregate');
+assert.deepStrictEqual(crush.letterSpecs || crush.specs, ['#301003']);
+assert.ok(!Engine.processGrid(crushGrid).warnings.some(w => /301001/.test(w)));
+
 // Live parse of the uploaded workbook when present
 const liveXls = '/home/ubuntu/.cursor/projects/workspace/uploads/DEL_DOT_-_SOS_-_Frey_Entrance_s__b85d.xls';
 if (fs.existsSync(liveXls)) {

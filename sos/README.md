@@ -40,6 +40,7 @@ Spec `301003` submitted as GABC is issued as `#301001` (flagged in the review ba
 | `sos-app.js` | UI |
 | `sos-engine.test.js` | Node tests (`node sos/sos-engine.test.js`) |
 | `corpus-learn.js` | Diff contractor `.xls` vs issued PDF (`node sos/corpus-learn.js`) |
+| `corpus-formpdf.py` | Read contractor SOS forms that were saved as PDF |
 | `corpus-learn.test.js` | Pairing tests (`node sos/corpus-learn.test.js`) |
 | `letterhead-header.jpg` | 2026 first-page seal + address (from Shanté Hastings letterhead) |
 | `letterhead-footer.png` | 2026 first-page DelDOT wordmark |

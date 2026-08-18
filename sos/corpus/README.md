@@ -16,11 +16,9 @@ sos/corpus/drop/
   Wincheslea Phase 5.pdf
 ```
 
-A later revision can keep that name plus `-rev1` (or `_rev2`):
+A later revision can be `Frey Entrance-rev1.pdf` — that still counts as the Frey pair.
 
-```
-  Frey Entrance-rev1.pdf
-```
+Contractor SOS forms that were **printed or saved as PDF** (not `.xls`) are OK. Drop them with the issued letter; the learner reads the spec table from the form PDF. Native `.xls` is still better when you have it.
 
 You do **not** need a subfolder per job if the names match.
 

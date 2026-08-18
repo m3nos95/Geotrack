@@ -38,8 +38,10 @@ function listDirs(dir) {
     .sort();
 }
 
-function runPython(code, args) {
-  const r = spawnSync('python3', ['-c', code, ...args], {
+const FORMPDF = path.join(__dirname, 'corpus-formpdf.py');
+
+function runScript(args) {
+  const r = spawnSync('python3', args, {
     encoding: 'utf8',
     maxBuffer: 20 * 1024 * 1024,
   });
@@ -48,6 +50,40 @@ function runPython(code, args) {
     throw new Error(err.slice(0, 800));
   }
   return r.stdout;
+}
+
+function runPython(code, args) {
+  return runScript(['-c', code, ...args]);
+}
+
+function inspectPdf(pdfPath) {
+  return JSON.parse(runScript([FORMPDF, '--inspect', pdfPath]));
+}
+
+function parseFormPdf(pdfPath) {
+  return JSON.parse(runScript([FORMPDF, '--parse', pdfPath]));
+}
+
+function gridFromForm(parsed) {
+  const p = parsed.project || {};
+  const rows = [
+    ['', '', '', '', '', '', 'Agreement /Permit/Contract/Application #:', p.contract || '', ''],
+    ['', '', '', '', '', '', 'Title of Contract:', p.title || '', ''],
+    ['Source of Supply', '', '', '', '', '', '', 'Contractor: ' + (p.contractor || ''), ''],
+    ['', '', '', '', '', '', '', 'Address: ' + (p.address || ''), ''],
+    ['', '', '', '', '', '', '', 'Date:' + (p.date || ''), ''],
+    ['', 'District: ' + (p.district || ''), '', '', '', '', '', '', ''],
+    ['', '', '', '', '', '', '', 'DelDOT Contact: ' + (p.contact || ''), ''],
+    ['Specification #', '', 'Item Description', '', 'Material', 'Supplier', '', 'Manufacturer', 'Alternate Manufacturer'],
+    ['', '', '', '', '', '', '', 'Address & Contact', 'Address & Contact'],
+  ];
+  for (const it of parsed.items || []) {
+    const spec = /^\d+$/.test(it.spec) ? Number(it.spec) : it.spec;
+    rows.push(['', spec, it.desc || '', '', it.material || '', it.supplier || '', '', it.manufacturer || '', it.alt || '']);
+    if (it.loc) rows.push(['', '', '', '', '', '', '', it.loc, '']);
+    rows.push(Array(9).fill(''));
+  }
+  return rows;
 }
 
 function readGrid(xlsPath) {
@@ -88,7 +124,7 @@ function squeeze(s) {
 function looksLikeContractorForm(text) {
   const t = text.replace(/\s+/g, ' ');
   if (/The following material sources have been reviewed/i.test(t)) return false;
-  return /Specification\s*#/i.test(t) && /Item Description/i.test(t) && /Manufacturer/i.test(t);
+  return /Spec\w{0,6}cation/i.test(t) && /Item Description/i.test(t);
 }
 
 function stripPageBanners(text) {
@@ -145,21 +181,43 @@ function parseIssuedSections(raw) {
   };
 }
 
+function appNumsFromName(filename) {
+  return [...String(filename).matchAll(/\b(\d{9,10})\b/g)].map(m => m[1]);
+}
+
 function discoverCases() {
   const cases = [];
+  const inspected = {};
+  const inspectAll = (files) => {
+    files.filter(p => /\.pdf$/i.test(p)).forEach(p => {
+      if (inspected[p]) return;
+      try { inspected[p] = inspectPdf(p); }
+      catch (e) { inspected[p] = { kind: 'unknown', appNums: [], error: e.message }; }
+    });
+  };
+
   const takeFolder = (dir, slug) => {
     const xls = listFiles(dir, ['.xls', '.xlsx']);
     const pdfs = listFiles(dir, ['.pdf']);
     if (!xls.length && !pdfs.length) return;
-    cases.push({ slug, dir, xls, pdfs });
+    inspectAll(pdfs);
+    const forms = pdfs.filter(p => inspected[p] && inspected[p].kind === 'contractor-form');
+    const letters = pdfs.filter(p => !forms.includes(p));
+    cases.push({ slug, dir, xls, pdfs: letters, formPdfs: forms });
   };
 
   listDirs(CASES).forEach(dir => takeFolder(dir, path.basename(dir)));
   listDirs(DROP).forEach(dir => takeFolder(dir, 'drop/' + path.basename(dir)));
 
-  pairLooseFiles(listFiles(CASES, ['.xls', '.xlsx', '.pdf'])).forEach(c => cases.push(c));
-  pairLooseFiles(listFiles(DROP, ['.xls', '.xlsx', '.pdf'])).forEach(c => {
-    cases.push({ ...c, slug: c.slug.startsWith('drop/') ? c.slug : 'drop/' + c.slug });
+  const loose = [
+    ...listFiles(CASES, ['.xls', '.xlsx', '.pdf']),
+    ...listFiles(DROP, ['.xls', '.xlsx', '.pdf']),
+  ];
+  inspectAll(loose);
+  pairLooseFiles(loose, inspected).forEach(c => {
+    const prefix = c.dir === DROP || c.dir.startsWith(DROP) ? 'drop/' : '';
+    const slug = c.slug.startsWith('drop/') ? c.slug : prefix + c.slug;
+    cases.push({ ...c, slug });
   });
   return cases;
 }
@@ -172,42 +230,59 @@ function pairKey(filename) {
   return s.toLowerCase().replace(/[^a-z0-9]+/g, '');
 }
 
-function pairLooseFiles(files) {
+function pairLooseFiles(files, inspected) {
+  inspected = inspected || {};
   const xls = files.filter(p => /\.xlsx?$/i.test(p));
   const pdfs = files.filter(p => /\.pdf$/i.test(p));
-  const usedPdf = new Set();
-  const cases = [];
   const byKey = new Map();
 
-  for (const x of xls) {
-    const key = pairKey(x) || path.basename(x).toLowerCase();
-    if (!byKey.has(key)) byKey.set(key, { xls: [], pdfs: [] });
-    byKey.get(key).xls.push(x);
-  }
-  for (const p of pdfs) {
-    const key = pairKey(p);
-    if (key && byKey.has(key)) {
-      byKey.get(key).pdfs.push(p);
-      usedPdf.add(p);
+  const keysFor = (file) => {
+    const keys = [];
+    const name = pairKey(file);
+    if (name) keys.push('name:' + name);
+    appNumsFromName(file).forEach(n => keys.push('app:' + n));
+    const info = inspected[file];
+    (info && info.appNums || []).forEach(n => keys.push('app:' + n));
+    return [...new Set(keys)];
+  };
+
+  const groupFor = (file) => {
+    const keys = keysFor(file);
+    let g = null;
+    for (const k of keys) {
+      if (byKey.has(k)) { g = byKey.get(k); break; }
     }
+    if (!g) g = { xls: [], pdfs: [], formPdfs: [] };
+    keys.forEach(k => byKey.set(k, g));
+    return g;
+  };
+
+  for (const x of xls) groupFor(x).xls.push(x);
+  for (const p of pdfs) {
+    const g = groupFor(p);
+    if (inspected[p] && inspected[p].kind === 'contractor-form') g.formPdfs.push(p);
+    else g.pdfs.push(p);
   }
-  for (const [key, group] of byKey) {
-    const first = group.xls[0];
-    const slug = path.basename(first).replace(/\.(xlsx?)$/i, '');
+
+  const seen = new Set();
+  const cases = [];
+  for (const g of byKey.values()) {
+    if (seen.has(g)) continue;
+    seen.add(g);
+    if (!g.xls.length && !g.pdfs.length && !g.formPdfs.length) continue;
+    const first = g.xls[0] || g.formPdfs[0] || g.pdfs[0];
+    const app = appNumsFromName(first)[0]
+      || (g.formPdfs[0] && inspected[g.formPdfs[0]] && inspected[g.formPdfs[0]].appNums[0])
+      || (g.pdfs[0] && inspected[g.pdfs[0]] && inspected[g.pdfs[0]].appNums[0])
+      || '';
+    let slug = path.basename(first).replace(/\.(xlsx?|pdf)$/i, '');
+    if (app && !slug.includes(app)) slug = app + ' ' + slug;
     cases.push({
       slug,
       dir: path.dirname(first),
-      xls: group.xls,
-      pdfs: group.pdfs,
-    });
-  }
-  for (const p of pdfs) {
-    if (usedPdf.has(p)) continue;
-    cases.push({
-      slug: path.basename(p).replace(/\.pdf$/i, ''),
-      dir: path.dirname(p),
-      xls: [],
-      pdfs: [p],
+      xls: g.xls,
+      pdfs: g.pdfs,
+      formPdfs: g.formPdfs,
     });
   }
   return cases;
@@ -240,6 +315,7 @@ function compareCase(c) {
     slug: c.slug,
     dir: c.dir,
     xlsFiles: c.xls.map(p => path.basename(p)),
+    formFiles: (c.formPdfs || []).map(p => path.basename(p)),
     pdfFiles: c.pdfs.map(p => path.basename(p)),
     unfiled: !!c.unfiled,
     engine: null,
@@ -257,8 +333,18 @@ function compareCase(c) {
     } catch (e) {
       out.notes.push('Could not parse spreadsheet: ' + e.message);
     }
+  } else if ((c.formPdfs || []).length) {
+    try {
+      const parsed = parseFormPdf(c.formPdfs[0]);
+      out.notes.push('Contractor form is a PDF (not .xls) — parsed the spec table from the PDF.');
+      const grid = gridFromForm(parsed);
+      const result = Engine.processGrid(grid, { filename: path.basename(c.formPdfs[0]) });
+      out.engine = engineSummary(result);
+    } catch (e) {
+      out.notes.push('Could not parse contractor form PDF: ' + e.message);
+    }
   } else {
-    out.notes.push('PDF only — add the contractor .xls / .xlsx to this folder.');
+    out.notes.push('PDF only — add the contractor .xls / .xlsx (or a PDF printout of the form) to this folder.');
   }
 
   for (const pdf of c.pdfs) {
@@ -310,6 +396,7 @@ function renderText(results) {
     lines.push('═'.repeat(72));
     lines.push(r.slug);
     lines.push('xls: ' + (r.xlsFiles.join(', ') || '(none)'));
+    if (r.formFiles && r.formFiles.length) lines.push('form-pdf: ' + r.formFiles.join(', '));
     lines.push('pdf: ' + (r.pdfFiles.join(', ') || '(none)'));
     r.notes.forEach(n => lines.push('note: ' + n));
     if (r.engine) {
@@ -357,4 +444,4 @@ function main() {
 
 if (require.main === module) main();
 
-module.exports = { pairKey, pairLooseFiles };
+module.exports = { pairKey, pairLooseFiles, appNumsFromName, gridFromForm };

@@ -124,7 +124,7 @@
    * 301003 submitted as "Graded Aggregate / GABC" is issued as #301001.
    */
   const SPEC_CORRECTIONS = [
-    { whenSpec: '#301003', whenDesc: /gabc|graded aggregate/i, toSpec: '#301001', note: 'Issued as #301001 GABC (contractor submitted 301003).' },
+    { whenSpec: '#301003', whenDesc: /gabc|graded aggregate/i, unlessDesc: /crush/i, toSpec: '#301001', note: 'Issued as #301001 GABC (contractor submitted 301003).' },
   ];
 
   /**

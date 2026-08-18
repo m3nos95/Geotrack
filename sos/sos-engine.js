@@ -439,6 +439,7 @@
     const specs = item.specs.map(s => {
       for (const rule of SPEC_CORRECTIONS) {
         if (s === rule.whenSpec && rule.whenDesc.test(descBlob)) {
+          if (rule.unlessDesc && rule.unlessDesc.test(descBlob)) return s;
           warnings.push(rule.note);
           return rule.toSpec;
         }
