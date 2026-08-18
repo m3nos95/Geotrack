@@ -346,6 +346,7 @@
       crack: { kind: 'crack', entries: [], modified: '' },
       curing: { kind: 'curing', entries: [], manufacturers: [], modified: '' },
       aggregate: { kind: 'aggregate', file: '', entries: [] },
+      ccAlways: [],
     };
   }
 
@@ -357,6 +358,7 @@
     });
     if (extra.aggregate && extra.aggregate.entries) out.aggregate = extra.aggregate;
     if (extra.fetchedAt) out.fetchedAt = extra.fetchedAt;
+    if (Array.isArray(extra.ccAlways)) out.ccAlways = extra.ccAlways;
     return out;
   }
 
@@ -376,6 +378,9 @@
       const n = b.aggregate.entries.length;
       const ap = b.aggregate.entries.filter(e => e.status === 'approved').length;
       bits.push(`Aggregate chart ${n} rows (${ap} approved)` + (b.aggregate.file ? ` · ${b.aggregate.file}` : ''));
+    }
+    if (b.ccAlways && b.ccAlways.length) {
+      bits.push('CC harvest ' + b.ccAlways.length + ' always-names');
     }
     return bits.join(' · ') || 'No live lists loaded';
   }

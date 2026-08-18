@@ -91,4 +91,45 @@ assert.strictEqual(merged[0].letters.length, 1);
 assert.ok(merged[0].diff);
 assert.ok(!merged[0].notes.some(n => /PDF only/i.test(n)));
 
+const { parseCcPeople, harvestCcFromResults, parseIssuedSections } = require('./corpus-learn.js');
+const ccBlock = [
+  'The following material sources have been reviewed by this office for Application No. 0000016055, BOBBY FREY ENTRANCE(S) as to their acceptability for use on this project.',
+  'SECTION: #301001 - GABC',
+  'SOURCE: Vulcan Materials - Salisbury, MD',
+  'ACTION: Must be tested.',
+  'If you have any questions, please contact this office.',
+  'cc: James Smith, DelDOT',
+  'Ray Glanden, DelDOT',
+  'Aaron Wieczorek, DelDOT',
+  'Mark Schafer, DelDOT',
+  'Jason Denson, DelDOT',
+  'James Kwasnieski, DelDOT',
+  '',
+  'SHANTÉ A. HASTINGS',
+  'Secretary',
+].join('\n');
+const ccPeople = parseCcPeople(ccBlock);
+assert.strictEqual(ccPeople[0].name, 'James Smith');
+assert.strictEqual(ccPeople[0].org, 'DelDOT');
+assert.ok(ccPeople.some(p => p.name === 'Ray Glanden'));
+assert.ok(ccPeople.some(p => p.name === 'James Kwasnieski'));
+assert.ok(!ccPeople.some(p => /hastings/i.test(p.name)));
+assert.ok(!ccPeople.some(p => /section/i.test(p.name)));
+
+const issued = parseIssuedSections(ccBlock);
+assert.strictEqual(issued.kind, 'issued-letter');
+assert.strictEqual(issued.cc[0].name, 'James Smith');
+assert.ok(issued.cc.length >= 6);
+
+const harvest = harvestCcFromResults([
+  { letters: [{ kind: 'issued-letter', cc: ccPeople }] },
+  { letters: [{ kind: 'issued-letter', cc: ccPeople.slice(0, 3) }] },
+  { letters: [{ kind: 'issued-letter', cc: [{ name: 'James Smith', org: 'DelDOT' }, { name: 'Hunter McCabe', org: 'DelDOT' }] }] },
+  { letters: [{ kind: 'contractor-form', cc: [{ name: 'Should Skip', org: 'DelDOT' }] }] },
+]);
+assert.strictEqual(harvest.letters, 3);
+assert.ok(harvest.always.some(p => p.name === 'James Smith'));
+assert.ok(!harvest.always.some(p => p.name === 'Hunter McCabe'), 'Hunter is on 1/3 letters, below 40%');
+assert.ok(!harvest.people.some(p => p.name === 'Should Skip'));
+
 console.log('OK corpus pairing');

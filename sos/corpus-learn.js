@@ -178,6 +178,85 @@ function stripPageBanners(text) {
     .replace(/S\s+ecretary/g, '');
 }
 
+function titleCaseName(s) {
+  return squeeze(s).split(/\s+/).map(w => {
+    if (/^mc[a-z]/i.test(w)) return 'Mc' + w.slice(2, 3).toUpperCase() + w.slice(3).toLowerCase();
+    return w.charAt(0).toUpperCase() + w.slice(1).toLowerCase();
+  }).join(' ');
+}
+
+function looksLikePersonName(s) {
+  const t = squeeze(s).replace(/^cc:\s*/i, '');
+  const words = t.split(/\s+/).filter(Boolean);
+  if (words.length < 2 || words.length > 4) return false;
+  if (t.length < 5 || t.length > 42) return false;
+  if (/\d/.test(t)) return false;
+  if (/^(section|source|action|page|secretary|delaware|materials|research|deldot)$/i.test(words[0])) return false;
+  return words.every(w => /^[A-Za-z][A-Za-z.'-]*$/.test(w));
+}
+
+/** Names from the cc: block on an issued SOS letter. */
+function parseCcPeople(text) {
+  const people = [];
+  const raw = String(text || '');
+  const idx = raw.search(/\bcc:\s*/i);
+  if (idx < 0) return people;
+  let block = raw.slice(idx);
+  block = block.split(/SHANT[ÉE]\s+A\.\s+HASTINGS|If you have any questions|Page\s+\d+\s+of/i)[0];
+  const seen = new Set();
+  block.split(/\n/).forEach(line => {
+    let t = squeeze(line).replace(/^cc:\s*/i, '');
+    if (!t) return;
+    if (/^(section:|source:|action:)/i.test(t)) return;
+    t.split(/\s*;\s*/).forEach(part => {
+      const bits = squeeze(part).split(',').map(x => squeeze(x));
+      const name = bits[0];
+      if (!looksLikePersonName(name)) return;
+      const pretty = titleCaseName(name);
+      const key = pretty.toLowerCase();
+      if (seen.has(key)) return;
+      seen.add(key);
+      const orgBit = bits.slice(1).join(', ');
+      const org = /deldot/i.test(orgBit) || /deldot/i.test(part) ? 'DelDOT'
+        : (orgBit && !/^\d/.test(orgBit) && orgBit.length < 40 ? orgBit : 'DelDOT');
+      people.push({ name: pretty, org });
+    });
+  });
+  return people;
+}
+
+function harvestCcFromResults(results) {
+  const counts = new Map();
+  let letters = 0;
+  (results || []).forEach(r => {
+    (r.letters || []).forEach(letter => {
+      if (letter.kind !== 'issued-letter' || !(letter.cc || []).length) return;
+      letters++;
+      const seen = new Set();
+      letter.cc.forEach(p => {
+        const name = titleCaseName(typeof p === 'string' ? String(p).split(',')[0] : p.name);
+        if (!looksLikePersonName(name)) return;
+        const key = name.toLowerCase();
+        if (seen.has(key)) return;
+        seen.add(key);
+        const org = (p && p.org) || 'DelDOT';
+        const cur = counts.get(key) || { name, org, letters: 0 };
+        cur.letters += 1;
+        counts.set(key, cur);
+      });
+    });
+  });
+  const people = [...counts.values()].sort((a, b) => b.letters - a.letters || a.name.localeCompare(b.name));
+  const threshold = Math.max(2, Math.ceil(letters * 0.4));
+  const always = people.filter(p => p.letters >= threshold);
+  return {
+    generatedAt: new Date().toISOString(),
+    letters,
+    always: always.map(p => ({ name: p.name, org: p.org })),
+    people,
+  };
+}
+
 function parseIssuedSections(raw) {
   const text = stripPageBanners(raw);
   if (looksLikeContractorForm(text)) {
@@ -207,14 +286,7 @@ function parseIssuedSections(raw) {
       action: actM ? squeeze(actM[1]) : '',
     });
   }
-  const cc = [];
-  const ccBlock = text.split(/cc:\s*/i)[1];
-  if (ccBlock) {
-    ccBlock.split(/\n/).forEach(line => {
-      const t = line.replace(/DelDOT.*/i, 'DelDOT').replace(/,.*/, '').trim();
-      if (t && t.length < 40 && /[A-Za-z]/.test(t)) cc.push(squeeze(line));
-    });
-  }
+  const cc = parseCcPeople(text);
   const introM = text.match(/reviewed by this office for\s+([\s\S]*?)\s+as to their acceptability/i);
   return {
     kind: 'issued-letter',
@@ -379,6 +451,7 @@ function engineSummary(result) {
     project: result.project,
     warnings: result.warnings || [],
     cc: (result.cc || []).map(c => c.name),
+    sampler: Engine.samplerName(result.project && result.project.district),
     items: (result.items || []).map(it => ({
       specs: it.letterSpecs || it.specs,
       family: it.family,
@@ -517,6 +590,13 @@ function loadListsForDir(dir) {
       try { bundle = Lists.mergeBundle(bundle, JSON.parse(fs.readFileSync(json, 'utf8'))); }
       catch (e) {}
     }
+    const ccFile = path.join(dir, 'SOS-cc.json');
+    if (fs.existsSync(ccFile)) {
+      try {
+        const harvest = JSON.parse(fs.readFileSync(ccFile, 'utf8'));
+        bundle.ccAlways = harvest.always || [];
+      } catch (e) {}
+    }
     try {
       const { findAggregateChart } = require('./fetch-lists.js');
       const chart = findAggregateChart(dir);
@@ -583,10 +663,27 @@ function compareCase(c, lists) {
   return out;
 }
 
-function renderText(results) {
+function renderCcHarvest(h) {
+  const lines = [];
+  if (!h || !h.letters) {
+    lines.push('CC: no issued letters with a readable cc: block yet.');
+    return lines;
+  }
+  lines.push('CC harvested from ' + h.letters + ' issued letters (always = on ≥40%, min 2)');
+  if (h.always.length) lines.push('Always CC: ' + h.always.map(p => p.name).join(', '));
+  else lines.push('Always CC: (none yet)');
+  h.people.slice(0, 40).forEach(p => {
+    lines.push('  ' + p.name + ', ' + p.org + ' — ' + p.letters);
+  });
+  return lines;
+}
+
+function renderText(results, harvest) {
   const lines = [];
   lines.push('SOS corpus learn');
   lines.push('Cases: ' + results.length);
+  lines.push('');
+  lines.push(...renderCcHarvest(harvest));
   lines.push('');
   if (!results.length) {
     lines.push('No files yet. Put matching pairs in sos/corpus/drop/ (Job.xls + Job.pdf) or one subfolder per job.');
@@ -603,6 +700,7 @@ function renderText(results) {
     if (r.engine) {
       const p = r.engine.project || {};
       lines.push('engine project: ' + [p.contract, p.title, p.contractor].filter(Boolean).join(' · '));
+      if (r.engine.cc && r.engine.cc.length) lines.push('engine cc: ' + r.engine.cc.join('; '));
       if (r.engine.warnings.length) lines.push('warnings: ' + r.engine.warnings.join(' | '));
       r.engine.items.forEach((it, i) => {
         lines.push(`  E${i + 1} [${it.action}/${it.family}] ${it.section}`);
@@ -613,6 +711,9 @@ function renderText(results) {
     for (const letter of r.letters) {
       lines.push('letter: ' + letter.file + ' (' + letter.kind + ', ' + letter.sections.length + ' sections)');
       if (letter.intro) lines.push('  for: ' + letter.intro);
+      if (letter.cc && letter.cc.length) {
+        lines.push('  cc: ' + letter.cc.map(p => p.name + ', ' + p.org).join('; '));
+      }
       letter.sections.forEach((s, i) => {
         lines.push(`  P${i + 1} ${s.section}` + (s.bullets.length ? ' · ' + s.bullets.join('; ') : ''));
         lines.push('     SOURCE ' + s.source);
@@ -629,8 +730,10 @@ function renderText(results) {
   return lines.join('\n');
 }
 
-function renderSummary(results) {
+function renderSummary(results, harvest) {
   const lines = ['SOS learn  ' + results.length + ' jobs', ''];
+  lines.push(...renderCcHarvest(harvest));
+  lines.push('');
   let paired = 0;
   for (const r of results) {
     const hasForm = r.xlsFiles.length || (r.formFiles || []).length;
@@ -670,18 +773,25 @@ function main() {
     console.error('APL snapshot: ' + require('./sos-lists.js').summary(lists));
   }
   const results = mergeComparedResults(discoverCases().map(c => compareCase(c, lists)));
-  const text = renderText(results);
+  const harvest = harvestCcFromResults(results);
+  const text = renderText(results, harvest);
   fs.writeFileSync(path.join(ROOT, 'report.md'), text);
   fs.writeFileSync(path.join(ROOT, 'report.json'), JSON.stringify(results, null, 2));
+  fs.writeFileSync(path.join(ROOT, 'cc-harvest.json'), JSON.stringify(harvest, null, 2));
   extra.forEach(dir => {
     try { fs.writeFileSync(path.join(dir, 'SOS-learn-report.md'), text); }
     catch (e) { console.error('Could not write report into ' + dir + ': ' + e.message); }
+    try { fs.writeFileSync(path.join(dir, 'SOS-cc.json'), JSON.stringify(harvest, null, 2)); }
+    catch (e) { console.error('Could not write SOS-cc.json into ' + dir + ': ' + e.message); }
   });
-  if (WANT_JSON) console.log(JSON.stringify(results, null, 2));
+  if (WANT_JSON) console.log(JSON.stringify({ results, harvest }, null, 2));
   else {
-    console.log(VERBOSE ? text : renderSummary(results));
+    console.log(VERBOSE ? text : renderSummary(results, harvest));
     console.log('\nFull report: sos/corpus/report.md');
-    extra.forEach(dir => console.log('Copy: ' + path.join(dir, 'SOS-learn-report.md')));
+    extra.forEach(dir => {
+      console.log('Copy: ' + path.join(dir, 'SOS-learn-report.md'));
+      console.log('CC list: ' + path.join(dir, 'SOS-cc.json') + '  (drop this on the CC tab)');
+    });
   }
 }
 
@@ -697,4 +807,7 @@ module.exports = {
   gridFromForm,
   argvDirs,
   listFilesRecursive,
+  parseIssuedSections,
+  parseCcPeople,
+  harvestCcFromResults,
 };

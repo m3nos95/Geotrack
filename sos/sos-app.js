@@ -210,7 +210,7 @@
     document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
     (el || document.querySelector('.tab[data-tab="' + name + '"]')).classList.add('active');
     document.getElementById('tab-' + name).classList.add('active');
-    if (name === 'cc') renderCCLib();
+    if (name === 'cc') { renderCCLib(); renderCCHarvestStatus(); }
     if (name === 'sources') renderSourceLib();
     if (name === 'specs') renderSpecLibTab();
     if (name === 'lists') renderLists();
@@ -742,8 +742,97 @@
     ls_set(STORE.lists, {
       aggregate: liveLists.aggregate || { entries: [] },
       fetchedAt: liveLists.fetchedAt || '',
+      ccAlways: liveLists.ccAlways || [],
     });
   }
+
+  function looksLikeCcHarvest(obj) {
+    if (!obj || typeof obj !== 'object') return false;
+    if (obj.tack || obj.striping || obj.crack) return false;
+    return Array.isArray(obj.always) || Array.isArray(obj.people);
+  }
+
+  function upsertCcLibPerson(name, org) {
+    const n = String(name || '').trim();
+    if (!n) return null;
+    const existing = ccLib.find(p => p.name.toLowerCase() === n.toLowerCase());
+    if (existing) return existing;
+    const entry = { id: 'cl' + Date.now() + '-' + ccLib.length, name: n, org: org || 'DelDOT', role: '' };
+    ccLib.push(entry);
+    ls_set(STORE.cc_lib, ccLib);
+    return entry;
+  }
+
+  function addPersonToLetter(name, org) {
+    const n = String(name || '').trim();
+    if (!n) return;
+    if (ccList.find(c => c.name.toLowerCase() === n.toLowerCase())) return;
+    ccList.push({ id: Date.now() + ccList.length, name: n, org: org || 'DelDOT', role: '' });
+  }
+
+  function ingestCcHarvest(harvest) {
+    const always = harvest.always || [];
+    const people = harvest.people && harvest.people.length ? harvest.people : always;
+    people.forEach(p => {
+      const name = typeof p === 'string' ? p : p.name;
+      const org = (p && p.org) || 'DelDOT';
+      upsertCcLibPerson(name, org);
+    });
+    liveLists.ccAlways = always.map(p => (
+      typeof p === 'string' ? { name: p, org: 'DelDOT' } : { name: p.name, org: p.org || 'DelDOT' }
+    )).filter(p => p.name);
+    persistLists();
+    renderCCLib();
+    renderCCHarvestStatus(harvest);
+    renderLists();
+    applyListsToOpenLetter();
+    if (parsedImport && parsedImport.cc) {
+      ccList = parsedImport.cc;
+      persistAll();
+      renderCC();
+      renderLetter();
+    }
+  }
+
+  function renderCCHarvestStatus(harvest) {
+    const el = document.getElementById('cc-harvest-status');
+    if (!el) return;
+    const always = (harvest && harvest.always) || liveLists.ccAlways || [];
+    const letters = harvest && harvest.letters;
+    if (!always.length && !letters) {
+      el.textContent = 'No harvested CC list loaded. Run learn-sos.bat, then drop SOS-cc.json here. New imports still get the form contact, district sampler, and M&R core.';
+      return;
+    }
+    const names = always.map(p => typeof p === 'string' ? p : p.name).filter(Boolean);
+    el.textContent = (letters ? ('Read from ' + letters + ' issued letters. ') : '') +
+      'Names added automatically on import: ' + (names.join(', ') || '(none at 40% yet)');
+  }
+
+  window.addStandardCcToLetter = function () {
+    SOSData.STANDARD_CC.forEach(name => addPersonToLetter(name, 'DelDOT'));
+    persistAll(); renderCC(); renderCCLib(); renderLetter();
+  };
+
+  window.addHarvestedAlwaysToLetter = function () {
+    (liveLists.ccAlways || []).forEach(p => addPersonToLetter(typeof p === 'string' ? p : p.name, (p && p.org) || 'DelDOT'));
+    persistAll(); renderCC(); renderCCLib(); renderLetter();
+  };
+
+  window.handleCcFile = async function (file) {
+    if (!file) return;
+    try {
+      const harvest = JSON.parse(await file.text());
+      if (!looksLikeCcHarvest(harvest)) {
+        const el = document.getElementById('cc-harvest-status');
+        if (el) el.textContent = 'That JSON is not a SOS-cc.json harvest (needs an always or people list).';
+        return;
+      }
+      ingestCcHarvest(harvest);
+    } catch (e) {
+      const el = document.getElementById('cc-harvest-status');
+      if (el) el.textContent = 'Could not read CC file: ' + e.message;
+    }
+  };
 
   function ingestAggregateGrid(grid, filename) {
     liveLists.aggregate = SOSLists.parseAggregateChartGrid(grid, { filename });
@@ -768,6 +857,10 @@
       if (/\.json$/i.test(file.name)) {
         const text = await file.text();
         const bundle = JSON.parse(text);
+        if (looksLikeCcHarvest(bundle)) {
+          ingestCcHarvest(bundle);
+          return;
+        }
         liveLists = SOSLists.mergeBundle(liveLists, bundle);
         persistLists();
         renderLists();
@@ -804,11 +897,15 @@
       if (!res.ok) return;
       const bundle = await res.json();
       const saved = ls_get(STORE.lists, null);
-      liveLists = SOSLists.mergeBundle(bundle, saved && saved.aggregate ? { aggregate: saved.aggregate } : {});
+      liveLists = SOSLists.mergeBundle(bundle, saved ? {
+        aggregate: saved.aggregate,
+        ccAlways: saved.ccAlways,
+      } : {});
       if (bundle.fetchedAt) liveLists.fetchedAt = bundle.fetchedAt;
     } catch (e) {
       const saved = ls_get(STORE.lists, null);
       if (saved && saved.aggregate) liveLists.aggregate = saved.aggregate;
+      if (saved && saved.ccAlways) liveLists.ccAlways = saved.ccAlways;
     }
   }
 
@@ -827,6 +924,7 @@
       ['Pavement marking APL', liveLists.striping && liveLists.striping.modified, (liveLists.striping && (liveLists.striping.manufacturers || liveLists.striping.entries) || []).length],
       ['Crack seal APL', liveLists.crack && liveLists.crack.modified, (liveLists.crack && liveLists.crack.entries || []).length],
       ['Aggregate chart', liveLists.aggregate && liveLists.aggregate.file, (liveLists.aggregate && liveLists.aggregate.entries || []).length],
+      ['CC harvest (always)', (liveLists.ccAlways || []).length ? 'on import' : '', (liveLists.ccAlways || []).length],
     ];
     tbody.innerHTML = rows.map(r => `<tr><td>${esc(r[0])}</td><td>${esc(r[1] || '—')}</td><td>${esc(String(r[2]))}</td></tr>`).join('');
     const n = (liveLists.aggregate && liveLists.aggregate.entries || []).length + (liveLists.tack && liveLists.tack.entries || []).length;
@@ -1058,6 +1156,7 @@ hr { border: none; border-top: 1px solid #ccc; margin: 14pt 0; }
       const file = e.dataTransfer.files[0];
       if (!file) return;
       if (el.id === 'lists-drop-zone') handleListFile(file);
+      else if (el.id === 'cc-drop-zone') handleCcFile(file);
       else handleImportFile(file);
     });
   }
@@ -1075,11 +1174,13 @@ hr { border: none; border-top: 1px solid #ccc; margin: 14pt 0; }
     wireDropZone(document.getElementById('drop-zone'));
     document.querySelectorAll('.landing-drop').forEach(wireDropZone);
     wireDropZone(document.getElementById('lists-drop-zone'));
-    loadAplSnapshot().then(() => { renderLists(); });
+    wireDropZone(document.getElementById('cc-drop-zone'));
+    loadAplSnapshot().then(() => { renderLists(); renderCCHarvestStatus(); });
     renderLists();
     renderItems();
     renderCC();
     renderCCLib();
+    renderCCHarvestStatus();
     renderRevisions();
     renderSourceLib();
     renderSpecLibTab();

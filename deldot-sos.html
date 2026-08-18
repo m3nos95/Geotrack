@@ -190,7 +190,15 @@
     <div class="tab-panel" id="tab-cc">
       <div class="toolbar">
         <button class="btn btn-primary btn-sm" onclick="openCCModal()">+ New Person</button>
+        <button class="btn btn-ghost btn-sm" onclick="addStandardCcToLetter()">+ M&amp;R core</button>
+        <button class="btn btn-ghost btn-sm" onclick="addHarvestedAlwaysToLetter()">+ Harvested always-list</button>
         <input class="lib-search" id="cc-lib-search" placeholder="Search library…" oninput="renderCCLib()" style="width:180px;">
+      </div>
+      <div id="cc-harvest-status" style="font-size:12px;color:var(--text-mid);margin:4px 0 10px;line-height:1.45;"></div>
+      <div class="import-zone" id="cc-drop-zone" onclick="document.getElementById('cc-file-input').click()" style="margin-bottom:12px;padding:16px;">
+        <div class="import-zone-label">Drop SOS-cc.json here</div>
+        <div class="import-zone-sub">Run learn-sos.bat on the SOS Program folder, then drop the SOS-cc.json it writes next to the letters.</div>
+        <input type="file" id="cc-file-input" style="display:none" accept=".json" onchange="handleCcFile(this.files[0])">
       </div>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:4px;">
         <div>
@@ -275,8 +283,8 @@
           Aggregate pits move on and off the <strong>Approved Aggregate Chart</strong> constantly — that chart is the office spreadsheet, not the public APL. Drop the current .xls/.xlsx here before issuing a letter.
         </div>
         <div class="import-zone" id="lists-drop-zone" onclick="document.getElementById('lists-file-input').click()">
-          <div class="import-zone-label">Drop Aggregate Chart (.xls/.xlsx) or SOS-lists.json</div>
-          <div class="import-zone-sub">or a refreshed APL snapshot from refresh-sos-lists.bat</div>
+          <div class="import-zone-label">Drop Aggregate Chart (.xls/.xlsx), SOS-lists.json, or SOS-cc.json</div>
+          <div class="import-zone-sub">or a refreshed APL snapshot from refresh-sos-lists.bat. CC harvest files also work on the CC tab.</div>
           <input type="file" id="lists-file-input" style="display:none" accept=".xls,.xlsx,.json" onchange="handleListFile(this.files[0])">
         </div>
         <div style="display:flex;gap:8px;flex-wrap:wrap;">

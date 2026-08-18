@@ -18,6 +18,7 @@
     ACTION_TEXT,
     APL_FOOTNOTE,
     STANDARD_CC,
+    CONTACTS,
     testCoordinationNotes,
   } = DATA;
   const Lists = LISTS || {};
@@ -854,23 +855,38 @@
     }
     const items = groupItems(prepared.filter(it => !shouldOmitItem(it))).map((it, i) => ({ ...it, id: i + 1 }));
 
-    const ccNames = [];
-    const addCc = (name) => {
-      const n = cellStr(name);
-      if (!n) return;
-      if (ccNames.some(x => x.toLowerCase() === n.toLowerCase())) return;
-      ccNames.push(n);
-    };
-    addCc(project.contact);
-    STANDARD_CC.forEach(addCc);
+    const cc = buildCcList(project, lists);
 
     return {
       project,
       items,
-      cc: ccNames.map((name, i) => ({ id: i + 1, name, org: 'DelDOT', role: '' })),
+      cc,
       warnings,
       ungrouped: prepared,
     };
+  }
+
+  function samplerName(district) {
+    const d = district || '';
+    if (/canal/i.test(d)) return CONTACTS.samplingCanal.name;
+    if (/north/i.test(d)) return CONTACTS.samplingNorth.name;
+    return CONTACTS.sampling.name;
+  }
+
+  function buildCcList(project, lists) {
+    const people = [];
+    const add = (name, org) => {
+      const n = cellStr(name);
+      if (!n) return;
+      if (people.some(p => p.name.toLowerCase() === n.toLowerCase())) return;
+      people.push({ id: people.length + 1, name: n, org: org || 'DelDOT', role: '' });
+    };
+    add(project && project.contact);
+    add(samplerName(project && project.district));
+    STANDARD_CC.forEach(n => add(n));
+    const extra = (lists && lists.ccAlways) || [];
+    extra.forEach(n => add(typeof n === 'string' ? n : n.name, (n && n.org) || 'DelDOT'));
+    return people;
   }
 
   function processGrid(rows, meta) {
@@ -954,6 +970,8 @@
     letterPlainText,
     familyFromSpec,
     shouldOmitItem,
+    buildCcList,
+    samplerName,
     isCompanyName,
     isStreet,
     isCityState,

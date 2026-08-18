@@ -28,7 +28,7 @@ On your PC, keep the 20 matches in:
 
 `C:\Users\Aaron.Wieczorek\OneDrive - STATE OF DELAWARE\Desktop\SOS Program`
 
-Double-click **`learn-sos.bat`** at the repo root (or `sos\learn-sos.bat`). It reads that folder and writes `SOS-learn-report.md` next to the files.
+Double-click **`learn-sos.bat`** at the repo root (or `sos\learn-sos.bat`). It reads that folder and writes `SOS-learn-report.md` and `SOS-cc.json` next to the files. Drop `SOS-cc.json` on the CC tab in the SOS tool. Names that appear on many issued letters are added automatically (plus the district sampler and M&R core). Do not commit `SOS-cc.json` — it is built from contractor letters.
 
 Needs Node.js and Python 3 on the PC (the bat will pip-install `xlrd` and `pypdf` if missing). Drag a different folder onto the bat to scan that instead.
 
@@ -58,4 +58,4 @@ After the files are in, say so in chat (or run it yourself):
 node sos/corpus-learn.js
 ```
 
-That diffs what the engine would issue against SECTION / SOURCE / ACTION on the real PDF.
+That diffs what the engine would issue against SECTION / SOURCE / ACTION on the real PDF. It also harvests the `cc:` names into `sos/corpus/cc-harvest.json`.

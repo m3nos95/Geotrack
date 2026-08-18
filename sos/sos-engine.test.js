@@ -131,10 +131,16 @@ assert.ok(!/Johnson Seed/i.test(crack.srcName));
 assert.ok(crack.subItems.some(s => /Elastoflex/i.test(s)));
 assert.ok(/APL/i.test(crack.actionNotes));
 
-// CC includes DelDOT contact first
+// CC includes DelDOT contact first, then district sampler, then M&R core
 assert.strictEqual(result.cc[0].name, 'James Smith');
 assert.ok(result.cc.some(c => c.name === 'Ray Glanden'));
 assert.ok(result.cc.some(c => c.name === 'Aaron Wieczorek'));
+assert.ok(result.cc.some(c => c.name === 'Mark Schafer'));
+assert.ok(result.cc.some(c => c.name === 'Jason Denson'));
+assert.ok(result.cc.some(c => c.name === 'James Kwasnieski'));
+assert.strictEqual(Engine.samplerName('South'), 'Ray Glanden');
+assert.strictEqual(Engine.samplerName('North'), 'Damian Blakely');
+assert.strictEqual(Engine.samplerName('Canal'), 'Rich Taylor');
 
 const phrase = Engine.contractPhrase({ contract: '0000016055', title: 'BOBBY FREY ENTRANCE(S)', docKind: 'application' });
 assert.strictEqual(phrase, 'Application No. 0000016055, BOBBY FREY ENTRANCE(S)');
@@ -204,10 +210,21 @@ assert.ok(/James Smith/.test(letter));
 const northHeader = FREY_HEADER.map(r => ({ ...r }));
 northHeader[8] = { 1: 'District: North ' };
 const northGrid = gridFromObjects(northHeader, [FREY_ITEMS[4]]);
-const northGabc = Engine.processGrid(northGrid).items.find(i => i.family === 'aggregate');
+const northResult = Engine.processGrid(northGrid);
+const northGabc = northResult.items.find(i => i.family === 'aggregate');
 assert.ok(/Damian Blakely/.test(northGabc.actionNotes));
 assert.ok(/302-593-7158/.test(northGabc.actionNotes));
 assert.ok(!/Ray Glanden/.test(northGabc.actionNotes));
+assert.strictEqual(northResult.cc[0].name, 'James Smith');
+assert.ok(northResult.cc.some(c => c.name === 'Damian Blakely'));
+assert.ok(northResult.cc.some(c => c.name === 'Ray Glanden'), 'Ray stays on the M&R core CC even for North jobs');
+
+const withAlways = Engine.processGrid(grid, {
+  lists: { ccAlways: [{ name: 'Hunter McCabe', org: 'DelDOT' }] },
+});
+assert.strictEqual(withAlways.cc[0].name, 'James Smith');
+assert.ok(withAlways.cc.some(c => c.name === 'Hunter McCabe'));
+assert.ok(withAlways.cc.filter(c => c.name === 'James Smith').length === 1);
 
 // Russell Standard Chambersburg tack is not on APL
 const chambersburgGrid = gridFromObjects(FREY_HEADER, [[

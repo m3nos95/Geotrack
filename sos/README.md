@@ -10,7 +10,7 @@ Open: [deldot-sos.html](../deldot-sos.html) (GitHub Pages: `/Geotrack/deldot-sos
 2. The app reads the sheet in the browser (no API key), groups related specs, and applies ACTION language.
 3. Fill **Contract / Application #** if the contractor left it blank (the Frey form often does).
 4. Review items — especially **MUST BE TESTED** (highlighted) and APL / not-approved tack coat.
-5. Adjust CC, signature, and revision notes as needed.
+5. Adjust CC, signature, and revision notes as needed. New imports already CC the form contact, the district sampler, and the M&R core (Ray Glanden, Aaron Wieczorek, Mark Schafer, Jason Denson, James Kwasnieski). To pick up names from issued letters, run `learn-sos.bat` and drop `SOS-cc.json` on the **CC** tab.
 6. **Print / PDF** from the letter preview.
 
 ## What the rules do
@@ -58,4 +58,4 @@ Libraries (sources, specs, CC, last project) persist in `localStorage` on this b
 
 ## Teaching the engine from real jobs
 
-Do **not** send examples one-by-one in chat. On the office PC, put the matched jobs in the Desktop **SOS Program** folder and double-click `learn-sos.bat`. Or dump pairs in `sos/corpus/drop/` (`Job.xls` + `Job.pdf`). Then run `node sos/corpus-learn.js`. Details: [corpus/README.md](corpus/README.md). Those files are gitignored (this GitHub repo is public).
+Do **not** send examples one-by-one in chat. On the office PC, put the matched jobs in the Desktop **SOS Program** folder and double-click `learn-sos.bat`. Or dump pairs in `sos/corpus/drop/` (`Job.xls` + `Job.pdf`). Then run `node sos/corpus-learn.js`. That diffs SECTION / SOURCE / ACTION and also reads the `cc:` block on every issued letter, writing `SOS-cc.json` next to the letters (gitignored). Drop that file on the **CC** tab so frequent names are added automatically on the next import. Details: [corpus/README.md](corpus/README.md). Those files are gitignored (this GitHub repo is public).
