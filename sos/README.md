@@ -40,6 +40,7 @@ Spec `301003` submitted as GABC is issued as `#301001` (flagged in the review ba
 | `sos-app.js` | UI |
 | `sos-engine.test.js` | Node tests (`node sos/sos-engine.test.js`) |
 | `corpus-learn.js` | Diff contractor `.xls` vs issued PDF (`node sos/corpus-learn.js`) |
+| `corpus-learn.test.js` | Pairing tests (`node sos/corpus-learn.test.js`) |
 | `letterhead-header.jpg` | 2026 first-page seal + address (from Shanté Hastings letterhead) |
 | `letterhead-footer.png` | 2026 first-page DelDOT wordmark |
 
@@ -47,4 +48,4 @@ Libraries (sources, specs, CC, last project) persist in `localStorage` on this b
 
 ## Teaching the engine from real jobs
 
-Do **not** send examples one-by-one in chat. Put each job in `sos/corpus/cases/<job-name>/` with the contractor `.xls` and the issued PDF, then run `node sos/corpus-learn.js`. Details: [corpus/README.md](corpus/README.md). Those files are gitignored (this GitHub repo is public).
+Do **not** send examples one-by-one in chat. Dump matching pairs in `sos/corpus/drop/` (`Job.xls` + `Job.pdf` — no subfolders needed) or one folder per job under `sos/corpus/cases/`. Then run `node sos/corpus-learn.js`. Details: [corpus/README.md](corpus/README.md). Those files are gitignored (this GitHub repo is public).

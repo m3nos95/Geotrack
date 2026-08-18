@@ -1,38 +1,49 @@
 # SOS example corpus
 
-Dump **contractor Source of Supply spreadsheets** next to the **issued M&R letters** here. The public GitHub repo does **not** store these files (contractor names, addresses, job numbers). They stay on this machine (or in a Cloud Agent workspace) and are gitignored.
+Dump **contractor Source of Supply spreadsheets** next to the **issued M&R letters**. This GitHub repo is public, so those files stay on this machine (gitignored) and are not committed.
 
-## What to drop
+## Easiest: one folder, matching names
 
-For each job, one folder:
+Put every pair in `sos/corpus/drop/`. The spreadsheet and PDF just need the **same name** (any extension):
+
+```
+sos/corpus/drop/
+  Frey Entrance.xls
+  Frey Entrance.pdf
+  Lightkeepers.xls
+  Lightkeepers.pdf
+  Wincheslea Phase 5.xls
+  Wincheslea Phase 5.pdf
+```
+
+A later revision can keep that name plus `-rev1` (or `_rev2`):
+
+```
+  Frey Entrance-rev1.pdf
+```
+
+You do **not** need a subfolder per job if the names match.
+
+If the contractor form and the issued letter have totally different filenames (`DEL DOT - SOS - ….xls` vs `0000016055_….pdf`), either rename them to match or use a subfolder.
+
+## Optional: one subfolder per job
+
+Use this when names do not match, or you want to keep original filenames:
 
 ```
 sos/corpus/cases/
   frey-entrance/
-    contractor.xls          # or .xlsx — the form they submitted
-    issued.pdf              # the letter M&R sent
-    issued-rev1.pdf         # optional later revision (tack change, etc.)
-  lightkeepers-village/
     contractor.xls
     issued.pdf
+    issued-rev1.pdf
 ```
-
-Folder name can be anything you recognize (`mumford-n-state`, `wincheslea-ph5`). Put **every PDF for that job in the same folder**, including revisions.
-
-If you already have a pile of files and do not want to sort them, dump the whole pile into `sos/corpus/drop/` — the learner will try to group them. Folders are more reliable when two jobs have similar names.
 
 ## How we use it
 
-After you add files, say so in chat (or run it yourself):
+After the files are in, say so in chat (or run it yourself):
 
 ```bash
 node sos/corpus-learn.js
 ```
 
-That prints a case-by-case diff: what the engine would issue vs SECTION / SOURCE / ACTION on the real PDF. Then we tighten rules from the mismatches (grouping, APL, “already tested”, borrow Type C, etc.).
-
-**Do not drip-feed examples in chat.** One batch of folders is faster and we can re-run the whole set after each rule change.
-
-## Already useful without the .xls
-
-An issued PDF alone still teaches letter language. The learner will mark those as “PDF only — waiting on contractor spreadsheet.”
+That diffs what the engine would issue against SECTION / SOURCE / ACTION on the real PDF.

@@ -157,10 +157,58 @@ function discoverCases() {
   listDirs(CASES).forEach(dir => takeFolder(dir, path.basename(dir)));
   listDirs(DROP).forEach(dir => takeFolder(dir, 'drop/' + path.basename(dir)));
 
-  const looseXls = listFiles(DROP, ['.xls', '.xlsx']);
-  const loosePdf = listFiles(DROP, ['.pdf']);
-  if (looseXls.length || loosePdf.length) {
-    cases.push({ slug: 'drop-unfiled', dir: DROP, xls: looseXls, pdfs: loosePdf, unfiled: true });
+  pairLooseFiles(listFiles(CASES, ['.xls', '.xlsx', '.pdf'])).forEach(c => cases.push(c));
+  pairLooseFiles(listFiles(DROP, ['.xls', '.xlsx', '.pdf'])).forEach(c => {
+    cases.push({ ...c, slug: c.slug.startsWith('drop/') ? c.slug : 'drop/' + c.slug });
+  });
+  return cases;
+}
+
+/** Same job if the name matches before the extension, ignoring -rev1 / _rev 2 / tack-rev. */
+function pairKey(filename) {
+  let s = path.basename(String(filename)).replace(/\.(xlsx?|pdf)$/i, '');
+  s = s.replace(/[-_\s.()]+/g, ' ').trim();
+  s = s.replace(/\s+(rev(ision)?|tack(\s*rev(ision)?)?)\s*\d*$/i, '');
+  return s.toLowerCase().replace(/[^a-z0-9]+/g, '');
+}
+
+function pairLooseFiles(files) {
+  const xls = files.filter(p => /\.xlsx?$/i.test(p));
+  const pdfs = files.filter(p => /\.pdf$/i.test(p));
+  const usedPdf = new Set();
+  const cases = [];
+  const byKey = new Map();
+
+  for (const x of xls) {
+    const key = pairKey(x) || path.basename(x).toLowerCase();
+    if (!byKey.has(key)) byKey.set(key, { xls: [], pdfs: [] });
+    byKey.get(key).xls.push(x);
+  }
+  for (const p of pdfs) {
+    const key = pairKey(p);
+    if (key && byKey.has(key)) {
+      byKey.get(key).pdfs.push(p);
+      usedPdf.add(p);
+    }
+  }
+  for (const [key, group] of byKey) {
+    const first = group.xls[0];
+    const slug = path.basename(first).replace(/\.(xlsx?)$/i, '');
+    cases.push({
+      slug,
+      dir: path.dirname(first),
+      xls: group.xls,
+      pdfs: group.pdfs,
+    });
+  }
+  for (const p of pdfs) {
+    if (usedPdf.has(p)) continue;
+    cases.push({
+      slug: path.basename(p).replace(/\.pdf$/i, ''),
+      dir: path.dirname(p),
+      xls: [],
+      pdfs: [p],
+    });
   }
   return cases;
 }
@@ -199,8 +247,7 @@ function compareCase(c) {
     notes: [],
   };
 
-  if (c.xls.length > 1) out.notes.push('Multiple spreadsheets in this folder — using the first. Split jobs into separate folders if they are different submissions.');
-  if (c.unfiled) out.notes.push('Loose files in drop/ — put each job in its own folder named after the project.');
+  if (c.xls.length > 1) out.notes.push('Multiple spreadsheets matched this name — using the first.');
 
   if (c.xls.length) {
     try {
@@ -255,7 +302,7 @@ function renderText(results) {
   lines.push('Cases: ' + results.length);
   lines.push('');
   if (!results.length) {
-    lines.push('No files yet. Put each job in sos/corpus/cases/<job-name>/ with contractor.xls + issued.pdf');
+    lines.push('No files yet. Put matching pairs in sos/corpus/drop/ (Job.xls + Job.pdf) or one subfolder per job.');
     lines.push('See sos/corpus/README.md');
     return lines.join('\n');
   }
@@ -302,8 +349,12 @@ function main() {
   fs.writeFileSync(path.join(ROOT, 'report.md'), text);
   fs.writeFileSync(path.join(ROOT, 'report.json'), JSON.stringify(results, null, 2));
   if (WANT_JSON) console.log(JSON.stringify(results, null, 2));
-  else console.log(text);
-  console.log('\nWrote sos/corpus/report.md');
+  else {
+    console.log(text);
+    console.log('\nWrote sos/corpus/report.md');
+  }
 }
 
-main();
+if (require.main === module) main();
+
+module.exports = { pairKey, pairLooseFiles };
