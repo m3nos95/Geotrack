@@ -49,4 +49,4 @@ Libraries (sources, specs, CC, last project) persist in `localStorage` on this b
 
 ## Teaching the engine from real jobs
 
-Do **not** send examples one-by-one in chat. Dump matching pairs in `sos/corpus/drop/` (`Job.xls` + `Job.pdf` — no subfolders needed) or one folder per job under `sos/corpus/cases/`. Then run `node sos/corpus-learn.js`. Details: [corpus/README.md](corpus/README.md). Those files are gitignored (this GitHub repo is public).
+Do **not** send examples one-by-one in chat. On the office PC, put the matched jobs in the Desktop **SOS Program** folder and double-click `learn-sos.bat`. Or dump pairs in `sos/corpus/drop/` (`Job.xls` + `Job.pdf`). Then run `node sos/corpus-learn.js`. Details: [corpus/README.md](corpus/README.md). Those files are gitignored (this GitHub repo is public).

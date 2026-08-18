@@ -14,6 +14,32 @@ const ROOT = path.join(__dirname, 'corpus');
 const CASES = path.join(ROOT, 'cases');
 const DROP = path.join(ROOT, 'drop');
 const WANT_JSON = process.argv.includes('--json');
+const DIR_ONLY = process.argv.includes('--dir-only');
+const VERBOSE = process.argv.includes('--verbose');
+
+function argvDirs() {
+  const dirs = [];
+  for (let i = 0; i < process.argv.length; i++) {
+    if (process.argv[i] === '--dir' && process.argv[i + 1]) {
+      dirs.push(path.resolve(process.argv[++i]));
+    }
+  }
+  if (process.env.SOS_CORPUS_DIR) dirs.push(path.resolve(process.env.SOS_CORPUS_DIR));
+  return [...new Set(dirs)].filter(d => {
+    try { return fs.statSync(d).isDirectory(); } catch (e) { return false; }
+  });
+}
+
+function pythonCmd() {
+  const candidates = [['python3'], ['python'], ['py', '-3']];
+  for (const cmd of candidates) {
+    const r = spawnSync(cmd[0], cmd.slice(1).concat(['-c', 'print(1)']), { encoding: 'utf8' });
+    if (r.status === 0) return cmd;
+  }
+  return ['python3'];
+}
+
+const PYTHON = pythonCmd();
 
 function listFiles(dir, exts) {
   if (!fs.existsSync(dir)) return [];
@@ -25,6 +51,23 @@ function listFiles(dir, exts) {
     if (st.isDirectory()) continue;
     const ext = path.extname(name).toLowerCase();
     if (exts.includes(ext)) out.push(full);
+  }
+  return out.sort();
+}
+
+function listFilesRecursive(dir, exts, depth) {
+  if (depth == null) depth = 0;
+  if (depth > 5 || !fs.existsSync(dir)) return [];
+  let names;
+  try { names = fs.readdirSync(dir); } catch (e) { return []; }
+  const out = [];
+  for (const name of names) {
+    if (name.startsWith('.') || name === 'SOS-learn-report.md') continue;
+    const full = path.join(dir, name);
+    let st;
+    try { st = fs.statSync(full); } catch (e) { continue; }
+    if (st.isDirectory()) out.push(...listFilesRecursive(full, exts, depth + 1));
+    else if (exts.includes(path.extname(name).toLowerCase())) out.push(full);
   }
   return out.sort();
 }
@@ -41,7 +84,7 @@ function listDirs(dir) {
 const FORMPDF = path.join(__dirname, 'corpus-formpdf.py');
 
 function runScript(args) {
-  const r = spawnSync('python3', args, {
+  const r = spawnSync(PYTHON[0], PYTHON.slice(1).concat(args), {
     encoding: 'utf8',
     maxBuffer: 20 * 1024 * 1024,
   });
@@ -206,16 +249,28 @@ function discoverCases() {
     cases.push({ slug, dir, xls, pdfs: letters, formPdfs: forms });
   };
 
-  listDirs(CASES).forEach(dir => takeFolder(dir, path.basename(dir)));
-  listDirs(DROP).forEach(dir => takeFolder(dir, 'drop/' + path.basename(dir)));
+  const extra = argvDirs();
+  if (!DIR_ONLY) {
+    listDirs(CASES).forEach(dir => takeFolder(dir, path.basename(dir)));
+    listDirs(DROP).forEach(dir => takeFolder(dir, 'drop/' + path.basename(dir)));
+  }
 
-  const loose = [
-    ...listFiles(CASES, ['.xls', '.xlsx', '.pdf']),
-    ...listFiles(DROP, ['.xls', '.xlsx', '.pdf']),
-  ];
+  const loose = [];
+  if (!DIR_ONLY) {
+    loose.push(...listFiles(CASES, ['.xls', '.xlsx', '.pdf']));
+    loose.push(...listFiles(DROP, ['.xls', '.xlsx', '.pdf']));
+  }
+  extra.forEach(dir => {
+    loose.push(...listFilesRecursive(dir, ['.xls', '.xlsx', '.pdf']));
+  });
+
   inspectAll(loose);
   pairLooseFiles(loose, inspected).forEach(c => {
-    const prefix = c.dir === DROP || c.dir.startsWith(DROP) ? 'drop/' : '';
+    let prefix = '';
+    if (c.dir === DROP || String(c.dir).startsWith(DROP)) prefix = 'drop/';
+    extra.forEach(dir => {
+      if (String(c.dir).startsWith(dir)) prefix = path.basename(dir) + '/';
+    });
     const slug = c.slug.startsWith('drop/') ? c.slug : prefix + c.slug;
     cases.push({ ...c, slug });
   });
@@ -428,20 +483,58 @@ function renderText(results) {
   return lines.join('\n');
 }
 
+function renderSummary(results) {
+  const lines = ['SOS learn  ' + results.length + ' jobs', ''];
+  let paired = 0;
+  for (const r of results) {
+    const hasForm = r.xlsFiles.length || (r.formFiles || []).length;
+    const letter = (r.letters || []).find(l => l.kind === 'issued-letter' && l.sections.length);
+    if (hasForm && letter) paired++;
+    let status = 'unpaired';
+    if (r.diff) {
+      const miss = (r.diff.specsInPdfNotEngine || []).length;
+      const extra = (r.diff.specsInEngineNotPdf || []).length;
+      status = 'engine ' + r.diff.engineItems + ' / letter ' + r.diff.pdfSections;
+      if (!miss && !extra) status += '  specs match';
+      else {
+        if (miss) status += '  letter-only ' + r.diff.specsInPdfNotEngine.join(',');
+        if (extra) status += '  engine-only ' + r.diff.specsInEngineNotPdf.join(',');
+      }
+    } else if (!hasForm) status = 'letter only';
+    else if (!letter) status = 'form only';
+    lines.push('• ' + r.slug);
+    lines.push('  ' + status);
+  }
+  lines.push('');
+  lines.push('Paired form+letter: ' + paired + ' / ' + results.length);
+  return lines.join('\n');
+}
+
 function main() {
   fs.mkdirSync(CASES, { recursive: true });
   fs.mkdirSync(DROP, { recursive: true });
+  const extra = argvDirs();
+  if (DIR_ONLY && !extra.length) {
+    console.error('No --dir folder found. Pass --dir "C:\\path\\to\\SOS Program"');
+    process.exit(1);
+  }
+  extra.forEach(d => console.error('Scanning ' + d));
   const results = discoverCases().map(compareCase);
   const text = renderText(results);
   fs.writeFileSync(path.join(ROOT, 'report.md'), text);
   fs.writeFileSync(path.join(ROOT, 'report.json'), JSON.stringify(results, null, 2));
+  extra.forEach(dir => {
+    try { fs.writeFileSync(path.join(dir, 'SOS-learn-report.md'), text); }
+    catch (e) { console.error('Could not write report into ' + dir + ': ' + e.message); }
+  });
   if (WANT_JSON) console.log(JSON.stringify(results, null, 2));
   else {
-    console.log(text);
-    console.log('\nWrote sos/corpus/report.md');
+    console.log(VERBOSE ? text : renderSummary(results));
+    console.log('\nFull report: sos/corpus/report.md');
+    extra.forEach(dir => console.log('Copy: ' + path.join(dir, 'SOS-learn-report.md')));
   }
 }
 
 if (require.main === module) main();
 
-module.exports = { pairKey, pairLooseFiles, appNumsFromName, gridFromForm };
+module.exports = { pairKey, pairLooseFiles, appNumsFromName, gridFromForm, argvDirs, listFilesRecursive };

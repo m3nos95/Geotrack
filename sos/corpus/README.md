@@ -22,6 +22,20 @@ Contractor SOS forms that were **printed or saved as PDF** (not `.xls`) are OK. 
 
 You do **not** need a subfolder per job if the names match.
 
+## Windows batch (no upload)
+
+On your PC, keep the 20 matches in:
+
+`C:\Users\Aaron.Wieczorek\OneDrive - STATE OF DELAWARE\Desktop\SOS Program`
+
+Double-click **`learn-sos.bat`** at the repo root (or `sos\learn-sos.bat`). It reads that folder and writes `SOS-learn-report.md` next to the files.
+
+Needs Node.js and Python 3 on the PC (the bat will pip-install `xlrd` and `pypdf` if missing). Drag a different folder onto the bat to scan that instead.
+
+```
+node sos/corpus-learn.js --dir-only --dir "C:\Users\Aaron.Wieczorek\OneDrive - STATE OF DELAWARE\Desktop\SOS Program"
+```
+
 If the contractor form and the issued letter have totally different filenames (`DEL DOT - SOS - ….xls` vs `0000016055_….pdf`), either rename them to match or use a subfolder.
 
 ## Optional: one subfolder per job

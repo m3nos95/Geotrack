@@ -40,4 +40,8 @@ const brit = pdfSets.find(c => (c.formPdfs || []).some(p => /Brittingham/.test(p
 assert.ok(mac && mac.pdfs.length === 1 && mac.formPdfs.length === 1);
 assert.ok(brit && brit.pdfs.length === 1 && brit.formPdfs.length === 1);
 
+const { listFilesRecursive } = require('./corpus-learn.js');
+const dropFiles = listFilesRecursive(require('path').join(__dirname, 'corpus', 'drop'), ['.pdf']);
+assert.ok(dropFiles.some(p => /644071456/.test(p)));
+
 console.log('OK corpus pairing');
