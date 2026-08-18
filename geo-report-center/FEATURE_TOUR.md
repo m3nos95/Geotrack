@@ -58,6 +58,7 @@ Each left button is a different “deck” of information about **that exact spo
 | **Satellite** | Click | Toggle imagery basemap |
 | **Project limits** | **Draw limits** → click vertices → **Close polygon** → pick **Grid** or **Voronoi** lattice → **Analyze & find best infil** | Discretizes the polygon into cells; builds a quantitative **reference profile** from measured cells (borings / anchors / feature-store); scores every other cell by **similarity**; transfers phenotypes with a **confidence** score. Paint modes: infil / similarity / confidence. Also: inventory, best screening infil cell, site summary, boring recommendations. Screening only — not Phase I / App.1 |
 | **Request soil borings** | Top bar **Request borings** (next to Hydro) → tap locations → pick purpose | Draft **Soil Boring Request Sheet** (BDM Fig. 105-2): count, depth, continuous SPT, infil Y/N, rock core (purpose-gated), lab tests, M&R contact. Export for M&R; engineer confirms |
+| **Pole base (Table IV-11)** | Site Intel → **Poles** after clicking near a GEO log | Chart-strict (worst N) vs typical-profile suggestion; **PE override** to match a sealed rec letter |
 
 ### Say this for project limits
 > “Draw the job outline. Analyze ranks cells for screening, flags problems (wetland, GMZ, LUST), writes a short site story, and now suggests **where to request borings** — including a one-click jump to the best infil cell.”

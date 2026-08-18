@@ -192,6 +192,7 @@ Left = **rail** (pick a topic). Center/right drawer = details. **Exit** closes S
 | **Anchors** | Measured DelDOT borehole infil tests | Amber diamonds; measured in/hr and design ÷FoS |
 | **DGS** | Delaware Geological Survey wells / geophys | Lith / gamma links; shallow coarse/fine classes |
 | **Props** | Screening engineering properties | Subgrade / frost / drainage-style priors from AASHTO — not lab CBR |
+| **Poles** | DelDOT Table IV-11 signal/strain/camera base | Chart-strict (worst SPT in 0–5′ and 5–25′) plus a typical-profile suggestion and a per-hole PE override |
 | **Septic** | DNREC PercRate points nearby | Minutes/inch converted for screening (not App.1 ASTM) |
 | **Class** | AASHTO / USCS at the point | From nearby borings or NRCS fallback (Estimates ON) |
 | **Column** | Stick log 0–50′ (and deeper subsurface mode) | Layered class with depth (Estimates ON) |
@@ -215,6 +216,18 @@ Left = **rail** (pick a topic). Center/right drawer = details. **Exit** closes S
 ![DNA](docs/readme-screenshots/11-site-intel-dna.png)
 ![Borings list](docs/readme-screenshots/12-site-intel-borings.png)
 ![Hydro](docs/readme-screenshots/13-site-intel-hydro.png)
+
+### Pole base box (Table IV-11)
+
+Click **Poles** after a map click near a GEO log. GeoTrak does **not** silently pick the nicest chart case.
+
+| Piece | Plain meaning |
+|-------|----------------|
+| **Chart (IV-11)** | Worst SPT in 0–5′ and in 5–25′. Any **very poor** or **WH** cell → **SPECIAL** (custom design). |
+| **Typical / suggested** | Thickness-weighted “what most of the zone is.” If that still SPECIAL, remaining samples after dropping very-poor cells. Labeled as screening — not auto-applied. |
+| **PE override** | Case number + base type stored in this browser for that hole (e.g. Case 7 Type 3A to match a sealed rec letter). Rail shows `3A PE`. Clear to return to chart-strict. |
+
+A PE letter that picks Case 7 on a hole with N = 2 / WH in the 5–25′ zone is **engineering judgment**. GeoTrak keeps SPECIAL on the chart so that judgment is explicit.
 
 ---
 
