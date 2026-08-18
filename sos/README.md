@@ -39,5 +39,7 @@ Spec `301003` submitted as GABC is issued as `#301001` (flagged in the review ba
 | `sos-data.js` | Spec catalog, APL tables, CC seeds, letter language |
 | `sos-app.js` | UI |
 | `sos-engine.test.js` | Node tests (`node sos/sos-engine.test.js`) |
+| `letterhead-header.jpg` | 2026 first-page seal + address (from Shanté Hastings letterhead) |
+| `letterhead-footer.png` | 2026 first-page DelDOT wordmark |
 
 Libraries (sources, specs, CC, last project) persist in `localStorage` on this browser.

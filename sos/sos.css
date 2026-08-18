@@ -539,29 +539,37 @@
   .letter-doc {
     background: white;
     box-shadow: var(--shadow-md);
-    padding: 36px 44px;
+    padding: 18px 28px 20px;
     font-family: 'Times New Roman', serif;
     font-size: 11px;
     line-height: 1.55;
     color: #111;
-    min-height: 600px;
+    min-height: 720px;
     width: 100%;
+    display: flex;
+    flex-direction: column;
   }
   .letter-letterhead {
     text-align: center;
-    border-bottom: 2px solid #003a70;
-    padding-bottom: 12px;
-    margin-bottom: 18px;
+    margin: 0 0 16px;
+  }
+  .letter-letterhead img {
+    width: 3.72in;
+    max-width: 100%;
+    height: auto;
+    display: block;
+    margin: 0 auto;
   }
   .letter-secretary {
-    font-size: 9px;
-    letter-spacing: 0.12em;
+    font-family: 'Copperplate Gothic Light', Copperplate, 'Century Gothic', 'Palatino Linotype', serif;
+    font-size: 6.5pt;
+    letter-spacing: 0.08em;
     text-transform: uppercase;
     text-align: left;
-    color: #003a70;
-    margin-bottom: 16px;
-    font-family: var(--sans);
-    font-weight: 700;
+    color: #17365D;
+    margin: 4px 0 0;
+    font-weight: 400;
+    line-height: 1.25;
   }
   .letter-date { margin-bottom: 20px; }
   .letter-to { margin-bottom: 20px; line-height: 1.7; }
@@ -590,21 +598,15 @@
   .letter-sig { margin-top: 28px; }
   .letter-sig-name { font-weight: 700; margin-top: 28px; }
   .letter-cc { margin-top: 16px; font-size: 11px; line-height: 1.7; }
-  .letter-deldot-logo {
-    display: flex;
-    align-items: center;
-    justify-content: flex-end;
-    gap: 6px;
-    margin-top: 12px;
+  .letter-official-footer {
+    margin-top: auto;
+    padding-top: 28px;
+    text-align: right;
   }
-  .letter-deldot-logo-box {
-    background: #003a70;
-    color: white;
-    font-family: var(--sans);
-    font-size: 11px;
-    font-weight: 700;
-    padding: 4px 10px;
-    letter-spacing: 0.06em;
+  .letter-official-footer img {
+    width: 1.95in;
+    max-width: 70%;
+    height: auto;
   }
 
   /* ── EMPTY STATE ── */

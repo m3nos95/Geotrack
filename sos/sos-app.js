@@ -384,11 +384,14 @@
     const empty = !items.length
       ? '<p style="color:#888;font-style:italic;">Drop a contractor SOS spreadsheet on the Import tab to generate this letter.</p>' : '';
 
+    const headerSrc = new URL('sos/letterhead-header.jpg', window.location.href).href;
+    const footerSrc = new URL('sos/letterhead-footer.png', window.location.href).href;
+
     document.getElementById('letter-doc').innerHTML = `
       <div class="letter-letterhead">
-        <img src="sos/letterhead.png" style="width:200px;display:block;margin:0 auto;" alt="DelDOT Letterhead">
+        <img src="${headerSrc}" alt="State of Delaware Department of Transportation">
+        <div class="letter-secretary">${esc(SOSData.CONTACTS.secretary)}<br>Secretary</div>
       </div>
-      <div class="letter-secretary">${esc(SOSData.CONTACTS.secretary)}<br>Secretary</div>
       <div class="letter-date">${esc(dateStr)}</div>
       <div class="letter-to">${esc(contractor || '[Contractor]')}<br>${addrHtml}</div>
       <div class="letter-body">
@@ -403,6 +406,9 @@
         <div class="letter-sig-name">${esc(SOSData.CONTACTS.letterAuthor.name)}<br>${esc(SOSData.CONTACTS.letterAuthor.title)}</div>
       </div>
       <div class="letter-cc">cc: ${ccHtml || '<em style="color:#aaa;">(none)</em>'}</div>
+      <div class="letter-official-footer">
+        <img src="${footerSrc}" alt="DelDOT">
+      </div>
     `;
   };
   window.refreshLetter = function () { persistProject(); renderLetter(); };
@@ -865,11 +871,12 @@
     const w = window.open('', '_blank');
     w.document.write(`<!DOCTYPE html><html><head><title>SOS Letter</title>
 <style>
-@page { size: 8.5in 11in; margin: 1in; }
-body { font-family: 'Times New Roman', serif; font-size: 11pt; line-height: 1.55; color: #111; }
-.letter-letterhead { text-align: center; border-bottom: 2px solid #003a70; padding-bottom: 12pt; margin-bottom: 18pt; }
-.letter-letterhead img { width: 2in; display: block; margin: 0 auto; }
-.letter-secretary { font-size: 7.5pt; letter-spacing: .12em; text-transform: uppercase; color: #003a70; margin-bottom: 16pt; font-weight: 700; }
+@page { size: 8.5in 11in; margin: 0.45in 1in 0.5in 1in; }
+html, body { height: 100%; }
+body { font-family: 'Times New Roman', serif; font-size: 11pt; line-height: 1.55; color: #111; min-height: 10.05in; display: flex; flex-direction: column; }
+.letter-letterhead { text-align: center; margin: 0 0 14pt; }
+.letter-letterhead img { width: 3.72in; height: auto; display: block; margin: 0 auto; }
+.letter-secretary { font-family: 'Copperplate Gothic Light', Copperplate, 'Century Gothic', serif; font-size: 6.5pt; letter-spacing: 0.08em; text-transform: uppercase; color: #17365D; margin: 4pt 0 0; text-align: left; font-weight: 400; line-height: 1.25; }
 .letter-date, .letter-to { margin-bottom: 16pt; }
 .letter-body p { margin-bottom: 12pt; }
 .letter-section-block { margin-bottom: 22pt; page-break-inside: avoid; }
@@ -879,6 +886,8 @@ hr { border: none; border-top: 1px solid #ccc; margin: 14pt 0; }
 .letter-sig { margin-top: 24pt; page-break-inside: avoid; }
 .letter-sig-name { font-weight: 700; margin-top: 36pt; }
 .letter-cc { margin-top: 14pt; font-size: 10pt; line-height: 1.75; page-break-inside: avoid; }
+.letter-official-footer { margin-top: auto; padding-top: 18pt; text-align: right; page-break-inside: avoid; }
+.letter-official-footer img { width: 1.95in; height: auto; }
 </style></head><body>${html}</body></html>`);
     w.document.close();
     setTimeout(() => w.print(), 400);
