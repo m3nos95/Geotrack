@@ -503,7 +503,33 @@ function specTokens(s) {
   return [...String(s || '').matchAll(/#?\d{6}|#\d+xxx/gi)].map(m => m[0].replace(/^#/, '#').toUpperCase());
 }
 
-function compareCase(c) {
+function loadListsForDir(dir) {
+  const Lists = require('./sos-lists.js');
+  let bundle = Lists.emptyBundle();
+  const snap = path.join(__dirname, 'lists', 'apl-snapshot.json');
+  if (fs.existsSync(snap)) {
+    try { bundle = Lists.mergeBundle(bundle, JSON.parse(fs.readFileSync(snap, 'utf8'))); }
+    catch (e) {}
+  }
+  if (dir) {
+    const json = path.join(dir, 'SOS-lists.json');
+    if (fs.existsSync(json)) {
+      try { bundle = Lists.mergeBundle(bundle, JSON.parse(fs.readFileSync(json, 'utf8'))); }
+      catch (e) {}
+    }
+    try {
+      const { findAggregateChart } = require('./fetch-lists.js');
+      const chart = findAggregateChart(dir);
+      if (chart) {
+        const grid = readGrid(chart);
+        bundle.aggregate = Lists.parseAggregateChartGrid(grid, { filename: path.basename(chart) });
+      }
+    } catch (e) {}
+  }
+  return bundle;
+}
+
+function compareCase(c, lists) {
   const out = {
     slug: c.slug,
     dir: c.dir,
@@ -521,7 +547,7 @@ function compareCase(c) {
   if (c.xls.length) {
     try {
       const grid = readGrid(c.xls[0]);
-      const result = Engine.processGrid(grid, { filename: path.basename(c.xls[0]) });
+      const result = Engine.processGrid(grid, { filename: path.basename(c.xls[0]), lists });
       out.engine = engineSummary(result);
     } catch (e) {
       out.notes.push('Could not parse spreadsheet: ' + e.message);
@@ -531,7 +557,7 @@ function compareCase(c) {
       const parsed = parseFormPdf(c.formPdfs[0]);
       out.notes.push('Contractor form is a PDF (not .xls) — parsed the spec table from the PDF.');
       const grid = gridFromForm(parsed);
-      const result = Engine.processGrid(grid, { filename: path.basename(c.formPdfs[0]) });
+      const result = Engine.processGrid(grid, { filename: path.basename(c.formPdfs[0]), lists });
       out.engine = engineSummary(result);
     } catch (e) {
       out.notes.push('Could not parse contractor form PDF: ' + e.message);
@@ -639,7 +665,11 @@ function main() {
     process.exit(1);
   }
   extra.forEach(d => console.error('Scanning ' + d));
-  const results = mergeComparedResults(discoverCases().map(compareCase));
+  const lists = loadListsForDir(extra[0] || '');
+  if (lists.tack && lists.tack.entries && lists.tack.entries.length) {
+    console.error('APL snapshot: ' + require('./sos-lists.js').summary(lists));
+  }
+  const results = mergeComparedResults(discoverCases().map(c => compareCase(c, lists)));
   const text = renderText(results);
   fs.writeFileSync(path.join(ROOT, 'report.md'), text);
   fs.writeFileSync(path.join(ROOT, 'report.json'), JSON.stringify(results, null, 2));

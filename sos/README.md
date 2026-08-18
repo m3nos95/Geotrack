@@ -34,6 +34,8 @@ Open: [deldot-sos.html](../deldot-sos.html) (GitHub Pages: `/Geotrack/deldot-sos
 
 Related rows from the **same plant** are grouped (e.g. Type C + Type B Superpave). Tack coat is rewritten as `#401xxx – HMA ITEMS` with a product bullet, matching issued letters.
 
+Tack / pavement marking / crack seal check the live [Approved Product Lists](https://materialsandresearch.deldot.gov/index.php/Approved_Product_Lists) (snapshot in `sos/lists/apl-snapshot.json`, refreshed with `refresh-sos-lists.bat`). GABC / borrow / stone check the office **Approved Aggregate Chart** — drop the current `.xls` on the **APL / Chart** tab. Sources on the chart with a test date become **Approved for use**; rejected rows are not approved; anything missing stays must-be-tested.
+
 Spec `301003` submitted as GABC is issued as `#301001` (flagged in the review banner).
 
 ## Files
@@ -43,6 +45,8 @@ Spec `301003` submitted as GABC is issued as `#301001` (flagged in the review ba
 | `sos-engine.js` | Spreadsheet grid parser + workflow |
 | `sos-data.js` | Spec catalog, APL tables, CC seeds, letter language |
 | `sos-app.js` | UI |
+| `sos-lists.js` | Live APL + aggregate chart parsers |
+| `fetch-lists.js` | Pull current APL PDFs (`node sos/fetch-lists.js`) |
 | `sos-engine.test.js` | Node tests (`node sos/sos-engine.test.js`) |
 | `corpus-learn.js` | Diff contractor `.xls` vs issued PDF (`node sos/corpus-learn.js`) |
 | `corpus-formpdf.py` | Read contractor SOS forms that were saved as PDF |

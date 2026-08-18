@@ -15,6 +15,7 @@
     sources: 'deldot_sos_sources',
     specs: 'deldot_sos_specs',
     warnings: 'deldot_sos_warnings_v2',
+    lists: 'deldot_sos_lists_v1',
   };
 
   const actionMeta = {
@@ -49,6 +50,7 @@
   let subItemTags = [];
   let editingItemId = null;
   let parsedImport = null;
+  let liveLists = (typeof SOSLists !== 'undefined' && SOSLists.emptyBundle) ? SOSLists.emptyBundle() : { tack: { entries: [] }, aggregate: { entries: [] } };
   let warnings = ls_get(STORE.warnings, []);
   let signatureImage = localStorage.getItem('sosSignatureImage') || '';
   let highlightMode = false;
@@ -211,6 +213,7 @@
     if (name === 'cc') renderCCLib();
     if (name === 'sources') renderSourceLib();
     if (name === 'specs') renderSpecLibTab();
+    if (name === 'lists') renderLists();
   };
 
   window.renderItems = function () {
@@ -735,6 +738,107 @@
     saveSpecLib(); closeModal('spec-lib-modal'); renderSpecLibTab();
   };
 
+  function persistLists() {
+    ls_set(STORE.lists, {
+      aggregate: liveLists.aggregate || { entries: [] },
+      fetchedAt: liveLists.fetchedAt || '',
+    });
+  }
+
+  function ingestAggregateGrid(grid, filename) {
+    liveLists.aggregate = SOSLists.parseAggregateChartGrid(grid, { filename });
+    persistLists();
+    renderLists();
+    applyListsToOpenLetter();
+  }
+
+  function applyListsToOpenLetter() {
+    if (parsedImport && parsedImport.parsed) {
+      const result = SOSEngine.applyWorkflow(parsedImport.parsed, { lists: liveLists });
+      parsedImport = { parsed: parsedImport.parsed, ...result };
+      warnings = result.warnings || [];
+      renderImportPreview();
+      renderWarnings();
+    }
+  }
+
+  window.handleListFile = async function (file) {
+    if (!file) return;
+    try {
+      if (/\.json$/i.test(file.name)) {
+        const text = await file.text();
+        const bundle = JSON.parse(text);
+        liveLists = SOSLists.mergeBundle(liveLists, bundle);
+        persistLists();
+        renderLists();
+        applyListsToOpenLetter();
+        return;
+      }
+      if (!/\.xlsx?$/i.test(file.name)) return;
+      const buf = await file.arrayBuffer();
+      const wb = XLSX.read(buf, { type: 'array', cellDates: false });
+      const grid = SOSEngine.workbookToGrid(wb);
+      ingestAggregateGrid(grid, file.name);
+    } catch (e) {
+      console.error(e);
+      const el = document.getElementById('lists-status');
+      if (el) { el.style.display = 'block'; el.className = 'warn-banner'; el.textContent = 'Could not load list file: ' + e.message; }
+    }
+  };
+
+  window.reloadAplSnapshot = async function () {
+    await loadAplSnapshot();
+    applyListsToOpenLetter();
+    renderLists();
+  };
+
+  window.clearAggregateChart = function () {
+    liveLists.aggregate = { kind: 'aggregate', file: '', entries: [] };
+    persistLists();
+    renderLists();
+  };
+
+  async function loadAplSnapshot() {
+    try {
+      const res = await fetch('sos/lists/apl-snapshot.json', { cache: 'no-store' });
+      if (!res.ok) return;
+      const bundle = await res.json();
+      const saved = ls_get(STORE.lists, null);
+      liveLists = SOSLists.mergeBundle(bundle, saved && saved.aggregate ? { aggregate: saved.aggregate } : {});
+      if (bundle.fetchedAt) liveLists.fetchedAt = bundle.fetchedAt;
+    } catch (e) {
+      const saved = ls_get(STORE.lists, null);
+      if (saved && saved.aggregate) liveLists.aggregate = saved.aggregate;
+    }
+  }
+
+  window.renderLists = function () {
+    const tbody = document.getElementById('lists-tbody');
+    const status = document.getElementById('lists-status');
+    const links = document.getElementById('apl-link-list');
+    if (!tbody) return;
+    if (status) {
+      status.style.display = 'block';
+      status.className = 'ok-banner';
+      status.textContent = SOSLists.summary(liveLists);
+    }
+    const rows = [
+      ['Tack coat APL', liveLists.tack && liveLists.tack.modified, (liveLists.tack && liveLists.tack.entries || []).length],
+      ['Pavement marking APL', liveLists.striping && liveLists.striping.modified, (liveLists.striping && (liveLists.striping.manufacturers || liveLists.striping.entries) || []).length],
+      ['Crack seal APL', liveLists.crack && liveLists.crack.modified, (liveLists.crack && liveLists.crack.entries || []).length],
+      ['Aggregate chart', liveLists.aggregate && liveLists.aggregate.file, (liveLists.aggregate && liveLists.aggregate.entries || []).length],
+    ];
+    tbody.innerHTML = rows.map(r => `<tr><td>${esc(r[0])}</td><td>${esc(r[1] || '—')}</td><td>${esc(String(r[2]))}</td></tr>`).join('');
+    const n = (liveLists.aggregate && liveLists.aggregate.entries || []).length + (liveLists.tack && liveLists.tack.entries || []).length;
+    const count = document.getElementById('lists-count');
+    if (count) count.textContent = n;
+    if (links && !links.childElementCount && SOSLists.APL_PDFS) {
+      links.innerHTML = Object.values(SOSLists.APL_PDFS).map(info =>
+        `<a class="btn btn-ghost btn-sm" href="${esc(info.url)}" target="_blank" rel="noopener">${esc(info.label)}</a>`
+      ).join('');
+    }
+  };
+
   function setImportStatus(msg, color) {
     const wrap = document.getElementById('import-status');
     const txt = document.getElementById('import-status-text');
@@ -746,6 +850,9 @@
 
   window.handleImportFile = async function (file) {
     if (!file) return;
+    if (/\.json$/i.test(file.name) || SOSLists.looksLikeAggregateChart(file.name)) {
+      return handleListFile(file);
+    }
     if (!/\.xlsx?$/i.test(file.name)) {
       setImportStatus('Drop the contractor SOS .xls / .xlsx form (not the issued PDF).', 'red');
       return;
@@ -755,12 +862,20 @@
     try {
       const buf = await file.arrayBuffer();
       const wb = XLSX.read(buf, { type: 'array', cellDates: false });
-      const result = SOSEngine.processWorkbook(wb, { filename: file.name });
+      const grid = SOSEngine.workbookToGrid(wb);
+      if (SOSLists.looksLikeAggregateChart(file.name, grid)) {
+        ingestAggregateGrid(grid, file.name);
+        setImportStatus('Loaded aggregate chart from ' + file.name + '. SOS form still needed on this drop zone.', 'green');
+        switchTab('lists', document.querySelector('.tab[data-tab="lists"]'));
+        return;
+      }
+      const result = SOSEngine.processGrid(grid, { filename: file.name, lists: liveLists });
       parsedImport = result;
       warnings = result.warnings || [];
       applyProjectToHeader(result.project);
       setImportStatus(`Parsed ${result.items.length} letter item${result.items.length === 1 ? '' : 's'} from ${result.ungrouped.length} spreadsheet row${result.ungrouped.length === 1 ? '' : 's'}. Review, then load into the letter.`, 'green');
       renderImportPreview();
+      renderWarnings();
     } catch (e) {
       console.error(e);
       setImportStatus('Could not parse this file: ' + e.message, 'red');
@@ -941,7 +1056,9 @@ hr { border: none; border-top: 1px solid #ccc; margin: 14pt 0; }
       e.preventDefault();
       el.classList.remove('drag-over');
       const file = e.dataTransfer.files[0];
-      if (file) handleImportFile(file);
+      if (!file) return;
+      if (el.id === 'lists-drop-zone') handleListFile(file);
+      else handleImportFile(file);
     });
   }
 
@@ -957,6 +1074,9 @@ hr { border: none; border-top: 1px solid #ccc; margin: 14pt 0; }
     wireProjectPersist();
     wireDropZone(document.getElementById('drop-zone'));
     document.querySelectorAll('.landing-drop').forEach(wireDropZone);
+    wireDropZone(document.getElementById('lists-drop-zone'));
+    loadAplSnapshot().then(() => { renderLists(); });
+    renderLists();
     renderItems();
     renderCC();
     renderCCLib();

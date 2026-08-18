@@ -58,6 +58,7 @@
       <div class="ph-label">District</div>
       <select class="ph-input" id="ph-district" style="min-width:120px;">
         <option>South</option>
+        <option>North</option>
         <option>Canal</option>
         <option>Group 1</option>
         <option>Group 2</option>
@@ -103,6 +104,9 @@
       <div class="tab" data-tab="specs" onclick="switchTab('specs',this)">
         Spec Library <span class="tab-count" id="specs-count">0</span>
       </div>
+      <div class="tab" data-tab="lists" onclick="switchTab('lists',this)">
+        APL / Chart <span class="tab-count" id="lists-count">0</span>
+      </div>
     </div>
 
     <div class="tab-panel active" id="tab-import">
@@ -138,7 +142,7 @@
         </div>
         <div style="font-size:11px;color:var(--text-dim);line-height:1.55;">
           The spreadsheet is read in this browser. Each row is classified (borrow / GABC / Superpave / tack coat / APL / precast / PCC / …)
-          and the matching letter ACTION language is applied. Review highlighted “must be tested” and APL items before printing.
+          and the matching letter ACTION language is applied. Tack/striping check the linked Approved Product List. GABC/borrow check the Aggregate Chart on the <strong>APL / Chart</strong> tab — drop the current office chart there so approvals stay current.
         </div>
       </div>
     </div>
@@ -259,6 +263,36 @@
           </thead>
           <tbody id="spec-lib-tbody"></tbody>
         </table>
+      </div>
+    </div>
+
+    <div class="tab-panel" id="tab-lists">
+      <div style="padding:12px 0;display:flex;flex-direction:column;gap:14px;">
+        <div id="lists-status" class="ok-banner" style="display:none;"></div>
+        <div style="font-size:12px;color:var(--text-mid);line-height:1.55;">
+          <a href="https://materialsandresearch.deldot.gov/index.php/Approved_Product_Lists" target="_blank" rel="noopener">DelDOT Approved Product Lists</a>
+          are public PDFs (tack coat, pavement marking, crack seal, curing, TTC, …). This app ships a snapshot and re-checks it when you run <code>refresh-sos-lists.bat</code>.
+          Aggregate pits move on and off the <strong>Approved Aggregate Chart</strong> constantly — that chart is the office spreadsheet, not the public APL. Drop the current .xls/.xlsx here before issuing a letter.
+        </div>
+        <div class="import-zone" id="lists-drop-zone" onclick="document.getElementById('lists-file-input').click()">
+          <div class="import-zone-label">Drop Aggregate Chart (.xls/.xlsx) or SOS-lists.json</div>
+          <div class="import-zone-sub">or a refreshed APL snapshot from refresh-sos-lists.bat</div>
+          <input type="file" id="lists-file-input" style="display:none" accept=".xls,.xlsx,.json" onchange="handleListFile(this.files[0])">
+        </div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;">
+          <button class="btn btn-primary btn-sm" onclick="reloadAplSnapshot()">↻ Reload APL snapshot</button>
+          <button class="btn btn-ghost btn-sm" onclick="clearAggregateChart()">✕ Clear aggregate chart</button>
+        </div>
+        <div>
+          <div style="font-size:10px;font-weight:700;color:var(--text-dim);letter-spacing:.08em;margin-bottom:6px;text-transform:uppercase;">Official APL PDFs</div>
+          <div id="apl-link-list" style="display:flex;flex-wrap:wrap;gap:6px;"></div>
+        </div>
+        <div class="items-table-wrap">
+          <table class="items-table">
+            <thead><tr><th>List</th><th>Loaded</th><th>Rows</th></tr></thead>
+            <tbody id="lists-tbody"></tbody>
+          </table>
+        </div>
       </div>
     </div>
   </div>
@@ -497,6 +531,7 @@
 
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <script src="sos/sos-data.js"></script>
+<script src="sos/sos-lists.js"></script>
 <script src="sos/sos-engine.js"></script>
 <script src="sos/sos-app.js"></script>
 </body>
