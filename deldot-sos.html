@@ -1,0 +1,503 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>DelDOT Source of Supply</title>
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="sos/sos.css">
+</head>
+<body>
+<div class="topbar">
+  <div class="topbar-logo">DelDOT M&amp;R</div>
+  <div class="topbar-sep"></div>
+  <div class="topbar-title">Source of Supply</div>
+  <div class="topbar-links">
+    <a href="deldot-sampletrack.html">LabTrak</a>
+    <a href="geotrak/">GeoTrak</a>
+  </div>
+  <div class="topbar-badge">DROP XLS → LETTER</div>
+</div>
+
+<div class="shell">
+  <div class="project-header">
+    <div class="ph-block">
+      <div class="ph-label">Document Type</div>
+      <select class="ph-input" id="ph-dockind" style="min-width:140px;">
+        <option value="application">Application No.</option>
+        <option value="contract">State Contract No.</option>
+        <option value="agreement">Construction Agreement No.</option>
+      </select>
+    </div>
+    <div class="ph-block">
+      <div class="ph-label">Contract / Application #</div>
+      <div class="ph-ac-wrap">
+        <input class="ph-input mono contract" id="ph-contract" placeholder="0000016055 or T2023-663-06">
+        <div class="ph-ac-dd" id="ph-ac-contract"></div>
+      </div>
+    </div>
+    <div class="ph-block" style="flex:3; min-width:280px;">
+      <div class="ph-label">Project Title</div>
+      <div class="ph-ac-wrap">
+        <input class="ph-input wide" id="ph-title" style="width:100%;" placeholder="Project title">
+        <div class="ph-ac-dd" id="ph-ac-title"></div>
+      </div>
+    </div>
+    <div class="ph-block">
+      <div class="ph-label">Contractor</div>
+      <div style="display:flex;gap:4px;align-items:center;">
+        <div class="ph-ac-wrap" style="flex:1;">
+          <input class="ph-input" id="ph-contractor" style="width:100%;" placeholder="Contractor name">
+          <div class="ph-ac-dd" id="ph-ac-contractor"></div>
+        </div>
+        <button class="btn btn-ghost btn-sm btn-icon" onclick="openContractorModal()" title="Edit contractor address">✎</button>
+      </div>
+      <textarea id="ph-contractor-addr" style="display:none;" rows="3"></textarea>
+    </div>
+    <div class="ph-block">
+      <div class="ph-label">District</div>
+      <select class="ph-input" id="ph-district" style="min-width:120px;">
+        <option>South</option>
+        <option>Canal</option>
+        <option>Group 1</option>
+        <option>Group 2</option>
+        <option>Group 3</option>
+        <option>Group 4</option>
+      </select>
+    </div>
+    <div class="ph-block">
+      <div class="ph-label">DelDOT Contact</div>
+      <div class="ph-ac-wrap">
+        <input class="ph-input" id="ph-contact" placeholder="Inspector / PM">
+        <div class="ph-ac-dd" id="ph-ac-contact"></div>
+      </div>
+    </div>
+    <div class="ph-block">
+      <div class="ph-label">Letter Date</div>
+      <input class="ph-input" type="date" id="ph-date">
+    </div>
+    <div class="ph-actions">
+      <div class="rev-badge" id="rev-display">REV 01</div>
+      <button class="btn btn-secondary btn-sm" onclick="openRevModal()">+ New Revision</button>
+      <button class="btn btn-primary btn-sm" onclick="refreshLetter()">↻ Refresh Letter</button>
+    </div>
+  </div>
+
+  <div class="main-panel">
+    <div id="warn-box" style="display:none;"></div>
+
+    <div class="tabs">
+      <div class="tab active" data-tab="import" onclick="switchTab('import',this)">Import</div>
+      <div class="tab" data-tab="items" onclick="switchTab('items',this)">
+        SOS Items <span class="tab-count" id="items-count">0</span>
+      </div>
+      <div class="tab" data-tab="cc" onclick="switchTab('cc',this)">
+        CC List <span class="tab-count" id="cc-count">0</span>
+      </div>
+      <div class="tab" data-tab="revisions" onclick="switchTab('revisions',this)">
+        Revisions <span class="tab-count" id="rev-count">0</span>
+      </div>
+      <div class="tab" data-tab="sources" onclick="switchTab('sources',this)">
+        Source Library <span class="tab-count" id="sources-count">0</span>
+      </div>
+      <div class="tab" data-tab="specs" onclick="switchTab('specs',this)">
+        Spec Library <span class="tab-count" id="specs-count">0</span>
+      </div>
+    </div>
+
+    <div class="tab-panel active" id="tab-import">
+      <div style="padding:12px 0;display:flex;flex-direction:column;gap:14px;">
+        <div class="import-zone" id="drop-zone" onclick="document.getElementById('file-input').click()">
+          <div class="import-zone-label" id="drop-label">Drop DelDOT SOS spreadsheet here</div>
+          <div class="import-zone-sub">Contractor Source of Supply form · .xls or .xlsx — parsed locally, no API key</div>
+          <input type="file" id="file-input" style="display:none" accept=".xls,.xlsx" onchange="handleImportFile(this.files[0])">
+        </div>
+        <div id="import-status" style="display:none;">
+          <div id="import-status-text"></div>
+        </div>
+        <div id="import-preview-block" style="display:none;">
+          <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;">
+            <div class="form-title" style="margin:0;flex:1;" id="import-preview-title">Parsed items</div>
+            <button class="btn btn-primary btn-sm" onclick="importAllParsed()">✓ Load into letter</button>
+            <button class="btn btn-ghost btn-sm" onclick="clearImportPreview()">✕ Clear</button>
+          </div>
+          <div class="items-table-wrap">
+            <table class="items-table">
+              <thead>
+                <tr>
+                  <th style="width:110px;">Spec #(s)</th>
+                  <th>Description</th>
+                  <th>Source</th>
+                  <th style="width:140px;">Action</th>
+                  <th style="width:90px;">Rule</th>
+                </tr>
+              </thead>
+              <tbody id="import-preview-tbody"></tbody>
+            </table>
+          </div>
+        </div>
+        <div style="font-size:11px;color:var(--text-dim);line-height:1.55;">
+          The spreadsheet is read in this browser. Each row is classified (borrow / GABC / Superpave / tack coat / APL / precast / PCC / …)
+          and the matching letter ACTION language is applied. Review highlighted “must be tested” and APL items before printing.
+        </div>
+      </div>
+    </div>
+
+    <div class="tab-panel" id="tab-items">
+      <div class="toolbar">
+        <button class="btn btn-primary btn-sm" onclick="openAddModal()">+ Add Item</button>
+        <select class="form-select" id="filter-action" style="font-size:11px;padding:4px 8px;" onchange="renderItems()">
+          <option value="">All Actions</option>
+          <option value="approved">Approved</option>
+          <option value="test">Must Be Tested</option>
+          <option value="not-approved">Not Approved</option>
+          <option value="apl">APL</option>
+          <option value="on-file">On File</option>
+          <option value="visual">Visual</option>
+          <option value="submit">Submit</option>
+        </select>
+        <div class="toolbar-sep"></div>
+        <button class="btn btn-ghost btn-sm" onclick="exportItemsXls()">↓ Export items</button>
+        <button class="btn btn-ghost btn-sm" onclick="clearAllItems()" style="color:var(--red);border-color:var(--red);">✕ Clear All</button>
+      </div>
+      <div id="items-empty" class="empty-state" style="display:none;">
+        <div class="empty-icon">📄</div>
+        <div class="empty-label">No SOS items yet</div>
+        <div class="import-zone landing-drop" onclick="document.getElementById('file-input').click()">
+          <div class="import-zone-label">Drop the contractor .xls here</div>
+          <div class="import-zone-sub">or use the Import tab</div>
+        </div>
+      </div>
+      <div class="items-table-wrap" id="items-table-wrap">
+        <table class="items-table" id="items-table">
+          <thead>
+            <tr>
+              <th style="width:120px;">Spec #(s)</th>
+              <th style="width:180px;">Item Description</th>
+              <th>Primary Source</th>
+              <th style="width:220px;">Action</th>
+            </tr>
+          </thead>
+          <tbody id="items-tbody"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="tab-panel" id="tab-cc">
+      <div class="toolbar">
+        <button class="btn btn-primary btn-sm" onclick="openCCModal()">+ New Person</button>
+        <input class="lib-search" id="cc-lib-search" placeholder="Search library…" oninput="renderCCLib()" style="width:180px;">
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:4px;">
+        <div>
+          <div style="font-size:10px;font-weight:700;color:var(--text-dim);letter-spacing:.08em;margin-bottom:6px;text-transform:uppercase;">CC Library <span id="cc-lib-count"></span></div>
+          <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;box-shadow:var(--shadow);">
+            <table class="items-table">
+              <thead><tr><th>Name</th><th>Org</th><th style="width:70px;"></th></tr></thead>
+              <tbody id="cc-lib-tbody"></tbody>
+            </table>
+          </div>
+        </div>
+        <div>
+          <div style="font-size:10px;font-weight:700;color:var(--text-dim);letter-spacing:.08em;margin-bottom:6px;text-transform:uppercase;">On This Letter <span id="cc-active-count"></span></div>
+          <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;box-shadow:var(--shadow);">
+            <table class="items-table">
+              <thead><tr><th>Name</th><th>Org</th><th style="width:40px;"></th></tr></thead>
+              <tbody id="cc-tbody"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="tab-panel" id="tab-revisions">
+      <div style="padding:12px 0;">
+        <div class="rev-timeline" id="rev-timeline"></div>
+      </div>
+    </div>
+
+    <div class="tab-panel" id="tab-sources">
+      <div class="toolbar">
+        <button class="btn btn-primary btn-sm" onclick="openSourceModal()">+ Add Source</button>
+        <input class="lib-search" id="lib-search" placeholder="Search suppliers…" oninput="renderSourceLib()">
+        <div class="toolbar-sep"></div>
+        <span style="font-size:11px;color:var(--text-dim);font-family:var(--mono);" id="lib-count-label"></span>
+      </div>
+      <div class="lib-table-wrap">
+        <table class="lib-table">
+          <thead>
+            <tr>
+              <th style="width:180px;">Supplier Name</th>
+              <th style="width:140px;">Location</th>
+              <th style="width:140px;">Address</th>
+              <th style="width:120px;">Phone</th>
+              <th>Tags</th>
+              <th style="width:80px;"></th>
+            </tr>
+          </thead>
+          <tbody id="lib-tbody"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="tab-panel" id="tab-specs">
+      <div class="toolbar">
+        <button class="btn btn-primary btn-sm" onclick="openSpecLibModal()">+ Add Spec</button>
+        <input class="lib-search" id="spec-lib-search" placeholder="Search spec # or description…" oninput="renderSpecLibTab()">
+        <div class="toolbar-sep"></div>
+        <span style="font-size:11px;color:var(--text-dim);font-family:var(--mono);" id="spec-lib-count-label"></span>
+      </div>
+      <div class="lib-table-wrap">
+        <table class="lib-table">
+          <thead>
+            <tr>
+              <th style="width:110px;">Spec #</th>
+              <th>Description</th>
+              <th style="width:160px;">Last Source</th>
+              <th style="width:80px;"></th>
+            </tr>
+          </thead>
+          <tbody id="spec-lib-tbody"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <div class="letter-panel">
+    <div class="letter-panel-header">
+      <div class="letter-panel-title">Letter Preview</div>
+      <button class="btn btn-ghost btn-sm" id="highlight-btn" onclick="toggleHighlightMode()">🖊 Highlight</button>
+      <button class="btn btn-ghost btn-sm" onclick="clearHighlights()">✕ Clear</button>
+      <button class="btn btn-ghost btn-sm" onclick="printLetter()">🖨 Print / PDF</button>
+      <button class="btn btn-ghost btn-sm" onclick="document.getElementById('sig-upload').click()">✍ Signature</button>
+      <input type="file" id="sig-upload" accept="image/*" style="display:none" onchange="uploadSignature(event)">
+    </div>
+    <div class="letter-scroll">
+      <div class="letter-doc" id="letter-doc"></div>
+    </div>
+  </div>
+</div>
+
+<!-- CONTRACTOR MODAL -->
+<div class="modal-backdrop" id="contractor-modal">
+  <div class="modal" style="max-width:420px;">
+    <div class="modal-header">
+      <div class="modal-title">Contractor Details</div>
+      <button class="btn btn-ghost btn-sm btn-icon" onclick="closeModal('contractor-modal')">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-group">
+        <label class="form-label">Company Name</label>
+        <input class="form-input" id="cm-name">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Street Address</label>
+        <input class="form-input" id="cm-street">
+      </div>
+      <div class="form-group">
+        <label class="form-label">City, State ZIP</label>
+        <input class="form-input" id="cm-citystatezip">
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost btn-sm" onclick="closeModal('contractor-modal')">Cancel</button>
+      <button class="btn btn-primary btn-sm" onclick="saveContractorModal()">Save</button>
+    </div>
+  </div>
+</div>
+
+<!-- ADD / EDIT ITEM -->
+<div class="modal-backdrop" id="add-modal">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title">SOS Item</div>
+      <button class="btn btn-ghost btn-sm btn-icon" onclick="closeModal('add-modal')">✕</button>
+    </div>
+    <div class="modal-body">
+      <div style="display:flex;flex-direction:column;gap:12px;">
+        <div class="form-group">
+          <div class="form-label">Specification Number(s)</div>
+          <div class="spec-field-wrap">
+            <div class="spec-tags" id="spec-tags-container" onclick="document.getElementById('spec-tag-input').focus()">
+              <input class="spec-tag-input" id="spec-tag-input" placeholder="Type # then Enter…"
+                onkeydown="handleSpecTagInput(event)" oninput="specDropdownSearch(this.value)"
+                onfocus="specDropdownSearch(this.value)" autocomplete="off">
+            </div>
+            <div class="spec-dropdown" id="spec-dd"></div>
+          </div>
+        </div>
+        <div class="form-group">
+          <div class="form-label">Item Description</div>
+          <input class="form-input" id="f-desc">
+        </div>
+        <div class="form-group">
+          <div class="form-label">Material Sub-Items</div>
+          <div class="spec-tags" id="subitem-tags-container" onclick="document.getElementById('subitem-tag-input').focus()">
+            <input class="spec-tag-input" id="subitem-tag-input" placeholder="Type sub-item and press Enter…" onkeydown="handleSubItemInput(event)">
+          </div>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+          <div class="form-group" style="grid-column:span 2;">
+            <div class="form-label">Primary Source</div>
+            <div class="src-field-wrap">
+              <input class="form-input" id="f-src-name" autocomplete="off"
+                oninput="srcAutocomplete('primary',this.value)" onfocus="srcAutocomplete('primary',this.value)"
+                onkeydown="srcKeyNav(event,'primary')">
+              <div class="src-dropdown" id="src-dd-primary"></div>
+            </div>
+          </div>
+          <div class="form-group"><div class="form-label">Location</div><input class="form-input" id="f-src-loc"></div>
+          <div class="form-group"><div class="form-label">Address</div><input class="form-input" id="f-src-addr"></div>
+          <div class="form-group"><div class="form-label">Phone</div><input class="form-input" id="f-src-phone"></div>
+          <div class="form-group" style="grid-column:span 2;">
+            <div class="form-label">Alt Source (optional)</div>
+            <div class="src-field-wrap">
+              <input class="form-input" id="f-alt-name" autocomplete="off"
+                oninput="srcAutocomplete('alt',this.value)" onfocus="srcAutocomplete('alt',this.value)"
+                onkeydown="srcKeyNav(event,'alt')">
+              <div class="src-dropdown" id="src-dd-alt"></div>
+            </div>
+          </div>
+          <div class="form-group"><div class="form-label">Alt Location</div><input class="form-input" id="f-alt-loc"></div>
+          <div class="form-group"><div class="form-label">Alt Address</div><input class="form-input" id="f-alt-addr"></div>
+          <div class="form-group">
+            <div class="form-label">Action Type</div>
+            <select class="form-select" id="f-action">
+              <option value="approved">Approved</option>
+              <option value="test">Must Be Tested</option>
+              <option value="not-approved">Not Approved</option>
+              <option value="apl">APL Item</option>
+              <option value="on-file">On File at M&amp;R Lab</option>
+              <option value="visual">Visual Inspection</option>
+              <option value="submit">Submit / Provide</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <div class="form-label">Test Date</div>
+            <input class="form-input" id="f-test-date" type="date">
+          </div>
+        </div>
+        <div class="form-group">
+          <div class="form-label">Action Notes</div>
+          <textarea class="form-textarea" id="f-action-notes"></textarea>
+        </div>
+        <div style="display:flex;gap:16px;align-items:center;padding:8px 0;">
+          <label style="display:flex;align-items:center;gap:6px;font-size:12px;cursor:pointer;"><input type="checkbox" id="f-apl"> APL Item</label>
+          <label style="display:flex;align-items:center;gap:6px;font-size:12px;cursor:pointer;"><input type="checkbox" id="f-one-source"> One source at a time</label>
+          <label style="display:flex;align-items:center;gap:6px;font-size:12px;cursor:pointer;"><input type="checkbox" id="f-on-file"> Test reports on file</label>
+        </div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModal('add-modal')">Cancel</button>
+      <button class="btn btn-primary" onclick="saveItem()">Save Item</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-backdrop" id="cc-modal">
+  <div class="modal" style="width:400px;">
+    <div class="modal-header">
+      <div class="modal-title">Add to CC Library</div>
+      <button class="btn btn-ghost btn-sm btn-icon" onclick="closeModal('cc-modal')">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-group"><div class="form-label">Name</div><input class="form-input" id="cc-name"></div>
+      <div class="form-group">
+        <div class="form-label">Organization</div>
+        <select class="form-select" id="cc-org">
+          <option>DelDOT</option>
+          <option>Contractor</option>
+          <option>Subconsultant</option>
+          <option>Other</option>
+        </select>
+      </div>
+      <div class="form-group"><div class="form-label">Role / Title</div><input class="form-input" id="cc-role"></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModal('cc-modal')">Cancel</button>
+      <button class="btn btn-primary" onclick="saveCC()">Add to Library</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-backdrop" id="rev-modal">
+  <div class="modal" style="width:420px;">
+    <div class="modal-header">
+      <div class="modal-title">Create New Revision</div>
+      <button class="btn btn-ghost btn-sm btn-icon" onclick="closeModal('rev-modal')">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-group">
+        <div class="form-label">Revision Notes</div>
+        <textarea class="form-textarea" id="rev-notes" style="min-height:80px;"></textarea>
+      </div>
+      <div class="form-group">
+        <div class="form-label">Changed Items (spec #s)</div>
+        <input class="form-input mono" id="rev-items" placeholder="#401xxx">
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModal('rev-modal')">Cancel</button>
+      <button class="btn btn-primary" onclick="saveRevision()">Create Revision</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-backdrop" id="spec-lib-modal">
+  <div class="modal" style="width:480px;">
+    <div class="modal-header">
+      <div class="modal-title" id="spec-lib-modal-title">Add Spec to Library</div>
+      <button class="btn btn-ghost btn-sm btn-icon" onclick="closeModal('spec-lib-modal')">✕</button>
+    </div>
+    <div class="modal-body">
+      <input type="hidden" id="sl-spec-edit-id">
+      <div class="form-group"><div class="form-label">Specification Number</div><input class="form-input mono" id="sl-spec-num"></div>
+      <div class="form-group"><div class="form-label">Description</div><input class="form-input" id="sl-spec-desc"></div>
+      <div class="form-group"><div class="form-label">Notes</div><input class="form-input" id="sl-spec-notes"></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModal('spec-lib-modal')">Cancel</button>
+      <button class="btn btn-primary" onclick="saveSpecLibEntry()">Save to Library</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-backdrop" id="source-modal">
+  <div class="modal" style="width:560px;">
+    <div class="modal-header">
+      <div class="modal-title" id="source-modal-title">Add Source to Library</div>
+      <button class="btn btn-ghost btn-sm btn-icon" onclick="closeModal('source-modal')">✕</button>
+    </div>
+    <div class="modal-body">
+      <input type="hidden" id="sl-edit-id">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+        <div class="form-group" style="grid-column:span 2;"><div class="form-label">Supplier Name</div><input class="form-input" id="sl-name"></div>
+        <div class="form-group"><div class="form-label">Location</div><input class="form-input" id="sl-loc"></div>
+        <div class="form-group"><div class="form-label">Address</div><input class="form-input" id="sl-addr"></div>
+        <div class="form-group"><div class="form-label">Phone</div><input class="form-input" id="sl-phone"></div>
+        <div class="form-group"><div class="form-label">Contact</div><input class="form-input" id="sl-contact"></div>
+      </div>
+      <div class="form-group" style="margin-top:10px;">
+        <div class="form-label">Material Tags</div>
+        <div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:8px;" id="sl-tag-preset"></div>
+        <div style="display:flex;gap:6px;">
+          <input class="form-input" id="sl-tag-input" placeholder="Custom tag…" style="flex:1;" onkeydown="if(event.key==='Enter'){event.preventDefault();addCustomTag();}">
+          <button class="btn btn-secondary btn-sm" onclick="addCustomTag()">+ Add</button>
+        </div>
+        <div style="display:flex;flex-wrap:wrap;gap:4px;margin-top:8px;min-height:28px;" id="sl-tags-active"></div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModal('source-modal')">Cancel</button>
+      <button class="btn btn-primary" onclick="saveSource()">Save to Library</button>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+<script src="sos/sos-data.js"></script>
+<script src="sos/sos-engine.js"></script>
+<script src="sos/sos-app.js"></script>
+</body>
+</html>

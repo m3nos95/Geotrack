@@ -1,0 +1,959 @@
+/* DelDOT SOS letter app — UI on top of SOSEngine / SOSData */
+(function () {
+  'use strict';
+
+  const STORE = {
+    items: 'deldot_sos_items_v2',
+    cc: 'deldot_sos_cc_v2',
+    cc_lib: 'deldot_sos_cc_lib',
+    revisions: 'deldot_sos_revisions_v2',
+    rev: 'deldot_sos_currentrev_v2',
+    project: 'deldot_sos_project_v2',
+    contractors: 'deldot_sos_contractors',
+    projects: 'deldot_sos_projects_lib',
+    contacts: 'deldot_sos_contacts_lib',
+    sources: 'deldot_sos_sources',
+    specs: 'deldot_sos_specs',
+    warnings: 'deldot_sos_warnings_v2',
+  };
+
+  const actionMeta = {
+    approved: { label: 'APPROVED', cls: 'action-approved' },
+    test: { label: 'MUST BE TESTED', cls: 'action-test' },
+    'not-approved': { label: 'NOT APPROVED', cls: 'action-not-approved' },
+    apl: { label: 'APL', cls: 'action-apl' },
+    'on-file': { label: 'ON FILE', cls: 'action-on-file' },
+    visual: { label: 'VISUAL INSP.', cls: 'action-visual' },
+    submit: { label: 'SUBMIT', cls: 'action-submit' },
+  };
+
+  function ls_get(key, fallback) {
+    try {
+      const r = localStorage.getItem(key);
+      if (r == null) return fallback;
+      return JSON.parse(r);
+    } catch (e) { return fallback; }
+  }
+  function ls_set(key, val) {
+    try { localStorage.setItem(key, JSON.stringify(val)); } catch (e) {}
+  }
+
+  let items = ls_get(STORE.items, []);
+  let ccList = ls_get(STORE.cc, []);
+  let ccLib = [];
+  let revisions = ls_get(STORE.revisions, []);
+  let currentRev = ls_get(STORE.rev, 1);
+  let sourceLib = [];
+  let specLib = [];
+  let specTags = [];
+  let subItemTags = [];
+  let editingItemId = null;
+  let parsedImport = null;
+  let warnings = ls_get(STORE.warnings, []);
+  let signatureImage = localStorage.getItem('sosSignatureImage') || '';
+  let highlightMode = false;
+  let srcFocusIdx = { primary: -1, alt: -1 };
+  let specDdFocusIdx = -1;
+  let slActiveTags = [];
+  let _srcModalCallback = null;
+
+  function persistAll() {
+    ls_set(STORE.items, items);
+    ls_set(STORE.cc, ccList);
+    ls_set(STORE.revisions, revisions);
+    ls_set(STORE.rev, currentRev);
+    ls_set(STORE.warnings, warnings);
+    persistProject();
+  }
+  function persistProject() {
+    ls_set(STORE.project, {
+      contract: val('ph-contract'),
+      title: val('ph-title'),
+      contractor: val('ph-contractor'),
+      contractorAddr: val('ph-contractor-addr'),
+      district: val('ph-district'),
+      contact: val('ph-contact'),
+      date: val('ph-date'),
+      docKind: val('ph-dockind'),
+    });
+    const name = val('ph-contractor');
+    const addr = val('ph-contractor-addr');
+    if (name) saveContractorToLib(name, addr);
+    const contract = val('ph-contract');
+    const title = val('ph-title');
+    if (contract) saveProjectToLib(contract, title);
+    if (val('ph-contact')) saveContactToLib(val('ph-contact'));
+  }
+  function val(id) {
+    const el = document.getElementById(id);
+    return el ? el.value : '';
+  }
+  function setVal(id, v) {
+    const el = document.getElementById(id);
+    if (el && v != null) el.value = v;
+  }
+
+  function saveContractorToLib(name, addr) {
+    let lib = ls_get(STORE.contractors, []);
+    const idx = lib.findIndex(c => c.name.toLowerCase() === name.toLowerCase());
+    const entry = { name, addr: addr || '' };
+    if (idx >= 0) lib[idx] = entry; else lib.unshift(entry);
+    ls_set(STORE.contractors, lib.slice(0, 40));
+  }
+  function saveProjectToLib(contract, title) {
+    let lib = ls_get(STORE.projects, []);
+    const idx = lib.findIndex(p => p.contract.toLowerCase() === contract.toLowerCase());
+    const entry = { contract, title: title || '' };
+    if (idx >= 0) lib[idx] = entry; else lib.unshift(entry);
+    ls_set(STORE.projects, lib.slice(0, 40));
+  }
+  function saveContactToLib(name) {
+    let lib = ls_get(STORE.contacts, []);
+    if (!lib.find(c => c.toLowerCase() === name.toLowerCase())) {
+      lib.unshift(name);
+      ls_set(STORE.contacts, lib.slice(0, 40));
+    }
+  }
+
+  function loadProjectHeader() {
+    const p = ls_get(STORE.project, {});
+    setVal('ph-contract', p.contract || '');
+    setVal('ph-title', p.title || '');
+    setVal('ph-contractor', p.contractor || '');
+    setVal('ph-contractor-addr', p.contractorAddr || '');
+    if (p.district) setVal('ph-district', p.district);
+    setVal('ph-contact', p.contact || '');
+    setVal('ph-date', p.date || new Date().toISOString().slice(0, 10));
+    if (p.docKind) setVal('ph-dockind', p.docKind);
+    document.getElementById('rev-display').textContent = 'REV ' + String(currentRev).padStart(2, '0');
+    updateContractWarn();
+  }
+
+  function updateContractWarn() {
+    const el = document.getElementById('ph-contract');
+    if (!el) return;
+    el.classList.toggle('warn', !el.value.trim());
+  }
+
+  function wireProjectPersist() {
+    ['ph-contract', 'ph-title', 'ph-contractor', 'ph-district', 'ph-contact', 'ph-date', 'ph-dockind'].forEach(id => {
+      const el = document.getElementById(id);
+      if (!el) return;
+      el.addEventListener('change', () => { persistProject(); updateContractWarn(); renderLetter(); renderWarnings(); });
+      el.addEventListener('blur', persistProject);
+    });
+  }
+
+  function loadSourceLib() {
+    sourceLib = ls_get(STORE.sources, []);
+    if (!sourceLib.length) {
+      sourceLib = SOSData.SOURCE_SEEDS.map((s, i) => ({ id: 's' + (i + 1), contact: '', ...s }));
+      ls_set(STORE.sources, sourceLib);
+    }
+  }
+  function saveSourceLib() {
+    ls_set(STORE.sources, sourceLib);
+    const n = document.getElementById('sources-count');
+    if (n) n.textContent = sourceLib.length;
+    const l = document.getElementById('lib-count-label');
+    if (l) l.textContent = sourceLib.length + ' suppliers';
+  }
+  function loadSpecLib() {
+    specLib = ls_get(STORE.specs, []);
+    if (!specLib.length) {
+      specLib = Object.entries(SOSData.SPEC_CATALOG).map(([num, v]) => ({
+        num, desc: v.desc, tags: v.tags || [], notes: '', lastSrcName: '', lastSrcLoc: '', lastSrcAddr: '', lastSrcPhone: '',
+      }));
+      ls_set(STORE.specs, specLib);
+    }
+  }
+  function saveSpecLib() { ls_set(STORE.specs, specLib); }
+  function loadCCLib() {
+    ccLib = ls_get(STORE.cc_lib, []);
+    if (!ccLib.length) {
+      ccLib = SOSData.CC_LIBRARY_SEEDS.map((p, i) => ({ id: 'cl' + (i + 1), role: p.role || '', ...p }));
+      ls_set(STORE.cc_lib, ccLib);
+    }
+  }
+
+  function autoSaveSource(name, loc, addr, phone) {
+    if (!name) return;
+    const exists = sourceLib.find(s => s.name.toLowerCase() === name.toLowerCase() && (s.loc || '').toLowerCase() === (loc || '').toLowerCase());
+    if (exists) {
+      if (loc && !exists.loc) exists.loc = loc;
+      if (addr && !exists.addr) exists.addr = addr;
+      if (phone && !exists.phone) exists.phone = phone;
+      saveSourceLib();
+      return;
+    }
+    sourceLib.push({ id: 's' + Date.now(), name, loc: loc || '', addr: addr || '', phone: phone || '', contact: '', tags: [] });
+    saveSourceLib();
+  }
+  function autoSaveSpec(num, desc, srcName, srcLoc, srcAddr, srcPhone) {
+    if (!num) return;
+    const key = num.toUpperCase();
+    const existing = specLib.find(s => s.num === key);
+    if (!existing) {
+      specLib.push({ num: key, desc: desc || '', lastSrcName: srcName || '', lastSrcLoc: srcLoc || '', lastSrcAddr: srcAddr || '', lastSrcPhone: srcPhone || '', tags: [], notes: '' });
+    } else {
+      if (desc && !existing.desc) existing.desc = desc;
+      if (srcName) existing.lastSrcName = srcName;
+      if (srcLoc) existing.lastSrcLoc = srcLoc;
+    }
+    saveSpecLib();
+  }
+
+  window.switchTab = function (name, el) {
+    document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+    document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+    (el || document.querySelector('.tab[data-tab="' + name + '"]')).classList.add('active');
+    document.getElementById('tab-' + name).classList.add('active');
+    if (name === 'cc') renderCCLib();
+    if (name === 'sources') renderSourceLib();
+    if (name === 'specs') renderSpecLibTab();
+  };
+
+  window.renderItems = function () {
+    const tbody = document.getElementById('items-tbody');
+    const filter = val('filter-action');
+    const visible = filter ? items.filter(i => i.action === filter) : items;
+    tbody.innerHTML = '';
+    document.getElementById('items-empty').style.display = items.length ? 'none' : 'block';
+    document.getElementById('items-table-wrap').style.display = items.length ? 'block' : 'none';
+    visible.forEach(item => {
+      const am = actionMeta[item.action] || actionMeta.approved;
+      const specs = item.letterSpecs || item.specs || [];
+      const altHtml = item.altName
+        ? `<div class="source-alt">${esc(item.altName)}${item.altLoc ? ' — ' + esc(item.altLoc) : ''}</div>` : '';
+      const subHtml = (item.subItems || []).map(s => `<div style="font-size:11px;color:var(--text-mid);">• ${esc(s)}</div>`).join('');
+      const tr = document.createElement('tr');
+      tr.innerHTML = `
+        <td><div class="spec-multi">${specs.map(s => `<div class="spec-num">${esc(s)}</div>`).join('')}</div></td>
+        <td><span style="font-weight:500;">${esc(item.desc || '')}</span>${subHtml ? `<div style="margin-top:3px;">${subHtml}</div>` : ''}</td>
+        <td>
+          <div class="source-primary">${esc(item.srcName || '')}${item.srcLoc ? ' — ' + esc(item.srcLoc) : ''}</div>
+          ${altHtml}
+        </td>
+        <td>
+          <span class="action-badge ${am.cls}"><span class="action-dot"></span>${am.label}</span>
+          ${item.apl ? '<span class="apl-flag">APL</span>' : ''}
+          ${item.actionNotes ? `<div class="action-notes">${esc(item.actionNotes).slice(0, 90)}${item.actionNotes.length > 90 ? '…' : ''}</div>` : ''}
+          ${item.rule ? `<div class="rule-chip">${esc(item.rule)}</div>` : ''}
+          <div style="display:flex;gap:4px;margin-top:6px;">
+            <button class="btn btn-ghost btn-sm" onclick="editItem(${item.id})" style="font-size:11px;padding:3px 10px;">✎ Edit</button>
+            <button class="btn btn-ghost btn-sm" onclick="deleteItem(${item.id})" style="font-size:11px;padding:3px 10px;color:var(--red);">✕</button>
+          </div>
+        </td>`;
+      tbody.appendChild(tr);
+    });
+    document.getElementById('items-count').textContent = items.length;
+  };
+
+  function esc(s) {
+    return String(s == null ? '' : s)
+      .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+  }
+
+  window.renderCC = function () {
+    const tbody = document.getElementById('cc-tbody');
+    tbody.innerHTML = ccList.map(cc => `
+      <tr>
+        <td style="font-weight:500;">${esc(cc.name)}</td>
+        <td><span style="font-family:var(--mono);font-size:10px;background:var(--blue-bg);color:var(--deldot);border:1px solid #b0c4e0;border-radius:2px;padding:2px 5px;">${esc(cc.org)}</span></td>
+        <td><button class="btn btn-ghost btn-sm btn-icon" onclick="deleteCC(${cc.id})" style="color:var(--red);">✕</button></td>
+      </tr>`).join('');
+    document.getElementById('cc-count').textContent = ccList.length;
+    const activeEl = document.getElementById('cc-active-count');
+    if (activeEl) activeEl.textContent = `(${ccList.length})`;
+  };
+
+  window.renderCCLib = function () {
+    const q = (document.getElementById('cc-lib-search')?.value || '').toLowerCase();
+    const tbody = document.getElementById('cc-lib-tbody');
+    const activeNames = new Set(ccList.map(c => c.name.toLowerCase()));
+    const filtered = ccLib.filter(p => !q || p.name.toLowerCase().includes(q) || (p.org || '').toLowerCase().includes(q));
+    tbody.innerHTML = filtered.map(p => {
+      const onLetter = activeNames.has(p.name.toLowerCase());
+      return `<tr style="${onLetter ? 'opacity:.4;' : ''}">
+        <td style="font-weight:500;">${esc(p.name)}</td>
+        <td>${esc(p.org)}</td>
+        <td>${onLetter ? '<span style="font-size:10px;color:var(--text-dim);">on letter</span>'
+          : `<button class="btn btn-primary btn-sm" style="font-size:10px;padding:2px 8px;" onclick="addCCFromLib('${p.id}')">+ Add</button>`}</td>
+      </tr>`;
+    }).join('');
+    document.getElementById('cc-lib-count').textContent = `(${filtered.length})`;
+  };
+  window.addCCFromLib = function (libId) {
+    const entry = ccLib.find(p => p.id === libId);
+    if (!entry || ccList.find(c => c.name.toLowerCase() === entry.name.toLowerCase())) return;
+    ccList.push({ id: Date.now(), name: entry.name, org: entry.org, role: entry.role || '' });
+    persistAll(); renderCC(); renderCCLib(); renderLetter();
+  };
+  window.deleteCC = function (id) {
+    ccList = ccList.filter(c => c.id !== id);
+    persistAll(); renderCC(); renderCCLib(); renderLetter();
+  };
+  window.saveCC = function () {
+    const name = val('cc-name').trim();
+    if (!name) return;
+    const org = val('cc-org');
+    const role = val('cc-role').trim();
+    if (!ccLib.find(p => p.name.toLowerCase() === name.toLowerCase())) {
+      ccLib.push({ id: 'cl' + Date.now(), name, org, role });
+      ls_set(STORE.cc_lib, ccLib);
+    }
+    closeModal('cc-modal');
+    renderCCLib();
+  };
+
+  window.renderRevisions = function () {
+    const tl = document.getElementById('rev-timeline');
+    if (!revisions.length) {
+      tl.innerHTML = '<div class="empty-state"><div class="empty-label">No revisions yet — import a form to start REV 01</div></div>';
+    } else {
+      tl.innerHTML = [...revisions].reverse().map(rev => `
+        <div class="rev-item">
+          <div class="rev-num">REV ${String(rev.num).padStart(2, '0')}</div>
+          <div class="rev-meta">
+            <div class="rev-date">${esc(rev.date)}</div>
+            <div class="rev-note">${esc(rev.notes)}</div>
+            ${(rev.items || []).length ? `<div class="rev-changes">${rev.items.map(i => `<span class="rev-change-chip">${esc(i)}</span>`).join('')}</div>` : ''}
+          </div>
+        </div>`).join('');
+    }
+    document.getElementById('rev-count').textContent = revisions.length;
+    document.getElementById('rev-display').textContent = 'REV ' + String(currentRev).padStart(2, '0');
+  };
+  window.saveRevision = function () {
+    const notes = val('rev-notes').trim();
+    const itemsStr = val('rev-items').trim();
+    currentRev++;
+    revisions.push({
+      num: currentRev,
+      date: new Date().toISOString().split('T')[0],
+      notes: notes || 'No notes.',
+      items: itemsStr ? itemsStr.split(',').map(s => s.trim()) : [],
+    });
+    persistAll();
+    closeModal('rev-modal');
+    renderRevisions();
+  };
+
+  function actionHtml(item) {
+    const notes = (item.actionNotes || '').split('\n').filter(Boolean);
+    const first = notes[0] || '';
+    const rest = notes.slice(1);
+    let html = '';
+    if (item.action === 'test') html += `<span style="background:#ffff80;">${esc(first || 'Must be tested and approved prior to use.')}</span>`;
+    else if (item.action === 'not-approved') html += `<strong>${esc(first || 'Not approved.')}</strong>`;
+    else html += esc(first);
+    rest.forEach(line => { html += '<br>' + esc(line); });
+    return html;
+  }
+
+  window.renderLetter = function () {
+    const contract = val('ph-contract');
+    const title = (val('ph-title') || '').toUpperCase();
+    const contractor = val('ph-contractor');
+    const contrAddr = (val('ph-contractor-addr') || '').trim();
+    const dateStr = SOSEngine.formatLongDate(val('ph-date'));
+    const addrHtml = contrAddr
+      ? contrAddr.split('\n').map(l => esc(l.trim())).filter(Boolean).join('<br>')
+      : '<em style="color:#aaa;">[Contractor address — click ✎]</em>';
+    const phrase = SOSEngine.contractPhrase({
+      contract: contract || '[NUMBER]',
+      title,
+      docKind: val('ph-dockind'),
+    });
+
+    const sections = items.map(item => {
+      const specLines = SOSEngine.letterSectionLines(item);
+      const src = SOSEngine.sourceLine(item).split('\n');
+      const srcHtml = src.map((l, i) => i === 0 ? esc(l) : esc(l)).join('<br>');
+      const subs = (item.subItems || []).map(s => `&nbsp;&nbsp;&bull; ${esc(s)}`).join('<br>');
+      return `<div class="letter-section-block">
+        <div class="letter-row"><div class="letter-field-label">SECTION:</div>
+          <div>${specLines.map(esc).join('<br>')}${subs ? '<br>' + subs : ''}</div></div>
+        <div class="letter-row"><div class="letter-field-label">SOURCE:</div><div>${srcHtml}</div></div>
+        <div class="letter-row"><div class="letter-field-label">ACTION:</div>
+          <div class="letter-action-text">${actionHtml(item)}</div></div>
+      </div>`;
+    }).join('');
+
+    const ccHtml = ccList.map(cc => `${esc(cc.name)}, ${esc(cc.org)}`).join('<br>');
+    const empty = !items.length
+      ? '<p style="color:#888;font-style:italic;">Drop a contractor SOS spreadsheet on the Import tab to generate this letter.</p>' : '';
+
+    document.getElementById('letter-doc').innerHTML = `
+      <div class="letter-letterhead">
+        <img src="sos/letterhead.png" style="width:200px;display:block;margin:0 auto;" alt="DelDOT Letterhead">
+      </div>
+      <div class="letter-secretary">${esc(SOSData.CONTACTS.secretary)}<br>Secretary</div>
+      <div class="letter-date">${esc(dateStr)}</div>
+      <div class="letter-to">${esc(contractor || '[Contractor]')}<br>${addrHtml}</div>
+      <div class="letter-body">
+        <p>The following material sources have been reviewed by this office for <strong>${esc(phrase)}</strong> as to their acceptability for use on this project. Please note that all materials must conform to the Standard Specifications, and Special Provisions, and/or Plans governing this project. The following action must be taken in order that we may expedite the inspection and approval of the material.</p>
+      </div>
+      ${empty}${sections}
+      <hr class="letter-divider">
+      <div>If you have any questions, please call me at ${esc(SOSData.CONTACTS.letterAuthor.phone)}.</div>
+      <div class="letter-sig">
+        Sincerely,<br>
+        ${signatureImage ? `<img src="${signatureImage}" style="max-height:80px;display:block;margin:8px 0;" alt="signature">` : ''}
+        <div class="letter-sig-name">${esc(SOSData.CONTACTS.letterAuthor.name)}<br>${esc(SOSData.CONTACTS.letterAuthor.title)}</div>
+      </div>
+      <div class="letter-cc">cc: ${ccHtml || '<em style="color:#aaa;">(none)</em>'}</div>
+    `;
+  };
+  window.refreshLetter = function () { persistProject(); renderLetter(); };
+
+  window.renderWarnings = function () {
+    const box = document.getElementById('warn-box');
+    const list = [...warnings];
+    if (!val('ph-contract').trim() && items.length) {
+      list.unshift('Application / contract number is blank — required on the issued letter.');
+    }
+    if (!list.length) { box.style.display = 'none'; box.innerHTML = ''; return; }
+    box.style.display = 'block';
+    box.innerHTML = `<div class="warn-banner"><strong>REVIEW</strong><div style="margin-top:4px;">${list.map(w => '• ' + esc(w)).join('<br>')}</div></div>`;
+  };
+
+  window.openModal = function (id) { document.getElementById(id).classList.add('open'); };
+  window.closeModal = function (id) { document.getElementById(id).classList.remove('open'); };
+  window.openContractorModal = function () {
+    const addr = val('ph-contractor-addr');
+    const parts = addr.split('\n');
+    setVal('cm-name', val('ph-contractor'));
+    setVal('cm-street', parts[0] || '');
+    setVal('cm-citystatezip', parts.slice(1).join(', ') || '');
+    openModal('contractor-modal');
+  };
+  window.saveContractorModal = function () {
+    const name = val('cm-name').trim();
+    const addr = [val('cm-street').trim(), val('cm-citystatezip').trim()].filter(Boolean).join('\n');
+    if (!name) { alert('Company name required.'); return; }
+    setVal('ph-contractor', name);
+    setVal('ph-contractor-addr', addr);
+    persistProject(); renderLetter(); closeModal('contractor-modal');
+  };
+  window.openAddModal = function () {
+    editingItemId = null;
+    specTags = []; subItemTags = [];
+    renderSpecTags(); renderSubItemTags();
+    ['f-desc', 'f-src-name', 'f-src-loc', 'f-src-addr', 'f-src-phone', 'f-alt-name', 'f-alt-loc', 'f-alt-addr', 'f-action-notes', 'f-test-date'].forEach(id => setVal(id, ''));
+    setVal('f-action', 'approved');
+    document.getElementById('f-apl').checked = false;
+    document.getElementById('f-one-source').checked = false;
+    document.getElementById('f-on-file').checked = false;
+    openModal('add-modal');
+  };
+  window.openCCModal = function () { setVal('cc-name', ''); setVal('cc-role', ''); setVal('cc-org', 'DelDOT'); openModal('cc-modal'); };
+  window.openRevModal = function () { setVal('rev-notes', ''); setVal('rev-items', ''); openModal('rev-modal'); };
+
+  window.renderSpecTags = function () {
+    const container = document.getElementById('spec-tags-container');
+    const input = document.getElementById('spec-tag-input');
+    container.querySelectorAll('.spec-tag').forEach(e => e.remove());
+    specTags.forEach((tag, i) => {
+      const span = document.createElement('span');
+      span.className = 'spec-tag';
+      span.innerHTML = `${esc(tag)} <span class="spec-tag-x" onclick="removeSpecTag(${i})">×</span>`;
+      container.insertBefore(span, input);
+    });
+  };
+  window.removeSpecTag = function (i) { specTags.splice(i, 1); renderSpecTags(); };
+  window.handleSpecTagInput = function (e) {
+    const input = e.target;
+    if (e.key === 'Enter' || e.key === ',') {
+      e.preventDefault();
+      let v = input.value.trim().replace(/,$/, '');
+      if (v) {
+        if (!v.startsWith('#')) v = '#' + v;
+        v = v.toUpperCase();
+        if (!specTags.includes(v)) specTags.push(v);
+        input.value = '';
+        renderSpecTags();
+        document.getElementById('spec-dd').classList.remove('open');
+      }
+    }
+    if (e.key === 'Backspace' && input.value === '' && specTags.length) { specTags.pop(); renderSpecTags(); }
+  };
+  window.specDropdownSearch = function (q) {
+    const dd = document.getElementById('spec-dd');
+    q = (q || '').trim().toLowerCase().replace(/^#/, '');
+    if (!q) { dd.classList.remove('open'); dd.innerHTML = ''; return; }
+    const matches = specLib.filter(s => s.num.toLowerCase().replace('#', '').includes(q) || (s.desc || '').toLowerCase().includes(q)).slice(0, 12);
+    if (!matches.length) { dd.classList.remove('open'); return; }
+    dd.innerHTML = matches.map(s =>
+      `<div class="spec-dd-option" onmousedown="specDdSelect(event,'${s.num.replace(/'/g, "\\'")}')"><span class="spec-dd-num">${esc(s.num)}</span><span class="spec-dd-desc">${esc(s.desc)}</span></div>`
+    ).join('');
+    dd.classList.add('open');
+  };
+  window.specDdSelect = function (e, num) {
+    e.preventDefault();
+    if (!specTags.includes(num)) specTags.push(num);
+    const entry = specLib.find(s => s.num === num);
+    if (entry && entry.desc && !val('f-desc')) setVal('f-desc', entry.desc);
+    document.getElementById('spec-tag-input').value = '';
+    document.getElementById('spec-dd').classList.remove('open');
+    renderSpecTags();
+  };
+
+  window.renderSubItemTags = function () {
+    const container = document.getElementById('subitem-tags-container');
+    const input = document.getElementById('subitem-tag-input');
+    container.querySelectorAll('.spec-tag').forEach(e => e.remove());
+    subItemTags.forEach((tag, i) => {
+      const span = document.createElement('span');
+      span.className = 'spec-tag';
+      span.style.background = 'var(--green-bg)';
+      span.innerHTML = `${esc(tag)} <span class="spec-tag-x" onclick="removeSubItemTag(${i})">×</span>`;
+      container.insertBefore(span, input);
+    });
+  };
+  window.removeSubItemTag = function (i) { subItemTags.splice(i, 1); renderSubItemTags(); };
+  window.handleSubItemInput = function (e) {
+    if (e.key === 'Enter' || e.key === ',') {
+      e.preventDefault();
+      const v = e.target.value.trim().replace(/,$/, '');
+      if (v) { subItemTags.push(v); e.target.value = ''; renderSubItemTags(); }
+    }
+  };
+
+  window.srcAutocomplete = function (which, q) {
+    const dd = document.getElementById(which === 'primary' ? 'src-dd-primary' : 'src-dd-alt');
+    q = (q || '').trim().toLowerCase();
+    srcFocusIdx[which] = -1;
+    if (!q) { dd.classList.remove('open'); return; }
+    const matches = sourceLib.filter(s =>
+      s.name.toLowerCase().includes(q) || (s.loc || '').toLowerCase().includes(q) || (s.tags || []).some(t => t.toLowerCase().includes(q))
+    ).slice(0, 8);
+    dd.innerHTML = matches.map(s =>
+      `<div class="src-option" onmousedown="srcSelect(event,'${which}','${s.id}')">
+        <div class="src-option-name">${esc(s.name)}</div>
+        <div class="src-option-detail">${esc(s.loc || '')}${s.addr ? ' · ' + esc(s.addr) : ''}</div>
+      </div>`
+    ).join('') || '<div style="padding:8px 10px;font-size:11px;color:var(--text-dim);">No matches</div>';
+    dd.classList.add('open');
+  };
+  window.srcSelect = function (e, which, id) {
+    e.preventDefault();
+    const s = sourceLib.find(x => x.id === id);
+    if (!s) return;
+    document.getElementById(which === 'primary' ? 'src-dd-primary' : 'src-dd-alt').classList.remove('open');
+    if (which === 'primary') {
+      setVal('f-src-name', s.name); setVal('f-src-loc', s.loc || ''); setVal('f-src-addr', s.addr || ''); setVal('f-src-phone', s.phone || '');
+    } else {
+      setVal('f-alt-name', s.name); setVal('f-alt-loc', s.loc || ''); setVal('f-alt-addr', s.addr || '');
+    }
+  };
+  window.srcKeyNav = function () {};
+
+  window.saveItem = function () {
+    const pending = val('spec-tag-input').trim();
+    if (pending) {
+      specTags.push(pending.startsWith('#') ? pending.toUpperCase() : '#' + pending.toUpperCase());
+      setVal('spec-tag-input', '');
+    }
+    const subPend = val('subitem-tag-input').trim();
+    if (subPend) subItemTags.push(subPend);
+    if (!specTags.length) { alert('Add at least one spec number.'); return; }
+    const newItem = {
+      id: editingItemId || Date.now(),
+      specs: [...specTags],
+      letterSpecs: [...specTags],
+      desc: val('f-desc'),
+      subItems: [...subItemTags],
+      srcName: val('f-src-name'),
+      srcLoc: val('f-src-loc'),
+      srcAddr: val('f-src-addr'),
+      srcPhone: val('f-src-phone'),
+      altName: val('f-alt-name'),
+      altLoc: val('f-alt-loc'),
+      altAddr: val('f-alt-addr'),
+      action: val('f-action'),
+      actionNotes: val('f-action-notes'),
+      apl: document.getElementById('f-apl').checked,
+      oneSource: document.getElementById('f-one-source').checked,
+      onFile: document.getElementById('f-on-file').checked,
+      testDate: val('f-test-date'),
+      family: SOSEngine.familyFromSpec(specTags[0], val('f-desc'), subItemTags.join(' ')),
+    };
+    autoSaveSource(newItem.srcName, newItem.srcLoc, newItem.srcAddr, newItem.srcPhone);
+    newItem.specs.forEach(n => autoSaveSpec(n, newItem.desc, newItem.srcName, newItem.srcLoc, newItem.srcAddr, newItem.srcPhone));
+    if (editingItemId != null) {
+      const idx = items.findIndex(i => i.id === editingItemId);
+      if (idx >= 0) items[idx] = newItem;
+      editingItemId = null;
+    } else items.push(newItem);
+    persistAll();
+    closeModal('add-modal');
+    renderItems(); renderLetter(); renderSourceLib();
+  };
+  window.editItem = function (id) {
+    const item = items.find(i => i.id === id);
+    if (!item) return;
+    editingItemId = id;
+    specTags = [...(item.letterSpecs || item.specs || [])];
+    subItemTags = [...(item.subItems || [])];
+    renderSpecTags(); renderSubItemTags();
+    setVal('f-desc', item.desc || '');
+    setVal('f-src-name', item.srcName || '');
+    setVal('f-src-loc', item.srcLoc || '');
+    setVal('f-src-addr', item.srcAddr || '');
+    setVal('f-src-phone', item.srcPhone || '');
+    setVal('f-alt-name', item.altName || '');
+    setVal('f-alt-loc', item.altLoc || '');
+    setVal('f-alt-addr', item.altAddr || '');
+    setVal('f-action', item.action || 'approved');
+    setVal('f-action-notes', item.actionNotes || '');
+    setVal('f-test-date', item.testDate || '');
+    document.getElementById('f-apl').checked = !!item.apl;
+    document.getElementById('f-one-source').checked = !!item.oneSource;
+    document.getElementById('f-on-file').checked = !!item.onFile;
+    openModal('add-modal');
+  };
+  window.deleteItem = function (id) {
+    if (!confirm('Remove this item?')) return;
+    items = items.filter(i => i.id !== id);
+    persistAll(); renderItems(); renderLetter();
+  };
+  window.clearAllItems = function () {
+    if (!items.length) return;
+    if (!confirm('Remove all SOS items?')) return;
+    items = []; warnings = [];
+    persistAll(); renderItems(); renderLetter(); renderWarnings();
+  };
+
+  window.renderSourceLib = function () {
+    const tbody = document.getElementById('lib-tbody');
+    const q = (document.getElementById('lib-search')?.value || '').toLowerCase();
+    const filtered = q
+      ? sourceLib.filter(s => s.name.toLowerCase().includes(q) || (s.loc || '').toLowerCase().includes(q) || (s.tags || []).some(t => t.toLowerCase().includes(q)))
+      : sourceLib;
+    tbody.innerHTML = filtered.map(s => `
+      <tr>
+        <td style="font-weight:500;">${esc(s.name)}</td>
+        <td>${esc(s.loc || '')}</td>
+        <td>${esc(s.addr || '')}</td>
+        <td style="font-family:var(--mono);font-size:11px;">${esc(s.phone || '')}</td>
+        <td>${(s.tags || []).map(t => `<span class="lib-tag">${esc(t)}</span>`).join('')}</td>
+        <td><button class="btn btn-ghost btn-sm" onclick="openSourceModal('${s.id}')">✎</button></td>
+      </tr>`).join('');
+    saveSourceLib();
+  };
+  window.openSourceModal = function (editId, prefillName, callback) {
+    setVal('sl-edit-id', editId || '');
+    slActiveTags = [];
+    _srcModalCallback = callback || null;
+    ['sl-name', 'sl-loc', 'sl-addr', 'sl-phone', 'sl-contact'].forEach(id => setVal(id, ''));
+    if (editId) {
+      const s = sourceLib.find(x => x.id === editId);
+      if (s) {
+        setVal('sl-name', s.name); setVal('sl-loc', s.loc || ''); setVal('sl-addr', s.addr || '');
+        setVal('sl-phone', s.phone || ''); setVal('sl-contact', s.contact || '');
+        slActiveTags = [...(s.tags || [])];
+      }
+    } else if (prefillName) setVal('sl-name', prefillName);
+    renderSlPresetTags(); renderSlActiveTags();
+    openModal('source-modal');
+  };
+  function renderSlPresetTags() {
+    document.getElementById('sl-tag-preset').innerHTML = SOSData.PRESET_TAGS.map(t => {
+      const active = slActiveTags.includes(t);
+      return `<button class="btn btn-sm" style="font-size:10px;font-family:var(--mono);padding:3px 8px;${active ? 'background:var(--deldot);color:white;' : 'background:var(--surface2);border:1px solid var(--border);'}" onclick="togglePresetTag('${t}')">${t}</button>`;
+    }).join('');
+  }
+  window.togglePresetTag = function (tag) {
+    const i = slActiveTags.indexOf(tag);
+    if (i >= 0) slActiveTags.splice(i, 1); else slActiveTags.push(tag);
+    renderSlPresetTags(); renderSlActiveTags();
+  };
+  window.addCustomTag = function () {
+    const v = val('sl-tag-input').trim();
+    if (v && !slActiveTags.includes(v)) slActiveTags.push(v);
+    setVal('sl-tag-input', '');
+    renderSlActiveTags();
+  };
+  function renderSlActiveTags() {
+    document.getElementById('sl-tags-active').innerHTML = slActiveTags.map((t, i) =>
+      `<span class="lib-tag">${esc(t)} <span class="lib-tag-x" onclick="removeSlTag(${i})">×</span></span>`
+    ).join('') || '<span style="font-size:11px;color:var(--text-dim);">No tags</span>';
+  }
+  window.removeSlTag = function (i) { slActiveTags.splice(i, 1); renderSlActiveTags(); renderSlPresetTags(); };
+  window.saveSource = function () {
+    const name = val('sl-name').trim();
+    if (!name) return;
+    const entry = { id: val('sl-edit-id') || ('s' + Date.now()), name, loc: val('sl-loc'), addr: val('sl-addr'), phone: val('sl-phone'), contact: val('sl-contact'), tags: [...slActiveTags] };
+    const idx = sourceLib.findIndex(s => s.id === entry.id);
+    if (idx >= 0) sourceLib[idx] = entry; else sourceLib.push(entry);
+    saveSourceLib(); closeModal('source-modal'); renderSourceLib();
+  };
+
+  window.renderSpecLibTab = function () {
+    const tbody = document.getElementById('spec-lib-tbody');
+    const q = (document.getElementById('spec-lib-search')?.value || '').toLowerCase();
+    const filtered = (q ? specLib.filter(s => s.num.toLowerCase().includes(q) || (s.desc || '').toLowerCase().includes(q)) : [...specLib])
+      .sort((a, b) => a.num.localeCompare(b.num));
+    tbody.innerHTML = filtered.map(s => `
+      <tr>
+        <td><span style="font-family:var(--mono);font-weight:700;color:var(--deldot);">${esc(s.num)}</span></td>
+        <td>${esc(s.desc || '')}</td>
+        <td>${esc(s.lastSrcName || '—')}</td>
+        <td><button class="btn btn-ghost btn-sm" onclick="openSpecLibModal('${s.num.replace(/'/g, "\\'")}')">✎</button></td>
+      </tr>`).join('');
+    document.getElementById('specs-count').textContent = specLib.length;
+    const lab = document.getElementById('spec-lib-count-label');
+    if (lab) lab.textContent = filtered.length + ' of ' + specLib.length + ' specs';
+  };
+  window.openSpecLibModal = function (num) {
+    setVal('sl-spec-edit-id', num || '');
+    setVal('sl-spec-num', ''); setVal('sl-spec-desc', ''); setVal('sl-spec-notes', '');
+    if (num) {
+      const e = specLib.find(s => s.num === num);
+      if (e) { setVal('sl-spec-num', e.num); setVal('sl-spec-desc', e.desc || ''); setVal('sl-spec-notes', e.notes || ''); }
+    }
+    openModal('spec-lib-modal');
+  };
+  window.saveSpecLibEntry = function () {
+    let num = val('sl-spec-num').trim().toUpperCase();
+    if (!num) return;
+    if (!num.startsWith('#')) num = '#' + num;
+    const existing = specLib.find(s => s.num === num);
+    if (existing) { existing.desc = val('sl-spec-desc'); existing.notes = val('sl-spec-notes'); }
+    else specLib.push({ num, desc: val('sl-spec-desc'), notes: val('sl-spec-notes'), tags: [], lastSrcName: '', lastSrcLoc: '' });
+    saveSpecLib(); closeModal('spec-lib-modal'); renderSpecLibTab();
+  };
+
+  function setImportStatus(msg, color) {
+    const wrap = document.getElementById('import-status');
+    const txt = document.getElementById('import-status-text');
+    wrap.style.display = 'block';
+    txt.className = color === 'green' ? 'ok-banner' : color === 'red' ? 'warn-banner' : 'warn-banner';
+    if (color !== 'green' && color !== 'red') txt.style.background = 'var(--blue-bg)';
+    txt.textContent = msg;
+  }
+
+  window.handleImportFile = async function (file) {
+    if (!file) return;
+    if (!/\.xlsx?$/i.test(file.name)) {
+      setImportStatus('Drop the contractor SOS .xls / .xlsx form (not the issued PDF).', 'red');
+      return;
+    }
+    document.getElementById('drop-label').textContent = file.name;
+    setImportStatus('Reading spreadsheet…', 'blue');
+    try {
+      const buf = await file.arrayBuffer();
+      const wb = XLSX.read(buf, { type: 'array', cellDates: false });
+      const result = SOSEngine.processWorkbook(wb, { filename: file.name });
+      parsedImport = result;
+      warnings = result.warnings || [];
+      applyProjectToHeader(result.project);
+      setImportStatus(`Parsed ${result.items.length} letter item${result.items.length === 1 ? '' : 's'} from ${result.ungrouped.length} spreadsheet row${result.ungrouped.length === 1 ? '' : 's'}. Review, then load into the letter.`, 'green');
+      renderImportPreview();
+    } catch (e) {
+      console.error(e);
+      setImportStatus('Could not parse this file: ' + e.message, 'red');
+    }
+  };
+
+  function applyProjectToHeader(p) {
+    if (!p) return;
+    if (p.contract) setVal('ph-contract', p.contract);
+    if (p.title) setVal('ph-title', p.title);
+    if (p.contractor) setVal('ph-contractor', p.contractor);
+    if (p.contractorAddr) setVal('ph-contractor-addr', p.contractorAddr);
+    if (p.contact) setVal('ph-contact', p.contact);
+    if (p.docKind) setVal('ph-dockind', p.docKind);
+    if (p.district) {
+      const sel = document.getElementById('ph-district');
+      const want = p.district.toLowerCase();
+      for (const opt of sel.options) {
+        if (opt.value.toLowerCase() === want || want.includes(opt.value.toLowerCase()) || opt.value.toLowerCase().includes(want.split(/\s+/)[0])) {
+          sel.value = opt.value; break;
+        }
+      }
+    }
+    if (!val('ph-date')) setVal('ph-date', new Date().toISOString().slice(0, 10));
+    updateContractWarn();
+    persistProject();
+  }
+
+  function renderImportPreview() {
+    const block = document.getElementById('import-preview-block');
+    const tbody = document.getElementById('import-preview-tbody');
+    if (!parsedImport) { block.style.display = 'none'; return; }
+    tbody.innerHTML = parsedImport.items.map(item => {
+      const am = actionMeta[item.action] || actionMeta.approved;
+      const specs = item.letterSpecs || item.specs;
+      return `<tr>
+        <td>${specs.map(s => `<div class="spec-num">${esc(s)}</div>`).join('')}</td>
+        <td><div style="font-weight:500;">${esc(item.desc)}</div>${(item.subItems || []).map(s => `<div style="font-size:11px;color:var(--text-mid);">• ${esc(s)}</div>`).join('')}</td>
+        <td><div class="source-primary">${esc(item.srcName || '')}${item.srcLoc ? ' — ' + esc(item.srcLoc) : ''}</div>
+            ${item.altName ? `<div class="source-alt">${esc(item.altName)}${item.altLoc ? ' — ' + esc(item.altLoc) : ''}</div>` : ''}</td>
+        <td><span class="action-badge ${am.cls}">${am.label}</span></td>
+        <td><div class="rule-chip">${esc(item.rule || '')}</div></td>
+      </tr>`;
+    }).join('');
+    document.getElementById('import-preview-title').textContent =
+      `${parsedImport.items.length} letter items (rules applied)`;
+    block.style.display = 'block';
+  }
+
+  window.importAllParsed = function () {
+    if (!parsedImport || !parsedImport.items.length) return;
+    items = parsedImport.items.map((it, i) => ({ ...it, id: Date.now() + i }));
+    ccList = parsedImport.cc || [];
+    warnings = parsedImport.warnings || [];
+    if (!revisions.length) {
+      revisions = [{ num: 1, date: val('ph-date') || new Date().toISOString().slice(0, 10), notes: 'Initial issue from contractor SOS spreadsheet.', items: [] }];
+      currentRev = 1;
+    }
+    items.forEach(it => {
+      autoSaveSource(it.srcName, it.srcLoc, it.srcAddr, it.srcPhone);
+      if (it.altName) autoSaveSource(it.altName, it.altLoc, it.altAddr, it.altPhone);
+      (it.specs || []).forEach(n => autoSaveSpec(n, it.desc, it.srcName, it.srcLoc, it.srcAddr, it.srcPhone));
+    });
+    persistAll();
+    renderItems(); renderCC(); renderCCLib(); renderRevisions(); renderSourceLib(); renderSpecLibTab();
+    renderLetter(); renderWarnings();
+    switchTab('items', document.querySelector('.tab[data-tab="items"]'));
+    setImportStatus('Letter loaded. Fill the application/contract number if it is highlighted, then print.', 'green');
+  };
+  window.clearImportPreview = function () {
+    parsedImport = null;
+    document.getElementById('import-preview-block').style.display = 'none';
+    document.getElementById('drop-label').textContent = 'Drop DelDOT SOS spreadsheet here';
+    document.getElementById('file-input').value = '';
+  };
+
+  window.exportItemsXls = function () {
+    if (typeof XLSX === 'undefined') return;
+    const rows = [['Spec', 'Description', 'Sub-items', 'Source', 'Location', 'Alt', 'Action', 'Notes', 'Rule']];
+    items.forEach(it => {
+      rows.push([
+        (it.letterSpecs || it.specs || []).join(' '),
+        it.desc, (it.subItems || []).join('; '),
+        it.srcName, it.srcLoc, it.altName ? it.altName + ' - ' + (it.altLoc || '') : '',
+        it.action, it.actionNotes, it.rule,
+      ]);
+    });
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(rows), 'SOS');
+    const slug = (val('ph-contract') || 'sos').replace(/[^\w.-]+/g, '_');
+    XLSX.writeFile(wb, slug + '_SOS_items.xlsx');
+  };
+
+  window.uploadSignature = function (event) {
+    const file = event.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = function (e) {
+      signatureImage = e.target.result;
+      localStorage.setItem('sosSignatureImage', signatureImage);
+      renderLetter();
+    };
+    reader.readAsDataURL(file);
+  };
+
+  window.printLetter = function () {
+    const html = document.getElementById('letter-doc').innerHTML;
+    const w = window.open('', '_blank');
+    w.document.write(`<!DOCTYPE html><html><head><title>SOS Letter</title>
+<style>
+@page { size: 8.5in 11in; margin: 1in; }
+body { font-family: 'Times New Roman', serif; font-size: 11pt; line-height: 1.55; color: #111; }
+.letter-letterhead { text-align: center; border-bottom: 2px solid #003a70; padding-bottom: 12pt; margin-bottom: 18pt; }
+.letter-letterhead img { width: 2in; display: block; margin: 0 auto; }
+.letter-secretary { font-size: 7.5pt; letter-spacing: .12em; text-transform: uppercase; color: #003a70; margin-bottom: 16pt; font-weight: 700; }
+.letter-date, .letter-to { margin-bottom: 16pt; }
+.letter-body p { margin-bottom: 12pt; }
+.letter-section-block { margin-bottom: 22pt; page-break-inside: avoid; }
+.letter-row { display: grid; grid-template-columns: 72pt 1fr; gap: 6pt; margin-bottom: 3pt; page-break-inside: avoid; }
+.letter-field-label { font-weight: 700; text-decoration: underline; }
+hr { border: none; border-top: 1px solid #ccc; margin: 14pt 0; }
+.letter-sig { margin-top: 24pt; page-break-inside: avoid; }
+.letter-sig-name { font-weight: 700; margin-top: 36pt; }
+.letter-cc { margin-top: 14pt; font-size: 10pt; line-height: 1.75; page-break-inside: avoid; }
+</style></head><body>${html}</body></html>`);
+    w.document.close();
+    setTimeout(() => w.print(), 400);
+  };
+
+  window.toggleHighlightMode = function () {
+    highlightMode = !highlightMode;
+    const btn = document.getElementById('highlight-btn');
+    const scroll = document.querySelector('.letter-scroll');
+    btn.classList.toggle('active', highlightMode);
+    scroll.classList.toggle('highlight-mode', highlightMode);
+    btn.textContent = highlightMode ? '🖊 Highlighting…' : '🖊 Highlight';
+  };
+  window.clearHighlights = function () {
+    const doc = document.getElementById('letter-doc');
+    doc.querySelectorAll('mark.user-highlight').forEach(el => {
+      const p = el.parentNode;
+      while (el.firstChild) p.insertBefore(el.firstChild, el);
+      p.removeChild(el);
+      p.normalize();
+    });
+  };
+  document.addEventListener('mouseup', () => {
+    if (!highlightMode) return;
+    const sel = window.getSelection();
+    if (!sel || sel.isCollapsed) return;
+    const range = sel.getRangeAt(0);
+    const doc = document.getElementById('letter-doc');
+    if (!doc.contains(range.commonAncestorContainer)) return;
+    try {
+      const mark = document.createElement('mark');
+      mark.className = 'user-highlight';
+      range.surroundContents(mark);
+      sel.removeAllRanges();
+    } catch (e) {
+      try {
+        const mark = document.createElement('mark');
+        mark.className = 'user-highlight';
+        mark.appendChild(range.extractContents());
+        range.insertNode(mark);
+        sel.removeAllRanges();
+      } catch (e2) {}
+    }
+  });
+
+  function wireDropZone(el) {
+    if (!el) return;
+    el.addEventListener('dragover', e => { e.preventDefault(); el.classList.add('drag-over'); });
+    el.addEventListener('dragleave', () => el.classList.remove('drag-over'));
+    el.addEventListener('drop', e => {
+      e.preventDefault();
+      el.classList.remove('drag-over');
+      const file = e.dataTransfer.files[0];
+      if (file) handleImportFile(file);
+    });
+  }
+
+  document.querySelectorAll('.modal-backdrop').forEach(bd => {
+    bd.addEventListener('click', e => { if (e.target === bd) bd.classList.remove('open'); });
+  });
+
+  function initApp() {
+    loadSourceLib();
+    loadSpecLib();
+    loadCCLib();
+    loadProjectHeader();
+    wireProjectPersist();
+    wireDropZone(document.getElementById('drop-zone'));
+    document.querySelectorAll('.landing-drop').forEach(wireDropZone);
+    renderItems();
+    renderCC();
+    renderCCLib();
+    renderRevisions();
+    renderSourceLib();
+    renderSpecLibTab();
+    renderLetter();
+    renderWarnings();
+  }
+
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', initApp);
+  else initApp();
+})();
