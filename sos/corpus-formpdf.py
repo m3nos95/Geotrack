@@ -10,6 +10,7 @@ from pypdf import PdfReader
 
 SPEC_RE = re.compile(r'(?<!\d)([2-9]\d{5})(?!\d)')
 APP_RE = re.compile(r'(?<!\d)(\d{9,10})(?!\d)')
+T_RE = re.compile(r'\bT\s*(\d{4})\s*-?\s*(\d{3})\s*-?\s*(\d{2})\b', re.I)
 CITY_RE = re.compile(
     r'([A-Za-z][A-Za-z .\'-]{2,40}),?\s*(DE|MD|PA|NJ|VA|NC|NY|OH|IN|GA|AL|UT|AZ|IL|MI)\s*\d{0,5}',
     re.I,
@@ -56,11 +57,34 @@ def _grab(text: str, label: str) -> str:
     return val[:180]
 
 
+def contract_ids(text: str) -> list[str]:
+    compact = re.sub(r'[\s._/-]', '', text.upper())
+    ids: list[str] = []
+    seen: set[str] = set()
+
+    def add(value: str) -> None:
+        if value and value not in seen:
+            seen.add(value)
+            ids.append(value)
+
+    for m in re.finditer(r'T(\d{4})(\d{3})(\d{2})', compact):
+        add('T' + m.group(1) + m.group(2) + m.group(3))
+    for m in re.finditer(r'CA(\d{3,5})', compact):
+        add('CA' + m.group(1))
+    for m in APP_RE.finditer(text):
+        add(m.group(1))
+    return ids
+
+
 def parse_project(text: str) -> dict:
     contract = _grab(text, r'Agreement\s*/?\s*Permit\s*/?\s*Contract\s*/?\s*Application\s*#?')
-    m = APP_RE.search(contract) or APP_RE.search(text)
-    if m:
-        contract = m.group(1)
+    t = T_RE.search(contract) or T_RE.search(text[:500])
+    if t:
+        contract = f'T{t.group(1)}-{t.group(2)}-{t.group(3)}'
+    else:
+        m = APP_RE.search(contract) or APP_RE.search(text)
+        if m:
+            contract = m.group(1)
     title = _grab(text, r'Title of Contract')
     title = re.sub(r'\s*Source of Supply.*$', '', title, flags=re.I).strip()
     contractor = _grab(text, r'Contractor')
@@ -77,7 +101,7 @@ def parse_project(text: str) -> dict:
         'date': re.sub(r'^Date:\s*', '', _grab(text, r'Date'), flags=re.I),
         'district': re.sub(r'^District:\s*', '', _grab(text, r'District'), flags=re.I),
         'contact': re.sub(r'^DelDOT Contact:\s*', '', _grab(text, r'DelDOT Contact'), flags=re.I),
-        'appNums': APP_RE.findall(contract + ' ' + text[:800]),
+        'appNums': contract_ids(contract + ' ' + text[:800]),
     }
 
 
@@ -132,7 +156,7 @@ def parse_form(path: str) -> dict:
         'kind': kind,
         'project': parse_project(text) if kind == 'contractor-form' else {},
         'items': parse_items(text) if kind == 'contractor-form' else [],
-        'appNums': list(dict.fromkeys(APP_RE.findall(text))),
+        'appNums': contract_ids(text),
         'text': text,
     }
     return out

@@ -225,7 +225,32 @@ function parseIssuedSections(raw) {
 }
 
 function appNumsFromName(filename) {
-  return [...String(filename).matchAll(/\b(\d{9,10})\b/g)].map(m => m[1]);
+  return contractKeysFrom(filename);
+}
+
+/** Compact contract / application keys: T2024-062-02 == T202406202, CA 2525, 9-digit apps. */
+function contractKey(raw) {
+  return contractKeysFrom(raw)[0] || '';
+}
+
+function contractKeysFrom(raw) {
+  const s = String(raw || '').toUpperCase();
+  const keys = [];
+  const seen = new Set();
+  const add = (k) => {
+    if (!k || seen.has(k)) return;
+    seen.add(k);
+    keys.push(k);
+  };
+  const compact = s.replace(/[\s._/-]/g, '');
+  let m;
+  const tRe = /T(\d{4})(\d{3})(\d{2})/g;
+  while ((m = tRe.exec(compact))) add('T' + m[1] + m[2] + m[3]);
+  const caRe = /CA(\d{3,5})/g;
+  while ((m = caRe.exec(compact))) add('CA' + m[1]);
+  const appRe = /\b(\d{9,10})\b/g;
+  while ((m = appRe.exec(s))) add(m[1]);
+  return keys;
 }
 
 function discoverCases() {
@@ -295,9 +320,15 @@ function pairLooseFiles(files, inspected) {
     const keys = [];
     const name = pairKey(file);
     if (name) keys.push('name:' + name);
-    appNumsFromName(file).forEach(n => keys.push('app:' + n));
+    appNumsFromName(file).forEach(n => keys.push('id:' + n));
     const info = inspected[file];
-    (info && info.appNums || []).forEach(n => keys.push('app:' + n));
+    (info && info.appNums || []).forEach(n => {
+      contractKeysFrom(n).forEach(k => keys.push('id:' + k));
+      keys.push('app:' + n);
+    });
+    if (info && info.project && info.project.contract) {
+      contractKeysFrom(info.project.contract).forEach(k => keys.push('id:' + k));
+    }
     return [...new Set(keys)];
   };
 
@@ -361,6 +392,113 @@ function engineSummary(result) {
   };
 }
 
+function attachDiff(out) {
+  const issued = (out.letters || [])
+    .filter(l => l.kind === 'issued-letter' && l.sections.length)
+    .sort((a, b) => b.sections.length - a.sections.length);
+  if (out.engine && issued.length) {
+    const letter = issued[0];
+    const engSpecs = new Set(out.engine.items.flatMap(i => specTokens((i.specs || []).join(' ') + ' ' + i.section)));
+    const pdfSpecs = new Set(letter.sections.flatMap(s => specTokens(s.section)));
+    const missing = [...pdfSpecs].filter(s => ![...engSpecs].some(e => e.replace('#', '') === s.replace('#', '')));
+    const extra = [...engSpecs].filter(s => ![...pdfSpecs].some(p => p.replace('#', '') === s.replace('#', '')));
+    out.diff = {
+      against: letter.file,
+      engineItems: out.engine.items.length,
+      pdfSections: letter.sections.length,
+      specsInPdfNotEngine: missing,
+      specsInEngineNotPdf: extra,
+      pdfIntro: letter.intro,
+      enginePhrase: Engine.contractPhrase(out.engine.project),
+    };
+  } else {
+    delete out.diff;
+  }
+  return out;
+}
+
+function resultContractKeys(r) {
+  const keys = [];
+  const addAll = (s) => { contractKeysFrom(s).forEach(k => keys.push(k)); };
+  addAll(r.slug);
+  (r.xlsFiles || []).forEach(addAll);
+  (r.formFiles || []).forEach(addAll);
+  (r.pdfFiles || []).forEach(addAll);
+  if (r.engine && r.engine.project) {
+    addAll((r.engine.project.contract || '') + ' ' + (r.engine.project.title || ''));
+  }
+  (r.letters || []).forEach(l => {
+    addAll(l.file);
+    addAll(l.intro);
+  });
+  return [...new Set(keys)];
+}
+
+function mergeOneGroup(group) {
+  if (group.length === 1) return attachDiff(group[0]);
+  const withEngine = group.find(g => g.engine);
+  const out = {
+    slug: (withEngine && withEngine.slug) || group.map(g => g.slug).sort((a, b) => a.length - b.length)[0],
+    dir: (withEngine && withEngine.dir) || group[0].dir,
+    xlsFiles: [...new Set(group.flatMap(g => g.xlsFiles || []))],
+    formFiles: [...new Set(group.flatMap(g => g.formFiles || []))],
+    pdfFiles: [...new Set(group.flatMap(g => g.pdfFiles || []))],
+    unfiled: group.some(g => g.unfiled),
+    engine: (withEngine && withEngine.engine) || null,
+    letters: [],
+    notes: [],
+  };
+  const seenLetter = new Set();
+  group.forEach(g => {
+    (g.letters || []).forEach(l => {
+      const id = l.file || JSON.stringify(l.intro);
+      if (seenLetter.has(id)) return;
+      seenLetter.add(id);
+      out.letters.push(l);
+    });
+  });
+  const seenNote = new Set();
+  group.forEach(g => {
+    (g.notes || []).forEach(n => {
+      if (out.engine && /PDF only|add the contractor/i.test(n)) return;
+      if (seenNote.has(n)) return;
+      seenNote.add(n);
+      out.notes.push(n);
+    });
+  });
+  return attachDiff(out);
+}
+
+function mergeComparedResults(results) {
+  const parent = results.map((_, i) => i);
+  const find = (i) => {
+    while (parent[i] !== i) {
+      parent[i] = parent[parent[i]];
+      i = parent[i];
+    }
+    return i;
+  };
+  const byKey = new Map();
+  results.forEach((r, i) => {
+    resultContractKeys(r).forEach(k => {
+      if (byKey.has(k)) {
+        const a = find(byKey.get(k));
+        const b = find(i);
+        if (a !== b) parent[b] = a;
+      } else {
+        byKey.set(k, i);
+      }
+    });
+  });
+  const groups = new Map();
+  results.forEach((r, i) => {
+    const p = find(i);
+    if (!groups.has(p)) groups.set(p, []);
+    groups.get(p).push(r);
+  });
+  return [...groups.values()].map(mergeOneGroup);
+}
+
 function specTokens(s) {
   return [...String(s || '').matchAll(/#?\d{6}|#\d+xxx/gi)].map(m => m[0].replace(/^#/, '#').toUpperCase());
 }
@@ -415,25 +553,7 @@ function compareCase(c) {
     }
   }
 
-  const issued = out.letters
-      .filter(l => l.kind === 'issued-letter' && l.sections.length)
-      .sort((a, b) => b.sections.length - a.sections.length);
-    if (out.engine && issued.length) {
-    const letter = issued[0];
-    const engSpecs = new Set(out.engine.items.flatMap(i => specTokens((i.specs || []).join(' ') + ' ' + i.section)));
-    const pdfSpecs = new Set(letter.sections.flatMap(s => specTokens(s.section)));
-    const missing = [...pdfSpecs].filter(s => ![...engSpecs].some(e => e.replace('#', '') === s.replace('#', '')));
-    const extra = [...engSpecs].filter(s => ![...pdfSpecs].some(p => p.replace('#', '') === s.replace('#', '')));
-    out.diff = {
-      against: letter.file,
-      engineItems: out.engine.items.length,
-      pdfSections: letter.sections.length,
-      specsInPdfNotEngine: missing,
-      specsInEngineNotPdf: extra,
-      pdfIntro: letter.intro,
-      enginePhrase: Engine.contractPhrase(out.engine.project),
-    };
-  }
+  attachDiff(out);
   return out;
 }
 
@@ -519,7 +639,7 @@ function main() {
     process.exit(1);
   }
   extra.forEach(d => console.error('Scanning ' + d));
-  const results = discoverCases().map(compareCase);
+  const results = mergeComparedResults(discoverCases().map(compareCase));
   const text = renderText(results);
   fs.writeFileSync(path.join(ROOT, 'report.md'), text);
   fs.writeFileSync(path.join(ROOT, 'report.json'), JSON.stringify(results, null, 2));
@@ -537,4 +657,14 @@ function main() {
 
 if (require.main === module) main();
 
-module.exports = { pairKey, pairLooseFiles, appNumsFromName, gridFromForm, argvDirs, listFilesRecursive };
+module.exports = {
+  pairKey,
+  pairLooseFiles,
+  appNumsFromName,
+  contractKey,
+  contractKeysFrom,
+  mergeComparedResults,
+  gridFromForm,
+  argvDirs,
+  listFilesRecursive,
+};
