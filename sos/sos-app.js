@@ -333,11 +333,22 @@
   window.setCcRuleField = function (id, field, value) {
     const row = ccAssignments.find(a => a.id === id);
     if (!row) return;
+    const prevName = row.name;
     if (field === 'always') row.always = !!value;
     else row[field] = value;
+    if (field === 'name' && value && String(value).trim()) {
+      const next = String(value).trim();
+      row.name = next;
+      if (prevName && ccNameKey(prevName) !== ccNameKey(next)) {
+        applyCcNameChange(prevName, { name: next, org: row.org || 'DelDOT', role: row.role || '' });
+        row.name = next;
+      } else {
+        upsertCcLibPerson(next, row.org || 'DelDOT', { force: true });
+      }
+    }
     persistCcRules();
     if (items.length) applyCcRulesToLetter();
-    else { renderLetter(); }
+    else { renderLetter(); renderCCLib(); renderCC(); }
   };
 
   window.toggleCcRuleGroup = function (id, groupId, on) {
@@ -476,7 +487,12 @@
       <tr>
         <td style="font-weight:500;">${esc(cc.name)}</td>
         <td><span style="font-family:var(--mono);font-size:10px;background:var(--blue-bg);color:var(--deldot);border:1px solid #b0c4e0;border-radius:2px;padding:2px 5px;">${esc(cc.org)}</span></td>
-        <td><button class="btn btn-ghost btn-sm btn-icon" onclick="deleteCC(${cc.id})" style="color:var(--red);">✕</button></td>
+        <td>
+          <div style="display:flex;align-items:center;gap:4px;">
+            <button class="btn btn-ghost btn-sm btn-icon" onclick="openCCModal('', '${esc(String(cc.id))}')" title="Edit name / org">✎</button>
+            <button class="btn btn-ghost btn-sm btn-icon" onclick="deleteCC(${cc.id})" style="color:var(--red);" title="Remove from this letter">✕</button>
+          </div>
+        </td>
       </tr>`).join('');
     document.getElementById('cc-count').textContent = ccList.length;
     const activeEl = document.getElementById('cc-active-count');
@@ -490,14 +506,16 @@
     const filtered = ccLib.filter(p => !q || p.name.toLowerCase().includes(q) || (p.org || '').toLowerCase().includes(q));
     tbody.innerHTML = filtered.map(p => {
       const onLetter = activeNames.has(p.name.toLowerCase());
-      return `<tr style="${onLetter ? 'opacity:.4;' : ''}">
+      const idJs = JSON.stringify(p.id);
+      return `<tr style="${onLetter ? 'opacity:.55;' : ''}">
         <td style="font-weight:500;">${esc(p.name)}</td>
         <td>${esc(p.org)}</td>
         <td>
-          <div style="display:flex;align-items:center;gap:6px;flex-wrap:nowrap;">
+          <div style="display:flex;align-items:center;gap:4px;flex-wrap:nowrap;">
+            <button class="btn btn-ghost btn-sm btn-icon" onclick='openCCModal(${idJs})' title="Edit spelling / org">✎</button>
             ${onLetter ? '<span style="font-size:10px;color:var(--text-dim);">on letter</span>'
-              : `<button class="btn btn-primary btn-sm" style="font-size:10px;padding:2px 8px;" onclick="addCCFromLib('${p.id}')">+ Add</button>`}
-            <button class="btn btn-ghost btn-sm btn-icon" onclick="deleteCCFromLib('${p.id}')" title="Remove from master list (retired)" style="color:var(--red);">✕</button>
+              : `<button class="btn btn-primary btn-sm" style="font-size:10px;padding:2px 8px;" onclick='addCCFromLib(${idJs})'>+ Add</button>`}
+            <button class="btn btn-ghost btn-sm btn-icon" onclick='deleteCCFromLib(${idJs})' title="Remove from master list (retired)" style="color:var(--red);">✕</button>
           </div>
         </td>
       </tr>`;
@@ -534,18 +552,83 @@
     renderCcRules();
     renderLetter();
   };
+  function setCcOrgSelect(org) {
+    const sel = document.getElementById('cc-org');
+    if (!sel) return;
+    const v = org || 'DelDOT';
+    if (![...sel.options].some(o => o.value === v || o.text === v)) {
+      const opt = document.createElement('option');
+      opt.value = v;
+      opt.textContent = v;
+      sel.appendChild(opt);
+    }
+    sel.value = v;
+  }
+
+  function applyCcNameChange(oldName, person) {
+    const name = String(person.name || '').trim();
+    if (!name) return;
+    const org = person.org || 'DelDOT';
+    const role = person.role || '';
+    const oldKey = ccNameKey(oldName);
+    const newKey = ccNameKey(name);
+    unretireName(name);
+    if (oldKey && oldKey !== newKey) retireName(oldName);
+    let lib = (oldKey && ccLib.find(p => ccNameKey(p.name) === oldKey))
+      || ccLib.find(p => ccNameKey(p.name) === newKey);
+    if (lib) {
+      lib.name = name;
+      lib.org = org;
+      lib.role = role;
+    } else {
+      ccLib.push({ id: 'cl' + Date.now(), name, org, role });
+    }
+    ls_set(STORE.cc_lib, ccLib);
+    ccList.forEach(c => {
+      if (ccNameKey(c.name) === oldKey || ccNameKey(c.name) === newKey) {
+        c.name = name;
+        c.org = org;
+        if (role) c.role = role;
+      }
+    });
+    ccAssignments.forEach(a => {
+      if (oldKey && ccNameKey(a.name) === oldKey) a.name = name;
+    });
+    persistCcRules();
+    if (liveLists.ccAlways && liveLists.ccAlways.length) {
+      liveLists.ccAlways = liveLists.ccAlways.map(p => {
+        const n = typeof p === 'string' ? p : p.name;
+        if (ccNameKey(n) !== oldKey) return p;
+        return typeof p === 'string' ? name : Object.assign({}, p, { name, org });
+      });
+      persistLists();
+    }
+  }
+
   window.saveCC = function () {
     const name = val('cc-name').trim();
     if (!name) return;
-    const org = val('cc-org');
+    const org = val('cc-org') || 'DelDOT';
     const role = val('cc-role').trim();
-    unretireName(name);
-    if (!ccLib.find(p => p.name.toLowerCase() === name.toLowerCase())) {
-      ccLib.push({ id: 'cl' + Date.now(), name, org, role });
-      ls_set(STORE.cc_lib, ccLib);
+    const libId = val('cc-edit-lib-id');
+    const letterId = val('cc-edit-letter-id');
+    const addToLetter = !!(document.getElementById('cc-add-to-letter') && document.getElementById('cc-add-to-letter').checked);
+    let oldName = name;
+    if (libId) {
+      const p = ccLib.find(x => String(x.id) === String(libId));
+      if (p) oldName = p.name;
+    } else if (letterId) {
+      const c = ccList.find(x => String(x.id) === String(letterId));
+      if (c) oldName = c.name;
     }
+    applyCcNameChange(oldName, { name, org, role });
+    if (addToLetter) addPersonToLetter(name, org);
     closeModal('cc-modal');
+    persistAll();
     renderCCLib();
+    renderCC();
+    renderCcRules();
+    renderLetter();
   };
 
   window.renderRevisions = function () {
@@ -699,7 +782,38 @@
     document.getElementById('f-on-file').checked = false;
     openModal('add-modal');
   };
-  window.openCCModal = function () { setVal('cc-name', ''); setVal('cc-role', ''); setVal('cc-org', 'DelDOT'); openModal('cc-modal'); };
+  window.openCCModal = function (libId, letterId) {
+    setVal('cc-edit-lib-id', libId || '');
+    setVal('cc-edit-letter-id', letterId != null && letterId !== '' ? String(letterId) : '');
+    setVal('cc-name', '');
+    setVal('cc-role', '');
+    setCcOrgSelect('DelDOT');
+    const addBox = document.getElementById('cc-add-to-letter');
+    const title = document.getElementById('cc-modal-title');
+    if (libId) {
+      const p = ccLib.find(x => String(x.id) === String(libId));
+      if (p) {
+        setVal('cc-name', p.name);
+        setCcOrgSelect(p.org || 'DelDOT');
+        setVal('cc-role', p.role || '');
+      }
+      if (title) title.textContent = 'Edit library person';
+      if (addBox) addBox.checked = !!(p && ccList.some(c => ccNameKey(c.name) === ccNameKey(p.name)));
+    } else if (letterId != null && letterId !== '') {
+      const c = ccList.find(x => String(x.id) === String(letterId));
+      if (c) {
+        setVal('cc-name', c.name);
+        setCcOrgSelect(c.org || 'DelDOT');
+        setVal('cc-role', c.role || '');
+      }
+      if (title) title.textContent = 'Edit name on this letter';
+      if (addBox) addBox.checked = true;
+    } else {
+      if (title) title.textContent = 'Add CC person';
+      if (addBox) addBox.checked = true;
+    }
+    openModal('cc-modal');
+  };
   window.openRevModal = function () { setVal('rev-notes', ''); setVal('rev-items', ''); openModal('rev-modal'); };
 
   window.renderSpecTags = function () {
@@ -1043,7 +1157,7 @@
     const always = (harvest && harvest.always) || liveLists.ccAlways || [];
     const letters = harvest && harvest.letters;
     if (!always.length && !letters) {
-      el.textContent = 'Optional: run learn-sos.bat and drop SOS-cc.json to fill the name library. ✕ on a library row removes a retired person from the master list so harvest will not put them back. Who is copied on a letter comes from the material assignments above.';
+      el.textContent = 'Use + Add person to put someone in the library (and on this letter). ✎ fixes spelling — the old spelling is retired so SOS-cc.json will not put the typo back. ✕ on a library row removes a retired person from the master list.';
       return;
     }
     const names = always.map(p => typeof p === 'string' ? p : p.name).filter(Boolean);

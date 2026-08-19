@@ -216,7 +216,7 @@
       <div style="font-size:10px;font-weight:700;color:var(--text-dim);letter-spacing:.08em;margin-bottom:6px;text-transform:uppercase;">District samplers (must-be-tested soil / stone)</div>
       <div id="cc-sampler-fields" style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:14px;"></div>
       <div class="toolbar">
-        <button class="btn btn-ghost btn-sm" onclick="openCCModal()">+ Library person</button>
+        <button class="btn btn-primary btn-sm" onclick="openCCModal()">+ Add person</button>
         <button class="btn btn-ghost btn-sm" onclick="addHarvestedAlwaysToLetter()">+ Harvested names</button>
         <input class="lib-search" id="cc-lib-search" placeholder="Search library…" oninput="renderCCLib()" style="width:180px;">
       </div>
@@ -231,7 +231,7 @@
           <div style="font-size:10px;font-weight:700;color:var(--text-dim);letter-spacing:.08em;margin-bottom:6px;text-transform:uppercase;">CC Library <span id="cc-lib-count"></span></div>
           <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;box-shadow:var(--shadow);">
             <table class="items-table">
-              <thead><tr><th>Name</th><th>Org</th><th style="width:110px;"></th></tr></thead>
+              <thead><tr><th>Name</th><th>Org</th><th style="width:148px;"></th></tr></thead>
               <tbody id="cc-lib-tbody"></tbody>
             </table>
           </div>
@@ -240,7 +240,7 @@
           <div style="font-size:10px;font-weight:700;color:var(--text-dim);letter-spacing:.08em;margin-bottom:6px;text-transform:uppercase;">On This Letter <span id="cc-active-count"></span></div>
           <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;box-shadow:var(--shadow);">
             <table class="items-table">
-              <thead><tr><th>Name</th><th>Org</th><th style="width:40px;"></th></tr></thead>
+              <thead><tr><th>Name</th><th>Org</th><th style="width:88px;"></th></tr></thead>
               <tbody id="cc-tbody"></tbody>
             </table>
           </div>
@@ -469,11 +469,13 @@
 <div class="modal-backdrop" id="cc-modal">
   <div class="modal" style="width:400px;">
     <div class="modal-header">
-      <div class="modal-title">Add to CC Library</div>
+      <div class="modal-title" id="cc-modal-title">Add CC person</div>
       <button class="btn btn-ghost btn-sm btn-icon" onclick="closeModal('cc-modal')">✕</button>
     </div>
     <div class="modal-body">
-      <div class="form-group"><div class="form-label">Name</div><input class="form-input" id="cc-name"></div>
+      <input type="hidden" id="cc-edit-lib-id" value="">
+      <input type="hidden" id="cc-edit-letter-id" value="">
+      <div class="form-group"><div class="form-label">Name</div><input class="form-input" id="cc-name" placeholder="First Last"></div>
       <div class="form-group">
         <div class="form-label">Organization</div>
         <select class="form-select" id="cc-org">
@@ -484,10 +486,14 @@
         </select>
       </div>
       <div class="form-group"><div class="form-label">Role / Title</div><input class="form-input" id="cc-role"></div>
+      <label style="display:flex;align-items:center;gap:8px;font-size:13px;margin-top:4px;">
+        <input type="checkbox" id="cc-add-to-letter" checked>
+        Also put on this letter
+      </label>
     </div>
     <div class="modal-footer">
       <button class="btn btn-ghost" onclick="closeModal('cc-modal')">Cancel</button>
-      <button class="btn btn-primary" onclick="saveCC()">Add to Library</button>
+      <button class="btn btn-primary" onclick="saveCC()" id="cc-save-btn">Save</button>
     </div>
   </div>
 </div>
