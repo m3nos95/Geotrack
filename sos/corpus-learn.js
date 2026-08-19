@@ -130,21 +130,8 @@ function gridFromForm(parsed) {
 }
 
 function readGrid(xlsPath) {
-  const code = `
-import json, sys
-path = sys.argv[1]
-rows = []
-try:
-    import xlrd
-    wb = xlrd.open_workbook(path)
-    sh = wb.sheet_by_index(0)
-    for r in range(sh.nrows):
-        rows.append([sh.cell_value(r, c) for c in range(sh.ncols)])
-except Exception as e:
-    raise SystemExit('xls read failed: ' + type(e).__name__ + ': ' + str(e))
-print(json.dumps(rows))
-`;
-  return JSON.parse(runPython(code, [xlsPath]));
+  const Fetch = require('./fetch-lists.js');
+  return Fetch.readSpreadsheetGrid(xlsPath);
 }
 
 function readPdf(pdfPath) {
@@ -605,15 +592,24 @@ function loadListsForDir(dir) {
         if (rules.contacts) bundle.contacts = rules.contacts;
       } catch (e) {}
     }
-    try {
-      const { findAggregateChart } = require('./fetch-lists.js');
-      const chart = findAggregateChart(dir);
-      if (chart) {
-        const grid = readGrid(chart);
-        bundle.aggregate = Lists.parseAggregateChartGrid(grid, { filename: path.basename(chart) });
-      }
-    } catch (e) {}
   }
+  try {
+    const Fetch = require('./fetch-lists.js');
+    const cfg = {};
+    try {
+      const watch = path.join(__dirname, 'SOS-watch.json');
+      if (fs.existsSync(watch)) Object.assign(cfg, JSON.parse(fs.readFileSync(watch, 'utf8')));
+    } catch (e) {}
+    const aggSnap = path.join(__dirname, 'lists', 'aggregate-snapshot.json');
+    if (fs.existsSync(aggSnap)) {
+      try { bundle.aggregate = JSON.parse(fs.readFileSync(aggSnap, 'utf8')); }
+      catch (e) {}
+    }
+    const chart = Fetch.resolveAggregateChart(dir, cfg);
+    if (chart) {
+      bundle.aggregate = Fetch.loadAggregateChart(chart);
+    }
+  } catch (e) {}
   return bundle;
 }
 

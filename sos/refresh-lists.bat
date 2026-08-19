@@ -25,10 +25,16 @@ if errorlevel 1 (
   echo Installing pypdf...
   %PY% -m pip install pypdf --quiet
 )
+%PY% -c "import openpyxl" >nul 2>&1
+if errorlevel 1 (
+  echo Installing openpyxl for Approved Source List.xlsx...
+  %PY% -m pip install openpyxl --quiet
+)
 
 echo Fetching DelDOT Approved Product Lists...
+echo Pulling Approved Source List from the Geo Construction Test Report share when that path is reachable.
 if exist "%FOLDER%\" (
-  echo Also scanning for the Aggregate Chart in:
+  echo SOS Program folder:
   echo   %FOLDER%
   node sos\fetch-lists.js --dir "%FOLDER%"
 ) else (
@@ -36,5 +42,5 @@ if exist "%FOLDER%\" (
 )
 set ERR=%ERRORLEVEL%
 echo.
-pause
+if /I not "%SOS_WATCH_NOPAUSE%"=="1" pause
 exit /b %ERR%

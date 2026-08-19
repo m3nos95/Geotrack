@@ -35,9 +35,16 @@ if errorlevel 1 (
   echo Installing xlrd and pypdf for this user...
   %PY% -m pip install "xlrd==1.2.0" pypdf --quiet
 )
+%PY% -c "import openpyxl" >nul 2>&1
+if errorlevel 1 (
+  echo Installing openpyxl for Approved Source List.xlsx...
+  %PY% -m pip install openpyxl --quiet
+)
 
 :runpass
 echo.
+echo [%DATE% %TIME%] Pulling Approved Source List from the shared folder...
+node sos\fetch-lists.js --chart-only --dir "%FOLDER%" --config "%CONFIG%"
 echo [%DATE% %TIME%] Pulling Outlook attachments...
 powershell -NoProfile -ExecutionPolicy Bypass -File "%~dp0outlook-pull.ps1" -Config "%CONFIG%"
 if errorlevel 1 (

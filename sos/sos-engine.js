@@ -638,6 +638,10 @@
           if (hit.status === 'rejected') {
             return { action: 'not-approved', notes: who + 'Not approved on the current aggregate chart.', date: '', highlight: false };
           }
+          if (hit.status === 'expired') {
+            const when = hit.expireDate || hit.testDate || '';
+            return { action: 'test', notes: who + 'Previous sample expired' + (when ? ' ' + when : '') + '. Must be tested and approved prior to use.', date: '', highlight: true };
+          }
           if (hit.status === 'approved') {
             return { action: 'approved', notes: who + ACTION_TEXT.approved, date: hit.testDate || '', highlight: false };
           }

@@ -35,7 +35,7 @@ Open: [deldot-sos.html](../deldot-sos.html) (GitHub Pages: `/Geotrack/deldot-sos
 
 Related rows from the **same plant** are grouped (e.g. Type C + Type B Superpave). Tack coat is rewritten as `#401xxx – HMA ITEMS` with a product bullet, matching issued letters.
 
-Tack / pavement marking / crack seal check the live [Approved Product Lists](https://materialsandresearch.deldot.gov/index.php/Approved_Product_Lists) (snapshot in `sos/lists/apl-snapshot.json`, refreshed with `refresh-sos-lists.bat`). GABC / borrow / stone check the office **Approved Aggregate Chart** — drop the current `.xls` on the **APL / Chart** tab. Sources on the chart with a test date become **Approved for use**; rejected rows are not approved; anything missing stays must-be-tested.
+Tack / pavement marking / crack seal check the live [Approved Product Lists](https://materialsandresearch.deldot.gov/index.php/Approved_Product_Lists) (snapshot in `sos/lists/apl-snapshot.json`, refreshed with `refresh-sos-lists.bat`). GABC / borrow / stone check the office **Approved Source List.xlsx** on `\\DOTFS01\Groups\Geo Construction Test Report\Reference Samples\`. `refresh-sos-lists.bat` (daily) and `watch-sos-inbox.bat` copy that file when the share is reachable and write `SOS Program\SOS-lists.json` plus a local `sos/lists/aggregate-snapshot.json` (gitignored — pit data stays off GitHub). You can still drop the .xlsx on **APL / Chart**. Sample date + unexpired expire date → **Approved for use**; Failed / none on site → not approved; expired sample → must be tested again.
 
 The **Source of Supply Database.xlsx** (DelDOT Standard Items / Special Provisions catalog, last modified Sept 2023 in the copy we were given) is the official item-number list. Drop it on **APL / Chart** (or keep `sos/lists/sos-database-snapshot.json`). It fills spec descriptions for items not already in the built-in catalog. It does **not** rewrite ACTION notes — those stay matched to issued letters.
 
@@ -51,6 +51,7 @@ Contractor SOS forms that arrive by email can be processed on the office PC with
    - `completed/needs-review/` — blank application #, must-be-tested, or not-approved items (open REVIEW.txt)
    - `completed/skipped/` — random PDFs / issued letters / non-SOS spreadsheets
 3. In **Task Scheduler**, run `watch-sos-inbox.bat --once` every 30 minutes (PC logged in, Outlook available). Or leave `watch-sos-inbox.bat --loop` running.
+4. The same pass pulls **Approved Source List.xlsx** from `\\DOTFS01\Groups\Geo Construction Test Report\Reference Samples\`. For a once-a-day refresh without Outlook, schedule `refresh-sos-lists.bat` (set `SOS_WATCH_NOPAUSE=1`). Copy `sos/SOS-watch.example.json` to `sos/SOS-watch.json` if that share path ever changes (`aggregateChartPath`).
 
 Messages already tagged **DelDOT SOS** are not pulled again. This does **not** auto-send the letter — it stages a completed draft for you to check and issue.
 

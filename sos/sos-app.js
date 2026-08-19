@@ -1169,6 +1169,7 @@
       if (!liveLists.sosDatabase || !liveLists.sosDatabase.items || !Object.keys(liveLists.sosDatabase.items).length) {
         await loadSosDatabaseSnapshot();
       }
+      await loadAggregateSnapshot();
     } catch (e) {
       const saved = ls_get(STORE.lists, null);
       if (saved && saved.aggregate) liveLists.aggregate = saved.aggregate;
@@ -1177,6 +1178,7 @@
       if (!liveLists.sosDatabase || !liveLists.sosDatabase.items || !Object.keys(liveLists.sosDatabase.items).length) {
         await loadSosDatabaseSnapshot();
       }
+      await loadAggregateSnapshot();
     }
   }
 
@@ -1186,6 +1188,15 @@
       if (!res.ok) return;
       const db = await res.json();
       if (db && db.items) liveLists.sosDatabase = db;
+    } catch (e) {}
+  }
+
+  async function loadAggregateSnapshot() {
+    try {
+      const res = await fetch('sos/lists/aggregate-snapshot.json', { cache: 'no-store' });
+      if (!res.ok) return;
+      const chart = await res.json();
+      if (chart && chart.entries && chart.entries.length) liveLists.aggregate = chart;
     } catch (e) {}
   }
 

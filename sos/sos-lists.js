@@ -164,9 +164,15 @@
   }
 
   function parseExcelDate(raw) {
+    if (raw instanceof Date && !Number.isNaN(raw.getTime())) {
+      const y = raw.getFullYear();
+      const m = String(raw.getMonth() + 1).padStart(2, '0');
+      const d = String(raw.getDate()).padStart(2, '0');
+      return `${y}-${m}-${d}`;
+    }
     const s = squeeze(raw);
     if (!s) return '';
-    if (/^\d{4}-\d{2}-\d{2}$/.test(s)) return s;
+    if (/^\d{4}-\d{2}-\d{2}/.test(s)) return s.slice(0, 10);
     if (/^\d+(\.\d+)?$/.test(s)) {
       const n = Number(s);
       if (n > 20000 && n < 80000) {
@@ -200,6 +206,7 @@
 
   function looksLikeAggregateChart(filename, rows) {
     if (looksLikeSosDatabase(filename || '', rows ? [{ name: '', rows }] : [])) return false;
+    if (looksLikeApprovedSourceList(filename || '', rows)) return true;
     if (/aggregat|gabc.?chart|approved.?source|source.?chart/i.test(filename || '')) return true;
     const grid = rows || [];
     for (let r = 0; r < Math.min(grid.length, 12); r++) {
@@ -212,6 +219,9 @@
   }
 
   function parseAggregateChartGrid(rows, meta) {
+    if (looksLikeApprovedSourceList((meta && meta.filename) || '', rows)) {
+      return parseApprovedSourceListGrid(rows, meta);
+    }
     const grid = (rows || []).map(r => (Array.isArray(r) ? r : [r]));
     let header = -1;
     let map = {};
@@ -260,11 +270,16 @@
     const tags = [
       [/gabc|graded aggregate|crusher run/, /gabc|graded aggregate|crusher run/],
       [/crush|rca|recycled concrete/, /crush|rca|recycled concrete/],
+      [/milling|rap\b/, /milling|rap\b/],
+      [/209b|type b|sand/, /209b|type b|\bsand\b|borrow/],
+      [/209c|#?\s*10|screening/, /209c|#?\s*10|screening|type c|borrow/],
+      [/cbf light|channel bed fill.*light/, /cbf light|channel bed fill.*light/],
       [/borrow.*c|type c/, /borrow.*c|type c/],
       [/borrow.*a|type a/, /borrow.*a|type a/],
       [/borrow.*b|type b/, /borrow.*b|type b/],
       [/no\.?\s*57|#?57/, /57/],
-      [/no\.?\s*3|#?3 stone/, /no\.?\s*3|#?3/],
+      [/no\.?\s*8|#?8\b/, /no\.?\s*8|#?8\b/],
+      [/no\.?\s*3|#?3/, /no\.?\s*3|#?3/],
       [/channel bed|cbf/, /channel bed|cbf/],
       [/riprap/, /riprap/],
       [/topsoil/, /topsoil/],
@@ -324,18 +339,135 @@
     return { listed: true, entry: hits[0] };
   }
 
+  function todayISO() {
+    const d = new Date();
+    return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+  }
+
+  function locFromStockpile(name) {
+    const parts = String(name || '').split(/\s[-–—]\s+/);
+    return parts.length > 1 ? squeeze(parts.slice(1).join(' - ')) : '';
+  }
+
+  function looksLikeApprovedSourceList(filename, rows) {
+    const fn = String(filename || '').replace(/[_-]+/g, ' ');
+    if (/approved source list/i.test(fn)) return true;
+    const grid = rows || [];
+    for (let r = 0; r < Math.min(grid.length, 4); r++) {
+      const joined = (grid[r] || []).map(c => String(c || '').toLowerCase()).join(' | ');
+      if (joined.includes('stockpile') && /gabc/.test(joined)) return true;
+    }
+    return false;
+  }
+
+  function parseChartDateCell(sampleRaw, expireRaw) {
+    const s = squeeze(sampleRaw);
+    const e = squeeze(expireRaw);
+    if (!s && !e) return null;
+    if (/^#ref!?$/i.test(s) || /^#value!?$/i.test(s) && /^#value!?$/i.test(e)) return null;
+    if (/sample date|expire date/i.test(s)) return null;
+    const failRe = /fail|reject|unsat|none on site/i;
+    if (failRe.test(s) || failRe.test(e)) {
+      return { status: 'rejected', testDate: parseExcelDate(s) || '', expireDate: '', notes: (failRe.test(s) ? s : e) };
+    }
+    const testDate = parseExcelDate(s);
+    const expireDate = parseExcelDate(e);
+    if (!testDate && !expireDate) return null;
+    if (expireDate && expireDate < todayISO()) {
+      return { status: 'expired', testDate: testDate || '', expireDate, notes: 'expired ' + expireDate };
+    }
+    return { status: 'approved', testDate: testDate || expireDate, expireDate, notes: '' };
+  }
+
+  function parseApprovedSourceListGrid(rows, meta) {
+    const grid = (rows || []).map(r => (Array.isArray(r) ? r : [r]));
+    let headerRow = -1;
+    for (let r = 0; r < Math.min(grid.length, 6); r++) {
+      const joined = (grid[r] || []).map(c => String(c || '').toLowerCase()).join(' ');
+      if (/stockpile/.test(joined) && /gabc/.test(joined)) { headerRow = r; break; }
+    }
+    const file = (meta && meta.filename) || '';
+    if (headerRow < 0) {
+      return { kind: 'aggregate', format: 'approved-source-list', file, path: (meta && meta.path) || '', loadedAt: new Date().toISOString(), entries: [] };
+    }
+    const header = grid[headerRow] || [];
+    const materials = [];
+    for (let c = 2; c < header.length; c++) {
+      const label = squeeze(header[c]);
+      if (!label) continue;
+      materials.push({ name: label.replace(/\s+/g, ' ').trim(), sampleCol: c, expireCol: c + 1 });
+    }
+    const entries = [];
+    let lastLoc = '';
+    for (let r = headerRow + 1; r < grid.length; r++) {
+      const row = grid[r] || [];
+      let loc = squeeze(row[0]);
+      let source = squeeze(row[1]);
+      if (/^#ref!?$/i.test(loc) || loc === '0') loc = '';
+      if (/^#ref!?$/i.test(source) || source === '0') source = '';
+      if (loc) lastLoc = loc;
+      const stockpile = loc || lastLoc;
+      if (!stockpile) continue;
+      materials.forEach(mat => {
+        const parsed = parseChartDateCell(row[mat.sampleCol], row[mat.expireCol]);
+        if (!parsed) return;
+        entries.push({
+          name: stockpile,
+          source,
+          loc: locFromStockpile(stockpile),
+          material: mat.name,
+          status: parsed.status,
+          testDate: parsed.testDate,
+          expireDate: parsed.expireDate,
+          notes: parsed.notes,
+        });
+      });
+    }
+    return {
+      kind: 'aggregate',
+      format: 'approved-source-list',
+      file,
+      path: (meta && meta.path) || '',
+      loadedAt: new Date().toISOString(),
+      entries,
+    };
+  }
+
+  function producerHitsChart(entry, name, loc) {
+    if (nameMatch(entry.name, name) || nameMatch(entry.source, name)) return true;
+    if (loc && (nameMatch(entry.name, loc) || nameMatch(entry.loc, loc))) return true;
+    const hay = foldName([entry.name, entry.source, entry.loc].filter(Boolean).join(' '));
+    const n = foldName(name);
+    const l = foldName(loc);
+    if (!n || !hay) return false;
+    const nWords = n.split(' ').filter(w => w.length > 2);
+    const haySet = new Set(hay.split(' ').filter(w => w.length > 2));
+    const nameHits = nWords.filter(w => haySet.has(w) || hay.includes(w));
+    if (l) {
+      const lWords = l.split(' ').filter(w => w.length > 2);
+      const locHits = lWords.filter(w => haySet.has(w) || hay.includes(w));
+      if (nameHits.length && locHits.length) return true;
+    }
+    return nameHits.length >= 2;
+  }
+
   function lookupAggregate(chart, name, loc, material) {
     const entries = (chart && chart.entries) || chart || [];
     if (!entries.length) return { found: false };
-    let hits = entries.filter(e => nameMatch(e.name, name));
+    let hits = entries.filter(e => producerHitsChart(e, name, loc));
     if (!hits.length) return { found: false };
-    const locHits = loc ? hits.filter(e => locMatch(e.loc, loc)) : hits;
-    if (locHits.length) hits = locHits;
+    const locHits = loc ? hits.filter(e => locMatch(e.loc, loc) || nameMatch(e.name, loc) || foldName(e.name).includes(foldName(loc).split(' ')[0] || '')) : hits;
+    if (loc && locHits.length) hits = locHits;
     const matHits = material ? hits.filter(e => materialMatch(e.material, material)) : hits;
     if (matHits.length) hits = matHits;
-    hits = [...hits].sort((a, b) => String(b.testDate || '').localeCompare(String(a.testDate || '')));
+    const rank = { approved: 3, pending: 1, expired: 0, rejected: -1 };
+    hits = [...hits].sort((a, b) => {
+      const rd = (rank[b.status] || 0) - (rank[a.status] || 0);
+      if (rd) return rd;
+      return String(b.testDate || '').localeCompare(String(a.testDate || ''));
+    });
     const best = hits[0];
-    return { found: true, status: best.status, testDate: best.testDate, row: best, matches: hits };
+    return { found: true, status: best.status, testDate: best.testDate, expireDate: best.expireDate, row: best, matches: hits };
   }
 
   function sosDbHeaderKey(cell) {
@@ -518,6 +650,8 @@
     extractGrade,
     parseTackAplText,
     parseManufacturerProductText,
+    looksLikeApprovedSourceList,
+    parseApprovedSourceListGrid,
     parseAggregateChartGrid,
     looksLikeAggregateChart,
     looksLikeSosDatabase,

@@ -95,6 +95,44 @@ assert.ok(baltimore.action === 'apl' || baltimore.action === 'approved');
 
 console.log('OK live APL + aggregate chart lookups');
 
+const sourceList = [
+  ['Stockpile Location', 'Source', '209B (sand)', '', '209C  (#10 Screenings)', '', 'GABC', '', 'Crushed Concrete'],
+  ['', '', 'Sample Date', 'Expire Date', 'Sample Date', 'Expire Date', 'Sample Date', 'Expire Date', 'Sample Date', 'Expire Date'],
+  ['Allan Myers - Elk Mills', '', '', '', '2026-06-15', '2026-09-23', '2026-06-15', '2026-09-23', '', ''],
+  ['Vulcan Seaford', 'Havre De Grace', '', '', '', '', '2026-07-27', '2026-11-04', '', ''],
+  ['New Enterprise - Denver', '', '', '', '', '', 'Failed', '', '', ''],
+  ['Patuxent Companies (FKA Goldsboro)', '', '', '', '', '', '2025-04-11', '2025-07-20', 'Failed 2nd', ''],
+];
+assert.ok(Lists.looksLikeApprovedSourceList('Approved Source List.xlsx', []));
+assert.ok(Lists.looksLikeApprovedSourceList('', sourceList));
+const asl = Lists.parseApprovedSourceListGrid(sourceList, { filename: 'Approved Source List.xlsx' });
+assert.ok(asl.entries.length >= 4);
+const elk = Lists.lookupAggregate(asl, 'Allan Myers', 'Elk Mills MD', 'GABC');
+assert.strictEqual(elk.status, 'approved');
+assert.strictEqual(elk.testDate, '2026-06-15');
+const seaford = Lists.lookupAggregate(asl, 'Vulcan Materials', 'Seaford DE', 'GABC');
+assert.strictEqual(seaford.status, 'approved');
+assert.ok(!Lists.lookupAggregate(asl, 'Vulcan Materials', 'Salisbury MD', 'GABC').found);
+assert.strictEqual(Lists.lookupAggregate(asl, 'New Enterprise', 'Denver', 'GABC').status, 'rejected');
+assert.strictEqual(Lists.lookupAggregate(asl, 'Patuxent', 'Goldsboro', 'GABC').status, 'expired');
+
+const elkGrid = gridFrom(header, [[
+  ['', 301001.0, 'GABC', '', 'GABC', 'Allan Myers', '', 'Elk Mills, MD', ''],
+]]);
+const elkItem = Engine.processGrid(elkGrid, { lists: { aggregate: asl } }).items.find(i => i.family === 'aggregate');
+assert.strictEqual(elkItem.action, 'approved');
+assert.ok(/Approved for use/.test(elkItem.actionNotes));
+
+const goldsGrid = gridFrom(header, [[
+  ['', 301001.0, 'GABC', '', 'GABC', 'Patuxent Companies', '', 'Goldsboro, MD', ''],
+]]);
+const golds = Engine.processGrid(goldsGrid, { lists: { aggregate: asl } }).items.find(i => i.family === 'aggregate');
+assert.strictEqual(golds.action, 'test');
+assert.ok(/expired/i.test(golds.actionNotes));
+
+console.log('OK Approved Source List matrix');
+
+
 const sosDbSheets = [{
   name: 'Standard Items',
   rows: [

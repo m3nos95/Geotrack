@@ -51,6 +51,7 @@ function defaultConfig() {
     daysBack: 7,
     outlookFolder: 'Inbox',
     mailbox: '',
+    aggregateChartPath: '\\\\DOTFS01\\Groups\\Geo Construction Test Report\\Reference Samples\\Approved Source List.xlsx',
   };
 }
 

@@ -306,12 +306,14 @@
         <div style="font-size:12px;color:var(--text-mid);line-height:1.55;">
           <a href="https://materialsandresearch.deldot.gov/index.php/Approved_Product_Lists" target="_blank" rel="noopener">DelDOT Approved Product Lists</a>
           are public PDFs (tack coat, pavement marking, crack seal, curing, TTC, …). This app ships a snapshot and re-checks it when you run <code>refresh-sos-lists.bat</code>.
-          Aggregate pits move on and off the <strong>Approved Aggregate Chart</strong> constantly — that chart is the office spreadsheet, not the public APL. Drop the current .xls/.xlsx here before issuing a letter.
+          Aggregate pits move on and off the <strong>Approved Source List</strong> constantly. On the office PC, <code>refresh-sos-lists.bat</code> (daily) and <code>watch-sos-inbox.bat</code> pull
+          <code>\\DOTFS01\Groups\Geo Construction Test Report\Reference Samples\Approved Source List.xlsx</code>
+          and write a local snapshot. You can still drop that .xlsx here.
           The <strong>Source of Supply Database</strong> (Standard Items / Special Provisions) is the official item catalog — drop that .xlsx here so spec numbers pick up the Department description and acceptance method.
         </div>
         <div class="import-zone" id="lists-drop-zone" onclick="document.getElementById('lists-file-input').click()">
-          <div class="import-zone-label">Drop Aggregate Chart, Source of Supply Database.xlsx, SOS-lists.json, or SOS-cc.json</div>
-          <div class="import-zone-sub">or a refreshed APL snapshot from refresh-sos-lists.bat. CC harvest files also work on the CC tab.</div>
+          <div class="import-zone-label">Drop Approved Source List.xlsx, Source of Supply Database.xlsx, SOS-lists.json, or SOS-cc.json</div>
+          <div class="import-zone-sub">Office PCs pull the Approved Source List from the Geo Construction Test Report share automatically. Drop still works.</div>
           <input type="file" id="lists-file-input" style="display:none" accept=".xls,.xlsx,.json" onchange="handleListFile(this.files[0])">
         </div>
         <div style="display:flex;gap:8px;flex-wrap:wrap;">
