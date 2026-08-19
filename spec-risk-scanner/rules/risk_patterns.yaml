@@ -1,0 +1,189 @@
+# DelDOT Standard Specs / contract language risk patterns.
+# These flag clauses that often create ambiguity, payment disputes, or
+# contractor claims — for internal review, not legal advice.
+
+categories:
+  ambiguous_obligation:
+    severity: high
+    description: Vague duty without measurable acceptance criteria
+    patterns:
+      - id: as_directed
+        regex: '\bas\s+directed\b'
+        note: Open-ended direction; prefer measurable criteria or a defined process
+      - id: as_necessary
+        regex: '\bas\s+necessary\b'
+        note: Scope can expand without clear pay limits
+      - id: as_required
+        regex: '\bas\s+required(?:\s+by\s+the\s+engineer)?\b'
+        note: May lack objective trigger; check for defined thresholds
+      - id: as_deemed
+        regex: '\bas\s+(?:deemed|considered)\s+necessary\b'
+        note: Pure discretion without criteria
+      - id: in_opinion
+        regex: '\bin\s+the\s+opinion\s+of\b'
+        note: Subjective acceptance standard
+      - id: satisfactory
+        regex: '\b(?:satisfactory|unsatisfactory|acceptable|unacceptable)\b'
+        note: Defined in 101.1 as Department judgment; still claim-prone if no metric
+      - id: reasonable
+        regex: '\breasonable(?:\s+efforts?|\s+care|\s+time)?\b'
+        note: Soft standard; prefer quantified time/effort when practical
+      - id: discretion
+        regex: '\bat\s+the\s+(?:sole\s+)?discretion\b'
+        note: Unilateral discretion — document the decision process
+
+  payment_risk:
+    severity: high
+    description: Language that shifts cost into incidental / no-pay work
+    patterns:
+      - id: incidental
+        regex: '\bincidental(?:\s+to)?\b'
+        note: Cost absorption into other pay items — verify scope boundaries
+      - id: no_separate_payment
+        regex: '\bno\s+separate\s+payment\b'
+        note: Explicit no-pay clause; ensure work is clearly bounded
+      - id: include_in_unit_price
+        regex: '\bincluded?\s+in\s+the\s+(?:unit\s+)?price\b'
+        note: Bundle risk — confirm all included work is listed
+      - id: at_no_cost
+        regex: '\bat\s+no\s+(?:additional\s+)?(?:cost|expense)\s+to\s+the\s+department\b'
+        note: Broad cost shift; check fairness and enforceability
+      - id: no_additional_compensation
+        regex: '\bno\s+additional\s+compensation\b'
+        note: Compensation bar — pair with clear change-order triggers
+      - id: subsidiary
+        regex: '\bsubsidiary\s+(?:item|obligation|work)\b'
+        note: Subsidiary work without pay item
+
+  measurement_conflict:
+    severity: medium
+    description: Measurement / quantity language that often conflicts with plans or SP
+    patterns:
+      - id: plan_quantity
+        regex: '\bplan\s+quantity\b'
+        note: Confirm whether final measure or plan quantity governs
+      - id: as_shown_on_plans
+        regex: '\bas\s+shown\s+on\s+the\s+plans\b'
+        note: Cross-check plans vs special provisions for quantity basis
+      - id: approximate
+        regex: '\bapproximate(?:ly)?\b'
+        note: Soft quantity language; claim risk if used as pay basis
+      - id: more_or_less
+        regex: '\bmore\s+or\s+less\b'
+        note: Quantity flexibility without stated tolerance
+
+  hierarchy_and_conflicts:
+    severity: high
+    description: Document conflicts and precedence-related language
+    patterns:
+      - id: conflict_docs
+        regex: '\bconflict\s+between\s+the\s+contract\s+documents\b'
+        note: Precedence clause — verify list is complete and current
+      - id: discrepancy
+        regex: '\bdiscrepanc(?:y|ies)\b'
+        note: Discrepancy resolution path should be explicit
+      - id: take_precedence
+        regex: '\btake(?:s)?\s+precedence\b'
+        note: Hierarchy statement — check consistency across sections
+      - id: order_of_precedence
+        regex: '\border\s+of\s+precedence\b'
+        note: Core hierarchy clause
+      - id: rfi_conflict
+        regex: '\b(?:interference|conflict)\s+is\s+caused\s+by\s+the\s+design\b'
+        note: Design conflict → RFI path; ensure timelines are clear
+
+  open_ended_risk:
+    severity: medium
+    description: Site / utility / weather / schedule exposure that invites claims
+    patterns:
+      - id: differing_site
+        regex: '\bdiffering\s+site\s+condition'
+        note: DSC clause — critical claims language
+      - id: unknown_conditions
+        regex: '\bunknown(?:\s+or\s+unforeseen)?\s+condition'
+        note: Unforeseen conditions exposure
+      - id: utility_conflict
+        regex: '\butilit(?:y|ies)\s+that\s+conflict\b'
+        note: Utility conflict — delay/cost allocation must be clear
+      - id: weather
+        regex: '\b(?:inclement|adverse)\s+weather\b'
+        note: Weather risk allocation
+      - id: as_soon_as_possible
+        regex: '\bas\s+soon\s+as\s+(?:possible|practical|practicable)\b'
+        note: Soft deadline; prefer calendar/working-day triggers
+      - id: promptly
+        regex: '\bpromptly\b'
+        note: Soft timing; prefer defined notice periods
+
+  or_equal_substitutions:
+    severity: medium
+    description: Substitution / equal product language
+    patterns:
+      - id: or_equal
+        regex: '\bor\s+equal\b'
+        note: Defined in 101.1; still dispute-prone without approval path
+      - id: approved_equal
+        regex: '\bapproved\s+equal\b'
+        note: Confirm submittal/approval process is referenced
+      - id: equivalent
+        regex: '\bequivalent\s+(?:product|material|method)\b'
+        note: Equivalency criteria should be objective
+
+  testing_capacity_risk:
+    severity: high
+    description: >
+      Testing methods/frequencies that field and lab staff cannot realistically
+      perform at the stated rate. RT 301 pattern: liquid/plastic limits (AASHTO T89/T90) at Table B-1
+      rates can exceed lab throughput on large earthwork.
+    patterns:
+      - id: atterberg_limits
+        severity: high
+        regex: '\b(?:AASHTO\s+)?T\s*-?\s*89\b|\b(?:AASHTO\s+)?T\s*-?\s*90\b|\b(?:liquid|plastic)\s+limit|\bAtterberg\b|\bplasticity\s+index\b'
+        note: >
+          Liquid/plastic limits (T89/T90) — capacity-sensitive. Confirm Table B-1
+          frequency is lab-sustainable; consider not requiring LL/PL on every
+          density sample by default.
+      - id: full_t99_method
+        severity: medium
+        regex: '\b(?:AASHTO\s+)?T\s*-?\s*99(?:M)?\b(?:\s*\([^)]*Method\s*C[^)]*\))?'
+        note: >
+          Full multi-point T99 adds lab load on the same Table B-1 sample events as
+          Atterbergs. Related package load (Proctor was an example; RT 301 was LL/PL).
+      - id: t180_proctor
+        severity: medium
+        regex: '\b(?:AASHTO\s+)?T\s*-?\s*180\b'
+        note: Modified Proctor — heavy companion test; check capacity
+      - id: increase_sampling_rates
+        severity: high
+        regex: '\bincrease\s+the\s+sampling\s+rates?\b'
+        note: >
+          Engineer may raise rates above Table B-1 minimums — claims risk if lab
+          (esp. Atterbergs) cannot absorb the increase
+      - id: double_testing_frequency
+        severity: high
+        regex: '\bdouble\s+the\s+testing\s+frequency\b'
+        note: Automatic frequency doubling can blow past lab/field capacity
+      - id: materials_manual_deferral
+        severity: medium
+        regex: '\bMaterials\s+Manual\b'
+        note: >
+          Specs defer testing detail to Materials Manual / Table B-1 — scan those
+          docs for Atterberg (T89/T90) frequencies, not just the Standard Specs
+      - id: missing_one_point_language
+        severity: low
+        regex: '\bmaximum\s+density\b'
+        note: >
+          Density acceptance language — verify whether companion Atterbergs are
+          required at the same frequency in Table B-1
+
+# Extra heuristics applied in code (not regex-only):
+heuristics:
+  shall_will_proximity:
+    enabled: true
+    description: Nearby shall/will mix can blur who must act
+    window_chars: 400
+    severity: low
+  measurement_vs_basis_of_payment:
+    enabled: true
+    description: Flag sections where Method of Measurement and Basis of Payment both exist but payment bars incidental work aggressively
+    severity: medium

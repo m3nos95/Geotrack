@@ -6,6 +6,7 @@ DelDOT Materials & Research tools hosted on GitHub Pages.
 |-----|------|
 | **LabTrak** (sample tracking) | https://m3nos95.github.io/Geotrack/ |
 | **GeoTrak** (geotech reconnaissance) | https://m3nos95.github.io/Geotrack/geotrak/ |
+| **Spec Risk Scanner** (contract language review) | [`spec-risk-scanner/`](spec-risk-scanner/) |
 
 ## GeoTrak user guide
 

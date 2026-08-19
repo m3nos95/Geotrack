@@ -1,0 +1,386 @@
+{
+  "generated_at": "2026-08-06T16:37:00.812237+00:00",
+  "corpus": [
+    {
+      "id": "standard_specs_2026",
+      "name": "2026_DelDOT_Standard_Specifications.pdf",
+      "chars": 1761903,
+      "path": "/workspace/deldot-publications/files/engineeringsupport.deldot.gov/images/b/b1/2026_DelDOT_Standard_Specifications.pdf"
+    },
+    {
+      "id": "mat_part_b",
+      "name": "4b_min_test_and_cert_req.pdf",
+      "chars": 15164,
+      "path": "/workspace/deldot-publications/files/deldot.gov/Publications/manuals/mat_research/pdfs/4b_min_test_and_cert_req.pdf"
+    },
+    {
+      "id": "mat_table_b1",
+      "name": "5-part_b_b-2-min_test_cert-quantities_list.pdf",
+      "chars": 280323,
+      "path": "/workspace/deldot-publications/files/deldot.gov/Publications/manuals/mat_research/pdfs/5-part_b_b-2-min_test_cert-quantities_list.pdf"
+    },
+    {
+      "id": "mat_c200",
+      "name": "c200.pdf",
+      "chars": 11034,
+      "path": "/workspace/deldot-publications/files/deldot.gov/Publications/manuals/mat_research/pdfs/part_c/c200.pdf"
+    },
+    {
+      "id": "mat_c300",
+      "name": "c300.pdf",
+      "chars": 9985,
+      "path": "/workspace/deldot-publications/files/deldot.gov/Publications/manuals/mat_research/pdfs/part_c/c300.pdf"
+    },
+    {
+      "id": "mat_c400",
+      "name": "c400.pdf",
+      "chars": 14173,
+      "path": "/workspace/deldot-publications/files/deldot.gov/Publications/manuals/mat_research/pdfs/part_c/c400.pdf"
+    },
+    {
+      "id": "mat_c500",
+      "name": "c500.pdf",
+      "chars": 22233,
+      "path": "/workspace/deldot-publications/files/deldot.gov/Publications/manuals/mat_research/pdfs/part_c/c500.pdf"
+    },
+    {
+      "id": "construction_part_b",
+      "name": "04-construction_manual-part_b.pdf",
+      "chars": 145501,
+      "path": "/workspace/deldot-publications/files/deldot.gov/Publications/manuals/construction_manual/pdfs/04-construction_manual-part_b.pdf"
+    },
+    {
+      "id": "construction_part_c",
+      "name": "05-construction_manual-part_c.pdf",
+      "chars": 45997,
+      "path": "/workspace/deldot-publications/files/deldot.gov/Publications/manuals/construction_manual/pdfs/05-construction_manual-part_c.pdf"
+    },
+    {
+      "id": "construction_part_d",
+      "name": "06-construction_manual-part_d.pdf",
+      "chars": 73186,
+      "path": "/workspace/deldot-publications/files/deldot.gov/Publications/manuals/construction_manual/pdfs/06-construction_manual-part_d.pdf"
+    },
+    {
+      "id": "construction_part_e",
+      "name": "07-construction_manual-part_e.pdf",
+      "chars": 454106,
+      "path": "/workspace/deldot-publications/files/deldot.gov/Publications/manuals/construction_manual/pdfs/07-construction_manual-part_e.pdf"
+    },
+    {
+      "id": "construction_part_f",
+      "name": "08-construction_manual-part_f.pdf",
+      "chars": 57352,
+      "path": "/workspace/deldot-publications/files/deldot.gov/Publications/manuals/construction_manual/pdfs/08-construction_manual-part_f.pdf"
+    },
+    {
+      "id": "construction_part_g",
+      "name": "09-construction_manual-part_g.pdf",
+      "chars": 150083,
+      "path": "/workspace/deldot-publications/files/deldot.gov/Publications/manuals/construction_manual/pdfs/09-construction_manual-part_g.pdf"
+    }
+  ],
+  "summary": {
+    "absent_or_weak": 1,
+    "partial": 3,
+    "present": 3,
+    "regions_of_interest": 2
+  },
+  "clauses": [
+    {
+      "id": "covering_work_notice",
+      "title": "Notice before covering work / opportunity to inspect",
+      "risk": "Without a clear contractor duty to notify before covering, and a right for the Department to inspect before cover-up, disputes arise over buried work and uncovering costs.",
+      "status": "present",
+      "severity": "info",
+      "kind": "presence_check",
+      "related_sections": [
+        "105",
+        "106"
+      ],
+      "expect_in": [
+        "standard_specs_2026"
+      ],
+      "expected_missing": [],
+      "hit_count": 3,
+      "hits_by_doc": {
+        "standard_specs_2026": [
+          {
+            "pattern": "\\bbefore\\s+covering\\b",
+            "match": "before covering",
+            "page": 535,
+            "snippet": "weeks before conducting the test. Submit 4 copies of the test results to the engineer. 843.3.3 Inspection. A. The engineer will inspect and approve all work before covering it up. B. Use a third-party inspection agency for certification and sticker placement for the entire electrical system. Ensure that this inspection agency is independent and lic"
+          },
+          {
+            "pattern": "\\buncover\\s+finished\\s+work\\b",
+            "match": "uncover finished \nwork",
+            "page": 41,
+            "snippet": "actor may incur due to removal or repair of defects the engineer discovers. B. Remove finished work, for inspection of work obscured by the finished work, or uncover finished work for inspection when directed at any time before final acceptance. After the engineer examines the exposed work, restore the inspected area to the contract requirements. If the e"
+          },
+          {
+            "pattern": "\\bwithout\\s+inspection\\b.{0,80}\\b(?:removed|replace|expense)\\b",
+            "match": "without inspection by the Department representative, removed and replaced at the contractor's \nexpen",
+            "page": 41,
+            "snippet": "d work, and restore the area to the contract requirements. C. The Department may order any work the contractor performs, or materials the contractor places, without inspection by the Department representative, removed and replaced at the contractor's expense. D. When any unit of government or political subdivision, utility company, or any railroad corporation pays a portion of the cost of the work performed on this contract, the res"
+          }
+        ]
+      },
+      "note": "Closing-clause patterns matched (3 hits). Skim snippets to confirm they actually close the risk."
+    },
+    {
+      "id": "dept_test_response_time",
+      "title": "Stated response / turnaround time for Department testing or inspection",
+      "risk": "If Specs assign tests to the Department but give no clock for results or inspection, contractors claim delay/standby while waiting on QA.",
+      "status": "partial",
+      "severity": "medium",
+      "kind": "presence_check",
+      "related_sections": [
+        "105",
+        "106",
+        "108",
+        "B4"
+      ],
+      "expect_in": [
+        "standard_specs_2026",
+        "mat_part_b"
+      ],
+      "expected_missing": [
+        "mat_part_b"
+      ],
+      "hit_count": 1,
+      "hits_by_doc": {
+        "standard_specs_2026": [
+          {
+            "pattern": "\\b(?:department|engineer)\\s+will\\s+(?:test|sample|inspect|respond|complete).{0,80}\\bwithin\\s+\\d+\\s+(?:working\\s+)?(?:days?|hours?)\\b",
+            "match": "engineer will respond to the contractor within 10 days",
+            "page": 49,
+            "snippet": "er of the intent to file a claim within 10 days from the engineer\u2019s final response in accordance with Section 104.3, Notification of Contract Changes. 3. The engineer will respond to the contractor within 10 days of receipt of the contractor\u2019s notice of intent to file a claim. In this response, the engineer will acknowledge receipt of the notice. In addition, if the engineer\u2019s position r"
+          }
+        ]
+      },
+      "note": "Closer language found in standard_specs_2026; still missing from mat_part_b. Check whether coverage is complete."
+    },
+    {
+      "id": "work_continuation_awaiting_tests",
+      "title": "Work-continuation / standby rule while awaiting Department tests",
+      "risk": "Missing rule for whether placement may proceed, must wait, or earns standby/time when waiting on Department sampling/testing.",
+      "status": "absent",
+      "severity": "high",
+      "kind": "absence",
+      "related_sections": [
+        "105",
+        "106",
+        "108",
+        "109"
+      ],
+      "expect_in": [
+        "standard_specs_2026"
+      ],
+      "expected_missing": [
+        "standard_specs_2026"
+      ],
+      "hit_count": 0,
+      "hits_by_doc": {},
+      "note": "No closing-clause pattern matched in the scanned corpus. Human review: confirm the gap, then consider adding explicit language."
+    },
+    {
+      "id": "qc_qa_tiebreaker",
+      "title": "Tiebreaker when QC and QA (or split-sample) results disagree",
+      "risk": "Dual testing programs without a stated governing result, retest path, or referee method leave acceptance fights open-ended.",
+      "status": "partial",
+      "severity": "medium",
+      "kind": "presence_check",
+      "related_sections": [
+        "106",
+        "B4"
+      ],
+      "expect_in": [
+        "standard_specs_2026",
+        "mat_part_b"
+      ],
+      "expected_missing": [
+        "standard_specs_2026"
+      ],
+      "hit_count": 1,
+      "hits_by_doc": {
+        "mat_part_b": [
+          {
+            "pattern": "\\bIA\\b.{0,80}\\b(?:disagree|discrepan|comparison|investigate)\\b",
+            "match": "IA test results within the limits  in the \u201cIA Sample Comparison",
+            "page": 5,
+            "snippet": "B-4 ===== PAGE 5 ===== Field reviews of IA samples will be documented by signing and dating entries on test reports. IA test results that agree with non- IA test results within the limits in the \u201cIA Sample Comparison Sheet\u201d (LB-110, LB-111, LB-112) will not require a ny further comments on the reporting form. If IA samples have significant or major diffe rences, greater than th e acceptable"
+          }
+        ]
+      },
+      "note": "Closer language found in mat_part_b; still missing from standard_specs_2026. Check whether coverage is complete."
+    },
+    {
+      "id": "retest_procedure",
+      "title": "Retest procedure after failing or disputed results",
+      "risk": "Without who orders retest, who pays, and what governs after retest, failed materials become negotiation instead of process.",
+      "status": "partial",
+      "severity": "low",
+      "kind": "presence_check",
+      "related_sections": [
+        "106"
+      ],
+      "expect_in": [
+        "standard_specs_2026",
+        "mat_part_b"
+      ],
+      "expected_missing": [
+        "mat_part_b"
+      ],
+      "hit_count": 6,
+      "hits_by_doc": {
+        "standard_specs_2026": [
+          {
+            "pattern": "\\bre-?test\\b",
+            "match": "retest",
+            "page": 62,
+            "snippet": "rovide a laboratory conforming to the requirements of Section 106.5, Field Laboratory, located near the plant for the Department\u2019s use. C. The Department may retest materials, previously tested at the supply source, when delivered to the project. D. The material producer shall establish plant safety protocols that the contractor and the De"
+          },
+          {
+            "pattern": "\\bre-?test\\b",
+            "match": "Retest",
+            "page": 279,
+            "snippet": ".5 for bridge structures. The engineer will periodically witness, examine, verify, and interpret NDT. Additional welds may be designated for NDT on the plans. Retest repaired groove welds per the applicable ANSI/AWS code after repairs are made and have cooled to ambient temperature. Complete NDT and repairs before assembly of parts into a me"
+          },
+          {
+            "pattern": "\\bre-?test\\b",
+            "match": "retest",
+            "page": 280,
+            "snippet": "elding procedure. Modify the galvanizing or welding procedure as required if there is evidence of deterioration or loss of weld metal, and run a satisfactory retest on the modified procedures before production work. Report procedures and results on the galvanized weldment worksheet provided by the Department. 7. Prepped and painted in accor"
+          },
+          {
+            "pattern": "\\bre-?test\\b",
+            "match": "Retest",
+            "page": 287,
+            "snippet": "crew to develop a snug condition, and to control the turns, develops a tension of no less than 5 percent greater than the tension required by Table 615.3-3. Retest as required. ii. Following the snug-tightening operation, tension bolts in the connection by the amount of rotation specified in Table 615.3-4. During the tensioning operation,"
+          },
+          {
+            "pattern": "\\bre-?test\\b",
+            "match": "Re-test",
+            "page": 316,
+            "snippet": "of butt welds in rings 5/16-inch and thicker. Perform 100 percent MT on rings less than 5/16-inch thick. e. If necessary repair base connection welds 1 time. Re-test all repairs. If more than 1 repair is necessary, obtain approval from the engineer before proceeding. 3. Fabricate backing rings as a continuous ring or butt-welded with a full-"
+          },
+          {
+            "pattern": "\\bre-?test\\b",
+            "match": "Retest",
+            "page": 408,
+            "snippet": "tester to perform system tension tests. Provide a letter from the manufacturer certifying that the tester is trained in the use of the testing equipment. G. Retest the cable tension in accordance with the manufacturer\u2019s specifications 14 calendar days to 21 calendar days after the first test. Re-tension the cable when the test reading is le"
+          }
+        ]
+      },
+      "note": "Closer language found in standard_specs_2026; still missing from mat_part_b. Check whether coverage is complete."
+    },
+    {
+      "id": "dispute_resolution_testing",
+      "title": "Dispute-resolution / referee testing path",
+      "risk": "No path to an agreed third-party or stated resolution method when acceptance testing is contested.",
+      "status": "present",
+      "severity": "info",
+      "kind": "presence_check",
+      "related_sections": [
+        "105",
+        "106"
+      ],
+      "expect_in": [
+        "standard_specs_2026",
+        "mat_part_b"
+      ],
+      "expected_missing": [],
+      "hit_count": 4,
+      "hits_by_doc": {
+        "standard_specs_2026": [
+          {
+            "pattern": "\\breferee\\b",
+            "match": "Referee",
+            "page": 56,
+            "snippet": ". Pre-Meeting Conference. a. The Chair of the Claims Committee will designate either the Claims Committee or the claims committee\u2019s legal counsel to act as a Referee to hold a pre-meeting conference at least 5 business days before the claims review meeting to expedite the meeting of the case by: i. Simplifying factual and legal issues by sti"
+          },
+          {
+            "pattern": "\\breferee\\b",
+            "match": "Referee",
+            "page": 56,
+            "snippet": "ons. a. At least 5 business days prior to the pre-meeting conference, the parties shall exchange their proposed exhibits and witness lists with copies to the Referee, in electronic form. b. The claimant\u2019s exhibits should be clearly marked in a numbered sequence (1,2,3\u2026) while the Department\u2019s exhibits should be clearly marked in a lettered s"
+          },
+          {
+            "pattern": "\\breferee\\b",
+            "match": "Referee",
+            "page": 57,
+            "snippet": "AINTENANCE DURING CONSTRUCTION; CLAIMS; PROJECT ACCEPTANCE 47 a. If any preliminary or procedural matters are discussed at the pre-meeting conference, the Referee will make written recommendations to the Chair for review and approval. Approved recommendations will be incorporated into a Pre-Meeting Order signed by the Chair. The Claims Co"
+          }
+        ],
+        "mat_part_b": [
+          {
+            "pattern": "\\bAASHTO.accredited\\b.{0,60}\\b(?:dispute|referee|independent)\\b",
+            "match": "AASHTO accredited labor atory.  A detailed description of the \nIndependent",
+            "page": 3,
+            "snippet": "ion of sampling, testing, and observation performed by qualified sampling and testing tech nicians employed by DelDOT, or its designated agent employed by an AASHTO accredited labor atory. A detailed description of the Independent Assurance program is provided in B4.04. To ensure that Quality Assurance and Independ ent Assurance technicians are testing materials according to procedure, performance is ve"
+          }
+        ]
+      },
+      "note": "Closing-clause patterns matched (4 hits). Skim snippets to confirm they actually close the risk."
+    },
+    {
+      "id": "testing_delay_time_extension",
+      "title": "Time extension / compensation when Department testing causes delay",
+      "risk": "Silence on whether Department-caused testing delay is excusable or compensable leaves standby/delay claims under-specified (check \u00a7108/\u00a7109).",
+      "status": "present",
+      "severity": "info",
+      "kind": "presence_check",
+      "related_sections": [
+        "108",
+        "109"
+      ],
+      "expect_in": [
+        "standard_specs_2026"
+      ],
+      "expected_missing": [],
+      "hit_count": 1,
+      "hits_by_doc": {
+        "standard_specs_2026": [
+          {
+            "pattern": "\\bDepartment\\s+will\\s+(?:grant|pay).{0,40}\\b(?:time\\s+extension|standby|delay).{0,60}\\b(?:test|inspect)",
+            "match": "Department will grant a time extension equal to the delay \ncreated by the additional test",
+            "page": 225,
+            "snippet": "artment will take responsibility for the testing and delay costs. If the drilled shaft construction is on the critical path of the contractor\u2019s schedule, the Department will grant a time extension equal to the delay created by the additional testing. 5. For all unacceptable drilled shafts, submit a plan for further investigation or remedial action to the engineer for approval. Calculations and working drawings must suppo"
+          }
+        ]
+      },
+      "note": "Closing-clause patterns matched (1 hits). Skim snippets to confirm they actually close the risk."
+    }
+  ],
+  "regions_of_interest": [
+    {
+      "id": "roi-dual-testing-standard_specs_2026",
+      "kind": "region_of_interest",
+      "severity": "info",
+      "title": "Region of interest: dual testing actors in standard_specs_2026",
+      "summary": "Both Department/engineer and contractor testing language appear with meaningful density. This is a review neighborhood \u2014 not an asserted contradiction. Check for absences: QC/QA tiebreaker, response time, work-continuation while awaiting tests.",
+      "doc": "standard_specs_2026",
+      "signals": {
+        "qc_mentions": 66,
+        "qa_mentions": 15,
+        "dept_will_test": 16,
+        "contractor_shall_test": 4
+      }
+    },
+    {
+      "id": "roi-dual-testing-mat_part_b",
+      "kind": "region_of_interest",
+      "severity": "info",
+      "title": "Region of interest: dual testing actors in mat_part_b",
+      "summary": "Both Department/engineer and contractor testing language appear with meaningful density. This is a review neighborhood \u2014 not an asserted contradiction. Check for absences: QC/QA tiebreaker, response time, work-continuation while awaiting tests.",
+      "doc": "mat_part_b",
+      "signals": {
+        "qc_mentions": 6,
+        "qa_mentions": 17,
+        "dept_will_test": 0,
+        "contractor_shall_test": 1
+      }
+    }
+  ],
+  "method_note": "Absence detection: search for closing-clause patterns; report where missing. Regions of interest flag dual-actor neighborhoods without asserting contradiction."
+}

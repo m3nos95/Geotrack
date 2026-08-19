@@ -1,0 +1,2618 @@
+{
+  "generated_at": "2026-08-06T16:37:18.170035+00:00",
+  "corpus": [
+    {
+      "id": "standard_specs_2026",
+      "name": "2026_DelDOT_Standard_Specifications.pdf",
+      "chars": 1761903,
+      "path": "/workspace/deldot-publications/files/engineeringsupport.deldot.gov/images/b/b1/2026_DelDOT_Standard_Specifications.pdf"
+    },
+    {
+      "id": "mat_part_b",
+      "name": "4b_min_test_and_cert_req.pdf",
+      "chars": 15164,
+      "path": "/workspace/deldot-publications/files/deldot.gov/Publications/manuals/mat_research/pdfs/4b_min_test_and_cert_req.pdf"
+    },
+    {
+      "id": "mat_table_b1",
+      "name": "5-part_b_b-2-min_test_cert-quantities_list.pdf",
+      "chars": 280323,
+      "path": "/workspace/deldot-publications/files/deldot.gov/Publications/manuals/mat_research/pdfs/5-part_b_b-2-min_test_cert-quantities_list.pdf"
+    },
+    {
+      "id": "mat_c200",
+      "name": "c200.pdf",
+      "chars": 11034,
+      "path": "/workspace/deldot-publications/files/deldot.gov/Publications/manuals/mat_research/pdfs/part_c/c200.pdf"
+    },
+    {
+      "id": "mat_c300",
+      "name": "c300.pdf",
+      "chars": 9985,
+      "path": "/workspace/deldot-publications/files/deldot.gov/Publications/manuals/mat_research/pdfs/part_c/c300.pdf"
+    },
+    {
+      "id": "mat_c400",
+      "name": "c400.pdf",
+      "chars": 14173,
+      "path": "/workspace/deldot-publications/files/deldot.gov/Publications/manuals/mat_research/pdfs/part_c/c400.pdf"
+    },
+    {
+      "id": "mat_c500",
+      "name": "c500.pdf",
+      "chars": 22233,
+      "path": "/workspace/deldot-publications/files/deldot.gov/Publications/manuals/mat_research/pdfs/part_c/c500.pdf"
+    },
+    {
+      "id": "mat_glossary",
+      "name": "6f_glossary.pdf",
+      "chars": 52323,
+      "path": "/workspace/deldot-publications/files/deldot.gov/Publications/manuals/mat_research/pdfs/6f_glossary.pdf"
+    },
+    {
+      "id": "construction_part_b",
+      "name": "04-construction_manual-part_b.pdf",
+      "chars": 145501,
+      "path": "/workspace/deldot-publications/files/deldot.gov/Publications/manuals/construction_manual/pdfs/04-construction_manual-part_b.pdf"
+    },
+    {
+      "id": "construction_part_c",
+      "name": "05-construction_manual-part_c.pdf",
+      "chars": 45997,
+      "path": "/workspace/deldot-publications/files/deldot.gov/Publications/manuals/construction_manual/pdfs/05-construction_manual-part_c.pdf"
+    },
+    {
+      "id": "construction_part_d",
+      "name": "06-construction_manual-part_d.pdf",
+      "chars": 73186,
+      "path": "/workspace/deldot-publications/files/deldot.gov/Publications/manuals/construction_manual/pdfs/06-construction_manual-part_d.pdf"
+    },
+    {
+      "id": "construction_part_e",
+      "name": "07-construction_manual-part_e.pdf",
+      "chars": 454106,
+      "path": "/workspace/deldot-publications/files/deldot.gov/Publications/manuals/construction_manual/pdfs/07-construction_manual-part_e.pdf"
+    },
+    {
+      "id": "construction_part_f",
+      "name": "08-construction_manual-part_f.pdf",
+      "chars": 57352,
+      "path": "/workspace/deldot-publications/files/deldot.gov/Publications/manuals/construction_manual/pdfs/08-construction_manual-part_f.pdf"
+    },
+    {
+      "id": "construction_part_g",
+      "name": "09-construction_manual-part_g.pdf",
+      "chars": 150083,
+      "path": "/workspace/deldot-publications/files/deldot.gov/Publications/manuals/construction_manual/pdfs/09-construction_manual-part_g.pdf"
+    }
+  ],
+  "finding_count": 46,
+  "by_severity": {
+    "high": 12,
+    "medium": 28,
+    "low": 0
+  },
+  "by_kind": {
+    "ambiguous_authority": 1,
+    "cross_doc_gap": 1,
+    "numeric_conflict": 38,
+    "region_of_interest": 6
+  },
+  "by_topic": {
+    "acceptance_rejection": 1,
+    "approved_equal_vs_no_sub": 1,
+    "asphalt_hma": 5,
+    "compaction_density": 4,
+    "concrete_pcc": 5,
+    "curing_concrete": 1,
+    "department_test_vs_contractor_test": 1,
+    "environmental": 3,
+    "moisture_content": 3,
+    "payment_measurement": 1,
+    "qc_qa_responsibility": 1,
+    "required_vs_optional": 1,
+    "safety_osha": 2,
+    "sampling_frequency": 6,
+    "stop_work_vs_continue": 1,
+    "temperature_limits": 3,
+    "time_notice": 1,
+    "tolerances_dimensions": 2,
+    "utilities": 1,
+    "weather_season": 3
+  },
+  "findings": [
+    {
+      "id": "struct-increase-sampling",
+      "severity": "high",
+      "kind": "ambiguous_authority",
+      "topic": "sampling_frequency",
+      "title": "Part B allows increasing sampling rates without a Specs capacity backstop",
+      "summary": "Authority to raise rates exists in Materials Manual Part B; Specs do not clearly tie that to pausing work when lab/field capacity is short.",
+      "docs": {
+        "mat_part_b": [
+          {
+            "match": "increase the sampling rates",
+            "page": 2,
+            "snippet": " to th e testing frequency of the materials, test procedures performed are also listed. On any DelDOT project, the Engineer reserves th e right to increase the sampling rates from the minimums when conditions warrant. All materials are sampled at a project rate, not by total job rate. Sampling and testing is performed "
+          }
+        ],
+        "standard_specs_2026": [
+          {
+            "match": "Materials Manual",
+            "page": 61,
+            "snippet": " in the form of an AASHTO or ASTM number indicated as \"modified,\" it refers to an AASHTO or ASTM specification or test modified by the Department's Materials Manual in effect on the date of advertisement. If there is a procedural difference in the DOH, AASHTO, or ASTM test methods, the Department will follow thi"
+          },
+          {
+            "match": "Materials Manual",
+            "page": 61,
+            "snippet": "dvertisement. If there is a procedural difference in the DOH, AASHTO, or ASTM test methods, the Department will follow this order of precedence: 1. Materials Manual 2. AASHTO 3. ASTM C. The engineer will set forth minimum requirements for material quality assurance sampling and testing on each contract. Ensur"
+          }
+        ]
+      }
+    },
+    {
+      "id": "struct-specs-defer-b1-specific",
+      "severity": "high",
+      "kind": "cross_doc_gap",
+      "topic": "sampling_frequency",
+      "title": "Specs defer to Materials Manual; Table B-1 carries specific lab methods/rates",
+      "summary": "Structural gap: contract Specs often point to the Materials Manual while Table B-1 states concrete methods and frequencies. Easy to staff from Specs alone and miss lab load.",
+      "docs": {
+        "standard_specs_2026": [
+          {
+            "match": "Materials Manual",
+            "page": 61,
+            "snippet": " in the form of an AASHTO or ASTM number indicated as \"modified,\" it refers to an AASHTO or ASTM specification or test modified by the Department's Materials Manual in effect on the date of advertisement. If there is a procedural difference in the DOH, AASHTO, or ASTM test methods, the Department will follow thi"
+          },
+          {
+            "match": "Materials Manual",
+            "page": 61,
+            "snippet": "dvertisement. If there is a procedural difference in the DOH, AASHTO, or ASTM test methods, the Department will follow this order of precedence: 1. Materials Manual 2. AASHTO 3. ASTM C. The engineer will set forth minimum requirements for material quality assurance sampling and testing on each contract. Ensur"
+          },
+          {
+            "match": "Materials Manual",
+            "page": 62,
+            "snippet": "n 105.11, Removal of Defective and Unauthorized Work. C. Distribute the compliance certificates in accordance with the contract or the Department\u2019s Materials Manual. 106.4 Manufacturing Plant Inspection. A. The Department may inspect manufacturing plants for compliance with specified manufacturing methods. The"
+          }
+        ],
+        "mat_table_b1": [
+          {
+            "match": "T89",
+            "page": 1,
+            "snippet": "Y ITEM DESCRIPTION UNIT SAMPLES / UNIT TEST PROCEDURE (AASHTO or as Noted) 202000 Excavation and Embankment yd3 (m3) 1 / 1000 ( 1 / 750 ) T88, T89, T90, T99 (M ethod C), T310 202534 Clay Liner yd2 (m2) minimum 1 / 1000 ( 1 / 750 ) T88, T89, T90 202543 Clay Fill yd3 (m3) minimum 1 / 1000 ( 1 "
+          },
+          {
+            "match": "T89",
+            "page": 1,
+            "snippet": "n and Embankment yd3 (m3) 1 / 1000 ( 1 / 750 ) T88, T89, T90, T99 (M ethod C), T310 202534 Clay Liner yd2 (m2) minimum 1 / 1000 ( 1 / 750 ) T88, T89, T90 202543 Clay Fill yd3 (m3) minimum 1 / 1000 ( 1 / 750 ) T88, T89, T90 207000 Excavation and Backfill for Structures yd3 (m3) 1 / 1000 ( 1 / "
+          },
+          {
+            "match": "T89",
+            "page": 1,
+            "snippet": "ethod C), T310 202534 Clay Liner yd2 (m2) minimum 1 / 1000 ( 1 / 750 ) T88, T89, T90 202543 Clay Fill yd3 (m3) minimum 1 / 1000 ( 1 / 750 ) T88, T89, T90 207000 Excavation and Backfill for Structures yd3 (m3) 1 / 1000 ( 1 / 750 ) T88, T89, T90, T99 ( Method C), T310 208000 Excavation and Bac"
+          }
+        ]
+      }
+    },
+    {
+      "id": "num-asphalt_hma-days",
+      "severity": "high",
+      "kind": "numeric_conflict",
+      "topic": "asphalt_hma",
+      "title": "Numeric mismatch on asphalt hma (days): 10 days, 14 days",
+      "summary": "Different publications state different days values in asphalt hma contexts. Confirm which figure governs by work type / document hierarchy.",
+      "values_by_doc": {
+        "standard_specs_2026": [
+          10
+        ],
+        "construction_part_e": [
+          14
+        ]
+      },
+      "docs": {
+        "standard_specs_2026": [
+          {
+            "match": "10 days",
+            "page": 662,
+            "snippet": "ic compounds (VOCs) 1015.3 Production Quality Control Plan Requirements. Not applicable. 1015.4 JMFs. A. Develop and submit job mix formula for the mixture 10 days before production. B. JMF submission must include: 1. Proposed mixing facility 2. Proportions and Sources of: a. Aggregate b. Bituminous material 3. Gra"
+          }
+        ],
+        "construction_part_e": [
+          {
+            "match": "14 days",
+            "page": 52,
+            "snippet": "the asphalt application rate remains between 14 and 20 gal/yd3 (70 and 100 L/m3). (k) The Contractor has appropr iately planned for a curing period of up to 14 days during which the base course will be open to traffic. (l) The asphalt truck is equipped with a measuring stick calibrated by the Materials and Research Sect"
+          },
+          {
+            "match": "14 days",
+            "page": 53,
+            "snippet": "ections, the roadway will be opened to traffic before sealing, on a temporary basis, to cure the stabilized mix. This curing period should not be long er than 14 days unless approved by the Engineer. [304.04] E304.08 Surface Treatment. An asphalt stabilized base ma y be surface treated when its density, moisture content"
+          }
+        ]
+      }
+    },
+    {
+      "id": "num-compaction_density-degf",
+      "severity": "high",
+      "kind": "numeric_conflict",
+      "topic": "compaction_density",
+      "title": "Numeric mismatch on compaction density (degf): 40 degf, 200 degf",
+      "summary": "Different publications state different degf values in compaction density contexts. Confirm which figure governs by work type / document hierarchy.",
+      "values_by_doc": {
+        "standard_specs_2026": [
+          40
+        ],
+        "construction_part_e": [
+          200
+        ]
+      },
+      "docs": {
+        "standard_specs_2026": [
+          {
+            "match": "40\u00b0F",
+            "page": 695,
+            "snippet": ".3.1.B. Use a mineral slurry conforming to the following requirements: Table 1035.1-1 Mineral Slurry Requirements Property Test Method (Slurry Temperature \u2265 40\u00b0F at time of test) Requirement Density (pcf) Mud Weight (Density) API RP 13B-1, Section 1 64.3* to 72* Viscosity (seconds/quart) Marsh Funnel and Cup API RP"
+          },
+          {
+            "match": "40\u00b0F",
+            "page": 695,
+            "snippet": "B. B. The polymer slurry must conform to the following requirements: Table 1035.2-1. Polymer Slurry Requirements Property Test Method (Slurry Temperature \u2265 40\u00b0F at time of test) Requirement Density (pcf) Mud Weight (Density) API RP 13B-1, Section 1 641 pcf max. Viscosity (seconds/quart) Marsh Funnel and Cup API R"
+          },
+          {
+            "match": "40\u00b0F",
+            "page": 696,
+            "snippet": "xcavation. B. Water slurry must conform to the following requirements: Table 1035.3-1. Water Slurry Requirements Property Test Method (Slurry Temperature \u2265 40\u00b0F at time of test) Requirement Density (pcf) Mud Weight (Density) API RP 13B-1, Section 1 64 pcf max. Sand Content (percent) API RP 13B-1, Section 5 1.0 max."
+          }
+        ],
+        "construction_part_e": [
+          {
+            "match": "200 \u00b0F",
+            "page": 60,
+            "snippet": "r intermediate, rolling should follow the breakdown rolling as closely as possible. Intermediate rolling should be done while th e paving mix is still above 200 \u00b0F (93\u00ba C) to obtain maximum density. This temperature should only be used as a guideline. A number of environmental factors, such as air temperature and humid"
+          }
+        ]
+      }
+    },
+    {
+      "id": "num-compaction_density-percent",
+      "severity": "high",
+      "kind": "numeric_conflict",
+      "topic": "compaction_density",
+      "title": "Numeric mismatch on compaction density (percent): 2 percent, 3 percent, 20 percent, 70 percent, 95 percent, 98 percent",
+      "summary": "Different publications state different percent values in compaction density contexts. Confirm which figure governs by work type / document hierarchy.",
+      "values_by_doc": {
+        "standard_specs_2026": [
+          2,
+          3,
+          70,
+          95,
+          98
+        ],
+        "construction_part_e": [
+          2,
+          20
+        ],
+        "construction_part_f": [
+          2
+        ]
+      },
+      "docs": {
+        "standard_specs_2026": [
+          {
+            "match": "95 percent",
+            "page": 116,
+            "snippet": "lifts of material, proof roll the subgrade in the presence of and as directed by the engineer in accordance with Section 202.3.6. D. Compact the subgrade to 95 percent or more of the maximum density. E. Ensure the finished subgrade surface is uniform and smooth and conforms to prescribed elevations before constructing the b"
+          },
+          {
+            "match": "2 percent",
+            "page": 119,
+            "snippet": "efore placing the next lift: a. Moisten or dry and thoroughly mix to the proper moisture content before compaction if the soil moisture content is not within 2 percent of optimum. b. Do not use frozen embankment material or place embankment material on frozen ground. Do not place rocks, broken concrete, and other solid mate"
+          },
+          {
+            "match": "95 percent",
+            "page": 120,
+            "snippet": "ess toward the center of the embankment. Continue compaction until each lift is thoroughly and uniformly compacted to the full width of the embankment and to 95 percent or more of the maximum density. 1. The Department will consider the ordinary use of trucks, carryalls, scrapers, tractors, or other construction equipment fo"
+          }
+        ],
+        "construction_part_e": [
+          {
+            "match": "2 percent",
+            "page": 20,
+            "snippet": "requirements of the Standard Specifications. To efficiently and successfully compact the soil to the required density, the moisture content must be within 2 percent of optimum. In the field, if it is noted that the soil is too dry and the moisture content obviously less than required, the Inspector must insist on the app"
+          },
+          {
+            "match": "2 percent",
+            "page": 44,
+            "snippet": "he ce nterline that that tonna ge should cover. These computations should be checked by the Inspector . The spread rate should be based on the wet density at 2 percent or so above minimum density. Example: ENGLISH METRIC Maximum Density (Dry) 135 lb/ft 3 2160 kg/m 3 Optimum Moisture 8.0% 8.0% Maximum Density (Wet) 14"
+          },
+          {
+            "match": "2 percent",
+            "page": 49,
+            "snippet": "sed: January 2004 E-49 The Specifications will state how much compaction will be required. The moisture content at the time of compaction is to be within 2 percent of the optimum moisture content. [301.06] E301.07 Measurement and Payment. The Specifications state the method the Inspector will use to measure the quant"
+          }
+        ],
+        "construction_part_f": [
+          {
+            "match": "2 percent",
+            "page": 5,
+            "snippet": "pread material in accordance with the Specifications. F304502.08 Compaction. At the start of compaction, the moisture content of the mixture must be within 2 percent of the optimum moisture cont ent, and must not be at a level that causes the soil cement layer to become unstable during co mpaction and finishing. Prior to b"
+          }
+        ]
+      }
+    },
+    {
+      "id": "num-concrete_pcc-days",
+      "severity": "high",
+      "kind": "numeric_conflict",
+      "topic": "concrete_pcc",
+      "title": "Numeric mismatch on concrete pcc (days): 1 days, 4 days, 5 days, 7 days, 28 days",
+      "summary": "Different publications state different days values in concrete pcc contexts. Confirm which figure governs by work type / document hierarchy.",
+      "values_by_doc": {
+        "standard_specs_2026": [
+          1,
+          4,
+          5,
+          7,
+          28
+        ],
+        "mat_glossary": [
+          28
+        ],
+        "construction_part_e": [
+          28
+        ]
+      },
+      "docs": {
+        "standard_specs_2026": [
+          {
+            "match": "5 days",
+            "page": 163,
+            "snippet": "on 501.3.9. Clean and seal the joints around the entire patch perimeter, and all transverse joints in larger patches, with hot-poured sealant material within 5 days after concrete placement, if no overlay is planned. Refer to and comply with all Section 504 requirements. D. If the pavement will receive an overlay, the co"
+          },
+          {
+            "match": "28 days",
+            "page": 678,
+            "snippet": "si Minimum bond strength using slant shear at 28 day ASTM C882 2000 psi Maximum length change at 28 days in air AASHTO T160 -0.10% Maximum length change at 28 days in water AASHTO T160 +0.10% Minimum resistance to freeze/ thaw - durability factor after 300 cycles AASHTO T161 92.5% 1023.3 Pre-Blended Rapid-Set Concrete."
+          },
+          {
+            "match": "28 days",
+            "page": 679,
+            "snippet": "hloride ion penetration AASHTO T277 3000 Coulombs 3000 Coulombs Maximum length change at 28 days in air AASHTO T160 -0.10% -0.10% Maximum length change at 28 days in water AASHTO T160 +0.10% +0.10% Minimum resistance to freeze/ thaw - durability factor after 300 cycles AASHTO T161 92.50% 92.50% Minimum slump mea"
+          }
+        ],
+        "mat_glossary": [
+          {
+            "match": "28 days",
+            "page": 16,
+            "snippet": "earlier strength attainment, also called high early strength cement, it attains in seven days a strength equivalent to the strength of Type I cement after 28 days. Post tensioning. Inducing stress into a beam, after the concrete is properly cured, using tensioning cables. Precast concrete. Any concrete or masonry"
+          }
+        ],
+        "construction_part_e": [
+          {
+            "match": "28 days",
+            "page": 74,
+            "snippet": "are in Part H. Typically, entrained air and slump test results will be available immediately in the field. Two compressive tests each are performed at 7 and 28 days. If early strength tests are needed, the Materials and Research Section must be informed so that additional cylinders can be made. The Inspector should obtain"
+          },
+          {
+            "match": "28 days",
+            "page": 89,
+            "snippet": "own in Part H. Typically, entrained air and slump test results will be available immediat ely in the field. Two compressive tests each are performed at 7 and 28 days. If early strength tests are needed, the Materials and Research Section ===== PAGE 90 ===== E602 \u2013 CONCRETE STRUCTURES Revised: January 2004 E-90 must"
+          }
+        ]
+      }
+    },
+    {
+      "id": "num-environmental-degf",
+      "severity": "high",
+      "kind": "numeric_conflict",
+      "topic": "environmental",
+      "title": "Numeric mismatch on environmental (degf): 0 degf, 20 degf",
+      "summary": "Different publications state different degf values in environmental contexts. Confirm which figure governs by work type / document hierarchy.",
+      "values_by_doc": {
+        "standard_specs_2026": [
+          20
+        ],
+        "construction_part_e": [
+          0
+        ]
+      },
+      "docs": {
+        "standard_specs_2026": [
+          {
+            "match": "20 degrees F",
+            "page": 248,
+            "snippet": "rs. Maintain proper humidity for curing. Heat the structure uniformly. Reduce heat gradually in the enclosure so that the temperature will not drop more than 20 degrees F in 8-hours. ===== PAGE 249 ===== CONCRETE STRUCTURES SECTION 610 239 6. Place insulation on the concrete as soon as initial set will permit. Provide insulat"
+          }
+        ],
+        "construction_part_e": [
+          {
+            "match": "0 \u00b0F",
+            "page": 113,
+            "snippet": "r to the next pass. ===== PAGE 113 ===== E605 \u2013 STEEL STRUCTURES Revised: January 2004 E-113 (i) Do not permit welding to be done in temperatures below 0 \u00b0F (-18 \u00b0C) or when surfaces are wet from condensation, rain, snow, or ice. The surfaces are to be heated at temperatures between 0 \u00b0F and 32 \u00b0F (-18 and 0 \u00b0C),"
+          }
+        ]
+      }
+    },
+    {
+      "id": "num-safety_osha-days",
+      "severity": "high",
+      "kind": "numeric_conflict",
+      "topic": "safety_osha",
+      "title": "Numeric mismatch on safety osha (days): 14 days, 30 days",
+      "summary": "Different publications state different days values in safety osha contexts. Confirm which figure governs by work type / document hierarchy.",
+      "values_by_doc": {
+        "standard_specs_2026": [
+          30
+        ],
+        "construction_part_e": [
+          14
+        ]
+      },
+      "docs": {
+        "standard_specs_2026": [
+          {
+            "match": "30 days",
+            "page": 55,
+            "snippet": "the engineer\u2019s written response to the claim and appeal the claim to the District Engineer. 5. If the contractor decides to appeal, submit the appeal within 30 days of receipt of the engineer\u2019s written response. E. District Review. 1. The District Engineer will review the contractor\u2019s formal written appeal and the contr"
+          },
+          {
+            "match": "30 days",
+            "page": 296,
+            "snippet": "reports. Submit records from on-site audits and inspections from SSPC, OSHA and EPA as requested by the engineer. F. Containment System Plans. 1. At least 30 days prior to commencing cleaning operations, submit containment system working drawings, sealed by a professional engineer registered in the State of Delaware in"
+          }
+        ],
+        "construction_part_e": [
+          {
+            "match": "14 days",
+            "page": 52,
+            "snippet": "the asphalt application rate remains between 14 and 20 gal/yd3 (70 and 100 L/m3). (k) The Contractor has appropr iately planned for a curing period of up to 14 days during which the base course will be open to traffic. (l) The asphalt truck is equipped with a measuring stick calibrated by the Materials and Research Sect"
+          }
+        ]
+      }
+    },
+    {
+      "id": "num-sampling_frequency-degf",
+      "severity": "high",
+      "kind": "numeric_conflict",
+      "topic": "sampling_frequency",
+      "title": "Numeric mismatch on sampling frequency (degf): 40 degf, 68 degf, 105 degf, 120 degf, 176 degf, 390 degf",
+      "summary": "Different publications state different degf values in sampling frequency contexts. Confirm which figure governs by work type / document hierarchy.",
+      "values_by_doc": {
+        "standard_specs_2026": [
+          40,
+          105,
+          120,
+          176,
+          390
+        ],
+        "construction_part_e": [
+          68
+        ]
+      },
+      "docs": {
+        "standard_specs_2026": [
+          {
+            "match": "390 degrees F",
+            "page": 327,
+            "snippet": "or bearing plates only if there is 1 1/2-inches of steel between the weld and the elastomer. Do not subject the elastomer or bond to temperatures in excess of 390 degrees F. 3. For new structural steel, vulcanize the bearing to the sole plate before shipping to the site. For new concrete beams or replacing bearings in the field,"
+          },
+          {
+            "match": "40 \ndegrees F",
+            "page": 342,
+            "snippet": "erlay that has achieved less than 50 percent of design strength. 2. The temperature of all surfaces that come into contact with the mix shall be no less than 40 degrees F and no greater than 105 degrees F. 3. Place concrete a minimum of 1 1/2-inch thick. 4. Place overlay concrete in accordance with Section 610.3.4.B. In case o"
+          },
+          {
+            "match": "105 degrees F",
+            "page": 342,
+            "snippet": "50 percent of design strength. 2. The temperature of all surfaces that come into contact with the mix shall be no less than 40 degrees F and no greater than 105 degrees F. 3. Place concrete a minimum of 1 1/2-inch thick. 4. Place overlay concrete in accordance with Section 610.3.4.B. In case of placement operation delay, comp"
+          }
+        ],
+        "construction_part_e": [
+          {
+            "match": "68 \u00b0F",
+            "page": 104,
+            "snippet": "onsidering the effect of the temperature and load at the time of measurement, is to be \u00b11/4\" (\u00b16 mm), provided the movable Punch Holes Aligned Vertically at 68 \u00b0F (20 \u00b0C) Masonry Plate Bearing Height (Y) Check Alignment and Centering of the Bearing Sole Plate Horizontal Distance (M) ===== PAGE 105 ===== E605 \u2013 STE"
+          }
+        ]
+      }
+    },
+    {
+      "id": "num-sampling_frequency-psi",
+      "severity": "high",
+      "kind": "numeric_conflict",
+      "topic": "sampling_frequency",
+      "title": "Numeric mismatch on sampling frequency (psi): 250 psi, 5500 psi",
+      "summary": "Different publications state different psi values in sampling frequency contexts. Confirm which figure governs by work type / document hierarchy.",
+      "values_by_doc": {
+        "standard_specs_2026": [
+          250
+        ],
+        "mat_table_b1": [
+          5500
+        ]
+      },
+      "docs": {
+        "standard_specs_2026": [
+          {
+            "match": "250 PSI",
+            "page": 720,
+            "snippet": "ure content may not exceed 1/2 of the aggregate absorption as determined by AASHTO T255. 1046.2.5 Acceptance A. Overlay must have a minimum bond strength of 250 PSI per ACI 503R-93, Appendix A. B. Verify surface does not contain: 1. Depressions in the surface that will pond water. 2. Deviations in excess of 1/4-inch in"
+          }
+        ],
+        "mat_table_b1": [
+          {
+            "match": "5500 psi",
+            "page": 17,
+            "snippet": "es and Test Procedures MINIMUM TESTING FREQUENCY ITEM DESCRIPTION UNIT SAMPLES / UNIT TEST PROC EDURE (AASHTO or as Noted) 602567 P.C.C. masonry, Pylon, 5500 psi (38 Mpa) yd3 (m3) See Division 600 T22, T23 or ASTM C39 -86, also Division 600 Requirements in the Materials Manual, 602568 Precast Deck Panels yd3 (m3) S"
+          }
+        ]
+      }
+    },
+    {
+      "id": "num-utilities-percent",
+      "severity": "high",
+      "kind": "numeric_conflict",
+      "topic": "utilities",
+      "title": "Numeric mismatch on utilities (percent): 100 percent, 125 percent",
+      "summary": "Different publications state different percent values in utilities contexts. Confirm which figure governs by work type / document hierarchy.",
+      "values_by_doc": {
+        "standard_specs_2026": [
+          125
+        ],
+        "construction_part_b": [
+          100
+        ]
+      },
+      "docs": {
+        "standard_specs_2026": [
+          {
+            "match": "125 percent",
+            "page": 89,
+            "snippet": "t are beyond the contractor\u2019s, subcontractor\u2019s, and supplier\u2019s power to settle. e. The added quantity of a major item of work where the added quantity exceeds 125 percent of the approximate quantity shown in the bid proposal. f. Utilities, including delays caused by the utility\u2019s failure to timely perform its work or unantici"
+          }
+        ],
+        "construction_part_b": [
+          {
+            "match": "100 percent",
+            "page": 32,
+            "snippet": "Contract It em being paid should be ===== PAGE 32 ===== B13.00 \u2013 UTILITY ADJUSTMENT PROCEDURES Revised: January 2004 B-32 deducted from the payment until 100 percent has been deducted. For example, precast concrete beams are often delivered to a project before they are used, and the Contractor will request payment for the"
+          }
+        ]
+      }
+    },
+    {
+      "id": "num-weather_season-days",
+      "severity": "high",
+      "kind": "numeric_conflict",
+      "topic": "weather_season",
+      "title": "Numeric mismatch on weather season (days): 4 days, 28 days",
+      "summary": "Different publications state different days values in weather season contexts. Confirm which figure governs by work type / document hierarchy.",
+      "values_by_doc": {
+        "standard_specs_2026": [
+          4,
+          28
+        ],
+        "construction_part_e": [
+          28
+        ]
+      },
+      "docs": {
+        "standard_specs_2026": [
+          {
+            "match": "28 days",
+            "page": 678,
+            "snippet": "bond strength by direct tension at 28 days ASTM C1583 200 psi Minimum bond strength using slant shear at 28 day ASTM C882 2000 psi Maximum length change at 28 days in air AASHTO T160 -0.10% Maximum length change at 28 days in water AASHTO T160 +0.10% Minimum resistance to freeze/ thaw - durability factor after 300 cycl"
+          },
+          {
+            "match": "28 days",
+            "page": 678,
+            "snippet": "si Minimum bond strength using slant shear at 28 day ASTM C882 2000 psi Maximum length change at 28 days in air AASHTO T160 -0.10% Maximum length change at 28 days in water AASHTO T160 +0.10% Minimum resistance to freeze/ thaw - durability factor after 300 cycles AASHTO T161 92.5% 1023.3 Pre-Blended Rapid-Set Concrete."
+          },
+          {
+            "match": "28 days",
+            "page": 679,
+            "snippet": "using slant shear at 1 day ASTM C882 2000 psi 2000 psi Maximum chloride ion penetration AASHTO T277 3000 Coulombs 3000 Coulombs Maximum length change at 28 days in air AASHTO T160 -0.10% -0.10% Maximum length change at 28 days in water AASHTO T160 +0.10% +0.10% Minimum resistance to freeze/ thaw - durability fac"
+          }
+        ],
+        "construction_part_e": [
+          {
+            "match": "28 days",
+            "page": 74,
+            "snippet": "are in Part H. Typically, entrained air and slump test results will be available immediately in the field. Two compressive tests each are performed at 7 and 28 days. If early strength tests are needed, the Materials and Research Section must be informed so that additional cylinders can be made. The Inspector should obtain"
+          },
+          {
+            "match": "28 days",
+            "page": 89,
+            "snippet": "own in Part H. Typically, entrained air and slump test results will be available immediat ely in the field. Two compressive tests each are performed at 7 and 28 days. If early strength tests are needed, the Materials and Research Section ===== PAGE 90 ===== E602 \u2013 CONCRETE STRUCTURES Revised: January 2004 E-90 must"
+          }
+        ]
+      }
+    },
+    {
+      "id": "num-asphalt_hma-degf",
+      "severity": "medium",
+      "kind": "numeric_conflict",
+      "topic": "asphalt_hma",
+      "title": "Numeric mismatch on asphalt hma (degf): 32 degf, 40 degf, 50 degf, 60 degf, 70 degf, 120 degf, 140 degf, 160 degf, 170 degf",
+      "summary": "Different publications state different degf values in asphalt hma contexts. Confirm which figure governs by work type / document hierarchy.",
+      "values_by_doc": {
+        "standard_specs_2026": [
+          32,
+          40,
+          50,
+          60,
+          70,
+          120,
+          140,
+          170
+        ],
+        "construction_part_e": [
+          50,
+          60,
+          160
+        ]
+      },
+      "docs": {
+        "standard_specs_2026": [
+          {
+            "match": "60 degrees F",
+            "page": 95,
+            "snippet": "gineer will measure the material by volume in place. H. The engineer will measure bituminous materials by the gallon. I. The engineer will measure volumes at 60 degrees F or the engineer will correct the volume to 60 degrees F using ASTM D4311 for asphalt or ASTM D633 for tars. ===== PAGE 96 ===== MEASUREMENT AND PAYMENT SECTI"
+          },
+          {
+            "match": "60 \ndegrees F",
+            "page": 95,
+            "snippet": "The engineer will measure bituminous materials by the gallon. I. The engineer will measure volumes at 60 degrees F or the engineer will correct the volume to 60 degrees F using ASTM D4311 for asphalt or ASTM D633 for tars. ===== PAGE 96 ===== MEASUREMENT AND PAYMENT SECTION 109 86 J. When the contractor ships bituminous mat"
+          },
+          {
+            "match": "140 degrees F",
+            "page": 141,
+            "snippet": "on the surface as a reason to prohibit placement. 2. Do not place subsequent lifts, release materials, or open to traffic until the mat temperature is below 140 degrees F. 3. The Department will not allow placement of bituminous concrete when the air temperature at the paving location is below the temperatures indicated in Tab"
+          }
+        ],
+        "construction_part_e": [
+          {
+            "match": "160 \u00b0F",
+            "page": 52,
+            "snippet": "===== PAGE 52 ===== E304 \u2013 ASPHALT STABILIZED BASE COURSE Revised: January 2004 E-52 (i) The asphalt temperature during application is between 140 and 160 \u00b0F (60 and 70 \u00b0C). (j) The Contractor has established a meth od to ensure the asphalt application rate remains between 14 and 20 gal/yd3 (70 and 100 L/m3). (k"
+          },
+          {
+            "match": "60 \u00b0F",
+            "page": 54,
+            "snippet": "Upon measuring the depth and temperature of the asphalt in the distributor (both loaded and unloaded), the correspondi ng volume can then be converted to a 60 \u00b0F (16 \u00b0C) basis using the Asphalt Conversion Table (Table E-1). In summary, the Asphalt Distributor Tickets must be filled out in full for each distributor loa"
+          },
+          {
+            "match": "50 \u00b0F",
+            "page": 68,
+            "snippet": "proceed when the existing surface is frozen or wet, during foggy conditions, when it is raining or threatening to rain, or when the air temperature is below 50 \u00b0F (10 \u00b0C). [404.09] E404.13 Alignment. All applications of bituminous material s are to be made to the width and alignment required by the Plans. As the pa"
+          }
+        ]
+      }
+    },
+    {
+      "id": "num-asphalt_hma-hours",
+      "severity": "medium",
+      "kind": "numeric_conflict",
+      "topic": "asphalt_hma",
+      "title": "Numeric mismatch on asphalt hma (hours): 2 hours, 12 hours, 24 hours, 96 hours",
+      "summary": "Different publications state different hours values in asphalt hma contexts. Confirm which figure governs by work type / document hierarchy.",
+      "values_by_doc": {
+        "standard_specs_2026": [
+          12,
+          24,
+          96
+        ],
+        "construction_part_e": [
+          2
+        ],
+        "construction_part_f": [
+          2,
+          24
+        ]
+      },
+      "docs": {
+        "standard_specs_2026": [
+          {
+            "match": "24 hours",
+            "page": 650,
+            "snippet": "1. Non-Tracking Emulsified Asphalt Requirements. Property Test Method Requirement Saybolt Viscosity at 77 F, (SFS) AASHTO T59 15-100 Storage Stability Test, 24 hours, (%) AASHTO T59 1 maximum Residue by Distillation or Residue by Evaportation, (%) AASHTO T59 50 minimum Sieve Test, No. 20, (%) AASHTO T59 0.4 maximum for f"
+          },
+          {
+            "match": "96 hours",
+            "page": 652,
+            "snippet": "aggregates when added to asphalt cement. The additives will not change the binder grade of the asphalt cement. Additives must be heat stable for a minimum of 96 hours at the bituminous material\u2019s normal storage temperature. ===== PAGE 653 ===== ASPHALT MATERIALS PRODUCTION SECTION 1014 643 SECTION 1014 \u2014 ASPHALT MATERI"
+          },
+          {
+            "match": "12 hours",
+            "page": 660,
+            "snippet": "e plant to the storage system without a reduction in temperature, the segregation of the mix, or the oxidation of the asphalt. Store mixture for a maximum of 12 hours. ===== PAGE 661 ===== COLD PATCH SECTION 1015 651 SECTION 1015 \u2014 COLD PATCH 1015.1 Material Requirements. A. Produce cold patch that is a uniform mixtur"
+          }
+        ],
+        "construction_part_e": [
+          {
+            "match": "2 hours",
+            "page": 51,
+            "snippet": "r of the single-pass type. (e) Contractor has available on the job an approved 10' (3 m) long straightedge. (f) Work is scheduled to start so that at least 2 hours of daylight will be available to complete the mixing operations following asphalt application. (g) The roadway has been shaped in accordance with the typica"
+          }
+        ],
+        "construction_part_f": [
+          {
+            "match": "24 \nhours",
+            "page": 5,
+            "snippet": "should be protected from drying by appl ying asphalt to all exposed surfaces. The bituminous material should be applied as soon as possible, but no later than 24 hours after completion of finishin g operations. The finished soil cement layer is to be kept continually moist until the curing material is placed. The bituminous"
+          },
+          {
+            "match": "2 hours",
+            "page": 5,
+            "snippet": "base. The Area Engineer/Construction Manager ma y authorize curing by water instead of asphalt. If water curing is use d, the water should be applied within 2 hours of compaction and every 2 hours thereafter until the soil cement base course has cured to the satisfaction of the Engineer. The Area Engineer/Construction"
+          },
+          {
+            "match": "2 hours",
+            "page": 5,
+            "snippet": "ction Manager ma y authorize curing by water instead of asphalt. If water curing is use d, the water should be applied within 2 hours of compaction and every 2 hours thereafter until the soil cement base course has cured to the satisfaction of the Engineer. The Area Engineer/Construction Manager ma y also authorize curin"
+          }
+        ]
+      }
+    },
+    {
+      "id": "num-asphalt_hma-inches",
+      "severity": "medium",
+      "kind": "numeric_conflict",
+      "topic": "asphalt_hma",
+      "title": "Numeric mismatch on asphalt hma (inches): 2 inches, 4 inches, 18 inches, 60 inches",
+      "summary": "Different publications state different inches values in asphalt hma contexts. Confirm which figure governs by work type / document hierarchy.",
+      "values_by_doc": {
+        "standard_specs_2026": [
+          2,
+          18
+        ],
+        "mat_glossary": [
+          4,
+          60
+        ]
+      },
+      "docs": {
+        "standard_specs_2026": [
+          {
+            "match": "18 inches",
+            "page": 361,
+            "snippet": ". Triangular Channelizing Island. 1. Saw cut existing bituminous concrete pavement or PCC pavement in accordance with Section 762.3 and: a. Saw cut pavement 18 inches from the proposed face of curb. b. With the approval of the engineer, the contractor may saw cut at the proposed face of the curb in locations adjacent to PC"
+          },
+          {
+            "match": "2 inches",
+            "page": 425,
+            "snippet": "ong the surface. Open a milled surface to traffic only after removing all loose material. Provide temporary bituminous concrete wedges at any grade change of 2 inches or greater in accordance with the DE MUTCD. B. Taper cuts consist of one pass between 6- feet and 8-feet with a specified depth at one edge and zero depth at"
+          }
+        ],
+        "mat_glossary": [
+          {
+            "match": "4 in",
+            "page": 18,
+            "snippet": "s obtained based on the relative amount of fractur ing and alteration. RQD is determined by summing up the lengths of those porti ons of a core run that are 4 in ches or greater in length and dividing by the core run (usually 60 inches). Rubberized asphalt. Bituminous materials mixed with a small amount of rubber an"
+          },
+          {
+            "match": "60 inches",
+            "page": 18,
+            "snippet": ". RQD is determined by summing up the lengths of those porti ons of a core run that are 4 in ches or greater in length and dividing by the core run (usually 60 inches). Rubberized asphalt. Bituminous materials mixed with a small amount of rubber and used for filling and sealing joints and cracks. Sack. Equivalent to"
+          }
+        ]
+      }
+    },
+    {
+      "id": "num-asphalt_hma-percent",
+      "severity": "medium",
+      "kind": "numeric_conflict",
+      "topic": "asphalt_hma",
+      "title": "Numeric mismatch on asphalt hma (percent): 0.4 percent, 2 percent, 10 percent, 25 percent, 45 percent, 98 percent, 100 percent, 110 percent",
+      "summary": "Different publications state different percent values in asphalt hma contexts. Confirm which figure governs by work type / document hierarchy.",
+      "values_by_doc": {
+        "standard_specs_2026": [
+          0.4,
+          2,
+          25,
+          45,
+          98,
+          100
+        ],
+        "mat_glossary": [
+          10
+        ],
+        "construction_part_e": [
+          110
+        ]
+      },
+      "docs": {
+        "standard_specs_2026": [
+          {
+            "match": "98 percent",
+            "page": 137,
+            "snippet": "maximum layer thickness of 8 uncompacted inches to prevent segregation and with a maximum surface deviation of 1/2-inch in 10-feet. D. Compact each layer to 98 percent or more of the maximum density. 1. If bituminous millings are used as GABC within the roadway pavement box, compact with a sheepsfoot roller to the satisfact"
+          },
+          {
+            "match": "2 percent",
+            "page": 624,
+            "snippet": "ies. 910.2 Materials. A. Infiltration Stone (No. 3, No. 8, or No. 57) Section 1004 1. Washed, free of stone dust, fines, or soil particles 2. Maximum of 2 percent passing #200 sieve when tested in accordance with AASHTO T11. 3. Do not use crushed concrete or recycled asphalt pavement (RAP) 4. Geotextile Section"
+          },
+          {
+            "match": "45 percent",
+            "page": 647,
+            "snippet": "Type B: 1. Quarried Materials (GABC) per Section 1004 and a. Los Angeles Abrasion testing, per AASHTO T96, must show percent of wear less than or equal to 45 percent. b. Materials must be uniform in quality and composed solely of stone and stone dust. 2. RCA (Crushed Concrete) per Section 1004. 3. Bituminous millings per"
+          }
+        ],
+        "mat_glossary": [
+          {
+            "match": "10 percent",
+            "page": 14,
+            "snippet": "in the appl icable specification upon which any material may be retained. (2) In SuperPave\u2122, one sieve size larger than the first sieve to retain more than 10 percent of the material. Non-plastic. Not capable of being molded into a sustainable shape. Optimum moisture content. The percent of moisture at which a soil or"
+          }
+        ],
+        "construction_part_e": [
+          {
+            "match": "110 percent",
+            "page": 51,
+            "snippet": "(g) The roadway has been shaped in accordance with the typical sections in the Plans. (h) The moisture content of the base course material is between 90 and 110 percent of optimum. ===== PAGE 52 ===== E304 \u2013 ASPHALT STABILIZED BASE COURSE Revised: January 2004 E-52 (i) The asphalt temperature during application is bet"
+          }
+        ]
+      }
+    },
+    {
+      "id": "num-compaction_density-feet",
+      "severity": "medium",
+      "kind": "numeric_conflict",
+      "topic": "compaction_density",
+      "title": "Numeric mismatch on compaction density (feet): 1 feet, 2 feet, 3 feet, 14 feet, 26 feet, 30 feet",
+      "summary": "Different publications state different feet values in compaction density contexts. Confirm which figure governs by work type / document hierarchy.",
+      "values_by_doc": {
+        "mat_table_b1": [
+          1,
+          2,
+          3
+        ],
+        "construction_part_e": [
+          2,
+          14,
+          26,
+          30
+        ]
+      },
+      "docs": {
+        "mat_table_b1": [
+          {
+            "match": "3 ft",
+            "page": 4,
+            "snippet": "proved equal, Certification of Mulch, Visual Inspection of Riprap for Gradation, T8 8, T89, T90, T99 (Method C), T310 for Borrow 260002 Earth Dike, Type A -3 ft (m) minimum 1 / Source / Contract Visual Inspection of Seed, Certification of Geotextile to be Mirafi 700X or Erosion 1 (Synthetic Industries), Linq GTF 400"
+          },
+          {
+            "match": "1 ft",
+            "page": 4,
+            "snippet": "pproved equal, Certification of Mulch, Visual Inspection of Riprap for Gradation, T88, T89, T90, T99 (Method C), T310 for Borrow 260003 Earth Dike, Type B -1 ft (m) minimum 1 / Source / Contract Visual Insp ection of Seed, Certification of Geotextile to be Mirafi 700X or Erosion 1 (Synthetic Industries), Linq GTF 40"
+          },
+          {
+            "match": "2 ft",
+            "page": 4,
+            "snippet": "proved equal, Certification of Mulch, Visual Inspection of Riprap for Gra dation, T88, T89, T90, T99 (Method C), T310 for Borrow 260004 Earth Dike, Type B -2 ft (m) minimum 1 / Source / Contract Visual Inspection of Seed, Certification of Geotextile to be Mirafi 700X or Erosion 1 (Synthetic Industries), Linq GTF 400"
+          }
+        ],
+        "construction_part_e": [
+          {
+            "match": "2 feet",
+            "page": 21,
+            "snippet": "terial may not be sufficiently compacted. If it is believed that this is the case, call for a density test in the area. This test may require excavating 1 to 2 feet (300 to 600 mm) of newly placed material and conducting the test at the lower elev ation in order to obtain accurate results. Suspend placement of additiona"
+          },
+          {
+            "match": "30ft",
+            "page": 44,
+            "snippet": "(Wet) 146 lb/ft 3 2333 kg/m3 Minimum Density (95%) 139 lb/ft 3 2216 kg/m3 Target Density (97%) 142 lb/ft 3 2263 kg/m3 Spread Depth 6 in 150 mm Bottom Width 30ft 9.2 m Top Width 26ft 8.0 m Area 14 ft 2 1.29 m2 Spread Factor 142 lb/ft 3 \u00d7 14 ft2 = 1988 lb/ft 2263 kg/m 3 x 1.29 m2 = 2919 kg/m So a truck with"
+          },
+          {
+            "match": "26ft",
+            "page": 44,
+            "snippet": "kg/m3 Minimum Density (95%) 139 lb/ft 3 2216 kg/m3 Target Density (97%) 142 lb/ft 3 2263 kg/m3 Spread Depth 6 in 150 mm Bottom Width 30ft 9.2 m Top Width 26ft 8.0 m Area 14 ft 2 1.29 m2 Spread Factor 142 lb/ft 3 \u00d7 14 ft2 = 1988 lb/ft 2263 kg/m 3 x 1.29 m2 = 2919 kg/m So a truck with a 65,000 lb (30 000-kg)"
+          }
+        ]
+      }
+    },
+    {
+      "id": "num-compaction_density-inches",
+      "severity": "medium",
+      "kind": "numeric_conflict",
+      "topic": "compaction_density",
+      "title": "Numeric mismatch on compaction density (inches): 0.08 inches, 3 inches, 6 inches, 8 inches",
+      "summary": "Different publications state different inches values in compaction density contexts. Confirm which figure governs by work type / document hierarchy.",
+      "values_by_doc": {
+        "standard_specs_2026": [
+          3,
+          8
+        ],
+        "mat_glossary": [
+          0.08
+        ],
+        "construction_part_e": [
+          6
+        ]
+      },
+      "docs": {
+        "standard_specs_2026": [
+          {
+            "match": "8 inches",
+            "page": 128,
+            "snippet": "ace and compact borrow in accordance with Section 202.3.8 and the following: a. Place and spread backfill material in uniform horizontal lifts no greater than 8 inches loose measurement. Compact to 95 percent or more of the maximum density, before placing the next lift. Maintain proper moisture content to achieve the requir"
+          },
+          {
+            "match": "8 inches",
+            "page": 234,
+            "snippet": "de the acceptable range and rework until the moisture content is uniformly acceptable throughout the entire lift. D. The maximum compacted lift thickness is 8 inches. E. Achieve compaction within 3-feet of the back face of the wall facing using a lightweight mechanical tamper or hand tamp. Do not use a vibratory system w"
+          },
+          {
+            "match": "8 inches",
+            "page": 490,
+            "snippet": "n a junction well or base, in accordance with the Standard Construction Details. C. Place backfill material in level lifts of loose material, no greater than 8 inches. Compact the lifts in accordance with Section 207. Install underground warning tape over the conduit approximately 12-inches below the final grade. Compact t"
+          }
+        ],
+        "mat_glossary": [
+          {
+            "match": "0.08 inches",
+            "page": 10,
+            "snippet": "capillary structure of the cement by blocking the capillaries. By doing so, it promotes freeze- thaw durability. Typical bubble diameter is approximately 0.08 inches (0.2mm). Entrapped air. Air gets trapped in Portland cement concrete due to inadequate compaction . The air voids are macroscopic and often irregular in"
+          }
+        ],
+        "construction_part_e": [
+          {
+            "match": "6 in",
+            "page": 44,
+            "snippet": ".0% 8.0% Maximum Density (Wet) 146 lb/ft 3 2333 kg/m3 Minimum Density (95%) 139 lb/ft 3 2216 kg/m3 Target Density (97%) 142 lb/ft 3 2263 kg/m3 Spread Depth 6 in 150 mm Bottom Width 30ft 9.2 m Top Width 26ft 8.0 m Area 14 ft 2 1.29 m2 Spread Factor 142 lb/ft 3 \u00d7 14 ft2 = 1988 lb/ft 2263 kg/m 3 x 1.29 m2 = 291"
+          },
+          {
+            "match": "6 inches",
+            "page": 51,
+            "snippet": "60 (considering the type traffic) a 4-inch base of compacted material was found to be sufficient. During 1962, the thickness of the sub-base was increased to 6 inches, with a 1/2-inch tolerance, due to the increasing volume of traffic and greater vehicular weights. The improved subbase was found to resist excessive moistur"
+          }
+        ]
+      }
+    },
+    {
+      "id": "num-concrete_pcc-feet",
+      "severity": "medium",
+      "kind": "numeric_conflict",
+      "topic": "concrete_pcc",
+      "title": "Numeric mismatch on concrete pcc (feet): 1 feet, 2 feet, 3 feet, 4 feet, 4.9 feet, 6 feet, 10 feet, 15 feet, 72 feet",
+      "summary": "Different publications state different feet values in concrete pcc contexts. Confirm which figure governs by work type / document hierarchy.",
+      "values_by_doc": {
+        "standard_specs_2026": [
+          1,
+          3,
+          6,
+          10,
+          15,
+          72
+        ],
+        "mat_table_b1": [
+          1,
+          2,
+          3,
+          4
+        ],
+        "construction_part_e": [
+          4.9
+        ]
+      },
+      "docs": {
+        "standard_specs_2026": [
+          {
+            "match": "10 feet",
+            "page": 163,
+            "snippet": "CEMENT CONCRETE PAVEMENT SECTION 503 153 503.3.8 Finishing Concrete. A. Strike off the concrete surface flush with the existing pavement. For patches up to 10 feet long, place the screed parallel to the centerline of the roadway. For longer patches, the contractor may place the screed perpendicular to the centerline of"
+          },
+          {
+            "match": "6 feet",
+            "page": 164,
+            "snippet": "e Final Acceptance and payment. Submit repair or replacement procedures to the engineer for approval. 503.4 Method of Measurement. A. Patching PCC Pavement, 6 feet to 15 feet, Type A and Patching PCC Pavement Greater than 15 feet to 100 feet, Type B. 1. The Department will measure concrete patches placed and accepted by"
+          },
+          {
+            "match": "15 feet",
+            "page": 164,
+            "snippet": "ceptance and payment. Submit repair or replacement procedures to the engineer for approval. 503.4 Method of Measurement. A. Patching PCC Pavement, 6 feet to 15 feet, Type A and Patching PCC Pavement Greater than 15 feet to 100 feet, Type B. 1. The Department will measure concrete patches placed and accepted by the square"
+          }
+        ],
+        "mat_table_b1": [
+          {
+            "match": "1 ft",
+            "page": 73,
+            "snippet": "e Valley Gutter, 8\" (200mm) ft2 (m2) See Division 700 T22, T23, or ASTM C39 -86, also Division 700 Requirements 701010 Portland Cement Concrete Curb, Type 1 ft (m) See Division 700 T22, T23, or ASTM C39 -86, also Division 700 Requirements 701011 Portland Cement Concrete Curb, Type 2 ft (m) See Division 700 T22, T23"
+          },
+          {
+            "match": "2 ft",
+            "page": 73,
+            "snippet": "d Cement Concrete Curb, Type 1 ft (m) See Division 700 T22, T23, or ASTM C39 -86, also Division 700 Requirements 701011 Portland Cement Concrete Curb, Type 2 ft (m) See Division 700 T22, T23, or ASTM C39 -86, also Division 700 Requirements 701012 Portland Cement Concrete Curb, Type 3 ft (m) See Division 700 T22, T23"
+          },
+          {
+            "match": "3 ft",
+            "page": 73,
+            "snippet": "d Cement Concrete Curb, Type 2 ft (m) See Division 700 T22, T23, or ASTM C39 -86, also Division 700 Requirements 701012 Portland Cement Concrete Curb, Type 3 ft (m) See Division 700 T22, T23, or ASTM C39 -86, also Division 700 Requirements 701020 Integral Portland Cement Concrete Curb and Gutter, Type 1 ft (m) See"
+          }
+        ],
+        "construction_part_e": [
+          {
+            "match": "4.9 ft",
+            "page": 94,
+            "snippet": "Figure E-23: Proper Concrete Placement with a Chute or Pump Less than 5' (1.5 m) More than 5\u2019 (1.5 m) 4.9 ft (1.5 m). Drop concrete vertically into outside pocket under each form opening so as to let concrete stop and flow easily over into form without Separat"
+          }
+        ]
+      }
+    },
+    {
+      "id": "num-concrete_pcc-hours",
+      "severity": "medium",
+      "kind": "numeric_conflict",
+      "topic": "concrete_pcc",
+      "title": "Numeric mismatch on concrete pcc (hours): 0 hours, 3 hours, 4 hours, 6 hours, 12 hours, 24 hours, 48 hours",
+      "summary": "Different publications state different hours values in concrete pcc contexts. Confirm which figure governs by work type / document hierarchy.",
+      "values_by_doc": {
+        "standard_specs_2026": [
+          0,
+          3,
+          4,
+          6,
+          24,
+          48
+        ],
+        "construction_part_e": [
+          12,
+          24,
+          48
+        ]
+      },
+      "docs": {
+        "standard_specs_2026": [
+          {
+            "match": "6 hours",
+            "page": 162,
+            "snippet": "conditions, ambient temperature, humidity, and wind conditions. If unfavorable weather conditions prevent the concrete from reaching the desired strength in 6 hours, reschedule the patching work subject to approval by the engineer. The Department may consider the concrete defective if it fails to meet the compressive str"
+          },
+          {
+            "match": "4 hours",
+            "page": 340,
+            "snippet": "to cure a minimum of 15-minutes before placing polyester concrete. 2. PPC Overlay. a. Isolate expansion joints before overlaying or saw cut the joint within 4 hours after overlay placement. The engineer will determine the exact time of the saw cut. b. Place concrete within 15 and 120-minutes after applying the prime coat"
+          },
+          {
+            "match": "24 hours",
+            "page": 531,
+            "snippet": "height of the meter and the safety switch. 5. Backfill around the conduit and concrete footings, and dispose of excess or unsuitable materials: a. Backfill 24 hours after concrete placement and in accordance with Section 202. b. Remove all excess material. 6. Install ground rods in accordance with the contract and Sectio"
+          }
+        ],
+        "construction_part_e": [
+          {
+            "match": "24 hours",
+            "page": 73,
+            "snippet": "tely upon comple tion of finishing becomes extremely important, and under some conditions, it may be necessary to use wet burlap or cotton mats for the first 24 hours after plac ement. The wet burlap or mats can be used for the remaining curing period, or can be removed and replaced with other curing materials. Concrete pl"
+          },
+          {
+            "match": "12 hours",
+            "page": 80,
+            "snippet": "mp erature affect this ty pe of operation. Unless otherwise permitted, forms are not to be removed fr om freshly placed concrete until it has set for a least 12 hours. In all instances, the concrete s hould be hardened to the extent that spalling or other damage will not occur. Immediately upon the removal of the forms, all"
+          },
+          {
+            "match": "48 hours",
+            "page": 90,
+            "snippet": "set of conditions of moisture and temperature that has been established to ensure that proper hydration takes place. The critical curing period is the first 48 hours after the concrete has been placed, during which time the concrete is being transformed from the plastic to the desired hardened state. During the curing peri"
+          }
+        ]
+      }
+    },
+    {
+      "id": "num-concrete_pcc-inches",
+      "severity": "medium",
+      "kind": "numeric_conflict",
+      "topic": "concrete_pcc",
+      "title": "Numeric mismatch on concrete pcc (inches): 0.08 inches, 2 inches, 3 inches, 4 inches, 5 inches, 8 inches, 10 inches, 12 inches, 18 inches",
+      "summary": "Different publications state different inches values in concrete pcc contexts. Confirm which figure governs by work type / document hierarchy.",
+      "values_by_doc": {
+        "standard_specs_2026": [
+          2,
+          3,
+          4,
+          8,
+          10,
+          12,
+          18
+        ],
+        "mat_table_b1": [
+          5
+        ],
+        "mat_glossary": [
+          0.08
+        ],
+        "construction_part_e": [
+          3
+        ]
+      },
+      "docs": {
+        "standard_specs_2026": [
+          {
+            "match": "3 inches",
+            "page": 154,
+            "snippet": "perate 1 or both sets of paving machine wheels or tracks on previously placed concrete, ensure that the wheels or tracks bearing on the concrete stay at least 3 inches from the previously placed pavement edge. The contractor may double flange the wheels when operating with 1 side of the machine on pavement and the other sid"
+          },
+          {
+            "match": "3 inches",
+            "page": 217,
+            "snippet": "elled due to delays in the start of concrete placement, or has degraded because of slurry cake buildup. Over-ream a minimum of 1/2-inch deep and a maximum of 3 inches deep. Over-ream with a grooving tool, over-reaming bucket, or other equipment approved by the engineer. ===== PAGE 218 ===== DRILLED SHAFTS SECTION 606 208"
+          },
+          {
+            "match": "12 inches",
+            "page": 219,
+            "snippet": "a stable excavation during excavation and concrete placement operations when: a. Water begins to enter the drilled shaft excavation at a rate of greater than 12 inches per hour; b. it becomes impossible to restrict the amount of water in the drilled shaft to less than 3-inches before concrete placement; or c. water pressur"
+          }
+        ],
+        "mat_table_b1": [
+          {
+            "match": "5 in",
+            "page": 90,
+            "snippet": "nt Concrete Subject to Division 700 Requirements 727522 Decorative Fence ft (m) minimum 1 / Source / Contract Certification of Posts and Rails to be 6105T5 in accordance to ASTM B221, Hardware Certified to M180, Accessories Certified to be Aluminum Castings 727523 Cantilever Slide Gate, 26' (7.8m) Each minimum 1"
+          }
+        ],
+        "mat_glossary": [
+          {
+            "match": "0.08 inches",
+            "page": 10,
+            "snippet": "capillary structure of the cement by blocking the capillaries. By doing so, it promotes freeze- thaw durability. Typical bubble diameter is approximately 0.08 inches (0.2mm). Entrapped air. Air gets trapped in Portland cement concrete due to inadequate compaction . The air voids are macroscopic and often irregular in"
+          }
+        ],
+        "construction_part_e": [
+          {
+            "match": "3 in",
+            "page": 87,
+            "snippet": "using the same forms, this rate will vary with the daily temperature. The lower the temp erature, the slower the concrete should be placed. Refer to Table E-3 in Subsection E602.04 for more information. (d) All concrete is to be consolidated w ith a mechanical vibrator in accordance with the Specifications. The Contr"
+          }
+        ]
+      }
+    },
+    {
+      "id": "num-concrete_pcc-psi",
+      "severity": "medium",
+      "kind": "numeric_conflict",
+      "topic": "concrete_pcc",
+      "title": "Numeric mismatch on concrete pcc (psi): 0 psi, 100 psi, 180 psi, 250 psi, 400 psi, 500 psi, 2500 psi, 3500 psi, 4000 psi, 4500 psi, 6000 psi",
+      "summary": "Different publications state different psi values in concrete pcc contexts. Confirm which figure governs by work type / document hierarchy.",
+      "values_by_doc": {
+        "standard_specs_2026": [
+          0,
+          100,
+          180,
+          250,
+          400,
+          500,
+          2500,
+          3500,
+          4000,
+          4500
+        ],
+        "mat_table_b1": [
+          6000
+        ]
+      },
+      "docs": {
+        "standard_specs_2026": [
+          {
+            "match": "500 PSI",
+            "page": 159,
+            "snippet": "to remedial action. The Department will make prorated payment in accordance with Section 610.5.D. Remove and replace concrete having compressive strength of 500 PSI or more below the designed (f'c) of the pavement. ITEM DESCRIPTION UNIT 501001 PCC PAVEMENT, 8\u201d SY 501002 PCC PAVEMENT, 9\u201d SY 501004 PCC PAVEMENT, 10\u201d SY"
+          },
+          {
+            "match": "250 PSI",
+            "page": 255,
+            "snippet": "Table 610.3-5. Corrective Action and Prorated Payment for Concrete Strength Category PSI below Design Strength Corrective Action and Prorated Payment A 0 to 250 PSI below 28-day Design Strength No repair required, full payment as specified in Section 610.5. B 251 to 500 PSI below 28-day Design Strength Prorated payment as"
+          },
+          {
+            "match": "000 PSI",
+            "page": 255,
+            "snippet": "ng that is approved by the Department\u2019s Materials & Research Section. The clear coating shall only pertain to the pour area that the core represents. D 1,000 PSI or greater below 28-day Design Strength Strengthen area of low strength concrete as approved by the engineer at no cost to the Department. 610.3.10 Barrier"
+          }
+        ],
+        "mat_table_b1": [
+          {
+            "match": "6000 psi",
+            "page": 16,
+            "snippet": "(41 Mpa) yd3 (m3) See Division 600 T22, T23 or ASTM C39 -86, also Division 600 Requirements in the Materials Manual, 602565 P.C.C. Masonry, CIP Closures, 6000 psi (41 Mpa) yd3 (m3) See Division 600 T22, T23 or ASTM C39 -86, also Division 600 Requirements in the Materials Manual, B-21 602566 Latex Modified Concrete Ov"
+          }
+        ]
+      }
+    },
+    {
+      "id": "num-curing_concrete-hours",
+      "severity": "medium",
+      "kind": "numeric_conflict",
+      "topic": "curing_concrete",
+      "title": "Numeric mismatch on curing concrete (hours): 2 hours, 4 hours, 8 hours, 24 hours, 48 hours",
+      "summary": "Different publications state different hours values in curing concrete contexts. Confirm which figure governs by work type / document hierarchy.",
+      "values_by_doc": {
+        "standard_specs_2026": [
+          2,
+          4,
+          8,
+          24,
+          48
+        ],
+        "construction_part_e": [
+          24,
+          48
+        ],
+        "construction_part_f": [
+          2,
+          24
+        ]
+      },
+      "docs": {
+        "standard_specs_2026": [
+          {
+            "match": "24 hours",
+            "page": 250,
+            "snippet": "eed the maximum temperature differential between any 2 adjacent sensors as follows: Table 610.3-2. Maximum temperature differentials Time Temperature First 24 hours 30\u00ba F 24 to 48 hours 40\u00ba F 2 to 7 calendar days 50\u00ba F 7 to 14 calendar days 60\u00ba F 2. Curing. a. Take measures to control differential and absolute tempera"
+          },
+          {
+            "match": "48 hours",
+            "page": 250,
+            "snippet": "ature differential between any 2 adjacent sensors as follows: Table 610.3-2. Maximum temperature differentials Time Temperature First 24 hours 30\u00ba F 24 to 48 hours 40\u00ba F 2 to 7 calendar days 50\u00ba F 7 to 14 calendar days 60\u00ba F 2. Curing. a. Take measures to control differential and absolute temperatures using insulated"
+          },
+          {
+            "match": "4 hours",
+            "page": 340,
+            "snippet": "to cure a minimum of 15-minutes before placing polyester concrete. 2. PPC Overlay. a. Isolate expansion joints before overlaying or saw cut the joint within 4 hours after overlay placement. The engineer will determine the exact time of the saw cut. b. Place concrete within 15 and 120-minutes after applying the prime coat"
+          }
+        ],
+        "construction_part_e": [
+          {
+            "match": "24 hours",
+            "page": 73,
+            "snippet": "tely upon comple tion of finishing becomes extremely important, and under some conditions, it may be necessary to use wet burlap or cotton mats for the first 24 hours after plac ement. The wet burlap or mats can be used for the remaining curing period, or can be removed and replaced with other curing materials. Concrete pl"
+          },
+          {
+            "match": "48 hours",
+            "page": 90,
+            "snippet": "set of conditions of moisture and temperature that has been established to ensure that proper hydration takes place. The critical curing period is the first 48 hours after the concrete has been placed, during which time the concrete is being transformed from the plastic to the desired hardened state. During the curing peri"
+          }
+        ],
+        "construction_part_f": [
+          {
+            "match": "24 \nhours",
+            "page": 5,
+            "snippet": "should be protected from drying by appl ying asphalt to all exposed surfaces. The bituminous material should be applied as soon as possible, but no later than 24 hours after completion of finishin g operations. The finished soil cement layer is to be kept continually moist until the curing material is placed. The bituminous"
+          },
+          {
+            "match": "2 hours",
+            "page": 5,
+            "snippet": "base. The Area Engineer/Construction Manager ma y authorize curing by water instead of asphalt. If water curing is use d, the water should be applied within 2 hours of compaction and every 2 hours thereafter until the soil cement base course has cured to the satisfaction of the Engineer. The Area Engineer/Construction"
+          },
+          {
+            "match": "2 hours",
+            "page": 5,
+            "snippet": "ction Manager ma y authorize curing by water instead of asphalt. If water curing is use d, the water should be applied within 2 hours of compaction and every 2 hours thereafter until the soil cement base course has cured to the satisfaction of the Engineer. The Area Engineer/Construction Manager ma y also authorize curin"
+          }
+        ]
+      }
+    },
+    {
+      "id": "num-environmental-hours",
+      "severity": "medium",
+      "kind": "numeric_conflict",
+      "topic": "environmental",
+      "title": "Numeric mismatch on environmental (hours): 12 hours, 48 hours, 500 hours",
+      "summary": "Different publications state different hours values in environmental contexts. Confirm which figure governs by work type / document hierarchy.",
+      "values_by_doc": {
+        "standard_specs_2026": [
+          48,
+          500
+        ],
+        "construction_part_e": [
+          12
+        ]
+      },
+      "docs": {
+        "standard_specs_2026": [
+          {
+            "match": "48 hours",
+            "page": 587,
+            "snippet": "ard for the project duration; and ===== PAGE 587 ===== EROSION, SEDIMENT, AND STORMWATER MANAGEMENT SECTION 901 577 8. contacts the ES2M CCR a minimum of 48 hours before land disturbing activities begin to schedule an initial inspection of perimeter controls for the next phase. 901.3.3 Maintain Erosion and Sediment Con"
+          },
+          {
+            "match": "500 hours",
+            "page": 729,
+            "snippet": "4533) 100 50 Minimum Puncture Strength [lbs] (ASTM D-4833) 150 60 Apparent Opening Size [US sieve] (ASTM D-4751) 40-80 30-80 Minimum UV Resistance after 500 hours [%] (ASTM D-4355) 70 70 Maximum Flow-thru Rate [gpm/sf] (ASTM D-4491) 6 10 Item Name Drainage Inlet Sediment Control Sump Pit Portable Sedi"
+          }
+        ],
+        "construction_part_e": [
+          {
+            "match": "12 hours",
+            "page": 80,
+            "snippet": "mp erature affect this ty pe of operation. Unless otherwise permitted, forms are not to be removed fr om freshly placed concrete until it has set for a least 12 hours. In all instances, the concrete s hould be hardened to the extent that spalling or other damage will not occur. Immediately upon the removal of the forms, all"
+          }
+        ]
+      }
+    },
+    {
+      "id": "num-environmental-mm",
+      "severity": "medium",
+      "kind": "numeric_conflict",
+      "topic": "environmental",
+      "title": "Numeric mismatch on environmental (mm): 100 mm, 300 mm, 375 mm, 450 mm, 600 mm",
+      "summary": "Different publications state different mm values in environmental contexts. Confirm which figure governs by work type / document hierarchy.",
+      "values_by_doc": {
+        "mat_table_b1": [
+          300,
+          375,
+          450,
+          600
+        ],
+        "construction_part_e": [
+          100,
+          300
+        ]
+      },
+      "docs": {
+        "mat_table_b1": [
+          {
+            "match": "300 mm",
+            "page": 2,
+            "snippet": "rtification of Mulch and Fertilizer, Visual Inspection of Seed, Wate r AASHTO T26, Limestone AASTHO T27 256000 Riser Pipe Assembly for Sediment Trap, 12\" ( 300 mm ) Each minimum 1 / Source / Contract Certification of Wire Mesh, Metal Base Plate, and Trash Hood to Meet Size and Material Requirements, Visual Inspection"
+          },
+          {
+            "match": "375 mm",
+            "page": 2,
+            "snippet": "and Seed, T11, T19, T27, T85, T96 for Stone, Certification of Geotextile by ASTM D4491 or VA DOT VTM51 256001 Riser Pipe Assembly for Sediment Trap, 15\" ( 375 mm ) Each minimum 1 / Source / Contract Certification of Wire Mesh, Metal B ase Plate, and Trash Hood to Meet Size and Material Requirements, Visual Inspectio"
+          },
+          {
+            "match": "450 mm",
+            "page": 2,
+            "snippet": "Seed, T11, T19, T27, T85, T96 for Stone, Certification of Geotextile by ASTM D4491 or VA DOT VTM51 B-7 256002 Riser Pipe Assembly for Sediment Trap, 18\" ( 450 mm ) Each minimum 1 / Source / Contract Certification of Wire Mesh, Metal Base Plate, and Trash Hood to Meet Size and Material Requirements, Visual Inspection"
+          }
+        ],
+        "construction_part_e": [
+          {
+            "match": "300 mm",
+            "page": 16,
+            "snippet": "a leveling course. Since the original ground is usua lly quite uneven, it may be necessary to permit the first layer of material to approach a depth of 12\" (300 mm), loose measurement, at some locations. Good drainage and erosion and sedime nt control must be maintained throughout the construction period. Frequent check"
+          },
+          {
+            "match": "100 mm",
+            "page": 134,
+            "snippet": "usually occurs because the roots of grass do not penetrate the lower, different layer of soil . Scarification of the subsoil, which may leave 3 to 4\" (75 to 100 mm) furrows and ridges, before topsoil is placed is important to avoid erosion of the topsoil. E732.03 Handling and Placing Topsoil. Topsoil should not be ha"
+          }
+        ]
+      }
+    },
+    {
+      "id": "num-moisture_content-hours",
+      "severity": "medium",
+      "kind": "numeric_conflict",
+      "topic": "moisture_content",
+      "title": "Numeric mismatch on moisture content (hours): 1 hours, 48 hours",
+      "summary": "Different publications state different hours values in moisture content contexts. Confirm which figure governs by work type / document hierarchy.",
+      "values_by_doc": {
+        "standard_specs_2026": [
+          1
+        ],
+        "construction_part_e": [
+          48
+        ]
+      },
+      "docs": {
+        "standard_specs_2026": [
+          {
+            "match": "1 hour",
+            "page": 713,
+            "snippet": "ents Requirement Measurement Minimum Solids Content 72% by Weight Tensile Strength (ASTM D638) >1400 PSI Shelf Life Minimum 12 months Working Life Minimum 1 hour Sag Resistance 20 mils Moisture Permeability (ASTM E 96) 0.16 perms C. Use the color insignia white (federal color 37925 of AMS-STD-595A) unless specified o"
+          }
+        ],
+        "construction_part_e": [
+          {
+            "match": "48 hours",
+            "page": 90,
+            "snippet": "set of conditions of moisture and temperature that has been established to ensure that proper hydration takes place. The critical curing period is the first 48 hours after the concrete has been placed, during which time the concrete is being transformed from the plastic to the desired hardened state. During the curing peri"
+          }
+        ]
+      }
+    },
+    {
+      "id": "num-moisture_content-mm",
+      "severity": "medium",
+      "kind": "numeric_conflict",
+      "topic": "moisture_content",
+      "title": "Numeric mismatch on moisture content (mm): 0.0 mm, 0.07 mm, 0.42 mm, 9.5 mm, 200 mm",
+      "summary": "Different publications state different mm values in moisture content contexts. Confirm which figure governs by work type / document hierarchy.",
+      "values_by_doc": {
+        "standard_specs_2026": [
+          9.5
+        ],
+        "mat_glossary": [
+          0.0,
+          0.07,
+          0.42
+        ],
+        "construction_part_e": [
+          200
+        ]
+      },
+      "docs": {
+        "standard_specs_2026": [
+          {
+            "match": "9.5 mm",
+            "page": 654,
+            "snippet": "single source stockpiles. ===== PAGE 654 ===== ASPHALT MATERIALS PRODUCTION SECTION 1014 644 Process the RAS materials so that 100 percent passes the 3/8\u201d (9.5 mm) sieve. Use post-consumer or pre-consumer shingles free of foreign material, moisture, and asbestos fibers. Keep pre-consumer fiberglass-backed and organic f"
+          }
+        ],
+        "mat_glossary": [
+          {
+            "match": "0.002 mm",
+            "page": 7,
+            "snippet": "Clay. A fine-grained soil exhibiting plasticity within a range of water contents and considerable strength when air-dried. An earthen material smaller than 0.002 mm but larger than 0.001 mm. Cobble. A rock fragment usually rounded or semi-rounded with an average dimension between 3 and 12 inches (75 and 305 mm.) Co"
+          },
+          {
+            "match": "0.001 mm",
+            "page": 7,
+            "snippet": "oil exhibiting plasticity within a range of water contents and considerable strength when air-dried. An earthen material smaller than 0.002 mm but larger than 0.001 mm. Cobble. A rock fragment usually rounded or semi-rounded with an average dimension between 3 and 12 inches (75 and 305 mm.) Coefficient of variation."
+          },
+          {
+            "match": "0.425 mm",
+            "page": 18,
+            "snippet": "(0.075 mm) sieve with the following subdivisions: Coarse \u2013 passes a No. 10 (2.00 mm) sieve and retained on a No. 40 (0.425 mm) sieve Fine \u2013 passes a No. 40 (0.425 mm) sieve and retained on the No. 200 (0.075 mm) sieve Saturated surface dry (SSD). An aggregate is considered to be SS D when there is no free moisture pres"
+          }
+        ],
+        "construction_part_e": [
+          {
+            "match": "200 mm",
+            "page": 34,
+            "snippet": "of, and then only by permission of the Engineer. To obtain uniform pressure against the pipe or structure, the backfill material is to be placed in lifts 8\" (200 mm) or less and thoroughly compacted. [208.04] Water may be added, if necessary, to bring the material to the optimum moisture content for maximum consolidatio"
+          }
+        ]
+      }
+    },
+    {
+      "id": "num-moisture_content-percent",
+      "severity": "medium",
+      "kind": "numeric_conflict",
+      "topic": "moisture_content",
+      "title": "Numeric mismatch on moisture content (percent): 2 percent, 3 percent, 10 percent, 70 percent, 80 percent, 95 percent, 100 percent, 110 percent",
+      "summary": "Different publications state different percent values in moisture content contexts. Confirm which figure governs by work type / document hierarchy.",
+      "values_by_doc": {
+        "standard_specs_2026": [
+          2,
+          3,
+          70,
+          80,
+          95,
+          100
+        ],
+        "mat_glossary": [
+          10
+        ],
+        "construction_part_e": [
+          2,
+          110
+        ],
+        "construction_part_f": [
+          2
+        ]
+      },
+      "docs": {
+        "standard_specs_2026": [
+          {
+            "match": "2 percent",
+            "page": 119,
+            "snippet": "efore placing the next lift: a. Moisten or dry and thoroughly mix to the proper moisture content before compaction if the soil moisture content is not within 2 percent of optimum. b. Do not use frozen embankment material or place embankment material on frozen ground. Do not place rocks, broken concrete, and other solid mate"
+          },
+          {
+            "match": "95 percent",
+            "page": 128,
+            "snippet": "h Section 202.3.8 and the following: a. Place and spread backfill material in uniform horizontal lifts no greater than 8 inches loose measurement. Compact to 95 percent or more of the maximum density, before placing the next lift. Maintain proper moisture content to achieve the required density. b. Compact backfill material"
+          },
+          {
+            "match": "95 percent",
+            "page": 234,
+            "snippet": "panels. Place No. 57 stone for at least the first 3-feet perpendicular to the back face of the panel for the full height of the wall. B. Compact backfill to 95 percent or more of the maximum density. C. Ensure uniform distribution of the moisture content of the backfill material before and during compaction throughout each"
+          }
+        ],
+        "mat_glossary": [
+          {
+            "match": "10 percent",
+            "page": 14,
+            "snippet": "in the appl icable specification upon which any material may be retained. (2) In SuperPave\u2122, one sieve size larger than the first sieve to retain more than 10 percent of the material. Non-plastic. Not capable of being molded into a sustainable shape. Optimum moisture content. The percent of moisture at which a soil or"
+          }
+        ],
+        "construction_part_e": [
+          {
+            "match": "2 percent",
+            "page": 20,
+            "snippet": "requirements of the Standard Specifications. To efficiently and successfully compact the soil to the required density, the moisture content must be within 2 percent of optimum. In the field, if it is noted that the soil is too dry and the moisture content obviously less than required, the Inspector must insist on the app"
+          },
+          {
+            "match": "2 percent",
+            "page": 44,
+            "snippet": "he ce nterline that that tonna ge should cover. These computations should be checked by the Inspector . The spread rate should be based on the wet density at 2 percent or so above minimum density. Example: ENGLISH METRIC Maximum Density (Dry) 135 lb/ft 3 2160 kg/m 3 Optimum Moisture 8.0% 8.0% Maximum Density (Wet) 14"
+          },
+          {
+            "match": "2 percent",
+            "page": 49,
+            "snippet": "sed: January 2004 E-49 The Specifications will state how much compaction will be required. The moisture content at the time of compaction is to be within 2 percent of the optimum moisture content. [301.06] E301.07 Measurement and Payment. The Specifications state the method the Inspector will use to measure the quant"
+          }
+        ],
+        "construction_part_f": [
+          {
+            "match": "2 percent",
+            "page": 5,
+            "snippet": "pread material in accordance with the Specifications. F304502.08 Compaction. At the start of compaction, the moisture content of the mixture must be within 2 percent of the optimum moisture cont ent, and must not be at a level that causes the soil cement layer to become unstable during co mpaction and finishing. Prior to b"
+          }
+        ]
+      }
+    },
+    {
+      "id": "num-payment_measurement-percent",
+      "severity": "medium",
+      "kind": "numeric_conflict",
+      "topic": "payment_measurement",
+      "title": "Numeric mismatch on payment measurement (percent): 2 percent, 2.25 percent, 5 percent, 10 percent, 25 percent, 45 percent, 50 percent, 90 percent, 150 percent",
+      "summary": "Different publications state different percent values in payment measurement contexts. Confirm which figure governs by work type / document hierarchy.",
+      "values_by_doc": {
+        "standard_specs_2026": [
+          2,
+          2.25,
+          5,
+          10,
+          25,
+          45,
+          50,
+          90,
+          150
+        ],
+        "construction_part_b": [
+          50
+        ]
+      },
+      "docs": {
+        "standard_specs_2026": [
+          {
+            "match": "25 percent",
+            "page": 107,
+            "snippet": "support the claim of a difference in the quantity. If the engineer verifies and approves the difference and the error in the estimated fixed quantity exceeds 25 percent, the Department will compensate the contractor at the unit price for the actual quantity of work performed under the item. 109.8 Pay Estimates and Retainage"
+          },
+          {
+            "match": "150 percent",
+            "page": 124,
+            "snippet": "de or embankment foundation at the contract unit price per cubic yard. However, the unit bid price for undercut excavation, as defined here, shall not exceed 150 percent of the unit bid price per cubic yard for the excavation and embankment item. Before award, the Department will subtract from the contract bid price for this"
+          },
+          {
+            "match": "5 percent",
+            "page": 429,
+            "snippet": "stitute full compensation for work associated with mobilizing and demobilizing the project. B. When the lump sum price for this item is less than or equal to 5 percent of the total bid price of the entire contract at the time of award (\u201cTotal bid price\u201d), the Department will pay 45 percent of the item on each of the first 2"
+          }
+        ],
+        "construction_part_b": [
+          {
+            "match": "50 \npercent",
+            "page": 23,
+            "snippet": "of actual quantities, is agreed to before the work begins. Payment is made based on the Contractor\u2019s progress. For example, when the Contractor has completed 50 percent of the work, it will be paid 50 percent of the lump sum. The Inspector must review the method to be used so progress can be tracked and payment can be determ"
+          },
+          {
+            "match": "50 percent",
+            "page": 23,
+            "snippet": "the work begins. Payment is made based on the Contractor\u2019s progress. For example, when the Contractor has completed 50 percent of the work, it will be paid 50 percent of the lump sum. The Inspector must review the method to be used so progress can be tracked and payment can be determined. (c) Force Account. Payment by For"
+          }
+        ]
+      }
+    },
+    {
+      "id": "num-safety_osha-mm",
+      "severity": "medium",
+      "kind": "numeric_conflict",
+      "topic": "safety_osha",
+      "title": "Numeric mismatch on safety osha (mm): 0.2 mm, 38 mm, 180 mm, 300 mm",
+      "summary": "Different publications state different mm values in safety osha contexts. Confirm which figure governs by work type / document hierarchy.",
+      "values_by_doc": {
+        "mat_glossary": [
+          0.2
+        ],
+        "construction_part_e": [
+          38,
+          300
+        ],
+        "construction_part_g": [
+          180
+        ]
+      },
+      "docs": {
+        "mat_glossary": [
+          {
+            "match": "0.2mm",
+            "page": 10,
+            "snippet": "ructure of the cement by blocking the capillaries. By doing so, it promotes freeze- thaw durability. Typical bubble diameter is approximately 0.08 inches (0.2mm). Entrapped air. Air gets trapped in Portland cement concrete due to inadequate compaction . The air voids are macroscopic and often irregular in shape."
+          }
+        ],
+        "construction_part_e": [
+          {
+            "match": "300 mm",
+            "page": 122,
+            "snippet": "ansferred to the Estimate Book. See Part H fo r a sample Pile Driving Record. A record should be kept for every pile, including the number of blows per foot (300 mm) for every pile. One of the reasons for maintaining records is that anyt hing may happen to the pile or to the driving equipment or something unexpected may"
+          },
+          {
+            "match": "38 mm",
+            "page": 140,
+            "snippet": "re to be wrapped in burlap from the lowest main branches to the base of the tree. Each pass of the wrapping material should overlap the previous pass by 1\u00bd\" (38 mm). The wrapping is to be tied w ith twine at the top and bottom and at 1' (300 mm) intervals for the length of the trunk. The Inspector should ensu re that all"
+          },
+          {
+            "match": "300 \nmm",
+            "page": 140,
+            "snippet": "e. Each pass of the wrapping material should overlap the previous pass by 1\u00bd\" (38 mm). The wrapping is to be tied w ith twine at the top and bottom and at 1' (300 mm) intervals for the length of the trunk. The Inspector should ensu re that all trees are wrapped in accordance with the Specifications. Tree wrapping should b"
+          }
+        ],
+        "construction_part_g": [
+          {
+            "match": "180 mm",
+            "page": 37,
+            "snippet": "nishing consists of dr agging burlap across the pavement surface. This burlap is usually attached to the paving machine or wrapped around a 6\" or 7\" (150 or 180 mm) aluminum pipe. Figure G-37shows a burlap drag attached to the finishing machine of a slip-form paving train. Figure G-37: Burlap Drag Attached to a Fin"
+          }
+        ]
+      }
+    },
+    {
+      "id": "num-sampling_frequency-feet",
+      "severity": "medium",
+      "kind": "numeric_conflict",
+      "topic": "sampling_frequency",
+      "title": "Numeric mismatch on sampling frequency (feet): 0 feet, 2 feet, 3 feet, 9 feet, 10 feet, 15 feet, 20 feet",
+      "summary": "Different publications state different feet values in sampling frequency contexts. Confirm which figure governs by work type / document hierarchy.",
+      "values_by_doc": {
+        "standard_specs_2026": [
+          0,
+          3,
+          9,
+          10,
+          15,
+          20
+        ],
+        "mat_table_b1": [
+          2,
+          3
+        ]
+      },
+      "docs": {
+        "standard_specs_2026": [
+          {
+            "match": "000 feet",
+            "page": 19,
+            "snippet": "s complete construction of the item of work, as specified. LB pound Measured by actual item net weight, avoirdupois. MFBM thousand feet of board measure 1,000 feet board measured parallel to the longitudinal base or foundation upon which items are placed, or along the longitudinal surface of the item. Measured to 1/10-f"
+          },
+          {
+            "match": "10 \nfeet",
+            "page": 192,
+            "snippet": "anticipated pour pressures without leakage causing physical or visual defects and that do not compress more than 1/4-inch when poured vertically at a rate of 10 feet per hour; d. attach easily to the formwork system and are removable without causing concrete surface damage or weakness in the substrate; and e. capable of"
+          },
+          {
+            "match": "20 feet",
+            "page": 753,
+            "snippet": "ength of the tube: 1. Tolerance on hole size is \u00b1 1/64-inch. ===== PAGE 753 ===== SIGN POSTS SECTION 1072 743 2. Tolerance on hole spacing is \u00b1 1/8-inch in 20 feet. H. Fabrication: Provide straight members that have a smooth uniform finish, with all holes and cut off ends free from burs. Ensure that telescoping freely o"
+          }
+        ],
+        "mat_table_b1": [
+          {
+            "match": "2 ft",
+            "page": 4,
+            "snippet": "encies and Test Procedures MINIMUM TESTING FREQUENCY ITEM DESCRIPTION UNIT SAMPLES / UNIT TEST PROCEDURE (AASHTO or as Noted) 260001 Earth Dike, Type A -2 ft (m) minimum 1 / Source / Contract Visual Inspection of Seed, Certification of Geotextile to be Mirafi 700X or Erosion 1 (Synthetic Industries), Linq GTF 400"
+          },
+          {
+            "match": "3 ft",
+            "page": 71,
+            "snippet": "and Test Procedures MINIMUM TESTING FREQUENCY ITEM DESCRIPTION UNIT SAMPLES / UNIT TEST PROCEDURE (AASHTO or as Noted) 622503 Aluminum Sheet Pile, PZH -3 ft (m) minimum 1 / Source / Contract Certification that Cap, Wale, Sheeting, Anchor Rods, and Backing Beams Conform to ASTM B221 alloy 6061 , Stainless Steel C"
+          }
+        ]
+      }
+    },
+    {
+      "id": "num-sampling_frequency-inches",
+      "severity": "medium",
+      "kind": "numeric_conflict",
+      "topic": "sampling_frequency",
+      "title": "Numeric mismatch on sampling frequency (inches): 0.9 inches, 3 inches, 4 inches, 6 inches, 14 inches, 32 inches",
+      "summary": "Different publications state different inches values in sampling frequency contexts. Confirm which figure governs by work type / document hierarchy.",
+      "values_by_doc": {
+        "standard_specs_2026": [
+          0.9,
+          3,
+          4,
+          14,
+          32
+        ],
+        "construction_part_e": [
+          6
+        ]
+      },
+      "docs": {
+        "standard_specs_2026": [
+          {
+            "match": "3 inches",
+            "page": 217,
+            "snippet": "elled due to delays in the start of concrete placement, or has degraded because of slurry cake buildup. Over-ream a minimum of 1/2-inch deep and a maximum of 3 inches deep. Over-ream with a grooving tool, over-reaming bucket, or other equipment approved by the engineer. ===== PAGE 218 ===== DRILLED SHAFTS SECTION 606 208"
+          },
+          {
+            "match": "4 \ninches",
+            "page": 707,
+            "snippet": "sawn or otherwise processed into useful sizes and dimensions. This includes nominal dimensioned boards (3/4-inch to 1 1/2-inch thick) and structural lumber (2-4 inches thick). B. Timber \u2013 Sawn or otherwise processed wood of nominal dimension 5-inch x 5-inch and larger. C. Rough Sawn \u2013 Sawn lumber or timber that has not bee"
+          },
+          {
+            "match": "0.90 inches",
+            "page": 733,
+            "snippet": "mpact, ultraviolet (UV) resistant, rigid poly vinyl chloride (PVC), complying with ASTM D1784, Class 14244-B, Table 1. 2. Use rails with a wall thickness of 0.90 inches and a minimum corner radius of 11/32 inches. C. Post caps: 1. Made of high impact, ultraviolet (UV) resistant, rigid poly vinyl chloride (PVC), complying wi"
+          }
+        ],
+        "construction_part_e": [
+          {
+            "match": "6 inches",
+            "page": 51,
+            "snippet": "60 (considering the type traffic) a 4-inch base of compacted material was found to be sufficient. During 1962, the thickness of the sub-base was increased to 6 inches, with a 1/2-inch tolerance, due to the increasing volume of traffic and greater vehicular weights. The improved subbase was found to resist excessive moistur"
+          }
+        ]
+      }
+    },
+    {
+      "id": "num-temperature_limits-hours",
+      "severity": "medium",
+      "kind": "numeric_conflict",
+      "topic": "temperature_limits",
+      "title": "Numeric mismatch on temperature limits (hours): 0 hours, 6 hours, 12 hours, 24 hours, 48 hours, 96 hours",
+      "summary": "Different publications state different hours values in temperature limits contexts. Confirm which figure governs by work type / document hierarchy.",
+      "values_by_doc": {
+        "standard_specs_2026": [
+          0,
+          6,
+          12,
+          24,
+          48,
+          96
+        ],
+        "construction_part_e": [
+          48
+        ]
+      },
+      "docs": {
+        "standard_specs_2026": [
+          {
+            "match": "6 hours",
+            "page": 162,
+            "snippet": "conditions, ambient temperature, humidity, and wind conditions. If unfavorable weather conditions prevent the concrete from reaching the desired strength in 6 hours, reschedule the patching work subject to approval by the engineer. The Department may consider the concrete defective if it fails to meet the compressive str"
+          },
+          {
+            "match": "24 hours",
+            "page": 250,
+            "snippet": "eed the maximum temperature differential between any 2 adjacent sensors as follows: Table 610.3-2. Maximum temperature differentials Time Temperature First 24 hours 30\u00ba F 24 to 48 hours 40\u00ba F 2 to 7 calendar days 50\u00ba F 7 to 14 calendar days 60\u00ba F 2. Curing. a. Take measures to control differential and absolute tempera"
+          },
+          {
+            "match": "48 hours",
+            "page": 250,
+            "snippet": "ature differential between any 2 adjacent sensors as follows: Table 610.3-2. Maximum temperature differentials Time Temperature First 24 hours 30\u00ba F 24 to 48 hours 40\u00ba F 2 to 7 calendar days 50\u00ba F 7 to 14 calendar days 60\u00ba F 2. Curing. a. Take measures to control differential and absolute temperatures using insulated"
+          }
+        ],
+        "construction_part_e": [
+          {
+            "match": "48 hours",
+            "page": 90,
+            "snippet": "set of conditions of moisture and temperature that has been established to ensure that proper hydration takes place. The critical curing period is the first 48 hours after the concrete has been placed, during which time the concrete is being transformed from the plastic to the desired hardened state. During the curing peri"
+          }
+        ]
+      }
+    },
+    {
+      "id": "num-temperature_limits-inches",
+      "severity": "medium",
+      "kind": "numeric_conflict",
+      "topic": "temperature_limits",
+      "title": "Numeric mismatch on temperature limits (inches): 3 inches, 6 inches, 39 inches",
+      "summary": "Different publications state different inches values in temperature limits contexts. Confirm which figure governs by work type / document hierarchy.",
+      "values_by_doc": {
+        "standard_specs_2026": [
+          6,
+          39
+        ],
+        "construction_part_e": [
+          3
+        ]
+      },
+      "docs": {
+        "standard_specs_2026": [
+          {
+            "match": "6 inches",
+            "page": 281,
+            "snippet": "erature values specified in Table 615.3-2. Table 615.3-2. Maximum Straightening Temperature Material to Be Straightened Maximum Temperature (\u00b0F) Grade 70W > 6 inches from weld 1,050 Grade 70W < 6 inches from weld 900 Grade 100 and 100W > 6 inches from weld 1,100 Grade 100 and 100W < 6 inches from weld 950 a. The maximum"
+          },
+          {
+            "match": "6 inches",
+            "page": 281,
+            "snippet": "3-2. Table 615.3-2. Maximum Straightening Temperature Material to Be Straightened Maximum Temperature (\u00b0F) Grade 70W > 6 inches from weld 1,050 Grade 70W < 6 inches from weld 900 Grade 100 and 100W > 6 inches from weld 1,100 Grade 100 and 100W < 6 inches from weld 950 a. The maximum straightening temperature for all oth"
+          },
+          {
+            "match": "6 inches",
+            "page": 281,
+            "snippet": "mperature Material to Be Straightened Maximum Temperature (\u00b0F) Grade 70W > 6 inches from weld 1,050 Grade 70W < 6 inches from weld 900 Grade 100 and 100W > 6 inches from weld 1,100 Grade 100 and 100W < 6 inches from weld 950 a. The maximum straightening temperature for all other steels is 1,200 degrees F. Measure temper"
+          }
+        ],
+        "construction_part_e": [
+          {
+            "match": "3 in",
+            "page": 87,
+            "snippet": "using the same forms, this rate will vary with the daily temperature. The lower the temp erature, the slower the concrete should be placed. Refer to Table E-3 in Subsection E602.04 for more information. (d) All concrete is to be consolidated w ith a mechanical vibrator in accordance with the Specifications. The Contr"
+          }
+        ]
+      }
+    },
+    {
+      "id": "num-temperature_limits-percent",
+      "severity": "medium",
+      "kind": "numeric_conflict",
+      "topic": "temperature_limits",
+      "title": "Numeric mismatch on temperature limits (percent): 0.1 percent, 5 percent, 20 percent, 50 percent, 80 percent, 100 percent, 110 percent",
+      "summary": "Different publications state different percent values in temperature limits contexts. Confirm which figure governs by work type / document hierarchy.",
+      "values_by_doc": {
+        "standard_specs_2026": [
+          0.1,
+          5,
+          20,
+          50,
+          80,
+          100
+        ],
+        "construction_part_e": [
+          110
+        ]
+      },
+      "docs": {
+        "standard_specs_2026": [
+          {
+            "match": "80 percent",
+            "page": 266,
+            "snippet": "temperature is between 50 and 85 degrees F. Maintain cable or strand stresses between anchorages until the concrete reaches a minimum compressive strength of 80 percent of the 28-day compressive strength and the process of transferring the pre-stress to the member has begun. ===== PAGE 267 ===== PRECAST CONCRETE STRUCTURES S"
+          },
+          {
+            "match": "100 percent",
+            "page": 267,
+            "snippet": "in accordance with AASHTO T197, steam cure members under a suitable enclosure to contain the live steam and minimize moisture and heat loss. Provide steam of 100 percent relative humidity. Do not discharge steam directly onto concrete or form. Ensure that the temperature within the enclosure increases at a rate not exceeding"
+          },
+          {
+            "match": "50 percent",
+            "page": 342,
+            "snippet": "===== PAGE 342 ===== CONCRETE OVERLAYS SECTION 625 332 C. Placement. 1. Do not place an overlay adjacent to a previous overlay that has achieved less than 50 percent of design strength. 2. The temperature of all surfaces that come into contact with the mix shall be no less than 40 degrees F and no greater than 105 degree"
+          }
+        ],
+        "construction_part_e": [
+          {
+            "match": "110 percent",
+            "page": 51,
+            "snippet": "(g) The roadway has been shaped in accordance with the typical sections in the Plans. (h) The moisture content of the base course material is between 90 and 110 percent of optimum. ===== PAGE 52 ===== E304 \u2013 ASPHALT STABILIZED BASE COURSE Revised: January 2004 E-52 (i) The asphalt temperature during application is bet"
+          }
+        ]
+      }
+    },
+    {
+      "id": "num-time_notice-mm",
+      "severity": "medium",
+      "kind": "numeric_conflict",
+      "topic": "time_notice",
+      "title": "Numeric mismatch on time notice (mm): 4.75 mm, 13 mm, 25 mm, 50 mm, 75 mm, 80 mm, 150 mm, 600 mm",
+      "summary": "Different publications state different mm values in time notice contexts. Confirm which figure governs by work type / document hierarchy.",
+      "values_by_doc": {
+        "standard_specs_2026": [
+          4.75
+        ],
+        "construction_part_e": [
+          13,
+          25,
+          50,
+          600
+        ],
+        "construction_part_f": [
+          75,
+          80,
+          150
+        ]
+      },
+      "docs": {
+        "standard_specs_2026": [
+          {
+            "match": "4.75mm",
+            "page": 654,
+            "snippet": "not incorporate the 2 types of shingles into a single mix. The deleterious materials for RAS cannot exceed 1.5 percent of the total mass retained on the #4 (4.75mm) sieve. 1014.5 Warm Mix Additives. Submit the following information at least 30 calendar days before production: A. WMA technology and additive information,"
+          }
+        ],
+        "construction_part_e": [
+          {
+            "match": "13 mm",
+            "page": 48,
+            "snippet": "ver requirements are specified in the Contract. [301.03] E301.04 Preparing the Subgrade. The top of the earth embankment should be shaped to within 1/2\" (13 mm) of the required grade and cross-section, and smoothed to provide drainage. Make sure that the Engineer approves th e completed subgrade so that the Contrac"
+          },
+          {
+            "match": "25 mm",
+            "page": 105,
+            "snippet": "several acceptable ways to temporarily seal this type of drilled hole. One method is to clean and dry the hole and fill it with a very dry sand to within 1\" (25 mm) from the top. Seal the remainder of the hole to a height slightly above the top of the hole with an asphalt material that will be watertight. During cold w"
+          },
+          {
+            "match": "600 mm",
+            "page": 132,
+            "snippet": "The guardrail height is measured from the shoulder slope ex tended if grading is steeper than 10:1 but no steeper than 6:1 and the face of rail is within 2' (600 mm) of the shoulder/frontslope hinge point. ===== PAGE 133 ===== E720 \u2013 GALVANIZED STEEL BEAM GUARDRAIL Revised: January 2004 E-133 (c) If grading is steep"
+          }
+        ],
+        "construction_part_f": [
+          {
+            "match": "75 mm",
+            "page": 9,
+            "snippet": "e that the vertical alignment of a ll piles is in accordance with the Plans or the directions of the Engineer, and that th e tops of all piles are within 3\" (75 mm) of the position shown on the Plans after driving. ===== PAGE 10 ===== F622508 \u2013 PRECAST PRESTRESSED CONCRETE SHEET PILES Revised: January 2004 F-10 (i)"
+          },
+          {
+            "match": "150 mm",
+            "page": 12,
+            "snippet": "ed to stake the locations of the wick drains after the drainage blanket has been placed. The Inspector should ensure that the locations staked are within 6\" (150 mm) of the positions shown on the Plans, or within 6\" (150 mm) of the locations the Materials and Research Section indicates for wick drain installation. (b) D"
+          },
+          {
+            "match": "150 mm",
+            "page": 12,
+            "snippet": "nage blanket has been placed. The Inspector should ensure that the locations staked are within 6\" (150 mm) of the positions shown on the Plans, or within 6\" (150 mm) of the locations the Materials and Research Section indicates for wick drain installation. (b) Driving the Wick Drains. Wick drains are installed using a pi"
+          }
+        ]
+      }
+    },
+    {
+      "id": "num-tolerances_dimensions-degf",
+      "severity": "medium",
+      "kind": "numeric_conflict",
+      "topic": "tolerances_dimensions",
+      "title": "Numeric mismatch on tolerances dimensions (degf): 0 degf, 32 degf, 35 degf, 40 degf, 50 degf, 68 degf, 70 degf, 105 degf, 176 degf, 200 degf, 221 degf, 390 degf",
+      "summary": "Different publications state different degf values in tolerances dimensions contexts. Confirm which figure governs by work type / document hierarchy.",
+      "values_by_doc": {
+        "standard_specs_2026": [
+          35,
+          40,
+          50,
+          105,
+          176,
+          200,
+          221,
+          390
+        ],
+        "construction_part_e": [
+          0,
+          32,
+          68,
+          70
+        ]
+      },
+      "docs": {
+        "standard_specs_2026": [
+          {
+            "match": "200 degrees F",
+            "page": 281,
+            "snippet": "Grade 100 and 100W > 6 inches from weld 1,100 Grade 100 and 100W < 6 inches from weld 950 a. The maximum straightening temperature for all other steels is 1,200 degrees F. Measure temperature using temperature-indicating crayons, liquids, or bimetal thermometers. The engineer will reject material heated in excess of the specif"
+          },
+          {
+            "match": "390 degrees F",
+            "page": 327,
+            "snippet": "or bearing plates only if there is 1 1/2-inches of steel between the weld and the elastomer. Do not subject the elastomer or bond to temperatures in excess of 390 degrees F. 3. For new structural steel, vulcanize the bearing to the sole plate before shipping to the site. For new concrete beams or replacing bearings in the field,"
+          },
+          {
+            "match": "40 \ndegrees F",
+            "page": 342,
+            "snippet": "erlay that has achieved less than 50 percent of design strength. 2. The temperature of all surfaces that come into contact with the mix shall be no less than 40 degrees F and no greater than 105 degrees F. 3. Place concrete a minimum of 1 1/2-inch thick. 4. Place overlay concrete in accordance with Section 610.3.4.B. In case o"
+          }
+        ],
+        "construction_part_e": [
+          {
+            "match": "68 \u00b0F",
+            "page": 104,
+            "snippet": "onsidering the effect of the temperature and load at the time of measurement, is to be \u00b11/4\" (\u00b16 mm), provided the movable Punch Holes Aligned Vertically at 68 \u00b0F (20 \u00b0C) Masonry Plate Bearing Height (Y) Check Alignment and Centering of the Bearing Sole Plate Horizontal Distance (M) ===== PAGE 105 ===== E605 \u2013 STE"
+          },
+          {
+            "match": "0 \u00b0F",
+            "page": 113,
+            "snippet": "one in temperatures below 0 \u00b0F (-18 \u00b0C) or when surfaces are wet from condensation, rain, snow, or ice. The surfaces are to be heated at temperatures between 0 \u00b0F and 32 \u00b0F (-18 and 0 \u00b0C), and the welder is to be properly protected from wind. Material 1\u00bd\" (38 mm) thick or greater is to be at a minimum temperature of 70"
+          },
+          {
+            "match": "32 \u00b0F",
+            "page": 113,
+            "snippet": "mperatures below 0 \u00b0F (-18 \u00b0C) or when surfaces are wet from condensation, rain, snow, or ice. The surfaces are to be heated at temperatures between 0 \u00b0F and 32 \u00b0F (-18 and 0 \u00b0C), and the welder is to be properly protected from wind. Material 1\u00bd\" (38 mm) thick or greater is to be at a minimum temperature of 70 \u00b0F (21 \u00b0C"
+          }
+        ]
+      }
+    },
+    {
+      "id": "num-tolerances_dimensions-hours",
+      "severity": "medium",
+      "kind": "numeric_conflict",
+      "topic": "tolerances_dimensions",
+      "title": "Numeric mismatch on tolerances dimensions (hours): 0 hours, 2 hours",
+      "summary": "Different publications state different hours values in tolerances dimensions contexts. Confirm which figure governs by work type / document hierarchy.",
+      "values_by_doc": {
+        "standard_specs_2026": [
+          0
+        ],
+        "construction_part_e": [
+          2
+        ]
+      },
+      "docs": {
+        "standard_specs_2026": [
+          {
+            "match": "000 hours",
+            "page": 766,
+            "snippet": "an epoxy powder coating at least 2.0-mils thick in conformance with ASTM B117 after 500-hours of salt spray test and have 50 percent gloss retention after 1,000 hours of weather meter test. Use 18-8 Type 304 stainless steel for all straight pins, wing nuts, washers, and bolts. E. Design each 8-inch signal section housing t"
+          }
+        ],
+        "construction_part_e": [
+          {
+            "match": "2 hours",
+            "page": 51,
+            "snippet": "r of the single-pass type. (e) Contractor has available on the job an approved 10' (3 m) long straightedge. (f) Work is scheduled to start so that at least 2 hours of daylight will be available to complete the mixing operations following asphalt application. (g) The roadway has been shaped in accordance with the typica"
+          }
+        ]
+      }
+    },
+    {
+      "id": "num-weather_season-degf",
+      "severity": "medium",
+      "kind": "numeric_conflict",
+      "topic": "weather_season",
+      "title": "Numeric mismatch on weather season (degf): 0 degf, 6 degf, 32 degf, 35 degf, 40 degf, 50 degf, 80 degf, 90 degf, 100 degf, 150 degf, 350 degf",
+      "summary": "Different publications state different degf values in weather season contexts. Confirm which figure governs by work type / document hierarchy.",
+      "values_by_doc": {
+        "standard_specs_2026": [
+          0,
+          6,
+          35,
+          40,
+          50,
+          80,
+          100,
+          150,
+          350
+        ],
+        "construction_part_e": [
+          0,
+          32,
+          35,
+          50,
+          90
+        ]
+      },
+      "docs": {
+        "standard_specs_2026": [
+          {
+            "match": "35 degrees F",
+            "page": 155,
+            "snippet": "limitations in accordance with Section 501.3.8. 501.3.8 Weather Limitations. A. Cold Weather. 1. Place concrete when the ambient air temperature is at least 35 degrees F and rising. 2. Do not place concrete on frozen grade. 3. Maintain a temperature of not less than 40 degrees F surrounding the concrete pavement for a curing"
+          },
+          {
+            "match": "80 degrees F",
+            "page": 155,
+            "snippet": "use of insulating blankets, straw, polyethylene, or other protection, in the quality control plan. B. Hot Weather. 1. If plastic concrete temperatures reach 80 degrees F, dampen the subgrade immediately in advance of the concrete placement. Perform finishing, texturing, and curing operations as soon as possible. Suspend pavin"
+          },
+          {
+            "match": "40 degrees F",
+            "page": 248,
+            "snippet": "or immediate use. C. Cold Weather Requirements. 1. The Department defines the cold weather restriction as ambient temperature at the work site falling below 40 degrees F or the ambient temperature at the site falling below 50 degrees F, for a period of 12-hours or more. 2. Place concrete when the air temperature, measured at"
+          }
+        ],
+        "construction_part_e": [
+          {
+            "match": "50 \u00b0F",
+            "page": 68,
+            "snippet": "proceed when the existing surface is frozen or wet, during foggy conditions, when it is raining or threatening to rain, or when the air temperature is below 50 \u00b0F (10 \u00b0C). [404.09] E404.13 Alignment. All applications of bituminous material s are to be made to the width and alignment required by the Plans. As the pa"
+          },
+          {
+            "match": "35 \u00b0F",
+            "page": 73,
+            "snippet": "01.06] E501.06 Limitations to Mixing and Paving. (a) Cold Weather Concreting: Mixing and placing concrete may begin when the ambient temperature reaches 35 \u00b0F (2 \u00b0C) and is expected to rise. The temperature of the mixed concrete is to be between 50 and 90 \u00b0F (10 and 32 \u00b0C) at the time of placement. When it is neces"
+          },
+          {
+            "match": "90 \n\u00b0F",
+            "page": 73,
+            "snippet": "r curing materials. Concrete placement can also be done at night when the temperature is cooler. The recommend ed maximum temperature in plastic concrete is 90 \u00b0F (32 \u00b0C). [501.04] (c) Protection in Case of Rain: Prior to the start of pavi ng operations, the Inspector should ensure that the Contractor has su fficient"
+          }
+        ]
+      }
+    },
+    {
+      "id": "num-weather_season-inches",
+      "severity": "medium",
+      "kind": "numeric_conflict",
+      "topic": "weather_season",
+      "title": "Numeric mismatch on weather season (inches): 0.08 inches, 2 inches, 4 inches, 8 inches",
+      "summary": "Different publications state different inches values in weather season contexts. Confirm which figure governs by work type / document hierarchy.",
+      "values_by_doc": {
+        "standard_specs_2026": [
+          2,
+          4,
+          8
+        ],
+        "mat_glossary": [
+          0.08
+        ]
+      },
+      "docs": {
+        "standard_specs_2026": [
+          {
+            "match": "8 inches",
+            "page": 684,
+            "snippet": "Freeze-Thaw Resistance AASHTO T161 (Procedure A) (ASTM C666 (Procedure A)) 300 cycles Relative Dynamic Modulus of Elasticity > 95% Slump Flow ASTM C1437 8 inches (Minimum) 10 inches (Maximum) Effective Crack Strength AASHTO T397 \u2265 0.75 ksi Crack Localization Strength AASHTO T397 \u2265 ft,cr 1 Modify ASTM C1712 as follow"
+          },
+          {
+            "match": "2 inches",
+            "page": 707,
+            "snippet": "hesives. Ensure that the grain of all laminations is approximately parallel longitudinally and that the maximum net thickness for the separate laminations is 2 inches. Laminations may consist of pieces end joined to form any length, pieces placed or glued edge-to-edge to make wider pieces, or pieces bent to a curved form du"
+          },
+          {
+            "match": "4 inches",
+            "page": 770,
+            "snippet": "D. Additional materials for wood pole installation: 1. 4 strain plates. 2. 16 galvanized screws, 1/4-inch x 2 1/2-inches. 3. 4 guy hooks. 4. 4, 5/8-inch x 4 inches lag screws. 1076.1.2 Dead End Messenger Wire Attachment. A. Materials for wood pole installation: 1. Galvanized eyebolt with a rod diameter of 3/4-inch and"
+          }
+        ],
+        "mat_glossary": [
+          {
+            "match": "0.08 inches",
+            "page": 10,
+            "snippet": "capillary structure of the cement by blocking the capillaries. By doing so, it promotes freeze- thaw durability. Typical bubble diameter is approximately 0.08 inches (0.2mm). Entrapped air. Air gets trapped in Portland cement concrete due to inadequate compaction . The air voids are macroscopic and often irregular in"
+          }
+        ]
+      }
+    },
+    {
+      "id": "roi-duty-acceptance_rejection",
+      "severity": "info",
+      "kind": "region_of_interest",
+      "topic": "acceptance_rejection",
+      "title": "Region of interest: dual actors on acceptance rejection (not an asserted contradiction)",
+      "summary": "Contractor shall\u2026 and Department/engineer will\u2026 both appear here. Often a complementary role split. Use as a pointer \u2014 then absence-scan for QC/QA tiebreaker, Department test response time, and work-continuation while awaiting tests.",
+      "docs": {
+        "standard_specs_2026": [
+          {
+            "match": "Department will",
+            "page": 22,
+            "snippet": "signs the bid proposal and follows each signature with the title \"Joint Venturer.\" 102.7 Irregular Proposals. A. The Department will consider proposals as irregular and will reject the proposals as non- responsive for any of the following reasons if the bidder: 1. Submits proposals on a for"
+          },
+          {
+            "match": "Department may",
+            "page": 24,
+            "snippet": "pen and read proposals publicly at the location and time set for the opening. 102.12 Bidder Disqualification. A. The Department may disqualify a bidder and reject future proposal submissions from the bidder for the following reasons: 1. The bidder defaulted on a previous contract. 2. The"
+          }
+        ],
+        "construction_part_b": [
+          {
+            "match": "Inspector in \ncharge should",
+            "page": 9,
+            "snippet": "terials should be submitted to the Materials and Research Section for approval well in advance of the time of use. The Inspector in charge should ensure that this has been done. The Materials and Research Section, by letter to the Contractor, will approve or reject each sour ce of material. The Inspect"
+          },
+          {
+            "match": "Contractor, will",
+            "page": 9,
+            "snippet": "The Inspector in charge should ensure that this has been done. The Materials and Research Section, by letter to the Contractor, will approve or reject each sour ce of material. The Inspector should include copies of the material approval or disapproval lette rs for all materials in the Proj"
+          }
+        ],
+        "construction_part_d": [
+          {
+            "match": "will be used \nto accomplish the work. The Inspector",
+            "page": 1,
+            "snippet": "d the methods to be used for upcoming stages of construction so that both know what work will be done and what methods will be used to accomplish the work. The Inspector should not wa it to see what the C ontractor is going to do next and how it is going to be done before telli ng the Contractor that its plan is unacceptable."
+          },
+          {
+            "match": "Engineer/Project Supervisor should",
+            "page": 1,
+            "snippet": "ere is a very definite area of Contr actor responsibility, and as long as the Contract is being followed, the Resident Engineer/Project Supervisor should not reje ct the Contractor \u2018s planned means and methods unless they are cl early unsound or unsafe . By rejecting the Contractor\u2019s means or methods, the Resi"
+          }
+        ],
+        "construction_part_e": [
+          {
+            "match": "must be \ninsulated or, if approved by the Engineer",
+            "page": 57,
+            "snippet": "s concrete, making it unacceptable for placement. Trucks hauling bituminous concrete between September 30 and March 31 must be insulated or, if approved by the Engineer, the truck beds may be heated. [401.04] (b) Paving Machines: It is strongly suggested that the Inspector become familiar with the mechanical features of the"
+          },
+          {
+            "match": "Inspector should",
+            "page": 59,
+            "snippet": ", deduct excessive weight as discussed in Subsection D2.02, and record the location where the mixture is placed. The Inspector should check each load for uniformity and check the temperature of the mixtures. [401.03] A truckload of bituminous concrete may be rejected for the following reaso"
+          }
+        ]
+      }
+    },
+    {
+      "id": "roi-duty-qc_qa_responsibility",
+      "severity": "info",
+      "kind": "region_of_interest",
+      "topic": "qc_qa_responsibility",
+      "title": "Region of interest: dual actors on qc qa responsibility (not an asserted contradiction)",
+      "summary": "Contractor shall\u2026 and Department/engineer will\u2026 both appear here. Often a complementary role split. Use as a pointer \u2014 then absence-scan for QC/QA tiebreaker, Department test response time, and work-continuation while awaiting tests.",
+      "docs": {
+        "standard_specs_2026": [
+          {
+            "match": "engineer may",
+            "page": 61,
+            "snippet": "ove or correct the materials to comply with the contract. 106.2 Samples, Tests, and Referenced Specifications. A. The engineer may inspect and test materials at any time before, during, or after use in the work. Tests performed by the engineer are for quality assurance and acceptance of t"
+          },
+          {
+            "match": "Department will",
+            "page": 61,
+            "snippet": "aterial quality control is the contractor\u2019s responsibility as stated in Division 1000 of these specifications. B. The Department will perform material tests in accordance with the Department of Highway (DOH), AASHTO, or ASTM test methods current on the date of the advertisement. When a spec"
+          }
+        ],
+        "mat_part_b": [
+          {
+            "match": "Contractor shall",
+            "page": 3,
+            "snippet": "CONTROL, QUALITY ASSURANCE, AND INDEPENDENT ASSURANCE TESTING PROGRAMS B4.01 Quality Control (QC) Requirements. The Contractor shall perform all tests required by the Contract and other tests the Contractor determines are necessary to verify the quality and suitability of all materials use"
+          },
+          {
+            "match": "Engineer.  The contractor\u2019s QC/QA plan \nmust",
+            "page": 3,
+            "snippet": "l/Quality Assurance program is dependent upon the contractor fulfilling all requirements established by the Materi als Engineer. The contractor\u2019s QC/QA plan must be submitted to the Department and will be approved based on conformance to the program. B4.02 Quality Assurance (QA) and Independent Assurance (IA) Requir"
+          }
+        ],
+        "mat_c500": [
+          {
+            "match": "Department may",
+            "page": 2,
+            "snippet": "quality control at any time requested by the Engineer. (c) Before granting approval to furnish certi fied cement, the Department may request that the manufacturer make all production, sampling, and testing facilities available to the Department for insp ection. Thereafter, the Department\u2019"
+          }
+        ]
+      }
+    },
+    {
+      "id": "roi-opp-approved_equal_vs_no_sub",
+      "severity": "info",
+      "kind": "region_of_interest",
+      "topic": "approved_equal_vs_no_sub",
+      "title": "Region of interest: or-equal language near no-substitute / sole-source cues",
+      "summary": "Two cue families appear in the corpus. This is a review neighborhood, not an asserted contradiction. Skim snippets; escalate only if the same work item is pulled both ways. A-leaning docs: mat_table_b1. B-leaning docs: construction_part_b.",
+      "docs": {
+        "standard_specs_2026 [A]": [
+          {
+            "match": "or equal",
+            "page": 11,
+            "snippet": "isfactory, unsatisfactory, sufficient, insufficient, rejected, condemned, or words with similar intent; mean by or to the Department. 6. The words \"or equal,\" referring to a product, material, or process, means \"equal as determined by the engineer.\" 7. The specifications may present numerical values in "
+          },
+          {
+            "match": "or equal",
+            "page": 52,
+            "snippet": "e notice of intent to file a claim. 2. Prepare a written claim submittal containing at a minimum the following information. a. For claims less than or equal to $250,000: i. A narrative with sufficient information to allow a third party to understand the issue in dispute and its effect on the work. ii. "
+          },
+          {
+            "match": "or equal",
+            "page": 56,
+            "snippet": "actor may appeal the District\u2019s decision to the Department\u2019s Claims Committee. 2. If the amount of the unresolved portion of the claim is less than or equal to $100,000 after the completion of the District\u2019s review, the contractor may appeal the District\u2019s decision to the Secretary for the Secretary\u2019s D"
+          }
+        ],
+        "mat_table_b1 [A]": [
+          {
+            "match": "Approved Equal",
+            "page": 2,
+            "snippet": "ls 251500 Dewatering Filter Fence ft (m) minimum 1 / Source / Contract Certification that Material is Mirafi 140N, Exxon GTF 130D, Amoco 4545 or Approved Equal, Certified to Meet Size Requ irements 252000 Inlet Sediment Control, Drainage Inlet Each minimum 1 / Source / Contract Certification of Geotexti"
+          },
+          {
+            "match": "approved \nequal",
+            "page": 3,
+            "snippet": "otextile to be Mirafi 700X or Erosion 1 (Synthetic Industries), Linq GTF 400E or Poly - Filter X (Carthage Mills), Te rraTex Ep (WEBTEC, Inc.) or an approved equal 259000 Perimeter Dike / Swale, Type A -1 ft (m) minimum 1 / Source / Contract Certification of Mulch, Visual Inspection of Seed, Certification of "
+          },
+          {
+            "match": "approved equal",
+            "page": 3,
+            "snippet": "eotextile to be Mirafi 700X or Erosion 1 (Synthetic Industries ), Linq GTF 400E or Poly-Filter X (Carthage Mills), TerraTex Ep (WEBTEC, Inc.) or an approved equal, Visual Inspection of Riprap for Gradation Requirements 259001 Perimeter Dike / Swale, Type A -2 ft (m) minimum 1 / Source / Contract Certificat"
+          }
+        ],
+        "standard_specs_2026 [B]": [
+          {
+            "match": "Do not substitute",
+            "page": 260,
+            "snippet": ". Do not splice bars, except as indicated in the contract. If allowed, lap the reinforcement bars in accordance with the contract and wire together. Do not substitute alternate bars unless approved by the engineer. 6. In lapped splices, place and wire the bars maintaining the minimum distance to the surface of t"
+          },
+          {
+            "match": "No substitut",
+            "page": 633,
+            "snippet": " shall conform to names accepted in the nursery trade. Size and grading shall conform to those listed in AAN's American Standards for Nursery Stock. No substitutions are allowed except by written permission of the engineer. E. Availability The engineer, after receiving a written request from the contractor "
+          }
+        ],
+        "construction_part_b [B]": [
+          {
+            "match": "No substitut",
+            "page": 12,
+            "snippet": " make a recommendation in the usual manner, but must eval uate the request in the light of whether the change is in the best interest of the State. No substitution for an approved DBE subcontractor will be allowed without approval from the Contract Administration Section. It is stressed that such substituti"
+          }
+        ]
+      }
+    },
+    {
+      "id": "roi-opp-department_test_vs_contractor_test",
+      "severity": "info",
+      "kind": "region_of_interest",
+      "topic": "department_test_vs_contractor_test",
+      "title": "Region of interest: dual testing actors (usually complementary \u2014 not a contradiction)",
+      "summary": "Two cue families appear in the corpus. This is a review neighborhood, not an asserted contradiction. Default reading: complementary roles (who tests what). Next step: absence-scan for tiebreaker, response time, work-continuation. A-leaning docs: standard_specs_2026. B-leaning docs: mat_part_b.",
+      "docs": {
+        "standard_specs_2026 [A]": [
+          {
+            "match": "Department will perform",
+            "page": 48,
+            "snippet": "ion. A. Maintain the work during construction every day to keep the roadway and structures in an acceptable condition until project acceptance. The Department will perform snow removal unless the contract specifically assigns this responsibility to the contractor. The Department will mow the grass outside the LOC. B."
+          },
+          {
+            "match": "Department will perform",
+            "page": 61,
+            "snippet": " and acceptance of the work. Material quality control is the contractor\u2019s responsibility as stated in Division 1000 of these specifications. B. The Department will perform material tests in accordance with the Department of Highway (DOH), AASHTO, or ASTM test methods current on the date of the advertisement. When a sp"
+          },
+          {
+            "match": "Department will perform",
+            "page": 114,
+            "snippet": "ent of the natural ground under the embankment. 2. Compact lifts in embankment areas, other than rock, in accordance with Section 202.3.8.D. 3. The Department will perform compaction and moisture tests once the contractor tests the stability of the lift in accordance with Section 202.3.8.F. 202.3.3 Excavation. A. Exc"
+          }
+        ],
+        "mat_part_b [B]": [
+          {
+            "match": "Contractor shall perform all tests required by \nthe Contract and other tests the",
+            "page": 3,
+            "snippet": " ===== SECTION B4.00 \u2013 QUALITY CONTROL, QUALITY ASSURANCE, AND INDEPENDENT ASSURANCE TESTING PROGRAMS B4.01 Quality Control (QC) Requirements. The Contractor shall perform all tests required by the Contract and other tests the Contractor determines are necessary to verify the quality and suitability of all materials used in the Project. For all required tests, the Contractor shall submit test results or samples as re"
+          }
+        ]
+      }
+    },
+    {
+      "id": "roi-opp-required_vs_optional",
+      "severity": "info",
+      "kind": "region_of_interest",
+      "topic": "required_vs_optional",
+      "title": "Region of interest: required-language near optional-language",
+      "summary": "Two cue families appear in the corpus. This is a review neighborhood, not an asserted contradiction. Skim snippets; escalate only if the same work item is pulled both ways. A-leaning docs: construction_part_b, construction_part_f, mat_part_b. B-leaning docs: \u2014.",
+      "docs": {
+        "standard_specs_2026 [A]": [
+          {
+            "match": "is required",
+            "page": 18,
+            "snippet": "ay. Any day charged against the contract time on a working day contract. Working Drawings. Drawings and data not in the contract that the contractor is required to submit to the engineer showing how the contractor will perform specific work such as building cofferdams or falsework. 101.4 Units of Measure. "
+          },
+          {
+            "match": "is required",
+            "page": 34,
+            "snippet": "e identified date as provided by the engineer. 5. Advising the contractor that the Department concurs there is a change, but that more information is required to determine the appropriate increase or decrease in the contract price or time. The engineer will describe the information needed to make a determi"
+          },
+          {
+            "match": "is \nrequired",
+            "page": 39,
+            "snippet": "constructed. Unless otherwise noted in the RFP, the Department\u2019s E-Construction application is Oracle Primavera Unifier (Unifier). The Contractor is required to use Unifier for reviewing, approving, acknowledging and/or electronically signing processes related to Change Orders, Estimates, Requests for Inf"
+          }
+        ],
+        "mat_part_b [A]": [
+          {
+            "match": "is required",
+            "page": 3,
+            "snippet": "ted into DelDOT projects are in conformity with the requirements of the approved plans and specifications, including all approved changes. DelDOT is required to maintain an adequate, qualified staff to administer its Quality Assurance Program. The Code of Federal Regulations (23 CFR Part 637.207) require"
+          }
+        ],
+        "mat_c500 [A]": [
+          {
+            "match": "is \nrequired",
+            "page": 2,
+            "snippet": " 225mm) rigid box to prove the qua ntity of concrete produ ced at a given cement meter register count. For example, if a cement meter count of 550 is required to produce 1 yd3 (1 m3) of concrete, a cement meter register count of 137.5 will fill the \u00bc yd 3 (0.18m 3) box. The accuracy of the output indicat"
+          },
+          {
+            "match": "must be provided",
+            "page": 2,
+            "snippet": "ntrol program regulates the productio n of cement. A complete and detailed description of control methods, sampling procedures, a nd testing rates must be provided. A description of control charts or statisti cal methods used for quality control is essential and must also be provided. The manufacturer must a"
+          },
+          {
+            "match": "is required",
+            "page": 3,
+            "snippet": "ed. (e) The phone and fax number for a designa ted technical contact must be supplied. (f) A monthly mill report for each type of ce ment or source is required to maintain certification. (g) If the cement has not been used for two years in a State contract, it will require re- testing, following step (d) a"
+          }
+        ],
+        "construction_part_b [A]": [
+          {
+            "match": "is required",
+            "page": 1,
+            "snippet": "ed method and schedule of operations, and coordinate th e Contract activities with utility companies and other interested parties. The Contractor is required to submit its Sche dule of Work to the Engineer for review prior to the preconstruction meeting. No work may be started until the Schedule of Work i"
+          },
+          {
+            "match": "is required",
+            "page": 4,
+            "snippet": " conditions of Right-of-Way Agreement are fulfilled. When a Right-of-Way Agreement has not been obtained, the Resident Engineer/Project Supervisor is required to obtain from the pr operty owner a Temporary Agreement to Trespass prior to allowing the Contractor to work. A sample form is shown in Part H. "
+          },
+          {
+            "match": "is required",
+            "page": 5,
+            "snippet": "al such as Construction Planning & Scheduling , published by the Associated General Contractors of America (AGC). On all projects, the Contractor is required to submit a two- week activity schedule every Friday. A sample of a two-week schedule is shown in Part H. [108.04] B5.03 CPM Schedule Requirement"
+          }
+        ],
+        "construction_part_d [A]": [
+          {
+            "match": "is required",
+            "page": 7,
+            "snippet": " shore require help. The people on shore should be provided with adequate rope, a ring-type life preserver, and a mobile phone to use if assistance is required. D3.03 Hard Hats. The hard hat is accepted by industry as a valuable safety tool. Hard hats are provided to Department personnel for the safety o"
+          },
+          {
+            "match": "is required",
+            "page": 18,
+            "snippet": "ermination should be made if it is the base unit that is inoperative or the radio unit in the vehicle. D5.08 Operating Procedures. Each operator is required to be familiar with and abide by the regulations initiated by the FCC and the Department. (a) Personal Messages. Title 47 CFR Part 90 prohibits th"
+          },
+          {
+            "match": "is required",
+            "page": 18,
+            "snippet": "the purview of the FCC regulations: (a) Operated by a person not holding a valid operators license or permit of the class required, where a permit is required. (b) Fails to identify at the time and in the manner set forth in the rules covering that particular type of station. (c) Transmits any false call"
+          }
+        ],
+        "construction_part_e [A]": [
+          {
+            "match": "is required",
+            "page": 5,
+            "snippet": " equipment dictated by th e Specifications or common sense. For example, the use of explosives in congested areas should be controlled. If blasting is required or permitted, the Inspector should refer to Section E205 of this Manual for more information. [107.08] The methods used to clear timber may vary "
+          },
+          {
+            "match": "is required",
+            "page": 6,
+            "snippet": "out of the ground with a bulldozer. The Inspector should study the requirements of the Contract closely regarding whether complete removal of trees is required or if cut ting alone is permitted. The Inspector must then ensure that the Contractor follows the Contract requirements. The cost of tree removal h"
+          },
+          {
+            "match": "is required",
+            "page": 20,
+            "snippet": "ending of soils and wa ter should be thorough. Large clods of soil must be broken up to ensure a uniformly moist condition. If additional moisture is required in excav ated material to achieve proper compaction, water may be added at the source of excavation or borrow, or on the roadbed. Prewetting of the "
+          }
+        ],
+        "construction_part_f [A]": [
+          {
+            "match": "is required",
+            "page": 3,
+            "snippet": "of the Specifications. Soil should be borrow material in confor mance with Subsection 209.04, Borrow Type D, of the Specifications. The Contractor is required to contact the Ma terials and Research Section 30 days before it is anticipated that soil cement operations will begin. This 30-day period will be u"
+          },
+          {
+            "match": "is required",
+            "page": 7,
+            "snippet": "talling a corrugated steel structural plate long-span structure, including stiffening members where required. F614861.02 Assembly. The Contractor is required to have a manufacturer\u2019s representative on site when structural plate arches are being asse mbled and installed. This is to ensure that the structu"
+          },
+          {
+            "match": "is required",
+            "page": 8,
+            "snippet": "rformed by the Department. Dynamic pile testing is performed by the Ma terials and Research Se ction as pile driving is performed. The Contractor is required to atta ch monitoring sensors to the piles before driving. The equipment used for dynamic pile testing is furnished by the Department. The Contrac"
+          }
+        ],
+        "construction_part_g [A]": [
+          {
+            "match": "is required",
+            "page": 30,
+            "snippet": "l produce a more level surface despite irregularities in the surface being planed. The specifying agent must determine in advance what end product is required before specifying the controls to be used. A cold planer can be operated using dual grade controls and will then remove a constant depth of materi"
+          }
+        ],
+        "standard_specs_2026 [B]": [
+          {
+            "match": "not required",
+            "page": 15,
+            "snippet": "s, and other supplies and parts needed to use, operate, and maintain these items for use in constructing and completing the work. Extra Work. Work not required by the contract but determined by the Engineer to be essential to the satisfactory completion of the contract. Falsework. Temporary construction in"
+          },
+          {
+            "match": "not \nrequired",
+            "page": 106,
+            "snippet": " idle equipment in accordance with Section 109.4.D.10, Equipment. c. The Department will pay the transportation costs to remove and return equipment not required on the project during the compensable delay. Calculate the costs of equipment transportation in accordance with Section 109.4.D.10, Equipment. d. M"
+          },
+          {
+            "match": "may be omitted",
+            "page": 143,
+            "snippet": "equent base course is placed within 24-hours of the preceding course and the preceding course has not be subjected to traffic or precipitation, tack may be omitted. 5. If the contractor cannot complete spreading and compacting a full truck load of mixture by sunset, do not unload the truck unless the engineer "
+          }
+        ],
+        "mat_c500 [B]": [
+          {
+            "match": "not required",
+            "page": 3,
+            "snippet": "ount of cement in carrier, silo or mill test reports, consignee, destination, type of cement, and contract number. However, the contract number is not required when the shipment is from a plant that is approved to produce cement for multiple projects. When small quantities of cement are require d for mor"
+          }
+        ],
+        "construction_part_d [B]": [
+          {
+            "match": "not required",
+            "page": 7,
+            "snippet": "ectives: (a) Department personnel are required to wear hard harts at all times on construction projects or in materials plants. (b) Hard hats are not required duri ng semi-final and final inspections. D3.04 Protective Clothing. (a) Clothes. Department personnel working or ot herwise located within the "
+          }
+        ],
+        "construction_part_e [B]": [
+          {
+            "match": "not required",
+            "page": 62,
+            "snippet": "g at the end of the day. Ensure that the Contractor has properly placed barricades, lights, and other required traffic control de vices. All signs not required during non- working hours are to be removed or covered. [104.09] [108.05] E401.12 Records. The Inspector\u2019s records should reflect a complete summa"
+          },
+          {
+            "match": "not required",
+            "page": 117,
+            "snippet": ". Th e collars, or bands, must include an approved rubber gasket to ensure a watertight seal. [614.04] [614.08] Additional diameter elongation is not required in the field when Plans require \u201cshop strutting\u201d of pipe. The struts or ties are to conform to the detail required by the Plans. Ties and struts a"
+          },
+          {
+            "match": "not required",
+            "page": 148,
+            "snippet": "or. If the Utility has the work performed by an existing continuing contractor on a unit price basis, daily records of workers and equipment are not required. However, daily record s of the work operations by station and the number of units of wo rk completed are required. Work accomplished by an existin"
+          }
+        ],
+        "construction_part_g [B]": [
+          {
+            "match": "Optional",
+            "page": 42,
+            "snippet": " Revised: January 2004 G-42 Figure G-44: Profilograph Surface-sensing Wheel Figure G-45: Graphic Data Recorder on a Profilograph G502.02 Optional Templates. The profilograph may be equipped with optional templates, if desired. Optional templates consist of the following: (a) Blanking Band T"
+          },
+          {
+            "match": "optional",
+            "page": 42,
+            "snippet": "h Surface-sensing Wheel Figure G-45: Graphic Data Recorder on a Profilograph G502.02 Optional Templates. The profilograph may be equipped with optional templates, if desired. Optional templates consist of the following: (a) Blanking Band Template. The template is a clear plasti c strip that is at"
+          },
+          {
+            "match": "Optional",
+            "page": 42,
+            "snippet": "ure G-45: Graphic Data Recorder on a Profilograph G502.02 Optional Templates. The profilograph may be equipped with optional templates, if desired. Optional templates consist of the following: (a) Blanking Band Template. The template is a clear plasti c strip that is at least 4\" (100 mm) long and appr"
+          }
+        ]
+      }
+    },
+    {
+      "id": "roi-opp-stop_work_vs_continue",
+      "severity": "info",
+      "kind": "region_of_interest",
+      "topic": "stop_work_vs_continue",
+      "title": "Region of interest: stop/suspend cues near continue/do-not-delay cues",
+      "summary": "Two cue families appear in the corpus. This is a review neighborhood, not an asserted contradiction. Skim snippets; escalate only if the same work item is pulled both ways. A-leaning docs: construction_part_b, construction_part_e, construction_part_f. B-leaning docs: \u2014.",
+      "docs": {
+        "standard_specs_2026 [A]": [
+          {
+            "match": "suspend work",
+            "page": 40,
+            "snippet": " unsafe for the general public; 2. carry out contract provisions; or, 3. carry out the engineer\u2019s directions. D. The engineer has the authority to suspend work for periods of time the engineer decides are necessary due to conditions unsuitable for prosecuting the work or for any other condition or reason t"
+          },
+          {
+            "match": "stop \nwork",
+            "page": 40,
+            "snippet": " reason the engineer decides is in the public interest. E. The engineer or the inspector working under the engineer\u2019s authority may issue a written stop work order to the contractor. The order will provide the reason for the work stoppage. The engineer or the inspector working under the engineer\u2019s authori"
+          },
+          {
+            "match": "stop work",
+            "page": 40,
+            "snippet": "tractor. The order will provide the reason for the work stoppage. The engineer or the inspector working under the engineer\u2019s authority will give the stop work order directly to the contractor's representative in charge on the project site or will send an electronic copy to a responsible party in the contr"
+          }
+        ],
+        "construction_part_b [A]": [
+          {
+            "match": "stop work",
+            "page": 20,
+            "snippet": "ion that contamination may be a problem. The Contractor is required to notify the Department any time it encounters a DSC. The Contractor is to stop work in that area until th e DSC can be investigated. Any DSC may result in a Change Order, so the Inspector must keep de tailed records beginning as soo"
+          },
+          {
+            "match": "suspend work",
+            "page": 27,
+            "snippet": "uspension of work may be initiated by the Contractor, the C onstruction Engineer, or staff personnel; however, official authorization to temporarily suspend work must be in writing from the Assistant Director of Transportation Solutions, Cons truction. Prolonged periods of inactivity due to weather conditio"
+          }
+        ],
+        "construction_part_e [A]": [
+          {
+            "match": "suspend operations",
+            "page": 21,
+            "snippet": "ure content of the embankment may be too high. This usually occurs because of previous inclement weather. If it is believed that this is the case, suspend operations until the area is dr ied out sufficiently. Call for a moisture check to verify the decision for both su spension and resumption. In some cases, aer"
+          },
+          {
+            "match": "suspend operations",
+            "page": 21,
+            "snippet": " [202.05 (f)] (c) The moisture content of the previous la yer or of the incoming material may be too high. If it is believed that this is the case, suspend operations. Call for a moisture test to verify the decision for suspen sion or resumption. Aeration by disc harrow or scarifier will permit the lift to dry ou"
+          },
+          {
+            "match": "Suspend operations",
+            "page": 21,
+            "snippet": "th the Specifications but ar e not compatible. Usually, if they are mixed by scarifying and blading, they will blend and stability can be achieved. Suspend operations if the material will not conform to the Specifications. (e) Infiltration of water from side slopes or adjacent properties may require the need for "
+          }
+        ],
+        "construction_part_f [A]": [
+          {
+            "match": "suspend work",
+            "page": 14,
+            "snippet": "l by illumination of the flaggers\u2019 station. Failure of a flagger to perform the required duties correctly will be justification for the Engineer to suspend work in conformance with Subsection 108.06 of the Standard Specifications. The flaggers must be replaced, and when the flaggers are in compliance with th"
+          }
+        ],
+        "standard_specs_2026 [B]": [
+          {
+            "match": "Continue work",
+            "page": 68,
+            "snippet": "hat indicates the presence of a hazardous material or toxic waste, immediately suspend construction operations in the area and notify the engineer. Continue work in other areas of the project unless otherwise directed by the engineer. B. Conditions indicating the presence of a hazardous material or toxic wast"
+          }
+        ]
+      }
+    }
+  ]
+}
