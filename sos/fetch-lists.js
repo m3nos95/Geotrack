@@ -20,6 +20,8 @@ const OUT = path.join(__dirname, 'lists', 'apl-snapshot.json');
 const AGG_OUT = path.join(__dirname, 'lists', 'aggregate-snapshot.json');
 const WANT_JSON = process.argv.includes('--json');
 const CHART_ONLY = process.argv.includes('--chart-only');
+const SERVE = process.argv.includes('--serve');
+const SOS_HELPER_PORT = Number(process.env.SOS_HELPER_PORT) || 18765;
 
 const DEFAULT_AGGREGATE_CHART =
   '\\\\DOTFS01\\Groups\\Geo Construction Test Report\\Reference Samples\\Approved Source List.xlsx';
@@ -195,6 +197,116 @@ function loadAggregateChart(chartPath) {
   return Lists.parseAggregateChartGrid(grid, { filename: path.basename(chartPath), path: chartPath });
 }
 
+function pullOfficeAggregateChart() {
+  const cfg = loadChartConfig();
+  const dir = argvDir() || cfg.programDir || '';
+  const chartPath = resolveAggregateChart(dir, cfg);
+  if (!chartPath) {
+    return {
+      ok: false,
+      error: 'Approved Source List.xlsx was not found at ' + DEFAULT_AGGREGATE_CHART + (dir ? ' or in ' + dir : '') + '. Map the Geo Construction share or drop the file on APL / Chart.',
+      path: DEFAULT_AGGREGATE_CHART,
+    };
+  }
+  const aggregate = loadAggregateChart(chartPath);
+  const n = (aggregate && aggregate.entries || []).length;
+  if (!n) {
+    return { ok: false, error: 'Opened ' + chartPath + ' but found no chart rows.', path: chartPath, aggregate };
+  }
+  const notes = [];
+  writeChartOutputs({ aggregate, fetchedAt: new Date().toISOString() }, dir, notes);
+  return { ok: true, path: chartPath, aggregate, notes, rows: n };
+}
+
+function mimeFor(file) {
+  const ext = path.extname(file).toLowerCase();
+  return ({
+    '.html': 'text/html; charset=utf-8',
+    '.js': 'text/javascript; charset=utf-8',
+    '.css': 'text/css; charset=utf-8',
+    '.json': 'application/json; charset=utf-8',
+    '.jpg': 'image/jpeg',
+    '.jpeg': 'image/jpeg',
+    '.png': 'image/png',
+    '.webp': 'image/webp',
+    '.svg': 'image/svg+xml',
+    '.ico': 'image/x-icon',
+  })[ext] || 'application/octet-stream';
+}
+
+function safePublicFile(urlPath) {
+  const decoded = decodeURIComponent(String(urlPath || '/').split('?')[0]);
+  const rel = decoded.replace(/^\/+/, '') || 'deldot-sos.html';
+  const full = path.normalize(path.join(ROOT, rel));
+  const inside = path.relative(ROOT, full);
+  if (!inside || inside.startsWith('..') || path.isAbsolute(inside)) return null;
+  return full;
+}
+
+function sendJson(res, status, body) {
+  const buf = Buffer.from(JSON.stringify(body));
+  res.writeHead(status, {
+    'Content-Type': 'application/json; charset=utf-8',
+    'Content-Length': buf.length,
+    'Access-Control-Allow-Origin': '*',
+    'Access-Control-Allow-Methods': 'GET, OPTIONS',
+    'Cache-Control': 'no-store',
+  });
+  res.end(buf);
+}
+
+function handleHelperRequest(req, res) {
+  const url = (req.url || '/').split('?')[0];
+  if (req.method === 'OPTIONS') {
+    res.writeHead(204, {
+      'Access-Control-Allow-Origin': '*',
+      'Access-Control-Allow-Methods': 'GET, OPTIONS',
+    });
+    res.end();
+    return;
+  }
+  if (url === '/api/pull-chart') {
+    try {
+      sendJson(res, 200, pullOfficeAggregateChart());
+    } catch (e) {
+      sendJson(res, 200, { ok: false, error: e.message || String(e), path: DEFAULT_AGGREGATE_CHART });
+    }
+    return;
+  }
+  if (url === '/api/chart-status') {
+    const cfg = loadChartConfig();
+    const dir = argvDir() || cfg.programDir || '';
+    const chartPath = resolveAggregateChart(dir, cfg) || DEFAULT_AGGREGATE_CHART;
+    let reachable = false;
+    try { reachable = !!(chartPath && fs.existsSync(chartPath)); } catch (e) {}
+    sendJson(res, 200, { helper: true, path: chartPath, reachable });
+    return;
+  }
+  const file = safePublicFile(url === '/' ? '/deldot-sos.html' : url);
+  if (!file || !fs.existsSync(file) || fs.statSync(file).isDirectory()) {
+    res.writeHead(404, { 'Access-Control-Allow-Origin': '*' });
+    res.end('Not found');
+    return;
+  }
+  const buf = fs.readFileSync(file);
+  res.writeHead(200, {
+    'Content-Type': mimeFor(file),
+    'Content-Length': buf.length,
+    'Access-Control-Allow-Origin': '*',
+  });
+  res.end(buf);
+}
+
+function startHelperServer(opts) {
+  const http = require('http');
+  const port = (opts && opts.port) || SOS_HELPER_PORT;
+  const server = http.createServer(handleHelperRequest);
+  return new Promise((resolve, reject) => {
+    server.once('error', reject);
+    server.listen(port, '127.0.0.1', () => resolve(server));
+  });
+}
+
 function writeChartOutputs(bundle, dir, notes) {
   if (bundle.aggregate && bundle.aggregate.entries && bundle.aggregate.entries.length) {
     fs.writeFileSync(AGG_OUT, JSON.stringify(bundle.aggregate, null, 2));
@@ -208,6 +320,16 @@ function writeChartOutputs(bundle, dir, notes) {
 }
 
 async function main() {
+  if (SERVE) {
+    const server = await startHelperServer();
+    const addr = server.address();
+    const port = addr && addr.port ? addr.port : SOS_HELPER_PORT;
+    console.log('DelDOT SOS helper http://127.0.0.1:' + port + '/deldot-sos.html');
+    console.log('Pull chart: http://127.0.0.1:' + port + '/api/pull-chart');
+    console.log('Reads ' + DEFAULT_AGGREGATE_CHART);
+    console.log('Leave this window open while you use the SOS page. Click Pull chart from office share on APL / Chart.');
+    return;
+  }
   fs.mkdirSync(path.join(__dirname, 'lists'), { recursive: true });
   const bundle = Lists.emptyBundle();
   bundle.fetchedAt = new Date().toISOString();
@@ -279,7 +401,11 @@ module.exports = {
   findAggregateChart,
   resolveAggregateChart,
   loadAggregateChart,
+  pullOfficeAggregateChart,
+  startHelperServer,
+  handleHelperRequest,
   readSpreadsheetGrid,
   argvDir,
   DEFAULT_AGGREGATE_CHART,
+  SOS_HELPER_PORT,
 };

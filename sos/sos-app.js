@@ -1261,13 +1261,32 @@
   }
 
   function applyListsToOpenLetter() {
-    if (parsedImport && parsedImport.parsed) {
-      const result = SOSEngine.applyWorkflow(parsedImport.parsed, { lists: listsForEngine() });
-      parsedImport = { parsed: parsedImport.parsed, ...result };
-      warnings = result.warnings || [];
-      renderImportPreview();
-      renderWarnings();
-    }
+    const parsed = (parsedImport && parsedImport.parsed && parsedImport.parsed.items && parsedImport.parsed.items.length)
+      ? parsedImport.parsed
+      : (items.length ? {
+        project: {
+          contract: val('ph-contract'),
+          title: val('ph-title'),
+          contractor: val('ph-contractor'),
+          contractorAddr: val('ph-contractor-addr'),
+          contact: val('ph-contact'),
+          district: val('ph-district'),
+          date: val('ph-date'),
+          docKind: val('ph-dockind'),
+        },
+        items: items,
+        warnings: [],
+      } : null);
+    if (!parsed) return;
+    const result = SOSEngine.applyWorkflow(parsed, { lists: listsForEngine() });
+    if (parsedImport && parsedImport.parsed) parsedImport = { parsed: parsedImport.parsed, ...result };
+    items = (result.items || []).map((it, i) => ({ ...it, id: it.id || Date.now() + i }));
+    warnings = result.warnings || [];
+    persistAll();
+    renderImportPreview();
+    renderItems();
+    renderLetter();
+    renderWarnings();
   }
 
   window.handleListFile = async function (file) {
@@ -1307,6 +1326,44 @@
     await loadAplSnapshot();
     applyListsToOpenLetter();
     renderLists();
+  };
+
+  window.pullOfficeChart = async function () {
+    const status = document.getElementById('lists-status');
+    const setStatus = (msg, ok) => {
+      if (!status) return;
+      status.style.display = 'block';
+      status.className = ok ? 'ok-banner' : 'warn-banner';
+      status.textContent = msg;
+    };
+    setStatus('Pulling Approved Source List from the Geo Construction share…', true);
+    const urls = ['/api/pull-chart', 'http://127.0.0.1:18765/api/pull-chart', 'http://localhost:18765/api/pull-chart'];
+    let lastErr = '';
+    for (const url of urls) {
+      try {
+        const res = await fetch(url, { cache: 'no-store' });
+        if (!res.ok) {
+          lastErr = url + ' HTTP ' + res.status;
+          continue;
+        }
+        const body = await res.json();
+        if (body && body.ok && body.aggregate && body.aggregate.entries && body.aggregate.entries.length) {
+          liveLists.aggregate = body.aggregate;
+          persistLists();
+          applyListsToOpenLetter();
+          renderLists();
+          setStatus('Loaded ' + body.aggregate.entries.length + ' chart rows from ' + (body.path || 'Approved Source List.xlsx') + '. GABC / borrow / millings ACTIONS were refreshed.', true);
+          return;
+        }
+        lastErr = (body && body.error) || 'Helper returned no chart rows.';
+      } catch (e) {
+        lastErr = e.message || String(e);
+      }
+    }
+    setStatus(
+      'Could not read the office share from this browser. Double-click start-sos.bat, leave that window open, then click Pull chart again. Or drop Approved Source List.xlsx here. Last error: ' + lastErr,
+      false
+    );
   };
 
   window.clearAggregateChart = function () {

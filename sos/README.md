@@ -35,7 +35,7 @@ Open: [deldot-sos.html](../deldot-sos.html) (GitHub Pages: `/Geotrack/deldot-sos
 
 Related rows from the **same plant** are grouped (e.g. Type C + Type B Superpave). Tack coat is rewritten as `#401xxx – HMA ITEMS` with a product bullet, matching issued letters.
 
-Tack / pavement marking / crack seal check the live [Approved Product Lists](https://materialsandresearch.deldot.gov/index.php/Approved_Product_Lists) (snapshot in `sos/lists/apl-snapshot.json`, refreshed with `refresh-sos-lists.bat`). GABC / borrow / stone check the office **Approved Source List.xlsx** on `\\DOTFS01\Groups\Geo Construction Test Report\Reference Samples\`. `refresh-sos-lists.bat` (daily) and `watch-sos-inbox.bat` copy that file when the share is reachable and write `SOS Program\SOS-lists.json` plus a local `sos/lists/aggregate-snapshot.json` (gitignored — pit data stays off GitHub). You can still drop the .xlsx on **APL / Chart**. Sample date + unexpired expire date → **Approved for use**; Failed / none on site → not approved; expired sample → must be tested again.
+Tack / pavement marking / crack seal check the live [Approved Product Lists](https://materialsandresearch.deldot.gov/index.php/Approved_Product_Lists) (snapshot in `sos/lists/apl-snapshot.json`, refreshed with `refresh-sos-lists.bat`). GABC / borrow / stone check the office **Approved Source List.xlsx** on `\\DOTFS01\Groups\Geo Construction Test Report\Reference Samples\`. The SOS HTML file cannot read that share by itself. Double-click `start-sos.bat`, leave the helper window open, then on **APL / Chart** click **Pull chart from office share**. `refresh-sos-lists.bat` and `watch-sos-inbox.bat` also copy that file when the share is reachable and write `SOS Program\SOS-lists.json` plus a local `sos/lists/aggregate-snapshot.json` (gitignored — pit data stays off GitHub). You can still drop the .xlsx on **APL / Chart**. Sample date + unexpired expire date → **Approved for use**; Failed / none on site → not approved; expired sample → must be tested again.
 
 The **Source of Supply Database.xlsx** (DelDOT Standard Items / Special Provisions catalog, last modified Sept 2023 in the copy we were given) is the official item-number list. Drop it on **APL / Chart** (or keep `sos/lists/sos-database-snapshot.json`). It fills spec descriptions for items not already in the built-in catalog. It does **not** rewrite ACTION notes — those stay matched to issued letters.
 
@@ -72,6 +72,7 @@ Messages already tagged **DelDOT SOS** are not pulled again. This does **not** a
 | `watch-inbox.js` | Process SOS attachments into completed letter folders |
 | `outlook-pull.ps1` | Save .xls/.xlsx/.pdf from the signed-in Outlook inbox |
 | `watch-sos-inbox.bat` | Pull + process (Task Scheduler every 30 min, or `--loop`) |
+| `start-sos.bat` | Local helper + SOS page so **Pull chart from office share** can read the Geo Construction share |
 | `letter-render.js` | HTML letter for the completed-folder draft |
 | `letterhead-header.jpg` | 2026 first-page seal + address (from Shanté Hastings letterhead) |
 | `letterhead-footer.png` | 2026 first-page DelDOT wordmark |
