@@ -32,14 +32,14 @@
     <div class="ph-block">
       <div class="ph-label">Contract / Application #</div>
       <div class="ph-ac-wrap">
-        <input class="ph-input mono contract" id="ph-contract" placeholder="0000016055 or T2023-663-06">
+        <input class="ph-input mono contract" id="ph-contract" autocomplete="off" placeholder="type the application or contract #">
         <div class="ph-ac-dd" id="ph-ac-contract"></div>
       </div>
     </div>
     <div class="ph-block" style="flex:3; min-width:280px;">
       <div class="ph-label">Project Title</div>
       <div class="ph-ac-wrap">
-        <input class="ph-input wide" id="ph-title" style="width:100%;" placeholder="Project title">
+        <input class="ph-input wide" id="ph-title" style="width:100%;" autocomplete="off" placeholder="Project title">
         <div class="ph-ac-dd" id="ph-ac-title"></div>
       </div>
     </div>
@@ -47,7 +47,7 @@
       <div class="ph-label">Contractor</div>
       <div style="display:flex;gap:4px;align-items:center;">
         <div class="ph-ac-wrap" style="flex:1;">
-          <input class="ph-input" id="ph-contractor" style="width:100%;" placeholder="Contractor name">
+          <input class="ph-input" id="ph-contractor" style="width:100%;" autocomplete="off" placeholder="Contractor name">
           <div class="ph-ac-dd" id="ph-ac-contractor"></div>
         </div>
         <button class="btn btn-ghost btn-sm btn-icon" onclick="openContractorModal()" title="Edit contractor address">✎</button>
@@ -69,7 +69,7 @@
     <div class="ph-block">
       <div class="ph-label">DelDOT Contact</div>
       <div class="ph-ac-wrap">
-        <input class="ph-input" id="ph-contact" placeholder="Inspector / PM">
+        <input class="ph-input" id="ph-contact" autocomplete="off" placeholder="Inspector / PM">
         <div class="ph-ac-dd" id="ph-ac-contact"></div>
       </div>
     </div>
@@ -341,7 +341,7 @@
     <div class="letter-panel-header">
       <div class="letter-panel-title">Letter Preview</div>
       <button class="btn btn-ghost btn-sm" id="highlight-btn" onclick="toggleHighlightMode()">🖊 Highlight</button>
-      <button class="btn btn-ghost btn-sm" onclick="clearHighlights()">✕ Clear</button>
+      <button class="btn btn-ghost btn-sm" onclick="clearHighlights()" title="Remove yellow highlight marks on the preview">✕ Clear highlights</button>
       <button class="btn btn-ghost btn-sm" onclick="printLetter()">🖨 Print / PDF</button>
       <button class="btn btn-ghost btn-sm" onclick="document.getElementById('sig-upload').click()">✍ Signature</button>
       <input type="file" id="sig-upload" accept="image/*" style="display:none" onchange="uploadSignature(event)">
