@@ -116,6 +116,17 @@ assert.ok(!Lists.lookupAggregate(asl, 'Vulcan Materials', 'Salisbury MD', 'GABC'
 assert.strictEqual(Lists.lookupAggregate(asl, 'New Enterprise', 'Denver', 'GABC').status, 'rejected');
 assert.strictEqual(Lists.lookupAggregate(asl, 'Patuxent', 'Goldsboro', 'GABC').status, 'expired');
 
+const cbfLiteChart = {
+  kind: 'aggregate',
+  entries: [
+    { name: 'Diamond Materials - Harrington', source: 'York Principio', loc: 'Harrington', material: 'CBF', status: 'rejected' },
+    { name: 'Diamond Materials - Harrington', source: 'York Principio', loc: 'Harrington', material: 'CBF Light', status: 'approved', testDate: '2026-08-10' },
+  ],
+};
+const cbfHit = Lists.lookupAggregate(cbfLiteChart, '', 'Harrington DE', 'CHANNEL BED FILL LITE');
+assert.strictEqual(cbfHit.status, 'approved');
+assert.strictEqual(cbfHit.row.material, 'CBF Light');
+
 const elkGrid = gridFrom(header, [[
   ['', 301001.0, 'GABC', '', 'GABC', 'Allan Myers', '', 'Elk Mills, MD', ''],
 ]]);

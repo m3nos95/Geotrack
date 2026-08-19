@@ -57,7 +57,7 @@ assert.ok(fs.existsSync(path.join(written.dest, 'DEL DOT - SOS - Frey.xls')));
 const letter = fs.readFileSync(path.join(written.dest, 'letter.txt'), 'utf8');
 assert.ok(/James Smith/.test(letter));
 assert.ok(/Aaron Wieczorek/.test(letter));
-assert.ok(/#301001/.test(letter));
+assert.ok(/#301003/.test(letter));
 const html = fs.readFileSync(path.join(written.dest, 'letter.html'), 'utf8');
 assert.ok(/SECTION:/.test(html));
 assert.ok(/REVIEW/.test(html));

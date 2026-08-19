@@ -88,10 +88,11 @@ assert.ok(result.warnings.some(w => /blank/i.test(w)));
 const families = result.items.map(i => i.family);
 const specs = result.items.map(i => (i.letterSpecs || i.specs).join(','));
 
-// GABC corrected 301003 → 301001, must be tested
+// GABC #301003 stays 301003 (SOS Database: GABC by the ton). Must be tested.
 const gabc = result.items.find(i => i.family === 'aggregate');
 assert.ok(gabc, 'GABC item present');
-assert.deepStrictEqual(gabc.letterSpecs || gabc.specs, ['#301001']);
+assert.deepStrictEqual(gabc.letterSpecs || gabc.specs, ['#301003']);
+assert.ok(!/CRUSHED CONCRETE/.test(gabc.desc));
 assert.strictEqual(gabc.action, 'test');
 assert.ok(/Vulcan/i.test(gabc.srcName));
 assert.ok(/Salisbury/i.test(gabc.srcLoc));
@@ -198,7 +199,8 @@ console.log('OK', result.items.length, 'letter items from', FREY_ITEMS.length, '
 const filled = { ...result.project, contract: '0000016055', docKind: 'application', title: 'BOBBY FREY ENTRANCE(S)' };
 const letter = Engine.letterPlainText(filled, result.items, result.cc);
 assert.ok(/Application No\. 0000016055/.test(letter));
-assert.ok(/#301001 - GABC/.test(letter));
+assert.ok(/#301003 - GABC/.test(letter));
+assert.ok(!/#301001 - GABC/.test(letter));
 assert.ok(/Must be tested/.test(letter));
 assert.ok(/River Asphalt 1/.test(letter) && /River Asphalt 2/.test(letter));
 assert.ok(/#401005 - SUPERPAVE TYPE C/.test(letter));
@@ -331,6 +333,57 @@ assert.ok(/GABC \(CRUSHED CONCRETE\)/.test(Engine.letterPlainText(
   [crush],
   []
 )));
+
+// Last-run: keep #301003 for GABC / crusher run (Capitol Trail / Luxor issued 301003, not 301001)
+const capitolGabc = Engine.processGrid(gridFromObjects(FREY_HEADER, [[
+  ['', 301003.0, 'GABC', '', 'GABC Bases', 'Allan Myers', '', 'Elk Mills, MD', 'Martin Marietta'],
+  ['', '', '', '', '', '', '', '', 'North East, MD'],
+]])).items.find(i => i.family === 'aggregate');
+assert.deepStrictEqual(capitolGabc.letterSpecs || capitolGabc.specs, ['#301003']);
+assert.ok(/CRUSHER RUN|GABC/.test(capitolGabc.desc));
+assert.ok(!/301001/.test(Engine.processGrid(gridFromObjects(FREY_HEADER, [[
+  ['', 301003.0, 'GABC', '', 'GABC Bases', 'Allan Myers', '', 'Elk Mills, MD', ''],
+]])).warnings.join(' ')));
+
+// Channel bed fill is aggregate (not generic other); chart loc-only Harrington → Diamond Principio
+const cbfChart = {
+  kind: 'aggregate',
+  entries: [
+    { name: 'Diamond Materials - Harrington', source: 'York Principio', loc: 'Harrington', material: 'CBF', status: 'rejected', testDate: '' },
+    { name: 'Diamond Materials - Harrington', source: 'York Principio', loc: 'Harrington', material: 'CBF Light', status: 'approved', testDate: '2026-08-10' },
+  ],
+};
+const cbfGrid = gridFromObjects(FREY_HEADER, [[
+  ['', 707021.0, 'CHANNEL BED FILL LITE', '', 'CBF Light', '', '', 'Harrington, DE', ''],
+]]);
+const cbf = Engine.processGrid(cbfGrid, { lists: { aggregate: cbfChart } }).items[0];
+assert.strictEqual(cbf.family, 'aggregate');
+assert.strictEqual(cbf.action, 'approved');
+assert.ok(/Diamond Materials/i.test(cbf.srcName));
+assert.ok(/Principio/i.test(cbf.srcName));
+assert.ok(/Approved for use/.test(cbf.actionNotes));
+assert.ok(!/conforms to the requirements/i.test(cbf.actionNotes));
+
+// Storm conveyance / 601012 is RCP, not HDPE
+const rcpPipe = Engine.processGrid(gridFromObjects(FREY_HEADER, [[
+  ['', 601012.0, 'STORM CONVEYANCE PIPE', '', 'RCP 18"', 'Heritage Concrete', '', 'Middletown, DE', ''],
+]])).items[0];
+assert.strictEqual(rcpPipe.family, 'rcp');
+assert.ok(/state inspected stock/i.test(rcpPipe.actionNotes));
+assert.ok(!/AASHTO M294/i.test(rcpPipe.actionNotes));
+
+// Truncated striping rows recover Ennis Flint and group
+const stripePdf = Engine.processGrid(gridFromObjects(FREY_HEADER, [[
+  ['', 817560.0, 'STRAIGHT', '', 'Arrow Thermoplastic Thermoplastic Striping', '', '', '4161 Piedmont Pkwy Greensboro, NC', ''],
+], [
+  ['', 861001.0, 'PERMANENT PAVEMENT STRIPING, EPOXY RESIN, 6"', '', 'EPOXY RESIN PAINT 4161 PIEDMONT PKWY', '', '', 'Greensboro, NC', ''],
+]]));
+const stripeItems = stripePdf.items.filter(i => i.family === 'striping');
+assert.ok(stripeItems.length >= 1);
+assert.ok(stripeItems.every(i => /Ennis Flint/i.test(i.srcName)));
+assert.ok(stripeItems.some(i => /choose a product from the APL/i.test(i.actionNotes)));
+assert.ok(stripeItems.some(i => (i.letterSpecs || i.specs).includes('#817560') && (i.letterSpecs || i.specs).includes('#861001'))
+  || stripeItems.length === 2);
 
 const mixedCc = [
   { name: 'Hunter McCabe', org: 'DelDOT' },

@@ -117,7 +117,7 @@
     '#209006': { desc: 'BORROW, TYPE F', family: 'borrow', tags: ['Borrow'] },
     '#301001': { desc: 'GABC', family: 'aggregate', tags: ['GABC'] },
     '#301002': { desc: 'GABC, PATCHING', family: 'aggregate', tags: ['GABC'] },
-    '#301003': { desc: 'GABC (CRUSHED CONCRETE)', family: 'aggregate', tags: ['GABC'] },
+    '#301003': { desc: 'GABC', family: 'aggregate', tags: ['GABC'] },
     '#301007': { desc: 'RECYCLED CONCRETE AGGREGATE', family: 'aggregate', tags: ['GABC'] },
     '#302002': { desc: 'DELAWARE NO. 3 STONE', family: 'aggregate', tags: ['Stone'] },
     '#302005': { desc: 'DELAWARE NO. 57 STONE', family: 'aggregate', tags: ['Stone'] },
@@ -132,6 +132,7 @@
     '#404001': { desc: 'BITUMINOUS CRACK/JOINT SEALING < THAN 3/4-INCH WIDE', family: 'crack-seal', tags: ['Crack Sealing', 'APL'] },
     '#504001': { desc: 'CRACK AND JOINT SEALING LESS THAN 3/4 INCH WIDE', family: 'crack-seal', tags: ['Crack Sealing'] },
     '#601011': { desc: 'REINFORCED CONCRETE PIPE, 15", CLASS III', family: 'rcp', tags: ['RCP'] },
+    '#601012': { desc: 'REINFORCED CONCRETE PIPE, 18", CLASS III', family: 'rcp', tags: ['RCP'] },
     '#601031': { desc: 'REINFORCED CONCRETE PIPE, 12" CLASS IV', family: 'rcp', tags: ['RCP'] },
     '#601032': { desc: 'REINFORCED CONCRETE PIPE, 15", CLASS IV', family: 'rcp', tags: ['RCP'] },
     '#601033': { desc: 'REINFORCED CONCRETE PIPE, 18", CLASS IV', family: 'rcp', tags: ['RCP'] },
@@ -161,11 +162,13 @@
     '#710438': { desc: 'FIRE HYDRANTS', family: 'utility', tags: ['Pipe'] },
     '#711009': { desc: 'INSTALLING SANITARY SEWER, PVC, 8"', family: 'utility', tags: ['Pipe'] },
     '#817002': { desc: 'PERMANENT PAVEMENT STRIPING, SYMBOL/LEGEND, ALKYD-THERMOPLASTIC', family: 'striping', tags: ['APL'] },
+    '#817042': { desc: 'PERMANENT PAVEMENT STRIPING, EPOXY RESIN PAINT, WHITE/YELLOW, 6"', family: 'striping', tags: ['APL'] },
     '#817560': { desc: 'STRAIGHT ARROW THERMOPLASTIC', family: 'striping', tags: ['APL'] },
     '#817561': { desc: 'RIGHT OR LEFT THERMOPLASTIC ARROW', family: 'striping', tags: ['APL'] },
     '#861001': { desc: 'PERMANENT PAVEMENT STRIPING, EPOXY RESIN PAINT, 6"', family: 'striping', tags: ['APL'] },
     '#862004': { desc: 'PERMANENT PAVEMENT STRIPING, ALKYD-THERMOPLASTIC, 12"', family: 'striping', tags: ['APL'] },
     '#862005': { desc: 'PERMANENT PAVEMENT STRIPING, ALKYD-THERMOPLASTIC, 16"', family: 'striping', tags: ['APL'] },
+    '#862006': { desc: 'PERMANENT PAVEMENT STRIPING, ALKYD-THERMOPLASTIC, SYMBOL/LEGEND', family: 'striping', tags: ['APL'] },
     '#808002': { desc: 'PROVIDE/MAINTAIN TRUCK MOUNTED ATTENUATOR, T II', family: 'ttc', tags: ['Traffic Control', 'APL'] },
     '#810001': { desc: 'TEMPORARY WARNING SIGNS AND PLAQUES', family: 'ttc', tags: ['Signage', 'APL'] },
     '#813001': { desc: 'TEMPORARY BARRICADES, TYPE III', family: 'ttc', tags: ['Traffic Control', 'APL'] },
@@ -182,11 +185,10 @@
 
   /**
    * Contractor spec mistakes seen on submissions.
-   * 301003 submitted as "Graded Aggregate / GABC" is issued as #301001.
+   * Do not rewrite #301003 → #301001: the SOS Database lists 301003 as GABC (TON),
+   * and issued letters keep 301003 for crusher run / crushed concrete.
    */
-  const SPEC_CORRECTIONS = [
-    { whenSpec: '#301003', whenDesc: /gabc|graded aggregate/i, unlessDesc: /crush/i, toSpec: '#301001', note: 'Issued as #301001 GABC (contractor submitted 301003).' },
-  ];
+  const SPEC_CORRECTIONS = [];
 
   /**
    * Known tack-coat APL producers. Location matters — Seaford Russell Standard
@@ -204,7 +206,7 @@
   ];
 
   const STRIPING_APL = [
-    { name: /ennis\s*flint/i, locations: null, label: 'Ennis Flint' },
+    { name: /ennis[\s-]*fl[iy]nt/i, locations: null, label: 'Ennis Flint' },
     { name: /crown\s*tech/i, locations: null, label: 'Crown Technologies' },
     { name: /epoplex/i, locations: null, label: 'Epoplex' },
   ];

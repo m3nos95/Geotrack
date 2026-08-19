@@ -403,35 +403,34 @@
 
   function familyFromSpec(spec, desc, material, lists) {
     const blob = `${desc} ${material}`.toLowerCase();
+    const prefix = (spec || '').replace('#', '').slice(0, 3);
     if (isTack(desc, material, spec)) return 'tack';
-    if (/expansion/.test(blob) && !/crack|joint seal/.test(blob)) return 'expansion';
-    if (/curing/.test(blob)) return 'curing';
+    if (/expansion/.test(blob) && !/crack|joint seal|pcc|sidewalk|curb/.test(blob)) return 'expansion';
+    if (/curing/.test(blob) && !/pcc|sidewalk|curb/.test(blob)) return 'curing';
     const cat = SPEC_CATALOG[spec];
     if (cat) return cat.family;
+    if (/channel bed|\bcbf\b|cbf light/.test(blob)) return 'aggregate';
+    if (/riprap/.test(blob) && !/geotextile/.test(blob)) return 'riprap';
+    if (/pavement strip|thermoplastic|epoxy resin|alkyd-thermoplastic|straight arrow|line striping/.test(blob)) return 'striping';
     if (/tack/.test(blob)) return 'tack';
     if (/superpave|hot mix|hma|pg\s*\d{2}/.test(blob)) return 'hma-mix';
     if (/borrow|backfill/.test(blob)) return 'borrow';
     if (/gabc|crusher run|graded aggregate|no\.?\s*57|no\.?\s*3 stone|#57|#3 stone/.test(blob)) return 'aggregate';
-    if (/rcp|reinforced concrete pipe|flared end/.test(blob)) return 'rcp';
+    if (/rcp|reinforced concrete pipe|flared end|storm conveyance pipe/.test(blob)) return 'rcp';
     if (/drainage inlet|manhole/.test(blob) && /grate|frame|cover/.test(blob)) return 'castings';
     if (/drainage inlet|manhole|precast/.test(blob)) return 'precast';
     if (/sidewalk|curb|pcc /.test(blob)) return 'pcc';
     if (/seed/.test(blob)) return 'seed';
     if (/topsoil/.test(blob)) return 'topsoil';
-    if (/silt fence|geotextile|erosion|inlet sediment|filter log/.test(blob)) return 'erosion';
+    if (/geotextile/.test(blob)) return 'geotextile';
+    if (/silt fence|erosion|inlet sediment|filter log/.test(blob)) return 'erosion';
     if (/crack|joint seal/.test(blob)) return 'crack-seal';
-    if (/riprap/.test(blob)) return 'riprap';
-    if (/pavement strip|thermoplastic arrow|alkyd-thermoplastic|epoxy resin paint/.test(blob)) return 'striping';
-    if (/sign|barricade|attenuator|traffic/.test(blob)) return 'ttc';
-    if (/pipe|hdpe|ads/.test(blob)) return 'hdpe';
-    const hit = Lists.lookupSosDatabase && Lists.lookupSosDatabase(lists && lists.sosDatabase, spec);
-    const fromDb = familyFromDbHit(hit);
-    if (fromDb) return fromDb;
-    const prefix = (spec || '').replace('#', '').slice(0, 3);
+    if (/sign|barricade|attenuator|traffic/.test(blob) && prefix !== '817' && prefix !== '861' && prefix !== '862') return 'ttc';
     const byPrefix = {
       '207': 'borrow', '209': 'borrow',
       '301': 'aggregate', '302': 'aggregate',
       '401': 'hma-mix', '404': 'crack-seal', '504': 'crack-seal',
+      '503': 'pcc',
       '601': 'rcp', '602': 'precast',
       '701': 'pcc', '702': 'pcc', '705': 'pcc',
       '707': 'riprap',
@@ -442,7 +441,14 @@
       '861': 'striping', '862': 'striping',
       '905': 'erosion', '908': 'landscape',
     };
-    return byPrefix[prefix] || 'other';
+    if (prefix === '707' && /channel bed|\bcbf\b/.test(blob)) return 'aggregate';
+    if (byPrefix[prefix]) return byPrefix[prefix];
+    if (/pipe|hdpe|\bads\b/.test(blob)) return 'hdpe';
+    const hit = Lists.lookupSosDatabase && Lists.lookupSosDatabase(lists && lists.sosDatabase, spec);
+    const fromDb = familyFromDbHit(hit);
+    if (fromDb === 'apl-product' && /817|861|862/.test(prefix)) return 'striping';
+    if (fromDb) return fromDb;
+    return 'other';
   }
 
   function isTack(desc, material, spec) {
@@ -501,6 +507,16 @@
 
     const family = familyFromSpec(item.specs[0], item.desc, item.material, lists);
     let sectionDesc = desc;
+    const crushBlob = `${item.desc || ''} ${item.material || ''} ${(item.subItems || []).join(' ')}`;
+    if ((item.specs || []).includes('#301003')) {
+      if (/crush|rca|recycled concrete/i.test(crushBlob) && !/crusher run/i.test(crushBlob)) {
+        sectionDesc = 'GABC (CRUSHED CONCRETE)';
+      } else if (/crusher run/i.test(crushBlob)) {
+        sectionDesc = 'GABC (CRUSHER RUN)';
+      } else {
+        sectionDesc = 'GABC';
+      }
+    }
     let subItems = [...(item.subItems || [])].filter(s => s.toLowerCase() !== desc.toLowerCase());
     let letterSpecs = [...item.specs];
 
@@ -544,7 +560,7 @@
     // APL / manufactured products: manufacturer is the SOURCE.
     // Bulk plants: supplier name + plant city from manufacturer address column.
     const manufactured = ['tack', 'crack-seal', 'curing', 'expansion', 'apl-product', 'ttc', 'signs', 'castings', 'striping'].includes(item.family);
-    if (manufactured && item.mfgName) {
+    if (manufactured && item.mfgName && !isCityState(item.mfgName)) {
       return {
         srcName: cleanCompany(item.mfgName),
         srcLoc: item.mfgLoc || item.srcLoc,
@@ -574,6 +590,45 @@
       altAddr: item.altAddr,
       altPhone: item.altPhone,
     };
+  }
+
+  function recoverStripingSource(item) {
+    if (item.family !== 'striping') return item;
+    const blob = [
+      item.srcName, item.mfgName, item.desc, item.material,
+      item.mfgAddr, item.srcAddr, item.srcLoc, item.mfgLoc,
+      ...(item.subItems || []),
+    ].join(' ');
+    if (!/ennis|flint|flynt|piedmont/i.test(blob)) return item;
+    if (/ennis[\s-]*fl[iy]nt/i.test(item.srcName || '')) return item;
+    return {
+      ...item,
+      srcName: 'Ennis Flint',
+      srcLoc: /greensboro/i.test(item.srcLoc || item.mfgLoc || '')
+        ? (item.srcLoc || item.mfgLoc)
+        : 'Greensboro NC',
+    };
+  }
+
+  function chartSourceFill(item, hit) {
+    if (!hit || !hit.found || !hit.row) return {};
+    const row = hit.row;
+    const name = String(item.srcName || '').trim();
+    const weak = !name || isCityState(name) || !/[A-Za-z]{4,}/.test(name.replace(/\s+[A-Z]{2}\s*$/, ''));
+    const out = {};
+    if (hit.testDate) out.testDate = hit.testDate;
+    if (!weak) return out;
+    const plant = String(row.name || '').split(/\s[-–—]\s+/)[0].trim();
+    let srcName = plant || name;
+    if (row.source) {
+      const quarry = String(row.source).replace(/^York\s+/i, '').trim();
+      if (quarry && !new RegExp(quarry.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'i').test(srcName)) {
+        srcName += ` (${quarry} Stockpile)`;
+      }
+    }
+    if (srcName) out.srcName = srcName;
+    if (!item.srcLoc && row.loc) out.srcLoc = row.loc;
+    return out;
   }
 
   function applyAction(item, project, warnings, lists) {
@@ -664,6 +719,7 @@
         if (action === 'test') actionNotes = actionNotes + '\n' + testCoordinationNotes(project.district, lists);
         testDate = p.date || (a && a.date) || testDate;
         rule = 'aggregate-chart';
+        Object.assign(item, chartSourceFill(item, primary));
       } else if (item.testDate) {
         action = 'approved';
         actionNotes = ACTION_TEXT.approved;
@@ -768,6 +824,10 @@
       apl = true;
       actionNotes = ACTION_TEXT.apl;
       rule = 'castings-apl';
+    } else if (family === 'geotextile') {
+      action = 'approved';
+      actionNotes = ACTION_TEXT.approvedBare;
+      rule = 'geotextile-approved';
     } else if (family === 'erosion') {
       action = 'approved';
       const isSuperSilt = (item.specs || []).some(s => s === '#905007');
@@ -779,7 +839,7 @@
       rule = 'default-conforms';
     }
 
-    if (oneSource && !['tack', 'curing', 'expansion', 'crack-seal', 'apl-product', 'ttc', 'signs', 'striping'].includes(family)) {
+    if (oneSource && !['tack', 'curing', 'expansion', 'crack-seal', 'apl-product', 'ttc', 'signs', 'striping', 'geotextile'].includes(family)) {
       actionNotes = (actionNotes ? actionNotes + '\n' : '') + ACTION_TEXT.oneSource;
     }
     if (apl) {
@@ -875,7 +935,7 @@
       item = applySpecCorrections(item, warnings);
       item = enrichDescription(item, lists);
       const src = pickLetterSource(item);
-      item = { ...item, ...src };
+      item = recoverStripingSource({ ...item, ...src });
       item = applyAction(item, project, warnings, lists);
       return item;
     });

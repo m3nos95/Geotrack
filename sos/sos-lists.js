@@ -273,7 +273,7 @@
       [/milling|rap\b/, /milling|rap\b/],
       [/209b|type b|sand/, /209b|type b|\bsand\b|borrow/],
       [/209c|#?\s*10|screening/, /209c|#?\s*10|screening|type c|borrow/],
-      [/cbf light|channel bed fill.*light/, /cbf light|channel bed fill.*light/],
+      [/cbf light|channel bed fill.*ligh?te?/, /cbf light|channel bed fill.*ligh?te?/],
       [/borrow.*c|type c/, /borrow.*c|type c/],
       [/borrow.*a|type a/, /borrow.*a|type a/],
       [/borrow.*b|type b/, /borrow.*b|type b/],
