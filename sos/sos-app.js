@@ -99,7 +99,7 @@
   }
   function setVal(id, v) {
     const el = document.getElementById(id);
-    if (el && v != null) el.value = v;
+    if (el) el.value = v == null ? '' : v;
   }
 
   function saveContractorToLib(name, addr) {
@@ -145,7 +145,7 @@
   }
 
   function wireProjectPersist() {
-    ['ph-contract', 'ph-title', 'ph-contractor', 'ph-district', 'ph-contact', 'ph-date', 'ph-dockind'].forEach(id => {
+    ['ph-contract', 'ph-title', 'ph-contractor', 'ph-contractor-addr', 'ph-district', 'ph-contact', 'ph-date', 'ph-dockind'].forEach(id => {
       const el = document.getElementById(id);
       if (!el) return;
       el.addEventListener('input', () => {
@@ -985,11 +985,58 @@
     persistAll(); renderItems(); renderLetter();
   };
   window.clearAllItems = function () {
-    if (!items.length) return;
-    if (!confirm('Remove all SOS items?')) return;
-    items = []; warnings = [];
-    persistAll(); renderItems(); renderLetter(); renderWarnings();
+    newLetter();
   };
+
+  window.newLetter = function (opts) {
+    const silent = !!(opts && opts.silent);
+    if (!silent && jobIsDirty() && !confirm('Start a new letter? This clears the current job (header, items, CC on this letter, revisions). The name library, APL, and chart stay.')) {
+      return false;
+    }
+    resetCurrentJob();
+    switchTab('import', document.querySelector('.tab[data-tab="import"]'));
+    return true;
+  };
+
+  function jobIsDirty() {
+    return items.length > 0
+      || ccList.length > 0
+      || !!(val('ph-contract') || val('ph-title') || val('ph-contractor'));
+  }
+
+  function resetCurrentJob() {
+    items = [];
+    ccList = [];
+    warnings = [];
+    revisions = [];
+    currentRev = 1;
+    parsedImport = null;
+    setVal('ph-contract', '');
+    setVal('ph-title', '');
+    setVal('ph-contractor', '');
+    setVal('ph-contractor-addr', '');
+    setVal('ph-contact', '');
+    setVal('ph-dockind', 'application');
+    setVal('ph-date', new Date().toISOString().slice(0, 10));
+    const rev = document.getElementById('rev-display');
+    if (rev) rev.textContent = 'REV 01';
+    const preview = document.getElementById('import-preview-block');
+    if (preview) preview.style.display = 'none';
+    const drop = document.getElementById('drop-label');
+    if (drop) drop.textContent = 'Drop DelDOT SOS spreadsheet here';
+    const file = document.getElementById('file-input');
+    if (file) file.value = '';
+    const status = document.getElementById('import-status');
+    if (status) status.style.display = 'none';
+    persistAll();
+    updateContractWarn();
+    renderItems();
+    renderCC();
+    renderCCLib();
+    renderRevisions();
+    renderLetter();
+    renderWarnings();
+  }
 
   window.renderSourceLib = function () {
     const tbody = document.getElementById('lib-tbody');
@@ -1375,35 +1422,60 @@
       }
       const result = SOSEngine.processGrid(grid, { filename: file.name, lists: listsForEngine() });
       parsedImport = result;
+      if (jobIsDirty() && !confirm('Replace the current letter with ' + file.name + '?\n\nThis clears the previous job. Click Cancel to keep it and only preview the new form.')) {
+        warnings = result.warnings || [];
+        setImportStatus('Parsed ' + result.items.length + ' items. Current letter was kept. Click Load into letter to replace it, or New letter to start blank.', 'blue');
+        renderImportPreview();
+        renderWarnings();
+        return;
+      }
       warnings = result.warnings || [];
-      applyProjectToHeader(result.project);
-      setImportStatus(`Parsed ${result.items.length} letter item${result.items.length === 1 ? '' : 's'} from ${result.ungrouped.length} spreadsheet row${result.ungrouped.length === 1 ? '' : 's'}. Review, then load into the letter.`, 'green');
+      setImportStatus(`Parsed ${result.items.length} letter item${result.items.length === 1 ? '' : 's'} from ${result.ungrouped.length} spreadsheet row${result.ungrouped.length === 1 ? '' : 's'}. Loaded as a new letter.`, 'green');
       renderImportPreview();
-      renderWarnings();
+      importAllParsed();
     } catch (e) {
       console.error(e);
       setImportStatus('Could not parse this file: ' + e.message, 'red');
+    } finally {
+      const input = document.getElementById('file-input');
+      if (input) input.value = '';
     }
   };
 
-  function applyProjectToHeader(p) {
-    if (!p) return;
-    if (p.contract) setVal('ph-contract', p.contract);
-    if (p.title) setVal('ph-title', p.title);
-    if (p.contractor) setVal('ph-contractor', p.contractor);
-    if (p.contractorAddr) setVal('ph-contractor-addr', p.contractorAddr);
-    if (p.contact) setVal('ph-contact', p.contact);
-    if (p.docKind) setVal('ph-dockind', p.docKind);
-    if (p.district) {
+  function applyProjectToHeader(p, replace) {
+    const current = {
+      contract: val('ph-contract'),
+      title: val('ph-title'),
+      contractor: val('ph-contractor'),
+      contractorAddr: val('ph-contractor-addr'),
+      contact: val('ph-contact'),
+      district: val('ph-district'),
+      docKind: val('ph-dockind'),
+      date: val('ph-date'),
+    };
+    const overlay = (SOSEngine && SOSEngine.overlayProject)
+      ? SOSEngine.overlayProject
+      : function (c, i) { return Object.assign({}, c, i); };
+    const next = overlay(current, p || {}, !!replace);
+    setVal('ph-contract', next.contract);
+    setVal('ph-title', next.title);
+    setVal('ph-contractor', next.contractor);
+    setVal('ph-contractor-addr', next.contractorAddr);
+    setVal('ph-contact', next.contact);
+    if (next.docKind) setVal('ph-dockind', next.docKind);
+    if (next.district) {
       const sel = document.getElementById('ph-district');
-      const want = p.district.toLowerCase();
-      for (const opt of sel.options) {
-        if (opt.value.toLowerCase() === want || want.includes(opt.value.toLowerCase()) || opt.value.toLowerCase().includes(want.split(/\s+/)[0])) {
-          sel.value = opt.value; break;
+      const want = String(next.district).toLowerCase();
+      if (sel) {
+        for (const opt of sel.options) {
+          if (opt.value.toLowerCase() === want || want.includes(opt.value.toLowerCase()) || opt.value.toLowerCase().includes(want.split(/\s+/)[0])) {
+            sel.value = opt.value; break;
+          }
         }
       }
     }
-    if (!val('ph-date')) setVal('ph-date', new Date().toISOString().slice(0, 10));
+    if (next.date) setVal('ph-date', next.date);
+    else if (replace || !val('ph-date')) setVal('ph-date', new Date().toISOString().slice(0, 10));
     updateContractWarn();
     persistProject();
   }
@@ -1430,14 +1502,13 @@
   }
 
   window.importAllParsed = function () {
-    if (!parsedImport || !parsedImport.items.length) return;
-    items = parsedImport.items.map((it, i) => ({ ...it, id: Date.now() + i }));
+    if (!parsedImport) return 0;
+    applyProjectToHeader(parsedImport.project, true);
+    items = (parsedImport.items || []).map((it, i) => ({ ...it, id: Date.now() + i }));
     ccList = parsedImport.cc || [];
     warnings = parsedImport.warnings || [];
-    if (!revisions.length) {
-      revisions = [{ num: 1, date: val('ph-date') || new Date().toISOString().slice(0, 10), notes: 'Initial issue from contractor SOS spreadsheet.', items: [] }];
-      currentRev = 1;
-    }
+    revisions = [{ num: 1, date: val('ph-date') || new Date().toISOString().slice(0, 10), notes: 'Initial issue from contractor SOS spreadsheet.', items: [] }];
+    currentRev = 1;
     items.forEach(it => {
       autoSaveSource(it.srcName, it.srcLoc, it.srcAddr, it.srcPhone);
       if (it.altName) autoSaveSource(it.altName, it.altLoc, it.altAddr, it.altPhone);
@@ -1447,7 +1518,8 @@
     renderItems(); renderCC(); renderCCLib(); renderRevisions(); renderSourceLib(); renderSpecLibTab();
     renderLetter(); renderWarnings();
     switchTab('items', document.querySelector('.tab[data-tab="items"]'));
-    setImportStatus('Letter loaded. Fill the application/contract number if it is highlighted, then print.', 'green');
+    setImportStatus('Letter loaded. Fill the application/contract number if it is highlighted, then print. Drop another .xls or click New letter to start the next job.', 'green');
+    return items.length;
   };
   window.clearImportPreview = function () {
     parsedImport = null;

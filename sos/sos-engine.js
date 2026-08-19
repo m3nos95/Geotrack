@@ -1066,6 +1066,29 @@
     return lines.filter(Boolean).join('\n');
   }
 
+  /** Merge or replace letter-header fields when a new contractor form is loaded.
+   *  replace=false keeps prior values when the new form left a field blank (old bug).
+   *  replace=true starts a new job: blanks on the form clear the previous letter. */
+  function overlayProject(current, incoming, replace) {
+    current = current || {};
+    incoming = incoming || {};
+    const take = (key) => {
+      const next = incoming[key];
+      if (replace) return next ? next : '';
+      return next ? next : (current[key] || '');
+    };
+    return {
+      contract: take('contract'),
+      title: take('title'),
+      contractor: take('contractor'),
+      contractorAddr: take('contractorAddr'),
+      contact: take('contact'),
+      district: incoming.district || current.district || '',
+      docKind: incoming.docKind || (replace ? 'application' : (current.docKind || '')),
+      date: incoming.date || '',
+    };
+  }
+
   return {
     cellStr,
     normalizeSpec,
@@ -1092,5 +1115,6 @@
     isCityState,
     cleanCompany,
     matchAplList,
+    overlayProject,
   };
 });

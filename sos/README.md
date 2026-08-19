@@ -6,7 +6,7 @@ Open: [deldot-sos.html](../deldot-sos.html) (GitHub Pages: `/Geotrack/deldot-sos
 
 ## Daily workflow
 
-1. Drop the contractor form (`DEL DOT - SOS - ….xls`) on **Import**.
+1. Drop the contractor form (`DEL DOT - SOS - ….xls`) on **Import**. A new form **replaces** the current letter (you will be asked). Click **New letter** (or **Clear All** on the items tab) to wipe the header and start blank — the previous job is saved in this browser until you do. ✕ Clear preview only hides the import table.
 2. The app reads the sheet in the browser (no API key), groups related specs, and applies ACTION language.
 3. Fill **Contract / Application #** if the contractor left it blank (the Frey form often does).
 4. Review items — especially **MUST BE TESTED** (highlighted) and APL / not-approved tack coat.
@@ -76,7 +76,7 @@ Messages already tagged **DelDOT SOS** are not pulled again. This does **not** a
 | `letterhead-header.jpg` | 2026 first-page seal + address (from Shanté Hastings letterhead) |
 | `letterhead-footer.png` | 2026 first-page DelDOT wordmark |
 
-Libraries (sources, specs, CC, last project) persist in `localStorage` on this browser.
+Libraries (sources, specs, CC, last project) persist in `localStorage` on this browser. **New letter** clears the current job only — not the name library, APL, or chart.
 
 ## Teaching the engine from real jobs
 

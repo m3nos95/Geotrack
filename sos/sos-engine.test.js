@@ -397,6 +397,30 @@ assert.strictEqual(DATA.filterRetiredCcPeople(mixedCc, []).length, 3);
 assert.strictEqual(DATA.filterRetiredCcPeople(['Hunter McCabe', 'Ray Glanden'], ['HUNTER MCCABE']).join(), 'Ray Glanden');
 console.log('Retired CC names are skipped on harvest / library load');
 
+const prevJob = {
+  contract: '301003999',
+  title: 'Old Pit Job',
+  contractor: 'Yesterday Paving',
+  contractorAddr: '1 Old Rd\nDover, DE',
+  contact: 'Jane Doe',
+  district: 'South',
+  docKind: 'contract',
+};
+const freyLike = { title: 'Bobby Frey Entrance(s)', contractor: 'Terra Firma of Delmarva, Inc.', contractorAddr: '38156 Brittingham Rd., Delmar, DE 19940', contact: 'James Smith', district: 'South' };
+const merged = Engine.overlayProject(prevJob, freyLike, false);
+assert.strictEqual(merged.contract, '301003999', 'old merge kept prior application # when the form left it blank');
+const replaced = Engine.overlayProject(prevJob, freyLike, true);
+assert.strictEqual(replaced.contract, '', 'new letter clears a blank application # instead of keeping the last job');
+assert.strictEqual(replaced.title, 'Bobby Frey Entrance(s)');
+assert.strictEqual(replaced.contractor, 'Terra Firma of Delmarva, Inc.');
+assert.strictEqual(replaced.contact, 'James Smith');
+assert.strictEqual(replaced.docKind, 'application');
+const blankForm = Engine.overlayProject(prevJob, {}, true);
+assert.strictEqual(blankForm.contractor, '');
+assert.strictEqual(blankForm.contact, '');
+assert.strictEqual(blankForm.title, '');
+console.log('New-letter header replace clears the previous job when the form is blank');
+
 const liveSnap = require('./lists/apl-snapshot.json');
 assert.ok(liveSnap.tack.entries.length >= 10, 'bundled tack APL snapshot');
 assert.strictEqual(require('./sos-lists.js').lookupTack(liveSnap.tack, 'Russell Standard', 'Baltimore MD', 'CRS-1').listed, true);
