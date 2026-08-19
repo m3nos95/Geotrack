@@ -131,6 +131,8 @@
         if (!v) continue;
         const lower = v.toLowerCase();
         if (lower === needle || lower.startsWith(needle)) {
+          // "Contractor Email" is not the Contractor name field.
+          if (needle === 'contractor' && /e-?mail/i.test(lower)) continue;
           const after = parseLabeled(v, label.replace(/:$/, ''));
           if (after) return after;
           for (let k = c + 1; k < row.length; k++) {
@@ -170,8 +172,15 @@
     return '';
   }
 
+  function cleanContractNo(value) {
+    return cellStr(value)
+      .replace(/^(application|contract|state contract|agreement)\s*(no\.?)?\s*#?\s*/i, '')
+      .replace(/^#\s*/, '')
+      .trim();
+  }
+
   function detectDocKind(contract) {
-    const s = cellStr(contract).replace(/\s+/g, '');
+    const s = cleanContractNo(contract).replace(/\s+/g, '');
     if (!s) return 'application';
     if (/^T\d{4}/i.test(s)) return 'contract';
     if (/^(CA-?)?\d{3,5}$/i.test(s) && s.length <= 6) return 'agreement';
@@ -225,7 +234,8 @@
   function isItemHeaderText(joined) {
     const t = String(joined || '').toLowerCase();
     if (!/item description/.test(t)) return false;
-    return /\bspec(?:ification)?s?\b/.test(t) || /\bspec\s*#/.test(t);
+    // Match "Spec", "Specification #", and the common typo "Specfication #".
+    return /\bspec/.test(t);
   }
 
   function findHeaderRow(rows) {
@@ -296,9 +306,9 @@
   function rowLooksLikeCompanyStart(row, cols) {
     const mfg = row[cols.mfg];
     const sup = row[cols.supplier];
-    if (isStreet(mfg) || isPhone(mfg) || isCityState(mfg)) return false;
-    if (isStreet(sup) || isPhone(sup) || isCityState(sup)) return false;
-    return isCompanyName(mfg) || isCompanyName(sup);
+    const named = (val) =>
+      !(isStreet(val) || isPhone(val) || isCityState(val)) && isCompanyName(val);
+    return named(mfg) || named(sup);
   }
 
   function parseProject(rows) {
@@ -318,9 +328,10 @@
     const contractor = contractorRaw.replace(/^Contractor:\s*/i, '').trim();
     const addrParts = splitAddress(addr.replace(/^Address:\s*/i, ''));
     const contractorAddr = [addrParts.street, addrParts.citystatezip].filter(Boolean).join('\n');
+    const contractNo = cleanContractNo(contract.replace(/^.*?:\s*/, '').trim());
 
     return {
-      contract: contract.replace(/^.*?:\s*/, '').trim(),
+      contract: contractNo,
       title: title.replace(/^Title of Contract:\s*/i, '').trim(),
       contractor,
       contractorAddr,
@@ -330,7 +341,7 @@
       contact: contact.replace(/^DelDOT Contact:\s*/i, '').trim(),
       date: parseDateToISO(dateRaw) || new Date().toISOString().slice(0, 10),
       submittedDate: parseDateToISO(dateRaw),
-      docKind: detectDocKind(contract.replace(/^.*?:\s*/, '').trim()),
+      docKind: detectDocKind(contractNo),
     };
   }
 
@@ -347,15 +358,29 @@
     const items = [];
     let current = null;
 
-    const startItem = (row) => {
+    const startItem = (row, inherit) => {
       const specCell = specCellFromRow(row, cols);
+      const contactContinues = (val) => {
+        const t = cellStr(val);
+        if (!t) return true;
+        return isStreet(val) || isPhone(t) || isCityState(val);
+      };
+      const take = (col, prev) => {
+        const v = row[col];
+        if (inherit && prev && prev.length && contactContinues(v)) {
+          const lines = prev.slice();
+          if (cellStr(v)) lines.push(v);
+          return lines;
+        }
+        return [v];
+      };
       current = {
         specs: specCell ? extractSpecs(specCell) : [],
         descLines: [row[cols.desc]],
         materialLines: [row[cols.material]],
-        supLines: [row[cols.supplier]],
-        mfgLines: [row[cols.mfg]],
-        altLines: [row[cols.alt]],
+        supLines: take(cols.supplier, inherit && inherit.supLines),
+        mfgLines: take(cols.mfg, inherit && inherit.mfgLines),
+        altLines: take(cols.alt, inherit && inherit.altLines),
       };
     };
 
@@ -419,10 +444,21 @@
         flush();
         continue;
       }
-      const restart = current && itemLooksComplete(current) && (specCell || rowLooksLikeCompanyStart(row, cols));
+      const specNums = specCell ? extractSpecs(specCell) : [];
+      const newSpec = !!(current && specNums.length && specNums.some(s => !(current.specs || []).includes(s)));
+      const companyStart = rowLooksLikeCompanyStart(row, cols);
+      const restart = current && itemLooksComplete(current) && (specCell || companyStart);
       if (!current || restart) {
+        let inherit = null;
+        if (current && restart && newSpec && !companyStart) {
+          inherit = {
+            supLines: current.supLines.slice(),
+            mfgLines: current.mfgLines.slice(),
+            altLines: current.altLines.slice(),
+          };
+        }
         if (current) flush();
-        startItem(row);
+        startItem(row, inherit);
         continue;
       }
       if (specCell) current.specs = [...new Set([...current.specs, ...extractSpecs(specCell)])];
@@ -502,7 +538,7 @@
     if (/tie bar|dowel bar|contraction basket|stake pin|anchoring adhesive|redhead|welded hook/.test(blob)) return 'hardware';
     if (/millings|recycled asphalt pavement/.test(blob) && !/superpave|stone matrix|sma\b|wearing surface/.test(blob)) return 'aggregate';
     if (/channel bed|\bcbf\b|cbf light/.test(blob)) return 'aggregate';
-    if (/riprap/.test(blob) && !/geotextile/.test(blob)) return 'riprap';
+    if (/rip\s*rap/.test(blob) && !/geotextile/.test(blob)) return 'riprap';
     if (/pavement strip|thermoplastic|epoxy resin|alkyd-thermoplastic|straight arrow|line striping/.test(blob)) return 'striping';
     if (/tack/.test(blob)) return 'tack';
     if (/superpave|hot mix|hma|pg\s*\d{2}/.test(blob)) return 'hma-mix';
@@ -1271,5 +1307,6 @@
     findHeaderRow,
     processSosSheets,
     workbookToSheets,
+    cleanContractNo,
   };
 });

@@ -483,6 +483,123 @@ assert.ok(multi.items.some(i => (i.specs || []).includes('#401755')));
 assert.ok(/Re-Steel|RE-STEEL/i.test(multi.items.find(i => i.family === 'hardware').srcName));
 console.log('Compact Spec/Item Description SOS list (multi-tab) parses');
 
+assert.strictEqual(Engine.cleanContractNo('Application 642721600'), '642721600');
+assert.strictEqual(Engine.detectDocKind('Application 642721600'), 'application');
+assert.strictEqual(Engine.detectDocKind('642721600'), 'application');
+
+function easternRow() {
+  const row = Array(7).fill('');
+  for (let i = 0; i < arguments.length; i++) {
+    if (arguments[i] !== undefined && arguments[i] !== null) row[i] = arguments[i];
+  }
+  return row;
+}
+
+const easternTypoHeader = [
+  easternRow('Specfication #', '', 'Item Description', 'Material', ' Supplier', 'Manufacturer', 'Alternate Manufacturer'),
+  easternRow('', '', '', '', '', 'Address & Contact', 'Address & Contact'),
+];
+assert.ok(Engine.findHeaderRow(easternTypoHeader) === 0, 'Specfication # typo is still an item header');
+
+const easternGrid = [
+  easternRow('', '', '', '', 'Agreement /Permit/Contract No:', 'Application 642721600'),
+  easternRow('', '', '', '', 'Title of Contract:', '2229 DuPont Parkway'),
+  easternRow('Source of Supply'),
+  easternRow('Materials & Research', '', '', 'Contractor Email: tgleason@eastern-states.net', '', 'Contractor: Eastern States Construction Service, Inc'),
+  easternRow('', '', '', '', '', 'Address: 702 First State Blvd., Wilm, DE 19804'),
+  easternRow('Delaware Department of Transportation', '', '', '', '', 'Sub-Contractor: N/A'),
+  easternRow('', '', '', '', '', 'Date: 6/18/26'),
+  easternRow('', 'District: Canal'),
+  easternRow('', '', '', '', '', 'DelDOT Contact: Raymond Brittingham'),
+  easternRow(),
+  easternRow('Specfication #', '', 'Item Description', 'Material', ' Supplier', 'Manufacturer', 'Alternate Manufacturer'),
+  easternRow('', '', '', '', '', 'Address & Contact', 'Address & Contact'),
+  easternRow('', ' ', '', '', 'Martin Marietta', '233 Stevenson Rd.', 'Allan Myers, Inc.'),
+  easternRow('', 301001, 'GABC, Type B', 'Crushed Stone', '', 'North East, MD 21901', '896 Elk Mills Road'),
+  easternRow('', 707001, 'Rip Rap R-4', '', '', '410-287-8177', 'Elk Mills, MD 21291'),
+  easternRow('', '', '', '', '', '', '410-392-6061'),
+  easternRow('', ' ', '', '', 'Martin Marietta', '233 Stevenson Rd.'),
+  easternRow('', 301003, 'GABC, Type B', 'Crushed Stone', '', 'North East, MD 21901'),
+  easternRow('', 'Alternate', '', '', '', '410-287-8177'),
+  easternRow(),
+  easternRow('', ' ', '', '', 'Greggo & Ferrara, Inc', 'Greggo & Ferrara, Inc'),
+  easternRow('', 302005, 'GABC, Type B', 'Crushed Concrete', 'Newark Crusher Plant', '4048 New Castle Ave'),
+  easternRow('', '', '', '', '', 'New Castle, DE 19720'),
+  easternRow('', '', '', '', '', '302-654-5241'),
+  easternRow('', '', '', '', '', 'Bear Materials, LLC', 'Bear Materials, LLC'),
+  easternRow('', 701023, 'PCC Curb & Gutter Type 3-8', 'Class B', 'Bear Materials, LLC', '600 Industrial Drive', 'Newark Plant'),
+  easternRow('', 701032, 'Curb / Sidewalk Opening', 'Class B'),
+  easternRow('', '', '', '', '', 'Middletown, DE 19709', '595 Walther Rd'),
+  easternRow('', '', '', '', '', '(302) 376-5280', '302-834-3333'),
+  easternRow('', 401005, 'Superpave Type C', 'PG 64-22 160 Gyrations', 'Contractors Materials LLC', '', 'Allan Myers, Inc.'),
+  easternRow('', 401014, 'Superpave Type B', 'PG 64-22 160 Gyrations', 'Heald Street Plant', '4048 New Castle Ave', '896 Elk Mills Road'),
+  easternRow('', '', '', '', '', 'New Castle, DE 19720', 'Elk Mills, MD 21291'),
+  easternRow('', '', '', '', '', '302-654-5241', '410-392-6061'),
+  easternRow('', '', 'Permanent Pavement Striping,', 'AASHTO M-247 TY 1 80% ROUND', 'Potters Industries', 'Potters Industries'),
+  easternRow('', 817002, 'Symbol/Legend,', 'Spherical Glass Beads', 'PO BOX 840', 'PO BOX 840'),
+  easternRow('', '', 'Alkyd-Thermoplastic', '', 'Valley Forge, PA', 'Valley Forge, PA'),
+  easternRow('', '', '', '', '610-651-4200', '610-651-4200'),
+  easternRow(),
+  easternRow('', 817005, 'Permanent Pavement Striping,', 'Ennis: 884490 (White)', 'PPG/Ennis Flint, Inc.', 'PPG/Ennis Flint, Inc.'),
+  easternRow('', '', 'Symbol/Legend,', 'Ennis: 884685 (Yellow)', '4400 Vawter Ave', '4400 Vawter Ave'),
+  easternRow('', '', 'Alkyd-Thermoplastic', '', 'Richmond, VA 23222', 'Richmond, VA 23222'),
+  easternRow('', '', '', '', '(800)331-8118', '(800)331-8118'),
+  easternRow(),
+  easternRow('', 817042, 'Permanent Pavement', 'Ennis: HPS-3 (White)', 'PPG/Ennis Flint, Inc.', 'PPG/Ennis Flint, Inc.'),
+  easternRow('', '', 'Striping, Epoxy Resin ', 'Ennis: HPS-3 (Yellow)', '4400 Vawter Ave', '4400 Vawter Ave'),
+  easternRow('', '', 'Paint, White/Yellow, 6"', '', 'Richmond, VA 23222', 'Richmond, VA 23222'),
+  easternRow('', '', '', '', '(800)331-8118', '(800)331-8118'),
+];
+
+const eastern = Engine.processGrid(easternGrid, { filename: 'DelDot SOS Application #642721600.xlsx' });
+assert.ok(!eastern.warnings.some(w => /Could not find Specification/i.test(w)), eastern.warnings.join(' | '));
+assert.strictEqual(eastern.project.contract, '642721600');
+assert.strictEqual(eastern.project.docKind, 'application');
+assert.ok(/Eastern States Construction/i.test(eastern.project.contractor));
+assert.ok(!/@/.test(eastern.project.contractor), 'contractor name is not the email');
+assert.strictEqual(eastern.project.title, '2229 DuPont Parkway');
+assert.ok(/Canal/i.test(eastern.project.district));
+assert.ok(/Raymond Brittingham/i.test(eastern.project.contact));
+
+const easternGabc = eastern.items.find(i => (i.letterSpecs || i.specs).includes('#301001'));
+assert.ok(easternGabc, 'GABC #301001 parsed');
+assert.strictEqual(easternGabc.family, 'aggregate');
+assert.ok(/Martin Marietta/i.test(easternGabc.srcName));
+
+const easternRip = eastern.items.find(i => (i.letterSpecs || i.specs).includes('#707001'));
+assert.ok(easternRip, 'Rip rap #707001 is its own item');
+assert.strictEqual(easternRip.family, 'riprap');
+assert.ok(/visual inspection/i.test(easternRip.actionNotes));
+assert.ok(/Martin Marietta/i.test(easternRip.srcName), 'riprap keeps Martin Marietta from the shared contact block');
+assert.ok(!(easternGabc.letterSpecs || easternGabc.specs).includes('#707001'), 'GABC is not merged with riprap');
+assert.ok(!/, 233 Stevenson Rd/i.test(easternRip.srcAddr || ''), 'riprap address is not duplicated from inherit');
+
+const easternAltGabc = eastern.items.find(i => (i.letterSpecs || i.specs).includes('#301003'));
+assert.ok(easternAltGabc, 'GABC alternate #301003 parsed');
+assert.ok(/Martin Marietta/i.test(easternAltGabc.srcName));
+assert.ok(!(easternRip.letterSpecs || easternRip.specs).includes('#301003'));
+
+const easternCrush = eastern.items.find(i => (i.letterSpecs || i.specs).includes('#302005'));
+assert.ok(easternCrush, 'crushed concrete #302005 parsed');
+assert.strictEqual(easternCrush.family, 'aggregate');
+assert.ok(/Greggo/i.test(easternCrush.srcName));
+
+const easternPcc = eastern.items.find(i => i.family === 'pcc');
+assert.ok(easternPcc && easternPcc.specs.includes('#701023') && easternPcc.specs.includes('#701032'));
+assert.ok(/Bear Materials/i.test(easternPcc.srcName));
+
+const easternHma = eastern.items.find(i => i.family === 'hma-mix');
+assert.ok(easternHma && easternHma.specs.includes('#401005') && easternHma.specs.includes('#401014'));
+
+const easternBeads = eastern.items.find(i => (i.letterSpecs || i.specs).includes('#817002'));
+assert.ok(easternBeads, 'glass beads #817002 parsed');
+assert.ok(/Potters/i.test(easternBeads.srcName));
+
+const easternStripe = eastern.items.filter(i => i.family === 'striping' && (i.letterSpecs || i.specs).some(s => /#817005|#817042/.test(s)));
+assert.ok(easternStripe.length >= 1);
+assert.ok(easternStripe.some(i => /Ennis Flint/i.test(i.srcName)));
+console.log('Eastern States Application 642721600 (Specfication # typo) parses');
+
 const liveSnap = require('./lists/apl-snapshot.json');
 assert.ok(liveSnap.tack.entries.length >= 10, 'bundled tack APL snapshot');
 assert.strictEqual(require('./sos-lists.js').lookupTack(liveSnap.tack, 'Russell Standard', 'Baltimore MD', 'CRS-1').listed, true);
