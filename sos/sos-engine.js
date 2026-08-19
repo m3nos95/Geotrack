@@ -641,12 +641,12 @@
     const family = familyFromSpec(item.specs[0], item.desc, item.material, lists, item.subItems);
     let sectionDesc = desc;
     const crushBlob = `${item.desc || ''} ${item.material || ''} ${(item.subItems || []).join(' ')}`;
-    if ((item.specs || []).includes('#301003')) {
-      if (/crush|rca|recycled concrete/i.test(crushBlob) && !/crusher run/i.test(crushBlob)) {
+    if (family === 'aggregate') {
+      if (/crushed concrete|recycled concrete|\brca\b/i.test(crushBlob) && !/crusher run/i.test(crushBlob)) {
         sectionDesc = 'GABC (CRUSHED CONCRETE)';
       } else if (/crusher run/i.test(crushBlob)) {
         sectionDesc = 'GABC (CRUSHER RUN)';
-      } else {
+      } else if ((item.specs || []).includes('#301003')) {
         sectionDesc = 'GABC';
       }
     }

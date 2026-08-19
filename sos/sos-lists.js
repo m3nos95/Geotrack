@@ -263,14 +263,35 @@
     };
   }
 
+  function materialKind(s) {
+    const t = String(s || '').toLowerCase();
+    if (!t) return '';
+    // Crusher run is GABC (natural stone). Do not treat the letters "crush" as RCA.
+    if (/crushed concrete|recycled concrete|\brca\b/.test(t) && !/crusher run/.test(t)) return 'crushed-concrete';
+    if (/milling|\brap\b/.test(t) && !/\bgabc\b|crusher run/.test(t)) return 'millings';
+    if (/\bgabc\b|graded aggregate|crusher run|crushed stone/.test(t)) return 'gabc';
+    if (/cbf light|channel bed fill.*ligh?te?/.test(t)) return 'cbf-light';
+    if (/channel bed|\bcbf\b/.test(t)) return 'cbf';
+    if (/209b|type b.*sand|\bsand\b/.test(t) && /209|borrow|sand/.test(t)) return '209b';
+    if (/209c|#?\s*10|screening/.test(t)) return '209c';
+    if (/no\.?\s*57|#?57\b/.test(t)) return '57';
+    if (/no\.?\s*8|#?8\b/.test(t)) return '8';
+    if (/no\.?\s*3|#?3\b/.test(t)) return '3';
+    if (/rip\s*rap/.test(t)) return 'riprap';
+    if (/topsoil/.test(t)) return 'topsoil';
+    return '';
+  }
+
   function materialMatch(chartMaterial, itemMaterial) {
     const a = String(chartMaterial || '').toLowerCase();
     const b = String(itemMaterial || '').toLowerCase();
     if (!a || !b) return true;
+    const ka = materialKind(a);
+    const kb = materialKind(b);
+    const exclusive = new Set(['crushed-concrete', 'gabc', 'millings']);
+    if (ka && kb && ka !== kb && (exclusive.has(ka) || exclusive.has(kb))) return false;
+    if (ka && kb && ka === kb) return true;
     const tags = [
-      [/gabc|graded aggregate|crusher run/, /gabc|graded aggregate|crusher run/],
-      [/crush|rca|recycled concrete/, /crush|rca|recycled concrete/],
-      [/milling|rap\b/, /milling|rap\b/],
       [/209b|type b|sand/, /209b|type b|\bsand\b|borrow/],
       [/209c|#?\s*10|screening/, /209c|#?\s*10|screening|type c|borrow/],
       [/cbf light|channel bed fill.*ligh?te?/, /cbf light|channel bed fill.*ligh?te?/],
@@ -281,7 +302,7 @@
       [/no\.?\s*8|#?8\b/, /no\.?\s*8|#?8\b/],
       [/no\.?\s*3|#?3/, /no\.?\s*3|#?3/],
       [/channel bed|cbf/, /channel bed|cbf/],
-      [/riprap/, /riprap/],
+      [/rip\s*rap/, /rip\s*rap/],
       [/topsoil/, /topsoil/],
     ];
     for (const [x, y] of tags) {
@@ -458,8 +479,12 @@
     if (!hits.length) return { found: false };
     const locHits = loc ? hits.filter(e => locMatch(e.loc, loc) || nameMatch(e.name, loc) || foldName(e.name).includes(foldName(loc).split(' ')[0] || '')) : hits;
     if (loc && locHits.length) hits = locHits;
+    const kind = materialKind(material);
     const matHits = material ? hits.filter(e => materialMatch(e.material, material)) : hits;
     if (matHits.length) hits = matHits;
+    else if (material && ['crushed-concrete', 'gabc', 'millings'].includes(kind)) {
+      return { found: false, reason: 'material-mismatch', matches: hits };
+    }
     const rank = { approved: 3, pending: 1, expired: 0, rejected: -1 };
     hits = [...hits].sort((a, b) => {
       const rd = (rank[b.status] || 0) - (rank[a.status] || 0);
@@ -661,6 +686,8 @@
     lookupManufacturer,
     lookupCrack,
     lookupAggregate,
+    materialKind,
+    materialMatch,
     emptyBundle,
     mergeBundle,
     summary,

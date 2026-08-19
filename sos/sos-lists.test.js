@@ -102,6 +102,8 @@ const sourceList = [
   ['Vulcan Seaford', 'Havre De Grace', '', '', '', '', '2026-07-27', '2026-11-04', '', ''],
   ['New Enterprise - Denver', '', '', '', '', '', 'Failed', '', '', ''],
   ['Patuxent Companies (FKA Goldsboro)', '', '', '', '', '', '2025-04-11', '2025-07-20', 'Failed 2nd', ''],
+  ['Greggo Newark Crusher', 'Greggo & Ferrara', '', '', '', '', '2026-06-15', '2026-09-23', '', ''],
+  ['Pennsy Supply Dover', '', '', '', '', '', 'Failed', '', '2026-06-01', '2026-09-01'],
 ];
 assert.ok(Lists.looksLikeApprovedSourceList('Approved Source List.xlsx', []));
 assert.ok(Lists.looksLikeApprovedSourceList('', sourceList));
@@ -115,6 +117,28 @@ assert.strictEqual(seaford.status, 'approved');
 assert.ok(!Lists.lookupAggregate(asl, 'Vulcan Materials', 'Salisbury MD', 'GABC').found);
 assert.strictEqual(Lists.lookupAggregate(asl, 'New Enterprise', 'Denver', 'GABC').status, 'rejected');
 assert.strictEqual(Lists.lookupAggregate(asl, 'Patuxent', 'Goldsboro', 'GABC').status, 'expired');
+
+assert.strictEqual(Lists.materialKind('GABC, Type B Crusher Run'), 'gabc');
+assert.strictEqual(Lists.materialKind('GABC Type B'), 'gabc');
+assert.strictEqual(Lists.materialKind('Crushed Stone'), 'gabc');
+assert.strictEqual(Lists.materialKind('GABC, Type B Crushed Concrete'), 'crushed-concrete');
+assert.strictEqual(Lists.materialKind('Crushed Concrete'), 'crushed-concrete');
+assert.ok(!Lists.materialMatch('GABC', 'GABC, Type B Crushed Concrete'));
+assert.ok(Lists.materialMatch('Crushed Concrete', 'GABC, Type B Crushed Concrete'));
+assert.ok(Lists.materialMatch('GABC', 'GABC, Type B Crusher Run'));
+assert.ok(!Lists.materialMatch('Crushed Concrete', 'Crusher Run GABC Type B'));
+
+const greggoGabc = Lists.lookupAggregate(asl, 'Greggo', 'Newark', 'GABC, Type B Crusher Run');
+assert.strictEqual(greggoGabc.row.material, 'GABC');
+assert.strictEqual(greggoGabc.status, 'approved');
+const greggoCc = Lists.lookupAggregate(asl, 'Greggo', 'Newark', 'GABC, Type B Crushed Concrete');
+assert.ok(!greggoCc.found, 'crushed concrete must not inherit the GABC chart column');
+const pennsyCc = Lists.lookupAggregate(asl, 'Pennsy Supply', 'Dover', 'Crushed Concrete');
+assert.strictEqual(pennsyCc.status, 'approved');
+assert.strictEqual(pennsyCc.row.material, 'Crushed Concrete');
+const pennsyGabc = Lists.lookupAggregate(asl, 'Pennsy Supply', 'Dover', 'GABC Type B');
+assert.strictEqual(pennsyGabc.status, 'rejected');
+assert.strictEqual(pennsyGabc.row.material, 'GABC');
 
 const cbfLiteChart = {
   kind: 'aggregate',
@@ -140,6 +164,30 @@ const goldsGrid = gridFrom(header, [[
 const golds = Engine.processGrid(goldsGrid, { lists: { aggregate: asl } }).items.find(i => i.family === 'aggregate');
 assert.strictEqual(golds.action, 'test');
 assert.ok(/expired/i.test(golds.actionNotes));
+
+const greggoCcGrid = gridFrom(header, [[
+  ['', 302005.0, 'GABC, Type B', '', 'Crushed Concrete', 'Greggo & Ferrara', '', 'New Castle, DE', ''],
+]]);
+const greggoCcItem = Engine.processGrid(greggoCcGrid, { lists: { aggregate: asl } }).items.find(i => i.family === 'aggregate');
+assert.ok(/CRUSHED CONCRETE/i.test(greggoCcItem.desc));
+assert.ok(!/57 STONE/i.test(greggoCcItem.desc));
+assert.strictEqual(greggoCcItem.action, 'test', 'GABC chart approval is not used for crushed concrete');
+assert.ok(/Must be tested/i.test(greggoCcItem.actionNotes));
+
+const greggoRunGrid = gridFrom(header, [[
+  ['', 301001.0, 'GABC, Type B', '', 'Crusher Run', 'Greggo & Ferrara', '', 'New Castle, DE', ''],
+]]);
+const greggoRunItem = Engine.processGrid(greggoRunGrid, { lists: { aggregate: asl } }).items.find(i => i.family === 'aggregate');
+assert.ok(/CRUSHER RUN/i.test(greggoRunItem.desc));
+assert.ok(!/CRUSHED CONCRETE/i.test(greggoRunItem.desc));
+assert.strictEqual(greggoRunItem.action, 'approved');
+
+const pennsyCcGrid = gridFrom(header, [[
+  ['', 301003.0, 'GABC', '', 'Crushed Concrete', 'Pennsy Supply', '', 'Dover, DE', ''],
+]]);
+const pennsyCcItem = Engine.processGrid(pennsyCcGrid, { lists: { aggregate: asl } }).items.find(i => i.family === 'aggregate');
+assert.strictEqual(pennsyCcItem.action, 'approved');
+assert.ok(/CRUSHED CONCRETE/i.test(pennsyCcItem.desc));
 
 console.log('OK Approved Source List matrix');
 

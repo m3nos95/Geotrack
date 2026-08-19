@@ -590,6 +590,8 @@ const easternCrush = eastern.items.find(i => (i.letterSpecs || i.specs).includes
 assert.ok(easternCrush, 'crushed concrete #302005 parsed');
 assert.strictEqual(easternCrush.family, 'aggregate');
 assert.ok(/Greggo/i.test(easternCrush.srcName));
+assert.ok(/CRUSHED CONCRETE/i.test(easternCrush.desc), 'GABC Type B + crushed concrete is not chart GABC / #57 stone');
+assert.ok(!/57 STONE/i.test(easternCrush.desc));
 
 const easternPcc = eastern.items.find(i => i.family === 'pcc');
 assert.ok(easternPcc && easternPcc.specs.includes('#701023') && easternPcc.specs.includes('#701032'));
