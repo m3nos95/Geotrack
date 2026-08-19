@@ -192,7 +192,7 @@ Left = **rail** (pick a topic). Center/right drawer = details. **Exit** closes S
 | **Anchors** | Measured DelDOT borehole infil tests | Amber diamonds; measured in/hr and design ÷FoS |
 | **DGS** | Delaware Geological Survey wells / geophys | Lith / gamma links; shallow coarse/fine classes |
 | **Props** | Screening engineering properties | Subgrade / frost / drainage-style priors from AASHTO — not lab CBR |
-| **Poles** | DelDOT Table IV-11 signal/strain/camera base | Chart-strict (worst SPT in 0–5′ and 5–25′) plus a typical-profile suggestion and a per-hole PE override |
+| **Poles** | DelDOT Table IV-11 signal/strain/camera base | Chart-strict (worst SPT in 0–5′ and 5–25′) plus a typical-profile suggestion and a per-hole PE override. **Click a boring marker** → log + pole base from **that hole only** (not Site Intel). |
 | **Septic** | DNREC PercRate points nearby | Minutes/inch converted for screening (not App.1 ASTM) |
 | **Class** | AASHTO / USCS at the point | From nearby borings or NRCS fallback (Estimates ON) |
 | **Column** | Stick log 0–50′ (and deeper subsurface mode) | Layered class with depth (Estimates ON) |
