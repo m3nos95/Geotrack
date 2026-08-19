@@ -172,6 +172,11 @@
     return '';
   }
 
+  function todayISO() {
+    const d = new Date();
+    return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+  }
+
   function cleanContractNo(value) {
     return cellStr(value)
       .replace(/^(application|contract|state contract|agreement)\s*(no\.?)?\s*#?\s*/i, '')
@@ -339,7 +344,7 @@
       subContractor: sub.replace(/^n\/?a$/i, ''),
       district: district.replace(/^District:\s*/i, '').trim(),
       contact: contact.replace(/^DelDOT Contact:\s*/i, '').trim(),
-      date: parseDateToISO(dateRaw) || new Date().toISOString().slice(0, 10),
+      date: todayISO(),
       submittedDate: parseDateToISO(dateRaw),
       docKind: detectDocKind(contractNo),
     };
@@ -1273,7 +1278,7 @@
       contact: take('contact'),
       district: incoming.district || current.district || '',
       docKind: incoming.docKind || (replace ? 'application' : (current.docKind || '')),
-      date: incoming.date || '',
+      date: replace ? todayISO() : (current.date || todayISO()),
     };
   }
 
@@ -1291,6 +1296,7 @@
     contractPhrase,
     detectDocKind,
     formatLongDate,
+    todayISO,
     sourceLine,
     letterSectionLines,
     letterPlainText,

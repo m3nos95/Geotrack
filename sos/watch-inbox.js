@@ -61,7 +61,7 @@ function safeSlug(s, fallback) {
 }
 
 function jobSlug(project, filename) {
-  const day = (project && project.date) || new Date().toISOString().slice(0, 10);
+  const day = (project && project.date) || (Engine.todayISO ? Engine.todayISO() : new Date().toISOString().slice(0, 10));
   const who = safeSlug((project && (project.contract || project.contractor || project.title)) || filename, 'job');
   return day + '_' + who;
 }

@@ -102,6 +102,12 @@
     if (el) el.value = v == null ? '' : v;
   }
 
+  function headerToday() {
+    if (typeof SOSEngine !== 'undefined' && SOSEngine.todayISO) return SOSEngine.todayISO();
+    const d = new Date();
+    return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+  }
+
   function saveContractorToLib(name, addr) {
     let lib = ls_get(STORE.contractors, []);
     const idx = lib.findIndex(c => c.name.toLowerCase() === name.toLowerCase());
@@ -132,7 +138,7 @@
     setVal('ph-contractor-addr', p.contractorAddr || '');
     if (p.district) setVal('ph-district', p.district);
     setVal('ph-contact', p.contact || '');
-    setVal('ph-date', p.date || new Date().toISOString().slice(0, 10));
+    setVal('ph-date', p.date || headerToday());
     if (p.docKind) setVal('ph-dockind', p.docKind);
     document.getElementById('rev-display').textContent = 'REV ' + String(currentRev).padStart(2, '0');
     updateContractWarn();
@@ -655,7 +661,7 @@
     currentRev++;
     revisions.push({
       num: currentRev,
-      date: new Date().toISOString().split('T')[0],
+      date: headerToday(),
       notes: notes || 'No notes.',
       items: itemsStr ? itemsStr.split(',').map(s => s.trim()) : [],
     });
@@ -1017,7 +1023,7 @@
     setVal('ph-contractor-addr', '');
     setVal('ph-contact', '');
     setVal('ph-dockind', 'application');
-    setVal('ph-date', new Date().toISOString().slice(0, 10));
+    setVal('ph-date', headerToday());
     const rev = document.getElementById('rev-display');
     if (rev) rev.textContent = 'REV 01';
     const preview = document.getElementById('import-preview-block');
@@ -1532,7 +1538,7 @@
       }
     }
     if (next.date) setVal('ph-date', next.date);
-    else if (replace || !val('ph-date')) setVal('ph-date', new Date().toISOString().slice(0, 10));
+    else if (replace || !val('ph-date')) setVal('ph-date', headerToday());
     updateContractWarn();
     persistProject();
   }
@@ -1564,7 +1570,7 @@
     items = (parsedImport.items || []).map((it, i) => ({ ...it, id: Date.now() + i }));
     ccList = parsedImport.cc || [];
     warnings = parsedImport.warnings || [];
-    revisions = [{ num: 1, date: val('ph-date') || new Date().toISOString().slice(0, 10), notes: 'Initial issue from contractor SOS spreadsheet.', items: [] }];
+    revisions = [{ num: 1, date: val('ph-date') || headerToday(), notes: 'Initial issue from contractor SOS spreadsheet.', items: [] }];
     currentRev = 1;
     items.forEach(it => {
       autoSaveSource(it.srcName, it.srcLoc, it.srcAddr, it.srcPhone);
