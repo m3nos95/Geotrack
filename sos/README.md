@@ -72,7 +72,7 @@ Messages already tagged **DelDOT SOS** are not pulled again. This does **not** a
 | `watch-inbox.js` | Process SOS attachments into completed letter folders |
 | `outlook-pull.ps1` | Save .xls/.xlsx/.pdf from the signed-in Outlook inbox |
 | `watch-sos-inbox.bat` | Pull + process (Task Scheduler every 30 min, or `--loop`) |
-| `start-sos.bat` | Local helper + SOS page so **Pull chart from office share** can read the Geo Construction share |
+| `start-sos.bat` | Local helper + SOS page so **Pull chart from office share** can read the Geo Construction share (also `sos/start-sos.bat`) |
 | `letter-render.js` | HTML letter for the completed-folder draft |
 | `letterhead-header.jpg` | 2026 first-page seal + address (from Shanté Hastings letterhead) |
 | `letterhead-footer.png` | 2026 first-page DelDOT wordmark |
