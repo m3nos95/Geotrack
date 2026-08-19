@@ -33,6 +33,9 @@
 
   function cellStr(v) {
     if (v == null || v === '') return '';
+    if (v instanceof Date && !Number.isNaN(v.getTime())) {
+      return v.toISOString().slice(0, 10);
+    }
     if (typeof v === 'number') {
       if (Number.isInteger(v)) return String(v);
       // Spec numbers arrive as 401005.0
@@ -85,6 +88,7 @@
     const t = cellStr(s);
     if (!t) return false;
     if (isPhone(t) || isCityState(t)) return false;
+    if (!/\d/.test(t)) return false;
     return STREET_RE.test(t);
   }
 
@@ -93,6 +97,7 @@
     if (!t) return false;
     if (isPhone(t) || isCityState(t) || isStreet(t)) return false;
     if (/^(n\/?a|none|same|tbd|-)$/i.test(t)) return false;
+    if (/^(spec(?:ification)?s?|#|item description|material|supplier|manufacturer|alternate manufacturer|address\s*&\s*contact)$/i.test(t)) return false;
     return /[A-Za-z]{3,}/.test(t);
   }
 
@@ -207,15 +212,93 @@
       else if (!block.addr) block.addr = t;
       else block.extras.push(t);
     }
+    if (block.name && block.extras.length) {
+      const glue = block.extras.filter(x => /^(materials|company|inc\.?|llc|co\.?)$/i.test(String(x).trim()));
+      if (glue.length) {
+        block.name = [block.name, ...glue].join(' ').replace(/\s+/g, ' ');
+        block.extras = block.extras.filter(x => !glue.includes(x));
+      }
+    }
     return block;
   }
 
+  function isItemHeaderText(joined) {
+    const t = String(joined || '').toLowerCase();
+    if (!/item description/.test(t)) return false;
+    return /\bspec(?:ification)?s?\b/.test(t) || /\bspec\s*#/.test(t);
+  }
+
   function findHeaderRow(rows) {
-    for (let r = 0; r < Math.min(rows.length, 40); r++) {
-      const joined = rows[r].map(cellStr).join(' ').toLowerCase();
-      if (joined.includes('specification') && joined.includes('item description')) return r;
+    const n = Math.min(rows.length, 45);
+    for (let r = 0; r < n; r++) {
+      const joined = (rows[r] || []).map(cellStr).join(' ').toLowerCase();
+      if (isItemHeaderText(joined)) return r;
+      if (!/\bspec/.test(joined)) continue;
+      const next = (rows[r + 1] || []).map(cellStr).join(' ').toLowerCase();
+      if (isItemHeaderText(joined + ' ' + next)) return r;
     }
     return -1;
+  }
+
+  function headerColumnLabels(rows, header) {
+    const row = rows[header] || [];
+    const next = rows[header + 1] || [];
+    const n = Math.max(row.length, next.length, 9);
+    const labels = [];
+    for (let i = 0; i < n; i++) {
+      labels.push((cellStr(row[i]) + ' ' + cellStr(next[i])).replace(/\s+/g, ' ').trim().toLowerCase());
+    }
+    return labels;
+  }
+
+  function detectItemColumns(rows, header) {
+    const labels = headerColumnLabels(rows, header);
+    const idx = (pred) => labels.findIndex(pred);
+    const spec = idx(l => /\bspec/.test(l) && !/inspection/.test(l));
+    const desc = idx(l => /item description/.test(l));
+    const material = idx(l => /\bmaterial\b/.test(l) && !/requirement/.test(l) && !/item description/.test(l));
+    const supplier = idx(l => /supplier/.test(l));
+    const mfg = idx(l => /manufacturer/.test(l) && !/alternate/.test(l));
+    const alt = idx(l => /alternate/.test(l));
+    if (desc >= 0 && spec >= 0) {
+      return {
+        spec: spec < 0 ? 0 : spec,
+        desc,
+        material: material < 0 ? desc + 1 : material,
+        supplier: supplier < 0 ? (material < 0 ? desc + 2 : material + 1) : supplier,
+        mfg: mfg < 0 ? 7 : mfg,
+        alt: alt < 0 ? 8 : alt,
+      };
+    }
+    return { spec: 0, desc: 2, material: 4, supplier: 5, mfg: 7, alt: 8 };
+  }
+
+  function specCellFromRow(row, cols) {
+    if (looksLikeSpecStart(row[cols.spec])) return row[cols.spec];
+    if (cols.spec === 0 && looksLikeSpecStart(row[1])) return row[1];
+    return '';
+  }
+
+  function isColumnSubHeaderRow(row, cols) {
+    const spec = cellStr(row[cols.spec]);
+    const joined = (row || []).map(cellStr).join(' ').toLowerCase();
+    if (/address\s*&\s*contact/.test(joined) && !specCellFromRow(row, cols)) return true;
+    if (spec === '#' && !specCellFromRow(row, cols)) return true;
+    return false;
+  }
+
+  function itemLooksComplete(current) {
+    if (!current || !current.specs.length) return false;
+    const lines = [...current.mfgLines, ...current.supLines, ...current.altLines];
+    return lines.some(s => isPhone(s) || isCityState(s));
+  }
+
+  function rowLooksLikeCompanyStart(row, cols) {
+    const mfg = row[cols.mfg];
+    const sup = row[cols.supplier];
+    if (isStreet(mfg) || isPhone(mfg) || isCityState(mfg)) return false;
+    if (isStreet(sup) || isPhone(sup) || isCityState(sup)) return false;
+    return isCompanyName(mfg) || isCompanyName(sup);
   }
 
   function parseProject(rows) {
@@ -259,9 +342,22 @@
   function parseItems(rows) {
     const header = findHeaderRow(rows);
     if (header < 0) return { items: [], warnings: ['Could not find Specification # header row.'] };
+    const cols = detectItemColumns(rows, header);
     const warnings = [];
     const items = [];
     let current = null;
+
+    const startItem = (row) => {
+      const specCell = specCellFromRow(row, cols);
+      current = {
+        specs: specCell ? extractSpecs(specCell) : [],
+        descLines: [row[cols.desc]],
+        materialLines: [row[cols.material]],
+        supLines: [row[cols.supplier]],
+        mfgLines: [row[cols.mfg]],
+        altLines: [row[cols.alt]],
+      };
+    };
 
     const flush = () => {
       if (!current) return;
@@ -316,32 +412,25 @@
 
     for (let r = header + 1; r < rows.length; r++) {
       const row = rows[r] || [];
-      // Spec may be col 0 or col 1 depending on the template.
-      const specCell = looksLikeSpecStart(row[1]) ? row[1] : looksLikeSpecStart(row[0]) ? row[0] : '';
-      if (specCell) {
-        flush();
-        current = {
-          specs: extractSpecs(specCell),
-          descLines: [row[2]],
-          materialLines: [row[4]],
-          supLines: [row[5]],
-          mfgLines: [row[7]],
-          altLines: [row[8]],
-        };
-        continue;
-      }
-      if (!current) continue;
+      if (isColumnSubHeaderRow(row, cols)) continue;
+      const specCell = specCellFromRow(row, cols);
       const empty = row.every(c => cellStr(c) === '');
       if (empty) {
-        // blank row = item separator (Frey template uses one blank between items)
         flush();
         continue;
       }
-      pushLine(current.descLines, row[2]);
-      pushLine(current.materialLines, row[4]);
-      pushLine(current.supLines, row[5]);
-      pushLine(current.mfgLines, row[7]);
-      pushLine(current.altLines, row[8]);
+      const restart = current && itemLooksComplete(current) && (specCell || rowLooksLikeCompanyStart(row, cols));
+      if (!current || restart) {
+        if (current) flush();
+        startItem(row);
+        continue;
+      }
+      if (specCell) current.specs = [...new Set([...current.specs, ...extractSpecs(specCell)])];
+      pushLine(current.descLines, row[cols.desc]);
+      pushLine(current.materialLines, row[cols.material]);
+      pushLine(current.supLines, row[cols.supplier]);
+      pushLine(current.mfgLines, row[cols.mfg]);
+      pushLine(current.altLines, row[cols.alt]);
     }
     flush();
 
@@ -401,14 +490,17 @@
     return hit && hit.desc ? hit.desc : '';
   }
 
-  function familyFromSpec(spec, desc, material, lists) {
-    const blob = `${desc} ${material}`.toLowerCase();
+  function familyFromSpec(spec, desc, material, lists, extra) {
+    const extraBlob = Array.isArray(extra) ? extra.join(' ') : (extra || '');
+    const blob = `${desc} ${material} ${extraBlob}`.toLowerCase();
     const prefix = (spec || '').replace('#', '').slice(0, 3);
     if (isTack(desc, material, spec)) return 'tack';
     if (/expansion/.test(blob) && !/crack|joint seal|pcc|sidewalk|curb/.test(blob)) return 'expansion';
     if (/curing/.test(blob) && !/pcc|sidewalk|curb/.test(blob)) return 'curing';
     const cat = SPEC_CATALOG[spec];
     if (cat) return cat.family;
+    if (/tie bar|dowel bar|contraction basket|stake pin|anchoring adhesive|redhead|welded hook/.test(blob)) return 'hardware';
+    if (/millings|recycled asphalt pavement/.test(blob) && !/superpave|stone matrix|sma\b|wearing surface/.test(blob)) return 'aggregate';
     if (/channel bed|\bcbf\b|cbf light/.test(blob)) return 'aggregate';
     if (/riprap/.test(blob) && !/geotextile/.test(blob)) return 'riprap';
     if (/pavement strip|thermoplastic|epoxy resin|alkyd-thermoplastic|straight arrow|line striping/.test(blob)) return 'striping';
@@ -505,7 +597,7 @@
     else if (catalogDescs.length > 1) desc = catalogDescs[0];
     else desc = (item.desc || '').replace(/\s+/g, ' ').trim().toUpperCase();
 
-    const family = familyFromSpec(item.specs[0], item.desc, item.material, lists);
+    const family = familyFromSpec(item.specs[0], item.desc, item.material, lists, item.subItems);
     let sectionDesc = desc;
     const crushBlob = `${item.desc || ''} ${item.material || ''} ${(item.subItems || []).join(' ')}`;
     if ((item.specs || []).includes('#301003')) {
@@ -559,7 +651,7 @@
   function pickLetterSource(item) {
     // APL / manufactured products: manufacturer is the SOURCE.
     // Bulk plants: supplier name + plant city from manufacturer address column.
-    const manufactured = ['tack', 'crack-seal', 'curing', 'expansion', 'apl-product', 'ttc', 'signs', 'castings', 'striping'].includes(item.family);
+    const manufactured = ['tack', 'crack-seal', 'curing', 'expansion', 'apl-product', 'ttc', 'signs', 'castings', 'striping', 'hardware'].includes(item.family);
     if (manufactured && item.mfgName && !isCityState(item.mfgName)) {
       return {
         srcName: cleanCompany(item.mfgName),
@@ -572,7 +664,14 @@
         altPhone: item.altPhone,
       };
     }
-    const srcName = cleanCompany(item.supplierName || item.mfgName || item.srcName);
+    const supplier = cleanCompany(item.supplierName);
+    const mfg = cleanCompany(item.mfgName);
+    let srcName = supplier || mfg || cleanCompany(item.srcName);
+    if (mfg && supplier && mfg.toLowerCase().includes(supplier.toLowerCase()) && mfg.length > supplier.length) {
+      srcName = mfg;
+    } else if (supplier && mfg && supplier.toLowerCase().includes(mfg.toLowerCase()) && supplier.length > mfg.length) {
+      srcName = supplier;
+    }
     const altIsSameCompany = !item.altMfgName && (item.altLoc || item.altAddr);
     let altName = cleanCompany(item.altMfgName || (altIsSameCompany ? srcName : item.altName));
     let numbered = false;
@@ -748,6 +847,10 @@
       action = 'approved';
       actionNotes = ACTION_TEXT.mixDesigns;
       rule = 'pcc-mix-designs';
+    } else if (family === 'hardware') {
+      action = 'approved';
+      actionNotes = ACTION_TEXT.conforms;
+      rule = 'hardware-conforms';
     } else if (family === 'striping') {
       apl = true;
       const live = lists.striping && ((lists.striping.manufacturers || []).length || (lists.striping.entries || []).length);
@@ -899,7 +1002,7 @@
     const FAMILY_ORDER = {
       borrow: 10, aggregate: 20, 'hma-mix': 30, tack: 35, 'crack-seal': 40,
       rcp: 50, riprap: 52, hdpe: 55, utility: 56, precast: 60, castings: 65,
-      pcc: 70, curing: 75, expansion: 76,
+      pcc: 70, hardware: 72, curing: 75, expansion: 76,
       'apl-product': 80, geotextile: 85, erosion: 90, seed: 95, topsoil: 96, landscape: 97,
       striping: 98, ttc: 100, signs: 105, other: 200,
     };
@@ -1009,17 +1112,66 @@
     return { parsed, ...applyWorkflow(parsed, meta || {}) };
   }
 
+  function sheetjs() {
+    return (typeof globalThis !== 'undefined' && globalThis.XLSX) || (typeof require === 'function' ? require('xlsx') : null);
+  }
+
   function workbookToGrid(workbook) {
-    // SheetJS workbook
-    const XLSX = (typeof globalThis !== 'undefined' && globalThis.XLSX) || (typeof require === 'function' ? require('xlsx') : null);
+    const XLSX = sheetjs();
     if (!XLSX) throw new Error('SheetJS (XLSX) is not loaded.');
     const name = workbook.SheetNames[0];
     const sheet = workbook.Sheets[name];
     return XLSX.utils.sheet_to_json(sheet, { header: 1, raw: true, defval: '' });
   }
 
+  function workbookToSheets(workbook) {
+    const XLSX = sheetjs();
+    if (!XLSX) throw new Error('SheetJS (XLSX) is not loaded.');
+    return (workbook.SheetNames || []).map(name => ({
+      name,
+      rows: XLSX.utils.sheet_to_json(workbook.Sheets[name], { header: 1, raw: true, defval: '' }),
+    }));
+  }
+
+  function looksLikeSosCover(rows) {
+    const n = Math.min((rows || []).length, 20);
+    for (let r = 0; r < n; r++) {
+      const joined = (rows[r] || []).map(cellStr).join(' ').toLowerCase();
+      if (/source of supply/.test(joined) || /delaware department of transportation/.test(joined)) return true;
+    }
+    return false;
+  }
+
+  function processSosSheets(sheets, meta) {
+    const list = (sheets || []).map((s, i) => ({
+      name: s && s.name ? s.name : ('Sheet ' + (i + 1)),
+      rows: (s && s.rows) || s || [],
+    }));
+    const sos = list.filter(s => findHeaderRow(s.rows) >= 0);
+    if (!sos.length) {
+      const fallback = list.find(s => looksLikeSosCover(s.rows)) || list[0];
+      return processGrid(fallback ? fallback.rows : [], meta);
+    }
+    const parsedSheets = sos.map(s => ({ name: s.name, parsed: parseSosGrid(s.rows, meta) }));
+    const project = parsedSheets[0].parsed.project;
+    const items = parsedSheets.flatMap(s => s.parsed.items);
+    const warnings = [];
+    if (parsedSheets.length > 1) {
+      warnings.push('Read ' + parsedSheets.length + ' SOS tabs (' + parsedSheets.map(s => s.name).join(', ') + ').');
+    }
+    parsedSheets.forEach(s => {
+      (s.parsed.warnings || []).forEach(w => {
+        if (/Could not find Specification/.test(w)) return;
+        if (/blank on the form/.test(w) && project.contract) return;
+        warnings.push(w);
+      });
+    });
+    const combined = { project, items, warnings };
+    return { parsed: combined, ...applyWorkflow(combined, meta || {}) };
+  }
+
   function processWorkbook(workbook, meta) {
-    return processGrid(workbookToGrid(workbook), meta);
+    return processSosSheets(workbookToSheets(workbook), meta);
   }
 
   function formatLongDate(iso) {
@@ -1116,5 +1268,8 @@
     cleanCompany,
     matchAplList,
     overlayProject,
+    findHeaderRow,
+    processSosSheets,
+    workbookToSheets,
   };
 });

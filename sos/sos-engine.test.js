@@ -421,6 +421,68 @@ assert.strictEqual(blankForm.contact, '');
 assert.strictEqual(blankForm.title, '');
 console.log('New-letter header replace clears the previous job when the form is blank');
 
+function compactCover(extra) {
+  extra = extra || {};
+  return [
+    ['DELAWARE DEPARTMENT OF TRANSPORTATION', '', '', 'Contract:', extra.contract || 'T202606103'],
+    ['', '', '', 'Title of Contract:', extra.title || 'Pave & Rehab, North I, SR 1, 2026'],
+    ['', '', '', 'CONTRACTOR:', extra.contractor || 'Greggo & Ferrara, Inc.'],
+    ['SOURCE OF SUPPLY MOT', '', '', 'ADDRESS:', '4048 New Castle Ave., New Castle, DE 19720'],
+    ['District:', extra.district || 'North Group I', '', 'DELDOT CONTACT:', extra.contact || 'Brian Locke'],
+    ['Spec', 'Item Description', 'Material', 'Supplier', 'Manufacturer', 'Alternate Manufacturer'],
+    ['#', '', '', '', 'Address & Contact', 'Address & Contact'],
+  ];
+}
+
+const compactHma = compactCover().concat([
+  ['', 'SUPERPAVE TYPE C, PG 64-22', 'SUPERPAVE TYPE C, PG 64-22', 'CONTRACTORS', 'CONTRACTORS MATERIALS', ''],
+  [401036, 'WEDGE', 'WEDGE', 'MATERIALS', '4048 NEW CASTLE AVE', ''],
+  ['', '', '', '', 'NEW CASTLE, DE 19720', ''],
+  ['', '', '', '', '302-658-5241', ''],
+  ['', 'RECYCLED ASPHALT PAVEMENT', 'RECYCLED ASPHALT PAVEMENT', 'CONTRACTORS', 'CONTRACTORS MATERIALS', ''],
+  [401755, 'MILLINGS FOR ROADWAY EDGE', 'MILLINGS FOR ROADWAY EDGE', 'MATERIALS', '4048 NEW CASTLE AVE', ''],
+  ['', '', '', '', 'NEW CASTLE, DE 19720', ''],
+  ['', '', '', '', '302-658-5241', ''],
+]);
+assert.ok(Engine.findHeaderRow(compactHma) >= 0, 'compact Spec / Item Description header');
+const compactOne = Engine.processGrid(compactHma);
+assert.strictEqual(compactOne.project.contract, 'T202606103');
+assert.strictEqual(compactOne.project.docKind, 'contract');
+assert.ok(/Greggo/.test(compactOne.project.contractor));
+const wedge = compactOne.items.find(i => (i.specs || []).includes('#401036'));
+const millings = compactOne.items.find(i => (i.specs || []).includes('#401755'));
+assert.ok(wedge, 'Superpave wedge parsed');
+assert.strictEqual(wedge.family, 'hma-mix');
+assert.ok(/CONTRACTORS MATERIALS/i.test(wedge.srcName));
+assert.ok(millings, 'RAP millings parsed');
+assert.strictEqual(millings.family, 'aggregate');
+assert.strictEqual(millings.action, 'test');
+
+const tieSheet = compactCover().concat([
+  ['', '', '', '', 'RE-STEEL SUPPLY, CO., INC', ''],
+  [503002, "PATCHING PCC PAV'T, 15' TO 100'", '#5 TIE BARS', 'RE-STEEL SUPPLY', '2000 INDUSTRIAL HIGHWAY', ''],
+  ['', 'TYPE B', '', 'COMPANY, INC.', 'EDDYSTONE, PA 19022', ''],
+  ['', '', '', '', '(800) 876-8216', ''],
+]);
+const pccSheet = compactCover().concat([
+  ['', '', '', 'Bear Concrete', 'Bear Concrete Co.', ''],
+  [503001, "PATCHING PCC PAV'T, 6' TO 15'", 'ROAD PATCH (NC-1)', 'Company', '595 Walther Rd.', ''],
+  ['', 'TYPE A', '', '', 'Newark, DE 19702', ''],
+  ['', '', '', '', '302-834-3333', ''],
+]);
+const multi = Engine.processSosSheets([
+  { name: 'SOS CM', rows: compactHma },
+  { name: 'SOS TIE-BAR', rows: tieSheet },
+  { name: 'SOS Concrete', rows: pccSheet },
+]);
+assert.ok(multi.warnings.some(w => /3 SOS tabs/.test(w)));
+assert.ok(multi.items.some(i => i.family === 'hardware' && (i.specs || []).includes('#503002')));
+assert.ok(multi.items.some(i => i.family === 'pcc' && (i.specs || []).includes('#503001')));
+assert.ok(multi.items.some(i => (i.specs || []).includes('#401036')));
+assert.ok(multi.items.some(i => (i.specs || []).includes('#401755')));
+assert.ok(/Re-Steel|RE-STEEL/i.test(multi.items.find(i => i.family === 'hardware').srcName));
+console.log('Compact Spec/Item Description SOS list (multi-tab) parses');
+
 const liveSnap = require('./lists/apl-snapshot.json');
 assert.ok(liveSnap.tack.entries.length >= 10, 'bundled tack APL snapshot');
 assert.strictEqual(require('./sos-lists.js').lookupTack(liveSnap.tack, 'Russell Standard', 'Baltimore MD', 'CRS-1').listed, true);

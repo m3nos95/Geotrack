@@ -1420,7 +1420,7 @@
         switchTab('lists', document.querySelector('.tab[data-tab="lists"]'));
         return;
       }
-      const result = SOSEngine.processGrid(grid, { filename: file.name, lists: listsForEngine() });
+      const result = SOSEngine.processWorkbook(wb, { filename: file.name, lists: listsForEngine() });
       parsedImport = result;
       if (jobIsDirty() && !confirm('Replace the current letter with ' + file.name + '?\n\nThis clears the previous job. Click Cancel to keep it and only preview the new form.')) {
         warnings = result.warnings || [];
