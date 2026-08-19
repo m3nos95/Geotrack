@@ -493,10 +493,12 @@
       return `<tr style="${onLetter ? 'opacity:.4;' : ''}">
         <td style="font-weight:500;">${esc(p.name)}</td>
         <td>${esc(p.org)}</td>
-        <td style="white-space:nowrap;">
-          ${onLetter ? '<span style="font-size:10px;color:var(--text-dim);">on letter</span>'
-            : `<button class="btn btn-primary btn-sm" style="font-size:10px;padding:2px 8px;" onclick="addCCFromLib('${p.id}')">+ Add</button>`}
-          <button class="btn btn-ghost btn-sm btn-icon" onclick="deleteCCFromLib('${p.id}')" title="Remove from master list (retired)" style="color:var(--red);margin-left:4px;">✕</button>
+        <td>
+          <div style="display:flex;align-items:center;gap:6px;flex-wrap:nowrap;">
+            ${onLetter ? '<span style="font-size:10px;color:var(--text-dim);">on letter</span>'
+              : `<button class="btn btn-primary btn-sm" style="font-size:10px;padding:2px 8px;" onclick="addCCFromLib('${p.id}')">+ Add</button>`}
+            <button class="btn btn-ghost btn-sm btn-icon" onclick="deleteCCFromLib('${p.id}')" title="Remove from master list (retired)" style="color:var(--red);">✕</button>
+          </div>
         </td>
       </tr>`;
     }).join('');
