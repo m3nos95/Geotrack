@@ -87,6 +87,7 @@ function runScript(args) {
   const r = spawnSync(PYTHON[0], PYTHON.slice(1).concat(args), {
     encoding: 'utf8',
     maxBuffer: 20 * 1024 * 1024,
+    env: { ...process.env, PYTHONIOENCODING: 'utf-8', PYTHONUTF8: '1' },
   });
   if (r.status !== 0) {
     const err = (r.stderr || r.stdout || 'python failed').trim();
@@ -308,8 +309,19 @@ function contractKeysFrom(raw) {
   const caRe = /CA(\d{3,5})/g;
   while ((m = caRe.exec(compact))) add('CA' + m[1]);
   const appRe = /\b(\d{9,10})\b/g;
-  while ((m = appRe.exec(s))) add(m[1]);
+  while ((m = appRe.exec(s))) {
+    add(m[1]);
+    // T2026-031-09 compact is T202603109; some forms only store 202603109.
+    if (/^20\d{7}$/.test(m[1])) add('T' + m[1]);
+  }
+  // Form contract field "2525" should match issued letters named CA 2525.
+  const leadCa = s.trim().match(/^(\d{3,5})(?!\d)/);
+  if (leadCa) add('CA' + leadCa[1]);
   return keys;
+}
+
+function filenameAppIds(filename) {
+  return contractKeysFrom(filename).filter(k => /^\d{9,10}$/.test(k));
 }
 
 function discoverCases() {
@@ -373,7 +385,7 @@ function pairLooseFiles(files, inspected) {
   inspected = inspected || {};
   const xls = files.filter(p => /\.xlsx?$/i.test(p));
   const pdfs = files.filter(p => /\.pdf$/i.test(p));
-  const byKey = new Map();
+  const all = [...xls, ...pdfs];
 
   const keysFor = (file) => {
     const keys = [];
@@ -391,29 +403,55 @@ function pairLooseFiles(files, inspected) {
     return [...new Set(keys)];
   };
 
-  const groupFor = (file) => {
-    const keys = keysFor(file);
-    let g = null;
-    for (const k of keys) {
-      if (byKey.has(k)) { g = byKey.get(k); break; }
+  const parent = new Map();
+  all.forEach(f => parent.set(f, f));
+  const find = (f) => {
+    while (parent.get(f) !== f) {
+      parent.set(f, parent.get(parent.get(f)));
+      f = parent.get(f);
     }
-    if (!g) g = { xls: [], pdfs: [], formPdfs: [] };
-    keys.forEach(k => byKey.set(k, g));
-    return g;
+    return f;
+  };
+  const hardIdsIn = (root) => {
+    const ids = new Set();
+    all.forEach(f => {
+      if (find(f) !== root) return;
+      filenameAppIds(f).forEach(n => ids.add(n));
+    });
+    return ids;
+  };
+  const union = (a, b) => {
+    const ra = find(a);
+    const rb = find(b);
+    if (ra === rb) return true;
+    const idsA = hardIdsIn(ra);
+    const idsB = hardIdsIn(rb);
+    const combined = new Set([...idsA, ...idsB]);
+    if (combined.size > 1) return false;
+    parent.set(rb, ra);
+    return true;
   };
 
-  for (const x of xls) groupFor(x).xls.push(x);
-  for (const p of pdfs) {
-    const g = groupFor(p);
-    if (inspected[p] && inspected[p].kind === 'contractor-form') g.formPdfs.push(p);
-    else g.pdfs.push(p);
+  const byKey = new Map();
+  for (const f of all) {
+    for (const k of keysFor(f)) {
+      if (byKey.has(k)) union(byKey.get(k), f);
+      if (!byKey.has(k) || find(byKey.get(k)) === find(f)) byKey.set(k, f);
+    }
   }
 
-  const seen = new Set();
+  const grouped = new Map();
+  for (const f of all) {
+    const root = find(f);
+    if (!grouped.has(root)) grouped.set(root, { xls: [], pdfs: [], formPdfs: [] });
+    const g = grouped.get(root);
+    if (/\.xlsx?$/i.test(f)) g.xls.push(f);
+    else if (inspected[f] && inspected[f].kind === 'contractor-form') g.formPdfs.push(f);
+    else g.pdfs.push(f);
+  }
+
   const cases = [];
-  for (const g of byKey.values()) {
-    if (seen.has(g)) continue;
-    seen.add(g);
+  for (const g of grouped.values()) {
     if (!g.xls.length && !g.pdfs.length && !g.formPdfs.length) continue;
     const first = g.xls[0] || g.formPdfs[0] || g.pdfs[0];
     const app = appNumsFromName(first)[0]
@@ -485,6 +523,7 @@ function resultContractKeys(r) {
   (r.formFiles || []).forEach(addAll);
   (r.pdfFiles || []).forEach(addAll);
   if (r.engine && r.engine.project) {
+    addAll(r.engine.project.contract || '');
     addAll((r.engine.project.contract || '') + ' ' + (r.engine.project.title || ''));
   }
   (r.letters || []).forEach(l => {
@@ -492,6 +531,16 @@ function resultContractKeys(r) {
     addAll(l.intro);
   });
   return [...new Set(keys)];
+}
+
+function resultFilenameAppIds(r) {
+  const ids = new Set();
+  const add = (s) => filenameAppIds(s).forEach(n => ids.add(n));
+  add(r.slug);
+  (r.xlsFiles || []).forEach(add);
+  (r.formFiles || []).forEach(add);
+  (r.pdfFiles || []).forEach(add);
+  return ids;
 }
 
 function mergeOneGroup(group) {
@@ -539,12 +588,18 @@ function mergeComparedResults(results) {
     return i;
   };
   const byKey = new Map();
+  const canMerge = (a, b) => {
+    const idsA = resultFilenameAppIds(results[a]);
+    const idsB = resultFilenameAppIds(results[b]);
+    const combined = new Set([...idsA, ...idsB]);
+    return combined.size <= 1;
+  };
   results.forEach((r, i) => {
     resultContractKeys(r).forEach(k => {
       if (byKey.has(k)) {
         const a = find(byKey.get(k));
         const b = find(i);
-        if (a !== b) parent[b] = a;
+        if (a !== b && canMerge(a, b)) parent[b] = a;
       } else {
         byKey.set(k, i);
       }
@@ -807,6 +862,7 @@ module.exports = {
   appNumsFromName,
   contractKey,
   contractKeysFrom,
+  filenameAppIds,
   mergeComparedResults,
   gridFromForm,
   argvDirs,

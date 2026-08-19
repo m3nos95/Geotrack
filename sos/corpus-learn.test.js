@@ -1,6 +1,6 @@
 'use strict';
 const assert = require('assert');
-const { pairKey, pairLooseFiles, contractKey, mergeComparedResults } = require('./corpus-learn.js');
+const { pairKey, pairLooseFiles, contractKey, contractKeysFrom, mergeComparedResults } = require('./corpus-learn.js');
 
 assert.strictEqual(pairKey('Frey Entrance.xls'), pairKey('Frey Entrance.pdf'));
 assert.strictEqual(pairKey('frey-entrance.xls'), pairKey('frey-entrance-rev1.pdf'));
@@ -90,6 +90,110 @@ assert.ok(merged[0].engine);
 assert.strictEqual(merged[0].letters.length, 1);
 assert.ok(merged[0].diff);
 assert.ok(!merged[0].notes.some(n => /PDF only/i.test(n)));
+
+assert.ok(contractKeysFrom('202603109').includes('T202603109'));
+assert.ok(contractKeysFrom('2525').includes('CA2525'));
+assert.ok(contractKeysFrom('2525 Chaselynd Ph 3').includes('CA2525'));
+assert.strictEqual(contractKey('T2026-031-09'), 'T202603109');
+
+const ctfPair = pairLooseFiles([
+  '/tmp/Source of Supply CTF IX (2).pdf',
+  '/tmp/Source of Supply T2026-031-09 COMMUNITY TRANSPORTATION FUND.pdf',
+], {
+  '/tmp/Source of Supply CTF IX (2).pdf': {
+    kind: 'contractor-form',
+    appNums: ['202603109'],
+    project: { contract: '202603109' },
+  },
+  '/tmp/Source of Supply T2026-031-09 COMMUNITY TRANSPORTATION FUND.pdf': {
+    kind: 'issued-letter',
+    appNums: ['T2026-031-09'],
+  },
+});
+assert.strictEqual(ctfPair.length, 1);
+assert.strictEqual(ctfPair[0].formPdfs.length, 1);
+assert.strictEqual(ctfPair[0].pdfs.length, 1);
+
+const caPair = pairLooseFiles([
+  '/tmp/Chaselynd Ph 3 Source Materials.pdf',
+  '/tmp/Source of Supply CA 2525 CHASELYND PHASE 3 NICHOLS.pdf',
+], {
+  '/tmp/Chaselynd Ph 3 Source Materials.pdf': {
+    kind: 'contractor-form',
+    appNums: ['2525'],
+    project: { contract: '2525' },
+  },
+  '/tmp/Source of Supply CA 2525 CHASELYND PHASE 3 NICHOLS.pdf': {
+    kind: 'issued-letter',
+    appNums: ['CA 2525'],
+  },
+});
+assert.strictEqual(caPair.length, 1);
+assert.strictEqual(caPair[0].formPdfs.length, 1);
+assert.strictEqual(caPair[0].pdfs.length, 1);
+
+const splitJobs = pairLooseFiles([
+  '/tmp/BLC - 2505 - NICCC - Del Dot - Source of Supply.pdf',
+  '/tmp/Sussex EMS Submittal #1 - DelDot.pdf',
+  '/tmp/Source of Supply 526781256 LINCOLN PARAMEDIC STATION WHAYLAND.pdf',
+  '/tmp/Source of Supply 641671542 NANTICOKE INDIAN CULTURAL COMMUNITY CENTER WHAYLAND.pdf',
+], {
+  '/tmp/BLC - 2505 - NICCC - Del Dot - Source of Supply.pdf': {
+    kind: 'contractor-form',
+    appNums: ['526781256', '641671542'],
+    project: { contract: '526781256', title: 'Nanticoke Indian Cultural Community Center' },
+  },
+  '/tmp/Sussex EMS Submittal #1 - DelDot.pdf': {
+    kind: 'contractor-form',
+    appNums: ['526781256'],
+    project: { contract: '526781256', title: 'Lincoln Paramedic Station' },
+  },
+  '/tmp/Source of Supply 526781256 LINCOLN PARAMEDIC STATION WHAYLAND.pdf': {
+    kind: 'issued-letter',
+    appNums: ['526781256'],
+  },
+  '/tmp/Source of Supply 641671542 NANTICOKE INDIAN CULTURAL COMMUNITY CENTER WHAYLAND.pdf': {
+    kind: 'issued-letter',
+    appNums: ['641671542'],
+  },
+});
+assert.ok(splitJobs.length >= 2, 'two issued letters with different app #s must stay separate');
+const lincoln = splitJobs.find(c => (c.pdfs || []).some(p => /526781256/.test(p)));
+const nanticoke = splitJobs.find(c => (c.pdfs || []).some(p => /641671542/.test(p)));
+assert.ok(lincoln && nanticoke);
+assert.ok(!(lincoln.pdfs || []).some(p => /641671542/.test(p)));
+assert.ok(!(nanticoke.pdfs || []).some(p => /526781256/.test(p)));
+
+const caMerged = mergeComparedResults([
+  {
+    slug: 'Chaselynd Ph 3 Source Materials',
+    dir: '/tmp',
+    xlsFiles: [],
+    formFiles: ['Chaselynd Ph 3 Source Materials.pdf'],
+    pdfFiles: [],
+    engine: { project: { contract: '2525', title: 'Chaselynd Ph 3' }, items: [{ specs: ['#207021'], section: '#207021' }] },
+    letters: [],
+    notes: [],
+  },
+  {
+    slug: 'Source of Supply CA 2525 CHASELYND PHASE 3 NICHOLS',
+    dir: '/tmp',
+    xlsFiles: [],
+    formFiles: [],
+    pdfFiles: ['Source of Supply CA 2525 CHASELYND PHASE 3 NICHOLS.pdf'],
+    engine: null,
+    letters: [{
+      file: 'Source of Supply CA 2525 CHASELYND PHASE 3 NICHOLS.pdf',
+      kind: 'issued-letter',
+      intro: 'Contract CA 2525, CHASELYND PHASE 3',
+      sections: [{ section: '#207021 - STRUCTURAL BACKFILL', bullets: [], source: '', action: '' }],
+    }],
+    notes: ['PDF only — add the contractor .xls / .xlsx (or a PDF printout of the form) to this folder.'],
+  },
+]);
+assert.strictEqual(caMerged.length, 1);
+assert.ok(caMerged[0].engine);
+assert.strictEqual(caMerged[0].letters.length, 1);
 
 const { parseCcPeople, harvestCcFromResults, parseIssuedSections } = require('./corpus-learn.js');
 const ccBlock = [
