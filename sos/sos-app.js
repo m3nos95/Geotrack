@@ -980,6 +980,9 @@
   function persistLists() {
     ls_set(STORE.lists, {
       aggregate: liveLists.aggregate || { entries: [] },
+      sosDatabase: liveLists.sosDatabase && liveLists.sosDatabase.items
+        ? { kind: 'sos-database', file: liveLists.sosDatabase.file || '', modified: liveLists.sosDatabase.modified || '', items: liveLists.sosDatabase.items }
+        : undefined,
       fetchedAt: liveLists.fetchedAt || '',
       ccAlways: liveLists.ccAlways || [],
     });
@@ -1075,6 +1078,20 @@
     }
   };
 
+  function ingestSosDatabase(db) {
+    liveLists.sosDatabase = db;
+    persistLists();
+    renderLists();
+    applyListsToOpenLetter();
+  }
+
+  function workbookToNamedSheets(wb) {
+    return (wb.SheetNames || []).map(name => ({
+      name,
+      rows: XLSX.utils.sheet_to_json(wb.Sheets[name], { header: 1, raw: true, defval: '' }),
+    }));
+  }
+
   function ingestAggregateGrid(grid, filename) {
     liveLists.aggregate = SOSLists.parseAggregateChartGrid(grid, { filename });
     persistLists();
@@ -1111,6 +1128,11 @@
       if (!/\.xlsx?$/i.test(file.name)) return;
       const buf = await file.arrayBuffer();
       const wb = XLSX.read(buf, { type: 'array', cellDates: false });
+      const sheets = workbookToNamedSheets(wb);
+      if (SOSLists.looksLikeSosDatabase(file.name, sheets)) {
+        ingestSosDatabase(SOSLists.parseSosDatabaseSheets(sheets, { filename: file.name }));
+        return;
+      }
       const grid = SOSEngine.workbookToGrid(wb);
       ingestAggregateGrid(grid, file.name);
     } catch (e) {
@@ -1141,13 +1163,30 @@
       liveLists = SOSLists.mergeBundle(bundle, saved ? {
         aggregate: saved.aggregate,
         ccAlways: saved.ccAlways,
+        sosDatabase: saved.sosDatabase,
       } : {});
       if (bundle.fetchedAt) liveLists.fetchedAt = bundle.fetchedAt;
+      if (!liveLists.sosDatabase || !liveLists.sosDatabase.items || !Object.keys(liveLists.sosDatabase.items).length) {
+        await loadSosDatabaseSnapshot();
+      }
     } catch (e) {
       const saved = ls_get(STORE.lists, null);
       if (saved && saved.aggregate) liveLists.aggregate = saved.aggregate;
       if (saved && saved.ccAlways) liveLists.ccAlways = saved.ccAlways;
+      if (saved && saved.sosDatabase) liveLists.sosDatabase = saved.sosDatabase;
+      if (!liveLists.sosDatabase || !liveLists.sosDatabase.items || !Object.keys(liveLists.sosDatabase.items).length) {
+        await loadSosDatabaseSnapshot();
+      }
     }
+  }
+
+  async function loadSosDatabaseSnapshot() {
+    try {
+      const res = await fetch('sos/lists/sos-database-snapshot.json', { cache: 'no-store' });
+      if (!res.ok) return;
+      const db = await res.json();
+      if (db && db.items) liveLists.sosDatabase = db;
+    } catch (e) {}
   }
 
   window.renderLists = function () {
@@ -1165,6 +1204,7 @@
       ['Pavement marking APL', liveLists.striping && liveLists.striping.modified, (liveLists.striping && (liveLists.striping.manufacturers || liveLists.striping.entries) || []).length],
       ['Crack seal APL', liveLists.crack && liveLists.crack.modified, (liveLists.crack && liveLists.crack.entries || []).length],
       ['Aggregate chart', liveLists.aggregate && liveLists.aggregate.file, (liveLists.aggregate && liveLists.aggregate.entries || []).length],
+      ['SOS Database', liveLists.sosDatabase && liveLists.sosDatabase.modified, liveLists.sosDatabase && liveLists.sosDatabase.items ? Object.keys(liveLists.sosDatabase.items).length : 0],
       ['CC harvest (library)', (liveLists.ccAlways || []).length ? 'library only' : '', (liveLists.ccAlways || []).length],
     ];
     tbody.innerHTML = rows.map(r => `<tr><td>${esc(r[0])}</td><td>${esc(r[1] || '—')}</td><td>${esc(String(r[2]))}</td></tr>`).join('');
@@ -1189,7 +1229,7 @@
 
   window.handleImportFile = async function (file) {
     if (!file) return;
-    if (/\.json$/i.test(file.name) || SOSLists.looksLikeAggregateChart(file.name)) {
+    if (/\.json$/i.test(file.name) || SOSLists.looksLikeAggregateChart(file.name) || SOSLists.looksLikeSosDatabase(file.name, [])) {
       return handleListFile(file);
     }
     if (!/\.xlsx?$/i.test(file.name)) {

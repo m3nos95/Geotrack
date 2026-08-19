@@ -201,6 +201,8 @@ assert.ok(/Application No\. 0000016055/.test(letter));
 assert.ok(/#301001 - GABC/.test(letter));
 assert.ok(/Must be tested/.test(letter));
 assert.ok(/River Asphalt 1/.test(letter) && /River Asphalt 2/.test(letter));
+assert.ok(/#401005 - SUPERPAVE TYPE C/.test(letter));
+assert.ok(/#401014 - SUPERPAVE TYPE B/.test(letter));
 assert.ok(/#401xxx/.test(letter) && /CRS-1 Tack Coat/.test(letter));
 assert.ok(/Russell Standard - Baltimore/.test(letter));
 assert.ok(/Elastoflex 61/.test(letter));

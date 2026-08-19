@@ -94,3 +94,62 @@ const baltimore = Engine.processGrid(gridFrom(header, [[
 assert.ok(baltimore.action === 'apl' || baltimore.action === 'approved');
 
 console.log('OK live APL + aggregate chart lookups');
+
+const sosDbSheets = [{
+  name: 'Standard Items',
+  rows: [
+    ['Standard Items Source of Supply Database Instructions'],
+    ['8. This database was last modified on September 22nd, 2023.'],
+    [], [], [], [], [], [], [], [],
+    ['Item #', 'UOM', 'Item Description', 'Materials Referenced in Construction Specification', 'Material Requirements in Construction Specifications', 'Source of Supply Contractor Submittal', 'Includes Permanent Steel or Iron?', 'Department Source of Supply Submission Acceptance Method', 'Source of Supply BABA Category ', 'Buy America Requirement'],
+    [201000.0, 'LS', 'CLEARING AND GRUBBING', 'NA', 'NA', 'NA', 'No', 'NA', 'Non-Permanent Material - Exempt', 'No Buy America requirement.'],
+    [209001.0, 'CY', 'BORROW, TYPE A', 'Borrow', 'Section 1001', 'Borrow', 'No', 'Acceptance Program (see Section 4.1)', 'Section 70917 (c) Material', 'No Buy America requirement.'],
+    [207020.0, 'CY', 'STRUCTURAL BACKFILL, BORROW TYPE B, PROVIDING ONLY', 'Borrow', 'Sections 209 and 1001', 'Borrow', 'No', 'Acceptance Program (see Section 4.1)', '', ''],
+    [301001.0, 'TON', 'GABC', 'Graded Aggregate', 'Section 1005', 'Graded Aggregate', 'No', 'Acceptance Program (see Section 4.1)', 'Section 70917 (c) Material', ''],
+    ['', '', '', 'Geotextile', '', 'Geotextile', 'No', 'Certification of Compliance', '', ''],
+    [705001.0, 'SF', 'PCC SIDEWALK, 4"', 'PCC, Class B', 'Section 1022', 'PCC, Class B', 'No', 'Acceptance Program (see Section 4.3)', '', ''],
+  ],
+}];
+assert.ok(Lists.looksLikeSosDatabase('Source_of_Supply_Database.xlsx', []));
+assert.ok(Lists.looksLikeSosDatabase('', sosDbSheets));
+assert.ok(!Lists.looksLikeAggregateChart('Source_of_Supply_Database.xlsx', []));
+const db = Lists.parseSosDatabaseSheets(sosDbSheets, { filename: 'Source of Supply Database.xlsx' });
+assert.strictEqual(db.modified, 'September 22nd, 2023');
+assert.strictEqual(db.items['201000'].na, true);
+assert.strictEqual(db.items['209001'].desc, 'BORROW, TYPE A');
+assert.ok(db.items['209001'].methods.includes('AP4.1'));
+assert.ok(db.items['301001'].materials.includes('Graded Aggregate'));
+assert.ok(db.items['301001'].methods.includes('cert'));
+assert.strictEqual(Lists.lookupSosDatabase(db, '#209001').uom, 'CY');
+
+assert.strictEqual(db.items['207020'].desc, 'STRUCTURAL BACKFILL, BORROW TYPE B, PROVIDING ONLY');
+
+const unknownSpecGrid = gridFrom(header, [[
+  ['', 207020.0, 'Structural Backfill', '', 'Borrow Type B', 'Kent Sand & Gravel', '', 'Massey, MD', ''],
+]]);
+const withDb = Engine.processGrid(unknownSpecGrid, { lists: { sosDatabase: db } });
+assert.ok(withDb.items.some(i => i.desc === 'STRUCTURAL BACKFILL, BORROW TYPE B, PROVIDING ONLY'));
+assert.ok(withDb.items.some(i => i.family === 'borrow'));
+
+const inclinometerSheets = [{
+  name: 'Special Provisions',
+  rows: [
+    ['Item #', 'UOM', 'Item Description', 'Materials Referenced in Construction Specification', '', 'Source of Supply Contractor Submittal', '', 'Department Source of Supply Submission Acceptance Method'],
+    [202507.0, 'EACH', 'INCLINOMETERS', 'Inclinometers', '', 'Inclinometers', 'No', 'Certification of Compliance'],
+  ],
+}];
+const spDb = Lists.parseSosDatabaseSheets(inclinometerSheets, { filename: 'db.xlsx' });
+const inclGrid = gridFrom(header, [[
+  ['', 202507.0, '', '', 'Inclinometers', 'Acme', '', 'Dover, DE', ''],
+]]);
+const incl = Engine.processGrid(inclGrid, { lists: { sosDatabase: spDb } }).items[0];
+assert.strictEqual(incl.desc, 'INCLINOMETERS');
+assert.ok(!/Not in the Source of Supply Database/.test((Engine.processGrid(inclGrid, { lists: { sosDatabase: spDb } }).warnings || []).join(' ')));
+
+const snap = require('./lists/sos-database-snapshot.json');
+assert.ok(Object.keys(snap.items).length >= 1500, 'bundled SOS Database snapshot');
+assert.strictEqual(snap.items['209001'].desc, 'BORROW, TYPE A');
+assert.strictEqual(snap.items['201000'].na, true);
+assert.ok(snap.items['202507']);
+console.log('OK Source of Supply Database snapshot');
+

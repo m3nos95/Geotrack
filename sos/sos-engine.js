@@ -377,7 +377,31 @@
     return /\bn\/?a\b/.test(blob) && /clearing|excavation and embankment|removal of structures/.test(blob);
   }
 
-  function familyFromSpec(spec, desc, material) {
+  function familyFromDbHit(hit) {
+    if (!hit) return '';
+    const methods = (hit.methods || []).join(' ');
+    const mats = (hit.materials || []).join(' ').toLowerCase();
+    if (/AP4\.1/.test(methods)) {
+      if (/borrow/.test(mats)) return 'borrow';
+      if (/gabc|graded aggregate/.test(mats)) return 'aggregate';
+      if (/stone/.test(mats)) return 'aggregate';
+      return 'aggregate';
+    }
+    if (/AP4\.2/.test(methods)) return 'hma-mix';
+    if (/AP4\.3/.test(methods)) return 'pcc';
+    if (/AP4\.9/.test(methods)) return 'tack';
+    if (/\bAPL\b/.test(methods)) return 'apl-product';
+    return '';
+  }
+
+  function lookupCatalogDesc(spec, lists) {
+    const cat = SPEC_CATALOG[spec];
+    if (cat && cat.desc) return cat.desc;
+    const hit = Lists.lookupSosDatabase && Lists.lookupSosDatabase(lists && lists.sosDatabase, spec);
+    return hit && hit.desc ? hit.desc : '';
+  }
+
+  function familyFromSpec(spec, desc, material, lists) {
     const blob = `${desc} ${material}`.toLowerCase();
     if (isTack(desc, material, spec)) return 'tack';
     if (/expansion/.test(blob) && !/crack|joint seal/.test(blob)) return 'expansion';
@@ -400,6 +424,9 @@
     if (/pavement strip|thermoplastic arrow|alkyd-thermoplastic|epoxy resin paint/.test(blob)) return 'striping';
     if (/sign|barricade|attenuator|traffic/.test(blob)) return 'ttc';
     if (/pipe|hdpe|ads/.test(blob)) return 'hdpe';
+    const hit = Lists.lookupSosDatabase && Lists.lookupSosDatabase(lists && lists.sosDatabase, spec);
+    const fromDb = familyFromDbHit(hit);
+    if (fromDb) return fromDb;
     const prefix = (spec || '').replace('#', '').slice(0, 3);
     const byPrefix = {
       '207': 'borrow', '209': 'borrow',
@@ -465,14 +492,14 @@
     return { ...item, specs: [...new Set(specs)] };
   }
 
-  function enrichDescription(item) {
-    const catalogDescs = item.specs.map(s => SPEC_CATALOG[s]?.desc).filter(Boolean);
+  function enrichDescription(item, lists) {
+    const catalogDescs = item.specs.map(s => lookupCatalogDesc(s, lists)).filter(Boolean);
     let desc = item.desc;
     if (catalogDescs.length === 1) desc = catalogDescs[0];
     else if (catalogDescs.length > 1) desc = catalogDescs[0];
     else desc = (item.desc || '').replace(/\s+/g, ' ').trim().toUpperCase();
 
-    const family = familyFromSpec(item.specs[0], item.desc, item.material);
+    const family = familyFromSpec(item.specs[0], item.desc, item.material, lists);
     let sectionDesc = desc;
     let subItems = [...(item.subItems || [])].filter(s => s.toLowerCase() !== desc.toLowerCase());
     let letterSpecs = [...item.specs];
@@ -505,7 +532,12 @@
     }
 
     subItems = subItems.filter(s => s && s.toLowerCase() !== sectionDesc.toLowerCase());
-    return { ...item, family, desc: sectionDesc, letterSpecs, subItems };
+    const specDescs = {};
+    (item.specs || []).forEach(s => {
+      const d = lookupCatalogDesc(s, lists);
+      if (d) specDescs[s] = d;
+    });
+    return { ...item, family, desc: sectionDesc, letterSpecs, subItems, specDescs };
   }
 
   function pickLetterSource(item) {
@@ -789,6 +821,7 @@
       if (prev && canGroup(prev, item)) {
         prev.specs = [...new Set([...prev.specs, ...item.specs])];
         prev.letterSpecs = [...new Set([...(prev.letterSpecs || prev.specs), ...(item.letterSpecs || item.specs)])];
+        prev.specDescs = Object.assign({}, prev.specDescs, item.specDescs);
         const extraSubs = (item.subItems || []).filter(s => !(prev.subItems || []).includes(s));
         prev.subItems = [...(prev.subItems || []), ...extraSubs];
         if (item.desc && item.desc !== prev.desc && !prev.desc.includes(item.desc)) {
@@ -821,7 +854,7 @@
       if (specs.length === 1) return `${s} - ${item.desc}`;
       // First spec gets the shared desc only when all specs share it; otherwise catalog per spec
       const cat = SPEC_CATALOG[s];
-      const d = cat ? cat.desc : item.desc;
+      const d = (cat && cat.desc) || (item.specDescs && item.specDescs[s]) || item.desc;
       return `${s} - ${d}`;
     });
     return specLines;
@@ -836,7 +869,7 @@
     const prepared = parsed.items.map((raw, idx) => {
       let item = { ...raw, id: raw.id || (idx + 1) };
       item = applySpecCorrections(item, warnings);
-      item = enrichDescription(item);
+      item = enrichDescription(item, lists);
       const src = pickLetterSource(item);
       item = { ...item, ...src };
       item = applyAction(item, project, warnings, lists);
@@ -856,6 +889,21 @@
       warnings.push('Omitted N/A earthwork from letter: ' + specs.join(', '));
     }
     const items = groupItems(prepared.filter(it => !shouldOmitItem(it))).map((it, i) => ({ ...it, id: i + 1 }));
+
+    if (lists.sosDatabase && lists.sosDatabase.items && Object.keys(lists.sosDatabase.items).length) {
+      const unknown = [];
+      items.forEach(it => {
+        (it.specs || []).forEach(s => {
+          if (!/^#\d{6}$/.test(s)) return;
+          if (SPEC_CATALOG[s]) return;
+          if (Lists.lookupSosDatabase(lists.sosDatabase, s)) return;
+          unknown.push(s);
+        });
+      });
+      if (unknown.length) {
+        warnings.push('Not in the Source of Supply Database: ' + [...new Set(unknown)].join(', '));
+      }
+    }
 
     const cc = buildCcList(project, lists, items);
 

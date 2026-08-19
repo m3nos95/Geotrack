@@ -11,7 +11,8 @@ Open: [deldot-sos.html](../deldot-sos.html) (GitHub Pages: `/Geotrack/deldot-sos
 3. Fill **Contract / Application #** if the contractor left it blank (the Frey form often does).
 4. Review items — especially **MUST BE TESTED** (highlighted) and APL / not-approved tack coat.
 5. Review **CC**. Soil / stone items copy the lab-results person (Aaron Wieczorek by default) and the district sampler; hot mix copies the HMA person (Mark Schafer). Edit those names on the **CC** tab if someone leaves, or assign other materials to other people. ✕ on a **library** row removes a retired person from the master list so dropping `SOS-cc.json` will not put them back (add them again with **+ Library person** if they return). Optional: drop `SOS-cc.json` from `learn-sos.bat` to fill the name library.
-6. **Print / PDF** from the letter preview.
+6. Optional: drop **Source of Supply Database.xlsx** (Standard Items / Special Provisions) on **APL / Chart** so unknown spec numbers get the official item description. Letter ACTION language still follows issued letters, not the BABA/acceptance-method column.
+7. **Print / PDF** from the letter preview.
 
 ## What the rules do
 
@@ -36,6 +37,8 @@ Related rows from the **same plant** are grouped (e.g. Type C + Type B Superpave
 
 Tack / pavement marking / crack seal check the live [Approved Product Lists](https://materialsandresearch.deldot.gov/index.php/Approved_Product_Lists) (snapshot in `sos/lists/apl-snapshot.json`, refreshed with `refresh-sos-lists.bat`). GABC / borrow / stone check the office **Approved Aggregate Chart** — drop the current `.xls` on the **APL / Chart** tab. Sources on the chart with a test date become **Approved for use**; rejected rows are not approved; anything missing stays must-be-tested.
 
+The **Source of Supply Database.xlsx** (DelDOT Standard Items / Special Provisions catalog, last modified Sept 2023 in the copy we were given) is the official item-number list. Drop it on **APL / Chart** (or keep `sos/lists/sos-database-snapshot.json`). It fills spec descriptions for items not already in the built-in catalog. It does **not** rewrite ACTION notes — those stay matched to issued letters.
+
 Spec `301003` submitted as GABC is issued as `#301001` (flagged in the review banner).
 
 ## Outlook inbox (every 30 minutes)
@@ -59,7 +62,8 @@ Messages already tagged **DelDOT SOS** are not pulled again. This does **not** a
 | `sos-data.js` | Spec catalog, APL tables, CC seeds, letter language |
 | `sos-app.js` | UI |
 | `sos-lists.js` | Live APL + aggregate chart parsers |
-| `fetch-lists.js` | Pull current APL PDFs (`node sos/fetch-lists.js`) |
+| `lists/apl-snapshot.json` | Bundled public APL snapshot |
+| `lists/sos-database-snapshot.json` | Bundled Source of Supply Database (item # / descriptions) |
 | `sos-engine.test.js` | Node tests (`node sos/sos-engine.test.js`) |
 | `corpus-learn.js` | Diff contractor `.xls` vs issued PDF (`node sos/corpus-learn.js`) |
 | `corpus-formpdf.py` | Read contractor SOS forms that were saved as PDF |

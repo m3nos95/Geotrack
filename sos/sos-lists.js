@@ -199,6 +199,7 @@
   }
 
   function looksLikeAggregateChart(filename, rows) {
+    if (looksLikeSosDatabase(filename || '', rows ? [{ name: '', rows }] : [])) return false;
     if (/aggregat|gabc.?chart|approved.?source|source.?chart/i.test(filename || '')) return true;
     const grid = rows || [];
     for (let r = 0; r < Math.min(grid.length, 12); r++) {
@@ -337,6 +338,122 @@
     return { found: true, status: best.status, testDate: best.testDate, row: best, matches: hits };
   }
 
+  function sosDbHeaderKey(cell) {
+    const s = String(cell || '').toLowerCase().replace(/\s+/g, ' ').trim();
+    if (s === 'item #' || s === 'item#' || s === 'item no.' || s === 'item no') return 'item';
+    if (s === 'uom') return 'uom';
+    if (s === 'item description') return 'desc';
+    if (s.startsWith('materials referenced')) return 'material';
+    if (s.startsWith('source of supply contractor')) return 'submittal';
+    if (s.startsWith('department source of supply')) return 'method';
+    return '';
+  }
+
+  function shortAcceptanceMethod(raw) {
+    const s = squeeze(raw);
+    if (!s) return '';
+    if (/^n\/?a$/i.test(s)) return 'NA';
+    if (/approved products list/i.test(s)) return 'APL';
+    if (/certification of compliance/i.test(s)) return 'cert';
+    const m = s.match(/section\s*4\.(\d)/i);
+    if (m) return 'AP4.' + m[1];
+    return s.slice(0, 48);
+  }
+
+  function normalizeDbItemNum(raw) {
+    if (raw == null || raw === '') return '';
+    if (typeof raw === 'number' && Number.isFinite(raw)) {
+      const n = Math.round(raw);
+      if (n >= 100000 && n <= 999999) return String(n);
+    }
+    const s = squeeze(raw).replace(/^#+/, '').replace(/\.0+$/, '');
+    const m = s.match(/^(\d{6})$/);
+    return m ? m[1] : '';
+  }
+
+  function looksLikeSosDatabase(filename, sheets) {
+    const fn = String(filename || '').replace(/[_-]+/g, ' ');
+    if (/source of supply database|sos database|\bbaba\b/i.test(fn)) return true;
+    const list = Array.isArray(sheets) ? sheets : [];
+    for (const sh of list.slice(0, 4)) {
+      const name = String((sh && sh.name) || '').toLowerCase();
+      if (name === 'standard items' || name === 'special provisions') return true;
+      const rows = (sh && sh.rows) || (Array.isArray(sh) ? sh : []);
+      for (let r = 0; r < Math.min(rows.length, 16); r++) {
+        const joined = (rows[r] || []).map(c => String(c || '').toLowerCase()).join(' | ');
+        if (joined.includes('item #') && joined.includes('department source of supply')) return true;
+        if (joined.includes('item description') && joined.includes('buy america')) return true;
+      }
+    }
+    return false;
+  }
+
+  function parseSosDatabaseSheets(sheets, meta) {
+    const items = {};
+    let modified = '';
+    (sheets || []).forEach(sh => {
+      const name = (sh && sh.name) || '';
+      if (/utility/i.test(name)) return;
+      const rows = (sh && sh.rows) || [];
+      const sheetTag = /special/i.test(name) ? 'sp' : 'std';
+      let header = -1;
+      const map = {};
+      for (let r = 0; r < Math.min(rows.length, 20); r++) {
+        const row = rows[r] || [];
+        const blob = row.map(c => String(c || '')).join(' ');
+        const mod = blob.match(/last modified on\s+([A-Za-z]+ \d+[a-z]*,?\s+\d{4})/i);
+        if (mod) modified = mod[1];
+        const keys = row.map(sosDbHeaderKey);
+        if (keys.includes('item') && keys.includes('desc')) {
+          header = r;
+          keys.forEach((k, i) => { if (k) map[k] = i; });
+          break;
+        }
+      }
+      if (header < 0) return;
+      let current = '';
+      for (let r = header + 1; r < rows.length; r++) {
+        const row = rows[r] || [];
+        const num = normalizeDbItemNum(map.item != null ? row[map.item] : '');
+        if (num) {
+          current = num;
+          items[num] = {
+            desc: squeeze(map.desc != null ? row[map.desc] : '').toUpperCase(),
+            uom: squeeze(map.uom != null ? row[map.uom] : ''),
+            sheet: sheetTag,
+            materials: [],
+            methods: [],
+          };
+        }
+        if (!current || !items[current]) continue;
+        const rec = items[current];
+        const mat = squeeze(map.material != null ? row[map.material] : '');
+        const sub = squeeze(map.submittal != null ? row[map.submittal] : '');
+        const method = shortAcceptanceMethod(map.method != null ? row[map.method] : '');
+        const label = sub || mat;
+        if (label && !/^n\/?a$/i.test(label) && rec.materials.indexOf(label) < 0) rec.materials.push(label);
+        if (method && rec.methods.indexOf(method) < 0) rec.methods.push(method);
+      }
+    });
+    Object.keys(items).forEach(k => {
+      const rec = items[k];
+      rec.na = rec.methods.length === 1 && rec.methods[0] === 'NA';
+      if (rec.materials.length > 8) rec.materials = rec.materials.slice(0, 8);
+    });
+    return {
+      kind: 'sos-database',
+      file: (meta && meta.filename) || '',
+      modified,
+      items,
+    };
+  }
+
+  function lookupSosDatabase(db, spec) {
+    if (!db || !db.items) return null;
+    const num = String(spec || '').replace(/^#/, '').replace(/\.0+$/, '');
+    return db.items[num] || null;
+  }
+
   function emptyBundle() {
     return {
       fetchedAt: '',
@@ -346,6 +463,7 @@
       crack: { kind: 'crack', entries: [], modified: '' },
       curing: { kind: 'curing', entries: [], manufacturers: [], modified: '' },
       aggregate: { kind: 'aggregate', file: '', entries: [] },
+      sosDatabase: { kind: 'sos-database', file: '', modified: '', items: {} },
       ccAlways: [],
     };
   }
@@ -357,6 +475,8 @@
       if (extra[k] && ((extra[k].entries && extra[k].entries.length) || extra[k].modified)) out[k] = extra[k];
     });
     if (extra.aggregate && extra.aggregate.entries) out.aggregate = extra.aggregate;
+    if (extra.sosDatabase && extra.sosDatabase.items) out.sosDatabase = extra.sosDatabase;
+    if (extra.kind === 'sos-database' && extra.items) out.sosDatabase = extra;
     if (extra.fetchedAt) out.fetchedAt = extra.fetchedAt;
     if (Array.isArray(extra.ccAlways)) out.ccAlways = extra.ccAlways;
     return out;
@@ -382,6 +502,10 @@
     if (b.ccAlways && b.ccAlways.length) {
       bits.push('CC harvest ' + b.ccAlways.length + ' always-names');
     }
+    if (b.sosDatabase && b.sosDatabase.items && Object.keys(b.sosDatabase.items).length) {
+      const n = Object.keys(b.sosDatabase.items).length;
+      bits.push('SOS Database ' + n + ' items' + (b.sosDatabase.modified ? ` (${b.sosDatabase.modified})` : ''));
+    }
     return bits.join(' · ') || 'No live lists loaded';
   }
 
@@ -396,6 +520,9 @@
     parseManufacturerProductText,
     parseAggregateChartGrid,
     looksLikeAggregateChart,
+    looksLikeSosDatabase,
+    parseSosDatabaseSheets,
+    lookupSosDatabase,
     lookupTack,
     lookupManufacturer,
     lookupCrack,
