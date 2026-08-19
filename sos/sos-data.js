@@ -76,6 +76,15 @@
 
   const STANDARD_CC = CC_ASSIGNMENT_SEEDS.filter(a => a.always).map(a => a.name);
 
+  function filterRetiredCcPeople(people, retiredNames) {
+    const retired = new Set((retiredNames || []).map(n => String(n || '').trim().toLowerCase()).filter(Boolean));
+    if (!retired.size) return people || [];
+    return (people || []).filter(p => {
+      const name = typeof p === 'string' ? p : (p && p.name);
+      return name && !retired.has(String(name).trim().toLowerCase());
+    });
+  }
+
   const CC_LIBRARY_SEEDS = [
     { name: 'Hunter McCabe', org: 'DelDOT' },
     { name: 'Ray Glanden', org: 'DelDOT' },
@@ -365,6 +374,7 @@
     CC_MATERIAL_GROUPS,
     CC_ASSIGNMENT_SEEDS,
     CC_LIBRARY_SEEDS,
+    filterRetiredCcPeople,
     resolveContacts,
     samplerForDistrict,
     assignmentMatchesItems,

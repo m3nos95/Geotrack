@@ -6,6 +6,8 @@
     items: 'deldot_sos_items_v2',
     cc: 'deldot_sos_cc_v2',
     cc_lib: 'deldot_sos_cc_lib',
+    cc_lib_ready: 'deldot_sos_cc_lib_ready',
+    cc_retired: 'deldot_sos_cc_retired',
     revisions: 'deldot_sos_revisions_v2',
     rev: 'deldot_sos_currentrev_v2',
     project: 'deldot_sos_project_v2',
@@ -44,6 +46,7 @@
   let items = ls_get(STORE.items, []);
   let ccList = ls_get(STORE.cc, []);
   let ccLib = [];
+  let ccRetired = [];
   let ccAssignments = [];
   let samplerContacts = {};
   let revisions = ls_get(STORE.revisions, []);
@@ -182,12 +185,47 @@
     }
   }
   function saveSpecLib() { ls_set(STORE.specs, specLib); }
+  function ccNameKey(name) {
+    return String(name || '').trim().toLowerCase();
+  }
+
+  function loadRetiredNames() {
+    const raw = ls_get(STORE.cc_retired, []);
+    ccRetired = Array.isArray(raw) ? raw.map(ccNameKey).filter(Boolean) : [];
+  }
+
+  function persistRetiredNames() {
+    ls_set(STORE.cc_retired, ccRetired);
+  }
+
+  function isRetiredName(name) {
+    return ccRetired.indexOf(ccNameKey(name)) !== -1;
+  }
+
+  function retireName(name) {
+    const n = ccNameKey(name);
+    if (!n || isRetiredName(n)) return;
+    ccRetired.push(n);
+    persistRetiredNames();
+  }
+
+  function unretireName(name) {
+    const n = ccNameKey(name);
+    ccRetired = ccRetired.filter(x => x !== n);
+    persistRetiredNames();
+  }
+
   function loadCCLib() {
+    loadRetiredNames();
+    const ready = !!ls_get(STORE.cc_lib_ready, false);
     ccLib = ls_get(STORE.cc_lib, []);
-    if (!ccLib.length) {
+    if (!Array.isArray(ccLib)) ccLib = [];
+    if (!ready && !ccLib.length) {
       ccLib = SOSData.CC_LIBRARY_SEEDS.map((p, i) => ({ id: 'cl' + (i + 1), role: p.role || '', ...p }));
-      ls_set(STORE.cc_lib, ccLib);
     }
+    ccLib = SOSData.filterRetiredCcPeople(ccLib, ccRetired);
+    ls_set(STORE.cc_lib, ccLib);
+    ls_set(STORE.cc_lib_ready, true);
   }
 
   function cloneCcAssignments(list) {
@@ -199,7 +237,7 @@
       role: a.role || '',
       always: !!a.always,
       groups: Array.isArray(a.groups) ? a.groups.slice() : [],
-    }));
+    })).filter(a => !a.name || !isRetiredName(a.name));
   }
 
   function loadCcRules() {
@@ -457,6 +495,7 @@
         <td>${esc(p.org)}</td>
         <td>${onLetter ? '<span style="font-size:10px;color:var(--text-dim);">on letter</span>'
           : `<button class="btn btn-primary btn-sm" style="font-size:10px;padding:2px 8px;" onclick="addCCFromLib('${p.id}')">+ Add</button>`}</td>
+        <td><button class="btn btn-ghost btn-sm btn-icon" onclick="deleteCCFromLib('${p.id}')" title="Remove from master list (retired)" style="color:var(--red);">✕</button></td>
       </tr>`;
     }).join('');
     document.getElementById('cc-lib-count').textContent = `(${filtered.length})`;
@@ -471,11 +510,32 @@
     ccList = ccList.filter(c => c.id !== id);
     persistAll(); renderCC(); renderCCLib(); renderLetter();
   };
+  window.deleteCCFromLib = function (libId) {
+    const person = ccLib.find(p => p.id === libId);
+    if (!person) return;
+    const key = ccNameKey(person.name);
+    retireName(person.name);
+    ccLib = ccLib.filter(p => p.id !== libId);
+    ls_set(STORE.cc_lib, ccLib);
+    ccList = ccList.filter(c => ccNameKey(c.name) !== key);
+    ccAssignments = ccAssignments.filter(a => ccNameKey(a.name) !== key);
+    persistCcRules();
+    if (liveLists.ccAlways && liveLists.ccAlways.length) {
+      liveLists.ccAlways = liveLists.ccAlways.filter(p => ccNameKey(typeof p === 'string' ? p : p.name) !== key);
+      persistLists();
+    }
+    persistAll();
+    renderCCLib();
+    renderCC();
+    renderCcRules();
+    renderLetter();
+  };
   window.saveCC = function () {
     const name = val('cc-name').trim();
     if (!name) return;
     const org = val('cc-org');
     const role = val('cc-role').trim();
+    unretireName(name);
     if (!ccLib.find(p => p.name.toLowerCase() === name.toLowerCase())) {
       ccLib.push({ id: 'cl' + Date.now(), name, org, role });
       ls_set(STORE.cc_lib, ccLib);
@@ -927,9 +987,10 @@
     return Array.isArray(obj.always) || Array.isArray(obj.people);
   }
 
-  function upsertCcLibPerson(name, org) {
+  function upsertCcLibPerson(name, org, opts) {
     const n = String(name || '').trim();
     if (!n) return null;
+    if (!(opts && opts.force) && isRetiredName(n)) return null;
     const existing = ccLib.find(p => p.name.toLowerCase() === n.toLowerCase());
     if (existing) return existing;
     const entry = { id: 'cl' + Date.now() + '-' + ccLib.length, name: n, org: org || 'DelDOT', role: '' };
@@ -955,7 +1016,7 @@
     });
     liveLists.ccAlways = always.map(p => (
       typeof p === 'string' ? { name: p, org: 'DelDOT' } : { name: p.name, org: p.org || 'DelDOT' }
-    )).filter(p => p.name);
+    )).filter(p => p.name && !isRetiredName(p.name));
     persistLists();
     renderCCLib();
     renderCCHarvestStatus(harvest);
@@ -975,7 +1036,7 @@
     const always = (harvest && harvest.always) || liveLists.ccAlways || [];
     const letters = harvest && harvest.letters;
     if (!always.length && !letters) {
-      el.textContent = 'Optional: run learn-sos.bat and drop SOS-cc.json to fill the name library. Who is copied on a letter comes from the material assignments above.';
+      el.textContent = 'Optional: run learn-sos.bat and drop SOS-cc.json to fill the name library. ✕ on a library row removes a retired person from the master list so harvest will not put them back. Who is copied on a letter comes from the material assignments above.';
       return;
     }
     const names = always.map(p => typeof p === 'string' ? p : p.name).filter(Boolean);
@@ -986,7 +1047,11 @@
   window.addStandardCcToLetter = window.applyCcRulesToLetter;
 
   window.addHarvestedAlwaysToLetter = function () {
-    (liveLists.ccAlways || []).forEach(p => addPersonToLetter(typeof p === 'string' ? p : p.name, (p && p.org) || 'DelDOT'));
+    (liveLists.ccAlways || []).forEach(p => {
+      const name = typeof p === 'string' ? p : p.name;
+      if (isRetiredName(name)) return;
+      addPersonToLetter(name, (p && p.org) || 'DelDOT');
+    });
     persistAll(); renderCC(); renderCCLib(); renderLetter();
   };
 

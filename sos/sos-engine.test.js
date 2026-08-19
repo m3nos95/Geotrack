@@ -330,6 +330,18 @@ assert.ok(/GABC \(CRUSHED CONCRETE\)/.test(Engine.letterPlainText(
   []
 )));
 
+const mixedCc = [
+  { name: 'Hunter McCabe', org: 'DelDOT' },
+  { name: 'James Smith', org: 'DelDOT' },
+  { name: 'Jason Denson', org: 'DelDOT' },
+];
+const keptCc = DATA.filterRetiredCcPeople(mixedCc, ['hunter mccabe', 'Jason Denson']);
+assert.strictEqual(keptCc.length, 1);
+assert.strictEqual(keptCc[0].name, 'James Smith');
+assert.strictEqual(DATA.filterRetiredCcPeople(mixedCc, []).length, 3);
+assert.strictEqual(DATA.filterRetiredCcPeople(['Hunter McCabe', 'Ray Glanden'], ['HUNTER MCCABE']).join(), 'Ray Glanden');
+console.log('Retired CC names are skipped on harvest / library load');
+
 const liveSnap = require('./lists/apl-snapshot.json');
 assert.ok(liveSnap.tack.entries.length >= 10, 'bundled tack APL snapshot');
 assert.strictEqual(require('./sos-lists.js').lookupTack(liveSnap.tack, 'Russell Standard', 'Baltimore MD', 'CRS-1').listed, true);
