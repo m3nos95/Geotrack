@@ -57,10 +57,7 @@ function renderLetterHtml(result, opts) {
   const sigImg = o.signatureSrc
     ? `<img class="letter-sig-img" src="${esc(o.signatureSrc)}" alt="signature">`
     : '';
-  return `<!DOCTYPE html><html><head><meta charset="utf-8"><title>${esc(title)}</title>
-<style>${letterCss()}</style></head><body>
-${review}
-<div class="letter-letterhead">
+  const body = `<div class="letter-letterhead">
   <img src="${esc(header)}" alt="State of Delaware Department of Transportation">
   <div class="letter-secretary">${esc(DATA.CONTACTS.secretary)}<br>Secretary</div>
 </div>
@@ -80,10 +77,11 @@ ${sections}
   </div>
   <div class="letter-sig-name">${esc(author.name)}<br>${esc(author.title)}</div>
 </div>
-<div class="letter-cc">cc: ${ccHtml || '(none)'}</div>
-<div class="letter-official-footer">
-  <img src="${esc(footer)}" alt="DelDOT">
-</div>
+<div class="letter-cc">cc: ${ccHtml || '(none)'}</div>`;
+  return `<!DOCTYPE html><html><head><meta charset="utf-8"><title>${esc(title)}</title>
+<style>${letterCss()}</style></head><body>
+${review}
+${Export.wrapLetterPages(body, footer)}
 </body></html>`;
 }
 

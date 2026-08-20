@@ -799,8 +799,7 @@
 
     const headerSrc = new URL('sos/letterhead-header.jpg', window.location.href).href;
     const footerSrc = new URL('sos/letterhead-footer.png', window.location.href).href;
-
-    document.getElementById('letter-doc').innerHTML = `
+    const inner = `
       <div class="letter-letterhead">
         <img src="${headerSrc}" alt="State of Delaware Department of Transportation">
         <div class="letter-secretary">${esc(SOSData.CONTACTS.secretary)}<br>Secretary</div>
@@ -822,10 +821,11 @@
         <div class="letter-sig-name">${esc(author.name)}<br>${esc(author.title)}</div>
       </div>
       <div class="letter-cc">cc: ${ccHtml || '<em style="color:#aaa;">(none)</em>'}</div>
-      <div class="letter-official-footer">
-        <img src="${footerSrc}" alt="DelDOT">
-      </div>
     `;
+    const wrap = window.SOSLetterExport && SOSLetterExport.wrapLetterPages;
+    document.getElementById('letter-doc').innerHTML = wrap
+      ? wrap(inner, footerSrc)
+      : inner + `<div class="letter-official-footer"><img src="${footerSrc}" alt="DelDOT"></div>`;
   };
   window.refreshLetter = function () {
     persistProject();

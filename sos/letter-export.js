@@ -24,31 +24,62 @@ mark.user-highlight, .user-highlight {
 `;
 }
 
+function wrapLetterPages(bodyHtml, footerSrc) {
+  const src = String(footerSrc || '')
+    .replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;');
+  return `<table class="letter-print-pages">
+  <tfoot>
+    <tr><td>
+      <div class="letter-official-footer letter-page-footer">
+        <img src="${src}" alt="DelDOT">
+      </div>
+    </td></tr>
+  </tfoot>
+  <tbody>
+    <tr><td class="letter-print-body">${bodyHtml}</td></tr>
+  </tbody>
+</table>`;
+}
+
 function letterLayoutCss(opts) {
   const o = opts || {};
-  const padBottom = o.fixedFooter ? '0.9in' : '0';
+  // Print: repeating <tfoot> band (~2 lines + 1.5in-wide logo) so body text cannot
+  // run through the DelDOT mark. Do not use position:fixed — Chrome still flows
+  // text under a pinned overlay. Word keeps a compact in-flow footer.
   const footer = o.fixedFooter
-    ? `.letter-official-footer {
-  position: fixed;
-  right: 0.35in;
-  bottom: 0.18in;
+    ? `table.letter-print-pages { width: 100%; border: none; border-collapse: collapse; }
+table.letter-print-pages > tbody > tr > td,
+table.letter-print-pages > tfoot > tr > td { padding: 0; border: none; vertical-align: top; }
+table.letter-print-pages > thead { display: table-header-group; }
+table.letter-print-pages > tfoot { display: table-footer-group; }
+.letter-official-footer, .letter-page-footer {
+  height: 1.15in;
+  box-sizing: border-box;
   margin: 0;
-  padding: 0;
-  width: 1.5in;
+  padding: 0.48in 0 0;
+  width: 100%;
   text-align: right;
-  z-index: 10;
+  position: static;
 }
-.letter-official-footer img { width: 1.5in; height: auto; display: block; }`
-    : `.letter-official-footer {
+.letter-official-footer img, .letter-page-footer img {
+  width: 1.5in;
+  height: auto;
+  display: block;
+  margin-left: auto;
+}`
+    : `.letter-official-footer, .letter-page-footer {
   margin-top: 24pt;
   padding-top: 12pt;
   text-align: right;
 }
-.letter-official-footer img { width: 1.5in; height: auto; display: block; margin-left: auto; }`;
+.letter-official-footer img, .letter-page-footer img { width: 1.5in; height: auto; display: block; margin-left: auto; }
+table.letter-print-pages { width: 100%; border: none; border-collapse: collapse; }
+table.letter-print-pages > tbody > tr > td,
+table.letter-print-pages > tfoot > tr > td { padding: 0; border: none; vertical-align: top; }`;
 
-  return `@page { size: 8.5in 11in; margin: 0.5in 0.9in 0.35in 0.9in; }
+  return `@page { size: 8.5in 11in; margin: 0.5in 0.9in 0.45in 0.9in; }
 html, body { height: auto; }
-body { font-family: 'Times New Roman', serif; font-size: 11pt; line-height: 1.55; color: #111; padding-bottom: ${padBottom}; }
+body { font-family: 'Times New Roman', serif; font-size: 11pt; line-height: 1.55; color: #111; }
 .letter-letterhead { text-align: center; margin: 0 0 14pt; }
 .letter-letterhead img { width: 3.72in; height: auto; display: block; margin: 0 auto; }
 .letter-secretary { font-family: 'Copperplate Gothic Light', Copperplate, 'Century Gothic', serif; font-size: 6.5pt; letter-spacing: 0.08em; text-transform: uppercase; color: #17365D; margin: 4pt 0 0; text-align: left; font-weight: 400; line-height: 1.25; }
@@ -134,6 +165,7 @@ var SOSLetterExport = {
   letterLayoutCss,
   printLetterCss,
   wordCss,
+  wrapLetterPages,
   wrapWordHtml,
   letterExportFilename,
   rewriteHighlightsForWord,

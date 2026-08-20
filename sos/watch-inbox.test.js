@@ -64,8 +64,9 @@ assert.ok(/Digitally signed by/.test(html));
 assert.ok(/Steven Peretiatko/.test(html));
 assert.ok(/Date: 20\d{2}\.\d{2}\.\d{2}/.test(html));
 const { renderLetterHtml, letterCss } = require('./letter-render.js');
-assert.ok(/position:\s*fixed/.test(letterCss()), 'print CSS pins DelDOT logo to every page');
-assert.ok(/bottom:\s*0\.18in/.test(letterCss()));
+assert.ok(/table-footer-group/.test(letterCss()), 'print CSS repeats a footer band on every page');
+assert.ok(/height:\s*1\.15in/.test(letterCss()));
+assert.ok(!/position:\s*fixed/.test(letterCss()), 'logo is not a fixed overlay');
 assert.ok(/user-highlight/.test(letterCss()), 'print CSS keeps Highlight-mode marks');
 assert.ok(/print-color-adjust/.test(letterCss()));
 const customHtml = renderLetterHtml({
