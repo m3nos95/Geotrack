@@ -87,6 +87,16 @@ assert.strictEqual(result.project.submittedDate, '2026-07-06', 'SOS form date is
 assert.strictEqual(result.project.date, Engine.todayISO(), 'letter date is today, not the SOS submission date');
 assert.ok(Engine.letterPlainText(result.project, result.items, result.cc).startsWith(Engine.formatLongDate(Engine.todayISO())));
 
+const adobeStamp = Engine.formatDigitalSignStamp('2026-06-08T13:35:21.000Z');
+assert.strictEqual(adobeStamp.date, '2026.06.08');
+assert.ok(/09:35:21 -04'00'/.test(adobeStamp.time), adobeStamp.time);
+assert.deepStrictEqual(Engine.digitalSignatureLines('2026-06-08T13:35:21.000Z', 'Steven Peretiatko'), [
+  'Digitally signed by',
+  'Steven Peretiatko',
+  'Date: 2026.06.08',
+  adobeStamp.time,
+]);
+
 const families = result.items.map(i => i.family);
 const specs = result.items.map(i => (i.letterSpecs || i.specs).join(','));
 

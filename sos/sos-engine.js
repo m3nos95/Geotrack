@@ -1335,6 +1335,50 @@
     return d.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
   }
 
+  function adobeTimezoneOffset(tzName) {
+    const m = String(tzName || '').match(/([+-])(\d{1,2})(?::(\d{2}))?/);
+    if (!m) return "-04'00'";
+    return `${m[1]}${String(m[2]).padStart(2, '0')}'${m[3] || '00'}'`;
+  }
+
+  function formatDigitalSignStamp(when, tz) {
+    tz = tz || 'America/New_York';
+    const d = when instanceof Date ? when : new Date(when || Date.now());
+    const safe = Number.isNaN(d.getTime()) ? new Date() : d;
+    const parts = {};
+    new Intl.DateTimeFormat('en-US', {
+      timeZone: tz,
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit',
+      hourCycle: 'h23',
+      timeZoneName: 'longOffset',
+    }).formatToParts(safe).forEach((p) => {
+      if (p.type !== 'literal') parts[p.type] = p.value;
+    });
+    const date = `${parts.year}.${parts.month}.${parts.day}`;
+    const time = `${parts.hour}:${parts.minute}:${parts.second} ${adobeTimezoneOffset(parts.timeZoneName)}`;
+    return {
+      iso: safe.toISOString(),
+      date,
+      time,
+      stamp: `Date: ${date} ${time}`,
+    };
+  }
+
+  function digitalSignatureLines(when, name) {
+    const stamp = formatDigitalSignStamp(when);
+    return [
+      'Digitally signed by',
+      name || 'Steven Peretiatko',
+      'Date: ' + stamp.date,
+      stamp.time,
+    ];
+  }
+
   function prettyTestedDate(t) {
     if (!t) return '';
     if (/^\d{4}-\d{2}-\d{2}$/.test(t)) {
@@ -1417,6 +1461,8 @@
     contractPhrase,
     detectDocKind,
     formatLongDate,
+    formatDigitalSignStamp,
+    digitalSignatureLines,
     todayISO,
     sourceLine,
     letterSectionLines,

@@ -60,6 +60,7 @@
   let liveLists = (typeof SOSLists !== 'undefined' && SOSLists.emptyBundle) ? SOSLists.emptyBundle() : { tack: { entries: [] }, aggregate: { entries: [] } };
   let warnings = ls_get(STORE.warnings, []);
   let signatureImage = localStorage.getItem('sosSignatureImage') || '';
+  let signedAt = '';
   let highlightMode = false;
   let srcFocusIdx = { primary: -1, alt: -1 };
   let specDdFocusIdx = -1;
@@ -84,6 +85,7 @@
       contact: val('ph-contact'),
       date: val('ph-date'),
       docKind: val('ph-dockind'),
+      signedAt: signedAt || '',
     });
     const name = val('ph-contractor');
     const addr = val('ph-contractor-addr');
@@ -140,6 +142,7 @@
     setVal('ph-contact', p.contact || '');
     setVal('ph-date', p.date || headerToday());
     if (p.docKind) setVal('ph-dockind', p.docKind);
+    signedAt = p.signedAt || '';
     document.getElementById('rev-display').textContent = 'REV ' + String(currentRev).padStart(2, '0');
     updateContractWarn();
   }
@@ -730,6 +733,17 @@
     const contractor = val('ph-contractor');
     const contrAddr = (val('ph-contractor-addr') || '').trim();
     const dateStr = SOSEngine.formatLongDate(val('ph-date'));
+    if (!signedAt) {
+      signedAt = new Date().toISOString();
+      persistProject();
+    }
+    const author = SOSData.CONTACTS.letterAuthor;
+    const digitalLines = (SOSEngine.digitalSignatureLines
+      ? SOSEngine.digitalSignatureLines(signedAt, author.name)
+      : ['Digitally signed by', author.name]).map(esc).join('<br>');
+    const sigImg = signatureImage
+      ? `<img class="letter-sig-img" src="${signatureImage}" alt="signature">`
+      : '';
     const addrHtml = contrAddr
       ? contrAddr.split('\n').map(l => esc(l.trim())).filter(Boolean).join('<br>')
       : '<em style="color:#aaa;">[Contractor address — click ✎]</em>';
@@ -773,10 +787,13 @@
       ${empty}${sections}
       <hr class="letter-divider">
       <div>If you have any questions, please call me at ${esc(SOSData.CONTACTS.letterAuthor.phone)}.</div>
-      <div class="letter-sig">
-        Sincerely,<br>
-        ${signatureImage ? `<img src="${signatureImage}" style="max-height:80px;display:block;margin:8px 0;" alt="signature">` : ''}
-        <div class="letter-sig-name">${esc(SOSData.CONTACTS.letterAuthor.name)}<br>${esc(SOSData.CONTACTS.letterAuthor.title)}</div>
+      <div class="letter-sig${signatureImage ? ' has-image' : ''}">
+        Sincerely,
+        <div class="letter-sig-row">
+          ${sigImg}
+          <div class="letter-sig-digital">${digitalLines}</div>
+        </div>
+        <div class="letter-sig-name">${esc(author.name)}<br>${esc(author.title)}</div>
       </div>
       <div class="letter-cc">cc: ${ccHtml || '<em style="color:#aaa;">(none)</em>'}</div>
       <div class="letter-official-footer">
@@ -1118,6 +1135,7 @@
     setVal('ph-contact', '');
     setVal('ph-dockind', 'application');
     setVal('ph-date', headerToday());
+    signedAt = new Date().toISOString();
     const rev = document.getElementById('rev-display');
     if (rev) rev.textContent = 'REV 01';
     const preview = document.getElementById('import-preview-block');
@@ -1712,6 +1730,7 @@
     }
     if (next.date) setVal('ph-date', next.date);
     else if (replace || !val('ph-date')) setVal('ph-date', headerToday());
+    if (replace) signedAt = new Date().toISOString();
     updateContractWarn();
     persistProject();
   }
@@ -1786,12 +1805,76 @@
     if (!file) return;
     const reader = new FileReader();
     reader.onload = function (e) {
-      signatureImage = e.target.result;
-      localStorage.setItem('sosSignatureImage', signatureImage);
-      renderLetter();
+      normalizeSignatureImage(e.target.result, (dataUrl) => {
+        signatureImage = dataUrl;
+        localStorage.setItem('sosSignatureImage', signatureImage);
+        renderLetter();
+      });
     };
     reader.readAsDataURL(file);
+    event.target.value = '';
   };
+
+  function normalizeSignatureImage(dataUrl, done) {
+    const img = new Image();
+    img.onload = function () {
+      try {
+        const maxSide = 1800;
+        let srcW = img.naturalWidth || img.width;
+        let srcH = img.naturalHeight || img.height;
+        const shrink = Math.min(1, maxSide / Math.max(srcW, srcH));
+        const canvas = document.createElement('canvas');
+        canvas.width = Math.max(1, Math.round(srcW * shrink));
+        canvas.height = Math.max(1, Math.round(srcH * shrink));
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+        const trimmed = trimSignatureCanvas(canvas);
+        const TARGET_H = 140;
+        const TARGET_W = 320;
+        const scale = Math.min(1, TARGET_H / trimmed.height, TARGET_W / trimmed.width);
+        const out = document.createElement('canvas');
+        out.width = Math.max(1, Math.round(trimmed.width * scale));
+        out.height = Math.max(1, Math.round(trimmed.height * scale));
+        const octx = out.getContext('2d');
+        octx.imageSmoothingEnabled = true;
+        octx.imageSmoothingQuality = 'high';
+        octx.drawImage(trimmed, 0, 0, out.width, out.height);
+        done(out.toDataURL('image/png'));
+      } catch (err) {
+        done(dataUrl);
+      }
+    };
+    img.onerror = function () { done(dataUrl); };
+    img.src = dataUrl;
+  }
+
+  function trimSignatureCanvas(canvas) {
+    const ctx = canvas.getContext('2d');
+    const { width, height } = canvas;
+    const data = ctx.getImageData(0, 0, width, height).data;
+    let top = 0, bottom = height - 1, left = 0, right = width - 1;
+    const empty = (x, y) => {
+      const i = (y * width + x) * 4;
+      const a = data[i + 3];
+      if (a < 12) return true;
+      return data[i] > 246 && data[i + 1] > 246 && data[i + 2] > 246;
+    };
+    while (top < height && Array.from({ length: width }, (_, x) => empty(x, top)).every(Boolean)) top++;
+    while (bottom > top && Array.from({ length: width }, (_, x) => empty(x, bottom)).every(Boolean)) bottom--;
+    while (left < width && Array.from({ length: height }, (_, y) => empty(left, y)).every(Boolean)) left++;
+    while (right > left && Array.from({ length: height }, (_, y) => empty(right, y)).every(Boolean)) right--;
+    const pad = 4;
+    const x = Math.max(0, left - pad);
+    const y = Math.max(0, top - pad);
+    const w = Math.min(width - x, right - left + 1 + pad * 2);
+    const h = Math.min(height - y, bottom - top + 1 + pad * 2);
+    if (w < 8 || h < 8) return canvas;
+    const out = document.createElement('canvas');
+    out.width = w;
+    out.height = h;
+    out.getContext('2d').drawImage(canvas, x, y, w, h, 0, 0, w, h);
+    return out;
+  }
 
   window.printLetter = function () {
     const html = document.getElementById('letter-doc').innerHTML;
@@ -1811,7 +1894,11 @@ body { font-family: 'Times New Roman', serif; font-size: 11pt; line-height: 1.55
 .letter-field-label { font-weight: 700; text-decoration: underline; }
 hr { border: none; border-top: 1px solid #ccc; margin: 14pt 0; }
 .letter-sig { margin-top: 24pt; page-break-inside: avoid; }
-.letter-sig-name { font-weight: 700; margin-top: 36pt; }
+.letter-sig-row { display: flex; align-items: flex-end; gap: 16pt; margin: 8pt 0 0; }
+.letter-sig-img { height: 0.58in; width: auto; max-width: 2.15in; display: block; object-fit: contain; }
+.letter-sig-digital { font-family: Helvetica, Arial, sans-serif; font-size: 7.5pt; line-height: 1.2; color: #111; }
+.letter-sig-name { font-weight: 700; margin-top: 4pt; }
+.letter-sig:not(.has-image) .letter-sig-name { margin-top: 8pt; }
 .letter-cc { margin-top: 14pt; font-size: 10pt; line-height: 1.75; page-break-inside: avoid; }
 .letter-official-footer { margin-top: auto; padding-top: 18pt; text-align: right; page-break-inside: avoid; }
 .letter-official-footer img { width: 1.95in; height: auto; }

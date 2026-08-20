@@ -26,7 +26,11 @@ body { font-family: 'Times New Roman', serif; font-size: 11pt; line-height: 1.55
 .letter-field-label { font-weight: 700; text-decoration: underline; }
 hr { border: none; border-top: 1px solid #ccc; margin: 14pt 0; }
 .letter-sig { margin-top: 24pt; page-break-inside: avoid; }
-.letter-sig-name { font-weight: 700; margin-top: 36pt; }
+.letter-sig-row { display: flex; align-items: flex-end; gap: 16pt; margin: 8pt 0 0; }
+.letter-sig-img { height: 0.58in; width: auto; max-width: 2.15in; display: block; object-fit: contain; }
+.letter-sig-digital { font-family: Helvetica, Arial, sans-serif; font-size: 7.5pt; line-height: 1.2; color: #111; }
+.letter-sig-name { font-weight: 700; margin-top: 4pt; }
+.letter-sig:not(.has-image) .letter-sig-name { margin-top: 8pt; }
 .letter-cc { margin-top: 14pt; font-size: 10pt; line-height: 1.75; page-break-inside: avoid; }
 .letter-official-footer { margin-top: auto; padding-top: 18pt; text-align: right; page-break-inside: avoid; }
 .letter-official-footer img { width: 1.95in; height: auto; }
@@ -66,6 +70,11 @@ function renderLetterHtml(result, opts) {
   }).join('\n');
   const ccHtml = cc.map(c => `${esc(c.name)}, ${esc(c.org || 'DelDOT')}`).join('<br>');
   const title = [project.contract, project.title, project.contractor].filter(Boolean).join(' · ') || 'SOS letter';
+  const author = DATA.CONTACTS.letterAuthor;
+  const digital = Engine.digitalSignatureLines(project.signedAt || Date.now(), author.name).map(esc).join('<br>');
+  const sigImg = o.signatureSrc
+    ? `<img class="letter-sig-img" src="${esc(o.signatureSrc)}" alt="signature">`
+    : '';
   return `<!DOCTYPE html><html><head><meta charset="utf-8"><title>${esc(title)}</title>
 <style>${letterCss()}</style></head><body>
 ${review}
@@ -81,9 +90,13 @@ ${review}
 ${sections}
 <hr>
 <div>If you have any questions, please call me at ${esc(DATA.CONTACTS.letterAuthor.phone)}.</div>
-<div class="letter-sig">
-  Sincerely,<br>
-  <div class="letter-sig-name">${esc(DATA.CONTACTS.letterAuthor.name)}<br>${esc(DATA.CONTACTS.letterAuthor.title)}</div>
+<div class="letter-sig${o.signatureSrc ? ' has-image' : ''}">
+  Sincerely,
+  <div class="letter-sig-row">
+    ${sigImg}
+    <div class="letter-sig-digital">${digital}</div>
+  </div>
+  <div class="letter-sig-name">${esc(author.name)}<br>${esc(author.title)}</div>
 </div>
 <div class="letter-cc">cc: ${ccHtml || '(none)'}</div>
 <div class="letter-official-footer">

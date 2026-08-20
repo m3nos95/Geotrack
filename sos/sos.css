@@ -596,7 +596,27 @@
     margin: 14px 0;
   }
   .letter-sig { margin-top: 28px; }
-  .letter-sig-name { font-weight: 700; margin-top: 28px; }
+  .letter-sig-row {
+    display: flex;
+    align-items: flex-end;
+    gap: 18px;
+    margin: 8px 0 0;
+  }
+  .letter-sig-img {
+    height: 56px;
+    width: auto;
+    max-width: 206px;
+    display: block;
+    object-fit: contain;
+  }
+  .letter-sig-digital {
+    font-family: Helvetica, Arial, sans-serif;
+    font-size: 10px;
+    line-height: 1.2;
+    color: #111;
+  }
+  .letter-sig-name { font-weight: 700; margin-top: 4px; }
+  .letter-sig:not(.has-image) .letter-sig-name { margin-top: 8px; }
   .letter-cc { margin-top: 16px; font-size: 11px; line-height: 1.7; }
   .letter-official-footer {
     margin-top: auto;
