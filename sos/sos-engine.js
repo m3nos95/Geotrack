@@ -350,6 +350,20 @@
     };
   }
 
+  function noteRowSpecDescs(current, row, cols) {
+    if (!current) return;
+    current.specDescs = current.specDescs || {};
+    const d = cellStr(row[cols.desc]);
+    if (!d) return;
+    const specs = specCellFromRow(row, cols) ? extractSpecs(specCellFromRow(row, cols)) : [];
+    if (specs.length) {
+      specs.forEach(s => { current.specDescs[s] = d; });
+      return;
+    }
+    const last = (current.specs || [])[(current.specs || []).length - 1];
+    if (last && !current.specDescs[last]) current.specDescs[last] = d;
+  }
+
   function pushLine(bucket, val) {
     const t = cellStr(val);
     if (t) bucket.push(t);
@@ -386,7 +400,9 @@
         supLines: take(cols.supplier, inherit && inherit.supLines),
         mfgLines: take(cols.mfg, inherit && inherit.mfgLines),
         altLines: take(cols.alt, inherit && inherit.altLines),
+        specDescs: {},
       };
+      noteRowSpecDescs(current, row, cols);
     };
 
     const flush = () => {
@@ -435,6 +451,7 @@
         srcAddr: mfg.addr || sup.addr,
         srcPhone: mfg.phone || sup.phone,
         altName: altName || (alt.loc || alt.addr ? (mfg.name || sup.name) : ''),
+        specDescs: current.specDescs || {},
         raw: current,
       });
       current = null;
@@ -467,6 +484,7 @@
         continue;
       }
       if (specCell) current.specs = [...new Set([...current.specs, ...extractSpecs(specCell)])];
+      noteRowSpecDescs(current, row, cols);
       pushLine(current.descLines, row[cols.desc]);
       pushLine(current.materialLines, row[cols.material]);
       pushLine(current.supLines, row[cols.supplier]);
@@ -527,6 +545,9 @@
   function lookupCatalogDesc(spec, lists) {
     const cat = SPEC_CATALOG[spec];
     if (cat && cat.desc) return letterizeDesc(cat.desc);
+    if (typeof SOS_SPEC_LETTER_DESCS !== 'undefined' && SOS_SPEC_LETTER_DESCS && SOS_SPEC_LETTER_DESCS[spec]) {
+      return letterizeDesc(SOS_SPEC_LETTER_DESCS[spec].desc);
+    }
     const hit = Lists.lookupSosDatabase && Lists.lookupSosDatabase(lists && lists.sosDatabase, spec);
     return hit && hit.desc ? letterizeDesc(hit.desc) : '';
   }
@@ -542,9 +563,9 @@
   }
 
   function specLetterDesc(item, spec) {
+    const cat = lookupCatalogDesc(spec, {});
+    if (cat) return cat;
     if (item && item.specDescs && item.specDescs[spec]) return letterizeDesc(item.specDescs[spec]);
-    const cat = SPEC_CATALOG[spec];
-    if (cat && cat.desc) return cat.desc;
     return '';
   }
 
@@ -657,8 +678,7 @@
   function enrichDescription(item, lists) {
     const catalogDescs = item.specs.map(s => lookupCatalogDesc(s, lists)).filter(Boolean);
     let desc = item.desc;
-    if (catalogDescs.length === 1) desc = catalogDescs[0];
-    else if (catalogDescs.length > 1) desc = catalogDescs[0];
+    if (catalogDescs.length) desc = catalogDescs[0];
     else desc = (item.desc || '').replace(/\s+/g, ' ').trim().toUpperCase();
 
     const family = familyFromSpec(item.specs[0], item.desc, item.material, lists, item.subItems);
@@ -707,9 +727,11 @@
     if (['rcp', 'precast', 'pcc', 'aggregate'].includes(family)) {
       subItems = subItems.filter(s => !isGenericMaterialBullet(s));
     }
-    const specDescs = {};
+    const specDescs = Object.assign({}, item.specDescs || {});
     (item.specs || []).forEach(s => {
-      specDescs[s] = lookupCatalogDesc(s, lists) || letterizeDesc(item.desc);
+      specDescs[s] = lookupCatalogDesc(s, lists)
+        || letterizeDesc((item.specDescs && item.specDescs[s]) || '')
+        || ((item.specs || []).length === 1 ? letterizeDesc(item.desc) : '');
     });
     return { ...item, family, desc: sectionDesc, letterSpecs, subItems, specDescs };
   }
@@ -1154,14 +1176,14 @@
 
   function letterSectionLines(item) {
     const specs = item.letterSpecs || item.specs || [];
-    if (specs.length <= 1) {
-      const s = specs[0] || '';
-      return s ? [`${s} - ${item.desc || specLetterDesc(item, s)}`] : [];
-    }
     return specs.map((s) => {
-      const per = specLetterDesc(item, s);
-      return `${s} - ${per || item.desc || ''}`;
-    });
+      // Single-spec rows keep enrichDescription rewrites (GABC crushed concrete, HMA ITEMS).
+      // Grouped sizes must not copy the first sibling's description onto later spec numbers.
+      const per = specs.length <= 1
+        ? (item.desc || specLetterDesc(item, s) || '')
+        : (specLetterDesc(item, s) || '');
+      return per ? `${s} - ${per}` : `${s}`;
+    }).filter(Boolean);
   }
 
   function applyWorkflow(parsed, opts) {

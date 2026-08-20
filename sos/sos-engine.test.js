@@ -377,6 +377,34 @@ assert.ok(!/#701012 - PCC SIDEWALK/.test(curbLines));
 assert.ok(!(curbWalk.subItems || []).some(s => /class b/i.test(s)));
 assert.strictEqual((curbWalk.actionNotes.match(/only one source at a time/gi) || []).length, 1);
 
+assert.strictEqual(DATA.SPEC_CATALOG['#701012'].desc, 'PCC CURB, TYPE 1-6');
+assert.ok(!/sidewalk/i.test(DATA.SPEC_CATALOG['#701012'].desc));
+assert.strictEqual(DATA.SPEC_CATALOG['#601014'].desc, 'REINFORCED CONCRETE PIPE, 24", CLASS III');
+assert.strictEqual(DATA.SPEC_CATALOG['#602010'].desc, 'DRAINAGE INLET, 72" X 48"');
+assert.strictEqual(DATA.SPEC_CATALOG['#602035'].desc, 'MANHOLE, ROUND');
+
+const stalePcc = Engine.applyWorkflow({
+  project: { contract: 'CA2589', title: 'Whitehall', contractor: 'George & Lynch', district: 'Canal' },
+  items: [{
+    specs: ['#701012', '#705001', '#705002'],
+    desc: 'PCC SIDEWALK, 4"',
+    material: 'Class B Concrete',
+    subItems: [],
+    srcName: 'Heritage Concrete',
+    srcLoc: 'Cheswold, DE',
+    specDescs: {
+      '#701012': 'PCC SIDEWALK, 4"',
+      '#705001': 'PCC SIDEWALK, 4"',
+      '#705002': 'PCC SIDEWALK, 4"',
+    },
+  }],
+  warnings: [],
+}).items.find(i => i.family === 'pcc');
+const staleLines = Engine.letterSectionLines(stalePcc).join('\n');
+assert.ok(/#701012 - PCC CURB, TYPE 1-6/.test(staleLines), staleLines);
+assert.ok(!/#701012 - PCC SIDEWALK/.test(staleLines), staleLines);
+assert.ok(/#705001 - PCC SIDEWALK, 4"/.test(staleLines), staleLines);
+
 const expansion = whitehallStruct.items.find(i => i.family === 'expansion');
 assert.ok(expansion, 'Reflex expansion is not kept as PCC curb');
 assert.deepStrictEqual(expansion.letterSpecs, ['#701/705xxx']);
@@ -568,6 +596,31 @@ function compactCover(extra) {
     ['#', '', '', '', 'Address & Contact', 'Address & Contact'],
   ];
 }
+
+const compactSizes = compactCover().concat([
+  ['601011', '15" RCP CL III', '', 'Rinker Materials', 'Middletown, DE', ''],
+  ['601012', '18" RCP CL III', '', 'Rinker Materials', 'Middletown, DE', ''],
+  ['601014', '24" RCP CL III', '', 'Rinker Materials', 'Middletown, DE', ''],
+  ['601016', '30" RCP CL III', '', 'Rinker Materials', 'Middletown, DE', ''],
+  ['601142', '18" RCP FES', '', 'Rinker Materials', 'Middletown, DE', ''],
+  ['601146', '30" RCP FES', '', 'Rinker Materials', 'Middletown, DE', ''],
+  ['602010', 'Drainage Inlet 72 x 48', '', 'Gillespie Precast', 'Chestertown, MD', ''],
+  ['602035', 'Manhole 48" Diameter', '', 'Gillespie Precast', 'Chestertown, MD', ''],
+  ['701012', 'PCC Curb, Type 1-6', 'Class B', 'Heritage Concrete', 'Cheswold, DE', 'Bear Materials'],
+  ['705001', 'PCC Sidewalk, 4"', 'Class B', 'Heritage Concrete', 'Cheswold, DE', 'Bear Materials'],
+]);
+const compactSized = Engine.processGrid(compactSizes);
+const compactRcp = compactSized.items.find(i => i.family === 'rcp');
+const compactRcpLines = Engine.letterSectionLines(compactRcp).join('\n');
+assert.ok(/#601014 - REINFORCED CONCRETE PIPE, 24", CLASS III/.test(compactRcpLines), compactRcpLines);
+assert.ok(/#601142 - REINFORCED CONCRETE FLARED END SECTION, 18"/.test(compactRcpLines), compactRcpLines);
+assert.ok(!/#601014 - REINFORCED CONCRETE PIPE, 15"/.test(compactRcpLines));
+const compactPcc = compactSized.items.find(i => i.family === 'pcc');
+const compactPccLines = Engine.letterSectionLines(compactPcc).join('\n');
+assert.ok(/#701012 - PCC CURB, TYPE 1-6/.test(compactPccLines), compactPccLines);
+assert.ok(!/#701012 - PCC SIDEWALK/.test(compactPccLines));
+assert.ok(/#602010 - DRAINAGE INLET, 72" X 48"/.test(Engine.letterSectionLines(compactSized.items.find(i => i.family === 'precast')).join('\n')));
+assert.ok(/#602035 - MANHOLE, ROUND/.test(Engine.letterSectionLines(compactSized.items.find(i => i.family === 'precast')).join('\n')));
 
 const compactHma = compactCover().concat([
   ['', 'SUPERPAVE TYPE C, PG 64-22', 'SUPERPAVE TYPE C, PG 64-22', 'CONTRACTORS', 'CONTRACTORS MATERIALS', ''],

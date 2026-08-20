@@ -761,7 +761,11 @@
       </div>
     `;
   };
-  window.refreshLetter = function () { persistProject(); renderLetter(); };
+  window.refreshLetter = function () {
+    persistProject();
+    if (typeof applyListsToOpenLetter === 'function' && items.length) applyListsToOpenLetter();
+    else renderLetter();
+  };
 
   window.renderWarnings = function () {
     const box = document.getElementById('warn-box');
