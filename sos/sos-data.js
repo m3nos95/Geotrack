@@ -48,6 +48,12 @@
     { id: 'other-apl', label: 'Crack seal / curing / TTC / APL', families: ['crack-seal', 'curing', 'ttc', 'signs', 'apl-product', 'erosion', 'expansion'] },
   ];
 
+  const CC_DISTRICTS = [
+    { id: 'south', label: 'South' },
+    { id: 'north', label: 'North' },
+    { id: 'canal', label: 'Canal' },
+  ];
+
   /**
    * Default CC assignments. Change the name if someone leaves; checkboxes decide
    * which letter items pull that person onto cc. role: 'results' also fills the
@@ -62,6 +68,7 @@
       role: 'results',
       always: false,
       groups: ['soil-stone'],
+      districts: [],
     },
     {
       id: 'cc-mark',
@@ -71,6 +78,7 @@
       role: '',
       always: false,
       groups: ['hma'],
+      districts: [],
     },
   ];
 
@@ -1927,8 +1935,23 @@
     return c.sampling;
   }
 
-  function assignmentMatchesItems(assignment, items) {
+  function districtMatchesAssignment(assignment, district) {
+    const wanted = (assignment && assignment.districts) || [];
+    if (!wanted.length) return true;
+    const d = String(district || '');
+    if (!d.trim()) return false;
+    return wanted.some((w) => {
+      const key = String(w || '').toLowerCase();
+      if (key === 'canal') return /canal/i.test(d);
+      if (key === 'north') return /north/i.test(d);
+      if (key === 'south') return /south/i.test(d) && !/north/i.test(d);
+      return new RegExp(key.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'i').test(d);
+    });
+  }
+
+  function assignmentMatchesItems(assignment, items, project) {
     if (!assignment || !assignment.name) return false;
+    if (!districtMatchesAssignment(assignment, project && project.district)) return false;
     if (assignment.always) return true;
     const families = new Set((items || []).map(it => it && it.family).filter(Boolean));
     const wanted = assignment.groups || assignment.families || [];
@@ -2047,6 +2070,7 @@
     CONTACTS,
     STANDARD_CC,
     CC_MATERIAL_GROUPS,
+    CC_DISTRICTS,
     CC_ASSIGNMENT_SEEDS,
     CC_LIBRARY_SEEDS,
     normalizeCcName,

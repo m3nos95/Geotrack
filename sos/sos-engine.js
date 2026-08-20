@@ -1257,7 +1257,7 @@
     add(project && project.contact);
     const assignments = (lists && lists.ccAssignments) || CC_ASSIGNMENT_SEEDS;
     assignments.forEach(a => {
-      if (assignmentMatchesItems(a, items)) add(a.name, a.org || 'DelDOT', a.role || '');
+      if (assignmentMatchesItems(a, items, project)) add(a.name, a.org || 'DelDOT', a.role || '');
     });
     return filterRetiredCcPeople(people, lists && (lists.retiredCc || lists.retiredNames));
   }

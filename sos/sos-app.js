@@ -249,6 +249,7 @@
       role: a.role || '',
       always: !!a.always,
       groups: Array.isArray(a.groups) ? a.groups.slice() : [],
+      districts: Array.isArray(a.districts) ? a.districts.slice() : [],
     })).filter(a => !a.name || !isRetiredName(a.name));
   }
 
@@ -295,11 +296,18 @@
     const tbody = document.getElementById('cc-rules-tbody');
     if (!tbody) return;
     const groups = SOSData.CC_MATERIAL_GROUPS || [];
+    const districts = SOSData.CC_DISTRICTS || [];
     tbody.innerHTML = ccAssignments.map(a => {
       const chips = groups.map(g => {
         const on = (a.groups || []).includes(g.id);
         return `<label style="display:inline-flex;align-items:center;gap:4px;margin:2px 8px 2px 0;font-size:11px;white-space:nowrap;">
           <input type="checkbox" ${on ? 'checked' : ''} onchange="toggleCcRuleGroup('${esc(a.id)}','${g.id}',this.checked)"> ${esc(g.label)}
+        </label>`;
+      }).join('');
+      const districtChips = districts.map(d => {
+        const on = (a.districts || []).includes(d.id);
+        return `<label style="display:inline-flex;align-items:center;gap:4px;margin:2px 8px 2px 0;font-size:11px;white-space:nowrap;">
+          <input type="checkbox" ${on ? 'checked' : ''} onchange="toggleCcRuleDistrict('${esc(a.id)}','${d.id}',this.checked)"> ${esc(d.label)}
         </label>`;
       }).join('');
       const always = a.always
@@ -315,6 +323,9 @@
         <td><input class="form-input" value="${esc(a.phone)}" onchange="setCcRuleField('${esc(a.id)}','phone',this.value)" placeholder="optional"></td>
         <td>
           ${chips}
+          <div style="margin-top:4px;">${districtChips}
+            <span style="font-size:10px;color:var(--text-dim);">(blank = all districts)</span>
+          </div>
           <label style="display:inline-flex;align-items:center;gap:4px;margin:2px 0;font-size:11px;font-weight:600;">
             <input type="checkbox" ${always} onchange="setCcRuleField('${esc(a.id)}','always',this.checked)"> Always
           </label>
@@ -374,6 +385,16 @@
     if (items.length) applyCcRulesToLetter();
   };
 
+  window.toggleCcRuleDistrict = function (id, districtId, on) {
+    const row = ccAssignments.find(a => a.id === id);
+    if (!row) return;
+    const set = new Set(row.districts || []);
+    if (on) set.add(districtId); else set.delete(districtId);
+    row.districts = [...set];
+    persistCcRules();
+    if (items.length) applyCcRulesToLetter();
+  };
+
   window.addCcRule = function () {
     ccAssignments.push({
       id: 'cc-' + Date.now(),
@@ -383,6 +404,7 @@
       role: '',
       always: false,
       groups: [],
+      districts: [],
     });
     persistCcRules();
     renderCcRules();

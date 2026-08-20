@@ -272,6 +272,26 @@ const namedSampler = Engine.processGrid(canalGrid, {
 });
 assert.ok(namedSampler.cc.some(c => c.name === 'Rich Taylor'), 'sampler is copied only when assigned on the CC tab');
 
+const canalAlwaysCc = Engine.processGrid(canalGrid, {
+  lists: {
+    ccAssignments: [
+      { name: 'Pat Canal', org: 'DelDOT', always: true, districts: ['canal'] },
+      { name: 'Aaron Wieczorek', org: 'DelDOT', groups: ['soil-stone'], role: 'results' },
+      { name: 'Mark Schafer', org: 'DelDOT', groups: ['hma'] },
+    ],
+  },
+});
+assert.ok(canalAlwaysCc.cc.some(c => c.name === 'Pat Canal'), 'Always + Canal copies on Canal jobs');
+const southNoCanalCc = Engine.processGrid(gridFromObjects(FREY_HEADER, [FREY_ITEMS[4]]), {
+  lists: {
+    ccAssignments: [
+      { name: 'Pat Canal', org: 'DelDOT', always: true, districts: ['canal'] },
+      { name: 'Aaron Wieczorek', org: 'DelDOT', groups: ['soil-stone'], role: 'results' },
+    ],
+  },
+});
+assert.ok(!southNoCanalCc.cc.some(c => c.name === 'Pat Canal'), 'Always + Canal does not copy on South jobs');
+
 const renamed = Engine.processGrid(grid, {
   lists: {
     ccAssignments: [
