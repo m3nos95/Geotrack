@@ -9,6 +9,7 @@ assert.ok(/box-shadow:\s*inset/.test(Export.printLetterCss()), 'print CSS keeps 
 assert.ok(/table-footer-group/.test(Export.printLetterCss()), 'print CSS repeats a footer band on every page');
 assert.ok(/height:\s*1\.15in/.test(Export.printLetterCss()), 'print footer reserves logo height plus two lines of gap');
 assert.ok(!/position:\s*fixed/.test(Export.printLetterCss()), 'print CSS does not overlay the logo on body text');
+assert.ok(/\.letter-closing\s*\{[^}]*page-break-inside:\s*avoid/.test(Export.printLetterCss()), 'print CSS keeps the closing on one page');
 assert.ok(/padding-bottom:\s*10pt/.test(Export.printLetterCss()), 'print CSS leaves room under the signature');
 
 assert.ok(/user-highlight/.test(letterCss()), 'letter-render print CSS includes highlights');

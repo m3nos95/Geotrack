@@ -67,8 +67,9 @@ function renderLetterHtml(result, opts) {
   <p>The following material sources have been reviewed by this office for <strong>${esc(phrase)}</strong> as to their acceptability for use on this project. Please note that all materials must conform to the Standard Specifications, and Special Provisions, and/or Plans governing this project. The following action must be taken in order that we may expedite the inspection and approval of the material.</p>
 </div>
 ${sections}
+<div class="letter-closing">
 <hr>
-<div>If you have any questions, please call me at ${esc(author.phone)}.</div>
+<div class="letter-questions">If you have any questions, please call me at ${esc(author.phone)}.</div>
 <div class="letter-sig${o.signatureSrc ? ' has-image' : ''}">
   Sincerely,
   <div class="letter-sig-row">
@@ -77,7 +78,8 @@ ${sections}
   </div>
   <div class="letter-sig-name">${esc(author.name)}<br>${esc(author.title)}</div>
 </div>
-<div class="letter-cc">cc: ${ccHtml || '(none)'}</div>`;
+<div class="letter-cc">cc: ${ccHtml || '(none)'}</div>
+</div>`;
   return `<!DOCTYPE html><html><head><meta charset="utf-8"><title>${esc(title)}</title>
 <style>${letterCss()}</style></head><body>
 ${review}

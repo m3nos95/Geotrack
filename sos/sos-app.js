@@ -810,8 +810,9 @@
         <p>The following material sources have been reviewed by this office for <strong>${esc(phrase)}</strong> as to their acceptability for use on this project. Please note that all materials must conform to the Standard Specifications, and Special Provisions, and/or Plans governing this project. The following action must be taken in order that we may expedite the inspection and approval of the material.</p>
       </div>
       ${empty}${sections}
+      <div class="letter-closing">
       <hr class="letter-divider">
-      <div>If you have any questions, please call me at ${esc(author.phone)}.</div>
+      <div class="letter-questions">If you have any questions, please call me at ${esc(author.phone)}.</div>
       <div class="letter-sig${signatureImage ? ' has-image' : ''}">
         Sincerely,
         <div class="letter-sig-row">
@@ -821,6 +822,7 @@
         <div class="letter-sig-name">${esc(author.name)}<br>${esc(author.title)}</div>
       </div>
       <div class="letter-cc">cc: ${ccHtml || '<em style="color:#aaa;">(none)</em>'}</div>
+      </div>
     `;
     const wrap = window.SOSLetterExport && SOSLetterExport.wrapLetterPages;
     document.getElementById('letter-doc').innerHTML = wrap

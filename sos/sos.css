@@ -605,11 +605,21 @@
     border-top: 1px solid #ccc;
     margin: 14px 0;
   }
+  .letter-closing {
+    page-break-inside: avoid;
+    break-inside: avoid;
+  }
+  .letter-questions {
+    page-break-after: avoid;
+    break-after: avoid-page;
+  }
   .letter-sig {
-    margin-top: 28px;
+    margin-top: 16px;
     padding-bottom: 10px;
     page-break-inside: avoid;
     break-inside: avoid;
+    page-break-before: avoid;
+    break-before: avoid-page;
   }
   .letter-sig-row {
     display: flex;
@@ -1049,6 +1059,12 @@
       box-shadow: inset 0 0 0 9999px #ffff80 !important;
     }
     .letter-print-pages > tfoot { display: table-footer-group; }
+    .letter-closing {
+      display: table;
+      width: 100%;
+      page-break-inside: avoid;
+      break-inside: avoid;
+    }
     .letter-official-footer,
     .letter-page-footer {
       position: static;

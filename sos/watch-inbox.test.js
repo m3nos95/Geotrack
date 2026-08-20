@@ -87,6 +87,8 @@ assert.ok(/Materials Engineer/.test(customHtml));
 assert.ok(/302-760-2583/.test(customHtml));
 assert.ok(/Digitally signed by/.test(customHtml));
 assert.ok(!/Steven Peretiatko/.test(customHtml));
+assert.ok(/class="letter-closing"/.test(customHtml), 'questions + sincerely share one closing block');
+assert.ok(/letter-closing[\s\S]*If you have any questions[\s\S]*Sincerely,/.test(customHtml));
 assert.ok(/REVIEW/.test(html));
 const review = fs.readFileSync(path.join(written.dest, 'REVIEW.txt'), 'utf8');
 assert.ok(/blank/i.test(review));
