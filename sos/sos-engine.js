@@ -889,7 +889,7 @@
           return { action: 'test', notes: who + ACTION_TEXT.test, date: '', highlight: true };
         };
         const p = part(primary, item.altName ? (item.srcName || 'Primary') : '');
-        const a = altHit ? part(altHit, item.altName) : null;
+        const a = item.altName ? part(altHit, item.altName) : null;
         const parts = a ? [p, a] : [p];
         if (parts.some(x => x.action === 'not-approved') && !parts.some(x => x.action === 'approved' || x.action === 'test')) {
           action = 'not-approved';
@@ -903,7 +903,8 @@
         highlight = parts.some(x => x.highlight);
         actionNotes = parts.map(x => x.notes).join('\n');
         if (action === 'test') actionNotes = actionNotes + '\n' + testCoordinationNotes(project.district, lists);
-        testDate = p.date || (a && a.date) || testDate;
+        testDate = p.date || testDate;
+        if (a && a.date) item.altTestDate = a.date;
         rule = 'aggregate-chart';
         Object.assign(item, chartSourceFill(item, primary));
       } else if (item.testDate) {
@@ -1274,6 +1275,14 @@
     return d.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
   }
 
+  function prettyTestedDate(t) {
+    if (!t) return '';
+    if (/^\d{4}-\d{2}-\d{2}$/.test(t)) {
+      return t.slice(5, 7).replace(/^0/, '') + '.' + t.slice(8).replace(/^0/, '') + '.' + t.slice(2, 4);
+    }
+    return t;
+  }
+
   function sourceLine(item) {
     let line = item.srcName || '';
     const useAddr = (item.family === 'borrow' || item.family === 'aggregate') && item.srcAddr;
@@ -1283,14 +1292,13 @@
       line += (line ? ' - ' : '') + item.srcLoc;
     }
     if (item.testDate) {
-      const t = item.testDate;
-      const pretty = /^\d{4}-\d{2}-\d{2}$/.test(t)
-        ? t.slice(5, 7).replace(/^0/, '') + '.' + t.slice(8).replace(/^0/, '') + '.' + t.slice(2, 4)
-        : t;
-      line += ` (tested ${pretty})`;
+      line += ` (tested ${prettyTestedDate(item.testDate)})`;
     }
     if (item.altName) {
       line += '\nAlt: ' + item.altName + (item.altLoc ? ' - ' + item.altLoc : '');
+      if (item.altTestDate) {
+        line += ` (tested ${prettyTestedDate(item.altTestDate)})`;
+      }
     }
     return line;
   }

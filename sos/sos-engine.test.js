@@ -374,6 +374,30 @@ assert.ok(/Principio/i.test(cbf.srcName));
 assert.ok(/Approved for use/.test(cbf.actionNotes));
 assert.ok(!/conforms to the requirements/i.test(cbf.actionNotes));
 
+// Alternate source is looked up on the chart (York Building Products / Port Deposit = York-Principio)
+const whitehallChart = {
+  kind: 'aggregate',
+  entries: [
+    { name: 'Eastbay Aggregate', source: 'York', loc: '', material: 'GABC', status: 'approved', testDate: '2026-07-27' },
+    { name: 'Diamond Materials - Harrington', source: 'York Principio', loc: 'Harrington', material: 'GABC', status: 'approved', testDate: '2026-07-31' },
+    { name: 'Diamond Materials - Harrington', source: 'York Principio', loc: 'Harrington', material: '#57', status: 'rejected', testDate: '' },
+    { name: 'York - Principio', source: '', loc: 'Principio', material: 'GABC', status: 'approved', testDate: '2026-06-29' },
+    { name: 'Martin Marietta', source: '', loc: '', material: 'GABC', status: 'approved', testDate: '2026-06-15' },
+  ],
+};
+const whitehallGabc = Engine.processGrid(gridFromObjects(FREY_HEADER, [[
+  ['', 301003.0, 'GABC • Granite Gneiss', '', 'GABC', '', '', 'Martin Marietta', 'York Building Products'],
+  ['', '', '', '', '', '', '', 'North East, MD', 'Port Deposit, MD'],
+]]), { lists: { aggregate: whitehallChart } }).items.find(i => i.family === 'aggregate');
+assert.strictEqual(whitehallGabc.action, 'approved');
+assert.strictEqual(whitehallGabc.rule, 'aggregate-chart');
+assert.ok(/York Building Products/i.test(whitehallGabc.altName));
+assert.strictEqual(whitehallGabc.altTestDate, '2026-06-29');
+assert.ok(/Martin Marietta Approved for use/.test(whitehallGabc.actionNotes.replace(/\n/g, ' ')));
+assert.ok(/York Building Products Approved for use/.test(whitehallGabc.actionNotes.replace(/\n/g, ' ')));
+assert.ok(!/Must be tested/i.test(whitehallGabc.actionNotes));
+assert.ok(/tested 6\.29\.26/.test(Engine.sourceLine(whitehallGabc)));
+
 // Storm conveyance / 601012 is RCP, not HDPE
 const rcpPipe = Engine.processGrid(gridFromObjects(FREY_HEADER, [[
   ['', 601012.0, 'STORM CONVEYANCE PIPE', '', 'RCP 18"', 'Heritage Concrete', '', 'Middletown, DE', ''],

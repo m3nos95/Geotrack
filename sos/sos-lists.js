@@ -71,14 +71,44 @@
     return false;
   }
 
+  function locCity(s) {
+    return squeeze(s).toLowerCase()
+      .replace(/,/g, ' ')
+      .replace(/\s+[a-z]{2}\b(\s+\d{5})?$/i, '')
+      .replace(/[^a-z]+/g, ' ')
+      .trim();
+  }
+
+  // Known quarry / plant names that contractors write differently than the chart.
+  const LOC_EQUIV = [
+    ['principio', 'port deposit', 'portdeposit'],
+  ];
+
+  function locCanon(s) {
+    return locCity(s).replace(/\bport deposit\b/g, 'portdeposit');
+  }
+
+  function locsEquivalent(a, b) {
+    const x = locCanon(a);
+    const y = locCanon(b);
+    if (!x || !y) return false;
+    for (const group of LOC_EQUIV) {
+      const hit = (t) => group.some(g => t === g || t.includes(g));
+      if (hit(x) && hit(y)) return true;
+    }
+    return false;
+  }
+
   function locMatch(a, b) {
     const x = squeeze(a).toLowerCase();
     const y = squeeze(b).toLowerCase();
     if (!x || !y) return true;
-    const city = (s) => s.replace(/,/g, ' ').replace(/\s+[a-z]{2}\b(\s+\d{5})?$/i, '').replace(/[^a-z]+/g, ' ').trim();
-    const cx = city(x);
-    const cy = city(y);
-    if (cx && cy) return cx === cy || cx.includes(cy) || cy.includes(cx);
+    const cx = locCity(x);
+    const cy = locCity(y);
+    if (cx && cy) {
+      if (cx === cy || cx.includes(cy) || cy.includes(cx)) return true;
+      if (locsEquivalent(cx, cy)) return true;
+    }
     return x.includes(y) || y.includes(x);
   }
 
@@ -454,22 +484,88 @@
     };
   }
 
-  function producerHitsChart(entry, name, loc) {
-    if (nameMatch(entry.name, name) || nameMatch(entry.source, name)) return true;
-    if (loc && (nameMatch(entry.name, loc) || nameMatch(entry.loc, loc))) return true;
-    const hay = foldName([entry.name, entry.source, entry.loc].filter(Boolean).join(' '));
+  function chartBlob(entry) {
+    return foldName([entry && entry.name, entry && entry.source, entry && entry.loc].filter(Boolean).join(' '));
+  }
+
+  // Chart source cells are often a short quarry tag ("York"). Do not treat that
+  // as a hit on a longer contractor name ("York Building Products").
+  function producerNameMatch(chartSide, formSide) {
+    if (!nameMatch(chartSide, formSide)) return false;
+    const c = foldName(chartSide);
+    const f = foldName(formSide);
+    const cw = c.split(' ').filter(w => w.length > 2);
+    const fw = f.split(' ').filter(w => w.length > 2);
+    if (cw.length === 1 && fw.length >= 2 && fw.includes(cw[0])) return false;
+    return true;
+  }
+
+  function formLooksLikeYorkBuilding(name) {
     const n = foldName(name);
-    const l = foldName(loc);
+    return /\byork\b/.test(n) && /\bbuilding\b/.test(n);
+  }
+
+  function formPointsAtPrincipio(name, loc) {
+    const blob = locCanon([name, loc].filter(Boolean).join(' '));
+    return /\b(principio|portdeposit)\b/.test(blob);
+  }
+
+  function chartHasPrincipio(entry) {
+    return /\bprincipio\b/.test(chartBlob(entry));
+  }
+
+  function isYorkPrincipioPair(entry, name, loc) {
+    if (!chartHasPrincipio(entry)) return false;
+    const york = /\byork\b/.test(foldName(name));
+    if (!york) return false;
+    if (formPointsAtPrincipio(name, loc)) return true;
+    if (formLooksLikeYorkBuilding(name) && !loc) return true;
+    return false;
+  }
+
+  function producerHitsChart(entry, name, loc) {
+    if (isYorkPrincipioPair(entry, name, loc)) return true;
+    if (producerNameMatch(entry.name, name) || producerNameMatch(entry.source, name)) return true;
+    if (loc && (nameMatch(entry.name, loc) || nameMatch(entry.loc, loc) || locsEquivalent(entry.loc, loc))) return true;
+    const hay = chartBlob(entry);
+    const n = foldName(name);
+    const l = locCanon(loc);
     if (!n || !hay) return false;
     const nWords = n.split(' ').filter(w => w.length > 2);
     const haySet = new Set(hay.split(' ').filter(w => w.length > 2));
     const nameHits = nWords.filter(w => haySet.has(w) || hay.includes(w));
     if (l) {
       const lWords = l.split(' ').filter(w => w.length > 2);
-      const locHits = lWords.filter(w => haySet.has(w) || hay.includes(w));
+      const locHits = lWords.filter(w => haySet.has(w) || hay.includes(w) || locsEquivalent(l, hay));
       if (nameHits.length && locHits.length) return true;
     }
     return nameHits.length >= 2;
+  }
+
+  function chartLocHits(entry, name, loc) {
+    if (!loc) return true;
+    if (isYorkPrincipioPair(entry, name, loc)) return true;
+    if (entry.loc && locMatch(entry.loc, loc)) return true;
+    if (nameMatch(entry.name, loc) || locsEquivalent(entry.name, loc)) return true;
+    const city = locCanon(loc);
+    if (city.length >= 4 && (foldName(entry.name).includes(city) || foldName(entry.loc).includes(city))) return true;
+    return false;
+  }
+
+  function chartHitScore(entry, name, loc) {
+    let score = 0;
+    if (producerNameMatch(entry.name, name)) score += 20;
+    if (producerNameMatch(entry.source, name)) score += 8;
+    if (isYorkPrincipioPair(entry, name, loc)) {
+      score += 40;
+      const stockpile = foldName(entry.name);
+      const form = locCanon([name, loc].filter(Boolean).join(' '));
+      if (/\bprincipio\b/.test(stockpile) && !entry.source) score += 25;
+      if (/\bharrington\b/.test(stockpile) && !/\bharrington\b/.test(form)) score -= 20;
+    }
+    if (loc && entry.loc && (locMatch(entry.loc, loc) || locsEquivalent(entry.loc, loc))) score += 15;
+    if (loc && !entry.loc) score -= 8;
+    return score;
   }
 
   function lookupAggregate(chart, name, loc, material) {
@@ -477,7 +573,7 @@
     if (!entries.length) return { found: false };
     let hits = entries.filter(e => producerHitsChart(e, name, loc));
     if (!hits.length) return { found: false };
-    const locHits = loc ? hits.filter(e => locMatch(e.loc, loc) || nameMatch(e.name, loc) || foldName(e.name).includes(foldName(loc).split(' ')[0] || '')) : hits;
+    const locHits = loc ? hits.filter(e => chartLocHits(e, name, loc)) : hits;
     if (loc && locHits.length) hits = locHits;
     const kind = materialKind(material);
     const matHits = material ? hits.filter(e => materialMatch(e.material, material)) : hits;
@@ -487,6 +583,8 @@
     }
     const rank = { approved: 3, pending: 1, expired: 0, rejected: -1 };
     hits = [...hits].sort((a, b) => {
+      const sd = chartHitScore(b, name, loc) - chartHitScore(a, name, loc);
+      if (sd) return sd;
       const rd = (rank[b.status] || 0) - (rank[a.status] || 0);
       if (rd) return rd;
       return String(b.testDate || '').localeCompare(String(a.testDate || ''));

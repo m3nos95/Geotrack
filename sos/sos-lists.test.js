@@ -151,6 +151,50 @@ const cbfHit = Lists.lookupAggregate(cbfLiteChart, '', 'Harrington DE', 'CHANNEL
 assert.strictEqual(cbfHit.status, 'approved');
 assert.strictEqual(cbfHit.row.material, 'CBF Light');
 
+const yorkChart = {
+  kind: 'aggregate',
+  format: 'approved-source-list',
+  entries: [
+    { name: 'Eastbay Aggregate', source: 'York', loc: '', material: 'GABC', status: 'approved', testDate: '2026-07-27' },
+    { name: 'Eastbay Aggregate', source: 'York', loc: '', material: '#57', status: 'rejected', testDate: '' },
+    { name: 'Diamond Materials - Harrington', source: 'York Principio', loc: 'Harrington', material: 'GABC', status: 'approved', testDate: '2026-07-31' },
+    { name: 'Diamond Materials - Harrington', source: 'York Principio', loc: 'Harrington', material: '#57', status: 'rejected', testDate: '', notes: 'failed 1st' },
+    { name: 'York - Principio', source: '', loc: 'Principio', material: 'GABC', status: 'approved', testDate: '2026-06-29' },
+    { name: 'York - Principio', source: '', loc: 'Principio', material: '#57', status: 'approved', testDate: '2026-07-15' },
+    { name: 'Martin Marietta', source: '', loc: '', material: 'GABC', status: 'approved', testDate: '2026-06-15' },
+    { name: 'Contractors Materials', source: 'Martin Marietta', loc: '', material: 'GABC', status: 'approved', testDate: '2026-07-14' },
+  ],
+};
+const ybpGabc = Lists.lookupAggregate(yorkChart, 'York Building Products', 'Port Deposit MD', 'GABC • Granite Gneiss');
+assert.ok(ybpGabc.found, 'York Building Products / Port Deposit must hit the chart');
+assert.strictEqual(ybpGabc.status, 'approved');
+assert.strictEqual(ybpGabc.row.name, 'York - Principio');
+assert.strictEqual(ybpGabc.row.material, 'GABC');
+assert.strictEqual(ybpGabc.testDate, '2026-06-29');
+assert.ok(!/eastbay/i.test(ybpGabc.row.name), 'do not treat Eastbay source tag York as York Building Products');
+const ybp57 = Lists.lookupAggregate(yorkChart, 'York Building Products', 'Port Deposit MD', '#57');
+assert.strictEqual(ybp57.status, 'approved', 'GABC granite must not inherit Harrington #57 fail');
+assert.strictEqual(ybp57.row.name, 'York - Principio');
+const ybpHarrington = Lists.lookupAggregate(yorkChart, 'York Building Products', 'Harrington DE', 'GABC');
+assert.strictEqual(ybpHarrington.row.name, 'Diamond Materials - Harrington');
+assert.ok(Lists.lookupAggregate(yorkChart, 'Eastbay Aggregate', '', 'GABC').found);
+
+const yorkGrid = gridFrom(header, [[
+  ['', 301003.0, 'GABC • Granite Gneiss', '', 'GABC', 'Martin Marietta', '', 'North East, MD', 'York Building Products'],
+  ['', '', '', '', '', '', '', '', 'Port Deposit, MD'],
+]]);
+const yorkItem = Engine.processGrid(yorkGrid, { lists: { aggregate: yorkChart } }).items.find(i => i.family === 'aggregate');
+assert.strictEqual(yorkItem.action, 'approved');
+assert.ok(/York Building Products/i.test(yorkItem.altName));
+assert.ok(/Port Deposit/i.test(yorkItem.altLoc));
+assert.strictEqual(yorkItem.altTestDate, '2026-06-29');
+assert.ok(/Approved for use/.test(yorkItem.actionNotes));
+assert.ok(/York Building Products Approved for use/.test(yorkItem.actionNotes.replace(/\n/g, ' ')));
+assert.ok(!/Must be tested/i.test(yorkItem.actionNotes));
+const yorkSrc = Engine.sourceLine(yorkItem);
+assert.ok(/Alt: York Building Products - Port Deposit/i.test(yorkSrc));
+assert.ok(/tested 6\.29\.26/.test(yorkSrc), 'alt SOURCE line prints the chart test date, got: ' + yorkSrc);
+
 const elkGrid = gridFrom(header, [[
   ['', 301001.0, 'GABC', '', 'GABC', 'Allan Myers', '', 'Elk Mills, MD', ''],
 ]]);
@@ -261,4 +305,17 @@ assert.strictEqual(withLang.language.kind, 'issued-language');
 assert.ok(withLang.language.bySpec['#202888']);
 assert.ok(/Issued language 1 specs/.test(Lists.summary(withLang)));
 console.log('OK issued-language harvest merge');
+
+try {
+  const liveChart = require('./lists/aggregate-snapshot.json');
+  const liveYbp = Lists.lookupAggregate(liveChart, 'York Building Products', 'Port Deposit MD', 'GABC');
+  assert.ok(liveYbp.found, 'live chart should list York Principio GABC');
+  assert.ok(/principio/i.test((liveYbp.row.name || '') + ' ' + (liveYbp.row.source || '')));
+  assert.ok(!/eastbay/i.test(liveYbp.row.name));
+  assert.strictEqual(liveYbp.status, 'approved');
+  console.log('OK live aggregate snapshot York Principio');
+} catch (err) {
+  if (err && err.code === 'MODULE_NOT_FOUND') console.log('skip live aggregate snapshot');
+  else throw err;
+}
 
