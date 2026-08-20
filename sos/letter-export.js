@@ -58,7 +58,7 @@ body { font-family: 'Times New Roman', serif; font-size: 11pt; line-height: 1.55
 .letter-row { display: grid; grid-template-columns: 72pt 1fr; gap: 6pt; margin-bottom: 3pt; page-break-inside: avoid; }
 .letter-field-label { font-weight: 700; text-decoration: underline; }
 hr, hr.letter-divider { border: none; border-top: 1px solid #ccc; margin: 14pt 0; }
-.letter-sig { margin-top: 24pt; page-break-inside: avoid; }
+.letter-sig { margin-top: 24pt; padding-bottom: 10pt; page-break-inside: avoid; break-inside: avoid; }
 .letter-sig-row { display: flex; align-items: flex-end; gap: 16pt; margin: 8pt 0 0; }
 .letter-sig-img { height: 0.58in; width: auto; max-width: 2.15in; display: block; object-fit: contain; }
 .letter-sig-digital { font-family: Helvetica, Arial, sans-serif; font-size: 7.5pt; line-height: 1.2; color: #111; }

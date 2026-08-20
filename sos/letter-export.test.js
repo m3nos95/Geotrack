@@ -7,6 +7,7 @@ assert.ok(/user-highlight/.test(Export.printLetterCss()), 'print CSS styles user
 assert.ok(/print-color-adjust:\s*exact/.test(Export.printLetterCss()), 'print CSS forces highlight colors');
 assert.ok(/box-shadow:\s*inset/.test(Export.printLetterCss()), 'print CSS keeps yellow when Background graphics is off');
 assert.ok(/position:\s*fixed/.test(Export.printLetterCss()), 'print CSS still pins the DelDOT logo');
+assert.ok(/padding-bottom:\s*10pt/.test(Export.printLetterCss()), 'print CSS leaves room under the signature');
 
 assert.ok(/user-highlight/.test(letterCss()), 'letter-render print CSS includes highlights');
 assert.ok(/print-color-adjust/.test(letterCss()));

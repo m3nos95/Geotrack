@@ -41,18 +41,24 @@
     color: white;
     display: flex;
     align-items: center;
-    gap: 16px;
-    padding: 0 20px;
+    gap: 12px;
+    padding: 0 20px 0 0;
     height: 48px;
     border-bottom: 3px solid var(--accent);
   }
   .topbar-logo {
-    font-family: var(--mono);
-    font-size: 11px;
-    font-weight: 600;
-    letter-spacing: 0.12em;
-    text-transform: uppercase;
-    opacity: 0.9;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 56px;
+    height: 48px;
+    flex-shrink: 0;
+    border-right: 1px solid rgba(255,255,255,0.2);
+  }
+  .topbar-logo img {
+    height: 36px;
+    width: auto;
+    display: block;
   }
   .topbar-sep { width: 1px; height: 24px; background: rgba(255,255,255,0.2); }
   .topbar-title {
@@ -515,19 +521,21 @@
   .letter-panel-header {
     background: var(--surface);
     border-bottom: 1px solid var(--border);
-    padding: 10px 14px;
+    padding: 8px 10px;
     display: flex;
     align-items: center;
-    gap: 8px;
+    justify-content: flex-end;
+    flex-wrap: wrap;
+    gap: 6px;
   }
-  .letter-panel-title {
+  .letter-preview-label {
     font-family: var(--mono);
     font-size: 10px;
     font-weight: 600;
     letter-spacing: 0.12em;
     text-transform: uppercase;
     color: var(--text-mid);
-    flex: 1;
+    margin: 0 0 8px 2px;
   }
   .letter-scroll {
     flex: 1;
@@ -539,7 +547,7 @@
   .letter-doc {
     background: white;
     box-shadow: var(--shadow-md);
-    padding: 18px 28px 20px;
+    padding: 18px 28px 52px;
     font-family: 'Times New Roman', serif;
     font-size: 11px;
     line-height: 1.55;
@@ -595,7 +603,12 @@
     border-top: 1px solid #ccc;
     margin: 14px 0;
   }
-  .letter-sig { margin-top: 28px; }
+  .letter-sig {
+    margin-top: 28px;
+    padding-bottom: 10px;
+    page-break-inside: avoid;
+    break-inside: avoid;
+  }
   .letter-sig-row {
     display: flex;
     align-items: flex-end;
@@ -994,7 +1007,7 @@
   }
   .topbar-links a:hover { text-decoration: underline; }
   @media print {
-    .topbar, .project-header, .main-panel, .letter-panel-header { display: none !important; }
+    .topbar, .project-header, .main-panel, .letter-panel-header, .letter-preview-label { display: none !important; }
     .shell { display: block; height: auto; }
     .letter-panel { border: none; }
     .letter-scroll { overflow: visible; padding: 0; }
