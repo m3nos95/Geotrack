@@ -708,6 +708,78 @@ assert.ok(millings, 'RAP millings parsed');
 assert.strictEqual(millings.family, 'aggregate');
 assert.strictEqual(millings.action, 'test');
 
+// Compact GABC + RAP + topsoil share one plant block with no blank row.
+// Issued Kirkwood letters keep three SECTIONs (crushed concrete vs RAP vs visual topsoil).
+const kirkwoodStone = compactCover({
+  contract: 'T202506101',
+  title: 'Pave & Rehab, New Castle 5A, Kirkwood Highway',
+  contractor: 'Greggo & Ferrara, Inc.',
+  district: 'North',
+}).concat([
+  [301001, 'GABC', 'GABC - Crushed Concrete', 'Contractor Materials', 'Contractor Materials', 'Diamond Materials'],
+  [301008, 'Recycled Asphalt Pavement', 'Millings', 'Wilmington Crusher Plant', '925 South Heald Street', '924 S. Heald Street'],
+  [908004, 'Topsoil 6"', 'Topsoil', '', 'Wilmington, DE 19801', 'Wilmington, DE 19801'],
+  ['', '', '', '', '302-654-5241', '302-658-6524'],
+]);
+const kirkwood = Engine.processGrid(kirkwoodStone, { filename: 'SOS T202506101 Kirkwood Highway.xls' });
+const kirkwoodGabc = kirkwood.items.find(i => (i.letterSpecs || i.specs).join() === '#301001');
+const kirkwoodRap = kirkwood.items.find(i => (i.letterSpecs || i.specs).join() === '#301008');
+const kirkwoodTop = kirkwood.items.find(i => (i.letterSpecs || i.specs).join() === '#908004');
+assert.ok(kirkwoodGabc, 'GABC #301001 is its own letter item');
+assert.ok(kirkwoodRap, 'RAP #301008 is its own letter item');
+assert.ok(kirkwoodTop, 'topsoil #908004 is its own letter item');
+assert.strictEqual(kirkwoodGabc.family, 'aggregate');
+assert.ok(/CRUSHED CONCRETE/i.test(kirkwoodGabc.desc), kirkwoodGabc.desc);
+assert.ok(!/#301008|#908004/.test((kirkwoodGabc.letterSpecs || kirkwoodGabc.specs).join()), 'GABC is not lumped with RAP/topsoil');
+assert.strictEqual(kirkwoodRap.family, 'aggregate');
+assert.ok(/RECYCLED ASPHALT PAVEMENT/i.test(kirkwoodRap.desc), kirkwoodRap.desc);
+assert.ok(!/CRUSHED CONCRETE/i.test(kirkwoodRap.desc));
+assert.strictEqual(kirkwoodTop.family, 'topsoil');
+assert.strictEqual(kirkwoodTop.action, 'visual');
+assert.ok(/visual inspection/i.test(kirkwoodTop.actionNotes));
+[kirkwoodGabc, kirkwoodRap, kirkwoodTop].forEach((it) => {
+  assert.ok(/Contractor Materials/i.test(it.srcName), it.srcName);
+  assert.ok(/Wilmington/i.test(it.srcLoc), it.srcLoc);
+  assert.ok(/Diamond Materials/i.test(it.altName), it.altName);
+  assert.ok(/Heald/i.test(Engine.sourceLine(it)), Engine.sourceLine(it));
+});
+const kirkwoodLetter = Engine.letterPlainText(kirkwood.project, kirkwood.items, kirkwood.cc);
+assert.ok(/SECTION: #301001 - GABC \(CRUSHED CONCRETE\)/.test(kirkwoodLetter), kirkwoodLetter);
+assert.ok(/SECTION: #301008 - RECYCLED ASPHALT PAVEMENT/.test(kirkwoodLetter), kirkwoodLetter);
+assert.ok(/SECTION: #908004 - TOPSOIL, 6" DEPTH/.test(kirkwoodLetter), kirkwoodLetter);
+const gabcHeading = (kirkwoodLetter.split('SECTION:').find(s => s.includes('#301001')) || '').split('\n')[0];
+assert.ok(!/#301008|#908004/.test(gabcHeading), gabcHeading);
+
+// Superpave Type C + Type B in one compact plant block still group.
+const compactSuperpavePair = compactCover().concat([
+  [401005, 'Superpave Type C, PG 64-22', 'Superpave Type C', 'River Asphalt, LLC', 'River Asphalt, LLC', 'River Asphalt, LLC'],
+  [401014, 'Superpave Type B, PG 64-22', 'Superpave Type B', '', '30548 Thorogoods Rd.', '36393 Sussex Highway'],
+  ['', '', '', '', 'Dagsboro, DE 19939', 'Delmar, DE 19940'],
+  ['', '', '', '', '302-934-0881', '302-907-6400'],
+]);
+const compactPair = Engine.processGrid(compactSuperpavePair);
+const compactHmaPair = compactPair.items.filter(i => i.family === 'hma-mix');
+assert.strictEqual(compactHmaPair.length, 1, 'Type C + Type B from one plant stay one SECTION');
+assert.ok(compactHmaPair[0].specs.includes('#401005') && compactHmaPair[0].specs.includes('#401014'));
+
+const liveKirkwood = '/home/ubuntu/.cursor/projects/workspace/uploads/SOS_T202506101_Kirkwood_Highway_6-24-26_Corrected_2bb6.xls';
+if (fs.existsSync(liveKirkwood)) {
+  let XLSX;
+  try { XLSX = require('xlsx'); } catch (e) { XLSX = null; }
+  if (XLSX) {
+    const wb = XLSX.readFile(liveKirkwood);
+    const live = Engine.processWorkbook(wb, { filename: path.basename(liveKirkwood) });
+    const gabc = live.items.find(i => (i.letterSpecs || i.specs).join() === '#301001');
+    const rap = live.items.find(i => (i.letterSpecs || i.specs).join() === '#301008');
+    const top = live.items.find(i => (i.letterSpecs || i.specs).join() === '#908004');
+    assert.ok(gabc && rap && top, 'live Kirkwood xls splits GABC / RAP / topsoil');
+    assert.ok(/CRUSHED CONCRETE/i.test(gabc.desc));
+    assert.strictEqual(top.family, 'topsoil');
+    assert.strictEqual(top.action, 'visual');
+    console.log('live Kirkwood items:', live.items.map(i => `${(i.letterSpecs||i.specs).join('/')} ${i.family} ${i.action} ${i.srcName}`).join(' | '));
+  }
+}
+
 const tieSheet = compactCover().concat([
   ['', '', '', '', 'RE-STEEL SUPPLY, CO., INC', ''],
   [503002, "PATCHING PCC PAV'T, 15' TO 100'", '#5 TIE BARS', 'RE-STEEL SUPPLY', '2000 INDUSTRIAL HIGHWAY', ''],

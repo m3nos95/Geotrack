@@ -1764,6 +1764,7 @@
     '#301002': { desc: 'GABC, PATCHING', family: 'aggregate', tags: ['GABC'] },
     '#301003': { desc: 'GABC', family: 'aggregate', tags: ['GABC'] },
     '#301007': { desc: 'RECYCLED CONCRETE AGGREGATE', family: 'aggregate', tags: ['GABC'] },
+    '#301008': { desc: 'RECYCLED ASPHALT PAVEMENT', family: 'aggregate', tags: ['RAP'] },
     '#302002': { desc: 'DELAWARE NO. 3 STONE', family: 'aggregate', tags: ['Stone'] },
     '#302005': { desc: 'DELAWARE NO. 57 STONE', family: 'aggregate', tags: ['Stone'] },
     '#401005': { desc: 'SUPERPAVE TYPE C, 9.5 mm, PG 64-22 (CARBONATE STONE)', family: 'hma-mix', tags: ['Asphalt'] },

@@ -377,6 +377,33 @@
     const items = [];
     let current = null;
 
+    const addSpecEntry = (row) => {
+      if (!current) return;
+      const specCell = specCellFromRow(row, cols);
+      const specs = specCell ? extractSpecs(specCell) : [];
+      if (!specs.length) return;
+      const desc = cellStr(row[cols.desc]);
+      const material = cellStr(row[cols.material]);
+      const specDescs = {};
+      if (desc) specs.forEach(s => { specDescs[s] = desc; });
+      current.specEntries.push({
+        specs,
+        desc,
+        material,
+        materialLines: material ? [material] : [],
+        specDescs,
+      });
+    };
+
+    const appendToLastSpec = (row) => {
+      const last = current && current.specEntries && current.specEntries[current.specEntries.length - 1];
+      if (!last) return;
+      const mat = cellStr(row[cols.material]);
+      const desc = cellStr(row[cols.desc]);
+      if (mat) last.materialLines.push(mat);
+      if (desc && !last.desc) last.desc = desc;
+    };
+
     const startItem = (row, inherit) => {
       const specCell = specCellFromRow(row, cols);
       const contactContinues = (val) => {
@@ -401,8 +428,10 @@
         mfgLines: take(cols.mfg, inherit && inherit.mfgLines),
         altLines: take(cols.alt, inherit && inherit.altLines),
         specDescs: {},
+        specEntries: [],
       };
       noteRowSpecDescs(current, row, cols);
+      addSpecEntry(row);
     };
 
     const flush = () => {
@@ -419,21 +448,15 @@
         alt.name = '';
       }
 
-      const materialLines = [...new Set(current.materialLines.map(cellStr).filter(Boolean))];
-      const desc = current.descLines.map(cellStr).filter(Boolean).join(' ').replace(/\s+/g, ' ').trim();
+      const allMaterialLines = [...new Set(current.materialLines.map(cellStr).filter(Boolean))];
+      const joinedDesc = current.descLines.map(cellStr).filter(Boolean).join(' ').replace(/\s+/g, ' ').trim();
       const genericMaterial = /^(hot applied|sealant|tack coat|gabc|crusher run|graded aggregate)/i;
       const productish = (s) => /\d/.test(s) || (!genericMaterial.test(s) && s.length < 48);
-      const preferredMaterial = [...materialLines].reverse().find(productish) || materialLines[materialLines.length - 1] || desc;
-      const subItems = materialLines.filter(s => s.toLowerCase() !== desc.toLowerCase());
+      const preferredFrom = (lines, fallback) =>
+        [...lines].reverse().find(productish) || lines[lines.length - 1] || fallback;
       const primaryName = mfg.name || sup.name;
       const altName = alt.name || (!alt.addr && !alt.loc ? '' : '');
-
-      items.push({
-        specs: current.specs,
-        desc,
-        material: preferredMaterial,
-        subItems,
-        // producer (mfg) vs distributor (supplier)
+      const contact = {
         supplierName: sup.name,
         supplierLoc: sup.loc,
         supplierAddr: sup.addr,
@@ -451,8 +474,37 @@
         srcAddr: mfg.addr || sup.addr,
         srcPhone: mfg.phone || sup.phone,
         altName: altName || (alt.loc || alt.addr ? (mfg.name || sup.name) : ''),
-        specDescs: current.specDescs || {},
-        raw: current,
+      };
+
+      // Compact contractor lists often stack GABC / RAP / topsoil (or Superpave C then B)
+      // in one contact block with no blank row. Keep collecting until the plant city/phone
+      // arrives, then emit one item per spec so each SECTION keeps its own ACTION.
+      const entries = (current.specEntries && current.specEntries.length)
+        ? current.specEntries
+        : [{
+          specs: current.specs,
+          desc: joinedDesc,
+          material: preferredFrom(allMaterialLines, joinedDesc),
+          specDescs: current.specDescs || {},
+        }];
+
+      entries.forEach((entry) => {
+        const desc = (entry.desc || joinedDesc).replace(/\s+/g, ' ').trim();
+        const materialLines = (entry.materialLines && entry.materialLines.length)
+          ? [...new Set(entry.materialLines.map(cellStr).filter(Boolean))]
+          : (entry.material ? [...new Set([entry.material].filter(Boolean))] : allMaterialLines);
+        const preferredMaterial = preferredFrom(materialLines, desc);
+        const subItems = materialLines.filter(s => s.toLowerCase() !== desc.toLowerCase());
+        items.push({
+          specs: (entry.specs && entry.specs.length) ? entry.specs : current.specs,
+          desc,
+          material: preferredMaterial,
+          subItems,
+          // producer (mfg) vs distributor (supplier)
+          ...contact,
+          specDescs: Object.assign({}, current.specDescs || {}, entry.specDescs || {}),
+          raw: current,
+        });
       });
       current = null;
     };
@@ -483,7 +535,12 @@
         startItem(row, inherit);
         continue;
       }
-      if (specCell) current.specs = [...new Set([...current.specs, ...extractSpecs(specCell)])];
+      if (specCell) {
+        current.specs = [...new Set([...current.specs, ...extractSpecs(specCell)])];
+        addSpecEntry(row);
+      } else {
+        appendToLastSpec(row);
+      }
       noteRowSpecDescs(current, row, cols);
       pushLine(current.descLines, row[cols.desc]);
       pushLine(current.materialLines, row[cols.material]);
@@ -726,6 +783,12 @@
     subItems = subItems.filter(s => s && s.toLowerCase() !== sectionDesc.toLowerCase());
     if (['rcp', 'precast', 'pcc', 'aggregate'].includes(family)) {
       subItems = subItems.filter(s => !isGenericMaterialBullet(s));
+    }
+    if (family === 'aggregate') {
+      subItems = subItems.filter(s => !/^(gabc(\s*[-–]\s*crushed concrete)?|millings|crushed concrete|recycled asphalt pavement)$/i.test(s));
+    }
+    if (family === 'topsoil') {
+      subItems = subItems.filter(s => !/^topsoil\b/i.test(s));
     }
     const specDescs = Object.assign({}, item.specDescs || {});
     (item.specs || []).forEach(s => {
@@ -1130,6 +1193,9 @@
   function canGroup(a, b) {
     if (a.family !== b.family) return false;
     if (['tack', 'crack-seal', 'apl-product'].includes(a.family)) return false;
+    // Soil/stone items from the same plant still get their own SECTION + ACTION
+    // (GABC vs RAP vs topsoil). Superpave / RCP / PCC sizes still group.
+    if (['aggregate', 'borrow', 'topsoil', 'landscape', 'seed', 'riprap'].includes(a.family)) return false;
     if (['curing', 'expansion'].includes(a.family)) {
       const sub = (it) => (it.subItems || []).join('|').toLowerCase();
       return sourceKey(a) === sourceKey(b) && sub(a) === sub(b);
@@ -1389,7 +1455,7 @@
 
   function sourceLine(item) {
     let line = item.srcName || '';
-    const useAddr = (item.family === 'borrow' || item.family === 'aggregate') && item.srcAddr;
+    const useAddr = (item.family === 'borrow' || item.family === 'aggregate' || item.family === 'topsoil') && item.srcAddr;
     if (useAddr && item.srcLoc) {
       line += (line ? ' - ' : '') + item.srcAddr.replace(/,\s*$/, '') + ', ' + item.srcLoc;
     } else if (item.srcLoc) {
