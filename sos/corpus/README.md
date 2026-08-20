@@ -12,7 +12,7 @@ If you have thousands of issued letters and do not want to dig through email for
 
 The learner reads SECTION / SOURCE / ACTION from those PDFs. The current Approved Source List and APL still decide approved vs must-be-tested / not approved. Harvested wording fills unknown items and matches issued phrasing when the decision is the same.
 
-The first run over a large folder takes a while (each PDF is opened once).
+The first run over a large folder takes a while (each PDF is opened once). After the APL snapshot line you should see `Listed N PDFs` then `Reading PDFs 25/3000 …`. Leave the window open until it says Press any key. Then drop `SOS-language.json` on APL / Chart.
 
 ## Optional: matching contractor forms
 

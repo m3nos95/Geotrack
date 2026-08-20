@@ -100,8 +100,61 @@ function runPython(code, args) {
   return runScript(['-c', code, ...args]);
 }
 
+const pdfCache = new Map();
+
+function inspectRecord(rec) {
+  return {
+    kind: rec.kind || 'unknown',
+    appNums: rec.appNums || [],
+    project: rec.project || {},
+    itemCount: rec.itemCount || 0,
+    specs: rec.specs || [],
+    error: rec.error || '',
+  };
+}
+
 function inspectPdf(pdfPath) {
-  return JSON.parse(runScript([FORMPDF, '--inspect', pdfPath]));
+  if (pdfCache.has(pdfPath)) return inspectRecord(pdfCache.get(pdfPath));
+  const rec = JSON.parse(runScript([FORMPDF, '--inspect', pdfPath]));
+  pdfCache.set(pdfPath, rec);
+  return inspectRecord(rec);
+}
+
+function inspectPdfBatch(pdfs) {
+  const pending = [...new Set((pdfs || []).filter(p => /\.pdf$/i.test(p) && !pdfCache.has(p)))];
+  if (!pending.length) return;
+  const tmp = fs.mkdtempSync(path.join(require('os').tmpdir(), 'sos-learn-'));
+  const listFile = path.join(tmp, 'pdfs.txt');
+  const outFile = path.join(tmp, 'inspect.jsonl');
+  fs.writeFileSync(listFile, pending.join('\n'));
+  console.error('Found ' + pending.length + ' PDFs. Opening each letter — this is the slow part. Leave the window open.');
+  const r = spawnSync(PYTHON[0], PYTHON.slice(1).concat([FORMPDF, '--batch-inspect', listFile, outFile]), {
+    encoding: 'utf8',
+    maxBuffer: 32 * 1024 * 1024,
+    stdio: ['ignore', 'pipe', 'inherit'],
+    env: { ...process.env, PYTHONIOENCODING: 'utf-8', PYTHONUTF8: '1' },
+  });
+  if (r.status !== 0 || !fs.existsSync(outFile)) {
+    console.error('Batch PDF read failed; opening files one at a time.');
+    pending.forEach(p => {
+      try {
+        const rec = JSON.parse(runScript([FORMPDF, '--inspect', p]));
+        rec.text = rec.text || '';
+        pdfCache.set(p, rec);
+      } catch (e) {
+        pdfCache.set(p, { kind: 'unknown', appNums: [], error: e.message, text: '' });
+      }
+    });
+  } else {
+    fs.readFileSync(outFile, 'utf8').split('\n').forEach(line => {
+      if (!line.trim()) return;
+      try {
+        const rec = JSON.parse(line);
+        if (rec.path) pdfCache.set(rec.path, rec);
+      } catch (e) {}
+    });
+  }
+  try { fs.rmSync(tmp, { recursive: true, force: true }); } catch (e) {}
 }
 
 function parseFormPdf(pdfPath) {
@@ -136,6 +189,8 @@ function readGrid(xlsPath) {
 }
 
 function readPdf(pdfPath) {
+  const cached = pdfCache.get(pdfPath);
+  if (cached && cached.text != null && cached.text !== '') return cached.text;
   const code = `
 import sys
 from pypdf import PdfReader
@@ -145,7 +200,11 @@ for page in reader.pages:
     parts.append(page.extract_text() or '')
 print('\\f'.join(parts))
 `;
-  return runPython(code, [pdfPath]);
+  const text = runPython(code, [pdfPath]);
+  const rec = pdfCache.get(pdfPath) || { kind: 'unknown', appNums: [] };
+  rec.text = text;
+  pdfCache.set(pdfPath, rec);
+  return text;
 }
 
 function squeeze(s) {
@@ -327,11 +386,14 @@ function filenameAppIds(filename) {
 function discoverCases() {
   const cases = [];
   const inspected = {};
+  console.error('Listing PDFs and spreadsheets (OneDrive can sit here a minute)…');
   const inspectAll = (files) => {
-    files.filter(p => /\.pdf$/i.test(p)).forEach(p => {
+    const pdfs = files.filter(p => /\.pdf$/i.test(p));
+    inspectPdfBatch(pdfs);
+    pdfs.forEach(p => {
       if (inspected[p]) return;
-      try { inspected[p] = inspectPdf(p); }
-      catch (e) { inspected[p] = { kind: 'unknown', appNums: [], error: e.message }; }
+      if (pdfCache.has(p)) inspected[p] = inspectRecord(pdfCache.get(p));
+      else inspected[p] = { kind: 'unknown', appNums: [] };
     });
   };
 
@@ -359,6 +421,11 @@ function discoverCases() {
   extra.forEach(dir => {
     loose.push(...listFilesRecursive(dir, ['.xls', '.xlsx', '.pdf']));
   });
+  const pdfCount = loose.filter(p => /\.pdf$/i.test(p)).length;
+  const xlsCount = loose.filter(p => /\.xlsx?$/i.test(p)).length;
+  if (pdfCount || xlsCount) {
+    console.error('Listed ' + pdfCount + ' PDFs and ' + xlsCount + ' spreadsheets.');
+  }
 
   inspectAll(loose);
   pairLooseFiles(loose, inspected).forEach(c => {

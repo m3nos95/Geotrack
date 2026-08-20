@@ -162,20 +162,51 @@ def parse_form(path: str) -> dict:
     return out
 
 
+def _inspect_payload(parsed: dict) -> dict:
+    return {
+        'kind': parsed['kind'],
+        'appNums': parsed['appNums'],
+        'project': parsed.get('project') or {},
+        'itemCount': len(parsed.get('items') or []),
+        'specs': [i['spec'] for i in parsed.get('items') or []],
+        'text': parsed.get('text') or '',
+    }
+
+
+def batch_inspect(list_path: str, out_path: str) -> None:
+    import os
+    with open(list_path, encoding='utf-8') as fh:
+        paths = [ln.strip() for ln in fh if ln.strip()]
+    n = len(paths)
+    with open(out_path, 'w', encoding='utf-8') as out:
+        for i, path in enumerate(paths, 1):
+            rec = {'path': path, 'ok': False, 'kind': 'unknown', 'appNums': [], 'text': ''}
+            try:
+                parsed = parse_form(path)
+                rec = {'path': path, 'ok': True, **_inspect_payload(parsed)}
+            except Exception as exc:
+                rec['error'] = str(exc)[:400]
+            out.write(json.dumps(rec, ensure_ascii=False) + '\n')
+            if i == 1 or i % 25 == 0 or i == n:
+                print(f'Reading PDFs {i}/{n}  {os.path.basename(path)}', file=sys.stderr, flush=True)
+
+
 def main() -> None:
+    if len(sys.argv) >= 2 and sys.argv[1] == '--batch-inspect':
+        if len(sys.argv) < 4:
+            print('usage: corpus-formpdf.py --batch-inspect LIST.txt OUT.jsonl', file=sys.stderr)
+            sys.exit(2)
+        batch_inspect(sys.argv[2], sys.argv[3])
+        return
     if len(sys.argv) < 3:
         print('usage: corpus-formpdf.py --inspect|--parse FILE', file=sys.stderr)
         sys.exit(2)
     mode, path = sys.argv[1], sys.argv[2]
     parsed = parse_form(path)
     if mode == '--inspect':
-        print(json.dumps({
-            'kind': parsed['kind'],
-            'appNums': parsed['appNums'],
-            'project': parsed.get('project') or {},
-            'itemCount': len(parsed.get('items') or []),
-            'specs': [i['spec'] for i in parsed.get('items') or []],
-        }))
+        slim = _inspect_payload(parsed)
+        slim.pop('text', None)
+        print(json.dumps(slim))
         return
     if mode == '--parse':
         slim = {k: parsed[k] for k in ('kind', 'project', 'items', 'appNums')}

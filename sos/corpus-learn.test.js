@@ -274,4 +274,19 @@ const shortApproved = harvestLanguageFromResults([{
 assert.ok(shortApproved.bySpec['#905007'], 'short Approved. from issued letters is still harvested');
 assert.strictEqual(shortApproved.bySpec['#905007'].intent, 'approved');
 
+const { spawnSync } = require('child_process');
+const fs = require('fs');
+const os = require('os');
+const path = require('path');
+const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'sos-batch-'));
+const listFile = path.join(tmp, 'pdfs.txt');
+const outFile = path.join(tmp, 'out.jsonl');
+fs.writeFileSync(listFile, '');
+const py = spawnSync('python3', [path.join(__dirname, 'corpus-formpdf.py'), '--batch-inspect', listFile, outFile], { encoding: 'utf8' });
+const pyOk = py.status === 0 ? py : spawnSync('python', [path.join(__dirname, 'corpus-formpdf.py'), '--batch-inspect', listFile, outFile], { encoding: 'utf8' });
+assert.strictEqual(pyOk.status, 0, pyOk.stderr || pyOk.stdout || 'batch-inspect failed');
+assert.ok(fs.existsSync(outFile));
+assert.strictEqual(fs.readFileSync(outFile, 'utf8').trim(), '');
+fs.rmSync(tmp, { recursive: true, force: true });
+
 console.log('OK corpus pairing');

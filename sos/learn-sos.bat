@@ -53,6 +53,9 @@ echo.
 echo SOS Program folder:
 echo   %FOLDER%
 echo.
+echo After the APL snapshot line it will list PDFs, then print Reading PDFs 25/3000 ...
+echo That is the slow part. Leave this window open until it says Press any key.
+echo.
 
 node sos\corpus-learn.js --dir-only --dir "%FOLDER%"
 set ERR=%ERRORLEVEL%
