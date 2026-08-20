@@ -109,7 +109,15 @@
   ];
 
   /** Common spec numbers → letter description (uppercase, as printed). */
-  const SPEC_CATALOG = {
+  function sizeLetterCatalog() {
+    if (typeof SOS_SPEC_LETTER_DESCS !== 'undefined') return SOS_SPEC_LETTER_DESCS;
+    if (typeof require === 'function') {
+      try { return require('./spec-letter-descs.js'); } catch (e) { return {}; }
+    }
+    return {};
+  }
+
+  const SPEC_CATALOG_CORE = {
     '#207021': { desc: 'STRUCTURAL BACKFILL, (BORROW TYPE C)', family: 'borrow', tags: ['Borrow'] },
     '#209001': { desc: 'BORROW, TYPE A', family: 'borrow', tags: ['Borrow'] },
     '#209002': { desc: 'BORROW, TYPE B', family: 'borrow', tags: ['Borrow'] },
@@ -169,6 +177,7 @@
     '#862004': { desc: 'PERMANENT PAVEMENT STRIPING, ALKYD-THERMOPLASTIC, 12"', family: 'striping', tags: ['APL'] },
     '#862005': { desc: 'PERMANENT PAVEMENT STRIPING, ALKYD-THERMOPLASTIC, 16"', family: 'striping', tags: ['APL'] },
     '#862006': { desc: 'PERMANENT PAVEMENT STRIPING, ALKYD-THERMOPLASTIC, SYMBOL/LEGEND', family: 'striping', tags: ['APL'] },
+    '#801000': { desc: 'MAINTENANCE OF TRAFFIC', family: 'ttc', tags: ['Traffic Control', 'APL'] },
     '#808002': { desc: 'PROVIDE/MAINTAIN TRUCK MOUNTED ATTENUATOR, T II', family: 'ttc', tags: ['Traffic Control', 'APL'] },
     '#810001': { desc: 'TEMPORARY WARNING SIGNS AND PLAQUES', family: 'ttc', tags: ['Signage', 'APL'] },
     '#813001': { desc: 'TEMPORARY BARRICADES, TYPE III', family: 'ttc', tags: ['Traffic Control', 'APL'] },
@@ -182,6 +191,7 @@
     '#908020': { desc: 'EROSION CONTROL BLANKET MULCH', family: 'apl-product', tags: ['Erosion Control', 'APL'] },
     '#908022': { desc: 'TURF REINFORCEMENT MATTING, TYPE 2', family: 'apl-product', tags: ['Erosion Control', 'APL'] },
   };
+  const SPEC_CATALOG = Object.assign({}, sizeLetterCatalog(), SPEC_CATALOG_CORE);
 
   /**
    * Contractor spec mistakes seen on submissions.

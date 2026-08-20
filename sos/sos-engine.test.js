@@ -288,8 +288,106 @@ const pccGrid = gridFromObjects(FREY_HEADER, [[
 const pcc = Engine.processGrid(pccGrid).items.find(i => i.family === 'pcc');
 assert.ok(pcc, 'PCC item present');
 assert.ok(pcc.specs.includes('#705001') && pcc.specs.includes('#701013'));
+assert.ok(Engine.letterSectionLines(pcc).some(l => /#705001 - PCC SIDEWALK, 4"/.test(l)));
+assert.ok(Engine.letterSectionLines(pcc).some(l => /#701013 - PCC CURB, TYPE 1-8/.test(l)));
 assert.ok(/mix designs/i.test(pcc.actionNotes));
 assert.ok(!/admixture/i.test(pcc.actionNotes));
+
+// Sized RCP / FES / inlets / curb keep their own letter lines when grouped
+const whitehallStruct = Engine.processGrid(gridFromObjects(FREY_HEADER, [
+  [
+    ['', 601011.0, 'RCP 15"', '', 'Precast Concrete', 'Rinker Materials', '', 'Middletown, DE', 'Rinker Materials'],
+  ],
+  [
+    ['', 601012.0, 'RCP 18"', '', 'Precast Concrete', 'Rinker Materials', '', 'Middletown, DE', ''],
+  ],
+  [
+    ['', 601014.0, 'RCP 24"', '', 'Precast Concrete', 'Rinker Materials', '', 'Middletown, DE', ''],
+  ],
+  [
+    ['', 601016.0, 'RCP 30"', '', 'Precast Concrete', 'Rinker Materials', '', 'Middletown, DE', ''],
+  ],
+  [
+    ['', 601142.0, 'FES 18"', '', 'Precast Concrete', 'Rinker Materials', '', 'Middletown, DE', ''],
+  ],
+  [
+    ['', 601146.0, 'FES 30"', '', 'Precast Concrete', 'Rinker Materials', '', 'Middletown, DE', ''],
+  ],
+  [
+    ['', 602003.0, 'DI 34x24', '', 'Precast Concrete', 'Gillespie Precast', '', 'Chestertown, MD', 'Gillespie Precast'],
+  ],
+  [
+    ['', 602004.0, 'DI 48x30', '', 'Precast Concrete', 'Gillespie Precast', '', 'Chestertown, MD', ''],
+  ],
+  [
+    ['', 602005.0, 'DI 48x48', '', 'Precast Concrete', 'Gillespie Precast', '', 'Chestertown, MD', ''],
+  ],
+  [
+    ['', 602010.0, 'DI 72x48', '', 'Precast Concrete', 'Gillespie Precast', '', 'Chestertown, MD', ''],
+  ],
+  [
+    ['', 602035.0, 'Manhole round', '', 'Precast Concrete', 'Gillespie Precast', '', 'Chestertown, MD', ''],
+  ],
+  [
+    ['', 701012.0, 'PCC Curb Type 1-6', '', 'Class B Concrete', 'Heritage Concrete', '', 'Cheswold, DE', 'Bear Materials'],
+    ['', '', '', '', '', '', '', '', 'Newark, DE'],
+  ],
+  [
+    ['', 705001.0, 'PCC Sidewalk 4"', '', 'Class B Concrete', 'Heritage Concrete', '', 'Cheswold, DE', 'Bear Materials'],
+    ['', '', '', '', '', '', '', '', 'Newark, DE'],
+  ],
+  [
+    ['', 705002.0, 'PCC Sidewalk 6"', '', 'Class B Concrete', 'Heritage Concrete', '', 'Cheswold, DE', 'Bear Materials'],
+    ['', '', '', '', '', '', '', '', 'Newark, DE'],
+  ],
+  [
+    ['', 701012.0, 'PCC Curb Type 1-6', '', 'REFLEX Rubber Expansion', 'J&K Foam Fabricating', '', 'Pottstown, PA', ''],
+  ],
+  [
+    ['', 705001.0, 'PCC Sidewalk 4"', '', 'White Pigmented Curing', 'Tri Supply', '', 'WR Meadows', ''],
+    ['', '', '', '', '1600-White', '', '', 'York, PA', ''],
+  ],
+]));
+const rcpGroup = whitehallStruct.items.find(i => i.family === 'rcp');
+const rcpLines = Engine.letterSectionLines(rcpGroup).join('\n');
+assert.ok(/#601011 - REINFORCED CONCRETE PIPE, 15", CLASS III/.test(rcpLines));
+assert.ok(/#601012 - REINFORCED CONCRETE PIPE, 18", CLASS III/.test(rcpLines));
+assert.ok(/#601014 - REINFORCED CONCRETE PIPE, 24", CLASS III/.test(rcpLines), rcpLines);
+assert.ok(/#601016 - REINFORCED CONCRETE PIPE, 30", CLASS III/.test(rcpLines));
+assert.ok(/#601142 - REINFORCED CONCRETE FLARED END SECTION, 18"/.test(rcpLines), rcpLines);
+assert.ok(/#601146 - REINFORCED CONCRETE FLARED END SECTION, 30"/.test(rcpLines));
+assert.ok(!/#601014 - REINFORCED CONCRETE PIPE, 15"/.test(rcpLines));
+assert.ok(!rcpGroup.altName, 'same-name Rinker alt is omitted');
+assert.ok(!(rcpGroup.subItems || []).some(s => /precast/i.test(s)));
+
+const inletGroup = whitehallStruct.items.find(i => i.family === 'precast');
+const inletLines = Engine.letterSectionLines(inletGroup).join('\n');
+assert.ok(/#602003 - DRAINAGE INLET, 34" X 24"/.test(inletLines));
+assert.ok(/#602010 - DRAINAGE INLET, 72" X 48"/.test(inletLines), inletLines);
+assert.ok(/#602035 - MANHOLE, ROUND/.test(inletLines), inletLines);
+assert.ok(!/#602010 - DRAINAGE INLET, 34"/.test(inletLines));
+assert.ok(!/CAST IN PLACE/i.test(inletLines));
+
+const curbWalk = whitehallStruct.items.find(i => i.family === 'pcc');
+const curbLines = Engine.letterSectionLines(curbWalk).join('\n');
+assert.ok(/#701012 - PCC CURB, TYPE 1-6/.test(curbLines), curbLines);
+assert.ok(/#705001 - PCC SIDEWALK, 4"/.test(curbLines));
+assert.ok(/#705002 - PCC SIDEWALK, 6"/.test(curbLines));
+assert.ok(!/#701012 - PCC SIDEWALK/.test(curbLines));
+assert.ok(!(curbWalk.subItems || []).some(s => /class b/i.test(s)));
+assert.strictEqual((curbWalk.actionNotes.match(/only one source at a time/gi) || []).length, 1);
+
+const expansion = whitehallStruct.items.find(i => i.family === 'expansion');
+assert.ok(expansion, 'Reflex expansion is not kept as PCC curb');
+assert.deepStrictEqual(expansion.letterSpecs, ['#701/705xxx']);
+assert.strictEqual(expansion.desc, 'CONCRETE ITEMS');
+assert.ok(/reflex/i.test((expansion.subItems || []).join(' ')));
+
+const curing = whitehallStruct.items.find(i => i.family === 'curing');
+assert.ok(curing, '1600-White curing is not kept as sidewalk');
+assert.deepStrictEqual(curing.letterSpecs, ['#701/705xxx']);
+assert.strictEqual(curing.desc, 'CONCRETE ITEMS');
+assert.ok(/WR Meadows/i.test(curing.srcName));
 
 // Clearing / excavation / removal listed N/A are omitted
 const skipGrid = gridFromObjects(FREY_HEADER, [[

@@ -526,16 +526,39 @@
 
   function lookupCatalogDesc(spec, lists) {
     const cat = SPEC_CATALOG[spec];
-    if (cat && cat.desc) return cat.desc;
+    if (cat && cat.desc) return letterizeDesc(cat.desc);
     const hit = Lists.lookupSosDatabase && Lists.lookupSosDatabase(lists && lists.sosDatabase, spec);
-    return hit && hit.desc ? hit.desc : '';
+    return hit && hit.desc ? letterizeDesc(hit.desc) : '';
+  }
+
+  function letterizeDesc(d) {
+    return String(d || '').replace(/\s*\(CAST IN PLACE\)\s*/gi, '').replace(/\s+/g, ' ').trim();
+  }
+
+  function isGenericMaterialBullet(s) {
+    const t = String(s || '').replace(/\*+$/, '').replace(/\s+/g, ' ').trim();
+    if (!t) return true;
+    return /^(class\s*[abc]\s*concrete|pcc(\s*,?\s*class\s*[abc])?|precast(\s+concrete)?|concrete|granite gneiss)$/i.test(t);
+  }
+
+  function specLetterDesc(item, spec) {
+    if (item && item.specDescs && item.specDescs[spec]) return letterizeDesc(item.specDescs[spec]);
+    const cat = SPEC_CATALOG[spec];
+    if (cat && cat.desc) return cat.desc;
+    return '';
   }
 
   function familyFromSpec(spec, desc, material, lists, extra) {
     const extraBlob = Array.isArray(extra) ? extra.join(' ') : (extra || '');
-    const blob = `${desc} ${material} ${extraBlob}`.toLowerCase();
+    const mat = `${material || ''} ${extraBlob}`.toLowerCase();
+    const blob = `${desc || ''} ${mat}`.toLowerCase();
     const prefix = (spec || '').replace('#', '').slice(0, 3);
     if (isTack(desc, material, spec)) return 'tack';
+    // Contractor forms list expansion / curing under the parent 701/705 spec numbers.
+    // The material column is the product; do not keep those rows as PCC curb/sidewalk.
+    if (/reflex|\brubber expansion\b|preformed expansion|expansion joint material/.test(mat)
+        && !/class\s*[abc]\s*concrete/.test(mat)) return 'expansion';
+    if (/curing compound|pigmented curing|1600[-\s]?white|silencure/.test(mat)) return 'curing';
     if (/expansion/.test(blob) && !/crack|joint seal|pcc|sidewalk|curb/.test(blob)) return 'expansion';
     if (/curing/.test(blob) && !/pcc|sidewalk|curb/.test(blob)) return 'curing';
     const cat = SPEC_CATALOG[spec];
@@ -681,10 +704,12 @@
     }
 
     subItems = subItems.filter(s => s && s.toLowerCase() !== sectionDesc.toLowerCase());
+    if (['rcp', 'precast', 'pcc', 'aggregate'].includes(family)) {
+      subItems = subItems.filter(s => !isGenericMaterialBullet(s));
+    }
     const specDescs = {};
     (item.specs || []).forEach(s => {
-      const d = lookupCatalogDesc(s, lists);
-      if (d) specDescs[s] = d;
+      specDescs[s] = lookupCatalogDesc(s, lists) || letterizeDesc(item.desc);
     });
     return { ...item, family, desc: sectionDesc, letterSpecs, subItems, specDescs };
   }
@@ -694,15 +719,21 @@
     // Bulk plants: supplier name + plant city from manufacturer address column.
     const manufactured = ['tack', 'crack-seal', 'curing', 'expansion', 'apl-product', 'ttc', 'signs', 'castings', 'striping', 'hardware'].includes(item.family);
     if (manufactured && item.mfgName && !isCityState(item.mfgName)) {
+      let altName = cleanCompany(item.altMfgName || item.altName);
+      const srcName = cleanCompany(item.mfgName);
+      if (altName && srcName && altName.toLowerCase() === srcName.toLowerCase()
+          && (!item.altLoc || formatLoc(item.altLoc) === formatLoc(item.mfgLoc || item.srcLoc))) {
+        altName = '';
+      }
       return {
-        srcName: cleanCompany(item.mfgName),
+        srcName,
         srcLoc: item.mfgLoc || item.srcLoc,
         srcAddr: item.mfgAddr,
         srcPhone: item.mfgPhone,
-        altName: cleanCompany(item.altMfgName || item.altName),
-        altLoc: item.altLoc,
-        altAddr: item.altAddr,
-        altPhone: item.altPhone,
+        altName,
+        altLoc: altName ? item.altLoc : '',
+        altAddr: altName ? item.altAddr : '',
+        altPhone: altName ? item.altPhone : '',
       };
     }
     const supplier = cleanCompany(item.supplierName);
@@ -720,13 +751,18 @@
         formatLoc(item.mfgLoc || item.srcLoc) !== formatLoc(item.altLoc)) {
       numbered = true;
     }
+    const sameAlt = altName && srcName && altName.toLowerCase() === srcName.toLowerCase();
+    const altLoc = item.altLoc;
+    if (sameAlt && (!altLoc || formatLoc(altLoc) === formatLoc(item.mfgLoc || item.srcLoc || item.supplierLoc))) {
+      altName = '';
+    }
     return {
       srcName: numbered ? `${srcName} 1` : srcName,
       srcLoc: item.mfgLoc || item.srcLoc || item.supplierLoc,
       srcAddr: item.mfgAddr || item.srcAddr || item.supplierAddr,
       srcPhone: item.mfgPhone || item.srcPhone || item.supplierPhone,
       altName: numbered ? `${srcName} 2` : altName,
-      altLoc: item.altLoc,
+      altLoc: altName || numbered ? altLoc : '',
       altAddr: item.altAddr,
       altPhone: item.altPhone,
     };
@@ -1038,7 +1074,9 @@
     if (action === 'apl') apl = true;
 
     if (oneSource && !['tack', 'curing', 'expansion', 'crack-seal', 'apl-product', 'ttc', 'signs', 'striping', 'geotextile'].includes(family)) {
-      actionNotes = (actionNotes ? actionNotes + '\n' : '') + ACTION_TEXT.oneSource;
+      if (!/only one source at a time/i.test(actionNotes)) {
+        actionNotes = (actionNotes ? actionNotes + '\n' : '') + ACTION_TEXT.oneSource;
+      }
     }
     if (apl) {
       actionNotes = (actionNotes ? actionNotes + '\n' : '') + APL_FOOTNOTE;
@@ -1069,7 +1107,11 @@
 
   function canGroup(a, b) {
     if (a.family !== b.family) return false;
-    if (['tack', 'curing', 'expansion', 'crack-seal', 'apl-product'].includes(a.family)) return false;
+    if (['tack', 'crack-seal', 'apl-product'].includes(a.family)) return false;
+    if (['curing', 'expansion'].includes(a.family)) {
+      const sub = (it) => (it.subItems || []).join('|').toLowerCase();
+      return sourceKey(a) === sourceKey(b) && sub(a) === sub(b);
+    }
     const specsOf = (it) => [...(it.specs || []), ...(it.letterSpecs || [])];
     if (specsOf(a).includes('#401505') || specsOf(b).includes('#401505')) return false;
     if (specsOf(a).includes('#905007') || specsOf(b).includes('#905007')) return false;
@@ -1111,15 +1153,15 @@
   }
 
   function letterSectionLines(item) {
-    const specs = item.letterSpecs || item.specs;
-    const specLines = specs.map((s, i) => {
-      if (specs.length === 1) return `${s} - ${item.desc}`;
-      // First spec gets the shared desc only when all specs share it; otherwise catalog per spec
-      const cat = SPEC_CATALOG[s];
-      const d = (cat && cat.desc) || (item.specDescs && item.specDescs[s]) || item.desc;
-      return `${s} - ${d}`;
+    const specs = item.letterSpecs || item.specs || [];
+    if (specs.length <= 1) {
+      const s = specs[0] || '';
+      return s ? [`${s} - ${item.desc || specLetterDesc(item, s)}`] : [];
+    }
+    return specs.map((s) => {
+      const per = specLetterDesc(item, s);
+      return `${s} - ${per || item.desc || ''}`;
     });
-    return specLines;
   }
 
   function applyWorkflow(parsed, opts) {
