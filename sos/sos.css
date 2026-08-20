@@ -992,6 +992,24 @@
     .shell { display: block; height: auto; }
     .letter-panel { border: none; }
     .letter-scroll { overflow: visible; padding: 0; }
-    .letter-doc { box-shadow: none; }
+    .letter-doc {
+      box-shadow: none;
+      min-height: 0;
+      display: block;
+      padding-bottom: 0.9in;
+    }
+    .letter-official-footer {
+      position: fixed;
+      right: 0.35in;
+      bottom: 0.18in;
+      margin: 0;
+      padding: 0;
+      width: 1.5in;
+      text-align: right;
+    }
+    .letter-official-footer img {
+      width: 1.5in;
+      max-width: none;
+    }
   }
 

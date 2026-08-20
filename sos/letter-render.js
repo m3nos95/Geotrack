@@ -13,9 +13,9 @@ function esc(s) {
 }
 
 function letterCss() {
-  return `@page { size: 8.5in 11in; margin: 0.45in 1in 0.5in 1in; }
-html, body { height: 100%; }
-body { font-family: 'Times New Roman', serif; font-size: 11pt; line-height: 1.55; color: #111; min-height: 10.05in; display: flex; flex-direction: column; }
+  return `@page { size: 8.5in 11in; margin: 0.5in 0.9in 0.35in 0.9in; }
+html, body { height: auto; }
+body { font-family: 'Times New Roman', serif; font-size: 11pt; line-height: 1.55; color: #111; padding-bottom: 0.9in; }
 .letter-letterhead { text-align: center; margin: 0 0 14pt; }
 .letter-letterhead img { width: 3.72in; height: auto; display: block; margin: 0 auto; }
 .letter-secretary { font-family: 'Copperplate Gothic Light', Copperplate, 'Century Gothic', serif; font-size: 6.5pt; letter-spacing: 0.08em; text-transform: uppercase; color: #17365D; margin: 4pt 0 0; text-align: left; font-weight: 400; line-height: 1.25; }
@@ -32,8 +32,17 @@ hr { border: none; border-top: 1px solid #ccc; margin: 14pt 0; }
 .letter-sig-name { font-weight: 700; margin-top: 4pt; }
 .letter-sig:not(.has-image) .letter-sig-name { margin-top: 8pt; }
 .letter-cc { margin-top: 14pt; font-size: 10pt; line-height: 1.75; page-break-inside: avoid; }
-.letter-official-footer { margin-top: auto; padding-top: 18pt; text-align: right; page-break-inside: avoid; }
-.letter-official-footer img { width: 1.95in; height: auto; }
+.letter-official-footer {
+  position: fixed;
+  right: 0.35in;
+  bottom: 0.18in;
+  margin: 0;
+  padding: 0;
+  width: 1.5in;
+  text-align: right;
+  z-index: 10;
+}
+.letter-official-footer img { width: 1.5in; height: auto; display: block; }
 .review-banner { background: #fff3cd; border: 1px solid #e0c36a; padding: 8pt 10pt; margin-bottom: 14pt; font-size: 10pt; }
 @media print { .review-banner { display: none; } }`;
 }

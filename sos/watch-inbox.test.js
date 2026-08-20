@@ -63,7 +63,9 @@ assert.ok(/SECTION:/.test(html));
 assert.ok(/Digitally signed by/.test(html));
 assert.ok(/Steven Peretiatko/.test(html));
 assert.ok(/Date: 20\d{2}\.\d{2}\.\d{2}/.test(html));
-const { renderLetterHtml } = require('./letter-render.js');
+const { renderLetterHtml, letterCss } = require('./letter-render.js');
+assert.ok(/position:\s*fixed/.test(letterCss()), 'print CSS pins DelDOT logo to every page');
+assert.ok(/bottom:\s*0\.18in/.test(letterCss()));
 const customHtml = renderLetterHtml({
   project: {
     contract: '2589',
