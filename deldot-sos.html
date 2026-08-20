@@ -438,7 +438,7 @@
           <div class="form-group"><div class="form-label">Alt Address</div><input class="form-input" id="f-alt-addr"></div>
           <div class="form-group">
             <div class="form-label">Action Type</div>
-            <select class="form-select" id="f-action">
+            <select class="form-select" id="f-action" onchange="onItemActionTypeChange()">
               <option value="approved">Approved</option>
               <option value="test">Must Be Tested</option>
               <option value="not-approved">Not Approved</option>
@@ -455,7 +455,10 @@
         </div>
         <div class="form-group">
           <div class="form-label">Action Notes</div>
-          <textarea class="form-textarea" id="f-action-notes"></textarea>
+          <select class="form-select" id="f-action-note-preset" onchange="applyActionNotePreset(this.value)" style="margin-bottom:6px;">
+            <option value="">Choose a stock note…</option>
+          </select>
+          <textarea class="form-textarea" id="f-action-notes" placeholder="Pick a stock note or type your own. Must Be Tested fills the sampler / lab-results contacts for the district."></textarea>
         </div>
         <div style="display:flex;gap:16px;align-items:center;padding:8px 0;">
           <label style="display:flex;align-items:center;gap:6px;font-size:12px;cursor:pointer;"><input type="checkbox" id="f-apl"> APL Item</label>

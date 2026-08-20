@@ -101,6 +101,14 @@ assert.ok(/Salisbury/i.test(gabc.srcLoc));
 assert.ok(/Ray Glanden/.test(gabc.actionNotes));
 assert.ok(/Aaron Wieczorek/.test(gabc.actionNotes));
 
+const southTestNotes = DATA.stockNotesForAction('test', 'South');
+assert.ok(/Must be tested and approved prior to use/.test(southTestNotes));
+assert.ok(/Ray Glanden/.test(southTestNotes));
+assert.ok(/Aaron Wieczorek/.test(southTestNotes));
+assert.ok(/Damian Blakely/.test(DATA.stockNotesForAction('test', 'North')));
+assert.ok(DATA.actionNotePresets('South').some(p => p.id === 'test' && /ten \(10\) working days/.test(p.notes)));
+assert.strictEqual(DATA.stockNotesForAction('approved'), DATA.ACTION_TEXT.approved);
+
 // Superpave Type C + B grouped, numbered River Asphalt plants
 const hma = result.items.find(i => i.family === 'hma-mix');
 assert.ok(hma, 'HMA mix item present');

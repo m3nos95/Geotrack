@@ -786,7 +786,54 @@
     document.getElementById('f-apl').checked = false;
     document.getElementById('f-one-source').checked = false;
     document.getElementById('f-on-file').checked = false;
+    fillActionNotePresets();
+    fillActionNotesForType('approved', { force: true });
     openModal('add-modal');
+  };
+
+  function fillActionNotePresets() {
+    const sel = document.getElementById('f-action-note-preset');
+    if (!sel) return;
+    const current = val('f-action-notes');
+    const presets = SOSData.actionNotePresets(val('ph-district'), listsForEngine());
+    sel.innerHTML = '<option value="">Choose a stock note…</option>' + presets.map(p =>
+      `<option value="${esc(p.id)}">${esc(p.label)}</option>`
+    ).join('');
+    const match = presets.find(p => p.notes.trim() === String(current || '').trim());
+    sel.value = match ? match.id : '';
+  }
+
+  function notesAreStock(text) {
+    const t = String(text || '').trim();
+    if (!t) return true;
+    return SOSData.actionNotePresets(val('ph-district'), listsForEngine()).some(p => p.notes.trim() === t)
+      || Object.values(SOSData.ACTION_TEXT).some(s => String(s).trim() === t);
+  }
+
+  function fillActionNotesForType(action, opts) {
+    const notes = SOSData.stockNotesForAction(action, val('ph-district'), listsForEngine());
+    const el = document.getElementById('f-action-notes');
+    if (!el) return;
+    const force = !!(opts && opts.force);
+    if (!force && !notesAreStock(el.value)) return;
+    el.value = notes;
+    if (action === 'apl') document.getElementById('f-apl').checked = true;
+    if (action === 'on-file') document.getElementById('f-on-file').checked = true;
+    fillActionNotePresets();
+  }
+
+  window.onItemActionTypeChange = function () {
+    fillActionNotesForType(val('f-action'), { force: editingItemId == null || notesAreStock(val('f-action-notes')) });
+  };
+
+  window.applyActionNotePreset = function (id) {
+    if (!id) return;
+    const preset = SOSData.actionNotePresets(val('ph-district'), listsForEngine()).find(p => p.id === id);
+    if (!preset) return;
+    setVal('f-action-notes', preset.notes);
+    if (preset.action) setVal('f-action', preset.action);
+    if (preset.action === 'apl') document.getElementById('f-apl').checked = true;
+    if (preset.action === 'on-file') document.getElementById('f-on-file').checked = true;
   };
   window.openCCModal = function (libId, letterId) {
     setVal('cc-edit-lib-id', libId || '');
@@ -983,6 +1030,7 @@
     document.getElementById('f-apl').checked = !!item.apl;
     document.getElementById('f-one-source').checked = !!item.oneSource;
     document.getElementById('f-on-file').checked = !!item.onFile;
+    fillActionNotePresets();
     openModal('add-modal');
   };
   window.deleteItem = function (id) {

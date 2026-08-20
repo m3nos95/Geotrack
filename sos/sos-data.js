@@ -309,6 +309,33 @@
     );
   }
 
+  function stockNotesForAction(action, district, lists) {
+    if (action === 'test') return ACTION_TEXT.test + '\n' + testCoordinationNotes(district, lists);
+    if (action === 'approved') return ACTION_TEXT.approved;
+    if (action === 'not-approved') return ACTION_TEXT.notApproved;
+    if (action === 'apl') return ACTION_TEXT.apl;
+    if (action === 'on-file') return ACTION_TEXT.stockOnFile;
+    if (action === 'visual') return ACTION_TEXT.visual;
+    if (action === 'submit') return ACTION_TEXT.submitTack;
+    return '';
+  }
+
+  function actionNotePresets(district, lists) {
+    const T = ACTION_TEXT;
+    return [
+      { id: 'test', action: 'test', label: 'Must be tested — contact sampler / results', notes: stockNotesForAction('test', district, lists) },
+      { id: 'approved', action: 'approved', label: 'Approved for use', notes: T.approved },
+      { id: 'mix', action: 'approved', label: 'Approved mix designs only', notes: T.mixDesigns },
+      { id: 'stock', action: 'on-file', label: 'State inspected stock (on file)', notes: T.stockOnFile },
+      { id: 'visual', action: 'visual', label: 'Visual inspection', notes: T.visual },
+      { id: 'apl', action: 'apl', label: 'Approved for use (on APL)', notes: T.apl },
+      { id: 'conforms', action: 'approved', label: 'Conforms to specifications', notes: T.conforms },
+      { id: 'choose', action: 'apl', label: 'Choose a product from the APL', notes: T.chooseApl },
+      { id: 'not', action: 'not-approved', label: 'Not approved', notes: T.notApproved },
+      { id: 'jmf', action: 'not-approved', label: 'Not approved (pending JMF)', notes: T.pendingJmf },
+    ];
+  }
+
   const PRESET_TAGS = [
     'Borrow', 'GABC', 'Stone', 'Asphalt', 'Concrete', 'RCP', 'Precast',
     'Drainage', 'Electrical', 'Conduit', 'Wire', 'Geotextile', 'Seed',
@@ -388,6 +415,8 @@
     CRACK_SEAL_APL,
     CURING_APL,
     ACTION_TEXT,
+    stockNotesForAction,
+    actionNotePresets,
     PRESET_TAGS,
     SOURCE_SEEDS,
     testCoordinationNotes,
