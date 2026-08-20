@@ -20,6 +20,7 @@
     lists: 'deldot_sos_lists_v1',
     cc_rules: 'deldot_sos_cc_rules_v1',
     cc_samplers: 'deldot_sos_cc_samplers_v1',
+    author: 'deldot_sos_author_v1',
   };
 
   const actionMeta = {
@@ -94,6 +95,31 @@
     const title = val('ph-title');
     if (contract) saveProjectToLib(contract, title);
     if (val('ph-contact')) saveContactToLib(val('ph-contact'));
+    persistAuthor();
+  }
+  function defaultAuthor() {
+    const a = (typeof SOSData !== 'undefined' && SOSData.CONTACTS && SOSData.CONTACTS.letterAuthor)
+      ? SOSData.CONTACTS.letterAuthor
+      : { name: 'Steven Peretiatko', title: 'Materials Technician', phone: '302-760-2375' };
+    return { name: a.name || '', title: a.title || '', phone: a.phone || '' };
+  }
+  function currentAuthor() {
+    const d = defaultAuthor();
+    return {
+      name: val('ph-author-name').trim() || d.name,
+      title: val('ph-author-title').trim() || d.title,
+      phone: val('ph-author-phone').trim() || d.phone,
+    };
+  }
+  function persistAuthor() {
+    ls_set(STORE.author, currentAuthor());
+  }
+  function loadAuthor() {
+    const saved = ls_get(STORE.author, null) || {};
+    const d = defaultAuthor();
+    setVal('ph-author-name', saved.name || d.name);
+    setVal('ph-author-title', saved.title || d.title);
+    setVal('ph-author-phone', saved.phone || d.phone);
   }
   function val(id) {
     const el = document.getElementById(id);
@@ -154,7 +180,7 @@
   }
 
   function wireProjectPersist() {
-    ['ph-contract', 'ph-title', 'ph-contractor', 'ph-contractor-addr', 'ph-district', 'ph-contact', 'ph-date', 'ph-dockind'].forEach(id => {
+    ['ph-contract', 'ph-title', 'ph-contractor', 'ph-contractor-addr', 'ph-district', 'ph-contact', 'ph-date', 'ph-dockind', 'ph-author-name', 'ph-author-title', 'ph-author-phone'].forEach(id => {
       const el = document.getElementById(id);
       if (!el) return;
       el.addEventListener('input', () => {
@@ -737,7 +763,7 @@
       signedAt = new Date().toISOString();
       persistProject();
     }
-    const author = SOSData.CONTACTS.letterAuthor;
+    const author = currentAuthor();
     const digitalLines = (SOSEngine.digitalSignatureLines
       ? SOSEngine.digitalSignatureLines(signedAt, author.name)
       : ['Digitally signed by', author.name]).map(esc).join('<br>');
@@ -786,7 +812,7 @@
       </div>
       ${empty}${sections}
       <hr class="letter-divider">
-      <div>If you have any questions, please call me at ${esc(SOSData.CONTACTS.letterAuthor.phone)}.</div>
+      <div>If you have any questions, please call me at ${esc(author.phone)}.</div>
       <div class="letter-sig${signatureImage ? ' has-image' : ''}">
         Sincerely,
         <div class="letter-sig-row">
@@ -1972,6 +1998,7 @@ hr { border: none; border-top: 1px solid #ccc; margin: 14pt 0; }
     loadCCLib();
     loadCcRules();
     loadProjectHeader();
+    loadAuthor();
     wireProjectPersist();
     wireDropZone(document.getElementById('drop-zone'));
     document.querySelectorAll('.landing-drop').forEach(wireDropZone);

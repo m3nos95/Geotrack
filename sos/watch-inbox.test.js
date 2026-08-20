@@ -63,6 +63,25 @@ assert.ok(/SECTION:/.test(html));
 assert.ok(/Digitally signed by/.test(html));
 assert.ok(/Steven Peretiatko/.test(html));
 assert.ok(/Date: 20\d{2}\.\d{2}\.\d{2}/.test(html));
+const { renderLetterHtml } = require('./letter-render.js');
+const customHtml = renderLetterHtml({
+  project: {
+    contract: '2589',
+    title: 'Whitehall',
+    contractor: 'Eastern States',
+    date: '2026-08-20',
+    signedAt: '2026-06-08T13:35:21.000Z',
+    author: { name: 'Aaron Wieczorek', title: 'Materials Engineer', phone: '302-760-2583' },
+  },
+  items: [],
+  cc: [],
+  warnings: [],
+});
+assert.ok(/Aaron Wieczorek/.test(customHtml));
+assert.ok(/Materials Engineer/.test(customHtml));
+assert.ok(/302-760-2583/.test(customHtml));
+assert.ok(/Digitally signed by/.test(customHtml));
+assert.ok(!/Steven Peretiatko/.test(customHtml));
 assert.ok(/REVIEW/.test(html));
 const review = fs.readFileSync(path.join(written.dest, 'REVIEW.txt'), 'utf8');
 assert.ok(/blank/i.test(review));

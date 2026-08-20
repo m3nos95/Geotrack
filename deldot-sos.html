@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>DelDOT Source of Supply</title>
   <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="sos/sos.css?v=20260820g">
+  <link rel="stylesheet" href="sos/sos.css?v=20260820h">
 </head>
 <body>
 <div class="topbar">
@@ -76,6 +76,18 @@
     <div class="ph-block">
       <div class="ph-label">Letter Date</div>
       <input class="ph-input" type="date" id="ph-date" title="Date printed on the letter. Set to today when you import a form or start a new letter, not the contractor SOS submission date.">
+    </div>
+    <div class="ph-block">
+      <div class="ph-label">Prepared by</div>
+      <input class="ph-input" id="ph-author-name" autocomplete="off" placeholder="Name on the letter" title="Person completing this letter. Goes on the signature block and Digitally signed by line.">
+    </div>
+    <div class="ph-block" style="flex:2; min-width:200px;">
+      <div class="ph-label">Title</div>
+      <input class="ph-input wide" id="ph-author-title" autocomplete="off" placeholder="Materials Technician" style="width:100%;">
+    </div>
+    <div class="ph-block">
+      <div class="ph-label">Phone</div>
+      <input class="ph-input" id="ph-author-phone" autocomplete="off" placeholder="302-760-2375" title="Printed in If you have any questions, please call me at…">
     </div>
     <div class="ph-actions">
       <div class="rev-badge" id="rev-display">REV 01</div>
@@ -594,10 +606,10 @@
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
-<script src="sos/spec-letter-descs.js?v=20260820g"></script>
-<script src="sos/sos-data.js?v=20260820g"></script>
-<script src="sos/sos-lists.js?v=20260820g"></script>
-<script src="sos/sos-engine.js?v=20260820g"></script>
-<script src="sos/sos-app.js?v=20260820g"></script>
+<script src="sos/spec-letter-descs.js?v=20260820h"></script>
+<script src="sos/sos-data.js?v=20260820h"></script>
+<script src="sos/sos-lists.js?v=20260820h"></script>
+<script src="sos/sos-engine.js?v=20260820h"></script>
+<script src="sos/sos-app.js?v=20260820h"></script>
 </body>
 </html>

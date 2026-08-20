@@ -70,7 +70,8 @@ function renderLetterHtml(result, opts) {
   }).join('\n');
   const ccHtml = cc.map(c => `${esc(c.name)}, ${esc(c.org || 'DelDOT')}`).join('<br>');
   const title = [project.contract, project.title, project.contractor].filter(Boolean).join(' · ') || 'SOS letter';
-  const author = DATA.CONTACTS.letterAuthor;
+  const seed = DATA.CONTACTS.letterAuthor || {};
+  const author = Object.assign({}, seed, o.author || project.author || {});
   const digital = Engine.digitalSignatureLines(project.signedAt || Date.now(), author.name).map(esc).join('<br>');
   const sigImg = o.signatureSrc
     ? `<img class="letter-sig-img" src="${esc(o.signatureSrc)}" alt="signature">`
@@ -89,7 +90,7 @@ ${review}
 </div>
 ${sections}
 <hr>
-<div>If you have any questions, please call me at ${esc(DATA.CONTACTS.letterAuthor.phone)}.</div>
+<div>If you have any questions, please call me at ${esc(author.phone)}.</div>
 <div class="letter-sig${o.signatureSrc ? ' has-image' : ''}">
   Sincerely,
   <div class="letter-sig-row">
