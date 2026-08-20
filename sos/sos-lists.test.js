@@ -140,6 +140,66 @@ const pennsyGabc = Lists.lookupAggregate(asl, 'Pennsy Supply', 'Dover', 'GABC Ty
 assert.strictEqual(pennsyGabc.status, 'rejected');
 assert.strictEqual(pennsyGabc.row.material, 'GABC');
 
+assert.strictEqual(Lists.materialKind('Recycled Asphalt Pavement'), 'millings');
+assert.strictEqual(Lists.materialKind('#301008'), 'millings');
+assert.strictEqual(Lists.materialKind('RAP millings'), 'millings');
+assert.strictEqual(Lists.materialKind('GABC'), 'gabc');
+assert.strictEqual(Lists.materialKind('GABC (CRUSHED CONCRETE)'), 'crushed-concrete');
+assert.ok(Lists.materialMatch('Millings', 'RECYCLED ASPHALT PAVEMENT'));
+assert.ok(Lists.materialMatch('Millings', '#301008 RAP'));
+assert.ok(!Lists.materialMatch('Crushed Concrete', 'RECYCLED ASPHALT PAVEMENT'));
+assert.ok(!Lists.materialMatch('GABC', 'RECYCLED ASPHALT PAVEMENT'));
+assert.ok(!Lists.materialMatch('GABC', 'GABC (CRUSHED CONCRETE)'));
+assert.strictEqual(Lists.foldName('Contractor Materials'), Lists.foldName('Contractors Materials'));
+
+const kirkwoodChart = {
+  kind: 'aggregate',
+  format: 'approved-source-list',
+  entries: [
+    { name: 'Contractors Materials', source: 'Martin Marietta', loc: '', material: 'GABC', status: 'approved', testDate: '2026-07-14' },
+    { name: 'Contractors Materials', source: 'Martin Marietta', loc: '', material: 'Crushed Concrete', status: 'approved', testDate: '2026-07-14' },
+    { name: 'Contractors Materials', source: 'Martin Marietta', loc: '', material: 'Millings', status: 'approved', testDate: '2026-08-11' },
+    { name: 'Diamond Materials - Wilmington', source: '', loc: 'Wilmington', material: 'Crushed Concrete', status: 'approved', testDate: '2026-07-31' },
+    { name: 'Diamond Materials - Wilmington', source: '', loc: 'Wilmington', material: 'Millings', status: 'approved', testDate: '2026-07-14' },
+    { name: 'Diamond Materials - Harrington', source: 'York Principio', loc: 'Harrington', material: 'GABC', status: 'approved', testDate: '2026-07-31' },
+  ],
+};
+const cmCc = Lists.lookupAggregate(kirkwoodChart, 'Contractor Materials', 'Wilmington DE', 'GABC (CRUSHED CONCRETE)');
+assert.strictEqual(cmCc.row.name, 'Contractors Materials', 'do not steal Diamond Wilmington crushed concrete');
+assert.strictEqual(cmCc.row.material, 'Crushed Concrete');
+assert.strictEqual(cmCc.testDate, '2026-07-14');
+const cmRap = Lists.lookupAggregate(kirkwoodChart, 'Contractor Materials', 'Wilmington DE', 'RECYCLED ASPHALT PAVEMENT #301008');
+assert.strictEqual(cmRap.row.material, 'Millings');
+assert.strictEqual(cmRap.row.name, 'Contractors Materials');
+assert.strictEqual(cmRap.testDate, '2026-08-11');
+const cmRun = Lists.lookupAggregate(kirkwoodChart, 'Contractor Materials', 'Wilmington DE', 'GABC, Type B Crusher Run');
+assert.strictEqual(cmRun.row.material, 'GABC');
+assert.strictEqual(cmRun.testDate, '2026-07-14');
+assert.ok(!Lists.lookupAggregate(kirkwoodChart, 'Diamond Materials', 'Wilmington DE', 'GABC').found, 'Wilmington crusher-run GABC is not Harrington 7/31');
+const dmCc = Lists.lookupAggregate(kirkwoodChart, 'Diamond Materials', 'Wilmington DE', 'GABC (CRUSHED CONCRETE)');
+assert.strictEqual(dmCc.testDate, '2026-07-31');
+assert.strictEqual(dmCc.row.material, 'Crushed Concrete');
+const dmRap = Lists.lookupAggregate(kirkwoodChart, 'Diamond Materials', 'Wilmington DE', '#301008 Recycled Asphalt Pavement');
+assert.strictEqual(dmRap.row.material, 'Millings');
+assert.strictEqual(dmRap.testDate, '2026-07-14');
+
+const kirkwoodGrid = gridFrom(header, [[
+  ['', 301001.0, 'GABC', '', 'GABC (CRUSHED CONCRETE)', 'Contractor Materials', '', '925 South Heald Street', 'Diamond Materials'],
+  ['', '', '', '', '', '', '', 'Wilmington, DE 19801', '924 S. Heald Street'],
+], [
+  ['', 301008.0, 'Recycled Asphalt Pavement', '', 'Millings', 'Contractor Materials', '', '925 South Heald Street', 'Diamond Materials'],
+  ['', '', '', '', '', '', '', 'Wilmington, DE 19801', 'Wilmington, DE 19801'],
+]]);
+const kirkwoodItems = Engine.processGrid(kirkwoodGrid, { lists: { aggregate: kirkwoodChart } }).items;
+const kirkwoodCcItem = kirkwoodItems.find(i => (i.letterSpecs || i.specs).includes('#301001'));
+const kirkwoodRapItem = kirkwoodItems.find(i => (i.letterSpecs || i.specs).includes('#301008'));
+assert.strictEqual(kirkwoodCcItem.testDate, '2026-07-14', 'primary crushed concrete is Contractors Materials, not Diamond 7/31');
+assert.strictEqual(kirkwoodCcItem.altTestDate, '2026-07-31');
+assert.strictEqual(kirkwoodRapItem.testDate, '2026-08-11', 'RAP uses the Millings column');
+assert.strictEqual(kirkwoodRapItem.altTestDate, '2026-07-14');
+assert.ok(/Approved for use/.test(kirkwoodCcItem.actionNotes));
+assert.ok(/Approved for use/.test(kirkwoodRapItem.actionNotes));
+
 const cbfLiteChart = {
   kind: 'aggregate',
   entries: [
@@ -318,4 +378,36 @@ try {
   if (err && err.code === 'MODULE_NOT_FOUND') console.log('skip live aggregate snapshot');
   else throw err;
 }
+
+(function liveApprovedSourceList() {
+  const fs = require('fs');
+  const path = require('path');
+  const liveAsl = [
+    '/home/ubuntu/.cursor/projects/workspace/uploads/Approved_Source_List_770b.xlsx',
+    '/home/ubuntu/.cursor/projects/workspace/uploads/Approved_Source_List_5b4b.xlsx',
+  ].find(p => fs.existsSync(p));
+  if (!liveAsl) {
+    console.log('skip live Approved Source List.xlsx');
+    return;
+  }
+  const Fetch = require('./fetch-lists.js');
+  const grid = Fetch.readSpreadsheetGrid(liveAsl, { preferSheet: 'Reference Summary' });
+  const live = Lists.parseAggregateChartGrid(grid, { filename: path.basename(liveAsl), path: liveAsl });
+  assert.ok(live.entries.length > 10, 'parsed live chart rows');
+  const liveCc = Lists.lookupAggregate(live, 'Contractor Materials', 'Wilmington DE', 'GABC (CRUSHED CONCRETE)');
+  assert.ok(liveCc.found, 'Contractors Materials crushed concrete is on the live chart');
+  assert.ok(/contractor/i.test(liveCc.row.name), liveCc.row.name);
+  assert.strictEqual(liveCc.row.material, 'Crushed Concrete');
+  assert.ok(liveCc.testDate !== '2026-07-31', 'Contractors Materials crushed concrete is not Diamond Wilmington 7/31, got ' + liveCc.testDate + ' @ ' + liveCc.row.name);
+  const liveRap = Lists.lookupAggregate(live, 'Contractor Materials', 'Wilmington DE', 'RECYCLED ASPHALT PAVEMENT #301008');
+  assert.ok(liveRap.found, 'RAP millings for Contractors Materials');
+  assert.strictEqual(liveRap.row.material, 'Millings');
+  assert.ok(/contractor/i.test(liveRap.row.name), liveRap.row.name);
+  const liveWilmGabc = Lists.lookupAggregate(live, 'Diamond Materials', 'Wilmington DE', 'GABC, Type B Crusher Run');
+  if (liveWilmGabc.found) {
+    assert.ok(!/harrington/i.test(liveWilmGabc.row.name), 'Wilmington GABC must not be Harrington, got ' + liveWilmGabc.row.name);
+    assert.strictEqual(liveWilmGabc.row.material, 'GABC');
+  }
+  console.log('OK live Approved Source List millings/GABC columns', liveCc.testDate, liveRap.testDate);
+})();
 

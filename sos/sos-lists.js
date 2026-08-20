@@ -52,8 +52,9 @@
       .toLowerCase()
       .replace(/&/g, 'and')
       .replace(/\b(ppg\/?\s*)/g, '')
-      .replace(/,?\s*(llc|l\.l\.c\.|inc\.?|incorporated|co\.?|company|corp\.?|corporation|ltd\.?)\.?\s*/g, ' ')
+      .replace(/\b(llc|l\.l\.c\.|inc\.?|incorporated|co\.?|company|corp\.?|corporation|ltd\.?)\b\.?/g, ' ')
       .replace(/[^a-z0-9]+/g, ' ')
+      .replace(/\bcontractors\b/g, 'contractor')
       .replace(/\s+/g, ' ')
       .trim();
   }
@@ -296,9 +297,10 @@
   function materialKind(s) {
     const t = String(s || '').toLowerCase();
     if (!t) return '';
-    // Crusher run is GABC (natural stone). Do not treat the letters "crush" as RCA.
+    // Crusher run is the chart GABC column (natural stone). Do not treat "crush" as RCA.
     if (/crushed concrete|recycled concrete|\brca\b/.test(t) && !/crusher run/.test(t)) return 'crushed-concrete';
-    if (/milling|\brap\b/.test(t) && !/\bgabc\b|crusher run/.test(t)) return 'millings';
+    // Chart Millings column = RAP / Recycled Asphalt Pavement / #301008.
+    if ((/milling|\brap\b|recycled asphalt|#?301008\b/.test(t)) && !/\bgabc\b|crusher run/.test(t)) return 'millings';
     if (/\bgabc\b|graded aggregate|crusher run|crushed stone/.test(t)) return 'gabc';
     if (/cbf light|channel bed fill.*ligh?te?/.test(t)) return 'cbf-light';
     if (/channel bed|\bcbf\b/.test(t)) return 'cbf';
@@ -319,7 +321,8 @@
     const ka = materialKind(a);
     const kb = materialKind(b);
     const exclusive = new Set(['crushed-concrete', 'gabc', 'millings']);
-    if (ka && kb && ka !== kb && (exclusive.has(ka) || exclusive.has(kb))) return false;
+    // Exclusive chart columns never inherit another column's date, even when one side is unclassified.
+    if ((exclusive.has(ka) || exclusive.has(kb)) && ka !== kb) return false;
     if (ka && kb && ka === kb) return true;
     const tags = [
       [/209b|type b|sand/, /209b|type b|\bsand\b|borrow/],
@@ -466,6 +469,7 @@
           name: stockpile,
           source,
           loc: locFromStockpile(stockpile),
+          // GABC = crusher run. Crushed Concrete and Millings (RAP / #301008) are separate columns.
           material: mat.name,
           status: parsed.status,
           testDate: parsed.testDate,
@@ -520,13 +524,26 @@
     if (!york) return false;
     if (formPointsAtPrincipio(name, loc)) return true;
     if (formLooksLikeYorkBuilding(name) && !loc) return true;
+    if (formLooksLikeYorkBuilding(name) && loc) {
+      if (entry.loc && (locMatch(entry.loc, loc) || locsEquivalent(entry.loc, loc))) return true;
+      const city = locCanon(loc);
+      if (city.length >= 4 && foldName(entry.name).includes(city)) return true;
+    }
     return false;
   }
+
+  const PRODUCER_STOP = new Set([
+    'materials', 'material', 'supply', 'products', 'product', 'plant', 'crusher',
+    'aggregate', 'aggregates', 'construction', 'companies', 'company',
+    'industries', 'industry', 'services', 'service', 'group', 'associates',
+  ]);
 
   function producerHitsChart(entry, name, loc) {
     if (isYorkPrincipioPair(entry, name, loc)) return true;
     if (producerNameMatch(entry.name, name) || producerNameMatch(entry.source, name)) return true;
-    if (loc && (nameMatch(entry.name, loc) || nameMatch(entry.loc, loc) || locsEquivalent(entry.loc, loc))) return true;
+    // City-only match is for blank producer names (CBF / Harrington). A named
+    // company must not inherit another plant that merely shares Wilmington.
+    if (!foldName(name) && loc && (nameMatch(entry.name, loc) || nameMatch(entry.loc, loc) || locsEquivalent(entry.loc, loc))) return true;
     const hay = chartBlob(entry);
     const n = foldName(name);
     const l = locCanon(loc);
@@ -534,12 +551,13 @@
     const nWords = n.split(' ').filter(w => w.length > 2);
     const haySet = new Set(hay.split(' ').filter(w => w.length > 2));
     const nameHits = nWords.filter(w => haySet.has(w) || hay.includes(w));
+    const distinctive = nameHits.filter(w => !PRODUCER_STOP.has(w));
     if (l) {
       const lWords = l.split(' ').filter(w => w.length > 2);
       const locHits = lWords.filter(w => haySet.has(w) || hay.includes(w) || locsEquivalent(l, hay));
-      if (nameHits.length && locHits.length) return true;
+      if (distinctive.length && locHits.length) return true;
     }
-    return nameHits.length >= 2;
+    return distinctive.length >= 2 || nameHits.length >= 2;
   }
 
   function chartLocHits(entry, name, loc) {
@@ -573,8 +591,20 @@
     if (!entries.length) return { found: false };
     let hits = entries.filter(e => producerHitsChart(e, name, loc));
     if (!hits.length) return { found: false };
-    const locHits = loc ? hits.filter(e => chartLocHits(e, name, loc)) : hits;
-    if (loc && locHits.length) hits = locHits;
+    if (loc) {
+      const locHits = hits.filter(e => chartLocHits(e, name, loc));
+      if (locHits.length) {
+        hits = locHits;
+      } else {
+        const companyLevel = hits.filter(e => !e.loc && (
+          producerNameMatch(e.name, name) || producerNameMatch(e.source, name)
+        ));
+        if (companyLevel.length) hits = companyLevel;
+        else if (foldName(name)) {
+          return { found: false, reason: 'location-mismatch', matches: hits };
+        }
+      }
+    }
     const kind = materialKind(material);
     const matHits = material ? hits.filter(e => materialMatch(e.material, material)) : hits;
     if (matHits.length) hits = matHits;

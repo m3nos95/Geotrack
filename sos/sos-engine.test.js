@@ -750,6 +750,32 @@ assert.ok(/SECTION: #908004 - TOPSOIL, 6" DEPTH/.test(kirkwoodLetter), kirkwoodL
 const gabcHeading = (kirkwoodLetter.split('SECTION:').find(s => s.includes('#301001')) || '').split('\n')[0];
 assert.ok(!/#301008|#908004/.test(gabcHeading), gabcHeading);
 
+const kirkwoodAggChart = {
+  kind: 'aggregate',
+  format: 'approved-source-list',
+  entries: [
+    { name: 'Contractors Materials', source: 'Martin Marietta', loc: '', material: 'GABC', status: 'approved', testDate: '2026-07-14' },
+    { name: 'Contractors Materials', source: 'Martin Marietta', loc: '', material: 'Crushed Concrete', status: 'approved', testDate: '2026-07-14' },
+    { name: 'Contractors Materials', source: 'Martin Marietta', loc: '', material: 'Millings', status: 'approved', testDate: '2026-08-11' },
+    { name: 'Diamond Materials - Wilmington', source: '', loc: 'Wilmington', material: 'Crushed Concrete', status: 'approved', testDate: '2026-07-31' },
+    { name: 'Diamond Materials - Wilmington', source: '', loc: 'Wilmington', material: 'Millings', status: 'approved', testDate: '2026-07-14' },
+    { name: 'Diamond Materials - Harrington', source: 'York Principio', loc: 'Harrington', material: 'GABC', status: 'approved', testDate: '2026-07-31' },
+  ],
+};
+const kirkwoodDated = Engine.processGrid(kirkwoodStone, {
+  filename: 'SOS T202506101 Kirkwood Highway.xls',
+  lists: { aggregate: kirkwoodAggChart },
+});
+const datedGabc = kirkwoodDated.items.find(i => (i.letterSpecs || i.specs).join() === '#301001');
+const datedRap = kirkwoodDated.items.find(i => (i.letterSpecs || i.specs).join() === '#301008');
+assert.strictEqual(datedGabc.testDate, '2026-07-14', 'Kirkwood crushed concrete uses Contractors Materials, not Diamond 7/31');
+assert.strictEqual(datedGabc.altTestDate, '2026-07-31');
+assert.strictEqual(datedRap.testDate, '2026-08-11', 'Kirkwood RAP uses the Millings column');
+assert.strictEqual(datedRap.altTestDate, '2026-07-14');
+assert.ok(/Approved for use/.test(datedGabc.actionNotes));
+assert.ok(/Approved for use/.test(datedRap.actionNotes));
+assert.ok(!/7\.31\.26/.test(Engine.sourceLine(datedRap)), Engine.sourceLine(datedRap));
+
 // Superpave Type C + Type B in one compact plant block still group.
 const compactSuperpavePair = compactCover().concat([
   [401005, 'Superpave Type C, PG 64-22', 'Superpave Type C', 'River Asphalt, LLC', 'River Asphalt, LLC', 'River Asphalt, LLC'],

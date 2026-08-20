@@ -944,7 +944,7 @@
     const oneSource = !!(item.altName && item.altName !== item.srcName) ||
       (item.altLoc && item.altLoc !== item.srcLoc);
     const product = (item.subItems || []).join(' ') + ' ' + (item.material || '');
-    const materialBlob = [item.desc, item.material, ...(item.subItems || [])].join(' ');
+      const materialBlob = [item.desc, item.material, ...(item.subItems || []), ...(item.letterSpecs || item.specs || [])].join(' ');
     let action = 'approved';
     let actionNotes = '';
     let apl = false;
