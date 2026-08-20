@@ -178,10 +178,16 @@
   }
 
   function cleanContractNo(value) {
-    return cellStr(value)
+    const raw = cellStr(value)
       .replace(/^(application|contract|state contract|agreement)\s*(no\.?)?\s*#?\s*/i, '')
       .replace(/^#\s*/, '')
       .trim();
+    const packed = raw.replace(/\s+/g, '');
+    const dashed = packed.match(/^T(\d{4})-(\d{3})-(\d{2})$/i);
+    if (dashed) return `T${dashed[1]}-${dashed[2]}-${dashed[3]}`;
+    const digits = packed.match(/^T(\d{4})(\d{3})(\d{2})$/i);
+    if (digits) return `T${digits[1]}-${digits[2]}-${digits[3]}`;
+    return raw;
   }
 
   function detectDocKind(contract) {
@@ -206,11 +212,27 @@
   }
 
   function splitAddress(addr) {
-    const parts = cellStr(addr).split(',').map(p => p.trim()).filter(Boolean);
+    const t = cellStr(addr);
+    const parts = t.split(',').map(p => p.trim()).filter(Boolean);
     if (parts.length >= 2) {
       return { street: parts[0], citystatezip: parts.slice(1).join(', ') };
     }
-    return { street: cellStr(addr), citystatezip: '' };
+    const tail = t.match(/^(.*)\s+([A-Z]{2})\s+(\d{5}(?:-\d{4})?)$/);
+    if (tail) {
+      const words = tail[1].trim().split(/\s+/);
+      let splitAt = -1;
+      for (let i = 0; i < words.length; i++) {
+        if (/^(rd|road|ave|avenue|st|street|hwy|highway|blvd|boulevard|ln|lane|dr|drive|ct|court|pkwy|pike|way|circle|pl|place)$/i.test(words[i].replace(/\./g, ''))) {
+          splitAt = i;
+        }
+      }
+      if (splitAt >= 0 && splitAt < words.length - 1) {
+        const street = words.slice(0, splitAt + 1).join(' ');
+        const city = words.slice(splitAt + 1).join(' ');
+        if (isStreet(street) && city) return { street, citystatezip: `${city}, ${tail[2]} ${tail[3]}` };
+      }
+    }
+    return { street: t, citystatezip: '' };
   }
 
   function consumeContactBlock(lines) {
@@ -296,9 +318,11 @@
 
   function isColumnSubHeaderRow(row, cols) {
     const spec = cellStr(row[cols.spec]);
+    const desc = cellStr(row[cols.desc]);
     const joined = (row || []).map(cellStr).join(' ').toLowerCase();
     if (/address\s*&\s*contact/.test(joined) && !specCellFromRow(row, cols)) return true;
     if (spec === '#' && !specCellFromRow(row, cols)) return true;
+    if (/^specification\s*#?$/i.test(spec) && /item description/i.test(desc)) return true;
     return false;
   }
 
@@ -314,6 +338,43 @@
     const named = (val) =>
       !(isStreet(val) || isPhone(val) || isCityState(val)) && isCompanyName(val);
     return named(mfg) || named(sup);
+  }
+
+  function isLooseProductRow(row, cols) {
+    const spec = row[cols.spec];
+    const specText = cellStr(spec);
+    const smallNum = (typeof spec === 'number' && spec >= 0 && spec < 10) || /^(0|1)$/.test(specText);
+    if (!smallNum) return false;
+    const blob = `${cellStr(row[cols.desc])} ${cellStr(row[cols.material])}`.toLowerCase();
+    return /curing|expansion|joint sealer|1600|truncated dome|detectable warning|rubber expansion|reflex/.test(blob);
+  }
+
+  function currentLooksLikeProduct(current) {
+    if (!current) return false;
+    const blob = `${cellStr((current.descLines || [])[0])} ${cellStr((current.materialLines || [])[0])}`.toLowerCase();
+    return /curing|expansion|joint sealer|1600|truncated dome|rubber expansion|reflex/.test(blob);
+  }
+
+  function bulkShareFamilies(a, b) {
+    const share = new Set(['aggregate', 'borrow', 'topsoil', 'landscape', 'pcc', 'precast', 'utility', 'riprap']);
+    return share.has(a) && share.has(b);
+  }
+
+  function plantKeysFromLines(lines) {
+    return (lines || [])
+      .map(cellStr)
+      .filter(t => t && isCompanyName(t) && !isStreet(t) && !isCityState(t) && !isPhone(t))
+      .map(plantCompanyKey)
+      .filter(Boolean);
+  }
+
+  function sameBulkCompany(current, row, cols) {
+    if (!current) return false;
+    const incoming = plantKeysFromLines([row[cols.supplier], row[cols.mfg], row[cols.alt]]);
+    if (!incoming.length) return true;
+    const existing = plantKeysFromLines([...(current.supLines || []), ...(current.mfgLines || []), ...(current.altLines || [])]);
+    if (!existing.length) return true;
+    return incoming.some(n => existing.some(e => e === n || e.includes(n) || n.includes(e)));
   }
 
   function parseProject(rows) {
@@ -519,9 +580,31 @@
         continue;
       }
       const specNums = specCell ? extractSpecs(specCell) : [];
+      const productRow = isLooseProductRow(row, cols);
+      const incomingFam = familyFromSpec(
+        specNums[0] || '',
+        cellStr(row[cols.desc]),
+        cellStr(row[cols.material])
+      );
+      const currentFam = current
+        ? familyFromSpec(
+          (current.specs || [])[0] || '',
+          cellStr((current.descLines || [])[0]),
+          cellStr((current.materialLines || [])[0])
+        )
+        : '';
+      const familyBreak = !!(current && ((current.specs || []).length || currentLooksLikeProduct(current))
+        && (specNums.length || productRow)
+        && incomingFam && currentFam
+        && incomingFam !== currentFam && !bulkShareFamilies(incomingFam, currentFam));
       const newSpec = !!(current && specNums.length && specNums.some(s => !(current.specs || []).includes(s)));
       const companyStart = rowLooksLikeCompanyStart(row, cols);
-      const restart = current && itemLooksComplete(current) && (specCell || companyStart);
+      const keepBulk = current && bulkShareFamilies(currentFam || incomingFam, incomingFam || currentFam)
+        && sameBulkCompany(current, row, cols);
+      const restart = current && (
+        familyBreak
+        || (itemLooksComplete(current) && (specCell || companyStart || productRow) && !keepBulk)
+      );
       if (!current || restart) {
         let inherit = null;
         if (current && restart && newSpec && !companyStart) {
@@ -531,7 +614,12 @@
             altLines: current.altLines.slice(),
           };
         }
-        if (current) flush();
+        if (current) {
+          const junk = !(current.specs || []).length
+            && /item description/i.test(cellStr((current.descLines || [])[0]));
+          if (junk) current = null;
+          else flush();
+        }
         startItem(row, inherit);
         continue;
       }
@@ -637,8 +725,12 @@
     if (/reflex|\brubber expansion\b|preformed expansion|expansion joint material/.test(mat)
         && !/class\s*[abc]\s*concrete/.test(mat)) return 'expansion';
     if (/curing compound|pigmented curing|1600[-\s]?white|silencure/.test(mat)) return 'curing';
-    if (/expansion/.test(blob) && !/crack|joint seal|pcc|sidewalk|curb/.test(blob)) return 'expansion';
+    if (/expansion/.test(blob) && !/crack\s*(and\s*)?joint|joint sealing/.test(blob) && !/pcc|sidewalk|curb/.test(blob)) return 'expansion';
     if (/curing/.test(blob) && !/pcc|sidewalk|curb/.test(blob)) return 'curing';
+    // Ready-mix Class B used to adjust inlets / sanitary / gas valves is PCC, not a precast product.
+    if (/class\s*[abc]\s*concrete/.test(mat) && !/precast/.test(mat) && /^(602|701|702|705|710|711)$/.test(prefix)) {
+      return 'pcc';
+    }
     const cat = SPEC_CATALOG[spec];
     if (cat) return cat.family;
     if (/tie bar|dowel bar|contraction basket|stake pin|anchoring adhesive|redhead|welded hook/.test(blob)) return 'hardware';
@@ -696,6 +788,18 @@
       .replace(/,\s*$/, '')
       .replace(/\s+/g, ' ')
       .trim();
+  }
+
+  function letterizePlantName(name) {
+    const n = cleanCompany(name);
+    if (!n) return '';
+    if (/^bear concrete\b/i.test(n)) return n.replace(/^bear concrete/i, 'Bear Materials');
+    if (/^w[.\s-]*r[.\s-]*meadows$/i.test(n)) return 'WR Meadows';
+    return n;
+  }
+
+  function plantCompanyKey(name) {
+    return letterizePlantName(name).toLowerCase();
   }
 
   function matchAplList(list, name, loc, product) {
@@ -765,11 +869,21 @@
     } else if (family === 'curing') {
       letterSpecs = ['#701/705xxx'];
       sectionDesc = 'CONCRETE ITEMS';
-      subItems = [(item.material || item.desc || 'Curing Compound') + '*'];
+      const named = [...(item.subItems || []), item.material, item.desc]
+        .filter(Boolean)
+        .find(s => /1600|white pigmented|silencure|thinfilm/i.test(s));
+      subItems = [(named || item.material || item.desc || 'Curing Compound').replace(/\s+/g, ' ').trim() + '*'];
     } else if (family === 'expansion') {
       letterSpecs = ['#701/705xxx'];
       sectionDesc = 'CONCRETE ITEMS';
-      const product = (item.material || item.desc || 'Expansion').replace(/\s+/g, ' ').trim();
+      const named = [...(item.subItems || []), item.material, item.desc]
+        .filter(Boolean)
+        .find(s => /reflex|rubber expansion|preformed/i.test(s));
+      let product = (named || item.material || item.desc || 'Expansion').replace(/\s+/g, ' ').trim();
+      if (/reflex|re-?flex/i.test((item.srcName || '') + ' ' + (item.mfgName || '') + ' ' + product)
+          && !/reflex rubber expansion/i.test(product)) {
+        product = 'Reflex Rubber Expansion';
+      }
       subItems = [product];
     } else if (family === 'crack-seal') {
       const branded = (item.subItems || []).filter(s => /\d/.test(s) || /elastoflex|roadsaver|crackmaster|flex/i.test(s));
@@ -781,6 +895,10 @@
     }
 
     subItems = subItems.filter(s => s && s.toLowerCase() !== sectionDesc.toLowerCase());
+    if (family === 'apl-product' && /truncated dome/i.test(sectionDesc)) {
+      subItems = subItems.filter(s => !/^(ada\s+)?truncated domes?$/i.test(s));
+      if (sectionDesc && !/\*$/.test(sectionDesc)) sectionDesc += '*';
+    }
     if (['rcp', 'precast', 'pcc', 'aggregate'].includes(family)) {
       subItems = subItems.filter(s => !isGenericMaterialBullet(s));
     }
@@ -804,8 +922,8 @@
     // Bulk plants: supplier name + plant city from manufacturer address column.
     const manufactured = ['tack', 'crack-seal', 'curing', 'expansion', 'apl-product', 'ttc', 'signs', 'castings', 'striping', 'hardware'].includes(item.family);
     if (manufactured && item.mfgName && !isCityState(item.mfgName)) {
-      let altName = cleanCompany(item.altMfgName || item.altName);
-      const srcName = cleanCompany(item.mfgName);
+      let altName = letterizePlantName(item.altMfgName || item.altName);
+      const srcName = letterizePlantName(item.mfgName);
       if (altName && srcName && altName.toLowerCase() === srcName.toLowerCase()
           && (!item.altLoc || formatLoc(item.altLoc) === formatLoc(item.mfgLoc || item.srcLoc))) {
         altName = '';
@@ -821,16 +939,16 @@
         altPhone: altName ? item.altPhone : '',
       };
     }
-    const supplier = cleanCompany(item.supplierName);
-    const mfg = cleanCompany(item.mfgName);
-    let srcName = supplier || mfg || cleanCompany(item.srcName);
+    const supplier = letterizePlantName(item.supplierName);
+    const mfg = letterizePlantName(item.mfgName);
+    let srcName = supplier || mfg || letterizePlantName(item.srcName);
     if (mfg && supplier && mfg.toLowerCase().includes(supplier.toLowerCase()) && mfg.length > supplier.length) {
       srcName = mfg;
     } else if (supplier && mfg && supplier.toLowerCase().includes(mfg.toLowerCase()) && supplier.length > mfg.length) {
       srcName = supplier;
     }
     const altIsSameCompany = !item.altMfgName && (item.altLoc || item.altAddr);
-    let altName = cleanCompany(item.altMfgName || (altIsSameCompany ? srcName : item.altName));
+    let altName = letterizePlantName(item.altMfgName || (altIsSameCompany ? srcName : item.altName));
     let numbered = false;
     if (altIsSameCompany && srcName && (item.mfgLoc || item.srcLoc) && item.altLoc &&
         formatLoc(item.mfgLoc || item.srcLoc) !== formatLoc(item.altLoc)) {
@@ -878,8 +996,10 @@
     const weak = !name || isCityState(name) || !/[A-Za-z]{4,}/.test(name.replace(/\s+[A-Z]{2}\s*$/, ''));
     const out = {};
     if (hit.testDate) out.testDate = hit.testDate;
-    if (!weak) return out;
     const plant = String(row.name || '').split(/\s[-–—]\s+/)[0].trim();
+    const fold = Lists.foldName || (s => String(s || '').toLowerCase());
+    if (plant && name && fold(plant) === fold(name)) out.srcName = plant;
+    if (!weak) return out;
     let srcName = plant || name;
     if (row.source) {
       const quarry = String(row.source).replace(/^York\s+/i, '').trim();
@@ -1022,7 +1142,11 @@
           action = parts[0].action;
         }
         highlight = parts.some(x => x.highlight);
-        actionNotes = parts.map(x => x.notes).join('\n');
+        if (action === 'approved' && parts.every(x => x.action === 'approved')) {
+          actionNotes = ACTION_TEXT.approved;
+        } else {
+          actionNotes = parts.map(x => x.notes).join('\n');
+        }
         if (action === 'test') actionNotes = actionNotes + '\n' + testCoordinationNotes(project.district, lists);
         testDate = p.date || testDate;
         if (a && a.date) item.altTestDate = a.date;
@@ -1054,8 +1178,8 @@
       rule = 'state-inspected-stock';
     } else if (family === 'pcc') {
       action = 'approved';
-      actionNotes = ACTION_TEXT.mixDesigns;
-      rule = 'pcc-mix-designs';
+      actionNotes = ACTION_TEXT.pccOnFile;
+      rule = 'pcc-admixtures-on-file';
     } else if (family === 'hardware') {
       action = 'approved';
       actionNotes = ACTION_TEXT.conforms;
@@ -1096,8 +1220,8 @@
         rule = 'expansion-submit';
       } else {
         action = 'approved';
-        actionNotes = ACTION_TEXT.expansionAashto;
-        rule = 'expansion-aashto';
+        actionNotes = ACTION_TEXT.approvedBare;
+        rule = 'expansion-approved';
       }
     } else if (family === 'crack-seal') {
       const live = lists.crack && lists.crack.entries && lists.crack.entries.length >= 2;
@@ -1113,7 +1237,12 @@
         action = 'approved';
         actionNotes = ACTION_TEXT.approvedBare;
       }
-    } else if (family === 'curing' || family === 'apl-product' || family === 'ttc' || family === 'signs') {
+    } else if (family === 'curing' || family === 'apl-product') {
+      action = 'apl';
+      apl = true;
+      actionNotes = ACTION_TEXT.apl;
+      rule = family + '-apl';
+    } else if (family === 'ttc' || family === 'signs') {
       action = 'apl';
       apl = true;
       actionNotes = ACTION_TEXT.aplOn;
@@ -1163,7 +1292,7 @@
         actionNotes = (actionNotes ? actionNotes + '\n' : '') + ACTION_TEXT.oneSource;
       }
     }
-    if (apl) {
+    if (apl && !/prodlists/i.test(actionNotes)) {
       actionNotes = (actionNotes ? actionNotes + '\n' : '') + APL_FOOTNOTE;
     }
 
@@ -1200,6 +1329,11 @@
       const sub = (it) => (it.subItems || []).join('|').toLowerCase();
       return sourceKey(a) === sourceKey(b) && sub(a) === sub(b);
     }
+    if (a.family === 'pcc' && b.family === 'pcc') {
+      const ca = plantCompanyKey(a.srcName);
+      const cb = plantCompanyKey(b.srcName);
+      return !!(ca && ca === cb);
+    }
     const specsOf = (it) => [...(it.specs || []), ...(it.letterSpecs || [])];
     if (specsOf(a).includes('#401505') || specsOf(b).includes('#401505')) return false;
     if (specsOf(a).includes('#905007') || specsOf(b).includes('#905007')) return false;
@@ -1219,7 +1353,16 @@
         if (item.desc && item.desc !== prev.desc && !prev.desc.includes(item.desc)) {
           // keep first catalog desc; letter prints one line per spec
         }
-        prev.groupedFrom = (prev.groupedFrom || [prev.id]) .concat(item.id);
+        prev.groupedFrom = (prev.groupedFrom || [prev.id]).concat(item.id);
+        if (!prev.srcLoc && item.srcLoc) {
+          prev.srcLoc = item.srcLoc;
+          if (!prev.srcAddr && item.srcAddr) prev.srcAddr = item.srcAddr;
+        }
+        if (!prev.altName && item.altName) {
+          prev.altName = item.altName;
+          prev.altLoc = item.altLoc;
+          prev.altAddr = item.altAddr;
+        }
       } else {
         groups.push({ ...item });
       }
@@ -1227,8 +1370,8 @@
     const FAMILY_ORDER = {
       borrow: 10, aggregate: 20, 'hma-mix': 30, tack: 35, 'crack-seal': 40,
       rcp: 50, riprap: 52, hdpe: 55, utility: 56, precast: 60, castings: 65,
-      pcc: 70, hardware: 72, curing: 75, expansion: 76,
-      'apl-product': 80, geotextile: 85, erosion: 90, seed: 95, topsoil: 96, landscape: 97,
+      pcc: 70, hardware: 72, 'apl-product': 73, curing: 75, expansion: 76,
+      geotextile: 85, erosion: 90, seed: 95, topsoil: 96, landscape: 97,
       striping: 98, ttc: 100, signs: 105, other: 200,
     };
     groups.sort((a, b) => {
@@ -1465,7 +1608,14 @@
       line += ` (tested ${prettyTestedDate(item.testDate)})`;
     }
     if (item.altName) {
-      line += '\nAlt: ' + item.altName + (item.altLoc ? ' - ' + item.altLoc : '');
+      const altUseAddr = useAddr && item.altAddr;
+      if (altUseAddr && item.altLoc) {
+        line += '\nAlt: ' + item.altName + ' - ' + item.altAddr.replace(/,\s*$/, '') + ', ' + item.altLoc;
+      } else if (item.altLoc) {
+        line += '\nAlt: ' + item.altName + ' - ' + item.altLoc;
+      } else {
+        line += '\nAlt: ' + item.altName;
+      }
       if (item.altTestDate) {
         line += ` (tested ${prettyTestedDate(item.altTestDate)})`;
       }

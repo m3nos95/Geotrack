@@ -1883,7 +1883,7 @@
     approvedBare: 'Approved.',
     mixDesigns: 'Approved. Only approved mix designs are approved for use.',
     mixOnFile: 'Approved; material sources and job mix formula are on file at the M&R Lab.',
-    pccOnFile: 'Approved; material sources/admixture certifications are on file at the M&R Lab.',
+    pccOnFile: 'Approved; material sources & admixture certifications on file at M&R Lab.',
     stockOnFile: 'Approved provided is shipped from state inspected stock. Test reports are on file at the M&R Lab.',
     visual: 'Approved: Conduct a visual inspection to ensure specification compliance.',
     seed: 'Approved provided seed conforms to the applicable table in the Standard Specifications, unless otherwise stipulated in the plans.',

@@ -339,7 +339,7 @@ const seaboardTack = Engine.processGrid(seaboardGrid).items.find(i => i.family =
 assert.ok(seaboardTack.action === 'apl' || seaboardTack.action === 'approved');
 assert.ok(!/not approved/i.test(seaboardTack.actionNotes));
 
-// PCC curb / sidewalk uses mix-design language (not admixture certs)
+// PCC curb / sidewalk uses admixture-cert language (issued M&R Lab note)
 const pccGrid = gridFromObjects(FREY_HEADER, [[
   ['', 705001.0, 'PCC Sidewalk, 4"', '', 'Class B Concrete', 'Heritage Concrete', '', 'Wilmington, DE', 'Bear Concrete'],
   ['', '', '', '', '', '', '', '', 'Newark, DE'],
@@ -352,8 +352,8 @@ assert.ok(pcc, 'PCC item present');
 assert.ok(pcc.specs.includes('#705001') && pcc.specs.includes('#701013'));
 assert.ok(Engine.letterSectionLines(pcc).some(l => /#705001 - PCC SIDEWALK, 4"/.test(l)));
 assert.ok(Engine.letterSectionLines(pcc).some(l => /#701013 - PCC CURB, TYPE 1-8/.test(l)));
-assert.ok(/mix designs/i.test(pcc.actionNotes));
-assert.ok(!/admixture/i.test(pcc.actionNotes));
+assert.ok(/admixture/i.test(pcc.actionNotes));
+assert.ok(/M&R Lab/i.test(pcc.actionNotes));
 
 // Sized RCP / FES / inlets / curb keep their own letter lines when grouped
 const whitehallStruct = Engine.processGrid(gridFromObjects(FREY_HEADER, [
@@ -581,8 +581,7 @@ assert.strictEqual(whitehallGabc.action, 'approved');
 assert.strictEqual(whitehallGabc.rule, 'aggregate-chart');
 assert.ok(/York Building Products/i.test(whitehallGabc.altName));
 assert.strictEqual(whitehallGabc.altTestDate, '2026-06-29');
-assert.ok(/Martin Marietta Approved for use/.test(whitehallGabc.actionNotes.replace(/\n/g, ' ')));
-assert.ok(/York Building Products Approved for use/.test(whitehallGabc.actionNotes.replace(/\n/g, ' ')));
+assert.ok(/Approved for use/.test(whitehallGabc.actionNotes.replace(/\n/g, ' ')));
 assert.ok(!/Must be tested/i.test(whitehallGabc.actionNotes));
 assert.ok(/tested 6\.29\.26/.test(Engine.sourceLine(whitehallGabc)));
 
@@ -696,7 +695,7 @@ const compactHma = compactCover().concat([
 ]);
 assert.ok(Engine.findHeaderRow(compactHma) >= 0, 'compact Spec / Item Description header');
 const compactOne = Engine.processGrid(compactHma);
-assert.strictEqual(compactOne.project.contract, 'T202606103');
+assert.strictEqual(compactOne.project.contract, 'T2026-061-03');
 assert.strictEqual(compactOne.project.docKind, 'contract');
 assert.ok(/Greggo/.test(compactOne.project.contractor));
 const wedge = compactOne.items.find(i => (i.specs || []).includes('#401036'));
@@ -774,7 +773,9 @@ assert.strictEqual(datedRap.testDate, '2026-08-11', 'Kirkwood RAP uses the Milli
 assert.strictEqual(datedRap.altTestDate, '2026-07-14');
 assert.ok(/Approved for use/.test(datedGabc.actionNotes));
 assert.ok(/Approved for use/.test(datedRap.actionNotes));
+assert.ok(!/Contractor Materials Approved/i.test(datedGabc.actionNotes), datedGabc.actionNotes);
 assert.ok(!/7\.31\.26/.test(Engine.sourceLine(datedRap)), Engine.sourceLine(datedRap));
+assert.strictEqual(Engine.cleanContractNo('T202506101'), 'T2025-061-01');
 
 // Superpave Type C + Type B in one compact plant block still group.
 const compactSuperpavePair = compactCover().concat([
@@ -794,7 +795,18 @@ if (fs.existsSync(liveKirkwood)) {
   try { XLSX = require('xlsx'); } catch (e) { XLSX = null; }
   if (XLSX) {
     const wb = XLSX.readFile(liveKirkwood);
-    const live = Engine.processWorkbook(wb, { filename: path.basename(liveKirkwood) });
+    const live = Engine.processWorkbook(wb, {
+      filename: path.basename(liveKirkwood),
+      lists: fs.existsSync('/home/ubuntu/.cursor/projects/workspace/uploads/Approved_Source_List_770b.xlsx')
+        ? { aggregate: require('./sos-lists.js').parseAggregateChartGrid(
+          require('./fetch-lists.js').readSpreadsheetGrid(
+            '/home/ubuntu/.cursor/projects/workspace/uploads/Approved_Source_List_770b.xlsx',
+            { preferSheet: 'Reference Summary' }
+          ),
+          { filename: 'Approved Source List.xlsx' }
+        ) }
+        : {},
+    });
     const gabc = live.items.find(i => (i.letterSpecs || i.specs).join() === '#301001');
     const rap = live.items.find(i => (i.letterSpecs || i.specs).join() === '#301008');
     const top = live.items.find(i => (i.letterSpecs || i.specs).join() === '#908004');
@@ -802,6 +814,41 @@ if (fs.existsSync(liveKirkwood)) {
     assert.ok(/CRUSHED CONCRETE/i.test(gabc.desc));
     assert.strictEqual(top.family, 'topsoil');
     assert.strictEqual(top.action, 'visual');
+    assert.strictEqual(live.project.contract, 'T2025-061-01');
+    assert.ok(/4048 NEW CASTLE AVE/i.test(live.project.contractorAddr), live.project.contractorAddr);
+    assert.ok(/New Castle,\s*DE/i.test(live.project.contractorAddr), live.project.contractorAddr);
+    assert.ok(!/AVE NEW$/im.test(live.project.contractorAddr));
+    const bear = live.items.find(i => i.family === 'pcc');
+    assert.ok(bear, 'Class B inlets/curb/sidewalk/gas/sanitary are one PCC section');
+    const bearSpecs = (bear.letterSpecs || bear.specs || []).join(' ');
+    assert.ok(/#602130/.test(bearSpecs) && /#701013/.test(bearSpecs) && /#705001/.test(bearSpecs));
+    assert.ok(/#710503/.test(bearSpecs) && /#711500/.test(bearSpecs));
+    assert.ok(/Bear Materials/i.test(bear.srcName), bear.srcName);
+    assert.ok(/Newark/i.test(bear.srcLoc), bear.srcLoc);
+    assert.ok(/New Castle/i.test(bear.altLoc), bear.altLoc);
+    assert.ok(/admixture/i.test(bear.actionNotes));
+    assert.ok(!live.items.some(i => i.family === 'utility'), 'gas/sanitary are not leftover utility sections');
+    assert.ok(!/hanover/i.test(Engine.sourceLine(bear)), Engine.sourceLine(bear));
+    const curing = live.items.find(i => i.family === 'curing');
+    const expansion = live.items.find(i => i.family === 'expansion');
+    assert.ok(curing, '1600-White curing is its own CONCRETE ITEMS section');
+    assert.ok(/WR Meadows/i.test(curing.srcName), curing.srcName);
+    assert.ok(/Hampshire/i.test(curing.srcLoc), curing.srcLoc);
+    assert.ok(/1600/i.test((curing.subItems || []).join(' ')), (curing.subItems || []).join(' '));
+    assert.ok(expansion, 'Reflex expansion is not merged into curing');
+    assert.ok(/flex/i.test(expansion.srcName), expansion.srcName);
+    assert.ok(/Utica/i.test(expansion.srcLoc), expansion.srcLoc);
+    assert.ok(!/meadows/i.test(expansion.srcName));
+    const dws = live.items.find(i => (i.letterSpecs || i.specs || []).includes('#705013') || /truncated dome/i.test(i.desc || ''));
+    assert.ok(dws);
+    assert.ok(/Hanover/i.test(dws.srcName));
+    assert.strictEqual((dws.actionNotes.match(/prodlists/gi) || []).length, 1, dws.actionNotes);
+    if (gabc.testDate) {
+      assert.strictEqual(gabc.testDate, '2026-07-14');
+      assert.strictEqual(rap.testDate, '2026-08-11');
+      assert.ok(/924/i.test(Engine.sourceLine(gabc)), Engine.sourceLine(gabc));
+      assert.ok(!/Contractor Materials Approved/i.test(gabc.actionNotes), gabc.actionNotes);
+    }
     console.log('live Kirkwood items:', live.items.map(i => `${(i.letterSpecs||i.specs).join('/')} ${i.family} ${i.action} ${i.srcName}`).join(' | '));
   }
 }

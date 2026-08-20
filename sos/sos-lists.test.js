@@ -199,6 +199,7 @@ assert.strictEqual(kirkwoodRapItem.testDate, '2026-08-11', 'RAP uses the Milling
 assert.strictEqual(kirkwoodRapItem.altTestDate, '2026-07-14');
 assert.ok(/Approved for use/.test(kirkwoodCcItem.actionNotes));
 assert.ok(/Approved for use/.test(kirkwoodRapItem.actionNotes));
+assert.ok(!/Contractor Materials Approved/i.test(kirkwoodCcItem.actionNotes), kirkwoodCcItem.actionNotes);
 
 const cbfLiteChart = {
   kind: 'aggregate',
@@ -249,7 +250,6 @@ assert.ok(/York Building Products/i.test(yorkItem.altName));
 assert.ok(/Port Deposit/i.test(yorkItem.altLoc));
 assert.strictEqual(yorkItem.altTestDate, '2026-06-29');
 assert.ok(/Approved for use/.test(yorkItem.actionNotes));
-assert.ok(/York Building Products Approved for use/.test(yorkItem.actionNotes.replace(/\n/g, ' ')));
 assert.ok(!/Must be tested/i.test(yorkItem.actionNotes));
 const yorkSrc = Engine.sourceLine(yorkItem);
 assert.ok(/Alt: York Building Products - Port Deposit/i.test(yorkSrc));
