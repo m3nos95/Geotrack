@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>DelDOT Source of Supply</title>
   <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="sos/sos.css?v=20260820i">
+  <link rel="stylesheet" href="sos/sos.css?v=20260820j">
 </head>
 <body>
 <div class="topbar">
@@ -370,6 +370,7 @@
       <button class="btn btn-ghost btn-sm" id="highlight-btn" onclick="toggleHighlightMode()">🖊 Highlight</button>
       <button class="btn btn-ghost btn-sm" onclick="clearHighlights()" title="Remove yellow highlight marks on the preview">✕ Clear highlights</button>
       <button class="btn btn-ghost btn-sm" onclick="printLetter()">🖨 Print / PDF</button>
+      <button class="btn btn-ghost btn-sm" onclick="exportLetterDoc()" title="Save a Word file you can edit">Export .doc</button>
       <button class="btn btn-ghost btn-sm" onclick="document.getElementById('sig-upload').click()">✍ Signature</button>
       <input type="file" id="sig-upload" accept="image/*" style="display:none" onchange="uploadSignature(event)">
     </div>
@@ -606,10 +607,11 @@
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
-<script src="sos/spec-letter-descs.js?v=20260820i"></script>
-<script src="sos/sos-data.js?v=20260820i"></script>
-<script src="sos/sos-lists.js?v=20260820i"></script>
-<script src="sos/sos-engine.js?v=20260820i"></script>
-<script src="sos/sos-app.js?v=20260820i"></script>
+<script src="sos/spec-letter-descs.js?v=20260820j"></script>
+<script src="sos/sos-data.js?v=20260820j"></script>
+<script src="sos/sos-lists.js?v=20260820j"></script>
+<script src="sos/sos-engine.js?v=20260820j"></script>
+<script src="sos/letter-export.js?v=20260820j"></script>
+<script src="sos/sos-app.js?v=20260820j"></script>
 </body>
 </html>

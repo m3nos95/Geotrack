@@ -66,6 +66,8 @@ assert.ok(/Date: 20\d{2}\.\d{2}\.\d{2}/.test(html));
 const { renderLetterHtml, letterCss } = require('./letter-render.js');
 assert.ok(/position:\s*fixed/.test(letterCss()), 'print CSS pins DelDOT logo to every page');
 assert.ok(/bottom:\s*0\.18in/.test(letterCss()));
+assert.ok(/user-highlight/.test(letterCss()), 'print CSS keeps Highlight-mode marks');
+assert.ok(/print-color-adjust/.test(letterCss()));
 const customHtml = renderLetterHtml({
   project: {
     contract: '2589',

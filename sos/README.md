@@ -12,7 +12,7 @@ Open: [deldot-sos.html](../deldot-sos.html) (GitHub Pages: `/Geotrack/deldot-sos
 4. Review items — especially **MUST BE TESTED** (highlighted) and APL / not-approved tack coat. **Add item** fills a stock ACTION note from the Action Type (Must Be Tested includes the district sampler and lab-results contacts). Pick another stock note from the list under Action Notes, or edit the text.
 5. Review **CC**. The **DelDOT Contact** on the header (inspector / PM from the form) is copied on the letter; ✕ removes them from this letter only. Soil / stone items copy the lab-results person (Aaron Wieczorek by default); hot mix copies the HMA person (Mark Schafer). **+ Assignment**, type the name, check **Always** and **Canal** (or South / North) to copy someone on every job in that district. Leave district boxes blank for every district. District samplers (Ray Glanden / Damian Blakely / Rich Taylor) stay in **must-be-tested ACTION notes** unless you assign them on the CC tab. ✎ on a library or “on this letter” row fixes spelling (the old spelling is retired so harvest will not put the typo back). **+ Add person** adds someone to the library and, if checked, this letter. ✕ on a **library** row removes a retired person from the master list so dropping `SOS-cc.json` will not put them back. Optional: drop `SOS-cc.json` from `learn-sos.bat` to fill the name library.
 6. Optional: drop **Source of Supply Database.xlsx** (Standard Items / Special Provisions) on **APL / Chart** so unknown spec numbers get the official item description. Letter ACTION language still follows issued letters, not the BABA/acceptance-method column.
-7. **Print / PDF** from the letter preview.
+7. **Print / PDF** from the letter preview. Yellow Highlight marks print on the PDF. **Export .doc** (next to Print / PDF) saves a Word file you can edit.
 
 ## What the rules do
 
@@ -74,6 +74,7 @@ Messages already tagged **DelDOT SOS** are not pulled again. This does **not** a
 | `watch-sos-inbox.bat` | Pull + process (Task Scheduler every 30 min, or `--loop`) |
 | `start-sos.bat` | Local helper + SOS page so **Pull chart from office share** can read the Geo Construction share (also `sos/start-sos.bat`) |
 | `letter-render.js` | HTML letter for the completed-folder draft |
+| `letter-export.js` | Print-color CSS + Word `.doc` wrapper |
 | `letterhead-header.jpg` | 2026 first-page seal + address (from Shanté Hastings letterhead) |
 | `letterhead-footer.png` | 2026 first-page DelDOT wordmark |
 

@@ -746,7 +746,7 @@
     const first = notes[0] || '';
     const rest = notes.slice(1);
     let html = '';
-    if (item.action === 'test') html += `<span style="background:#ffff80;">${esc(first || 'Must be tested and approved prior to use.')}</span>`;
+    if (item.action === 'test') html += `<span class="letter-highlight" style="background:#ffff80;">${esc(first || 'Must be tested and approved prior to use.')}</span>`;
     else if (item.action === 'not-approved') html += `<strong>${esc(first || 'Not approved.')}</strong>`;
     else html += esc(first);
     rest.forEach(line => { html += '<br>' + esc(line); });
@@ -1902,44 +1902,135 @@
     return out;
   }
 
+  function printLetterCss() {
+    return (window.SOSLetterExport && SOSLetterExport.printLetterCss()) || '';
+  }
+
   window.printLetter = function () {
     const html = document.getElementById('letter-doc').innerHTML;
     const w = window.open('', '_blank');
     w.document.write(`<!DOCTYPE html><html><head><title>SOS Letter</title>
-<style>
-@page { size: 8.5in 11in; margin: 0.5in 0.9in 0.35in 0.9in; }
-html, body { height: auto; }
-body { font-family: 'Times New Roman', serif; font-size: 11pt; line-height: 1.55; color: #111; padding-bottom: 0.9in; }
-.letter-letterhead { text-align: center; margin: 0 0 14pt; }
-.letter-letterhead img { width: 3.72in; height: auto; display: block; margin: 0 auto; }
-.letter-secretary { font-family: 'Copperplate Gothic Light', Copperplate, 'Century Gothic', serif; font-size: 6.5pt; letter-spacing: 0.08em; text-transform: uppercase; color: #17365D; margin: 4pt 0 0; text-align: left; font-weight: 400; line-height: 1.25; }
-.letter-date, .letter-to { margin-bottom: 16pt; }
-.letter-body p { margin-bottom: 12pt; }
-.letter-section-block { margin-bottom: 22pt; page-break-inside: avoid; }
-.letter-row { display: grid; grid-template-columns: 72pt 1fr; gap: 6pt; margin-bottom: 3pt; page-break-inside: avoid; }
-.letter-field-label { font-weight: 700; text-decoration: underline; }
-hr { border: none; border-top: 1px solid #ccc; margin: 14pt 0; }
-.letter-sig { margin-top: 24pt; page-break-inside: avoid; }
-.letter-sig-row { display: flex; align-items: flex-end; gap: 16pt; margin: 8pt 0 0; }
-.letter-sig-img { height: 0.58in; width: auto; max-width: 2.15in; display: block; object-fit: contain; }
-.letter-sig-digital { font-family: Helvetica, Arial, sans-serif; font-size: 7.5pt; line-height: 1.2; color: #111; }
-.letter-sig-name { font-weight: 700; margin-top: 4pt; }
-.letter-sig:not(.has-image) .letter-sig-name { margin-top: 8pt; }
-.letter-cc { margin-top: 14pt; font-size: 10pt; line-height: 1.75; page-break-inside: avoid; }
-.letter-official-footer {
-  position: fixed;
-  right: 0.35in;
-  bottom: 0.18in;
-  margin: 0;
-  padding: 0;
-  width: 1.5in;
-  text-align: right;
-  z-index: 10;
-}
-.letter-official-footer img { width: 1.5in; height: auto; display: block; }
-</style></head><body>${html}</body></html>`);
+<style>${printLetterCss()}</style></head><body>${html}</body></html>`);
     w.document.close();
     setTimeout(() => w.print(), 400);
+  };
+
+  function waitForImage(img) {
+    if (img.complete && img.naturalWidth) return Promise.resolve();
+    return new Promise(resolve => {
+      const done = () => resolve();
+      img.addEventListener('load', done, { once: true });
+      img.addEventListener('error', done, { once: true });
+      setTimeout(done, 1500);
+    });
+  }
+
+  function canvasImageDataUrl(img) {
+    const src = img.getAttribute('src') || img.src || '';
+    if (src.indexOf('data:') === 0) return src;
+    const w = img.naturalWidth || img.width;
+    const h = img.naturalHeight || img.height;
+    if (!w || !h) return '';
+    const c = document.createElement('canvas');
+    c.width = w;
+    c.height = h;
+    c.getContext('2d').drawImage(img, 0, 0);
+    const jpeg = /\.jpe?g(\?|$)/i.test(src);
+    return c.toDataURL(jpeg ? 'image/jpeg' : 'image/png');
+  }
+
+  async function fetchImageDataUrl(src) {
+    const res = await fetch(src);
+    const blob = await res.blob();
+    return await new Promise((resolve, reject) => {
+      const r = new FileReader();
+      r.onload = () => resolve(r.result);
+      r.onerror = reject;
+      r.readAsDataURL(blob);
+    });
+  }
+
+  async function embedImagesAsDataUrls(root) {
+    const imgs = Array.from(root.querySelectorAll('img'));
+    for (const img of imgs) {
+      await waitForImage(img);
+      const src = img.getAttribute('src') || img.src || '';
+      if (!src || src.indexOf('data:') === 0) continue;
+      let data = '';
+      try { data = canvasImageDataUrl(img); } catch (e) { data = ''; }
+      if (!data) {
+        try { data = await fetchImageDataUrl(src); } catch (e2) { data = src; }
+      }
+      if (data) img.setAttribute('src', data);
+    }
+  }
+
+  function convertLayoutForWord(root) {
+    root.querySelectorAll('.letter-row').forEach(row => {
+      const kids = Array.from(row.children);
+      if (kids.length < 2) return;
+      const table = document.createElement('table');
+      table.setAttribute('class', 'letter-row-table');
+      table.setAttribute('width', '100%');
+      table.setAttribute('border', '0');
+      table.setAttribute('cellpadding', '0');
+      table.setAttribute('cellspacing', '0');
+      const tr = document.createElement('tr');
+      const tdLabel = document.createElement('td');
+      tdLabel.setAttribute('class', 'letter-field-label');
+      tdLabel.setAttribute('valign', 'top');
+      tdLabel.setAttribute('width', '90');
+      tdLabel.style.width = '72pt';
+      tdLabel.style.fontWeight = '700';
+      tdLabel.style.textDecoration = 'underline';
+      tdLabel.style.paddingRight = '6pt';
+      tdLabel.style.paddingBottom = '3pt';
+      tdLabel.innerHTML = kids[0].innerHTML;
+      const tdVal = document.createElement('td');
+      tdVal.setAttribute('valign', 'top');
+      tdVal.style.paddingBottom = '3pt';
+      tdVal.innerHTML = kids.slice(1).map(k => k.innerHTML).join('');
+      tr.appendChild(tdLabel);
+      tr.appendChild(tdVal);
+      table.appendChild(tr);
+      row.parentNode.replaceChild(table, row);
+    });
+    root.querySelectorAll('.letter-sig-row').forEach(row => {
+      const table = document.createElement('table');
+      table.setAttribute('border', '0');
+      table.setAttribute('cellpadding', '0');
+      table.setAttribute('cellspacing', '0');
+      const tr = document.createElement('tr');
+      Array.from(row.children).forEach(child => {
+        const td = document.createElement('td');
+        td.setAttribute('valign', 'bottom');
+        td.style.paddingRight = '16pt';
+        td.appendChild(child.cloneNode(true));
+        tr.appendChild(td);
+      });
+      table.appendChild(tr);
+      row.parentNode.replaceChild(table, row);
+    });
+  }
+
+  window.exportLetterDoc = async function () {
+    const src = document.getElementById('letter-doc');
+    if (!src || !window.SOSLetterExport) return;
+    const clone = src.cloneNode(true);
+    await embedImagesAsDataUrls(clone);
+    convertLayoutForWord(clone);
+    const body = SOSLetterExport.rewriteHighlightsForWord(clone.innerHTML);
+    const contract = val('ph-contract');
+    const filename = SOSLetterExport.letterExportFilename(contract, 'doc');
+    const html = SOSLetterExport.wrapWordHtml(body, filename.replace(/\.doc$/i, ''));
+    const blob = new Blob(['\ufeff', html], { type: 'application/msword' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setTimeout(() => URL.revokeObjectURL(a.href), 2000);
   };
 
   window.toggleHighlightMode = function () {

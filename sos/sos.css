@@ -918,7 +918,13 @@
     color: var(--amber) !important;
     border-color: #e8c060 !important;
   }
-  .user-highlight { background: #ffff00; padding: 0 1px; border-radius: 1px; }
+  .user-highlight {
+    background: #ffff00;
+    padding: 0 1px;
+    border-radius: 1px;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
 
   /* ── IMPORT ZONE ── */
   .import-zone {
@@ -997,6 +1003,20 @@
       min-height: 0;
       display: block;
       padding-bottom: 0.9in;
+    }
+    html, body, * {
+      -webkit-print-color-adjust: exact !important;
+      print-color-adjust: exact !important;
+    }
+    .user-highlight, mark.user-highlight {
+      background: #ffff00 !important;
+      color: inherit !important;
+      box-shadow: inset 0 0 0 9999px #ffff00 !important;
+    }
+    .letter-highlight,
+    .letter-action-text span[style*="ffff80"] {
+      background: #ffff80 !important;
+      box-shadow: inset 0 0 0 9999px #ffff80 !important;
     }
     .letter-official-footer {
       position: fixed;
