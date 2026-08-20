@@ -189,8 +189,14 @@
       }));
       ls_set(STORE.specs, specLib);
     }
+    Object.entries(SOSData.SPEC_CATALOG).forEach(([num, v]) => autoSaveSpec(num, v.desc, '', '', '', '', { silent: true }));
+    saveSpecLib();
   }
-  function saveSpecLib() { ls_set(STORE.specs, specLib); }
+  function saveSpecLib() {
+    ls_set(STORE.specs, specLib);
+    const n = document.getElementById('specs-count');
+    if (n) n.textContent = specLib.length;
+  }
   function ccNameKey(name) {
     return String(name || '').trim().toLowerCase();
   }
@@ -408,31 +414,44 @@
     renderWarnings();
   };
 
-  function autoSaveSource(name, loc, addr, phone) {
+  function autoSaveSource(name, loc, addr, phone, extra) {
     if (!name) return;
     const exists = sourceLib.find(s => s.name.toLowerCase() === name.toLowerCase() && (s.loc || '').toLowerCase() === (loc || '').toLowerCase());
     if (exists) {
       if (loc && !exists.loc) exists.loc = loc;
       if (addr && !exists.addr) exists.addr = addr;
       if (phone && !exists.phone) exists.phone = phone;
-      saveSourceLib();
+      if (extra && extra.tags) {
+        exists.tags = [...new Set([...(exists.tags || []), ...extra.tags])];
+      }
+      if (!(extra && extra.silent)) saveSourceLib();
       return;
     }
-    sourceLib.push({ id: 's' + Date.now(), name, loc: loc || '', addr: addr || '', phone: phone || '', contact: '', tags: [] });
-    saveSourceLib();
+    sourceLib.push({
+      id: 's' + Date.now() + '-' + sourceLib.length,
+      name,
+      loc: loc || '',
+      addr: addr || '',
+      phone: phone || '',
+      contact: '',
+      tags: (extra && extra.tags) || [],
+    });
+    if (!(extra && extra.silent)) saveSourceLib();
   }
-  function autoSaveSpec(num, desc, srcName, srcLoc, srcAddr, srcPhone) {
+  function autoSaveSpec(num, desc, srcName, srcLoc, srcAddr, srcPhone, extra) {
     if (!num) return;
-    const key = num.toUpperCase();
+    const key = String(num).toUpperCase().replace(/^([^#])/, '#$1');
     const existing = specLib.find(s => s.num === key);
     if (!existing) {
       specLib.push({ num: key, desc: desc || '', lastSrcName: srcName || '', lastSrcLoc: srcLoc || '', lastSrcAddr: srcAddr || '', lastSrcPhone: srcPhone || '', tags: [], notes: '' });
     } else {
-      if (desc && !existing.desc) existing.desc = desc;
+      if (desc && desc.length > (existing.desc || '').length) existing.desc = desc;
       if (srcName) existing.lastSrcName = srcName;
       if (srcLoc) existing.lastSrcLoc = srcLoc;
+      if (srcAddr) existing.lastSrcAddr = srcAddr;
+      if (srcPhone) existing.lastSrcPhone = srcPhone;
     }
-    saveSpecLib();
+    if (!(extra && extra.silent)) saveSpecLib();
   }
 
   window.switchTab = function (name, el) {
@@ -1208,6 +1227,51 @@
     return !!(obj && obj.kind === 'issued-language' && obj.bySpec && typeof obj.bySpec === 'object');
   }
 
+  function looksLikeLibraryHarvest(obj) {
+    return !!(obj && (obj.kind === 'issued-libraries' || obj.kind === 'issued-sources')
+      && (Array.isArray(obj.sources) || Array.isArray(obj.specs)));
+  }
+
+  function ingestLibraryHarvest(bundle) {
+    (bundle.sources || []).forEach(s => {
+      autoSaveSource(s.name, s.loc, s.addr, s.phone, { tags: s.tags || [], silent: true });
+    });
+    (bundle.specs || []).forEach(s => {
+      autoSaveSpec(s.num, s.desc, s.lastSrcName, s.lastSrcLoc, s.lastSrcAddr, s.lastSrcPhone, { silent: true });
+    });
+    saveSourceLib();
+    saveSpecLib();
+    renderSourceLib();
+    renderSpecLibTab();
+    const el = document.getElementById('lists-status') || document.getElementById('lib-harvest-status') || document.getElementById('spec-harvest-status');
+    const msg = 'Loaded ' + (bundle.sources || []).length + ' sources and ' + (bundle.specs || []).length + ' specs from ' + (bundle.letters || 0) + ' issued letters. Saved in this browser.';
+    ['lib-harvest-status', 'spec-harvest-status', 'lists-status'].forEach(id => {
+      const n = document.getElementById(id);
+      if (!n) return;
+      n.style.display = 'block';
+      n.className = 'ok-banner';
+      n.textContent = msg;
+    });
+    if (el && el.id === 'lists-status') { /* already set */ }
+  }
+
+  function mergeLiveListsIntoLibraries() {
+    if (liveLists.sosDatabase && liveLists.sosDatabase.items) {
+      Object.keys(liveLists.sosDatabase.items).forEach(num => {
+        const rec = liveLists.sosDatabase.items[num];
+        if (!rec || rec.na) return;
+        autoSaveSpec('#' + String(num).replace(/^#/, ''), rec.desc || '', '', '', '', '', { silent: true });
+      });
+    }
+    (liveLists.aggregate && liveLists.aggregate.entries || []).forEach(e => {
+      if (!e.name) return;
+      const tags = e.material ? [e.material] : [];
+      autoSaveSource(e.name, e.loc || '', '', '', { tags, silent: true });
+    });
+    saveSourceLib();
+    saveSpecLib();
+  }
+
   function ingestLanguageHarvest(language) {
     liveLists.language = language;
     persistLists();
@@ -1315,7 +1379,9 @@
   function ingestSosDatabase(db) {
     liveLists.sosDatabase = db;
     persistLists();
+    mergeLiveListsIntoLibraries();
     renderLists();
+    renderSpecLibTab();
     applyListsToOpenLetter();
   }
 
@@ -1329,7 +1395,9 @@
   function ingestAggregateGrid(grid, filename) {
     liveLists.aggregate = SOSLists.parseAggregateChartGrid(grid, { filename });
     persistLists();
+    mergeLiveListsIntoLibraries();
     renderLists();
+    renderSourceLib();
     applyListsToOpenLetter();
   }
 
@@ -1374,6 +1442,10 @@
         }
         if (looksLikeLanguageHarvest(bundle)) {
           ingestLanguageHarvest(bundle);
+          return;
+        }
+        if (looksLikeLibraryHarvest(bundle)) {
+          ingestLibraryHarvest(bundle);
           return;
         }
         liveLists = SOSLists.mergeBundle(liveLists, bundle);
@@ -1770,7 +1842,7 @@ hr { border: none; border-top: 1px solid #ccc; margin: 14pt 0; }
       el.classList.remove('drag-over');
       const file = e.dataTransfer.files[0];
       if (!file) return;
-      if (el.id === 'lists-drop-zone') handleListFile(file);
+      if (el.id === 'lists-drop-zone' || el.id === 'sources-drop-zone' || el.id === 'specs-drop-zone') handleListFile(file);
       else if (el.id === 'cc-drop-zone') handleCcFile(file);
       else handleImportFile(file);
     });
@@ -1791,7 +1863,15 @@ hr { border: none; border-top: 1px solid #ccc; margin: 14pt 0; }
     document.querySelectorAll('.landing-drop').forEach(wireDropZone);
     wireDropZone(document.getElementById('lists-drop-zone'));
     wireDropZone(document.getElementById('cc-drop-zone'));
-    loadAplSnapshot().then(() => { renderLists(); renderCCHarvestStatus(); });
+    wireDropZone(document.getElementById('sources-drop-zone'));
+    wireDropZone(document.getElementById('specs-drop-zone'));
+    loadAplSnapshot().then(() => {
+      mergeLiveListsIntoLibraries();
+      renderLists();
+      renderCCHarvestStatus();
+      renderSourceLib();
+      renderSpecLibTab();
+    });
     renderLists();
     renderItems();
     renderCC();

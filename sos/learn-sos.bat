@@ -60,9 +60,10 @@ echo.
 node sos\corpus-learn.js --dir-only --dir "%FOLDER%"
 set ERR=%ERRORLEVEL%
 echo.
-echo Wrote SOS-learn-report.md, SOS-cc.json, and SOS-language.json in that folder.
-echo Drop SOS-language.json on APL / Chart if you want the tool to use harvested item wording.
-echo Contractor .xls files are optional — issued letter PDFs are enough for language.
+echo Wrote SOS-learn-report.md, SOS-cc.json, SOS-language.json, and SOS-libraries.json in that folder.
+echo Drop SOS-language.json on APL / Chart.
+echo Drop SOS-libraries.json on Source Library or Spec Library (fills both).
+echo Contractor .xls files are optional — issued letter PDFs are enough.
 echo.
 pause
 exit /b %ERR%

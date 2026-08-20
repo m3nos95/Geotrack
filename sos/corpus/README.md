@@ -8,7 +8,7 @@ If you have thousands of issued letters and do not want to dig through email for
 
 1. Copy the letter PDFs into `Desktop\SOS Program` (subfolders are OK).
 2. Double-click **`learn-sos.bat`**.
-3. Drop **`SOS-language.json`** on **APL / Chart** in the SOS tool (and `SOS-cc.json` on the CC tab).
+3. Drop **`SOS-language.json`** on **APL / Chart**, **`SOS-cc.json`** on **CC**, and **`SOS-libraries.json`** on **Source Library** (or Spec Library — one file fills both).
 
 The learner reads SECTION / SOURCE / ACTION from those PDFs. The current Approved Source List and APL still decide approved vs must-be-tested / not approved. Harvested wording fills unknown items and matches issued phrasing when the decision is the same.
 
@@ -32,7 +32,7 @@ On your PC:
 
 `C:\Users\Aaron.Wieczorek\OneDrive - STATE OF DELAWARE\Desktop\SOS Program`
 
-Double-click **`learn-sos.bat`** at the repo root (or `sos\learn-sos.bat`). It writes `SOS-learn-report.md`, `SOS-cc.json`, and `SOS-language.json` next to the files. Do not commit those — they are built from contractor letters.
+Double-click **`learn-sos.bat`** at the repo root (or `sos\learn-sos.bat`). It writes `SOS-learn-report.md`, `SOS-cc.json`, `SOS-language.json`, and `SOS-libraries.json` next to the files. Do not commit those — they are built from contractor letters.
 
 Needs Node.js and Python 3 (the bat will pip-install `xlrd` and `pypdf` if missing). Drag a different folder onto the bat to scan that instead.
 

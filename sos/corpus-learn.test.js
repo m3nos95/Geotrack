@@ -195,7 +195,7 @@ assert.strictEqual(caMerged.length, 1);
 assert.ok(caMerged[0].engine);
 assert.strictEqual(caMerged[0].letters.length, 1);
 
-const { parseCcPeople, harvestCcFromResults, parseIssuedSections, harvestLanguageFromResults, actionIntent } = require('./corpus-learn.js');
+const { parseCcPeople, harvestCcFromResults, parseIssuedSections, harvestLanguageFromResults, harvestLibrariesFromResults, parseIssuedSource, actionIntent } = require('./corpus-learn.js');
 const ccBlock = [
   'The following material sources have been reviewed by this office for Application No. 0000016055, BOBBY FREY ENTRANCE(S) as to their acceptability for use on this project.',
   'SECTION: #301001 - GABC',
@@ -273,6 +273,23 @@ const shortApproved = harvestLanguageFromResults([{
 }]);
 assert.ok(shortApproved.bySpec['#905007'], 'short Approved. from issued letters is still harvested');
 assert.strictEqual(shortApproved.bySpec['#905007'].intent, 'approved');
+
+const vulcSrc = parseIssuedSource('Vulcan Materials - 1002 Parsons Rd., Salisbury MD');
+assert.strictEqual(vulcSrc.name, 'Vulcan Materials');
+assert.ok(/Salisbury/i.test(vulcSrc.loc));
+assert.ok(/Parsons/i.test(vulcSrc.addr));
+const altSrc = parseIssuedSource('River Asphalt 1 - Dagsboro DE');
+assert.strictEqual(altSrc.name, 'River Asphalt 1');
+assert.ok(/Dagsboro/i.test(altSrc.loc));
+
+const libraries = harvestLibrariesFromResults([
+  { engine: null, letters: [languageParsed] },
+  { engine: null, letters: [parseIssuedSections(ccBlock)] },
+]);
+assert.strictEqual(libraries.kind, 'issued-libraries');
+assert.ok(libraries.sources.some(s => /Vulcan/i.test(s.name) && /Salisbury/i.test(s.loc)));
+assert.ok(libraries.specs.some(s => s.num === '#301001'));
+assert.ok(libraries.specs.some(s => s.num === '#202888'));
 
 const { spawnSync } = require('child_process');
 const fs = require('fs');

@@ -750,7 +750,145 @@ function pickHarvestRows(map, minUses) {
   return out;
 }
 
-/** Majority SECTION/ACTION wording from issued letters (no contractor .xls required). */
+/** Split SOURCE into primary + alt plants listed after | Alt: */
+function splitIssuedSources(source) {
+  return String(source || '')
+    .split(/\s*\|\s*Alt:\s*/i)
+    .map(s => squeeze(s))
+    .filter(Boolean);
+}
+
+function parseIssuedSource(source) {
+  let s = squeeze(source).replace(/^SOURCE:\s*/i, '');
+  if (!s || /^n\/?a$/i.test(s) || /^tbd$/i.test(s) || s.length < 3) return null;
+  let name = s;
+  let rest = '';
+  const dash = s.match(/^(.*?)\s+[-–—]\s+(.*)$/);
+  if (dash) {
+    name = squeeze(dash[1]);
+    rest = squeeze(dash[2]);
+  }
+  name = squeeze(name);
+  if (!name || /^manufacturer$/i.test(name)) return null;
+  let phone = '';
+  const ph = rest.match(/(?:\+?1[-.\s]?)?\(?\d{3}\)?[-.\s]\d{3}[-.\s]\d{4}/);
+  if (ph) {
+    phone = ph[0];
+    rest = squeeze(rest.replace(ph[0], '')).replace(/[|,]\s*$/, '');
+  }
+  let loc = '';
+  let addr = '';
+  const locM = rest.match(/([A-Za-z][A-Za-z .'-]{1,40}),?\s+(DE|MD|PA|NJ|VA|NC|NY|OH|IN|GA|AL|UT|AZ|IL|WI|CA|TX)\s*\d{0,5}\.?$/i);
+  if (locM) {
+    loc = squeeze(locM[1].replace(/,\s*$/, '') + ' ' + locM[2].toUpperCase());
+    addr = squeeze(rest.slice(0, locM.index).replace(/[|,]\s*$/, ''));
+  } else {
+    loc = rest;
+  }
+  if (/^manufacturer$/i.test(addr)) addr = '';
+  return { name, loc, addr, phone };
+}
+
+function tagsForFamily(family) {
+  const map = {
+    aggregate: ['GABC', 'Stone'],
+    borrow: ['Borrow'],
+    'hma-mix': ['Asphalt'],
+    tack: ['Tack Coat', 'Asphalt', 'APL'],
+    'crack-seal': ['Crack Sealing', 'APL'],
+    pcc: ['Concrete'],
+    rcp: ['RCP', 'Precast'],
+    precast: ['Precast'],
+    striping: ['APL'],
+    geotextile: ['Geotextile'],
+    erosion: ['Erosion Control'],
+    topsoil: ['Topsoil'],
+    seed: ['Seed'],
+    riprap: ['Riprap', 'Stone'],
+    hdpe: ['Pipe', 'HDPE'],
+    castings: ['Drainage', 'APL'],
+    ttc: ['Traffic Control', 'APL'],
+  };
+  return map[family] || [];
+}
+
+function bumpSource(map, rec, tags) {
+  if (!rec || !rec.name) return;
+  const locKey = String(rec.loc || '').toLowerCase().replace(/,/g, ' ').replace(/\s+/g, ' ').trim();
+  const key = rec.name.toLowerCase() + '|' + locKey;
+  const cur = map.get(key) || {
+    name: rec.name,
+    loc: rec.loc || '',
+    addr: rec.addr || '',
+    phone: rec.phone || '',
+    tags: [],
+    letters: 0,
+  };
+  cur.letters += 1;
+  if (rec.loc && rec.loc.length > cur.loc.length) cur.loc = rec.loc;
+  if (rec.addr && rec.addr.length > cur.addr.length) cur.addr = rec.addr;
+  if (rec.phone && !cur.phone) cur.phone = rec.phone;
+  (tags || []).forEach(t => { if (t && !cur.tags.includes(t)) cur.tags.push(t); });
+  map.set(key, cur);
+}
+
+function bumpSpec(map, num, desc, src) {
+  const key = canonSpec(num);
+  if (!key) return;
+  const cur = map.get(key) || {
+    num: key,
+    desc: '',
+    lastSrcName: '',
+    lastSrcLoc: '',
+    lastSrcAddr: '',
+    lastSrcPhone: '',
+    letters: 0,
+  };
+  cur.letters += 1;
+  if (desc && desc.length > cur.desc.length) cur.desc = desc;
+  if (src && src.name) {
+    cur.lastSrcName = src.name;
+    if (src.loc) cur.lastSrcLoc = src.loc;
+    if (src.addr) cur.lastSrcAddr = src.addr;
+    if (src.phone) cur.lastSrcPhone = src.phone;
+  }
+  map.set(key, cur);
+}
+
+/** Plants and spec numbers from issued letters (and contractor forms when present). */
+function harvestLibrariesFromResults(results) {
+  const sources = new Map();
+  const specs = new Map();
+  let letters = 0;
+  (results || []).forEach(r => {
+    (r.letters || []).forEach(letter => {
+      if (letter.kind !== 'issued-letter') return;
+      letters += 1;
+      (letter.sections || []).forEach(s => {
+        const family = familyGuess(s.section, specTokens(s.section));
+        const tags = tagsForFamily(family);
+        const parsedSources = splitIssuedSources(s.source).map(parseIssuedSource).filter(Boolean);
+        parsedSources.forEach(src => bumpSource(sources, src, tags));
+        const desc = squeeze(String(s.section || '').replace(/#?\d{6}/g, '').replace(/^[\s|,:.-]+/, ''));
+        specTokens(s.section).forEach(tok => bumpSpec(specs, tok, desc, parsedSources[0]));
+      });
+    });
+    ((r.engine && r.engine.items) || []).forEach(it => {
+      const tags = tagsForFamily(it.family);
+      splitIssuedSources(it.source).map(parseIssuedSource).filter(Boolean).forEach(src => bumpSource(sources, src, tags));
+      (it.specs || []).forEach(tok => {
+        bumpSpec(specs, tok, it.section || '', parseIssuedSource(splitIssuedSources(it.source)[0] || ''));
+      });
+    });
+  });
+  return {
+    kind: 'issued-libraries',
+    generatedAt: new Date().toISOString(),
+    letters,
+    sources: [...sources.values()].sort((a, b) => b.letters - a.letters || a.name.localeCompare(b.name)),
+    specs: [...specs.values()].sort((a, b) => a.num.localeCompare(b.num)),
+  };
+}
 function harvestLanguageFromResults(results) {
   const bySpec = new Map();
   const byFamily = new Map();
@@ -933,7 +1071,21 @@ function renderCcHarvest(h) {
   return lines;
 }
 
-function renderText(results, harvest, language) {
+function renderLibrariesHarvest(libraries) {
+  const lines = [];
+  if (!libraries || !libraries.letters) {
+    lines.push('Libraries: no issued-letter SOURCE / SECTION blocks harvested yet.');
+    return lines;
+  }
+  lines.push('Libraries harvested from ' + libraries.letters + ' issued letters: ' + (libraries.sources || []).length + ' sources, ' + (libraries.specs || []).length + ' spec numbers.');
+  (libraries.sources || []).slice(0, 20).forEach(s => {
+    lines.push('  ' + s.name + (s.loc ? ' — ' + s.loc : '') + ' ×' + s.letters);
+  });
+  if ((libraries.sources || []).length > 20) lines.push('  … ' + (libraries.sources.length - 20) + ' more in SOS-libraries.json');
+  return lines;
+}
+
+function renderText(results, harvest, language, libraries) {
   const lines = [];
   lines.push('SOS corpus learn');
   lines.push('Cases: ' + results.length);
@@ -941,6 +1093,8 @@ function renderText(results, harvest, language) {
   lines.push(...renderCcHarvest(harvest));
   lines.push('');
   lines.push(...renderLanguageHarvest(language));
+  lines.push('');
+  lines.push(...renderLibrariesHarvest(libraries));
   lines.push('');
   if (!results.length) {
     lines.push('No files yet. Put issued SOS letter PDFs (and contractor forms if you have them) in the SOS Program folder.');
@@ -1043,11 +1197,13 @@ function main() {
   const results = mergeComparedResults(discoverCases().map(c => compareCase(c, lists)));
   const harvest = harvestCcFromResults(results);
   const language = harvestLanguageFromResults(results);
-  const text = renderText(results, harvest, language);
+  const libraries = harvestLibrariesFromResults(results);
+  const text = renderText(results, harvest, language, libraries);
   fs.writeFileSync(path.join(ROOT, 'report.md'), text);
   fs.writeFileSync(path.join(ROOT, 'report.json'), JSON.stringify(results, null, 2));
   fs.writeFileSync(path.join(ROOT, 'cc-harvest.json'), JSON.stringify(harvest, null, 2));
   fs.writeFileSync(path.join(ROOT, 'language-harvest.json'), JSON.stringify(language, null, 2));
+  fs.writeFileSync(path.join(ROOT, 'libraries-harvest.json'), JSON.stringify(libraries, null, 2));
   extra.forEach(dir => {
     try { fs.writeFileSync(path.join(dir, 'SOS-learn-report.md'), text); }
     catch (e) { console.error('Could not write report into ' + dir + ': ' + e.message); }
@@ -1055,8 +1211,10 @@ function main() {
     catch (e) { console.error('Could not write SOS-cc.json into ' + dir + ': ' + e.message); }
     try { fs.writeFileSync(path.join(dir, 'SOS-language.json'), JSON.stringify(language, null, 2)); }
     catch (e) { console.error('Could not write SOS-language.json into ' + dir + ': ' + e.message); }
+    try { fs.writeFileSync(path.join(dir, 'SOS-libraries.json'), JSON.stringify(libraries, null, 2)); }
+    catch (e) { console.error('Could not write SOS-libraries.json into ' + dir + ': ' + e.message); }
   });
-  if (WANT_JSON) console.log(JSON.stringify({ results, harvest, language }, null, 2));
+  if (WANT_JSON) console.log(JSON.stringify({ results, harvest, language, libraries }, null, 2));
   else {
     console.log(VERBOSE ? text : renderSummary(results, harvest, language));
     console.log('\nFull report: sos/corpus/report.md');
@@ -1064,6 +1222,7 @@ function main() {
       console.log('Copy: ' + path.join(dir, 'SOS-learn-report.md'));
       console.log('CC list: ' + path.join(dir, 'SOS-cc.json') + '  (drop this on the CC tab)');
       console.log('Language: ' + path.join(dir, 'SOS-language.json') + '  (drop this on APL / Chart)');
+      console.log('Sources/specs: ' + path.join(dir, 'SOS-libraries.json') + '  (drop this on Source Library or Spec Library)');
     });
   }
 }
@@ -1085,6 +1244,8 @@ module.exports = {
   parseCcPeople,
   harvestCcFromResults,
   harvestLanguageFromResults,
+  harvestLibrariesFromResults,
+  parseIssuedSource,
   actionIntent,
   readGrid,
   parseFormPdf,

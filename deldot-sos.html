@@ -265,6 +265,12 @@
         <div class="toolbar-sep"></div>
         <span style="font-size:11px;color:var(--text-dim);font-family:var(--mono);" id="lib-count-label"></span>
       </div>
+      <div id="lib-harvest-status" class="ok-banner" style="display:none;margin:0 0 10px;"></div>
+      <div class="import-zone" id="sources-drop-zone" onclick="document.getElementById('sources-file-input').click()" style="min-height:72px;padding:14px;">
+        <div class="import-zone-label">Drop SOS-libraries.json from learn-sos.bat</div>
+        <div class="import-zone-sub">Fills Source Library and Spec Library from issued letters. Saved in this browser.</div>
+        <input type="file" id="sources-file-input" style="display:none" accept=".json" onchange="handleListFile(this.files[0])">
+      </div>
       <div class="lib-table-wrap">
         <table class="lib-table">
           <thead>
@@ -288,6 +294,12 @@
         <input class="lib-search" id="spec-lib-search" placeholder="Search spec # or description…" oninput="renderSpecLibTab()">
         <div class="toolbar-sep"></div>
         <span style="font-size:11px;color:var(--text-dim);font-family:var(--mono);" id="spec-lib-count-label"></span>
+      </div>
+      <div id="spec-harvest-status" class="ok-banner" style="display:none;margin:0 0 10px;"></div>
+      <div class="import-zone" id="specs-drop-zone" onclick="document.getElementById('specs-file-input').click()" style="min-height:72px;padding:14px;">
+        <div class="import-zone-label">Drop SOS-libraries.json from learn-sos.bat</div>
+        <div class="import-zone-sub">Same file as Source Library — specs and sources both load.</div>
+        <input type="file" id="specs-file-input" style="display:none" accept=".json" onchange="handleListFile(this.files[0])">
       </div>
       <div class="lib-table-wrap">
         <table class="lib-table">
@@ -316,8 +328,8 @@
           The <strong>Source of Supply Database</strong> (Standard Items / Special Provisions) is the official item catalog — drop that .xlsx here so spec numbers pick up the Department description and acceptance method.
         </div>
         <div class="import-zone" id="lists-drop-zone" onclick="document.getElementById('lists-file-input').click()">
-          <div class="import-zone-label">Drop Approved Source List.xlsx, Source of Supply Database.xlsx, SOS-lists.json, SOS-language.json, or SOS-cc.json</div>
-          <div class="import-zone-sub">Issued letter PDFs do not need a matching .xls. Run learn-sos.bat on the SOS Program folder, then drop SOS-language.json here.</div>
+          <div class="import-zone-label">Drop Approved Source List.xlsx, Source of Supply Database.xlsx, SOS-lists.json, SOS-language.json, SOS-libraries.json, or SOS-cc.json</div>
+          <div class="import-zone-sub">Issued letter PDFs do not need a matching .xls. Run learn-sos.bat, then drop SOS-language.json here and SOS-libraries.json on Source Library.</div>
           <input type="file" id="lists-file-input" style="display:none" accept=".xls,.xlsx,.json" onchange="handleListFile(this.files[0])">
         </div>
         <div style="display:flex;gap:8px;flex-wrap:wrap;">
