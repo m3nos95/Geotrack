@@ -76,12 +76,20 @@
 
   const STANDARD_CC = CC_ASSIGNMENT_SEEDS.filter(a => a.always).map(a => a.name);
 
+  function normalizeCcName(name) {
+    return String(name || '')
+      .trim()
+      .toLowerCase()
+      .replace(/\s+/g, ' ')
+      .replace(/^richard\b/, 'rich');
+  }
+
   function filterRetiredCcPeople(people, retiredNames) {
-    const retired = new Set((retiredNames || []).map(n => String(n || '').trim().toLowerCase()).filter(Boolean));
+    const retired = new Set((retiredNames || []).map(n => normalizeCcName(n)).filter(Boolean));
     if (!retired.size) return people || [];
     return (people || []).filter(p => {
       const name = typeof p === 'string' ? p : (p && p.name);
-      return name && !retired.has(String(name).trim().toLowerCase());
+      return name && !retired.has(normalizeCcName(name));
     });
   }
 
@@ -2041,6 +2049,7 @@
     CC_MATERIAL_GROUPS,
     CC_ASSIGNMENT_SEEDS,
     CC_LIBRARY_SEEDS,
+    normalizeCcName,
     filterRetiredCcPeople,
     resolveContacts,
     samplerForDistrict,

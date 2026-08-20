@@ -19,9 +19,9 @@
     APL_FOOTNOTE,
     CC_ASSIGNMENT_SEEDS,
     assignmentMatchesItems,
-    soilStoneOnLetter,
     samplerForDistrict,
     testCoordinationNotes,
+    filterRetiredCcPeople,
   } = DATA;
   const Lists = LISTS || {};
 
@@ -1255,15 +1255,11 @@
       people.push({ id: people.length + 1, name: n, org: org || 'DelDOT', role: role || '' });
     };
     add(project && project.contact);
-    if (soilStoneOnLetter(items)) {
-      const s = samplerForDistrict(project && project.district, lists);
-      add(s.name, 'DelDOT');
-    }
     const assignments = (lists && lists.ccAssignments) || CC_ASSIGNMENT_SEEDS;
     assignments.forEach(a => {
       if (assignmentMatchesItems(a, items)) add(a.name, a.org || 'DelDOT', a.role || '');
     });
-    return people;
+    return filterRetiredCcPeople(people, lists && (lists.retiredCc || lists.retiredNames));
   }
 
   function processGrid(rows, meta) {

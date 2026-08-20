@@ -198,7 +198,7 @@
     if (n) n.textContent = specLib.length;
   }
   function ccNameKey(name) {
-    return String(name || '').trim().toLowerCase();
+    return (SOSData.normalizeCcName || ((n) => String(n || '').trim().toLowerCase()))(name);
   }
 
   function loadRetiredNames() {
@@ -272,6 +272,7 @@
     return Object.assign({}, liveLists, {
       ccAssignments,
       contacts: samplerContacts,
+      retiredCc: ccRetired,
     });
   }
 

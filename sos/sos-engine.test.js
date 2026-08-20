@@ -144,9 +144,9 @@ assert.ok(/APL/i.test(crack.actionNotes));
 
 // CC: form contact, district sampler (soil/stone), then material assignments
 assert.strictEqual(result.cc[0].name, 'James Smith');
-assert.ok(result.cc.some(c => c.name === 'Ray Glanden'), 'South sampler on soil/stone letter');
 assert.ok(result.cc.some(c => c.name === 'Aaron Wieczorek'), 'lab results on soil/stone');
 assert.ok(result.cc.some(c => c.name === 'Mark Schafer'), 'HMA person on hot mix');
+assert.ok(!result.cc.some(c => c.name === 'Ray Glanden'), 'district sampler is ACTION notes, not auto-CC');
 assert.ok(!result.cc.some(c => c.name === 'Jason Denson'), 'core dump removed — assign by material');
 assert.ok(!result.cc.some(c => c.name === 'James Kwasnieski'));
 assert.strictEqual(Engine.samplerName('South'), 'Ray Glanden');
@@ -230,8 +230,8 @@ assert.ok(/Damian Blakely/.test(northGabc.actionNotes));
 assert.ok(/302-593-7158/.test(northGabc.actionNotes));
 assert.ok(!/Ray Glanden/.test(northGabc.actionNotes));
 assert.strictEqual(northResult.cc[0].name, 'James Smith');
-assert.ok(northResult.cc.some(c => c.name === 'Damian Blakely'));
 assert.ok(northResult.cc.some(c => c.name === 'Aaron Wieczorek'));
+assert.ok(!northResult.cc.some(c => c.name === 'Damian Blakely'), 'North sampler stays in ACTION notes');
 assert.ok(!northResult.cc.some(c => c.name === 'Ray Glanden'), 'South sampler is not copied on a North soil/stone letter');
 assert.ok(!northResult.cc.some(c => c.name === 'Mark Schafer'), 'no hot mix on this letter');
 
@@ -239,6 +239,38 @@ const hmaOnly = Engine.processGrid(gridFromObjects(FREY_HEADER, [FREY_ITEMS[0]])
 assert.ok(hmaOnly.cc.some(c => c.name === 'Mark Schafer'));
 assert.ok(!hmaOnly.cc.some(c => c.name === 'Aaron Wieczorek'), 'no soil/stone on HMA-only letter');
 assert.ok(!hmaOnly.cc.some(c => c.name === 'Ray Glanden'));
+
+const canalHeader = FREY_HEADER.map(r => ({ ...r }));
+canalHeader[8] = { 1: 'District: Canal ' };
+canalHeader[9] = { 7: 'DelDOT Contact: John Mastrobuono ' };
+const canalGrid = gridFromObjects(canalHeader, [FREY_ITEMS[0], FREY_ITEMS[4]]);
+const canalResult = Engine.processGrid(canalGrid);
+assert.ok(canalResult.cc.some(c => c.name === 'John Mastrobuono'));
+assert.ok(canalResult.cc.some(c => c.name === 'Aaron Wieczorek'));
+assert.ok(canalResult.cc.some(c => c.name === 'Mark Schafer'));
+assert.ok(!canalResult.cc.some(c => /taylor/i.test(c.name)), 'Canal sampler is not auto-copied on cc');
+const canalGabc = canalResult.items.find(i => i.family === 'aggregate');
+assert.ok(/Rich Taylor/.test(canalGabc.actionNotes), 'Canal sampler still named in must-be-tested ACTION');
+
+assert.strictEqual(DATA.normalizeCcName('Richard Taylor'), 'rich taylor');
+assert.strictEqual(DATA.filterRetiredCcPeople(
+  [{ name: 'Rich Taylor', org: 'DelDOT' }, { name: 'John Mastrobuono', org: 'DelDOT' }],
+  ['Richard Taylor']
+).map(p => p.name).join(), 'John Mastrobuono');
+
+const retiredSampler = Engine.processGrid(canalGrid, {
+  lists: { retiredCc: ['Richard Taylor'] },
+});
+assert.ok(!retiredSampler.cc.some(c => /taylor/i.test(c.name)));
+
+const namedSampler = Engine.processGrid(canalGrid, {
+  lists: { ccAssignments: [
+    { name: 'Aaron Wieczorek', org: 'DelDOT', groups: ['soil-stone'], role: 'results' },
+    { name: 'Mark Schafer', org: 'DelDOT', groups: ['hma'] },
+    { name: 'Rich Taylor', org: 'DelDOT', groups: ['soil-stone'] },
+  ] },
+});
+assert.ok(namedSampler.cc.some(c => c.name === 'Rich Taylor'), 'sampler is copied only when assigned on the CC tab');
 
 const renamed = Engine.processGrid(grid, {
   lists: {
