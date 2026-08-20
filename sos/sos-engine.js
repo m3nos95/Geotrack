@@ -771,6 +771,52 @@
     return out;
   }
 
+  function lookupHarvestedLanguage(language, item) {
+    if (!language || !language.bySpec) return null;
+    const specs = [...(item.specs || []), ...(item.letterSpecs || [])];
+    for (const raw of specs) {
+      const key = String(raw || '').toUpperCase().replace(/^([^#])/, '#$1');
+      const hit = language.bySpec[key];
+      if (hit && hit.action) return hit;
+    }
+    const fam = language.byFamily && language.byFamily[item.family];
+    if (fam && fam.action && (fam.uses || 0) >= 2) return fam;
+    return null;
+  }
+
+  function applyHarvestedLanguage(item, action, actionNotes, rule, lists) {
+    const hit = lookupHarvestedLanguage(lists && lists.language, item);
+    if (!hit || !hit.action) return { action, actionNotes, rule };
+    if (action === 'test' || action === 'not-approved' || action === 'submit') {
+      return { action, actionNotes, rule };
+    }
+    const gap = rule === 'default-conforms' || item.family === 'other';
+    if (gap) {
+      let next = action;
+      if (hit.intent === 'test') next = 'test';
+      else if (hit.intent === 'not-approved') next = 'not-approved';
+      else if (hit.intent === 'visual') next = 'visual';
+      else if (hit.intent === 'apl') next = 'apl';
+      else if (hit.intent === 'on-file') next = 'on-file';
+      else if (hit.intent === 'approved') next = 'approved';
+      else if (hit.intent === 'submit') next = 'submit';
+      return { action: next, actionNotes: hit.action, rule: 'harvested-language' };
+    }
+    const same = !hit.intent || hit.intent === action
+      || (action === 'apl' && hit.intent === 'approved')
+      || (action === 'on-file' && (hit.intent === 'approved' || hit.intent === 'on-file'))
+      || (action === 'visual' && (hit.intent === 'approved' || hit.intent === 'visual'));
+    if (!same) return { action, actionNotes, rule };
+    const harvested = String(hit.action || '').trim();
+    const first = String(actionNotes || '').split('\n')[0].trim();
+    const generic = /^(approved\.?|approved for use\.?|not approved\.?|must be tested( and approved prior to use)?\.?)$/i;
+    if (harvested.length <= first.length && generic.test(harvested)) {
+      return { action, actionNotes, rule };
+    }
+    const extra = String(actionNotes || '').split('\n').slice(1);
+    return { action, actionNotes: [hit.action].concat(extra).filter(Boolean).join('\n'), rule: rule + '+harvest' };
+  }
+
   function applyAction(item, project, warnings, lists) {
     lists = lists || {};
     const family = item.family;
@@ -982,6 +1028,13 @@
       actionNotes = ACTION_TEXT.conforms;
       rule = 'default-conforms';
     }
+
+    const harvested = applyHarvestedLanguage(item, action, actionNotes, rule, lists);
+    action = harvested.action;
+    actionNotes = harvested.actionNotes;
+    rule = harvested.rule;
+    if (action === 'test') highlight = true;
+    if (action === 'apl') apl = true;
 
     if (oneSource && !['tack', 'curing', 'expansion', 'crack-seal', 'apl-product', 'ttc', 'signs', 'striping', 'geotextile'].includes(family)) {
       actionNotes = (actionNotes ? actionNotes + '\n' : '') + ACTION_TEXT.oneSource;
@@ -1314,5 +1367,6 @@
     processSosSheets,
     workbookToSheets,
     cleanContractNo,
+    lookupHarvestedLanguage,
   };
 });

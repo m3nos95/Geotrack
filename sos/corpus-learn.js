@@ -569,7 +569,7 @@ function mergeOneGroup(group) {
   const seenNote = new Set();
   group.forEach(g => {
     (g.notes || []).forEach(n => {
-      if (out.engine && /PDF only|add the contractor/i.test(n)) return;
+      if (out.engine && /PDF only|letter only|add the contractor/i.test(n)) return;
       if (seenNote.has(n)) return;
       seenNote.add(n);
       out.notes.push(n);
@@ -615,7 +615,105 @@ function mergeComparedResults(results) {
 }
 
 function specTokens(s) {
-  return [...String(s || '').matchAll(/#?\d{6}|#\d+xxx/gi)].map(m => m[0].replace(/^#/, '#').toUpperCase());
+  return [...String(s || '').matchAll(/#?\d{6}|#\d+xxx/gi)].map(m => {
+    const t = m[0].toUpperCase();
+    return t.startsWith('#') ? t : '#' + t;
+  });
+}
+
+function canonSpec(tok) {
+  const t = String(tok || '').toUpperCase().replace(/^#+/, '');
+  if (/^\d{6}/.test(t)) return '#' + t.slice(0, 6);
+  if (/^\d+XXX$/.test(t)) return '#' + t;
+  return t ? '#' + t : '';
+}
+
+function actionIntent(text) {
+  const t = String(text || '').toLowerCase();
+  if (/pending jmf/.test(t)) return 'not-approved';
+  if (/not approved/.test(t)) return 'not-approved';
+  if (/must be tested|tested and approved prior/.test(t)) return 'test';
+  if (/visual inspection/.test(t)) return 'visual';
+  if (/\bon apl\b|approved products list|choose a product from the apl/.test(t)) return 'apl';
+  if (/state inspected stock/.test(t)) return 'on-file';
+  if (/\bsubmit\b/.test(t) && /tack|curing|expansion|manufacturer/.test(t)) return 'submit';
+  if (/approved/.test(t)) return 'approved';
+  return 'other';
+}
+
+function stockActionPhrase(text) {
+  return squeeze(text).split(/\s+Contact\s+/i)[0].replace(/\s*\|\s*/g, ' ').trim();
+}
+
+function familyGuess(section, specs) {
+  const spec = canonSpec(specs[0] || '');
+  const desc = String(section || '');
+  try { return Engine.familyFromSpec(spec, desc, desc) || 'other'; }
+  catch (e) { return 'other'; }
+}
+
+function bumpPhrase(map, key, rec) {
+  if (!map.has(key)) map.set(key, { letters: 0, family: rec.family || '', phrases: new Map() });
+  const row = map.get(key);
+  row.letters += 1;
+  if (rec.family && !row.family) row.family = rec.family;
+  const pk = stockActionPhrase(rec.action).toLowerCase().slice(0, 280);
+  if (!pk) return;
+  if (pk.length < 8 && rec.intent === 'other') return;
+  const cur = row.phrases.get(pk) || { count: 0, action: stockActionPhrase(rec.action), intent: rec.intent };
+  cur.count += 1;
+  if (stockActionPhrase(rec.action).length > cur.action.length) cur.action = stockActionPhrase(rec.action);
+  row.phrases.set(pk, cur);
+}
+
+function pickHarvestRows(map, minUses) {
+  const out = {};
+  for (const [key, row] of map) {
+    const ranked = [...row.phrases.values()].sort((a, b) => b.count - a.count || b.action.length - a.action.length);
+    const best = ranked[0];
+    if (!best || best.count < minUses) continue;
+    out[key] = {
+      letters: row.letters,
+      family: row.family || '',
+      intent: best.intent,
+      action: best.action,
+      uses: best.count,
+    };
+  }
+  return out;
+}
+
+/** Majority SECTION/ACTION wording from issued letters (no contractor .xls required). */
+function harvestLanguageFromResults(results) {
+  const bySpec = new Map();
+  const byFamily = new Map();
+  let letters = 0;
+  let sections = 0;
+  (results || []).forEach(r => {
+    (r.letters || []).forEach(letter => {
+      if (letter.kind !== 'issued-letter') return;
+      letters += 1;
+      (letter.sections || []).forEach(s => {
+        const action = squeeze(s.action);
+        const intent = actionIntent(action);
+        if (action.length < 8 && intent === 'other') return;
+        const specs = specTokens(s.section).map(canonSpec).filter(Boolean);
+        if (!specs.length) return;
+        sections += 1;
+        const family = familyGuess(s.section, specs);
+        specs.forEach(spec => bumpPhrase(bySpec, spec, { action, intent, family }));
+        if (family && family !== 'other') bumpPhrase(byFamily, family, { action, intent, family });
+      });
+    });
+  });
+  return {
+    kind: 'issued-language',
+    generatedAt: new Date().toISOString(),
+    letters,
+    sections,
+    bySpec: pickHarvestRows(bySpec, 1),
+    byFamily: pickHarvestRows(byFamily, 2),
+  };
 }
 
 function loadListsForDir(dir) {
@@ -631,6 +729,13 @@ function loadListsForDir(dir) {
     if (fs.existsSync(json)) {
       try { bundle = Lists.mergeBundle(bundle, JSON.parse(fs.readFileSync(json, 'utf8'))); }
       catch (e) {}
+    }
+    const langFile = path.join(dir, 'SOS-language.json');
+    if (fs.existsSync(langFile)) {
+      try {
+        const language = JSON.parse(fs.readFileSync(langFile, 'utf8'));
+        if (language && language.bySpec) bundle.language = language;
+      } catch (e) {}
     }
     const ccFile = path.join(dir, 'SOS-cc.json');
     if (fs.existsSync(ccFile)) {
@@ -702,7 +807,7 @@ function compareCase(c, lists) {
       out.notes.push('Could not parse contractor form PDF: ' + e.message);
     }
   } else {
-    out.notes.push('PDF only — add the contractor .xls / .xlsx (or a PDF printout of the form) to this folder.');
+    out.notes.push('Letter only (no contractor spreadsheet). SECTION / SOURCE / ACTION language is still harvested.');
   }
 
   for (const pdf of c.pdfs) {
@@ -722,6 +827,30 @@ function compareCase(c, lists) {
   return out;
 }
 
+function renderLanguageHarvest(language) {
+  const lines = [];
+  if (!language || !language.letters) {
+    lines.push('Language: no issued-letter SECTION/ACTION blocks harvested yet.');
+    return lines;
+  }
+  const specs = Object.keys(language.bySpec || {});
+  const families = Object.keys(language.byFamily || {});
+  lines.push('Language harvested from ' + language.letters + ' issued letters (' + language.sections + ' sections, ' + specs.length + ' spec numbers). No contractor .xls required.');
+  families.sort().forEach(f => {
+    const row = language.byFamily[f];
+    lines.push('  ' + f + ' ×' + row.uses + ' — ' + squeeze(row.action).slice(0, 140));
+  });
+  const top = specs
+    .map(s => ({ spec: s, row: language.bySpec[s] }))
+    .sort((a, b) => b.row.uses - a.row.uses)
+    .slice(0, 25);
+  top.forEach(({ spec, row }) => {
+    lines.push('  ' + spec + ' ×' + row.uses + ' [' + (row.family || '?') + '] — ' + squeeze(row.action).slice(0, 120));
+  });
+  if (specs.length > 25) lines.push('  … ' + (specs.length - 25) + ' more specs in SOS-language.json');
+  return lines;
+}
+
 function renderCcHarvest(h) {
   const lines = [];
   if (!h || !h.letters) {
@@ -737,19 +866,30 @@ function renderCcHarvest(h) {
   return lines;
 }
 
-function renderText(results, harvest) {
+function renderText(results, harvest, language) {
   const lines = [];
   lines.push('SOS corpus learn');
   lines.push('Cases: ' + results.length);
   lines.push('');
   lines.push(...renderCcHarvest(harvest));
   lines.push('');
+  lines.push(...renderLanguageHarvest(language));
+  lines.push('');
   if (!results.length) {
-    lines.push('No files yet. Put matching pairs in sos/corpus/drop/ (Job.xls + Job.pdf) or one subfolder per job.');
+    lines.push('No files yet. Put issued SOS letter PDFs (and contractor forms if you have them) in the SOS Program folder.');
     lines.push('See sos/corpus/README.md');
     return lines.join('\n');
   }
-  for (const r of results) {
+  const DETAIL_CAP = 60;
+  const paired = results.filter(r => r.engine && (r.letters || []).length);
+  const rest = results.filter(r => !(r.engine && (r.letters || []).length));
+  let toShow = results;
+  if (results.length > DETAIL_CAP) {
+    toShow = paired.concat(rest.slice(0, Math.max(0, DETAIL_CAP - paired.length)));
+    lines.push('Showing ' + toShow.length + ' of ' + results.length + ' jobs. Letter-only language is in SOS-language.json.');
+    lines.push('');
+  }
+  for (const r of toShow) {
     lines.push('═'.repeat(72));
     lines.push(r.slug);
     lines.push('xls: ' + (r.xlsFiles.join(', ') || '(none)'));
@@ -789,9 +929,11 @@ function renderText(results, harvest) {
   return lines.join('\n');
 }
 
-function renderSummary(results, harvest) {
+function renderSummary(results, harvest, language) {
   const lines = ['SOS learn  ' + results.length + ' jobs', ''];
   lines.push(...renderCcHarvest(harvest));
+  lines.push('');
+  lines.push(...renderLanguageHarvest(language));
   lines.push('');
   let paired = 0;
   for (const r of results) {
@@ -808,7 +950,7 @@ function renderSummary(results, harvest) {
         if (miss) status += '  letter-only ' + r.diff.specsInPdfNotEngine.join(',');
         if (extra) status += '  engine-only ' + r.diff.specsInEngineNotPdf.join(',');
       }
-    } else if (!hasForm) status = 'letter only';
+    } else if (!hasForm) status = 'letter only (language harvested)';
     else if (!letter) status = 'form only';
     lines.push('• ' + r.slug);
     lines.push('  ' + status);
@@ -833,23 +975,28 @@ function main() {
   }
   const results = mergeComparedResults(discoverCases().map(c => compareCase(c, lists)));
   const harvest = harvestCcFromResults(results);
-  const text = renderText(results, harvest);
+  const language = harvestLanguageFromResults(results);
+  const text = renderText(results, harvest, language);
   fs.writeFileSync(path.join(ROOT, 'report.md'), text);
   fs.writeFileSync(path.join(ROOT, 'report.json'), JSON.stringify(results, null, 2));
   fs.writeFileSync(path.join(ROOT, 'cc-harvest.json'), JSON.stringify(harvest, null, 2));
+  fs.writeFileSync(path.join(ROOT, 'language-harvest.json'), JSON.stringify(language, null, 2));
   extra.forEach(dir => {
     try { fs.writeFileSync(path.join(dir, 'SOS-learn-report.md'), text); }
     catch (e) { console.error('Could not write report into ' + dir + ': ' + e.message); }
     try { fs.writeFileSync(path.join(dir, 'SOS-cc.json'), JSON.stringify(harvest, null, 2)); }
     catch (e) { console.error('Could not write SOS-cc.json into ' + dir + ': ' + e.message); }
+    try { fs.writeFileSync(path.join(dir, 'SOS-language.json'), JSON.stringify(language, null, 2)); }
+    catch (e) { console.error('Could not write SOS-language.json into ' + dir + ': ' + e.message); }
   });
-  if (WANT_JSON) console.log(JSON.stringify({ results, harvest }, null, 2));
+  if (WANT_JSON) console.log(JSON.stringify({ results, harvest, language }, null, 2));
   else {
-    console.log(VERBOSE ? text : renderSummary(results, harvest));
+    console.log(VERBOSE ? text : renderSummary(results, harvest, language));
     console.log('\nFull report: sos/corpus/report.md');
     extra.forEach(dir => {
       console.log('Copy: ' + path.join(dir, 'SOS-learn-report.md'));
       console.log('CC list: ' + path.join(dir, 'SOS-cc.json') + '  (drop this on the CC tab)');
+      console.log('Language: ' + path.join(dir, 'SOS-language.json') + '  (drop this on APL / Chart)');
     });
   }
 }
@@ -870,6 +1017,8 @@ module.exports = {
   parseIssuedSections,
   parseCcPeople,
   harvestCcFromResults,
+  harvestLanguageFromResults,
+  actionIntent,
   readGrid,
   parseFormPdf,
   inspectPdf,

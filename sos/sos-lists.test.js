@@ -250,3 +250,15 @@ assert.strictEqual(snap.items['201000'].na, true);
 assert.ok(snap.items['202507']);
 console.log('OK Source of Supply Database snapshot');
 
+const issuedLang = {
+  kind: 'issued-language',
+  letters: 3,
+  bySpec: { '#202888': { action: 'Approved.', intent: 'approved', uses: 3 } },
+  byFamily: {},
+};
+const withLang = Lists.mergeBundle(Lists.emptyBundle(), issuedLang);
+assert.strictEqual(withLang.language.kind, 'issued-language');
+assert.ok(withLang.language.bySpec['#202888']);
+assert.ok(/Issued language 1 specs/.test(Lists.summary(withLang)));
+console.log('OK issued-language harvest merge');
+

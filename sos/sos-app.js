@@ -1152,7 +1152,26 @@
         : undefined,
       fetchedAt: liveLists.fetchedAt || '',
       ccAlways: liveLists.ccAlways || [],
+      language: liveLists.language || null,
     });
+  }
+
+  function looksLikeLanguageHarvest(obj) {
+    return !!(obj && obj.kind === 'issued-language' && obj.bySpec && typeof obj.bySpec === 'object');
+  }
+
+  function ingestLanguageHarvest(language) {
+    liveLists.language = language;
+    persistLists();
+    renderLists();
+    applyListsToOpenLetter();
+    const el = document.getElementById('lists-status');
+    if (el) {
+      const n = Object.keys((language && language.bySpec) || {}).length;
+      el.style.display = 'block';
+      el.className = 'ok-banner';
+      el.textContent = 'Loaded issued-letter language for ' + n + ' spec numbers from ' + (language.letters || 0) + ' letters. Chart / APL still decide approved vs must-be-tested.';
+    }
   }
 
   function looksLikeCcHarvest(obj) {
@@ -1305,6 +1324,10 @@
           ingestCcHarvest(bundle);
           return;
         }
+        if (looksLikeLanguageHarvest(bundle)) {
+          ingestLanguageHarvest(bundle);
+          return;
+        }
         liveLists = SOSLists.mergeBundle(liveLists, bundle);
         persistLists();
         renderLists();
@@ -1388,6 +1411,7 @@
         aggregate: saved.aggregate,
         ccAlways: saved.ccAlways,
         sosDatabase: saved.sosDatabase,
+        language: saved.language,
       } : {});
       if (bundle.fetchedAt) liveLists.fetchedAt = bundle.fetchedAt;
       if (!liveLists.sosDatabase || !liveLists.sosDatabase.items || !Object.keys(liveLists.sosDatabase.items).length) {
@@ -1399,6 +1423,7 @@
       if (saved && saved.aggregate) liveLists.aggregate = saved.aggregate;
       if (saved && saved.ccAlways) liveLists.ccAlways = saved.ccAlways;
       if (saved && saved.sosDatabase) liveLists.sosDatabase = saved.sosDatabase;
+      if (saved && saved.language) liveLists.language = saved.language;
       if (!liveLists.sosDatabase || !liveLists.sosDatabase.items || !Object.keys(liveLists.sosDatabase.items).length) {
         await loadSosDatabaseSnapshot();
       }
@@ -1441,6 +1466,7 @@
       ['Aggregate chart', liveLists.aggregate && liveLists.aggregate.file, (liveLists.aggregate && liveLists.aggregate.entries || []).length],
       ['SOS Database', liveLists.sosDatabase && liveLists.sosDatabase.modified, liveLists.sosDatabase && liveLists.sosDatabase.items ? Object.keys(liveLists.sosDatabase.items).length : 0],
       ['CC harvest (library)', (liveLists.ccAlways || []).length ? 'library only' : '', (liveLists.ccAlways || []).length],
+      ['Issued letter language', liveLists.language && liveLists.language.letters ? (liveLists.language.letters + ' letters') : '', liveLists.language && liveLists.language.bySpec ? Object.keys(liveLists.language.bySpec).length : 0],
     ];
     tbody.innerHTML = rows.map(r => `<tr><td>${esc(r[0])}</td><td>${esc(r[1] || '—')}</td><td>${esc(String(r[2]))}</td></tr>`).join('');
     const n = (liveLists.aggregate && liveLists.aggregate.entries || []).length + (liveLists.tack && liveLists.tack.entries || []).length;

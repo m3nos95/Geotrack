@@ -1,42 +1,44 @@
 # SOS example corpus
 
-Dump **contractor Source of Supply spreadsheets** next to the **issued M&R letters**. This GitHub repo is public, so those files stay on this machine (gitignored) and are not committed.
+Dump **issued M&R letter PDFs** in the Desktop **SOS Program** folder. Contractor `.xls` files are optional. This GitHub repo is public, so those files stay on this machine (gitignored) and are not committed.
 
-## Easiest: one folder, matching names
+## Issued letters only (no spreadsheet)
 
-Put every pair in `sos/corpus/drop/`. The spreadsheet and PDF just need the **same name** (any extension):
+If you have thousands of issued letters and do not want to dig through email for the contractor `.xls`:
+
+1. Copy the letter PDFs into `Desktop\SOS Program` (subfolders are OK).
+2. Double-click **`learn-sos.bat`**.
+3. Drop **`SOS-language.json`** on **APL / Chart** in the SOS tool (and `SOS-cc.json` on the CC tab).
+
+The learner reads SECTION / SOURCE / ACTION from those PDFs. The current Approved Source List and APL still decide approved vs must-be-tested / not approved. Harvested wording fills unknown items and matches issued phrasing when the decision is the same.
+
+The first run over a large folder takes a while (each PDF is opened once).
+
+## Optional: matching contractor forms
+
+If you also have the contractor Source of Supply spreadsheet (or a PDF printout of the form), put it next to the issued letter. Same basename is enough (`Frey Entrance.xls` + `Frey Entrance.pdf`). That lets the report diff what the engine would write against what was issued.
 
 ```
 sos/corpus/drop/
   Frey Entrance.xls
   Frey Entrance.pdf
-  Lightkeepers.xls
-  Lightkeepers.pdf
-  Wincheslea Phase 5.xls
-  Wincheslea Phase 5.pdf
 ```
 
-A later revision can be `Frey Entrance-rev1.pdf` — that still counts as the Frey pair.
+Contractor SOS forms that were **printed or saved as PDF** (not `.xls`) are OK when paired with the issued letter.
 
-Contractor SOS forms that were **printed or saved as PDF** (not `.xls`) are OK. Drop them with the issued letter; the learner reads the spec table from the form PDF. Native `.xls` is still better when you have it.
+## Windows batch
 
-You do **not** need a subfolder per job if the names match.
-
-## Windows batch (no upload)
-
-On your PC, keep the 20 matches in:
+On your PC:
 
 `C:\Users\Aaron.Wieczorek\OneDrive - STATE OF DELAWARE\Desktop\SOS Program`
 
-Double-click **`learn-sos.bat`** at the repo root (or `sos\learn-sos.bat`). It reads that folder and writes `SOS-learn-report.md` and `SOS-cc.json` next to the files. Drop `SOS-cc.json` on the CC tab in the SOS tool. Names that appear on many issued letters are added automatically (plus the district sampler and M&R core). Do not commit `SOS-cc.json` — it is built from contractor letters.
+Double-click **`learn-sos.bat`** at the repo root (or `sos\learn-sos.bat`). It writes `SOS-learn-report.md`, `SOS-cc.json`, and `SOS-language.json` next to the files. Do not commit those — they are built from contractor letters.
 
-Needs Node.js and Python 3 on the PC (the bat will pip-install `xlrd` and `pypdf` if missing). Drag a different folder onto the bat to scan that instead.
+Needs Node.js and Python 3 (the bat will pip-install `xlrd` and `pypdf` if missing). Drag a different folder onto the bat to scan that instead.
 
 ```
 node sos/corpus-learn.js --dir-only --dir "C:\Users\Aaron.Wieczorek\OneDrive - STATE OF DELAWARE\Desktop\SOS Program"
 ```
-
-If the contractor form and the issued letter have totally different filenames (`DEL DOT - SOS - ….xls` vs `0000016055_….pdf`), either rename them to match or use a subfolder.
 
 ## Optional: one subfolder per job
 
@@ -58,4 +60,4 @@ After the files are in, say so in chat (or run it yourself):
 node sos/corpus-learn.js
 ```
 
-That diffs what the engine would issue against SECTION / SOURCE / ACTION on the real PDF. It also harvests the `cc:` names into `sos/corpus/cc-harvest.json`.
+That reads issued letters even without a contractor spreadsheet, writes `SOS-language.json` / `cc-harvest.json`, and diffs form+letter pairs when both exist.

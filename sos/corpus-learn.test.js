@@ -195,7 +195,7 @@ assert.strictEqual(caMerged.length, 1);
 assert.ok(caMerged[0].engine);
 assert.strictEqual(caMerged[0].letters.length, 1);
 
-const { parseCcPeople, harvestCcFromResults, parseIssuedSections } = require('./corpus-learn.js');
+const { parseCcPeople, harvestCcFromResults, parseIssuedSections, harvestLanguageFromResults, actionIntent } = require('./corpus-learn.js');
 const ccBlock = [
   'The following material sources have been reviewed by this office for Application No. 0000016055, BOBBY FREY ENTRANCE(S) as to their acceptability for use on this project.',
   'SECTION: #301001 - GABC',
@@ -235,5 +235,43 @@ assert.strictEqual(harvest.letters, 3);
 assert.ok(harvest.always.some(p => p.name === 'James Smith'));
 assert.ok(!harvest.always.some(p => p.name === 'Hunter McCabe'), 'Hunter is on 1/3 letters, below 40%');
 assert.ok(!harvest.people.some(p => p.name === 'Should Skip'));
+
+assert.strictEqual(actionIntent('Must be tested.'), 'test');
+assert.strictEqual(actionIntent('Approved.'), 'approved');
+assert.strictEqual(actionIntent('Approved: Conduct a visual inspection to ensure specification compliance.'), 'visual');
+
+const languageLetter = [
+  'The following material sources have been reviewed by this office for Application No. 0000016055, BOBBY FREY ENTRANCE(S) as to their acceptability for use on this project.',
+  'SECTION: #301001 - GABC',
+  'SOURCE: Vulcan Materials - Salisbury, MD',
+  'ACTION: Must be tested.',
+  'SECTION: #202888 - INCLINOMETERS',
+  'SOURCE: Acme Instruments - Dover, DE',
+  'ACTION: Approved: Conduct a visual inspection to ensure specification compliance.',
+  'If you have any questions, please contact this office.',
+].join('\n');
+const languageParsed = parseIssuedSections(languageLetter);
+assert.strictEqual(languageParsed.kind, 'issued-letter');
+assert.strictEqual(languageParsed.sections.length, 2);
+
+const language = harvestLanguageFromResults([
+  { engine: null, notes: ['Letter only (no contractor spreadsheet). SECTION / SOURCE / ACTION language is still harvested.'], letters: [languageParsed] },
+]);
+assert.strictEqual(language.kind, 'issued-language');
+assert.ok(language.bySpec['#301001']);
+assert.strictEqual(language.bySpec['#301001'].intent, 'test');
+assert.ok(/must be tested/i.test(language.bySpec['#301001'].action));
+assert.ok(language.bySpec['#202888']);
+assert.strictEqual(language.bySpec['#202888'].intent, 'visual');
+assert.ok(/visual inspection/i.test(language.bySpec['#202888'].action));
+
+const shortApproved = harvestLanguageFromResults([{
+  letters: [{
+    kind: 'issued-letter',
+    sections: [{ section: '#905007 - SUPER SILT FENCE', source: 'ACF', action: 'Approved.' }],
+  }],
+}]);
+assert.ok(shortApproved.bySpec['#905007'], 'short Approved. from issued letters is still harvested');
+assert.strictEqual(shortApproved.bySpec['#905007'].intent, 'approved');
 
 console.log('OK corpus pairing');

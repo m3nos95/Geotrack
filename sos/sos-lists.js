@@ -622,6 +622,7 @@
       aggregate: { kind: 'aggregate', file: '', entries: [] },
       sosDatabase: { kind: 'sos-database', file: '', modified: '', items: {} },
       ccAlways: [],
+      language: null,
     };
   }
 
@@ -636,6 +637,8 @@
     if (extra.kind === 'sos-database' && extra.items) out.sosDatabase = extra;
     if (extra.fetchedAt) out.fetchedAt = extra.fetchedAt;
     if (Array.isArray(extra.ccAlways)) out.ccAlways = extra.ccAlways;
+    if (extra.language && extra.language.bySpec) out.language = extra.language;
+    if (extra.kind === 'issued-language' && extra.bySpec) out.language = extra;
     return out;
   }
 
@@ -662,6 +665,9 @@
     if (b.sosDatabase && b.sosDatabase.items && Object.keys(b.sosDatabase.items).length) {
       const n = Object.keys(b.sosDatabase.items).length;
       bits.push('SOS Database ' + n + ' items' + (b.sosDatabase.modified ? ` (${b.sosDatabase.modified})` : ''));
+    }
+    if (b.language && b.language.bySpec) {
+      bits.push('Issued language ' + Object.keys(b.language.bySpec).length + ' specs');
     }
     return bits.join(' · ') || 'No live lists loaded';
   }

@@ -614,4 +614,57 @@ assert.ok(liveSnap.tack.entries.length >= 10, 'bundled tack APL snapshot');
 assert.strictEqual(require('./sos-lists.js').lookupTack(liveSnap.tack, 'Russell Standard', 'Baltimore MD', 'CRS-1').listed, true);
 assert.ok(require('./sos-lists.js').lookupTack(liveSnap.tack, 'Russell Standard', 'Chambersburg PA', 'CRS-1H Tack Coat').gradeMismatch);
 
+const harvestedLang = {
+  kind: 'issued-language',
+  letters: 12,
+  bySpec: {
+    '#202888': {
+      action: 'Approved: Conduct a visual inspection to ensure specification compliance.',
+      intent: 'visual',
+      uses: 8,
+    },
+    '#301001': {
+      action: 'Approved for use.',
+      intent: 'approved',
+      uses: 40,
+    },
+  },
+  byFamily: {},
+};
+const unknownGrid = gridFromObjects(FREY_HEADER, [[
+  ['', 202888.0, 'Inclinometers', '', 'Inclinometers', 'Acme Instruments', '', 'Dover, DE', ''],
+]]);
+const unknownHarvested = Engine.processGrid(unknownGrid, { lists: { language: harvestedLang } }).items[0];
+assert.strictEqual(unknownHarvested.family, 'other');
+assert.strictEqual(unknownHarvested.action, 'visual', 'issued-letter language fills unknown specs');
+assert.ok(/visual inspection/i.test(unknownHarvested.actionNotes));
+assert.strictEqual(unknownHarvested.rule, 'harvested-language');
+
+const testChart = {
+  kind: 'aggregate',
+  entries: [{ name: 'Vulcan Materials', loc: 'Salisbury MD', material: 'GABC', status: 'test' }],
+};
+const harvestCannotApprove = Engine.processGrid(gridFromObjects(FREY_HEADER, [[
+  ['', 301001.0, 'GABC', '', 'GABC', 'Vulcan Materials', '', 'Salisbury, MD', ''],
+]]), { lists: { aggregate: testChart, language: harvestedLang } }).items.find(i => i.family === 'aggregate');
+assert.strictEqual(harvestCannotApprove.action, 'test', 'chart must-be-tested is not overwritten by harvested Approved');
+assert.ok(/Must be tested/i.test(harvestCannotApprove.actionNotes));
+
+const overlayLang = {
+  kind: 'issued-language',
+  bySpec: {
+    '#707001': {
+      action: 'Approved: Conduct a visual inspection to ensure specification compliance. Check stone size in the field.',
+      intent: 'visual',
+      uses: 5,
+    },
+  },
+  byFamily: {},
+};
+const ripHarvest = Engine.processGrid(gridFromObjects(FREY_HEADER, [[
+  ['', 707001.0, 'Riprap', '', 'Riprap', 'Martin Marietta', '', 'North East, MD', ''],
+]]), { lists: { language: overlayLang } }).items[0];
+assert.strictEqual(ripHarvest.action, 'visual');
+assert.ok(/Check stone size/i.test(ripHarvest.actionNotes), 'matching intent overlays more specific issued wording');
+
 console.log('--- letter ---\n' + letter);
