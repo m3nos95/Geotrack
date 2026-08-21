@@ -322,6 +322,15 @@
     margin-top: 3px;
     line-height: 1.4;
   }
+  tr.item-review td {
+    background: var(--amber-bg);
+  }
+  .review-flag {
+    font-size: 11px;
+    color: var(--amber);
+    margin-top: 4px;
+    line-height: 1.35;
+  }
 
   /* ── SAMPLE LINK ── */
   .sample-link-btn {

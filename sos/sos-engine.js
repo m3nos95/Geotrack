@@ -24,6 +24,7 @@
     filterRetiredCcPeople,
   } = DATA;
   const Lists = LISTS || {};
+  let bundledSosDb = undefined;
 
   const STREET_RE = /^\d+\s|\b(rd|road|ave|avenue|st\.?|street|hwy|highway|blvd|boulevard|ln|lane|dr\.?|drive|ct|court|pkwy|pike|way|circle|pl|place|po box)\b/i;
   const CITY_STATE_RE = /^([A-Za-z .'-]+),\s*([A-Z]{2})(?:\s+\d{5}(?:-\d{4})?)?$/;
@@ -465,7 +466,8 @@
     const contact = findLabeled(rows, 'DelDOT Contact');
 
     const contractor = contractorRaw.replace(/^Contractor:\s*/i, '').trim();
-    const addrParts = splitAddress(addr.replace(/^Address:\s*/i, ''));
+    const addrRaw = addr.replace(/^Address:\s*/i, '').trim();
+    const addrParts = splitAddress(addrRaw);
     const contractorAddr = [addrParts.street, addrParts.citystatezip].filter(Boolean).join('\n');
     const contractNo = cleanContractNo(contract.replace(/^.*?:\s*/, '').trim());
 
@@ -474,6 +476,7 @@
       title: title.replace(/^Title of Contract:\s*/i, '').trim(),
       contractor,
       contractorAddr,
+      contractorAddrRaw: addrRaw,
       contractorEmail: email,
       subContractor: sub.replace(/^n\/?a$/i, ''),
       district: district.replace(/^District:\s*/i, '').trim(),
@@ -749,6 +752,8 @@
     const project = parseProject(grid);
     const parsed = parseItems(grid);
     const warnings = [...parsed.warnings];
+    const addrFlag = contractorAddressFlag(project);
+    if (addrFlag) warnings.push(addrFlag);
     if (!project.contract) {
       warnings.push('Contract / application number is blank on the form — fill it in before issuing.');
     }
@@ -1060,6 +1065,170 @@
     return { ...item, family, desc: sectionDesc, letterSpecs, subItems, specDescs };
   }
 
+  function familyLabel(fam) {
+    return {
+      'hma-mix': 'hot mix / Superpave',
+      tack: 'tack coat',
+      aggregate: 'GABC / aggregate',
+      borrow: 'borrow',
+      pcc: 'PCC',
+      precast: 'precast',
+      rcp: 'RCP',
+      curing: 'curing compound',
+      expansion: 'expansion joint',
+      'crack-seal': 'crack seal',
+      seed: 'seed',
+      topsoil: 'topsoil',
+      striping: 'striping',
+      hardware: 'hardware',
+      'apl-product': 'APL product',
+      erosion: 'erosion control',
+      geotextile: 'geotextile',
+      landscape: 'landscape',
+      riprap: 'riprap',
+      hdpe: 'HDPE pipe',
+      utility: 'utility',
+      ttc: 'temporary traffic control',
+      signs: 'signs',
+      castings: 'castings',
+      other: 'other',
+    }[fam] || fam || 'unknown';
+  }
+
+  function familiesCompatible(catalogFam, textFam) {
+    if (!catalogFam || !textFam || catalogFam === textFam) return true;
+    if (textFam === 'other' || catalogFam === 'other') return true;
+    const stacked = { expansion: 1, curing: 1, hardware: 1 };
+    if ((catalogFam === 'pcc' || catalogFam === 'precast' || catalogFam === 'rcp') && stacked[textFam]) return true;
+    if (catalogFam === 'precast' && textFam === 'pcc') return true;
+    if (catalogFam === 'pcc' && textFam === 'precast') return true;
+    if (catalogFam === 'apl-product' && (textFam === 'erosion' || textFam === 'landscape' || textFam === 'pcc')) return true;
+    if ((catalogFam === 'landscape' || catalogFam === 'erosion') && textFam === 'apl-product') return true;
+    return false;
+  }
+
+  function isPlaceholderSpec(spec) {
+    const s = String(spec || '');
+    return /xxx/i.test(s) || /701\/705/i.test(s);
+  }
+
+  function bundledSosDatabase() {
+    if (bundledSosDb !== undefined) return bundledSosDb;
+    bundledSosDb = null;
+    try {
+      if (typeof require === 'function') bundledSosDb = require('./lists/sos-database-snapshot.json');
+    } catch (e) {
+      bundledSosDb = null;
+    }
+    return bundledSosDb;
+  }
+
+  function specDatabase(lists) {
+    const db = lists && lists.sosDatabase;
+    if (db && db.items && Object.keys(db.items).length) return db;
+    return bundledSosDatabase();
+  }
+
+  function isKnownItemNumber(spec, lists) {
+    if (!spec || isPlaceholderSpec(spec)) return true;
+    const key = String(spec).replace(/^([^#])/, '#$1');
+    const digits = key.replace(/\D/g, '');
+    if (digits.length !== 6) return true;
+    if (SPEC_CATALOG[key] || SPEC_CATALOG['#' + digits] || SPEC_CATALOG[digits]) return true;
+    if (lookupCatalogDesc(key, lists)) return true;
+    const db = specDatabase(lists);
+    if (Lists.lookupSosDatabase && Lists.lookupSosDatabase(db, key)) return true;
+    return false;
+  }
+
+  function isWeakSourceName(name) {
+    const n = cellStr(name);
+    if (!n) return true;
+    if (isStreet(n) || isCityState(n) || isProductLabel(n) || isPhone(n)) return true;
+    return /^(n\/?a|none|same|tbd|-)$/i.test(n);
+  }
+
+  function locLooksInvalid(loc) {
+    const t = cellStr(loc);
+    if (!t) return false;
+    if (isCityState(t)) return false;
+    if (isStreet(t)) return true;
+    if (/^[A-Za-z .'-]{3,}$/.test(t)) return false;
+    if (/^[^,]+,\s*[A-Z]{2}\b/i.test(t)) return false;
+    return /[^A-Za-z0-9 ,.'#/-]/.test(t) || /\d{6,}/.test(t);
+  }
+
+  function contractorAddressFlag(project) {
+    const raw = cellStr(project && (project.contractorAddrRaw || project.contractorAddr));
+    if (!raw || /^(n\/?a|none|-)$/i.test(raw)) return '';
+    const lines = raw.split(/\n/).map(s => s.trim()).filter(Boolean);
+    const last = lines[lines.length - 1] || '';
+    const joined = lines.join(', ');
+    if (isCityState(last) || isCityState(joined)) return '';
+    const parts = splitAddress(joined);
+    if (parts.citystatezip && (isStreet(parts.street) || /\d/.test(parts.street))) return '';
+    if (lines.length >= 2 && isStreet(lines[0]) && /^[A-Za-z .'-]{3,}$/.test(last)) return '';
+    return 'Contractor address looks incomplete or invalid: "' + raw.replace(/\s+/g, ' ') + '"';
+  }
+
+  function noteChartLocationMismatch(item, primary, altHit) {
+    const note = (hit, name, loc) => {
+      if (!hit || hit.found || hit.reason !== 'location-mismatch') return;
+      const who = [name, loc].filter(Boolean).join(' — ');
+      const locs = [...new Set((hit.matches || []).map(m => m.loc).filter(Boolean))];
+      item.chartLocationMismatch = {
+        who,
+        chartLocs: locs,
+      };
+    };
+    note(primary, item.srcName, item.srcLoc);
+    if (!item.chartLocationMismatch) note(altHit, item.altName, item.altLoc);
+  }
+
+  function collectItemReviewFlags(item, lists) {
+    const flags = [];
+    const formSpecs = (item.formSpecs && item.formSpecs.length) ? item.formSpecs : (item.specs || []);
+    const formDesc = cellStr(item.formDesc || '');
+    formSpecs.forEach((spec) => {
+      if (!/^#\d{6}$/.test(spec)) return;
+      if (!isKnownItemNumber(spec, lists)) {
+        flags.push('Item number ' + spec + ' is not in the DelDOT catalog.');
+      }
+    });
+    formSpecs.forEach((spec) => {
+      if (!/^#\d{6}$/.test(spec) || !isKnownItemNumber(spec, lists)) return;
+      const cat = SPEC_CATALOG[spec] || SPEC_CATALOG[spec.replace(/^#/, '')];
+      if (!cat || !cat.family) return;
+      const textFam = familyFromSpec('', formDesc, item.formMaterial || item.material, lists, item.formSubItems || item.subItems);
+      if (familiesCompatible(cat.family, textFam)) return;
+      const shown = formDesc || (item.material || 'this description');
+      flags.push(
+        spec + ' is ' + (cat.desc || familyLabel(cat.family))
+        + ', not "' + shown + '" — that description looks like ' + familyLabel(textFam)
+        + '. Letter still lists the row; confirm the item number.'
+      );
+    });
+    const manufactured = ['tack', 'crack-seal', 'curing', 'expansion', 'apl-product', 'ttc', 'signs', 'castings', 'striping', 'hardware', 'seed'];
+    if (manufactured.includes(item.family) && isWeakSourceName(item.srcName)) {
+      const spec = (item.letterSpecs || item.specs || [])[0] || 'this item';
+      flags.push('No manufacturer listed for ' + spec + ' (' + (item.desc || item.family) + ').');
+    }
+    if (locLooksInvalid(item.srcLoc)) {
+      flags.push('SOURCE city/state looks invalid: "' + item.srcLoc + '"');
+    }
+    if (locLooksInvalid(item.altLoc)) {
+      flags.push('Alternate SOURCE city/state looks invalid: "' + item.altLoc + '"');
+    }
+    if (item.chartLocationMismatch) {
+      const miss = item.chartLocationMismatch;
+      const where = miss.chartLocs && miss.chartLocs.length
+        ? ' (chart has ' + miss.chartLocs.join(', ') + ')'
+        : '';
+      flags.push('Plant city does not match the aggregate chart: ' + miss.who + where + '.');
+    }
+    return [...new Set(flags)];
+  }
+
   function pickLetterSource(item) {
     // APL / manufactured products: manufacturer is the SOURCE.
     // Bulk plants: supplier name + plant city from manufacturer address column.
@@ -1300,6 +1469,7 @@
         }
         const primary = Lists.lookupAggregate(chart, item.srcName, item.srcLoc, lookupMat);
         const altHit = item.altName ? Lists.lookupAggregate(chart, item.altName, item.altLoc, lookupMat) : null;
+        noteChartLocationMismatch(item, primary, altHit);
         const part = (hit, label) => {
           const who = label ? label + ' ' : '';
           if (!hit || !hit.found) {
@@ -1570,6 +1740,7 @@
         prev.specs = [...new Set([...prev.specs, ...item.specs])];
         prev.letterSpecs = [...new Set([...(prev.letterSpecs || prev.specs), ...(item.letterSpecs || item.specs)])];
         prev.specDescs = Object.assign({}, prev.specDescs, item.specDescs);
+        prev.reviewFlags = [...new Set([...(prev.reviewFlags || []), ...(item.reviewFlags || [])])];
         const extraSubs = (item.subItems || []).filter(s => !(prev.subItems || []).some(p => String(p).toLowerCase() === String(s).toLowerCase()));
         prev.subItems = [...(prev.subItems || []), ...extraSubs];
         prev.groupedFrom = (prev.groupedFrom || [prev.id]).concat(item.id);
@@ -1619,12 +1790,20 @@
 
     const lists = (opts && opts.lists) || {};
     const prepared = parsed.items.map((raw, idx) => {
-      let item = { ...raw, id: raw.id || (idx + 1) };
+      let item = {
+        ...raw,
+        id: raw.id || (idx + 1),
+        formDesc: raw.formDesc || raw.desc || '',
+        formMaterial: raw.formMaterial || raw.material || '',
+        formSubItems: raw.formSubItems || [...(raw.subItems || [])],
+        formSpecs: raw.formSpecs || [...(raw.specs || [])],
+      };
       item = applySpecCorrections(item, warnings);
       item = enrichDescription(item, lists);
       const src = pickLetterSource(item);
       item = recoverStripingSource({ ...item, ...src });
       item = applyAction(item, project, warnings, lists);
+      item.reviewFlags = collectItemReviewFlags(item, lists);
       return item;
     });
 
@@ -1641,21 +1820,9 @@
       warnings.push('Omitted N/A earthwork from letter: ' + specs.join(', '));
     }
     const items = groupItems(prepared.filter(it => !shouldOmitItem(it))).map((it, i) => ({ ...it, id: i + 1 }));
-
-    if (lists.sosDatabase && lists.sosDatabase.items && Object.keys(lists.sosDatabase.items).length) {
-      const unknown = [];
-      items.forEach(it => {
-        (it.specs || []).forEach(s => {
-          if (!/^#\d{6}$/.test(s)) return;
-          if (SPEC_CATALOG[s]) return;
-          if (Lists.lookupSosDatabase(lists.sosDatabase, s)) return;
-          unknown.push(s);
-        });
-      });
-      if (unknown.length) {
-        warnings.push('Not in the Source of Supply Database: ' + [...new Set(unknown)].join(', '));
-      }
-    }
+    items.forEach((it) => {
+      (it.reviewFlags || []).forEach((f) => warnings.push(f));
+    });
 
     const cc = buildCcList(project, lists, items);
 
@@ -1663,7 +1830,7 @@
       project,
       items,
       cc,
-      warnings,
+      warnings: [...new Set(warnings.filter(Boolean))],
       ungrouped: prepared,
     };
   }
@@ -1919,5 +2086,7 @@
     workbookToSheets,
     cleanContractNo,
     lookupHarvestedLanguage,
+    isKnownItemNumber,
+    collectItemReviewFlags,
   };
 });

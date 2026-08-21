@@ -92,6 +92,8 @@ function needsReview(result) {
   if (!(result.project && result.project.contract)) return true;
   if (warns.some(w => /blank/i.test(w))) return true;
   if ((result.items || []).some(it => it.action === 'not-approved' || it.action === 'submit')) return true;
+  if ((result.items || []).some(it => (it.reviewFlags || []).length)) return true;
+  if (warns.some(w => /not in the deldot catalog|does not match the aggregate chart|looks incomplete or invalid|no manufacturer listed|confirm the item number/i.test(w))) return true;
   return false;
 }
 
@@ -138,6 +140,7 @@ function writeJobFolder(outDir, result, sourcePath, extra) {
       action: it.action,
       source: it.srcName,
       notes: it.actionNotes,
+      reviewFlags: it.reviewFlags || [],
     })),
     extra: extra || null,
   }, null, 2));

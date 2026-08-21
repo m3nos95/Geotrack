@@ -1135,4 +1135,62 @@ if (fs.existsSync(liveTriCounty)) {
   }
 }
 
+(function contractorErrorFlags() {
+  const fake = Engine.processGrid(gridFromObjects([
+    { 6: 'Agreement /Permit/Contract/Application #:', 7: '0000016055' },
+    { 6: 'Title of Contract:', 7: 'Fake Spec' },
+    { 7: 'Contractor: Acme' },
+    { 7: 'Address: 1 Main St, Dover, DE 19901' },
+  ], [[
+    ['', 999999.0, 'Magic Pavement', '', 'Magic', 'Acme', '', 'Dover, DE', ''],
+  ]]));
+  const fakeWarn = (fake.warnings || []).join(' | ');
+  assert.ok(/#999999/.test(fakeWarn) && /not in the DelDOT catalog/i.test(fakeWarn), fakeWarn);
+  assert.ok(fake.items.some(i => (i.specs || []).includes('#999999')), 'unknown spec still listed');
+  assert.ok(fake.items.some(i => (i.reviewFlags || []).some(f => /#999999/.test(f))));
+  assert.ok(Engine.isKnownItemNumber('#401005'));
+  assert.ok(!Engine.isKnownItemNumber('#999999'));
+
+  const mismatch = Engine.processGrid(gridFromObjects(FREY_HEADER, [[
+    ['', 401005.0, 'Tack Coat', '', 'Tack Coat CRS-1', 'Tri County Materials', '', 'Russell Standard', ''],
+    ['', '', '', '', '', '3800 Dover AFB Rd.', '', '3450 Asiatic Ave.', ''],
+    ['', '', '', '', '', 'Dover, DE', '', 'Baltimore, MD 21226', ''],
+  ]]));
+  const tack = mismatch.items.find(i => i.family === 'tack');
+  assert.ok(tack, 'wrong spec still treated as tack');
+  assert.ok((tack.letterSpecs || []).includes('#401xxx'));
+  assert.ok((tack.reviewFlags || []).some(f => /#401005/.test(f) && /Tack Coat/i.test(f)), JSON.stringify(tack.reviewFlags));
+
+  const freyFlags = (result.items || []).flatMap(i => i.reviewFlags || []);
+  assert.ok(!freyFlags.some(f => /not in the DelDOT catalog|confirm the item number/i.test(f)), freyFlags.join(' | '));
+  assert.ok(!result.warnings.some(w => /not in the DelDOT catalog|confirm the item number|address looks incomplete/i.test(w)), result.warnings.join(' | '));
+
+  const badAddr = Engine.processGrid(gridFromObjects([
+    { 6: 'Agreement /Permit/Contract/Application #:', 7: '0000016055' },
+    { 7: 'Contractor: Acme Paving' },
+    { 7: 'Address: asdfgh' },
+  ], [FREY_ITEMS[0]]));
+  assert.ok((badAddr.warnings || []).some(w => /address looks incomplete/i.test(w)), badAddr.warnings.join(' | '));
+
+  const chart = {
+    kind: 'aggregate',
+    entries: [
+      { name: 'Vulcan Materials', loc: 'Salisbury MD', material: 'GABC', status: 'approved', testDate: '2026-03-30' },
+    ],
+  };
+  const wrongCity = Engine.processGrid(gridFromObjects([
+    { 6: 'Agreement /Permit/Contract/Application #:', 7: '0000016055' },
+    { 6: 'Title of Contract:', 7: 'GABC city' },
+    { 7: 'Contractor: Acme' },
+    { 7: 'Address: 1 Main St, Dover, DE 19901' },
+  ], [[
+    ['', 301003.0, 'Graded Aggregate', '', 'GABC', 'Vulcan Materials', '', 'Seaford, DE 19973', ''],
+  ]]), { lists: { aggregate: chart } });
+  const g = wrongCity.items.find(i => i.family === 'aggregate');
+  assert.ok(g, 'GABC row present');
+  assert.ok((g.reviewFlags || []).some(f => /does not match the aggregate chart/i.test(f)), JSON.stringify(g.reviewFlags));
+  assert.strictEqual(g.action, 'test');
+  console.log('OK contractor error flags');
+})();
+
 console.log('--- letter ---\n' + letter);

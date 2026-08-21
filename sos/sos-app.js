@@ -527,10 +527,13 @@
     visible.forEach(item => {
       const am = actionMeta[item.action] || actionMeta.approved;
       const specs = item.letterSpecs || item.specs || [];
+      const flags = item.reviewFlags || [];
       const altHtml = item.altName
         ? `<div class="source-alt">${esc(item.altName)}${item.altLoc ? ' — ' + esc(item.altLoc) : ''}</div>` : '';
       const subHtml = (item.subItems || []).map(s => `<div style="font-size:11px;color:var(--text-mid);">• ${esc(s)}</div>`).join('');
+      const flagHtml = flags.map(f => `<div class="review-flag">⚠ ${esc(f)}</div>`).join('');
       const tr = document.createElement('tr');
+      if (flags.length) tr.classList.add('item-review');
       tr.innerHTML = `
         <td><div class="spec-multi">${specs.map(s => `<div class="spec-num">${esc(s)}</div>`).join('')}</div></td>
         <td><span style="font-weight:500;">${esc(item.desc || '')}</span>${subHtml ? `<div style="margin-top:3px;">${subHtml}</div>` : ''}</td>
@@ -542,6 +545,7 @@
           <span class="action-badge ${am.cls}"><span class="action-dot"></span>${am.label}</span>
           ${item.apl ? '<span class="apl-flag">APL</span>' : ''}
           ${item.actionNotes ? `<div class="action-notes">${esc(item.actionNotes).slice(0, 90)}${item.actionNotes.length > 90 ? '…' : ''}</div>` : ''}
+          ${flagHtml}
           ${item.rule ? `<div class="rule-chip">${esc(item.rule)}</div>` : ''}
           <div style="display:flex;gap:4px;margin-top:6px;">
             <button class="btn btn-ghost btn-sm" onclick="editItem(${item.id})" style="font-size:11px;padding:3px 10px;">✎ Edit</button>
@@ -1770,9 +1774,10 @@
     tbody.innerHTML = parsedImport.items.map(item => {
       const am = actionMeta[item.action] || actionMeta.approved;
       const specs = item.letterSpecs || item.specs;
-      return `<tr>
+      const flags = item.reviewFlags || [];
+      return `<tr class="${flags.length ? 'item-review' : ''}">
         <td>${specs.map(s => `<div class="spec-num">${esc(s)}</div>`).join('')}</td>
-        <td><div style="font-weight:500;">${esc(item.desc)}</div>${(item.subItems || []).map(s => `<div style="font-size:11px;color:var(--text-mid);">• ${esc(s)}</div>`).join('')}</td>
+        <td><div style="font-weight:500;">${esc(item.desc)}</div>${(item.subItems || []).map(s => `<div style="font-size:11px;color:var(--text-mid);">• ${esc(s)}</div>`).join('')}${flags.map(f => `<div class="review-flag">⚠ ${esc(f)}</div>`).join('')}</td>
         <td><div class="source-primary">${esc(item.srcName || '')}${item.srcLoc ? ' — ' + esc(item.srcLoc) : ''}</div>
             ${item.altName ? `<div class="source-alt">${esc(item.altName)}${item.altLoc ? ' — ' + esc(item.altLoc) : ''}</div>` : ''}</td>
         <td><span class="action-badge ${am.cls}">${am.label}</span></td>

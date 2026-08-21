@@ -100,4 +100,12 @@ const filled = Engine.processGrid(gridFromObjects([
 assert.ok(filled.project.contract);
 assert.ok(!needsReview(filled), 'must-be-tested with an application number is a complete letter');
 
+const fakeSpec = Engine.processGrid(gridFromObjects([
+  { 6: 'Agreement /Permit/Contract/Application #:', 7: '0000016055' },
+  ...HEADER.slice(1),
+], [[
+  ['', 999999.0, 'Magic Pavement', '', 'Magic', 'Acme', '', 'Dover, DE', ''],
+]]));
+assert.ok(needsReview(fakeSpec), 'unknown item number needs review');
+
 console.log('OK inbox watch writer', written.dest);
