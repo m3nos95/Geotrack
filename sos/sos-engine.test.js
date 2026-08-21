@@ -840,6 +840,12 @@ if (fs.existsSync(liveKirkwood)) {
     const bearSpecs = (bear.letterSpecs || bear.specs || []).join(' ');
     assert.ok(/#602130/.test(bearSpecs) && /#701013/.test(bearSpecs) && /#705001/.test(bearSpecs));
     assert.ok(/#710503/.test(bearSpecs) && /#711500/.test(bearSpecs));
+    assert.ok((bear.hiddenSpecs || []).includes('#701016'), 'hidden IPCC curb #701016 still on the letter');
+    assert.ok((bear.hiddenSpecs || []).includes('#701023'));
+    assert.ok((bear.hiddenSpecs || []).includes('#705002'), 'hidden 6" sidewalk');
+    assert.ok((bear.hiddenSpecs || []).includes('#705011'), 'hidden ped connection special');
+    const hiddenFlag = (bear.reviewFlags || []).find(f => /hidden on the contractor spreadsheet/i.test(f));
+    assert.ok(hiddenFlag && /#701016/.test(hiddenFlag) && /#705011/.test(hiddenFlag), hiddenFlag);
     assert.ok(/Bear Materials/i.test(bear.srcName), bear.srcName);
     assert.ok(/Newark/i.test(bear.srcLoc), bear.srcLoc);
     assert.ok(/New Castle/i.test(bear.altLoc), bear.altLoc);
@@ -1295,6 +1301,28 @@ if (fs.existsSync(liveTriCounty)) {
   assert.strictEqual(spec2016.project.catalogYear, 15);
   assert.ok(!/#701004/.test((spec2016.warnings || []).join(' | ')), (spec2016.warnings || []).join(' | '));
   console.log('OK spec-year item catalog checks');
+})();
+
+(function hiddenSpreadsheetRows() {
+  const rows = gridFromObjects([
+    { 6: 'Agreement /Permit/Contract/Application #:', 7: 'T2025-061-01' },
+    { 6: 'Title of Contract:', 7: 'Kirkwood' },
+    { 7: 'Contractor: Greggo & Ferrara, Inc.' },
+    { 7: 'Address: 4048 New Castle Ave, New Castle, DE 19720' },
+  ], [[
+    ['', 701013.0, 'PCC Curb, Type 1-8', '', 'Class B Concrete', 'Bear Concrete', '', 'Newark, DE', ''],
+    ['', 701016.0, 'IPCC Curb, Type 1-4', '', 'Class B Concrete', 'Bear Concrete', '', 'Newark, DE', ''],
+  ]]);
+  const hiddenIdx = rows.findIndex(r => String(r[1]).replace(/\.0$/, '') === '701016');
+  const hidden = Engine.processGrid(rows, { hiddenRows: [hiddenIdx] });
+  const pcc = hidden.items.find(i => i.family === 'pcc');
+  assert.ok(pcc, 'PCC row present');
+  assert.ok((pcc.specs || []).includes('#701016'), 'hidden spec still listed');
+  assert.ok((pcc.hiddenSpecs || []).includes('#701016'), 'idx=' + hiddenIdx + ' ' + JSON.stringify(pcc.hiddenSpecs));
+  assert.ok(!(pcc.hiddenSpecs || []).includes('#701013'));
+  const flag = (pcc.reviewFlags || []).join(' | ');
+  assert.ok(/hidden on the contractor spreadsheet/i.test(flag) && /#701016/.test(flag), flag);
+  console.log('OK hidden spreadsheet rows');
 })();
 
 console.log('--- letter ---\n' + letter);

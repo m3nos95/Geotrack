@@ -516,15 +516,16 @@
     if (t) bucket.push(t);
   }
 
-  function parseItems(rows) {
+  function parseItems(rows, hiddenRows) {
     const header = findHeaderRow(rows);
     if (header < 0) return { items: [], warnings: ['Could not find Specification # header row.'] };
     const cols = detectItemColumns(rows, header);
     const warnings = [];
     const items = [];
     let current = null;
+    const hidden = new Set((hiddenRows || []).map(n => Number(n)));
 
-    const addSpecEntry = (row) => {
+    const addSpecEntry = (row, rowIdx) => {
       if (!current) return;
       const specCell = specCellFromRow(row, cols);
       const specs = specCell ? extractSpecs(specCell) : [];
@@ -533,13 +534,18 @@
       const material = cellStr(row[cols.material]);
       const specDescs = {};
       if (desc) specs.forEach(s => { specDescs[s] = desc; });
+      const hiddenOnForm = hidden.has(rowIdx);
       current.specEntries.push({
         specs,
         desc,
         material,
         materialLines: material ? [material] : [],
         specDescs,
+        hiddenOnForm,
       });
+      if (hiddenOnForm) {
+        current.hiddenSpecs = [...new Set([...(current.hiddenSpecs || []), ...specs])];
+      }
     };
 
     const appendToLastSpec = (row) => {
@@ -551,7 +557,7 @@
       if (desc && !last.desc) last.desc = desc;
     };
 
-    const startItem = (row, inherit) => {
+    const startItem = (row, inherit, rowIdx) => {
       const specCell = specCellFromRow(row, cols);
       const contactContinues = (val) => {
         const first = expandContactLines(val)[0];
@@ -577,9 +583,10 @@
         altProductLines: cols.altProduct >= 0 ? expandContactLines(row[cols.altProduct]).filter(isProductLabel) : [],
         specDescs: {},
         specEntries: [],
+        hiddenSpecs: [],
       };
       noteRowSpecDescs(current, row, cols);
-      addSpecEntry(row);
+      addSpecEntry(row, rowIdx);
     };
 
     const flush = () => {
@@ -645,6 +652,8 @@
           : (entry.material ? [...new Set([entry.material].filter(Boolean))] : allMaterialLines);
         const preferredMaterial = preferredFrom(materialLines, desc);
         const subItems = materialLines.filter(s => s.toLowerCase() !== desc.toLowerCase());
+        const hiddenSpecs = (entry.hiddenOnForm ? (entry.specs || []) : [])
+          .concat((current.hiddenSpecs || []).filter(s => ((entry.specs && entry.specs.length) ? entry.specs : current.specs).includes(s)));
         items.push({
           specs: (entry.specs && entry.specs.length) ? entry.specs : current.specs,
           desc,
@@ -653,6 +662,8 @@
           // producer (mfg) vs distributor (supplier)
           ...contact,
           specDescs: Object.assign({}, current.specDescs || {}, entry.specDescs || {}),
+          hiddenSpecs: [...new Set(hiddenSpecs)],
+          hiddenOnForm: !!(entry.hiddenOnForm || hiddenSpecs.length),
           raw: current,
         });
       });
@@ -724,7 +735,7 @@
           if (junk) current = null;
           else flush();
         }
-        startItem(row, inherit);
+        startItem(row, inherit, r);
         if (current && !specNums.length && accessoryIncoming && prevSpecs.length
             && (currentFam === 'pcc' || currentFam === 'expansion' || currentFam === 'curing')) {
           current.specs = [...new Set([...(current.specs || []), ...prevSpecs])];
@@ -733,7 +744,7 @@
       }
       if (specCell) {
         current.specs = [...new Set([...current.specs, ...extractSpecs(specCell)])];
-        addSpecEntry(row);
+        addSpecEntry(row, r);
       } else {
         appendToLastSpec(row);
       }
@@ -760,7 +771,7 @@
   function parseSosGrid(rows, meta) {
     const grid = (rows || []).map(r => (Array.isArray(r) ? r : []));
     const project = parseProject(grid);
-    const parsed = parseItems(grid);
+    const parsed = parseItems(grid, meta && meta.hiddenRows);
     const warnings = [...parsed.warnings];
     const addrFlag = contractorAddressFlag(project);
     if (addrFlag) warnings.push(addrFlag);
@@ -1809,6 +1820,8 @@
         prev.letterSpecs = [...new Set([...(prev.letterSpecs || prev.specs), ...(item.letterSpecs || item.specs)])];
         prev.specDescs = Object.assign({}, prev.specDescs, item.specDescs);
         prev.reviewFlags = [...new Set([...(prev.reviewFlags || []), ...(item.reviewFlags || [])])];
+        prev.hiddenSpecs = [...new Set([...(prev.hiddenSpecs || []), ...(item.hiddenSpecs || [])])];
+        if (item.hiddenOnForm) prev.hiddenOnForm = true;
         const extraSubs = (item.subItems || []).filter(s => !(prev.subItems || []).some(p => String(p).toLowerCase() === String(s).toLowerCase()));
         prev.subItems = [...(prev.subItems || []), ...extraSubs];
         prev.groupedFrom = (prev.groupedFrom || [prev.id]).concat(item.id);
@@ -1908,6 +1921,13 @@
     }
     const items = groupItems(prepared.filter(it => !shouldOmitItem(it))).map((it, i) => ({ ...it, id: i + 1 }));
     items.forEach((it) => {
+      const hidden = [...new Set(it.hiddenSpecs || [])];
+      if (hidden.length) {
+        it.hiddenSpecs = hidden;
+        it.hiddenOnForm = true;
+        const msg = 'Hidden on the contractor spreadsheet: ' + hidden.join(', ') + '. Letter still lists the row.';
+        it.reviewFlags = [...new Set([...(it.reviewFlags || []).filter(f => !/hidden on the contractor spreadsheet/i.test(f)), msg])];
+      }
       (it.reviewFlags || []).forEach((f) => warnings.push(f));
     });
 
@@ -1951,6 +1971,16 @@
     return (typeof globalThis !== 'undefined' && globalThis.XLSX) || (typeof require === 'function' ? require('xlsx') : null);
   }
 
+  function sheetHiddenRows(sheet) {
+    const info = sheet && sheet['!rows'];
+    if (!Array.isArray(info)) return [];
+    const out = [];
+    for (let i = 0; i < info.length; i++) {
+      if (info[i] && info[i].hidden) out.push(i);
+    }
+    return out;
+  }
+
   function workbookToGrid(workbook) {
     const XLSX = sheetjs();
     if (!XLSX) throw new Error('SheetJS (XLSX) is not loaded.');
@@ -1965,6 +1995,7 @@
     return (workbook.SheetNames || []).map(name => ({
       name,
       rows: XLSX.utils.sheet_to_json(workbook.Sheets[name], { header: 1, raw: true, defval: '' }),
+      hiddenRows: sheetHiddenRows(workbook.Sheets[name]),
     }));
   }
 
@@ -1981,13 +2012,17 @@
     const list = (sheets || []).map((s, i) => ({
       name: s && s.name ? s.name : ('Sheet ' + (i + 1)),
       rows: (s && s.rows) || s || [],
+      hiddenRows: (s && s.hiddenRows) || [],
     }));
     const sos = list.filter(s => findHeaderRow(s.rows) >= 0);
     if (!sos.length) {
       const fallback = list.find(s => looksLikeSosCover(s.rows)) || list[0];
       return processGrid(fallback ? fallback.rows : [], meta);
     }
-    const parsedSheets = sos.map(s => ({ name: s.name, parsed: parseSosGrid(s.rows, meta) }));
+    const parsedSheets = sos.map(s => ({
+      name: s.name,
+      parsed: parseSosGrid(s.rows, Object.assign({}, meta || {}, { hiddenRows: s.hiddenRows || [] })),
+    }));
     const project = parsedSheets[0].parsed.project;
     const items = parsedSheets.flatMap(s => s.parsed.items);
     const warnings = [];
@@ -2171,6 +2206,7 @@
     expandContactLines,
     processSosSheets,
     workbookToSheets,
+    sheetHiddenRows,
     cleanContractNo,
     lookupHarvestedLanguage,
     isKnownItemNumber,

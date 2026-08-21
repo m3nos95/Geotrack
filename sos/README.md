@@ -49,6 +49,8 @@ State contracts also look up the **Awarded Contract List** (snapshot `sos/lists/
 
 A number that belongs to a different spec year is still printed on the letter and flagged in REVIEW, with the current-book equivalent when the description matches (e.g. 2016 `#701004` valley gutter is 2025 `#701513`). Rebuild the snapshot with `python3 sos/build-spec-year-lists.py` when DelDOT issues a new awarded list or item catalog. Applications without a T-contract number keep the looser “is this a real 6-digit item” check.
 
+Rows the contractor hid on the spreadsheet (Excel hidden rows) are still read and listed. REVIEW flags them, e.g. Greggo’s Kirkwood form hid `#701016`–`#701023` I.PCC curb and gutter, `#705002` 6" sidewalk, and `#705011` pedestrian connection special.
+
 Spec `301003` submitted as GABC is issued as `#301001` (flagged in the review banner).
 
 ## Outlook inbox (every 30 minutes)

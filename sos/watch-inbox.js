@@ -201,16 +201,27 @@ function processFile(filePath, lists) {
     }
   }
   if (ext === '.xls' || ext === '.xlsx') {
-    let grid;
-    try { grid = Learn.readGrid(filePath); }
-    catch (e) {
-      return { skip: true, reason: 'Could not read spreadsheet: ' + e.message };
+    try {
+      const XLSX = require('xlsx');
+      const wb = XLSX.readFile(filePath);
+      const grid = Engine.workbookToGrid(wb);
+      if (!looksLikeSosGrid(grid)) {
+        return { skip: true, reason: 'Spreadsheet is not a Source of Supply form' };
+      }
+      const result = Engine.processWorkbook(wb, { filename: path.basename(filePath), lists });
+      return { result };
+    } catch (e) {
+      let grid;
+      try { grid = Learn.readGrid(filePath); }
+      catch (err) {
+        return { skip: true, reason: 'Could not read spreadsheet: ' + (err.message || e.message) };
+      }
+      if (!looksLikeSosGrid(grid)) {
+        return { skip: true, reason: 'Spreadsheet is not a Source of Supply form' };
+      }
+      const result = Engine.processGrid(grid, { filename: path.basename(filePath), lists });
+      return { result };
     }
-    if (!looksLikeSosGrid(grid)) {
-      return { skip: true, reason: 'Spreadsheet is not a Source of Supply form' };
-    }
-    const result = Engine.processGrid(grid, { filename: path.basename(filePath), lists });
-    return { result };
   }
   return { skip: true, reason: 'Not an .xls, .xlsx, or .pdf' };
 }
