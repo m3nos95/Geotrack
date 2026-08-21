@@ -809,7 +809,7 @@
     if (typeof SOS_SPEC_LETTER_DESCS !== 'undefined' && SOS_SPEC_LETTER_DESCS && SOS_SPEC_LETTER_DESCS[spec]) {
       return letterizeDesc(SOS_SPEC_LETTER_DESCS[spec].desc);
     }
-    const hit = Lists.lookupSosDatabase && Lists.lookupSosDatabase(lists && lists.sosDatabase, spec);
+    const hit = Lists.lookupSosDatabase && Lists.lookupSosDatabase(specDatabase(lists), spec);
     return hit && hit.desc ? letterizeDesc(hit.desc) : '';
   }
 
@@ -1148,6 +1148,11 @@
     if (lookupCatalogDesc(key, lists)) return true;
     const db = specDatabase(lists);
     if (Lists.lookupSosDatabase && Lists.lookupSosDatabase(db, key)) return true;
+    // Standard Construction Item numbers are 201xxx–908xxx. A ZIP opened as a
+    // local file cannot fetch the SOS Database snapshot, so do not yellow-flag
+    // real adjust/repair specs as "not in the catalog".
+    const series = Number(digits.slice(0, 3));
+    if (series >= 201 && series <= 908) return true;
     return false;
   }
 

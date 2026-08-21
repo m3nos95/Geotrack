@@ -1166,7 +1166,31 @@ if (fs.existsSync(liveTriCounty)) {
   assert.ok(fake.items.some(i => (i.specs || []).includes('#999999')), 'unknown spec still listed');
   assert.ok(fake.items.some(i => (i.reviewFlags || []).some(f => /#999999/.test(f))));
   assert.ok(Engine.isKnownItemNumber('#401005'));
+  assert.ok(Engine.isKnownItemNumber('#602130'), 'adjust existing DI is a Standard Spec item');
+  assert.ok(Engine.isKnownItemNumber('#710503'), 'adjust gas valve boxes is a Standard Spec item');
+  assert.ok(Engine.isKnownItemNumber('#711500'), 'adjust sanitary MH is a Standard Spec item');
   assert.ok(!Engine.isKnownItemNumber('#999999'));
+
+  const adjust = Engine.processGrid(gridFromObjects([
+    { 6: 'Agreement /Permit/Contract/Application #:', 7: 'T2025-061-01' },
+    { 6: 'Title of Contract:', 7: 'PAVE & REHAB, NEW CASTLE 5A, KIRKWOOD HIGHWAY' },
+    { 7: 'Contractor: Greggo & Ferrara, Inc.' },
+    { 7: 'Address: 4048 New Castle Ave, New Castle, DE 19720' },
+    { 1: 'District: North ' },
+  ], [[
+    ['', 602130.0, 'Adjusting and Repairing Existing Drainage Inlet', '', 'Class B Concrete', 'Bear Concrete', '', 'Newark, DE', ''],
+    ['', 710503.0, 'Adjust Gas Valve Boxes', '', 'Class B Concrete', '', '', '', ''],
+    ['', 711500.0, 'Adjust and Repair Existing Sanitary Manhole', '', 'Class B Concrete', '', '', '', ''],
+  ]]));
+  const adjustWarn = (adjust.warnings || []).join(' | ');
+  assert.ok(!/not in the DelDOT catalog/i.test(adjustWarn), adjustWarn);
+  const adjustPcc = adjust.items.find(i => i.family === 'pcc');
+  assert.ok(adjustPcc, 'adjust/repair Class B stays on the letter with the concrete plant');
+  assert.ok((adjustPcc.specs || []).includes('#602130'));
+  assert.ok((adjustPcc.specs || []).includes('#710503'));
+  assert.ok((adjustPcc.specs || []).includes('#711500'));
+  assert.ok(/Bear Materials/i.test(adjustPcc.srcName), adjustPcc.srcName);
+  assert.ok(Engine.letterSectionLines(adjustPcc).some(l => /#602130 - ADJUSTING AND REPAIRING EXISTING DRAINAGE INLET/.test(l)));
 
   const mismatch = Engine.processGrid(gridFromObjects(FREY_HEADER, [[
     ['', 401005.0, 'Tack Coat', '', 'Tack Coat CRS-1', 'Tri County Materials', '', 'Russell Standard', ''],
