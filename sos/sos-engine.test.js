@@ -165,6 +165,23 @@ assert.strictEqual(Engine.samplerName('Canal'), 'Rich Taylor');
 
 const phrase = Engine.contractPhrase({ contract: '0000016055', title: 'BOBBY FREY ENTRANCE(S)', docKind: 'application' });
 assert.strictEqual(phrase, 'Application No. 0000016055, BOBBY FREY ENTRANCE(S)');
+assert.strictEqual(
+  Engine.contractPhrase({
+    contract: 'T2025-061-01',
+    title: 'PAVE & REHAB, NEW CASTLE 5A, KIRKWOOD HIGHWAY',
+    docKind: 'contract',
+  }),
+  'Contract T2025-061-01, PAVE & REHAB, NEW CASTLE 5A, (KIRKWOOD HIGHWAY)'
+);
+assert.strictEqual(
+  Engine.contractPhrase({
+    contract: 'T2025-061-01',
+    title: 'PAVEMENT REHABILITATION, NEW CASTLE 5A, (KIRKWOOD HIGHWAY)',
+    docKind: 'contract',
+  }),
+  'Contract T2025-061-01, PAVEMENT REHABILITATION, NEW CASTLE 5A, (KIRKWOOD HIGHWAY)'
+);
+assert.strictEqual(Engine.parenthesizeTitlePlace('SUBDIVISION PAVING, NEW CASTLE COUNTY VIII, 2026'), 'SUBDIVISION PAVING, NEW CASTLE COUNTY VIII, 2026');
 
 // Seaford Russell Standard must reject
 const seafordGrid = gridFromObjects(FREY_HEADER, [[

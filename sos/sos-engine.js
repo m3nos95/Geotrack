@@ -264,9 +264,19 @@
     const label =
       kind === 'application' ? 'Application No.' :
       kind === 'agreement' ? 'Construction Agreement No.' :
-      /F\.?A\.?P/i.test(title) ? 'State Contract No.' :
-      'State Contract No.';
-    return title ? `${label} ${num}, ${title}` : `${label} ${num}`;
+      'Contract';
+    return title ? `${label} ${num}, ${parenthesizeTitlePlace(title)}` : `${label} ${num}`;
+  }
+
+  function parenthesizeTitlePlace(title) {
+    const t = String(title || '').replace(/\s+/g, ' ').trim();
+    if (!t) return '';
+    if (/\([^)]+\)\s*$/.test(t)) return t;
+    const m = t.match(/^(.*,\s*)([^,]+)$/);
+    if (!m) return t;
+    const last = m[2].trim();
+    if (!/\b(highway|hwy|road|rd\.?|street|st\.?|avenue|ave\.?|pike|blvd|boulevard|parkway|pkwy)\b/i.test(last)) return t;
+    return m[1] + '(' + last + ')';
   }
 
   function splitAddress(addr) {
@@ -2088,5 +2098,6 @@
     lookupHarvestedLanguage,
     isKnownItemNumber,
     collectItemReviewFlags,
+    parenthesizeTitlePlace,
   };
 });

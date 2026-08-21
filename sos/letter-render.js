@@ -37,18 +37,12 @@ function renderLetterHtml(result, opts) {
   const review = warnings.length
     ? `<div class="review-banner"><strong>REVIEW (not printed)</strong><br>${warnings.map(w => '• ' + esc(w)).join('<br>')}</div>`
     : '';
-  const sections = items.map(item => {
-    const specLines = Engine.letterSectionLines(item);
-    const src = Engine.sourceLine(item).split('\n').map(esc).join('<br>');
-    const subs = (item.subItems || []).map(s => `&nbsp;&nbsp;&bull; ${esc(s)}`).join('<br>');
-    return `<div class="letter-section-block">
-      <div class="letter-row"><div class="letter-field-label">SECTION:</div>
-        <div>${specLines.map(esc).join('<br>')}${subs ? '<br>' + subs : ''}</div></div>
-      <div class="letter-row"><div class="letter-field-label">SOURCE:</div><div>${src}</div></div>
-      <div class="letter-row"><div class="letter-field-label">ACTION:</div>
-        <div>${actionHtml(item)}</div></div>
-    </div>`;
-  }).join('\n');
+  const sections = Export.letterItemsHtml(items, {
+    esc,
+    letterSectionLines: Engine.letterSectionLines,
+    sourceLine: Engine.sourceLine,
+    actionHtml,
+  });
   const ccHtml = cc.map(c => `${esc(c.name)}, ${esc(c.org || 'DelDOT')}`).join('<br>');
   const title = [project.contract, project.title, project.contractor].filter(Boolean).join(' · ') || 'SOS letter';
   const seed = DATA.CONTACTS.letterAuthor || {};

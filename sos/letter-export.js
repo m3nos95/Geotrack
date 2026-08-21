@@ -79,15 +79,17 @@ table.letter-print-pages > tfoot > tr > td { padding: 0; border: none; vertical-
 
   return `@page { size: 8.5in 11in; margin: 0.5in 0.9in 0.45in 0.9in; }
 html, body { height: auto; }
-body { font-family: 'Times New Roman', serif; font-size: 11pt; line-height: 1.55; color: #111; }
+body { font-family: 'Times New Roman', Times, serif; font-size: 12pt; line-height: 1.15; color: #111; }
 .letter-letterhead { text-align: center; margin: 0 0 14pt; }
 .letter-letterhead img { width: 3.72in; height: auto; display: block; margin: 0 auto; }
 .letter-secretary { font-family: 'Copperplate Gothic Light', Copperplate, 'Century Gothic', serif; font-size: 6.5pt; letter-spacing: 0.08em; text-transform: uppercase; color: #17365D; margin: 4pt 0 0; text-align: left; font-weight: 400; line-height: 1.25; }
 .letter-date, .letter-to { margin-bottom: 16pt; }
-.letter-body p { margin-bottom: 12pt; }
-.letter-section-block { margin-bottom: 22pt; page-break-inside: avoid; }
-.letter-row { display: grid; grid-template-columns: 72pt 1fr; gap: 6pt; margin-bottom: 3pt; page-break-inside: avoid; }
-.letter-field-label { font-weight: 700; text-decoration: underline; }
+.letter-body p { margin-bottom: 18pt; }
+.letter-section-block { margin-bottom: 14pt; page-break-inside: avoid; }
+.letter-row { display: grid; grid-template-columns: 72pt 1fr; gap: 6pt; margin-bottom: 12pt; page-break-inside: avoid; }
+.letter-field-label { font-weight: 400; text-decoration: none; font-family: 'Times New Roman', Times, serif; font-size: 12pt; }
+.letter-label-section { font-weight: 700; }
+.letter-section-lines, .letter-action-text { font-family: 'Times New Roman', Times, serif; font-size: 12pt; line-height: 1.15; }
 hr, hr.letter-divider { border: none; border-top: 1px solid #ccc; margin: 14pt 0; }
 .letter-closing { display: table; width: 100%; page-break-inside: avoid; break-inside: avoid; page-break-before: auto; }
 .letter-questions { page-break-after: avoid; break-after: avoid-page; }
@@ -95,9 +97,9 @@ hr, hr.letter-divider { border: none; border-top: 1px solid #ccc; margin: 14pt 0
 .letter-sig-row { display: flex; align-items: flex-end; gap: 16pt; margin: 8pt 0 0; }
 .letter-sig-img { height: 0.58in; width: auto; max-width: 2.15in; display: block; object-fit: contain; }
 .letter-sig-digital { font-family: Helvetica, Arial, sans-serif; font-size: 7.5pt; line-height: 1.2; color: #111; }
-.letter-sig-name { font-weight: 700; margin-top: 4pt; }
+.letter-sig-name { font-weight: 400; margin-top: 4pt; }
 .letter-sig:not(.has-image) .letter-sig-name { margin-top: 8pt; }
-.letter-cc { margin-top: 14pt; font-size: 10pt; line-height: 1.75; page-break-inside: avoid; }
+.letter-cc { margin-top: 14pt; font-size: 12pt; line-height: 1.15; page-break-inside: avoid; }
 ${footer}
 `;
 }
@@ -108,9 +110,10 @@ function printLetterCss() {
 
 function wordCss() {
   return letterLayoutCss({ fixedFooter: false }) + `
-table.letter-row-table { width: 100%; border: none; border-collapse: collapse; margin-bottom: 3pt; }
-table.letter-row-table td { vertical-align: top; padding: 0 6pt 3pt 0; font-family: 'Times New Roman', serif; font-size: 11pt; }
-td.letter-field-label { width: 72pt; font-weight: 700; text-decoration: underline; }
+table.letter-row-table { width: 100%; border: none; border-collapse: collapse; margin-bottom: 12pt; }
+table.letter-row-table td { vertical-align: top; padding: 0 6pt 0 0; font-family: 'Times New Roman', Times, serif; font-size: 12pt; line-height: 1.15; }
+td.letter-field-label { width: 72pt; font-weight: 400; text-decoration: none; }
+td.letter-label-section { font-weight: 700; }
 mark.user-highlight, .user-highlight, .mso-user-highlight {
   background: #ffff00;
   mso-highlight: yellow;
@@ -149,6 +152,26 @@ ${bodyHtml}
 </body></html>`;
 }
 
+function letterItemsHtml(items, h) {
+  const esc = h.esc;
+  const letterSectionLines = h.letterSectionLines;
+  const sourceLine = h.sourceLine;
+  const actionHtml = h.actionHtml;
+  return (items || []).map((item) => {
+    const specLines = letterSectionLines(item);
+    const src = sourceLine(item).split('\n').map(esc).join('<br>');
+    const subs = (item.subItems || []).map(s => `&nbsp;&nbsp;&bull; ${esc(s)}`).join('<br>');
+    const specs = specLines.map(esc).join('<br>');
+    return `<div class="letter-section-block">
+      <div class="letter-row"><div class="letter-field-label letter-label-section">SECTION:</div>
+        <div class="letter-section-lines">${specs}${subs ? '<br>' + subs : ''}</div></div>
+      <div class="letter-row"><div class="letter-field-label">SOURCE:</div><div>${src}</div></div>
+      <div class="letter-row"><div class="letter-field-label">ACTION:</div>
+        <div class="letter-action-text">${actionHtml(item)}</div></div>
+    </div>`;
+  }).join('\n');
+}
+
 function letterExportFilename(contract, ext) {
   const raw = String(contract == null ? '' : contract).trim();
   const slug = raw.replace(/[^\w.-]+/g, '_').replace(/^_+|_+$/g, '') || 'SOS';
@@ -169,6 +192,7 @@ var SOSLetterExport = {
   wordCss,
   wrapLetterPages,
   wrapWordHtml,
+  letterItemsHtml,
   letterExportFilename,
   rewriteHighlightsForWord,
 };

@@ -44,6 +44,17 @@ assert.ok(/mso-highlight:yellow/.test(word));
 assert.ok(/letter-print-pages/.test(word));
 assert.ok(/letter-official-footer/.test(word));
 assert.ok(/2589 SOS letter/.test(word));
-assert.ok(/table-footer-group/.test(Export.printLetterCss()));
+assert.ok(/font-size:\s*12pt/.test(Export.printLetterCss()), 'print body is 12pt Times like issued letters');
+assert.ok(/line-height:\s*1\.15/.test(Export.printLetterCss()), 'print leading matches issued single spacing');
+assert.ok(/\.letter-label-section\s*\{\s*font-weight:\s*700/.test(Export.printLetterCss()), 'SECTION: is bold');
+assert.ok(/\.letter-field-label \{[^}]*font-weight:\s*400/.test(Export.printLetterCss()), 'SOURCE/ACTION are not bold');
+assert.ok(!/\.letter-field-label \{[^}]*text-decoration:\s*underline/.test(Export.printLetterCss()), 'SOURCE/ACTION are not underlined');
+assert.ok(/letter-label-section/.test(Export.letterItemsHtml([{ specs: ['#301001'], desc: 'GABC', subItems: [], actionNotes: 'Approved for use.' }], {
+  esc: (s) => String(s),
+  letterSectionLines: () => ['#301001 - GABC'],
+  sourceLine: () => 'Vulcan',
+  actionHtml: () => 'Approved for use.',
+})));
+assert.ok(/margin-bottom:\s*12pt/.test(Export.printLetterCss()), 'blank line between SECTION / SOURCE / ACTION');
 
 console.log('OK letter-export print highlights and Word wrap');

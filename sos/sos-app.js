@@ -783,19 +783,12 @@
       docKind: val('ph-dockind'),
     });
 
-    const sections = items.map(item => {
-      const specLines = SOSEngine.letterSectionLines(item);
-      const src = SOSEngine.sourceLine(item).split('\n');
-      const srcHtml = src.map((l, i) => i === 0 ? esc(l) : esc(l)).join('<br>');
-      const subs = (item.subItems || []).map(s => `&nbsp;&nbsp;&bull; ${esc(s)}`).join('<br>');
-      return `<div class="letter-section-block">
-        <div class="letter-row"><div class="letter-field-label">SECTION:</div>
-          <div>${specLines.map(esc).join('<br>')}${subs ? '<br>' + subs : ''}</div></div>
-        <div class="letter-row"><div class="letter-field-label">SOURCE:</div><div>${srcHtml}</div></div>
-        <div class="letter-row"><div class="letter-field-label">ACTION:</div>
-          <div class="letter-action-text">${actionHtml(item)}</div></div>
-      </div>`;
-    }).join('');
+    const sections = SOSLetterExport.letterItemsHtml(items, {
+      esc,
+      letterSectionLines: SOSEngine.letterSectionLines,
+      sourceLine: SOSEngine.sourceLine,
+      actionHtml,
+    });
 
     const ccHtml = ccList.map(cc => `${esc(cc.name)}, ${esc(cc.org)}`).join('<br>');
     const empty = !items.length
@@ -1984,14 +1977,14 @@
       table.setAttribute('cellspacing', '0');
       const tr = document.createElement('tr');
       const tdLabel = document.createElement('td');
-      tdLabel.setAttribute('class', 'letter-field-label');
+      tdLabel.setAttribute('class', kids[0].className || 'letter-field-label');
       tdLabel.setAttribute('valign', 'top');
       tdLabel.setAttribute('width', '90');
       tdLabel.style.width = '72pt';
-      tdLabel.style.fontWeight = '700';
-      tdLabel.style.textDecoration = 'underline';
+      tdLabel.style.fontWeight = /letter-label-section/.test(tdLabel.className) ? '700' : '400';
+      tdLabel.style.textDecoration = 'none';
       tdLabel.style.paddingRight = '6pt';
-      tdLabel.style.paddingBottom = '3pt';
+      tdLabel.style.paddingBottom = '0';
       tdLabel.innerHTML = kids[0].innerHTML;
       const tdVal = document.createElement('td');
       tdVal.setAttribute('valign', 'top');

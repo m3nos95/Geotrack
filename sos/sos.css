@@ -559,9 +559,9 @@
     background: white;
     box-shadow: var(--shadow-md);
     padding: 18px 28px 52px;
-    font-family: 'Times New Roman', serif;
-    font-size: 11px;
-    line-height: 1.55;
+    font-family: 'Times New Roman', Times, serif;
+    font-size: 12pt;
+    line-height: 1.15;
     color: #111;
     min-height: 0;
     width: 100%;
@@ -591,23 +591,29 @@
     line-height: 1.25;
   }
   .letter-date { margin-bottom: 20px; }
-  .letter-to { margin-bottom: 20px; line-height: 1.7; }
-  .letter-body p { margin-bottom: 14px; }
-  .letter-section-block { margin-bottom: 28px; }
+  .letter-to { margin-bottom: 20px; line-height: 1.15; }
+  .letter-body p { margin-bottom: 18px; }
+  .letter-section-block { margin-bottom: 14px; }
   .letter-row {
     display: grid;
-    grid-template-columns: 80px 1fr;
-    gap: 8px;
-    margin-bottom: 4px;
+    grid-template-columns: 72pt 1fr;
+    gap: 6px;
+    margin-bottom: 12pt;
   }
   .letter-field-label {
-    font-weight: 700;
-    text-decoration: underline;
-    font-family: var(--sans);
-    font-size: 12px;
-    padding-top: 1px;
+    font-weight: 400;
+    text-decoration: none;
+    font-family: 'Times New Roman', Times, serif;
+    font-size: 12pt;
+    padding-top: 0;
   }
-  .letter-action-text { font-family: var(--sans); font-size: 12px; }
+  .letter-label-section { font-weight: 700; }
+  .letter-section-lines,
+  .letter-action-text {
+    font-family: 'Times New Roman', Times, serif;
+    font-size: 12pt;
+    line-height: 1.15;
+  }
   .letter-highlight { background: #ffff80; }
   .letter-divider {
     border: none;
@@ -649,9 +655,9 @@
     line-height: 1.2;
     color: #111;
   }
-  .letter-sig-name { font-weight: 700; margin-top: 4px; }
+  .letter-sig-name { font-weight: 400; margin-top: 4px; }
   .letter-sig:not(.has-image) .letter-sig-name { margin-top: 8px; }
-  .letter-cc { margin-top: 16px; font-size: 11px; line-height: 1.7; }
+  .letter-cc { margin-top: 16px; font-size: 12pt; line-height: 1.15; }
   .letter-print-pages {
     width: 100%;
     border: none;
