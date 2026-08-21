@@ -1057,4 +1057,82 @@ const ripHarvest = Engine.processGrid(gridFromObjects(FREY_HEADER, [[
 assert.strictEqual(ripHarvest.action, 'visual');
 assert.ok(/Check stone size/i.test(ripHarvest.actionNotes), 'matching intent overlays more specific issued wording');
 
+const instructionThenHeader = [
+  ['If material requirements are not provided in the Standard Specifications or a Special Provision, submit all Plan sheets that contain relevant material requirements as documentation with the source of supply submission.'],
+  ['Specification #', '', 'Item Description', 'Plan sheet included with', 'Material', 'Supplier', '', 'Manufacturer', 'Alternate Product', 'Alternate Manufacturer'],
+  ['', '', '', 'Material Requirements?', '', '', '', 'Address & Contact', 'Material', 'Address & Contact'],
+];
+assert.strictEqual(Engine.findHeaderRow(instructionThenHeader), 1, 'Special Provision instruction is not the item header');
+const triCols = Engine.detectItemColumns(instructionThenHeader, 1);
+assert.strictEqual(triCols.alt, 9, 'Alternate Manufacturer wins over Alternate Product');
+assert.strictEqual(triCols.altProduct, 8);
+assert.ok(Engine.expandContactLines('Geo Tech - 1510 Newport Gap Pike, Wilmington, DE 19808 - +13023539769').includes('Geo Tech'));
+assert.ok(Engine.expandContactLines('Geo Tech - 1510 Newport Gap Pike, Wilmington, DE 19808 - +13023539769').some(s => /Wilmington/i.test(s)));
+
+const liveTriCounty = '/home/ubuntu/.cursor/projects/workspace/uploads/Tri-County_SOS_c1ee.xlsx';
+if (fs.existsSync(liveTriCounty)) {
+  let XLSX;
+  try { XLSX = require('xlsx'); } catch (e) { XLSX = null; }
+  if (XLSX) {
+    const Lists = require('./sos-lists.js');
+    const wb = XLSX.readFile(liveTriCounty);
+    const lists = { tack: require('./lists/apl-snapshot.json').tack };
+    const aslPath = '/home/ubuntu/.cursor/projects/workspace/uploads/Approved_Source_List_770b.xlsx';
+    if (fs.existsSync(aslPath)) {
+      const aslWb = XLSX.readFile(aslPath);
+      const aslRows = XLSX.utils.sheet_to_json(aslWb.Sheets[aslWb.SheetNames[0]], { header: 1, raw: true, defval: '' });
+      lists.aggregate = Lists.parseApprovedSourceListGrid(aslRows, { filename: 'Approved Source List.xlsx' });
+    }
+    const tri = Engine.processWorkbook(wb, { filename: 'Tri-County SOS.xlsx', lists });
+    const letter = Engine.letterPlainText(tri.project, tri.items, tri.cc);
+    assert.strictEqual(tri.project.contract, 'T2026-049-08');
+    assert.ok(/Allan Myers/i.test(tri.project.contractor));
+    assert.ok(/1262 Horsepond/i.test(tri.project.contractorAddr));
+    const gabc = tri.items.find(i => (i.letterSpecs || i.specs).includes('#301001'));
+    assert.ok(gabc && /CRUSHED CONCRETE/i.test(gabc.desc), gabc && gabc.desc);
+    assert.ok(/Geo Tech/i.test(gabc.srcName), gabc.srcName);
+    assert.ok(/Cirillo/i.test(gabc.altName), gabc.altName);
+    assert.ok(/Newport Gap/i.test(Engine.sourceLine(gabc)), Engine.sourceLine(gabc));
+    const hma = tri.items.find(i => i.family === 'hma-mix');
+    assert.ok(hma.specs.includes('#401029') && hma.specs.includes('#401030'));
+    assert.ok(/Allan Myers/i.test(hma.srcName));
+    assert.ok(/Christiana/i.test(hma.altName), hma.altName);
+    assert.ok(!(hma.subItems || []).some(s => /bituminous|concrete/i.test(s)));
+    const tack = tri.items.find(i => i.family === 'tack');
+    assert.ok(/Russell Standard/i.test(tack.srcName), tack.srcName);
+    assert.ok(/Specialty Emulsions/i.test(tack.altName), tack.altName);
+    assert.ok(/CNTT/i.test((tack.subItems || []).join(' ')));
+    assert.ok(/EM-50-TT/i.test((tack.subItems || []).join(' ')));
+    assert.ok(/Seaford/i.test(tack.actionNotes) && /not approved/i.test(tack.actionNotes), tack.actionNotes);
+    assert.ok(/Specialty Emulsions/i.test(tack.actionNotes) && /on APL/i.test(tack.actionNotes), tack.actionNotes);
+    const pcc = tri.items.find(i => i.family === 'pcc');
+    ['#701013', '#701019', '#705001', '#705002', '#705008', '#705009'].forEach(s => {
+      assert.ok(pcc.specs.includes(s), 'PCC missing ' + s + ' got ' + pcc.specs.join());
+    });
+    assert.ok(/Bear Materials/i.test(pcc.srcName), pcc.srcName);
+    assert.ok(/Heritage/i.test(pcc.altName), pcc.altName);
+    const curing = tri.items.find(i => i.family === 'curing');
+    assert.ok(/ChemMasters/i.test(curing.srcName), curing.srcName);
+    assert.ok(/Meadows/i.test(curing.altName), curing.altName);
+    assert.ok(/[Ss]ilencure/i.test((curing.subItems || []).join(' ')));
+    const expansion = tri.items.find(i => i.family === 'expansion');
+    assert.ok(/J&K Foam/i.test(expansion.srcName), expansion.srcName);
+    assert.ok(/Russell/i.test(expansion.altName), expansion.altName);
+    const dws = tri.items.find(i => (i.letterSpecs || i.specs).includes('#705013'));
+    assert.ok(/Nitterhouse/i.test(dws.srcName), dws.srcName);
+    assert.ok(/Hanover/i.test(dws.altName), dws.altName);
+    const seed = tri.items.find(i => (i.letterSpecs || i.specs).includes('#908016'));
+    assert.ok(/Dynamic Green/i.test(seed.srcName), seed.srcName);
+    const top = tri.items.find(i => i.family === 'topsoil');
+    assert.ok(/Cirillo/i.test(top.srcName), top.srcName);
+    assert.ok(/Middletown/i.test(top.altName), top.altName);
+    const blanket = tri.items.find(i => (i.letterSpecs || i.specs).includes('#908020'));
+    assert.ok(/North American Green/i.test(blanket.srcName), blanket.srcName);
+    assert.ok(/American Excelsior/i.test(blanket.altName), blanket.altName);
+    assert.ok(/Curlex not approved/i.test(blanket.actionNotes), blanket.actionNotes);
+    assert.ok(!/White Cap/i.test(letter), letter);
+    console.log('live Tri-County T2026-049-08 parses stacked PCC / packed manufacturers');
+  }
+}
+
 console.log('--- letter ---\n' + letter);

@@ -79,8 +79,16 @@
     return PHONE_RE.test(s || '');
   }
 
+  function normalizeCityStateText(s) {
+    return cellStr(s)
+      .replace(/,\s*([A-Z]{2}),\s*(\d{5}(?:-\d{4})?)/, ', $1 $2')
+      .replace(/\s+,/g, ',')
+      .replace(/,\s+/g, ', ')
+      .trim();
+  }
+
   function isCityState(s) {
-    const t = cellStr(s);
+    const t = normalizeCityStateText(s);
     return CITY_STATE_RE.test(t) || (CITY_STATE_LOOSE_RE.test(t) && /\b[A-Z]{2}\b/.test(t) && !STREET_RE.test(t));
   }
 
@@ -88,26 +96,75 @@
     const t = cellStr(s);
     if (!t) return false;
     if (isPhone(t) || isCityState(t)) return false;
+    if (/\bp\.?\s*o\.?\s*box\b/i.test(t)) return true;
     if (!/\d/.test(t)) return false;
     return STREET_RE.test(t);
+  }
+
+  function isProductLabel(s) {
+    const t = cellStr(s);
+    if (!t) return false;
+    if (/^(gabc|millings|topsoil|cntt|em-?50-?tt|class\s*[abc]|silencure(\s+dot)?|curlex|bituminous|concrete)$/i.test(t)) return true;
+    return /superpave|tack coat|curing compound|expansion joint|erosion control blanket|ada paver|pg\s*\d{2}-\d{2}|1600[-\s]?white|subdivision mix/i.test(t);
   }
 
   function isCompanyName(s) {
     const t = cellStr(s);
     if (!t) return false;
-    if (isPhone(t) || isCityState(t) || isStreet(t)) return false;
+    if (isPhone(t) || isCityState(t) || isStreet(t) || isProductLabel(t)) return false;
     if (/^(n\/?a|none|same|tbd|-)$/i.test(t)) return false;
     if (/^(spec(?:ification)?s?|#|item description|material|supplier|manufacturer|alternate manufacturer|address\s*&\s*contact)$/i.test(t)) return false;
     return /[A-Za-z]{3,}/.test(t);
   }
 
   function formatLoc(cityLine) {
-    const t = cellStr(cityLine);
+    const t = normalizeCityStateText(cityLine);
     let m = t.match(CITY_STATE_RE);
     if (m) return `${m[1].trim()} ${m[2]}`;
     m = t.match(CITY_STATE_LOOSE_RE);
     if (m) return `${m[1].trim()} ${m[2]}`;
     return t.replace(/,\s*/g, ' ').replace(/\s+\d{5}(?:-\d{4})?$/, '').trim();
+  }
+
+  function splitStreetCity(s) {
+    const t = normalizeCityStateText(s);
+    if (!t) return [];
+    const tail = t.match(/^(.*),\s*([A-Za-z .'-]+,\s*[A-Z]{2}(?:\s+\d{5}(?:-\d{4})?)?)$/);
+    if (tail && (isStreet(tail[1]) || /\d/.test(tail[1]))) return [tail[1].trim(), tail[2].trim()];
+    const city = t.match(/\b([A-Z][a-z]+(?:\s+[A-Z][a-z]+)?),\s*([A-Z]{2})(?:\s+\d{5}(?:-\d{4})?)?\s*$/);
+    if (city && isStreet(t.slice(0, city.index))) {
+      return [t.slice(0, city.index).replace(/[,\s]+$/, ''), t.slice(city.index).trim()];
+    }
+    return [t];
+  }
+
+  function splitPackedContact(p) {
+    const s = cellStr(p);
+    if (!s) return [];
+    const bits = s.split(/\s*[-–—]\s+/).map(x => x.trim()).filter(Boolean);
+    if (bits.length < 2) return splitStreetCity(s);
+    const parts = [];
+    bits.forEach((bit) => {
+      if (isPhone(bit)) parts.push(bit);
+      else splitStreetCity(bit).forEach(x => parts.push(x));
+    });
+    return parts.length ? parts : [s];
+  }
+
+  function expandContactLines(val) {
+    if (val == null || val === '') return [];
+    const raw = String(val);
+    const chunks = raw.split(/\r\n|\n|\r|\s*\|\s*/)
+      .map(s => s.replace(/^\s*phone:\s*/i, '').trim())
+      .filter(Boolean);
+    const out = [];
+    chunks.forEach((chunk) => {
+      splitPackedContact(chunk).forEach((p) => {
+        const t = cellStr(p);
+        if (t && !out.includes(t)) out.push(t);
+      });
+    });
+    return out.length ? out : [cellStr(val)].filter(Boolean);
   }
 
   function formatPhone(s) {
@@ -237,8 +294,11 @@
 
   function consumeContactBlock(lines) {
     const block = { name: '', addr: '', loc: '', phone: '', extras: [] };
-    for (const line of lines) {
-      const t = cellStr(line);
+    const expanded = [];
+    (lines || []).forEach((line) => {
+      expandContactLines(line).forEach((t) => { if (t && !expanded.includes(t)) expanded.push(t); });
+    });
+    for (const t of expanded) {
       if (!t) continue;
       if (isPhone(t)) block.phone = formatPhone(t);
       else if (isCityState(t)) block.loc = formatLoc(t);
@@ -262,15 +322,22 @@
     const t = String(joined || '').toLowerCase();
     if (!/item description/.test(t)) return false;
     // Match "Spec", "Specification #", and the common typo "Specfication #".
-    return /\bspec/.test(t);
+    return /\bspec(?:ification|fication)?\b/.test(t);
+  }
+
+  function isSpecHeaderCell(s) {
+    const t = cellStr(s).replace(/\s+/g, ' ').trim();
+    return /^(spec(?:ification|fication)?\s*#?|#)$/i.test(t);
   }
 
   function findHeaderRow(rows) {
     const n = Math.min(rows.length, 45);
     for (let r = 0; r < n; r++) {
-      const joined = (rows[r] || []).map(cellStr).join(' ').toLowerCase();
+      const row = rows[r] || [];
+      const joined = row.map(cellStr).join(' ').toLowerCase();
+      const hasSpecCell = row.some(isSpecHeaderCell);
+      if (!hasSpecCell) continue;
       if (isItemHeaderText(joined)) return r;
-      if (!/\bspec/.test(joined)) continue;
       const next = (rows[r + 1] || []).map(cellStr).join(' ').toLowerCase();
       if (isItemHeaderText(joined + ' ' + next)) return r;
     }
@@ -291,12 +358,14 @@
   function detectItemColumns(rows, header) {
     const labels = headerColumnLabels(rows, header);
     const idx = (pred) => labels.findIndex(pred);
-    const spec = idx(l => /\bspec/.test(l) && !/inspection/.test(l));
+    const spec = idx(l => /\bspec(?:ification|fication)?\b/.test(l) && !/inspection/.test(l) && !/special provision/.test(l));
     const desc = idx(l => /item description/.test(l));
-    const material = idx(l => /\bmaterial\b/.test(l) && !/requirement/.test(l) && !/item description/.test(l));
+    const material = idx(l => /\bmaterial\b/.test(l) && !/requirement/.test(l) && !/item description/.test(l) && !/alternate/.test(l));
     const supplier = idx(l => /supplier/.test(l));
     const mfg = idx(l => /manufacturer/.test(l) && !/alternate/.test(l));
-    const alt = idx(l => /alternate/.test(l));
+    let alt = idx(l => /alternate/.test(l) && /manufacturer/.test(l));
+    if (alt < 0) alt = idx(l => /alternate/.test(l) && !/product/.test(l));
+    const altProduct = idx(l => /alternate/.test(l) && /product/.test(l));
     if (desc >= 0 && spec >= 0) {
       return {
         spec: spec < 0 ? 0 : spec,
@@ -305,9 +374,10 @@
         supplier: supplier < 0 ? (material < 0 ? desc + 2 : material + 1) : supplier,
         mfg: mfg < 0 ? 7 : mfg,
         alt: alt < 0 ? 8 : alt,
+        altProduct: altProduct < 0 ? -1 : altProduct,
       };
     }
-    return { spec: 0, desc: 2, material: 4, supplier: 5, mfg: 7, alt: 8 };
+    return { spec: 0, desc: 2, material: 4, supplier: 5, mfg: 7, alt: 8, altProduct: -1 };
   }
 
   function specCellFromRow(row, cols) {
@@ -333,20 +403,23 @@
   }
 
   function rowLooksLikeCompanyStart(row, cols) {
-    const mfg = row[cols.mfg];
-    const sup = row[cols.supplier];
-    const named = (val) =>
-      !(isStreet(val) || isPhone(val) || isCityState(val)) && isCompanyName(val);
-    return named(mfg) || named(sup);
+    const first = (val) => expandContactLines(val)[0] || val;
+    const named = (val) => {
+      const v = first(val);
+      return !(isStreet(v) || isPhone(v) || isCityState(v)) && isCompanyName(v);
+    };
+    return named(row[cols.mfg]) || named(row[cols.supplier]);
   }
 
   function isLooseProductRow(row, cols) {
     const spec = row[cols.spec];
     const specText = cellStr(spec);
     const smallNum = (typeof spec === 'number' && spec >= 0 && spec < 10) || /^(0|1)$/.test(specText);
-    if (!smallNum) return false;
     const blob = `${cellStr(row[cols.desc])} ${cellStr(row[cols.material])}`.toLowerCase();
-    return /curing|expansion|joint sealer|1600|truncated dome|detectable warning|rubber expansion|reflex/.test(blob);
+    const accessory = /curing|expansion|joint sealer|1600|truncated dome|detectable warning|rubber expansion|reflex|silencure/.test(blob);
+    if (accessory && !specCellFromRow(row, cols) && (cellStr(row[cols.material]) || cellStr(row[cols.mfg]))) return true;
+    if (!smallNum) return false;
+    return accessory;
   }
 
   function currentLooksLikeProduct(current) {
@@ -468,18 +541,18 @@
     const startItem = (row, inherit) => {
       const specCell = specCellFromRow(row, cols);
       const contactContinues = (val) => {
-        const t = cellStr(val);
-        if (!t) return true;
-        return isStreet(val) || isPhone(t) || isCityState(val);
+        const first = expandContactLines(val)[0];
+        if (!first) return true;
+        if (isProductLabel(first)) return false;
+        if (isCompanyName(first) && !isStreet(first) && !isPhone(first) && !isCityState(first)) return false;
+        return isStreet(first) || isPhone(first) || isCityState(first);
       };
       const take = (col, prev) => {
-        const v = row[col];
-        if (inherit && prev && prev.length && contactContinues(v)) {
-          const lines = prev.slice();
-          if (cellStr(v)) lines.push(v);
-          return lines;
+        const expanded = expandContactLines(row[col]);
+        if (inherit && prev && prev.length && contactContinues(row[col])) {
+          return prev.concat(expanded);
         }
-        return [v];
+        return expanded;
       };
       current = {
         specs: specCell ? extractSpecs(specCell) : [],
@@ -488,6 +561,7 @@
         supLines: take(cols.supplier, inherit && inherit.supLines),
         mfgLines: take(cols.mfg, inherit && inherit.mfgLines),
         altLines: take(cols.alt, inherit && inherit.altLines),
+        altProductLines: cols.altProduct >= 0 ? expandContactLines(row[cols.altProduct]).filter(isProductLabel) : [],
         specDescs: {},
         specEntries: [],
       };
@@ -517,6 +591,7 @@
         [...lines].reverse().find(productish) || lines[lines.length - 1] || fallback;
       const primaryName = mfg.name || sup.name;
       const altName = alt.name || (!alt.addr && !alt.loc ? '' : '');
+      const altProduct = (current.altProductLines || []).map(cellStr).filter(isProductLabel)[0] || '';
       const contact = {
         supplierName: sup.name,
         supplierLoc: sup.loc,
@@ -535,6 +610,7 @@
         srcAddr: mfg.addr || sup.addr,
         srcPhone: mfg.phone || sup.phone,
         altName: altName || (alt.loc || alt.addr ? (mfg.name || sup.name) : ''),
+        altProduct,
       };
 
       // Compact contractor lists often stack GABC / RAP / topsoil (or Superpave C then B)
@@ -576,6 +652,13 @@
       const specCell = specCellFromRow(row, cols);
       const empty = row.every(c => cellStr(c) === '');
       if (empty) {
+        let next = null;
+        for (let n = r + 1; n < rows.length; n++) {
+          if ((rows[n] || []).some(c => cellStr(c) !== '')) { next = rows[n]; break; }
+        }
+        if (current && next && isLooseProductRow(next, cols) && !specCellFromRow(next, cols)) {
+          continue;
+        }
         flush();
         continue;
       }
@@ -593,7 +676,7 @@
           cellStr((current.materialLines || [])[0])
         )
         : '';
-      const familyBreak = !!(current && ((current.specs || []).length || currentLooksLikeProduct(current))
+      const familyBreak = !!(current && ((current.specs || []).length || currentLooksLikeProduct(current) || currentFam === 'pcc')
         && (specNums.length || productRow)
         && incomingFam && currentFam
         && incomingFam !== currentFam && !bulkShareFamilies(incomingFam, currentFam));
@@ -601,11 +684,19 @@
       const companyStart = rowLooksLikeCompanyStart(row, cols);
       const keepBulk = current && bulkShareFamilies(currentFam || incomingFam, incomingFam || currentFam)
         && sameBulkCompany(current, row, cols);
+      const accessoryIncoming = incomingFam === 'expansion' || incomingFam === 'curing';
       const restart = current && (
         familyBreak
         || (itemLooksComplete(current) && (specCell || companyStart || productRow) && !keepBulk)
       );
       if (!current || restart) {
+        const prevSpecs = current ? (current.specs || []).slice() : [];
+        const pendingPcc = current && !prevSpecs.length && currentFam === 'pcc' && specNums.length;
+        if (pendingPcc) {
+          current.specs = specNums.slice();
+          const d = current.descLines.map(cellStr).filter(Boolean).join(' ');
+          specNums.forEach(s => { if (d && !current.specDescs[s]) current.specDescs[s] = d; });
+        }
         let inherit = null;
         if (current && restart && newSpec && !companyStart) {
           inherit = {
@@ -621,6 +712,10 @@
           else flush();
         }
         startItem(row, inherit);
+        if (current && !specNums.length && accessoryIncoming && prevSpecs.length
+            && (currentFam === 'pcc' || currentFam === 'expansion' || currentFam === 'curing')) {
+          current.specs = [...new Set([...(current.specs || []), ...prevSpecs])];
+        }
         continue;
       }
       if (specCell) {
@@ -632,9 +727,15 @@
       noteRowSpecDescs(current, row, cols);
       pushLine(current.descLines, row[cols.desc]);
       pushLine(current.materialLines, row[cols.material]);
-      pushLine(current.supLines, row[cols.supplier]);
-      pushLine(current.mfgLines, row[cols.mfg]);
-      pushLine(current.altLines, row[cols.alt]);
+      expandContactLines(row[cols.supplier]).forEach(t => pushLine(current.supLines, t));
+      expandContactLines(row[cols.mfg]).forEach(t => pushLine(current.mfgLines, t));
+      expandContactLines(row[cols.alt]).forEach(t => pushLine(current.altLines, t));
+      if (cols.altProduct >= 0) {
+        expandContactLines(row[cols.altProduct]).filter(isProductLabel).forEach(t => {
+          current.altProductLines = current.altProductLines || [];
+          pushLine(current.altProductLines, t);
+        });
+      }
     }
     flush();
 
@@ -704,7 +805,7 @@
   function isGenericMaterialBullet(s) {
     const t = String(s || '').replace(/\*+$/, '').replace(/\s+/g, ' ').trim();
     if (!t) return true;
-    return /^(class\s*[abc]\s*concrete|pcc(\s*,?\s*class\s*[abc])?|precast(\s+concrete)?|concrete|granite gneiss)$/i.test(t);
+    return /class\s*[abc]/i.test(t) || /^(class\s*[abc]\s*concrete|pcc(\s*,?\s*class\s*[abc])?|precast(\s+concrete)?|concrete|granite gneiss)$/i.test(t);
   }
 
   function specLetterDesc(item, spec) {
@@ -723,12 +824,13 @@
     // Contractor forms list expansion / curing under the parent 701/705 spec numbers.
     // The material column is the product; do not keep those rows as PCC curb/sidewalk.
     if (/reflex|\brubber expansion\b|preformed expansion|expansion joint material/.test(mat)
-        && !/class\s*[abc]\s*concrete/.test(mat)) return 'expansion';
+        && !/class\s*[abc]\s*concrete/.test(mat) && !/class\s*[abc]/.test(mat)) return 'expansion';
     if (/curing compound|pigmented curing|1600[-\s]?white|silencure/.test(mat)) return 'curing';
     if (/expansion/.test(blob) && !/crack\s*(and\s*)?joint|joint sealing/.test(blob) && !/pcc|sidewalk|curb/.test(blob)) return 'expansion';
     if (/curing/.test(blob) && !/pcc|sidewalk|curb/.test(blob)) return 'curing';
     // Ready-mix Class B used to adjust inlets / sanitary / gas valves is PCC, not a precast product.
-    if (/class\s*[abc]\s*concrete/.test(mat) && !/precast/.test(mat) && /^(602|701|702|705|710|711)$/.test(prefix)) {
+    if (/class\s*[abc]/.test(mat) && /concrete/.test(mat) && !/precast/.test(mat)
+        && (!prefix || /^(602|701|702|705|710|711)$/.test(prefix))) {
       return 'pcc';
     }
     const cat = SPEC_CATALOG[spec];
@@ -794,6 +896,8 @@
     const n = cleanCompany(name);
     if (!n) return '';
     if (/^bear concrete\b/i.test(n)) return n.replace(/^bear concrete/i, 'Bear Materials');
+    if (/^geo[-\s]?tech\b/i.test(n)) return 'Geo Tech';
+    if (/\bj\s*d\s*russell\b/i.test(n)) return 'JD Russell';
     if (/^w[.\s-]*r[.\s-]*meadows$/i.test(n)) return 'WR Meadows';
     return n;
   }
@@ -865,14 +969,33 @@
       const grade = product.match(/tack\s*coat\s+(.*)$/i) || product.match(/^(.*)\s+tack\s*coat$/i);
       if (grade && grade[1] && !/^tack$/i.test(grade[1])) bullet = `${grade[1].trim()} Tack Coat`;
       else if (!/tack/i.test(bullet)) bullet = `${bullet} Tack Coat`;
-      subItems = [bullet.replace(/\s+/g, ' ').trim() + '*'];
+      const products = [bullet.replace(/\s+/g, ' ').trim() + '*'];
+      const altP = String(item.altProduct || '').replace(/®/g, '').trim();
+      if (altP) {
+        let altBullet = altP.replace(/em-?50-?tt/i, 'EM-50-TT');
+        if (!/tack/i.test(altBullet)) altBullet = `${altBullet} Tack Coat`;
+        const labeled = altBullet.replace(/\s+/g, ' ').trim() + '* (Alt)';
+        if (!products.some(p => p.toLowerCase().replace(/[^a-z0-9]/g, '') === labeled.toLowerCase().replace(/[^a-z0-9]/g, ''))) {
+          products.push(labeled);
+        }
+      }
+      subItems = products;
     } else if (family === 'curing') {
       letterSpecs = ['#701/705xxx'];
       sectionDesc = 'CONCRETE ITEMS';
       const named = [...(item.subItems || []), item.material, item.desc]
         .filter(Boolean)
         .find(s => /1600|white pigmented|silencure|thinfilm/i.test(s));
-      subItems = [(named || item.material || item.desc || 'Curing Compound').replace(/\s+/g, ' ').trim() + '*'];
+      const primaryCure = (named || item.material || item.desc || 'Curing Compound').replace(/\s+/g, ' ').trim();
+      let cureLabel = primaryCure;
+      if (/silencure/i.test(cureLabel) && !/curing/i.test(cureLabel)) cureLabel = 'Silencure DOT Curing Compound';
+      subItems = [cureLabel + '*'];
+      const altCure = String(item.altProduct || '').replace(/®/g, '').trim();
+      if (altCure && !new RegExp(primaryCure.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'i').test(altCure)) {
+        let altNamed = altCure;
+        if (/1600/i.test(altNamed) && !/curing/i.test(altNamed)) altNamed = '1600 White Curing Compound';
+        subItems.push(altNamed.replace(/\s+/g, ' ').trim() + '*');
+      }
     } else if (family === 'expansion') {
       letterSpecs = ['#701/705xxx'];
       sectionDesc = 'CONCRETE ITEMS';
@@ -899,8 +1022,28 @@
       subItems = subItems.filter(s => !/^(ada\s+)?truncated domes?$/i.test(s));
       if (sectionDesc && !/\*$/.test(sectionDesc)) sectionDesc += '*';
     }
+    if (family === 'apl-product' && /erosion control blanket/i.test(sectionDesc)) {
+      const primary = (item.material || '').replace(/®/g, '').replace(/\s+/g, ' ').trim();
+      const altP = String(item.altProduct || '').replace(/®/g, '').replace(/\s+/g, ' ').trim();
+      const bullets = [];
+      if (primary && !/erosion control blanket mulch/i.test(primary)) {
+        let p = primary.replace(/\s*north american green\s*/i, ' ').trim();
+        if (/sc\s*150\s*bn/i.test(p)) p = 'SC150BN';
+        bullets.push(p + '*');
+      }
+      if (altP) {
+        let a = altP.replace(/\s*erosion control blanket\s*/i, ' ').trim() || altP;
+        if (/curlex/i.test(a)) a = 'Curlex (alt)';
+        bullets.push(a);
+      }
+      if (bullets.length) subItems = bullets;
+      if (sectionDesc && !/\*$/.test(sectionDesc)) sectionDesc += '*';
+    }
     if (['rcp', 'precast', 'pcc', 'aggregate'].includes(family)) {
       subItems = subItems.filter(s => !isGenericMaterialBullet(s));
+    }
+    if (family === 'hma-mix') {
+      subItems = subItems.filter(s => !/^(bituminous|concrete|asphalt|superpave.*)$/i.test(s));
     }
     if (family === 'aggregate') {
       subItems = subItems.filter(s => !/^(gabc(\s*[-–]\s*crushed concrete)?|millings|crushed concrete|recycled asphalt pavement)$/i.test(s));
@@ -920,7 +1063,7 @@
   function pickLetterSource(item) {
     // APL / manufactured products: manufacturer is the SOURCE.
     // Bulk plants: supplier name + plant city from manufacturer address column.
-    const manufactured = ['tack', 'crack-seal', 'curing', 'expansion', 'apl-product', 'ttc', 'signs', 'castings', 'striping', 'hardware'].includes(item.family);
+    const manufactured = ['tack', 'crack-seal', 'curing', 'expansion', 'apl-product', 'ttc', 'signs', 'castings', 'striping', 'hardware', 'seed'].includes(item.family);
     if (manufactured && item.mfgName && !isCityState(item.mfgName)) {
       let altName = letterizePlantName(item.altMfgName || item.altName);
       const srcName = letterizePlantName(item.mfgName);
@@ -1075,10 +1218,44 @@
     if (family === 'tack') {
       apl = true;
       const liveTack = lists.tack && lists.tack.entries && lists.tack.entries.length;
-      const hit = liveTack
-        ? Lists.lookupTack(lists.tack, item.srcName, item.srcLoc, product)
-        : matchAplList(TACK_COAT_APL, item.srcName, item.srcLoc, product);
-      if (hit.rejected || hit.locationMismatch || hit.gradeMismatch || hit.listed === false) {
+      const lookupOne = (name, loc, prod) => (liveTack
+        ? Lists.lookupTack(lists.tack, name, loc, prod)
+        : matchAplList(TACK_COAT_APL, name, loc, prod));
+      const hit = lookupOne(item.srcName, item.srcLoc, product);
+      const altProd = [item.altProduct, ...(item.subItems || []).filter(s => /\(alt\)/i.test(s))].filter(Boolean).join(' ');
+      const altHit = item.altName ? lookupOne(item.altName, item.altLoc, altProd || product) : null;
+      const tackLine = (one, name, loc, prod, okWord) => {
+        const who = [name, loc].filter(Boolean).join(' ');
+        if (!one || one.rejected || one.locationMismatch || one.listed === false) {
+          if (one && one.gradeMismatch) {
+            const grade = one.grade || (Lists.extractGrade && Lists.extractGrade(prod));
+            return `${who} not approved. (${grade || 'This grade'} not listed on tack coat APL for this source location)`;
+          }
+          if (/seaford/i.test(loc || '') || /seaford/i.test(name || '')) {
+            return `${who} not approved. Seaford plant not listed on APL.`;
+          }
+          return `${who} not approved. (${who} not listed on APL)`.replace(/\s+/g, ' ').trim();
+        }
+        const grade = (Lists.extractGrade && Lists.extractGrade(prod)) || '';
+        const label = [grade, name].filter(Boolean).join('/');
+        return `${label || who} ${okWord || 'approved for use. (on APL)'}`;
+      };
+      const primaryBad = !hit || hit.rejected || hit.locationMismatch || hit.gradeMismatch || hit.listed === false
+        || (liveTack && hit.listed == null && item.srcName);
+      const altOk = altHit && altHit.listed && !altHit.rejected && !altHit.locationMismatch && !altHit.gradeMismatch;
+      if (item.altName && (primaryBad || altOk)) {
+        const pLine = tackLine(hit, item.srcName, item.srcLoc, product);
+        const aLine = altHit
+          ? (altOk
+            ? tackLine(altHit, item.altName, item.altLoc, altProd || product, 'approved for use. (on APL)')
+            : tackLine(altHit, item.altName, item.altLoc, altProd || product))
+          : '';
+        actionNotes = [pLine, aLine].filter(Boolean).join('\n');
+        action = altOk && !primaryBad ? 'apl' : (altOk ? 'apl' : 'not-approved');
+        if (altOk) action = primaryBad ? 'apl' : 'apl';
+        rule = 'tack-primary-alt';
+        if (primaryBad) warnings.push(pLine);
+      } else if (hit.rejected || hit.locationMismatch || hit.gradeMismatch || hit.listed === false) {
         action = 'not-approved';
         if (hit.gradeMismatch) {
           const grade = hit.grade || Lists.extractGrade(product);
@@ -1110,8 +1287,19 @@
     } else if (family === 'borrow' || family === 'aggregate') {
       const chart = lists.aggregate;
       if (chart && chart.entries && chart.entries.length && Lists.lookupAggregate) {
-        const primary = Lists.lookupAggregate(chart, item.srcName, item.srcLoc, materialBlob);
-        const altHit = item.altName ? Lists.lookupAggregate(chart, item.altName, item.altLoc, materialBlob) : null;
+        let lookupMat = materialBlob;
+        const primaryGabc = Lists.lookupAggregate(chart, item.srcName, item.srcLoc, materialBlob);
+        const altGabc = item.altName ? Lists.lookupAggregate(chart, item.altName, item.altLoc, materialBlob) : null;
+        const primaryCc = Lists.lookupAggregate(chart, item.srcName, item.srcLoc, 'GABC (CRUSHED CONCRETE)');
+        const altCc = item.altName ? Lists.lookupAggregate(chart, item.altName, item.altLoc, 'GABC (CRUSHED CONCRETE)') : null;
+        const gabcKind = Lists.materialKind && Lists.materialKind(materialBlob);
+        if (gabcKind === 'gabc' && !(primaryGabc && primaryGabc.found) && !(altGabc && altGabc.found)
+            && ((primaryCc && primaryCc.found) || (altCc && altCc.found))) {
+          lookupMat = 'GABC (CRUSHED CONCRETE)';
+          item.desc = 'GABC (CRUSHED CONCRETE)';
+        }
+        const primary = Lists.lookupAggregate(chart, item.srcName, item.srcLoc, lookupMat);
+        const altHit = item.altName ? Lists.lookupAggregate(chart, item.altName, item.altLoc, lookupMat) : null;
         const part = (hit, label) => {
           const who = label ? label + ' ' : '';
           if (!hit || !hit.found) {
@@ -1150,6 +1338,7 @@
         if (action === 'test') actionNotes = actionNotes + '\n' + testCoordinationNotes(project.district, lists);
         testDate = p.date || testDate;
         if (a && a.date) item.altTestDate = a.date;
+        item.primaryNeedsTest = p.action === 'test';
         rule = 'aggregate-chart';
         Object.assign(item, chartSourceFill(item, primary));
       } else if (item.testDate) {
@@ -1242,6 +1431,16 @@
       apl = true;
       actionNotes = ACTION_TEXT.apl;
       rule = family + '-apl';
+      const blob = [item.desc, item.material, item.altProduct, ...(item.subItems || [])].join(' ');
+      if (family === 'apl-product' && /erosion control blanket|#908020/i.test(blob + ' ' + (item.specs || []).join(' '))) {
+        const primaryProd = (item.subItems && item.subItems[0]) || item.material || 'SC150BN';
+        const altBlob = [item.altProduct, ...(item.subItems || []).slice(1)].join(' ');
+        if (/curlex/i.test(altBlob)) {
+          const pName = String(primaryProd).replace(/\*+$/, '').replace(/\s+/g, ' ').trim() || 'SC150BN';
+          actionNotes = `${pName} approved for use. (on APL)\nCurlex not approved. (not listed on APL)`;
+          rule = 'erosion-blanket-apl';
+        }
+      }
     } else if (family === 'ttc' || family === 'signs') {
       action = 'apl';
       apl = true;
@@ -1326,8 +1525,14 @@
     // (GABC vs RAP vs topsoil). Superpave / RCP / PCC sizes still group.
     if (['aggregate', 'borrow', 'topsoil', 'landscape', 'seed', 'riprap'].includes(a.family)) return false;
     if (['curing', 'expansion'].includes(a.family)) {
-      const sub = (it) => (it.subItems || []).join('|').toLowerCase();
-      return sourceKey(a) === sourceKey(b) && sub(a) === sub(b);
+      const sub = (it) => (it.subItems || []).join('|').toLowerCase().replace(/\*+$/g, '');
+      const sa = sub(a);
+      const sb = sub(b);
+      const weak = (it) => !it.srcName || isStreet(it.srcName) || isCityState(it.srcName);
+      if (sourceKey(a) === sourceKey(b)) return true;
+      if (sa && sb && (sa === sb || sa.includes(sb) || sb.includes(sa))) return true;
+      if ((weak(a) || weak(b)) && /1600|silencure|thinfilm|curing|reflex|expansion/.test(sa + ' ' + sb)) return true;
+      return false;
     }
     if (a.family === 'pcc' && b.family === 'pcc') {
       const ca = plantCompanyKey(a.srcName);
@@ -1340,19 +1545,33 @@
     return sourceKey(a) === sourceKey(b);
   }
 
+  function familyOrderValue(family) {
+    const FAMILY_ORDER = {
+      borrow: 10, aggregate: 20, 'hma-mix': 30, tack: 35, 'crack-seal': 40,
+      rcp: 50, riprap: 52, hdpe: 55, utility: 56, precast: 60, castings: 65,
+      pcc: 70, hardware: 72, 'apl-product': 73, curing: 75, expansion: 76,
+      geotextile: 85, erosion: 90, seed: 95, topsoil: 96, landscape: 97,
+      striping: 98, ttc: 100, signs: 105, other: 200,
+    };
+    return FAMILY_ORDER[family] || 150;
+  }
+
   function groupItems(items) {
+    const ranked = [...items].sort((a, b) => {
+      const fa = familyOrderValue(a.family);
+      const fb = familyOrderValue(b.family);
+      if (fa !== fb) return fa - fb;
+      return String((a.letterSpecs || a.specs)[0] || '').localeCompare(String((b.letterSpecs || b.specs)[0] || ''));
+    });
     const groups = [];
-    for (const item of items) {
+    for (const item of ranked) {
       const prev = groups[groups.length - 1];
       if (prev && canGroup(prev, item)) {
         prev.specs = [...new Set([...prev.specs, ...item.specs])];
         prev.letterSpecs = [...new Set([...(prev.letterSpecs || prev.specs), ...(item.letterSpecs || item.specs)])];
         prev.specDescs = Object.assign({}, prev.specDescs, item.specDescs);
-        const extraSubs = (item.subItems || []).filter(s => !(prev.subItems || []).includes(s));
+        const extraSubs = (item.subItems || []).filter(s => !(prev.subItems || []).some(p => String(p).toLowerCase() === String(s).toLowerCase()));
         prev.subItems = [...(prev.subItems || []), ...extraSubs];
-        if (item.desc && item.desc !== prev.desc && !prev.desc.includes(item.desc)) {
-          // keep first catalog desc; letter prints one line per spec
-        }
         prev.groupedFrom = (prev.groupedFrom || [prev.id]).concat(item.id);
         if (!prev.srcLoc && item.srcLoc) {
           prev.srcLoc = item.srcLoc;
@@ -1363,23 +1582,21 @@
           prev.altLoc = item.altLoc;
           prev.altAddr = item.altAddr;
         }
+        if (item.altProduct && !prev.altProduct) prev.altProduct = item.altProduct;
+        if (/chemmasters/i.test(item.srcName || '') && !/chemmasters/i.test(prev.srcName || '')) {
+          prev.srcName = item.srcName;
+          prev.srcLoc = item.srcLoc;
+          prev.srcAddr = item.srcAddr;
+        }
+        if (item.srcLoc && (isStreet(prev.srcName) || !prev.srcLoc)) {
+          if (!isStreet(item.srcName) && item.srcName) prev.srcName = item.srcName;
+          prev.srcLoc = prev.srcLoc || item.srcLoc;
+          prev.srcAddr = prev.srcAddr || item.srcAddr;
+        }
       } else {
         groups.push({ ...item });
       }
     }
-    const FAMILY_ORDER = {
-      borrow: 10, aggregate: 20, 'hma-mix': 30, tack: 35, 'crack-seal': 40,
-      rcp: 50, riprap: 52, hdpe: 55, utility: 56, precast: 60, castings: 65,
-      pcc: 70, hardware: 72, 'apl-product': 73, curing: 75, expansion: 76,
-      geotextile: 85, erosion: 90, seed: 95, topsoil: 96, landscape: 97,
-      striping: 98, ttc: 100, signs: 105, other: 200,
-    };
-    groups.sort((a, b) => {
-      const fa = FAMILY_ORDER[a.family] || 150;
-      const fb = FAMILY_ORDER[b.family] || 150;
-      if (fa !== fb) return fa - fb;
-      return String((a.letterSpecs || a.specs)[0] || '').localeCompare(String((b.letterSpecs || b.specs)[0] || ''));
-    });
     return groups;
   }
 
@@ -1606,6 +1823,8 @@
     }
     if (item.testDate) {
       line += ` (tested ${prettyTestedDate(item.testDate)})`;
+    } else if (item.family === 'aggregate' && (item.primaryNeedsTest || item.action === 'test')) {
+      line += ' (requires testing)';
     }
     if (item.altName) {
       const altUseAddr = useAddr && item.altAddr;
@@ -1694,6 +1913,8 @@
     matchAplList,
     overlayProject,
     findHeaderRow,
+    detectItemColumns,
+    expandContactLines,
     processSosSheets,
     workbookToSheets,
     cleanContractNo,
