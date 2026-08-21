@@ -1122,6 +1122,52 @@
     return /xxx/i.test(s) || /701\/705/i.test(s);
   }
 
+  function attachAwardedSpec(project, lists) {
+    project = project || {};
+    const awarded = Lists.lookupAwardedContract
+      ? Lists.lookupAwardedContract(lists, project.contract)
+      : null;
+    project.awardedHit = awarded || null;
+    if (!awarded) {
+      if (!project.specYear) project.specYear = '';
+      if (project.catalogYear == null) project.catalogYear = null;
+      return project;
+    }
+    project.specYear = awarded.specYear || '';
+    project.catalogYear = awarded.catalogYear != null
+      ? awarded.catalogYear
+      : (Lists.catalogYearForAwardedSpec ? Lists.catalogYearForAwardedSpec(awarded.specYear) : null);
+    project.awardedFap = awarded.fap || '';
+    project.awardedTitle = awarded.title || '';
+    return project;
+  }
+
+  function specYearUnknownFlag(spec, lists, project) {
+    const year = project && project.catalogYear;
+    const specYear = (project && project.specYear) || '';
+    const elsewhere = (year && Lists.findSpecYearItemElsewhere)
+      ? Lists.findSpecYearItemElsewhere(lists, spec, year)
+      : [];
+    if (year && elsewhere.length) {
+      const other = elsewhere[0];
+      let msg = spec + ' is not in the ' + specYear + ' specs for this contract.';
+      msg += ' Spec year ' + other.catalogYear + ' (' + other.label + ') lists it as ' + other.desc + '.';
+      const equiv = Lists.findSpecYearEquivalent
+        ? Lists.findSpecYearEquivalent(lists, year, other.desc)
+        : null;
+      if (equiv && String(equiv.num) !== String(spec).replace(/\D/g, '')) {
+        msg += ' The ' + specYear + ' item is #' + equiv.num + ' (' + equiv.desc + ').';
+      }
+      msg += ' Letter still lists the row; confirm the item number.';
+      return msg;
+    }
+    if (specYear) {
+      return 'Item number ' + spec + ' is not in the ' + specYear
+        + ' DelDOT item list. Letter still lists the row; confirm the item number.';
+    }
+    return 'Item number ' + spec + ' is not in the DelDOT catalog.';
+  }
+
   function bundledSosDatabase() {
     if (bundledSosDb !== undefined) return bundledSosDb;
     bundledSosDb = null;
@@ -1139,11 +1185,18 @@
     return bundledSosDatabase();
   }
 
-  function isKnownItemNumber(spec, lists) {
+  function isKnownItemNumber(spec, lists, project) {
     if (!spec || isPlaceholderSpec(spec)) return true;
     const key = String(spec).replace(/^([^#])/, '#$1');
     const digits = key.replace(/\D/g, '');
     if (digits.length !== 6) return true;
+    const catalogYear = project && project.catalogYear;
+    if (catalogYear && Lists.lookupSpecYearItem) {
+      return !!Lists.lookupSpecYearItem(lists, catalogYear, digits);
+    }
+    if (Lists.lookupSpecYearItem) {
+      if ([15, 20, 25].some(y => Lists.lookupSpecYearItem(lists, y, digits))) return true;
+    }
     if (SPEC_CATALOG[key] || SPEC_CATALOG['#' + digits] || SPEC_CATALOG[digits]) return true;
     if (lookupCatalogDesc(key, lists)) return true;
     const db = specDatabase(lists);
@@ -1200,18 +1253,18 @@
     if (!item.chartLocationMismatch) note(altHit, item.altName, item.altLoc);
   }
 
-  function collectItemReviewFlags(item, lists) {
+  function collectItemReviewFlags(item, lists, project) {
     const flags = [];
     const formSpecs = (item.formSpecs && item.formSpecs.length) ? item.formSpecs : (item.specs || []);
     const formDesc = cellStr(item.formDesc || '');
     formSpecs.forEach((spec) => {
       if (!/^#\d{6}$/.test(spec)) return;
-      if (!isKnownItemNumber(spec, lists)) {
-        flags.push('Item number ' + spec + ' is not in the DelDOT catalog.');
+      if (!isKnownItemNumber(spec, lists, project)) {
+        flags.push(specYearUnknownFlag(spec, lists, project));
       }
     });
     formSpecs.forEach((spec) => {
-      if (!/^#\d{6}$/.test(spec) || !isKnownItemNumber(spec, lists)) return;
+      if (!/^#\d{6}$/.test(spec) || !isKnownItemNumber(spec, lists, project)) return;
       const cat = SPEC_CATALOG[spec] || SPEC_CATALOG[spec.replace(/^#/, '')];
       if (!cat || !cat.family) return;
       const textFam = familyFromSpec('', formDesc, item.formMaterial || item.material, lists, item.formSubItems || item.subItems);
@@ -1804,6 +1857,7 @@
     if (!project.docKind) project.docKind = detectDocKind(project.contract);
 
     const lists = (opts && opts.lists) || {};
+    attachAwardedSpec(project, lists);
     const prepared = parsed.items.map((raw, idx) => {
       let item = {
         ...raw,
@@ -1818,7 +1872,7 @@
       const src = pickLetterSource(item);
       item = recoverStripingSource({ ...item, ...src });
       item = applyAction(item, project, warnings, lists);
-      item.reviewFlags = collectItemReviewFlags(item, lists);
+      item.reviewFlags = collectItemReviewFlags(item, lists, project);
       return item;
     });
 
@@ -1833,6 +1887,24 @@
     if (omitted.length) {
       const specs = [...new Set(omitted.flatMap(it => it.specs || []))];
       warnings.push('Omitted N/A earthwork from letter: ' + specs.join(', '));
+    }
+    if (project.contract && /^T/i.test(cleanContractNo(project.contract))) {
+      if (!project.awardedHit) {
+        const asOf = Lists.specYearCatalog
+          ? ((Lists.specYearCatalog(lists).awarded || {}).asOf || '')
+          : '';
+        warnings.push(
+          'Contract ' + cleanContractNo(project.contract)
+          + ' is not on the Awarded Contract List'
+          + (asOf ? ' (' + asOf + ')' : '')
+          + ' — spec year unknown; item numbers checked against all loaded spec-year lists.'
+        );
+      } else if (project.specYear && project.catalogYear == null) {
+        warnings.push(
+          'This contract uses ' + project.specYear
+          + ' specs; no matching item list is loaded, so item numbers were not checked against that book.'
+        );
+      }
     }
     const items = groupItems(prepared.filter(it => !shouldOmitItem(it))).map((it, i) => ({ ...it, id: i + 1 }));
     items.forEach((it) => {
@@ -2104,5 +2176,6 @@
     isKnownItemNumber,
     collectItemReviewFlags,
     parenthesizeTitlePlace,
+    attachAwardedSpec,
   };
 });

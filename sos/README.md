@@ -39,6 +39,16 @@ Tack / pavement marking / crack seal check the live [Approved Product Lists](htt
 
 The **Source of Supply Database.xlsx** (DelDOT Standard Items / Special Provisions catalog, last modified Sept 2023 in the copy we were given) is the official item-number list. Drop it on **APL / Chart** (or keep `sos/lists/sos-database-snapshot.json`). It fills spec descriptions for items not already in the built-in catalog. It does **not** rewrite ACTION notes — those stay matched to issued letters.
 
+State contracts also look up the **Awarded Contract List** (snapshot `sos/lists/spec-year-catalog-snapshot.json`, printed 6/5/2026). That list has the controlling spec year / revision (for example Kirkwood `T2025-061-01` → **2025 January**). Item numbers are then checked against the Standard Items list for that book:
+
+| Awarded spec year | Item list |
+|---|---|
+| 2016 (+ revision date) | Spec year 15 (2016 Standard Specs) |
+| 2020 / 2021 / 2022 | Spec year 20 |
+| 2024 / 2025 / 2026 | Spec year 25 (May 11, 2026 list) |
+
+A number that belongs to a different spec year is still printed on the letter and flagged in REVIEW, with the current-book equivalent when the description matches (e.g. 2016 `#701004` valley gutter is 2025 `#701513`). Rebuild the snapshot with `python3 sos/build-spec-year-lists.py` when DelDOT issues a new awarded list or item catalog. Applications without a T-contract number keep the looser “is this a real 6-digit item” check.
+
 Spec `301003` submitted as GABC is issued as `#301001` (flagged in the review banner).
 
 ## Outlook inbox (every 30 minutes)
@@ -65,6 +75,9 @@ Messages already tagged **DelDOT SOS** are not pulled again. This does **not** a
 | `sos-lists.js` | Live APL + aggregate chart parsers |
 | `lists/apl-snapshot.json` | Bundled public APL snapshot |
 | `lists/sos-database-snapshot.json` | Bundled Source of Supply Database (item # / descriptions) |
+| `lists/spec-year-catalog-snapshot.json` | Awarded Contract List + spec-year 15/20/25 item numbers |
+| `spec-year-data.js` | Same catalog bundled for `file://` (no fetch) |
+| `build-spec-year-lists.py` | Rebuild spec-year snapshots from the awarded-list and item-list PDFs |
 | `sos-engine.test.js` | Node tests (`node sos/sos-engine.test.js`) |
 | `corpus-learn.js` | Diff contractor `.xls` vs issued PDF (`node sos/corpus-learn.js`) |
 | `corpus-formpdf.py` | Read contractor SOS forms that were saved as PDF |

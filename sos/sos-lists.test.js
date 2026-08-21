@@ -411,3 +411,15 @@ try {
   console.log('OK live Approved Source List millings/GABC columns', liveCc.testDate, liveRap.testDate);
 })();
 
+(function specYearCatalogSnapshot() {
+  const kirk = Lists.lookupAwardedContract({}, 'T202506101');
+  assert.ok(kirk);
+  assert.strictEqual(kirk.specYear, '2025 January');
+  assert.strictEqual(Lists.lookupAwardedContract({}, 'T2025-061-01').catalogYear, 25);
+  assert.ok(Lists.lookupSpecYearItem({}, 25, '602130'));
+  assert.ok(!Lists.lookupSpecYearItem({}, 25, '123456'));
+  const summary = Lists.summary(Lists.mergeBundle(Lists.emptyBundle(), Lists.bundledSpecYearCatalog()));
+  assert.ok(/Spec-year catalogs/i.test(summary), summary);
+  console.log('OK spec-year catalog snapshot', kirk.specYear);
+})();
+

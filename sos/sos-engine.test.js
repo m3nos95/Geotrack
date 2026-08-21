@@ -1159,17 +1159,17 @@ if (fs.existsSync(liveTriCounty)) {
     { 7: 'Contractor: Acme' },
     { 7: 'Address: 1 Main St, Dover, DE 19901' },
   ], [[
-    ['', 999999.0, 'Magic Pavement', '', 'Magic', 'Acme', '', 'Dover, DE', ''],
+    ['', 123456.0, 'Magic Pavement', '', 'Magic', 'Acme', '', 'Dover, DE', ''],
   ]]));
   const fakeWarn = (fake.warnings || []).join(' | ');
-  assert.ok(/#999999/.test(fakeWarn) && /not in the DelDOT catalog/i.test(fakeWarn), fakeWarn);
-  assert.ok(fake.items.some(i => (i.specs || []).includes('#999999')), 'unknown spec still listed');
-  assert.ok(fake.items.some(i => (i.reviewFlags || []).some(f => /#999999/.test(f))));
+  assert.ok(/#123456/.test(fakeWarn) && /not in the DelDOT catalog/i.test(fakeWarn), fakeWarn);
+  assert.ok(fake.items.some(i => (i.specs || []).includes('#123456')), 'unknown spec still listed');
+  assert.ok(fake.items.some(i => (i.reviewFlags || []).some(f => /#123456/.test(f))));
   assert.ok(Engine.isKnownItemNumber('#401005'));
   assert.ok(Engine.isKnownItemNumber('#602130'), 'adjust existing DI is a Standard Spec item');
   assert.ok(Engine.isKnownItemNumber('#710503'), 'adjust gas valve boxes is a Standard Spec item');
   assert.ok(Engine.isKnownItemNumber('#711500'), 'adjust sanitary MH is a Standard Spec item');
-  assert.ok(!Engine.isKnownItemNumber('#999999'));
+  assert.ok(!Engine.isKnownItemNumber('#123456'));
 
   const adjust = Engine.processGrid(gridFromObjects([
     { 6: 'Agreement /Permit/Contract/Application #:', 7: 'T2025-061-01' },
@@ -1232,6 +1232,69 @@ if (fs.existsSync(liveTriCounty)) {
   assert.ok((g.reviewFlags || []).some(f => /does not match the aggregate chart/i.test(f)), JSON.stringify(g.reviewFlags));
   assert.strictEqual(g.action, 'test');
   console.log('OK contractor error flags');
+})();
+
+(function specYearItemChecks() {
+  const Lists = require('./sos-lists.js');
+  const kirk = Lists.lookupAwardedContract({}, 'T2025-061-01');
+  assert.ok(kirk, 'Kirkwood is on the awarded list');
+  assert.strictEqual(kirk.specYear, '2025 January');
+  assert.strictEqual(kirk.catalogYear, 25);
+  assert.strictEqual(kirk.fap, 'ESTP-2025(08)');
+  const old = Lists.lookupAwardedContract({}, 'T2012-009-03');
+  assert.ok(old && old.catalogYear === 15, JSON.stringify(old));
+  assert.ok(/4\/29\/19/.test(old.specYear), old.specYear);
+
+  assert.ok(Lists.lookupSpecYearItem({}, 25, '#602130'));
+  assert.ok(!Lists.lookupSpecYearItem({}, 25, '#701004'), 'valley gutter 8" moved off 701004 in spec 25');
+  assert.ok(Lists.lookupSpecYearItem({}, 15, '#701004'));
+  const from15 = Lists.lookupSpecYearItem({}, 15, '#701004');
+  const equiv = Lists.findSpecYearEquivalent({}, 25, from15.desc);
+  assert.ok(equiv && equiv.num === '701513', JSON.stringify(equiv));
+
+  assert.ok(Engine.isKnownItemNumber('#701004', {}, { catalogYear: 15 }));
+  assert.ok(!Engine.isKnownItemNumber('#701004', {}, { catalogYear: 25 }));
+  assert.ok(!Engine.isKnownItemNumber('#123456', {}, { catalogYear: 25 }));
+
+  const kirkwood = Engine.processGrid(gridFromObjects([
+    { 6: 'Agreement /Permit/Contract/Application #:', 7: 'T2025-061-01' },
+    { 6: 'Title of Contract:', 7: 'PAVE & REHAB, NEW CASTLE 5A, KIRKWOOD HIGHWAY' },
+    { 7: 'Contractor: Greggo & Ferrara, Inc.' },
+    { 7: 'Address: 4048 New Castle Ave, New Castle, DE 19720' },
+    { 1: 'District: North ' },
+  ], [[
+    ['', 602130.0, 'Adjusting and Repairing Existing Drainage Inlet', '', 'Class B Concrete', 'Bear Concrete', '', 'Newark, DE', ''],
+    ['', 701013.0, 'PCC Curb Type 1-8', '', 'Class B Concrete', 'Bear Concrete', '', 'Newark, DE', ''],
+  ]]));
+  assert.strictEqual(kirkwood.project.specYear, '2025 January');
+  assert.strictEqual(kirkwood.project.catalogYear, 25);
+  assert.ok(!/not in the/i.test((kirkwood.warnings || []).join(' | ')), (kirkwood.warnings || []).join(' | '));
+
+  const moved = Engine.processGrid(gridFromObjects([
+    { 6: 'Agreement /Permit/Contract/Application #:', 7: 'T202506101' },
+    { 6: 'Title of Contract:', 7: 'Kirkwood' },
+    { 7: 'Contractor: Greggo & Ferrara, Inc.' },
+    { 7: 'Address: 4048 New Castle Ave, New Castle, DE 19720' },
+  ], [[
+    ['', 701004.0, 'PCC Valley Gutter 8"', '', 'Class B Concrete', 'Bear Concrete', '', 'Newark, DE', ''],
+  ]]));
+  const movedWarn = (moved.warnings || []).join(' | ');
+  assert.ok(/#701004/.test(movedWarn), movedWarn);
+  assert.ok(/2025 January/.test(movedWarn), movedWarn);
+  assert.ok(/#701513/.test(movedWarn), movedWarn);
+  assert.ok(moved.items.some(i => (i.specs || []).includes('#701004')), 'wrong-year item still listed');
+
+  const spec2016 = Engine.processGrid(gridFromObjects([
+    { 6: 'Agreement /Permit/Contract/Application #:', 7: 'T201200903' },
+    { 6: 'Title of Contract:', 7: 'HSIP SR24' },
+    { 7: 'Contractor: A-Del Construction Co., Inc.' },
+    { 7: 'Address: 1 Main St, Dover, DE 19901' },
+  ], [[
+    ['', 701004.0, 'Valley Gutter 8"', '', 'Class B Concrete', 'Bear Concrete', '', 'Newark, DE', ''],
+  ]]));
+  assert.strictEqual(spec2016.project.catalogYear, 15);
+  assert.ok(!/#701004/.test((spec2016.warnings || []).join(' | ')), (spec2016.warnings || []).join(' | '));
+  console.log('OK spec-year item catalog checks');
 })();
 
 console.log('--- letter ---\n' + letter);

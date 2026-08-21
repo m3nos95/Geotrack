@@ -739,6 +739,123 @@
     return db.items[num] || null;
   }
 
+  function emptySpecYearCatalog() {
+    return { kind: 'spec-year-catalog', awarded: { asOf: '', contracts: {} }, years: {} };
+  }
+
+  function bundledSpecYearCatalog() {
+    if (typeof SOSSpecYearData !== 'undefined' && SOSSpecYearData && SOSSpecYearData.years) {
+      return SOSSpecYearData;
+    }
+    try {
+      if (typeof require === 'function') {
+        return require('./lists/spec-year-catalog-snapshot.json');
+      }
+    } catch (e) {}
+    return emptySpecYearCatalog();
+  }
+
+  function specYearCatalog(lists) {
+    if (lists && lists.specYearCatalog && lists.specYearCatalog.years
+        && Object.keys(lists.specYearCatalog.years).length) {
+      return lists.specYearCatalog;
+    }
+    return bundledSpecYearCatalog();
+  }
+
+  function compactContractKey(value) {
+    const raw = squeeze(value).toUpperCase().replace(/[\s]/g, '');
+    const dashed = raw.match(/^T(\d{4})-(\d{3})-(\d{2})$/);
+    if (dashed) return 'T' + dashed[1] + dashed[2] + dashed[3];
+    const packed = raw.match(/^T(\d{4})(\d{3})(\d{2})$/);
+    if (packed) return packed[0];
+    return raw.replace(/[^A-Z0-9]/g, '');
+  }
+
+  function catalogYearForAwardedSpec(specYear) {
+    const m = String(specYear || '').match(/(\d{4})/);
+    if (!m) return null;
+    const y = Number(m[1]);
+    if (y <= 2001) return null;
+    if (y <= 2016) return 15;
+    if (y <= 2022) return 20;
+    return 25;
+  }
+
+  function lookupAwardedContract(catalog, contract) {
+    const cat = catalog && catalog.awarded ? catalog : specYearCatalog(catalog);
+    const contracts = (cat && cat.awarded && cat.awarded.contracts) || {};
+    const key = compactContractKey(contract);
+    if (!key) return null;
+    if (contracts[key]) return Object.assign({ contract: key }, contracts[key]);
+    const dashed = key.match(/^T(\d{4})(\d{3})(\d{2})$/);
+    if (dashed) {
+      const alt = 'T' + dashed[1] + '-' + dashed[2] + '-' + dashed[3];
+      if (contracts[alt]) return Object.assign({ contract: alt }, contracts[alt]);
+    }
+    return null;
+  }
+
+  function itemDigits(spec) {
+    return String(spec || '').replace(/\D/g, '').replace(/\.0+$/, '');
+  }
+
+  function lookupSpecYearItem(catalog, catalogYear, spec) {
+    const cat = catalog && catalog.years ? catalog : specYearCatalog(catalog);
+    const year = cat && cat.years && cat.years[String(catalogYear)];
+    if (!year || !year.items) return null;
+    const num = itemDigits(spec);
+    if (!num || !year.items[num]) return null;
+    const obsolete = Array.isArray(year.obsolete) && year.obsolete.indexOf(num) >= 0;
+    return {
+      num,
+      desc: year.items[num],
+      obsolete: !!obsolete,
+      catalogYear: Number(catalogYear),
+      label: year.label || ('spec year ' + catalogYear),
+      asOf: year.asOf || '',
+    };
+  }
+
+  function foldItemDesc(s) {
+    return squeeze(String(s || '').toUpperCase())
+      .replace(/PORTLAND CEMENT CONCRETE/g, 'PCC')
+      .replace(/\bPORTLAND\b/g, '')
+      .replace(/\bINTEGRAL\b/g, 'I')
+      .replace(/[^A-Z0-9"]+/g, ' ')
+      .replace(/\s+/g, ' ')
+      .trim();
+  }
+
+  function findSpecYearItemElsewhere(catalog, spec, exceptYear) {
+    const cat = catalog && catalog.years ? catalog : specYearCatalog(catalog);
+    const num = itemDigits(spec);
+    const hits = [];
+    Object.keys((cat && cat.years) || {}).forEach((yr) => {
+      if (String(yr) === String(exceptYear)) return;
+      const hit = lookupSpecYearItem(cat, yr, num);
+      if (hit) hits.push(hit);
+    });
+    return hits;
+  }
+
+  function findSpecYearEquivalent(catalog, catalogYear, otherDesc) {
+    const cat = catalog && catalog.years ? catalog : specYearCatalog(catalog);
+    const year = cat && cat.years && cat.years[String(catalogYear)];
+    if (!year || !year.items) return null;
+    const want = foldItemDesc(otherDesc);
+    if (!want) return null;
+    let found = null;
+    Object.keys(year.items).some((num) => {
+      if (foldItemDesc(year.items[num]) === want) {
+        found = lookupSpecYearItem(cat, catalogYear, num);
+        return true;
+      }
+      return false;
+    });
+    return found;
+  }
+
   function emptyBundle() {
     return {
       fetchedAt: '',
@@ -749,6 +866,7 @@
       curing: { kind: 'curing', entries: [], manufacturers: [], modified: '' },
       aggregate: { kind: 'aggregate', file: '', entries: [] },
       sosDatabase: { kind: 'sos-database', file: '', modified: '', items: {} },
+      specYearCatalog: emptySpecYearCatalog(),
       ccAlways: [],
       language: null,
     };
@@ -763,6 +881,8 @@
     if (extra.aggregate && extra.aggregate.entries) out.aggregate = extra.aggregate;
     if (extra.sosDatabase && extra.sosDatabase.items) out.sosDatabase = extra.sosDatabase;
     if (extra.kind === 'sos-database' && extra.items) out.sosDatabase = extra;
+    if (extra.specYearCatalog && extra.specYearCatalog.years) out.specYearCatalog = extra.specYearCatalog;
+    if (extra.kind === 'spec-year-catalog' && extra.years) out.specYearCatalog = extra;
     if (extra.fetchedAt) out.fetchedAt = extra.fetchedAt;
     if (Array.isArray(extra.ccAlways)) out.ccAlways = extra.ccAlways;
     if (extra.language && extra.language.bySpec) out.language = extra.language;
@@ -794,6 +914,17 @@
       const n = Object.keys(b.sosDatabase.items).length;
       bits.push('SOS Database ' + n + ' items' + (b.sosDatabase.modified ? ` (${b.sosDatabase.modified})` : ''));
     }
+    const specCat = specYearCatalog(b);
+    if (specCat && specCat.years) {
+      const nYears = Object.keys(specCat.years).length;
+      const nContracts = specCat.awarded && specCat.awarded.contracts
+        ? Object.keys(specCat.awarded.contracts).length : 0;
+      if (nYears) {
+        bits.push('Spec-year catalogs ' + nYears
+          + (nContracts ? ` · ${nContracts} awarded contracts` : '')
+          + (specCat.awarded && specCat.awarded.asOf ? ` (${specCat.awarded.asOf})` : ''));
+      }
+    }
     if (b.language && b.language.bySpec) {
       bits.push('Issued language ' + Object.keys(b.language.bySpec).length + ' specs');
     }
@@ -816,6 +947,15 @@
     looksLikeSosDatabase,
     parseSosDatabaseSheets,
     lookupSosDatabase,
+    bundledSpecYearCatalog,
+    specYearCatalog,
+    compactContractKey,
+    catalogYearForAwardedSpec,
+    lookupAwardedContract,
+    lookupSpecYearItem,
+    findSpecYearItemElsewhere,
+    findSpecYearEquivalent,
+    foldItemDesc,
     lookupTack,
     lookupManufacturer,
     lookupCrack,

@@ -37,6 +37,10 @@
         <div class="ph-ac-dd" id="ph-ac-contract"></div>
       </div>
     </div>
+    <div class="ph-block">
+      <div class="ph-label">Spec Year</div>
+      <input class="ph-input" id="ph-specyear" readonly placeholder="—" title="Controlling specification year and revision from the Awarded Contract List. Item numbers are checked against that book.">
+    </div>
     <div class="ph-block" style="flex:3; min-width:280px;">
       <div class="ph-label">Project Title</div>
       <div class="ph-ac-wrap">
@@ -340,6 +344,7 @@
           <code>\\DOTFS01\Groups\Geo Construction Test Report\Reference Samples\Approved Source List.xlsx</code>.
           Chrome cannot open that folder from this HTML file. Use <strong>Pull chart from office share</strong> while <code>start-sos.bat</code> is running (that helper reads the share), or drop the .xlsx here.
           The <strong>Source of Supply Database</strong> (Standard Items / Special Provisions) is the official item catalog — drop that .xlsx here so spec numbers pick up the Department description and acceptance method.
+          Item numbers on state contracts are also checked against the contract’s controlling <strong>spec year</strong> from the Awarded Contract List (6/5/2026 snapshot) and the Standard Items lists for spec years 15 / 20 / 25.
         </div>
         <div class="import-zone" id="lists-drop-zone" onclick="document.getElementById('lists-file-input').click()">
           <div class="import-zone-label">Drop Approved Source List.xlsx, Source of Supply Database.xlsx, SOS-lists.json, SOS-language.json, SOS-libraries.json, or SOS-cc.json</div>
@@ -609,10 +614,11 @@
 
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <script src="sos/spec-letter-descs.js?v=20260821a"></script>
-<script src="sos/sos-data.js?v=20260821d"></script>
-<script src="sos/sos-lists.js?v=20260821a"></script>
-<script src="sos/sos-engine.js?v=20260821d"></script>
+<script src="sos/spec-year-data.js?v=20260821e"></script>
+<script src="sos/sos-data.js?v=20260821e"></script>
+<script src="sos/sos-lists.js?v=20260821e"></script>
+<script src="sos/sos-engine.js?v=20260821e"></script>
 <script src="sos/letter-export.js?v=20260821c"></script>
-<script src="sos/sos-app.js?v=20260821c"></script>
+<script src="sos/sos-app.js?v=20260821e"></script>
 </body>
 </html>

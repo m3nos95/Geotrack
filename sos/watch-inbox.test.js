@@ -104,7 +104,7 @@ const fakeSpec = Engine.processGrid(gridFromObjects([
   { 6: 'Agreement /Permit/Contract/Application #:', 7: '0000016055' },
   ...HEADER.slice(1),
 ], [[
-  ['', 999999.0, 'Magic Pavement', '', 'Magic', 'Acme', '', 'Dover, DE', ''],
+  ['', 123456.0, 'Magic Pavement', '', 'Magic', 'Acme', '', 'Dover, DE', ''],
 ]]));
 assert.ok(needsReview(fakeSpec), 'unknown item number needs review');
 

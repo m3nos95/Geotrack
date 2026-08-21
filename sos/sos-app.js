@@ -171,12 +171,33 @@
     signedAt = p.signedAt || '';
     document.getElementById('rev-display').textContent = 'REV ' + String(currentRev).padStart(2, '0');
     updateContractWarn();
+    refreshSpecYearFromContract();
   }
 
   function updateContractWarn() {
     const el = document.getElementById('ph-contract');
     if (!el) return;
     el.classList.toggle('warn', !el.value.trim());
+  }
+
+  function refreshSpecYearFromContract() {
+    const el = document.getElementById('ph-specyear');
+    if (!el) return;
+    const contract = val('ph-contract');
+    const rec = (typeof SOSLists !== 'undefined' && SOSLists.lookupAwardedContract)
+      ? SOSLists.lookupAwardedContract(listsForEngine(), contract)
+      : null;
+    if (!rec || !rec.specYear) {
+      el.value = '';
+      el.placeholder = (contract && /^T/i.test(contract.trim())) ? 'not on awarded list' : '—';
+      el.title = 'Controlling specification year from the Awarded Contract List.';
+      return;
+    }
+    el.value = rec.specYear;
+    const bits = [rec.specYear];
+    if (rec.fap) bits.push(rec.fap);
+    if (rec.title) bits.push(rec.title);
+    el.title = bits.join(' · ');
   }
 
   function wireProjectPersist() {
@@ -186,9 +207,11 @@
       el.addEventListener('input', () => {
         persistProject();
         updateContractWarn();
+        if (id === 'ph-contract') refreshSpecYearFromContract();
         if (id === 'ph-district' || id === 'ph-contact') {
           if (items.length) applyCcRulesToLetter();
         }
+        if (id === 'ph-contract' && items.length) applyListsToOpenLetter();
         renderLetter();
         renderWarnings();
       });
@@ -1173,6 +1196,7 @@
     if (status) status.style.display = 'none';
     persistAll();
     updateContractWarn();
+    refreshSpecYearFromContract();
     renderItems();
     renderCC();
     renderCCLib();
@@ -1521,6 +1545,7 @@
         liveLists = SOSLists.mergeBundle(liveLists, bundle);
         persistLists();
         renderLists();
+        refreshSpecYearFromContract();
         applyListsToOpenLetter();
         return;
       }
@@ -1655,6 +1680,15 @@
       ['Crack seal APL', liveLists.crack && liveLists.crack.modified, (liveLists.crack && liveLists.crack.entries || []).length],
       ['Aggregate chart', liveLists.aggregate && liveLists.aggregate.file, (liveLists.aggregate && liveLists.aggregate.entries || []).length],
       ['SOS Database', liveLists.sosDatabase && liveLists.sosDatabase.modified, liveLists.sosDatabase && liveLists.sosDatabase.items ? Object.keys(liveLists.sosDatabase.items).length : 0],
+      ['Awarded contracts / spec year', (function () {
+        const cat = typeof SOSLists !== 'undefined' && SOSLists.specYearCatalog
+          ? SOSLists.specYearCatalog(liveLists) : null;
+        return cat && cat.awarded && cat.awarded.asOf;
+      })(), (function () {
+        const cat = typeof SOSLists !== 'undefined' && SOSLists.specYearCatalog
+          ? SOSLists.specYearCatalog(liveLists) : null;
+        return cat && cat.awarded && cat.awarded.contracts ? Object.keys(cat.awarded.contracts).length : 0;
+      })()],
       ['CC harvest (library)', (liveLists.ccAlways || []).length ? 'library only' : '', (liveLists.ccAlways || []).length],
       ['Issued letter language', liveLists.language && liveLists.language.letters ? (liveLists.language.letters + ' letters') : '', liveLists.language && liveLists.language.bySpec ? Object.keys(liveLists.language.bySpec).length : 0],
     ];
@@ -1757,6 +1791,7 @@
     else if (replace || !val('ph-date')) setVal('ph-date', headerToday());
     if (replace) signedAt = new Date().toISOString();
     updateContractWarn();
+    refreshSpecYearFromContract();
     persistProject();
   }
 
