@@ -3,8 +3,8 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>PSA Trak — DelDOT Professional Services</title>
-  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'><rect fill='%230d1320' width='64' height='64' rx='10'/><text x='32' y='42' text-anchor='middle' font-size='28' fill='%23e09848' font-family='sans-serif' font-weight='700'>P</text></svg>">
+  <title>ConTrak — DelDOT Professional Services</title>
+  <link rel="icon" href="assets/deldot-logo.png">
   <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Inter:wght@400;500;600;700&family=Roboto+Condensed:wght@600;700&display=swap" rel="stylesheet">
   <style>
     :root {
@@ -44,12 +44,22 @@
 
     .app { display: flex; flex-direction: column; min-height: 100%; }
     header.top {
-      display: flex; align-items: center; gap: 16px;
-      padding: 10px 16px; background: var(--surface);
+      display: flex; align-items: center; gap: 12px;
+      padding: 0 16px 0 0; background: var(--surface);
       border-bottom: 1px solid var(--border);
       position: sticky; top: 0; z-index: 40;
+      min-height: 48px;
+      flex-wrap: wrap;
     }
-    .brand { font-family: var(--display); letter-spacing: .12em; color: var(--accent2); font-size: 20px; font-weight: 700; }
+    .topbar-logo {
+      display: flex; align-items: center; justify-content: center;
+      width: 68px; height: 48px; flex-shrink: 0;
+      border-right: 1px solid var(--border);
+      background: #10182a;
+    }
+    .topbar-logo img { height: 40px; width: auto; display: block; }
+    .brand { font-family: var(--display); letter-spacing: .04em; color: var(--text); font-size: 20px; font-weight: 700; line-height: 1.15; }
+    .brand-title b { color: var(--accent2); letter-spacing: .06em; }
     .brand small { display: block; font-family: var(--sans); letter-spacing: 0; color: var(--muted); font-size: 11px; font-weight: 500; }
     .contract-switch { display: flex; gap: 6px; flex-wrap: wrap; }
     .cbtn {
@@ -59,6 +69,21 @@
     .cbtn.on { background: #2a3d22; border-color: var(--green2); color: #d8ffe8; }
     .cbtn.hist { opacity: .9; }
     .cbtn.hist.on { background: #3a2e16; border-color: var(--accent2); color: #ffe9c4; }
+    .cbtn.add { border-style: dashed; color: var(--accent2); }
+    .role-switch {
+      display: flex; border: 1px solid var(--border); border-radius: 999px; overflow: hidden; flex-shrink: 0;
+    }
+    .rbtn {
+      background: transparent; border: 0; padding: 6px 12px; color: var(--muted); font-size: 12px; font-weight: 600;
+    }
+    .rbtn.on { background: #2a3d22; color: #d8ffe8; }
+    .setup-wrap { padding: 12px 16px 40px; max-width: 1100px; }
+    .chk-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 6px; }
+    .chk { display: flex; gap: 8px; align-items: flex-start; font-size: 13px; color: var(--text); }
+    .chk input { margin-top: 2px; }
+    .admin-list { display: flex; flex-direction: column; gap: 6px; }
+    .admin-row { display: flex; gap: 8px; }
+    .admin-row input { flex: 1; background: var(--panel); border: 1px solid var(--border); border-radius: 6px; padding: 7px 8px; }
     .spacer { flex: 1; }
     .top-actions { display: flex; gap: 8px; }
     .btn {
@@ -197,6 +222,7 @@
   <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
   <script src="psa-engine.js"></script>
   <script src="psa-catalog.js"></script>
+  <script src="psa-templates.js"></script>
   <script src="psa-seed.js"></script>
   <script src="psa-app.js"></script>
 </body>

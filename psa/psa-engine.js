@@ -1,4 +1,4 @@
-/* PSA Trak — money, proposal, NTP, and invoice-checklist engine.
+/* ConTrak — money, proposal, NTP, and invoice-checklist engine.
    Works in the browser and in Node tests. */
 (function (global) {
   "use strict";
@@ -370,7 +370,34 @@
     };
   }
 
-  function buildInvoiceChecklist(contract, task, qp, invoice) {
+  function templateOrDefault(template) {
+    if (template && typeof template === "object") return template;
+    return {
+      assignmentNoun: "QP",
+      assignmentNounPlural: "QPs",
+      taskNoun: "Task",
+      workflow: { proposal: true, ntp: true, payItems: true, invoices: true },
+      autoChecks: {},
+      adminChecks: ADMIN_CHECKS,
+    };
+  }
+
+  function autoWanted(template, id) {
+    var ac = template.autoChecks || {};
+    if (ac[id] === false) return false;
+    var wf = template.workflow || {};
+    if (wf.ntp === false && (id === "ntp_issued" || id === "within_ntp_balance")) {
+      return false;
+    }
+    if (wf.payItems === false && (id === "unit_prices" || id === "quantities" || id === "no_unknown_items")) {
+      return false;
+    }
+    return true;
+  }
+
+  function buildInvoiceChecklist(contract, task, qp, invoice, template) {
+    template = templateOrDefault(template);
+    var noun = template.assignmentNoun || "QP";
     var checks = [];
     var ntpAmt = qpNtp(qp);
     var spentElse = money(
@@ -388,28 +415,34 @@
     var lineSum = sumLines(lines);
     var hasLines = lines.length > 0;
 
-    checks.push(
-      checkResult(
-        "ntp_issued",
-        "NTP has been issued",
-        ntpAmt > 0 && qp.ntpDate ? "pass" : "fail",
-        ntpAmt > 0
-          ? "NTP " + fmtDate(qp.ntpDate) + " for " + fmtMoney(ntpAmt)
-          : "No NTP on this QP — do not pay.",
-        true
-      )
-    );
+    if (autoWanted(template, "ntp_issued")) {
+      checks.push(
+        checkResult(
+          "ntp_issued",
+          "NTP has been issued",
+          ntpAmt > 0 && qp.ntpDate ? "pass" : "fail",
+          ntpAmt > 0
+            ? "NTP " + fmtDate(qp.ntpDate) + " for " + fmtMoney(ntpAmt)
+            : "No NTP on this " + noun + " — do not pay.",
+          true
+        )
+      );
+    }
 
     var open = !qp.qpClosed && qp.status !== "canceled";
-    checks.push(
-      checkResult(
-        "qp_open",
-        "QP is open (not closed or canceled)",
-        open ? "pass" : "fail",
-        open ? "QP " + (qp.qpNumber || "") + " is open." : "QP is closed or canceled.",
-        true
-      )
-    );
+    if (autoWanted(template, "qp_open")) {
+      checks.push(
+        checkResult(
+          "qp_open",
+          noun + " is open (not closed or canceled)",
+          open ? "pass" : "fail",
+          open
+            ? noun + " " + (qp.qpNumber || "") + " is open."
+            : noun + " is closed or canceled.",
+          true
+        )
+      );
+    }
 
     var dateOk = true;
     var dateDetail = "Invoice date " + fmtDate(invoice.date);
@@ -420,53 +453,63 @@
       dateOk = false;
       dateDetail = "Invoice date is missing.";
     }
-    checks.push(
-      checkResult(
-        "invoice_date",
-        "Invoice date is on or after NTP date",
-        dateOk ? "pass" : "fail",
-        dateDetail,
-        true
-      )
-    );
-
-    if (hasLines) {
-      var match = money(invAmt) === money(lineSum);
+    if (autoWanted(template, "invoice_date")) {
       checks.push(
         checkResult(
-          "total_vs_lines",
-          "Invoice total matches line-item extensions",
-          match ? "pass" : "fail",
-          "Header " + fmtMoney(invAmt) + " vs lines " + fmtMoney(lineSum) + ".",
+          "invoice_date",
+          qp.ntpDate
+            ? "Invoice date is on or after NTP date"
+            : "Invoice date is present",
+          dateOk ? "pass" : "fail",
+          dateDetail,
           true
-        )
-      );
-    } else {
-      checks.push(
-        checkResult(
-          "total_vs_lines",
-          "Invoice total matches line-item extensions",
-          "warn",
-          "Lump-sum invoice — add pay-item quantities to verify against the NTP.",
-          false
         )
       );
     }
 
+    if (autoWanted(template, "total_vs_lines")) {
+      if (hasLines) {
+        var match = money(invAmt) === money(lineSum);
+        checks.push(
+          checkResult(
+            "total_vs_lines",
+            "Invoice total matches line-item extensions",
+            match ? "pass" : "fail",
+            "Header " + fmtMoney(invAmt) + " vs lines " + fmtMoney(lineSum) + ".",
+            true
+          )
+        );
+      } else {
+        checks.push(
+          checkResult(
+            "total_vs_lines",
+            "Invoice total matches line-item extensions",
+            "warn",
+            "Lump-sum invoice — add pay-item quantities to verify against the NTP.",
+            false
+          )
+        );
+      }
+    }
+
     var withinNtp = invAmt <= remaining + 0.009;
-    checks.push(
-      checkResult(
-        "within_ntp_balance",
-        "Invoice does not exceed remaining NTP balance",
-        withinNtp ? "pass" : "fail",
-        "Invoice " +
-          fmtMoney(invAmt) +
-          " · remaining on QP " +
-          fmtMoney(remaining) +
-          (withinNtp ? "." : " — OVER NTP."),
-        true
-      )
-    );
+    if (autoWanted(template, "within_ntp_balance")) {
+      checks.push(
+        checkResult(
+          "within_ntp_balance",
+          "Invoice does not exceed remaining NTP balance",
+          withinNtp ? "pass" : "fail",
+          "Invoice " +
+            fmtMoney(invAmt) +
+            " · remaining on " +
+            noun +
+            " " +
+            fmtMoney(remaining) +
+            (withinNtp ? "." : " — OVER NTP."),
+          true
+        )
+      );
+    }
 
     var taskSpentElse = money(
       (task.qps || []).reduce(function (s, q) {
@@ -475,122 +518,141 @@
       }, 0)
     );
     var withinPo = taskSpentElse + invAmt <= money(task.poAmount || 0) + 0.009;
-    checks.push(
-      checkResult(
-        "within_task_po",
-        "Payment stays within the task PO",
-        withinPo ? "pass" : "fail",
-        "Task spent after this invoice " +
-          fmtMoney(taskSpentElse + invAmt) +
-          " of PO " +
-          fmtMoney(task.poAmount || 0) +
-          ".",
-        true
-      )
-    );
-
-    if (!hasLines) {
+    if (autoWanted(template, "within_task_po")) {
       checks.push(
         checkResult(
-          "unit_prices",
-          "Unit prices match the approved NTP / catalog",
-          "na",
-          "No line items entered.",
-          false
-        )
-      );
-      checks.push(
-        checkResult(
-          "quantities",
-          "Billed quantities do not exceed remaining NTP quantities",
-          "na",
-          "No line items entered.",
-          false
-        )
-      );
-      checks.push(
-        checkResult(
-          "no_unknown_items",
-          "All billed items appear on the NTP",
-          "na",
-          "No line items entered.",
-          false
-        )
-      );
-    } else {
-      var priceFail = [];
-      var qtyFail = [];
-      var unknown = [];
-      lines.forEach(function (l) {
-        var nLine = ntpLine(qp, l.itemCode);
-        if (!nLine && !l.extraWork) {
-          unknown.push(l.itemCode || l.description || "(blank)");
-        }
-        if (nLine && money(l.unitPrice || 0) && money(l.unitPrice) !== money(nLine.unitPrice)) {
-          priceFail.push(
-            (l.itemCode || "") +
-              " billed " +
-              fmtMoney(l.unitPrice) +
-              " vs NTP " +
-              fmtMoney(nLine.unitPrice)
-          );
-        } else if (
-          !nLine &&
-          l.itemCode &&
-          catalogItem(contract, l.itemCode) &&
-          catalogItem(contract, l.itemCode).unitPrice &&
-          money(l.unitPrice) !== money(catalogItem(contract, l.itemCode).unitPrice)
-        ) {
-          priceFail.push((l.itemCode || "") + " billed unit price does not match catalog.");
-        }
-        if (nLine) {
-          var remainQty = nLine.qty - billedQty(qp, l.itemCode, invoice.id);
-          if (Number(l.qty || 0) - remainQty > 0.0001) {
-            qtyFail.push(
-              (l.itemCode || "") +
-                " billed " +
-                l.qty +
-                " " +
-                (l.unit || "") +
-                " · remaining " +
-                remainQty
-            );
-          }
-        }
-      });
-      checks.push(
-        checkResult(
-          "unit_prices",
-          "Unit prices match the approved NTP / catalog",
-          priceFail.length ? "fail" : "pass",
-          priceFail.length ? priceFail.join("; ") : "Unit prices match.",
-          true
-        )
-      );
-      checks.push(
-        checkResult(
-          "quantities",
-          "Billed quantities do not exceed remaining NTP quantities",
-          qtyFail.length ? "fail" : "pass",
-          qtyFail.length ? qtyFail.join("; ") : "Quantities within NTP.",
-          true
-        )
-      );
-      checks.push(
-        checkResult(
-          "no_unknown_items",
-          "All billed items appear on the NTP (or are marked extra work)",
-          unknown.length ? "fail" : "pass",
-          unknown.length
-            ? "Not on NTP: " + unknown.join(", ")
-            : "Every billed item is on the NTP.",
+          "within_task_po",
+          "Payment stays within the task PO",
+          withinPo ? "pass" : "fail",
+          "Task spent after this invoice " +
+            fmtMoney(taskSpentElse + invAmt) +
+            " of PO " +
+            fmtMoney(task.poAmount || 0) +
+            ".",
           true
         )
       );
     }
 
+    if (autoWanted(template, "unit_prices") || autoWanted(template, "quantities") || autoWanted(template, "no_unknown_items")) {
+      if (!hasLines) {
+        if (autoWanted(template, "unit_prices")) {
+          checks.push(
+            checkResult(
+              "unit_prices",
+              "Unit prices match the approved NTP / catalog",
+              "na",
+              "No line items entered.",
+              false
+            )
+          );
+        }
+        if (autoWanted(template, "quantities")) {
+          checks.push(
+            checkResult(
+              "quantities",
+              "Billed quantities do not exceed remaining NTP quantities",
+              "na",
+              "No line items entered.",
+              false
+            )
+          );
+        }
+        if (autoWanted(template, "no_unknown_items")) {
+          checks.push(
+            checkResult(
+              "no_unknown_items",
+              "All billed items appear on the NTP",
+              "na",
+              "No line items entered.",
+              false
+            )
+          );
+        }
+      } else {
+        var priceFail = [];
+        var qtyFail = [];
+        var unknown = [];
+        lines.forEach(function (l) {
+          var nLine = ntpLine(qp, l.itemCode);
+          if (!nLine && !l.extraWork) {
+            unknown.push(l.itemCode || l.description || "(blank)");
+          }
+          if (nLine && money(l.unitPrice || 0) && money(l.unitPrice) !== money(nLine.unitPrice)) {
+            priceFail.push(
+              (l.itemCode || "") +
+                " billed " +
+                fmtMoney(l.unitPrice) +
+                " vs NTP " +
+                fmtMoney(nLine.unitPrice)
+            );
+          } else if (
+            !nLine &&
+            l.itemCode &&
+            catalogItem(contract, l.itemCode) &&
+            catalogItem(contract, l.itemCode).unitPrice &&
+            money(l.unitPrice) !== money(catalogItem(contract, l.itemCode).unitPrice)
+          ) {
+            priceFail.push((l.itemCode || "") + " billed unit price does not match catalog.");
+          }
+          if (nLine) {
+            var remainQty = nLine.qty - billedQty(qp, l.itemCode, invoice.id);
+            if (Number(l.qty || 0) - remainQty > 0.0001) {
+              qtyFail.push(
+                (l.itemCode || "") +
+                  " billed " +
+                  l.qty +
+                  " " +
+                  (l.unit || "") +
+                  " · remaining " +
+                  remainQty
+              );
+            }
+          }
+        });
+        if (autoWanted(template, "unit_prices")) {
+          checks.push(
+            checkResult(
+              "unit_prices",
+              "Unit prices match the approved NTP / catalog",
+              priceFail.length ? "fail" : "pass",
+              priceFail.length ? priceFail.join("; ") : "Unit prices match.",
+              true
+            )
+          );
+        }
+        if (autoWanted(template, "quantities")) {
+          checks.push(
+            checkResult(
+              "quantities",
+              "Billed quantities do not exceed remaining NTP quantities",
+              qtyFail.length ? "fail" : "pass",
+              qtyFail.length ? qtyFail.join("; ") : "Quantities within NTP.",
+              true
+            )
+          );
+        }
+        if (autoWanted(template, "no_unknown_items")) {
+          checks.push(
+            checkResult(
+              "no_unknown_items",
+              "All billed items appear on the NTP (or are marked extra work)",
+              unknown.length ? "fail" : "pass",
+              unknown.length
+                ? "Not on NTP: " + unknown.join(", ")
+                : "Every billed item is on the NTP.",
+              true
+            )
+          );
+        }
+      }
+    }
+
     var admin = invoice.adminChecks || {};
-    ADMIN_CHECKS.forEach(function (a) {
+    var adminList = Array.isArray(template.adminChecks) && template.adminChecks.length
+      ? template.adminChecks
+      : ADMIN_CHECKS;
+    adminList.forEach(function (a) {
       var on = !!admin[a.id];
       checks.push(
         checkResult(

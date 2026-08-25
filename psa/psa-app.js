@@ -1,7 +1,8 @@
-/* PSA Trak UI */
+/* ConTrak UI — DelDOT-standard professional-services tracker */
 (function () {
   "use strict";
   var E = window.PsaEngine;
+  var T = window.ConTrakTemplates;
   var STORE = "psatrak_v1";
 
   var ui = {
@@ -13,6 +14,7 @@
     invoiceId: null,
     filter: "",
     modal: null,
+    editTemplateId: null,
   };
 
   var state = null;
@@ -35,23 +37,85 @@
     }
   }
 
-  function makeIdiq(code, contractor) {
+  function isFinance() {
+    return state && state.role === "finance";
+  }
+
+  function tpl(c) {
+    c = c || contract();
+    var id = (c && c.templateId) || T.UNIT_PRICE_ID;
+    var list = (state && state.templates) || [];
+    for (var i = 0; i < list.length; i++) {
+      if (list[i].id === id) return T.ensureShape(list[i]);
+    }
+    return T.ensureShape(T.byId(id));
+  }
+
+  function noun(c) {
+    return tpl(c).assignmentNoun || "QP";
+  }
+  function nouns(c) {
+    return tpl(c).assignmentNounPlural || "QPs";
+  }
+  function taskNoun(c) {
+    return tpl(c).taskNoun || "Task";
+  }
+  function taskNouns(c) {
+    return tpl(c).taskNounPlural || "Tasks";
+  }
+  function wf(c) {
+    return tpl(c).workflow || { proposal: true, ntp: true, payItems: true, invoices: true };
+  }
+
+  function makeAgreement(opts) {
+    opts = opts || {};
+    var templateId = opts.templateId || T.UNIT_PRICE_ID;
+    var template = null;
+    var list = (state && state.templates) || T.defaults();
+    list.forEach(function (x) {
+      if (x.id === templateId) template = x;
+    });
+    if (!template) template = T.byId(templateId);
+    template = T.ensureShape(template);
+    var payItems = [];
+    if (template.workflow.payItems) {
+      if (template.seedCatalog === "subsurface" && window.PsaCatalog) {
+        payItems = window.PsaCatalog.cloneCatalog();
+      }
+    }
+    var code = String(opts.code || "").trim();
     return {
-      id: code,
+      id: code || E.uid("agr"),
+      code: code || "NEW",
+      title: opts.title || "",
+      rfp: opts.rfp || "",
+      contractor: opts.contractor || "",
+      pm: opts.pm || "",
+      cap: E.money(opts.cap || 0),
+      agreementType: opts.agreementType || "IDIQ",
+      term: opts.term || "",
+      paymentMethod: opts.paymentMethod || "",
+      funding: opts.funding || "",
+      historical: !!opts.historical,
+      templateId: template.id,
+      payItems: payItems,
+      tasks: [E.emptyTask("1", 0)],
+    };
+  }
+
+  function makeIdiq(code, contractor) {
+    return makeAgreement({
       code: code,
+      contractor: contractor,
       title: "Subsurface Investigation Services",
       rfp: "2216-2217F",
-      contractor: contractor,
-      pm: "",
       cap: 3000000,
       agreementType: "IDIQ",
       term: "Three-year term with two possible one-year extensions",
       paymentMethod: "Cost per unit of work",
       funding: "Federal; CFDA 20.205",
-      historical: false,
-      payItems: window.PsaCatalog.cloneCatalog(),
-      tasks: [E.emptyTask("1", 0)],
-    };
+      templateId: T.UNIT_PRICE_ID,
+    });
   }
 
   function hydrateHistorical(raw) {
@@ -59,7 +123,8 @@
     c.payItems = window.PsaCatalog.cloneCatalog();
     c.rfp = c.code;
     c.agreementType = "IDIQ";
-    c.paymentMethod = "Cost per unit of work";
+    c.paymentMethod = c.paymentMethod || "Cost per unit of work";
+    if (!c.templateId) c.templateId = T.UNIT_PRICE_ID;
     var poSum = (c.tasks || []).reduce(function (s, t) {
       return s + Number(t.poAmount || 0);
     }, 0);
@@ -75,16 +140,19 @@
 
   function defaultState() {
     var hist = window.PSA_SEED_HISTORICAL;
-    return {
-      version: 1,
+    return T.migrateState({
+      version: 2,
+      role: "pm",
+      orgName: "DelDOT Materials & Research",
       pm: "",
+      templates: T.defaults(),
       contracts: [
         makeIdiq("2216F", "Contractor 2216F (pending award)"),
         makeIdiq("2217F", "Contractor 2217F (pending award)"),
         hydrateHistorical(hist.cgc2019),
         hydrateHistorical(hist.hcea2018),
       ],
-    };
+    });
   }
 
   function load() {
@@ -93,6 +161,7 @@
       if (raw) {
         state = JSON.parse(raw);
         if (!state.contracts || !state.contracts.length) state = defaultState();
+        else state = T.migrateState(state);
       } else {
         state = defaultState();
         save();
@@ -103,6 +172,7 @@
     if (!ui.contractId || !contract()) ui.contractId = state.contracts[0].id;
     var c = contract();
     if (!ui.taskId || !task()) ui.taskId = (c.tasks[0] && c.tasks[0].id) || null;
+    if (!ui.editTemplateId) ui.editTemplateId = tpl(c).id;
   }
 
   function contract() {
@@ -146,19 +216,31 @@
     var t = task();
     var r = E.contractRollup(c);
     var app = document.getElementById("app");
+    if (ui.view === "finance") {
+      app.innerHTML = renderHeader(c) + '<div class="setup-wrap">' + renderFinance(c) + "</div>";
+      bind();
+      return;
+    }
+    if (ui.view === "settings") {
+      app.innerHTML =
+        renderHeader(c) +
+        '<div class="setup-wrap"><main class="stage" style="padding:16px 0">' +
+        renderSettings(c) +
+        "</main></div>";
+      bind();
+      return;
+    }
+    var body;
+    if (ui.view === "payitems") body = renderPayItems(c);
+    else if (ui.qpId && qp()) body = renderQpDetail(c, t, qp());
+    else body = renderLedger(c, t);
     app.innerHTML =
       renderHeader(c) +
       renderKpis(c, r) +
       '<div class="workspace">' +
       renderTasks(c, t) +
       '<main class="stage">' +
-      (ui.view === "payitems"
-        ? renderPayItems(c)
-        : ui.view === "settings"
-        ? renderSettings(c)
-        : ui.qpId && qp()
-        ? renderQpDetail(c, t, qp())
-        : renderLedger(c, t)) +
+      body +
       "</main></div>";
     bind();
   }
@@ -180,15 +262,35 @@
         );
       })
       .join("");
+    var org = state.orgName || "DelDOT Materials & Research";
+    var payBtn = wf(c).payItems
+      ? '<button class="btn" data-act="view" data-view="payitems">Pay items</button>'
+      : "";
     return (
-      '<header class="top no-print"><div class="brand">PSA TRAK<small>DelDOT Materials &amp; Research · Professional Services</small></div>' +
+      '<header class="top no-print">' +
+      '<div class="topbar-logo" title="Delaware Department of Transportation"><img src="assets/deldot-logo.png" alt="DelDOT"></div>' +
+      '<div class="brand"><span class="brand-title"><b>DelDOT</b> ConTrak</span><small>' +
+      esc(org) +
+      " · Professional Services</small></div>" +
       '<div class="contract-switch">' +
       btns +
+      (isFinance()
+        ? '<button class="cbtn add" data-act="view" data-view="finance">+ Agreement</button>'
+        : "") +
       '</div><div class="spacer"></div>' +
+      '<div class="role-switch" title="Until DelDOT SSO is wired, switch desks here. Finance configures the standard; PMs work inside it.">' +
+      '<button class="rbtn' +
+      (state.role !== "finance" ? " on" : "") +
+      '" data-act="set-role" data-role="pm">PM</button>' +
+      '<button class="rbtn' +
+      (state.role === "finance" ? " on" : "") +
+      '" data-act="set-role" data-role="finance">Finance</button>' +
+      "</div>" +
       '<div class="top-actions">' +
       '<button class="btn" data-act="view" data-view="ledger">Ledger</button>' +
-      '<button class="btn" data-act="view" data-view="payitems">Pay items</button>' +
-      '<button class="btn" data-act="view" data-view="settings">Backup / import</button>' +
+      payBtn +
+      '<button class="btn" data-act="view" data-view="finance">Setup</button>' +
+      '<button class="btn" data-act="view" data-view="settings">Backup</button>' +
       "</div></header>"
     );
   }
@@ -202,7 +304,7 @@
       kpi("Spent", E.fmtMoney(r.spent), pct(r.spent, r.allocated || r.cap) + "% of allocated") +
       kpi("NTP balance", E.fmtMoney(r.ntpBalance), "invoiced vs NTP", r.ntpBalance < 0 ? "bad" : "ok") +
       kpi("Unallocated PO", E.fmtMoney(r.unallocated), "task PO minus NTPs", r.unallocated < 0 ? "bad" : "") +
-      kpi("Open QPs", String(r.openQps), r.pendingProposals + " proposal(s) to review", r.pendingProposals ? "warn" : "") +
+      kpi("Open " + nouns(c), String(r.openQps), r.pendingProposals + " proposal(s) to review", r.pendingProposals ? "warn" : "") +
       "</section>"
     );
   }
@@ -232,7 +334,9 @@
           (t && x.id === t.id ? " on" : "") +
           '" data-act="switch-task" data-id="' +
           esc(x.id) +
-          '"><div class="n">Task ' +
+          '"><div class="n">' +
+          esc(taskNoun(c)) +
+          " " +
           esc(x.number) +
           '</div><div class="m">PO ' +
           E.fmtMoney(x.poAmount) +
@@ -247,14 +351,26 @@
       })
       .join("");
     return (
-      '<aside class="tasks no-print"><h3>Tasks</h3>' +
+      '<aside class="tasks no-print"><h3>' +
+      esc(taskNouns(c)) +
+      "</h3>" +
       cards +
-      '<button class="btn small" data-act="add-task">+ New task</button></aside>'
+      '<button class="btn small" data-act="add-task">+ New ' +
+      esc(taskNoun(c).toLowerCase()) +
+      "</button></aside>"
     );
   }
 
   function renderLedger(c, t) {
-    if (!t) return '<div class="banner">Create a task to start tracking QPs.</div>';
+    if (!t) {
+      return (
+        '<div class="banner">Create a ' +
+        esc(taskNoun(c).toLowerCase()) +
+        " to start tracking " +
+        esc(nouns(c)) +
+        ".</div>"
+      );
+    }
     var qps = (t.qps || []).filter(function (q) {
       if (!ui.filter) return true;
       var f = ui.filter.toLowerCase();
@@ -304,27 +420,38 @@
       })
       .join("");
     var banner = "";
-    if (!c.historical) {
+    var customBanner = tpl(c).ledgerBanner;
+    if (customBanner) {
+      banner = '<div class="banner">' + esc(customBanner) + "</div>";
+    } else if (!c.historical) {
       var priced = (c.payItems || []).filter(function (p) {
         return Number(p.unitPrice) > 0;
       }).length;
-      banner =
-        '<div class="banner">RFP <b>2216-2217F</b> · IDIQ, cost per unit of work, $3,000,000 cap. ' +
-        priced +
-        " of " +
-        (c.payItems || []).length +
-        " pay items have unit prices. Enter Appendix C prices on <b>Pay items</b> after award, then review proposals against the catalog.</div>";
+      var bits = [];
+      if (c.rfp) bits.push("RFP <b>" + esc(c.rfp) + "</b>");
+      if (c.agreementType) bits.push(esc(c.agreementType));
+      if (c.paymentMethod) bits.push(esc(c.paymentMethod));
+      if (c.cap) bits.push(E.fmtMoney(c.cap) + " cap");
+      bits.push("template <b>" + esc(tpl(c).name) + "</b>");
+      if (wf(c).payItems) {
+        bits.push(priced + " of " + (c.payItems || []).length + " pay items priced");
+      }
+      banner = '<div class="banner">' + bits.join(" · ") + ".</div>";
     } else {
       banner =
-        '<div class="banner info">Imported from your current tracker (' +
+        '<div class="banner info">Imported ledger (' +
         esc(c.code) +
         " · " +
         esc(c.contractor) +
-        "). Dollar totals match the spreadsheet. Open a QP to add a line-item proposal, issue an NTP letter, or build an invoice checklist.</div>";
+        "). Dollar totals match the source spreadsheet. Open a " +
+        esc(noun(c)) +
+        " to continue the workflow Finance set on this template.</div>";
     }
     return (
       banner +
-      '<div class="row-between"><div><b>Task ' +
+      '<div class="row-between"><div><b>' +
+      esc(taskNoun(c)) +
+      " " +
       esc(t.number) +
       "</b> · PO " +
       '<input id="poAmount" value="' +
@@ -337,25 +464,42 @@
       " · unallocated " +
       E.fmtMoney(E.taskUnallocated(t)) +
       '</div><div>' +
-      '<input id="filter" placeholder="Filter QP / project / T#" value="' +
+      '<input id="filter" placeholder="Filter ' +
+      esc(noun(c)) +
+      ' / project / T#" value="' +
       esc(ui.filter) +
       '" style="background:var(--panel);border:1px solid var(--border);border-radius:6px;padding:6px 8px;margin-right:8px">' +
-      '<button class="btn primary" data-act="add-qp">+ QP</button>' +
-      (!c.historical && !(t.qps || []).length
-        ? '<button class="btn" data-act="demo-qp">Insert example QP</button>'
+      '<button class="btn primary" data-act="add-qp">+ ' +
+      esc(noun(c)) +
+      "</button>" +
+      (!c.historical && !(t.qps || []).length && wf(c).payItems
+        ? '<button class="btn" data-act="demo-qp">Insert example ' + esc(noun(c)) + "</button>"
         : "") +
       "</div></div>" +
       '<div class="card" style="padding:0;overflow:auto"><table class="grid"><thead><tr>' +
-      "<th>QP #</th><th>Contract</th><th>Project</th><th>Notes</th><th>Status</th><th>NTP date</th><th>NTP amount</th><th>Spent</th><th>Balance</th><th>Invoices</th>" +
+      "<th>" +
+      esc(noun(c)) +
+      " #</th><th>Contract</th><th>Project</th><th>Notes</th><th>Status</th><th>NTP date</th><th>NTP amount</th><th>Spent</th><th>Balance</th><th>Invoices</th>" +
       "</tr></thead><tbody>" +
-      (rows || '<tr><td colspan="10" class="muted">No QPs yet. Add a QP to review a budget proposal.</td></tr>') +
+      (rows ||
+        '<tr><td colspan="10" class="muted">No ' +
+          esc(nouns(c)) +
+          " yet. Add a " +
+          esc(noun(c)) +
+          " to start.</td></tr>") +
       "</tbody></table></div>"
     );
   }
 
   function renderQpDetail(c, t, q) {
     var st = E.deriveQpStatus(q);
-    var tabs = ["info", "proposal", "ntp", "invoice"]
+    var w = wf(c);
+    var tabNames = ["info"];
+    if (w.proposal) tabNames.push("proposal");
+    if (w.ntp) tabNames.push("ntp");
+    if (w.invoices) tabNames.push("invoice");
+    if (tabNames.indexOf(ui.qpTab) < 0) ui.qpTab = "info";
+    var tabs = tabNames
       .map(function (name) {
         return (
           '<button class="tab' +
@@ -377,7 +521,9 @@
         ? renderInvoice(c, t, q)
         : renderQpInfo(c, t, q);
     return (
-      '<div class="row-between no-print"><div><button class="btn" data-act="back-ledger">← Ledger</button> &nbsp; <b>QP ' +
+      '<div class="row-between no-print"><div><button class="btn" data-act="back-ledger">← Ledger</button> &nbsp; <b>' +
+      esc(noun(c)) +
+      " " +
       esc(q.qpNumber) +
       "</b> · " +
       esc(q.project || "Untitled") +
@@ -391,9 +537,12 @@
   }
 
   function renderQpInfo(c, t, q) {
+    var n = noun(c);
     return (
-      '<div class="card"><h2>QP information</h2><div class="fields">' +
-      field("qpNumber", "QP #", q.qpNumber) +
+      '<div class="card"><h2>' +
+      esc(n) +
+      " information</h2><div class=\"fields\">" +
+      field("qpNumber", n + " #", q.qpNumber) +
       field("contractNo", "Contract / T#", q.contractNo) +
       field("project", "Project", q.project) +
       field("notes", "Notes", q.notes, "textarea") +
@@ -403,8 +552,10 @@
       esc(q.qpNumber) +
       "A)</button>" +
       (q.qpClosed
-        ? '<button class="btn" data-act="reopen-qp">Reopen QP</button>'
-        : '<button class="btn danger" data-act="close-qp">Close QP · return ' +
+        ? '<button class="btn" data-act="reopen-qp">Reopen ' + esc(n) + "</button>"
+        : '<button class="btn danger" data-act="close-qp">Close ' +
+          esc(n) +
+          " · return " +
           E.fmtMoney(Math.max(E.qpNtp(q) - E.qpSpent(q), 0)) +
           "</button>") +
       '<button class="btn danger" data-act="cancel-qp">Mark canceled</button>' +
@@ -579,9 +730,13 @@
       esc(c.title) +
       "<br>Contractor: " +
       esc(c.contractor) +
-      "<br>Task " +
+      "<br>" +
+      esc(taskNoun(c)) +
+      " " +
       esc(t.number) +
-      " · QP " +
+      " · " +
+      esc(noun(c)) +
+      " " +
       esc(q.qpNumber) +
       "<br>Project: " +
       esc(q.project) +
@@ -672,7 +827,7 @@
   function renderInvoiceEditor(c, t, q, inv) {
     if (!inv.lines) inv.lines = [];
     if (!inv.adminChecks) inv.adminChecks = {};
-    var ck = E.buildInvoiceChecklist(c, t, q, inv);
+    var ck = E.buildInvoiceChecklist(c, t, q, inv, tpl(c));
     var lineRows = inv.lines
       .map(function (l, i) {
         return (
@@ -744,8 +899,15 @@
       '<label class="f">Amount<input id="invAmount" value="' +
       esc(inv.amount || 0) +
       '"></label></div>' +
-      '<div class="row-between" style="margin-top:10px"><div class="muted">Line items vs NTP remaining quantities. Leave blank for a lump-sum check (dollar cap only — how the spreadsheet works today).</div>' +
-      '<button class="btn" data-act="inv-add-line">+ Pay item</button></div>' +
+      '<div class="row-between" style="margin-top:10px"><div class="muted">' +
+      (wf(c).payItems
+        ? "Line items vs NTP remaining quantities. Leave blank for a lump-sum check (dollar cap only)."
+        : "Dollar check against NTP and the task PO. Finance turned unit prices off on this template.") +
+      "</div>" +
+      (wf(c).payItems
+        ? '<button class="btn" data-act="inv-add-line">+ Pay item</button>'
+        : "") +
+      "</div>" +
       '<table class="grid"><thead><tr><th>Item</th><th>Qty</th><th>Unit price</th><th>Extension</th><th></th></tr></thead><tbody>' +
       (lineRows || '<tr><td colspan="5" class="muted">No lines — lump-sum invoice.</td></tr>') +
       "</tbody></table>" +
@@ -759,13 +921,17 @@
       "</div>" +
       '<div style="margin-top:12px;display:flex;gap:8px;flex-wrap:wrap">' +
       '<button class="btn" data-act="save-inv">Save invoice</button>' +
-      '<button class="btn good" data-act="post-inv">Post to QP</button>' +
+      '<button class="btn good" data-act="post-inv">Post to ' +
+      esc(noun(c)) +
+      "</button>" +
       '<button class="btn" data-act="print-checklist">Print checklist</button>' +
       "</div></div>" +
       '<div class="print-only" id="printChecklist"><h2>Invoice checklist</h2>' +
       "<p>" +
       esc(c.code) +
-      " · QP " +
+      " · " +
+      esc(noun(c)) +
+      " " +
       esc(q.qpNumber) +
       " · " +
       esc(q.project) +
@@ -786,8 +952,36 @@
   }
 
   function renderPayItems(c) {
+    var canEditItems = isFinance();
     var rows = (c.payItems || [])
       .map(function (it, i) {
+        if (canEditItems) {
+          return (
+            "<tr><td><input data-act=\"item-field\" data-field=\"code\" data-i=\"" +
+            i +
+            '" value="' +
+            esc(it.code) +
+            '" style="width:90px;background:var(--panel);border:1px solid var(--border);border-radius:6px;padding:4px"></td><td><input data-act="item-field" data-field="category" data-i="' +
+            i +
+            '" value="' +
+            esc(it.category || "") +
+            '" style="width:110px;background:var(--panel);border:1px solid var(--border);border-radius:6px;padding:4px"></td><td><input data-act="item-field" data-field="description" data-i="' +
+            i +
+            '" value="' +
+            esc(it.description || "") +
+            '" style="width:100%;background:var(--panel);border:1px solid var(--border);border-radius:6px;padding:4px"></td><td><input data-act="item-field" data-field="unit" data-i="' +
+            i +
+            '" value="' +
+            esc(it.unit || "") +
+            '" style="width:70px;background:var(--panel);border:1px solid var(--border);border-radius:6px;padding:4px"></td><td><input data-act="price" data-i="' +
+            i +
+            '" value="' +
+            (it.unitPrice || "") +
+            '" style="width:110px;background:var(--panel);border:1px solid var(--border);border-radius:6px;padding:4px;font-family:var(--mono)"></td><td><button class="btn small danger" data-act="del-payitem" data-i="' +
+            i +
+            '">×</button></td></tr>'
+          );
+        }
         return (
           "<tr><td>" +
           esc(it.code) +
@@ -806,34 +1000,313 @@
       })
       .join("");
     return (
-      '<div class="card"><h2>Appendix C — unit prices · ' +
+      '<div class="card"><h2>Pay items · ' +
       esc(c.code) +
       "</h2>" +
-      "<p class=\"muted\">Each agreement has its own prices. Paste awarded prices after selection. Catalog seeded from prior DelDOT subsurface IDIQ items plus RFP 2216-2217F lab / geo-probe work.</p>" +
+      "<p class=\"muted\">Each agreement has its own catalog. PMs enter awarded unit prices. Finance can add or remove items so this is not locked to one contract's Appendix C.</p>" +
       '<div class="fields">' +
       field("contractor", "Contractor", c.contractor) +
       field("pm", "Project manager", c.pm) +
       field("cap", "Agreement cap", c.cap) +
       "</div>" +
-      '<div style="margin:10px 0"><button class="btn primary" data-act="save-contract-meta">Save contract header</button></div>' +
-      '<table class="grid"><thead><tr><th>Item</th><th>Category</th><th>Description</th><th>Unit</th><th>Unit price</th></tr></thead><tbody>' +
-      rows +
+      '<div style="margin:10px 0;display:flex;gap:8px;flex-wrap:wrap"><button class="btn primary" data-act="save-contract-meta">Save agreement header</button>' +
+      (canEditItems ? '<button class="btn" data-act="add-payitem">+ Pay item</button>' : "") +
+      "</div>" +
+      '<table class="grid"><thead><tr><th>Item</th><th>Category</th><th>Description</th><th>Unit</th><th>Unit price</th>' +
+      (canEditItems ? "<th></th>" : "") +
+      "</tr></thead><tbody>" +
+      (rows || '<tr><td colspan="6" class="muted">No pay items on this template. Finance can add them, or switch the agreement to a unit-price template.</td></tr>') +
       "</tbody></table></div>"
+    );
+  }
+
+  function findTemplate(id) {
+    var list = state.templates || [];
+    for (var i = 0; i < list.length; i++) {
+      if (list[i].id === id) return list[i];
+    }
+    return null;
+  }
+
+  function renderFinance(c) {
+    var locked = !isFinance();
+    var editId = ui.editTemplateId || tpl(c).id;
+    var editing = findTemplate(editId) || tpl(c);
+    editing = T.ensureShape(editing);
+    var templateOptions = (state.templates || [])
+      .map(function (x) {
+        return (
+          '<option value="' +
+          esc(x.id) +
+          '"' +
+          (x.id === editId ? " selected" : "") +
+          ">" +
+          esc(x.name) +
+          (x.builtin ? " · DelDOT starter" : "") +
+          "</option>"
+        );
+      })
+      .join("");
+    var bindOptions = (state.templates || [])
+      .map(function (x) {
+        return (
+          '<option value="' +
+          esc(x.id) +
+          '"' +
+          (x.id === c.templateId ? " selected" : "") +
+          ">" +
+          esc(x.name) +
+          "</option>"
+        );
+      })
+      .join("");
+    var autoRows = T.AUTO_CHECK_META.map(function (m) {
+      var on = editing.autoChecks[m.id] !== false;
+      return (
+        '<label class="chk"><input type="checkbox" data-act="tpl-auto" data-id="' +
+        esc(m.id) +
+        '"' +
+        (on ? " checked" : "") +
+        (locked ? " disabled" : "") +
+        "> " +
+        esc(m.label) +
+        "</label>"
+      );
+    }).join("");
+    var adminRows = (editing.adminChecks || [])
+      .map(function (a, i) {
+        return (
+          '<div class="admin-row"><input data-act="tpl-admin-label" data-i="' +
+          i +
+          '" value="' +
+          esc(a.label) +
+          '"' +
+          (locked ? " disabled" : "") +
+          '><button class="btn small danger" data-act="tpl-admin-del" data-i="' +
+          i +
+          '"' +
+          (locked ? " disabled" : "") +
+          ">×</button></div>"
+        );
+      })
+      .join("");
+    var agreementRows = state.contracts
+      .map(function (x) {
+        var tt = tpl(x);
+        return (
+          "<tr><td><b>" +
+          esc(x.code) +
+          "</b></td><td>" +
+          esc(x.contractor || "—") +
+          "</td><td>" +
+          esc(x.pm || "—") +
+          "</td><td>" +
+          E.fmtMoney(x.cap) +
+          "</td><td>" +
+          esc(tt.name) +
+          "</td><td>" +
+          (x.historical ? "imported" : "live") +
+          "</td></tr>"
+        );
+      })
+      .join("");
+    var dis = locked ? " disabled" : "";
+    return (
+      '<main class="stage setup-stage">' +
+      (locked
+        ? '<div class="banner">You are in <b>PM</b> desk. The ledger, proposals, NTPs, and invoices are yours. Switch to <b>Finance</b> (upper right) to add agreements, pick a template, and set the checklist PMs must pass. Finance can set this up how they want the PM to work.</div>'
+        : '<div class="banner info">Finance desk. Add any professional-services agreement, not just 2216F / 2217F. Bind it to a DelDOT starter template or a copy you customize. PMs cannot change the rules — they work inside them. That is how this becomes the DelDOT standard.</div>') +
+      '<div class="card"><h2>Office</h2><div class="fields">' +
+      '<label class="f">Office name<input id="orgName" value="' +
+      esc(state.orgName || "") +
+      '"' +
+      dis +
+      "></label></div>" +
+      '<div style="margin-top:10px"><button class="btn primary" data-act="save-org"' +
+      dis +
+      ">Save office name</button></div></div>" +
+      '<div class="card"><h2>Agreements in this office</h2>' +
+      '<table class="grid"><thead><tr><th>Code</th><th>Contractor</th><th>PM</th><th>Cap</th><th>Template</th><th></th></tr></thead><tbody>' +
+      agreementRows +
+      "</tbody></table></div>" +
+      '<div class="card"><h2>New agreement</h2>' +
+      "<p class=\"muted\">Any PSA, IDIQ, or lump-sum professional services contract. Finance fills this in; the PM then runs " +
+      esc(nouns(c)) +
+      " against it.</p>" +
+      '<div class="fields">' +
+      '<label class="f">Agreement code<input id="newCode" placeholder="2220F"' +
+      dis +
+      "></label>" +
+      '<label class="f">Title<input id="newTitle" placeholder="Bridge design, lab testing, …"' +
+      dis +
+      "></label>" +
+      '<label class="f">Contractor<input id="newContractor"' +
+      dis +
+      "></label>" +
+      '<label class="f">Project manager<input id="newPm"' +
+      dis +
+      "></label>" +
+      '<label class="f">Cap / ceiling<input id="newCap" placeholder="3000000"' +
+      dis +
+      "></label>" +
+      '<label class="f">RFP / solicitation<input id="newRfp"' +
+      dis +
+      "></label>" +
+      '<label class="f">Type<input id="newType" placeholder="IDIQ / Lump sum / On-call"' +
+      dis +
+      "></label>" +
+      '<label class="f">Payment method<input id="newPay" placeholder="Cost per unit of work"' +
+      dis +
+      "></label>" +
+      '<label class="f">Template<select id="newTemplate"' +
+      dis +
+      ">" +
+      bindOptions +
+      "</select></label></div>" +
+      '<div style="margin-top:12px"><button class="btn primary" data-act="create-agreement"' +
+      dis +
+      ">Create agreement</button></div></div>" +
+      '<div class="card"><h2>This agreement · ' +
+      esc(c.code) +
+      "</h2>" +
+      "<p class=\"muted\">Point this contract at a template. Changing the template changes the nouns, tabs, and invoice checklist the PM sees.</p>" +
+      '<div class="fields"><label class="f">Bound template<select id="bindTemplate"' +
+      dis +
+      ">" +
+      bindOptions +
+      "</select></label></div>" +
+      '<div style="margin-top:10px"><button class="btn primary" data-act="bind-template"' +
+      dis +
+      ">Apply template to " +
+      esc(c.code) +
+      "</button></div></div>" +
+      '<div class="card"><h2>Template editor</h2>' +
+      "<p class=\"muted\">DelDOT starters ship with unit-price IDIQ and lump-sum PSA. Duplicate one for another section (bridge, traffic, environmental) and change only what that office needs. Built-in starters can be edited in this browser; Reset puts the original back.</p>" +
+      '<div class="row-between"><label class="f" style="flex:1">Editing<select id="pickTemplate" data-act="pick-template">' +
+      templateOptions +
+      "</select></label><div style=\"display:flex;gap:8px;flex-wrap:wrap;align-items:flex-end\">" +
+      '<button class="btn" data-act="dup-template"' +
+      dis +
+      ">Duplicate</button>" +
+      '<button class="btn" data-act="new-template"' +
+      dis +
+      ">New blank</button>" +
+      (editing.builtin
+        ? '<button class="btn" data-act="reset-template"' + dis + ">Reset to DelDOT default</button>"
+        : '<button class="btn danger" data-act="del-template"' + dis + ">Delete template</button>") +
+      "</div></div>" +
+      '<div class="fields" style="margin-top:12px">' +
+      '<label class="f">Name<input id="tplName" value="' +
+      esc(editing.name) +
+      '"' +
+      dis +
+      "></label>" +
+      '<label class="f">Assignment noun<input id="tplNoun" value="' +
+      esc(editing.assignmentNoun) +
+      '" placeholder="QP / Task Order / Work Order"' +
+      dis +
+      "></label>" +
+      '<label class="f">Plural<input id="tplNouns" value="' +
+      esc(editing.assignmentNounPlural) +
+      '"' +
+      dis +
+      "></label>" +
+      '<label class="f">Task noun<input id="tplTask" value="' +
+      esc(editing.taskNoun) +
+      '"' +
+      dis +
+      "></label>" +
+      '<label class="f">Task plural<input id="tplTasks" value="' +
+      esc(editing.taskNounPlural) +
+      '"' +
+      dis +
+      "></label>" +
+      '<label class="f">Seed pay-item catalog<select id="tplSeed"' +
+      dis +
+      ">" +
+      '<option value="subsurface"' +
+      (editing.seedCatalog === "subsurface" ? " selected" : "") +
+      ">Subsurface IDIQ (M&amp;R)</option>" +
+      '<option value="none"' +
+      (editing.seedCatalog === "none" ? " selected" : "") +
+      ">None — Finance adds items</option></select></label></div>" +
+      '<label class="f" style="margin-top:10px">What this template is for<textarea id="tplDesc"' +
+      dis +
+      ">" +
+      esc(editing.description || "") +
+      "</textarea></label>" +
+      '<label class="f" style="margin-top:10px">Ledger banner (optional)<input id="tplBanner" value="' +
+      esc(editing.ledgerBanner || "") +
+      '" placeholder="Shown at the top of the ledger"' +
+      dis +
+      "></label>" +
+      "<h3 style=\"margin-top:16px\">Workflow the PM sees</h3>" +
+      '<div class="chk-grid">' +
+      '<label class="chk"><input type="checkbox" data-act="tpl-wf" data-id="proposal"' +
+      (editing.workflow.proposal ? " checked" : "") +
+      dis +
+      "> Budget proposal review</label>" +
+      '<label class="chk"><input type="checkbox" data-act="tpl-wf" data-id="ntp"' +
+      (editing.workflow.ntp ? " checked" : "") +
+      dis +
+      "> Notice to proceed</label>" +
+      '<label class="chk"><input type="checkbox" data-act="tpl-wf" data-id="payItems"' +
+      (editing.workflow.payItems ? " checked" : "") +
+      dis +
+      "> Unit-price pay items</label>" +
+      '<label class="chk"><input type="checkbox" data-act="tpl-wf" data-id="invoices"' +
+      (editing.workflow.invoices ? " checked" : "") +
+      dis +
+      "> Invoice checklist</label></div>" +
+      "<h3 style=\"margin-top:16px\">Money checks (automatic)</h3>" +
+      "<p class=\"muted\">Turn off a check if this office does not use it. Required fails still block posting.</p>" +
+      '<div class="chk-grid">' +
+      autoRows +
+      "</div>" +
+      "<h3 style=\"margin-top:16px\">Admin checklist (PM confirms)</h3>" +
+      "<p class=\"muted\">These are the boxes Finance wants ticked before an invoice posts — logs received, MOT, backup, whatever this agreement needs.</p>" +
+      '<div class="admin-list">' +
+      (adminRows || '<div class="muted">No admin items.</div>') +
+      "</div>" +
+      '<div style="margin-top:10px;display:flex;gap:8px;flex-wrap:wrap">' +
+      '<button class="btn" data-act="tpl-admin-add"' +
+      dis +
+      ">+ Checklist item</button>" +
+      '<button class="btn primary" data-act="save-template"' +
+      dis +
+      ">Save template</button></div></div>" +
+      "</main>"
     );
   }
 
   function renderSettings(c) {
     return (
       '<div class="card"><h2>Backup / import</h2>' +
-      "<p>Data lives in this browser (localStorage). Export a JSON backup before switching computers. You can also import a task sheet in the same layout as <b>NEW CGC 2024.xlsx</b> / <b>HCEA Task 3.xlsx</b> (QP #, Contract, Project, NTP Amount, invoice date/amount columns).</p>" +
+      "<p>Data lives in this browser (localStorage). Export a JSON backup before switching computers. You can also import a task sheet in the same layout as <b>NEW CGC 2024.xlsx</b> / <b>HCEA Task 3.xlsx</b> (assignment #, Contract, Project, NTP Amount, invoice date/amount columns).</p>" +
       '<div style="display:flex;gap:8px;flex-wrap:wrap;margin:12px 0">' +
       '<button class="btn primary" data-act="export-json">Export JSON</button>' +
       '<label class="btn">Import JSON<input type="file" id="importJson" accept="application/json" hidden></label>' +
       '<label class="btn">Import Excel task sheet<input type="file" id="importXlsx" accept=".xlsx,.xls" hidden></label>' +
       '<button class="btn danger" data-act="reset">Reset to starter data</button>' +
       "</div>" +
-      "<p class=\"muted\">Reset restores empty 2216F / 2217F plus the imported 2019F CGC and 2018F HCEA ledgers from the spreadsheets you provided.</p></div>"
+      "<p class=\"muted\">Reset restores empty 2216F / 2217F plus the imported 2019F CGC and 2018F HCEA ledgers, and the DelDOT starter templates.</p></div>"
     );
+  }
+
+  function saveTemplateFields() {
+    var et = findTemplate(ui.editTemplateId);
+    if (!et) return;
+    var name = val("tplName");
+    if (name) et.name = name;
+    if (document.getElementById("tplNoun")) et.assignmentNoun = val("tplNoun") || et.assignmentNoun;
+    if (document.getElementById("tplNouns")) et.assignmentNounPlural = val("tplNouns") || et.assignmentNounPlural;
+    if (document.getElementById("tplTask")) et.taskNoun = val("tplTask") || et.taskNoun;
+    if (document.getElementById("tplTasks")) et.taskNounPlural = val("tplTasks") || et.taskNounPlural;
+    if (document.getElementById("tplDesc")) et.description = val("tplDesc");
+    if (document.getElementById("tplBanner")) et.ledgerBanner = val("tplBanner");
+    if (document.getElementById("tplSeed")) et.seedCatalog = val("tplSeed") || et.seedCatalog;
+    T.ensureShape(et);
+    save();
   }
 
   function bind() {
@@ -899,6 +1372,174 @@
     if (act === "view") {
       ui.view = el.getAttribute("data-view");
       ui.qpId = null;
+      if (ui.view === "finance") ui.editTemplateId = tpl(c).id;
+      render();
+      return;
+    }
+    if (act === "set-role") {
+      state.role = el.getAttribute("data-role") === "finance" ? "finance" : "pm";
+      save();
+      toast(state.role === "finance" ? "Finance desk — you can configure templates" : "PM desk — work inside the template");
+      render();
+      return;
+    }
+    if (act === "save-org") {
+      if (!isFinance()) return;
+      state.orgName = val("orgName");
+      save();
+      toast("Office name saved");
+      render();
+      return;
+    }
+    if (act === "create-agreement") {
+      if (!isFinance()) return;
+      var code = String(val("newCode") || "").trim();
+      if (!code) {
+        toast("Agreement code is required");
+        return;
+      }
+      if (
+        state.contracts.some(function (x) {
+          return String(x.code).toLowerCase() === code.toLowerCase() || x.id === code;
+        })
+      ) {
+        toast("An agreement with that code already exists");
+        return;
+      }
+      var agr = makeAgreement({
+        code: code,
+        title: val("newTitle"),
+        contractor: val("newContractor"),
+        pm: val("newPm"),
+        cap: val("newCap"),
+        rfp: val("newRfp"),
+        agreementType: val("newType"),
+        paymentMethod: val("newPay"),
+        templateId: val("newTemplate") || T.UNIT_PRICE_ID,
+      });
+      state.contracts.push(agr);
+      ui.contractId = agr.id;
+      ui.taskId = agr.tasks[0].id;
+      ui.qpId = null;
+      ui.view = "ledger";
+      save();
+      toast("Created " + agr.code);
+      render();
+      return;
+    }
+    if (act === "bind-template") {
+      if (!isFinance()) return;
+      c.templateId = val("bindTemplate") || T.UNIT_PRICE_ID;
+      var bound = tpl(c);
+      if (bound.workflow.payItems && !(c.payItems && c.payItems.length) && bound.seedCatalog === "subsurface") {
+        c.payItems = window.PsaCatalog.cloneCatalog();
+      }
+      save();
+      toast(c.code + " now uses " + bound.name);
+      render();
+      return;
+    }
+    if (act === "dup-template") {
+      if (!isFinance()) return;
+      saveTemplateFields();
+      var src = findTemplate(ui.editTemplateId) || tpl(c);
+      var copy = T.duplicate(src);
+      state.templates.push(copy);
+      ui.editTemplateId = copy.id;
+      save();
+      toast("Duplicated template — rename it for the office that will use it");
+      render();
+      return;
+    }
+    if (act === "new-template") {
+      if (!isFinance()) return;
+      var blank = T.emptyCustom("Custom PSA template");
+      state.templates.push(blank);
+      ui.editTemplateId = blank.id;
+      save();
+      render();
+      return;
+    }
+    if (act === "reset-template") {
+      if (!isFinance()) return;
+      var cur = findTemplate(ui.editTemplateId);
+      if (!cur || !cur.builtin) return;
+      var fresh = T.byId(cur.id);
+      var idx = state.templates.indexOf(cur);
+      state.templates[idx] = fresh;
+      save();
+      toast("Reset to DelDOT starter");
+      render();
+      return;
+    }
+    if (act === "del-template") {
+      if (!isFinance()) return;
+      var doomed = findTemplate(ui.editTemplateId);
+      if (!doomed || doomed.builtin) return;
+      var used = state.contracts.filter(function (x) {
+        return x.templateId === doomed.id;
+      });
+      if (used.length) {
+        toast("Unbind this template from " + used.map(function (x) { return x.code; }).join(", ") + " first");
+        return;
+      }
+      state.templates = state.templates.filter(function (x) {
+        return x.id !== doomed.id;
+      });
+      ui.editTemplateId = T.UNIT_PRICE_ID;
+      save();
+      toast("Template deleted");
+      render();
+      return;
+    }
+    if (act === "save-template") {
+      if (!isFinance()) return;
+      saveTemplateFields();
+      toast("Template saved — PMs see this on the next ledger refresh");
+      render();
+      return;
+    }
+    if (act === "tpl-admin-add") {
+      if (!isFinance()) return;
+      saveTemplateFields();
+      var et = findTemplate(ui.editTemplateId);
+      if (!et) return;
+      et.adminChecks = et.adminChecks || [];
+      et.adminChecks.push({
+        id: "admin_" + Date.now().toString(36),
+        label: "New checklist item",
+      });
+      save();
+      render();
+      return;
+    }
+    if (act === "tpl-admin-del") {
+      if (!isFinance()) return;
+      var etd = findTemplate(ui.editTemplateId);
+      if (!etd) return;
+      etd.adminChecks.splice(Number(el.getAttribute("data-i")), 1);
+      save();
+      render();
+      return;
+    }
+    if (act === "add-payitem") {
+      if (!isFinance()) return;
+      c.payItems = c.payItems || [];
+      c.payItems.push({
+        code: "",
+        description: "",
+        unit: "EA",
+        category: "Custom",
+        unitPrice: 0,
+      });
+      save();
+      render();
+      return;
+    }
+    if (act === "del-payitem") {
+      if (!isFinance()) return;
+      c.payItems.splice(Number(el.getAttribute("data-i")), 1);
+      save();
       render();
       return;
     }
@@ -949,7 +1590,7 @@
       q.project = val("project");
       q.notes = val("notes");
       save();
-      toast("QP saved");
+      toast(noun(c) + " saved");
       render();
       return;
     }
@@ -971,7 +1612,7 @@
       var sq = E.emptyQp(t, next);
       sq.contractNo = q.contractNo;
       sq.project = q.project;
-      sq.notes = "Supplement to QP " + q.qpNumber;
+      sq.notes = "Supplement to " + noun(c) + " " + q.qpNumber;
       t.qps.push(sq);
       ui.qpId = sq.id;
       save();
@@ -981,7 +1622,7 @@
     if (act === "close-qp") {
       E.closeQp(q);
       save();
-      toast("QP closed · remainder returned to task");
+      toast(noun(c) + " closed · remainder returned to task");
       render();
       return;
     }
@@ -1097,7 +1738,7 @@
         cur.amount = E.sumLines(cur.lines);
       }
       if (act === "post-inv") {
-        var ck = E.buildInvoiceChecklist(c, t, q, cur);
+        var ck = E.buildInvoiceChecklist(c, t, q, cur, tpl(c));
         if (ck.requiredFailCount) {
           toast("Checklist failed — not posted");
           save();
@@ -1105,7 +1746,7 @@
           return;
         }
         cur.status = "posted";
-        toast("Invoice posted to QP");
+        toast("Invoice posted to " + noun(c));
       } else {
         toast("Invoice saved");
       }
@@ -1122,7 +1763,7 @@
       c.pm = val("pm");
       c.cap = E.money(val("cap"));
       save();
-      toast("Contract header saved");
+      toast("Agreement header saved");
       render();
       return;
     }
@@ -1130,12 +1771,12 @@
       var blob = new Blob([JSON.stringify(state, null, 2)], { type: "application/json" });
       var a = document.createElement("a");
       a.href = URL.createObjectURL(blob);
-      a.download = "psa-trak-backup.json";
+      a.download = "contrak-backup.json";
       a.click();
       return;
     }
     if (act === "reset") {
-      if (!confirm("Reset all PSA Trak data in this browser?")) return;
+      if (!confirm("Reset all ConTrak data in this browser?")) return;
       localStorage.removeItem(STORE);
       load();
       ui.contractId = "2216F";
@@ -1161,7 +1802,7 @@
     var q = E.emptyQp(t, "1");
     q.contractNo = "T202604703";
     q.project = "DE 42 @ SR 1 (example)";
-    q.notes = "Example QP — delete after you start real work.";
+    q.notes = "Example " + noun(c) + " — delete after you start real work.";
     q.proposal = {
       status: "draft",
       submittedDate: E.todayISO(),
@@ -1177,7 +1818,7 @@
     t.qps.push(q);
     ui.qpId = q.id;
     ui.qpTab = "proposal";
-    toast("Example QP loaded — review quantities, then issue NTP");
+    toast("Example " + noun(c) + " loaded — review quantities, then issue NTP");
   }
 
   function findInv(q) {
@@ -1258,6 +1899,47 @@
       save();
       return;
     }
+    if (act === "item-field") {
+      if (!isFinance()) return;
+      var it = c.payItems[Number(el.getAttribute("data-i"))];
+      if (!it) return;
+      it[el.getAttribute("data-field")] = el.value;
+      save();
+      return;
+    }
+    if (act === "pick-template") {
+      if (isFinance()) saveTemplateFields();
+      ui.editTemplateId = el.value;
+      render();
+      return;
+    }
+    if (act === "tpl-auto") {
+      if (!isFinance()) return;
+      var eta = findTemplate(ui.editTemplateId);
+      if (!eta) return;
+      eta.autoChecks = eta.autoChecks || {};
+      eta.autoChecks[el.getAttribute("data-id")] = !!el.checked;
+      save();
+      return;
+    }
+    if (act === "tpl-wf") {
+      if (!isFinance()) return;
+      var etw = findTemplate(ui.editTemplateId);
+      if (!etw) return;
+      etw.workflow = etw.workflow || {};
+      etw.workflow[el.getAttribute("data-id")] = !!el.checked;
+      save();
+      return;
+    }
+    if (act === "tpl-admin-label") {
+      if (!isFinance()) return;
+      var etl = findTemplate(ui.editTemplateId);
+      if (!etl || !etl.adminChecks) return;
+      var row = etl.adminChecks[Number(el.getAttribute("data-i"))];
+      if (row) row.label = el.value;
+      save();
+      return;
+    }
   }
 
   function importJsonFile(ev) {
@@ -1267,8 +1949,8 @@
     reader.onload = function () {
       try {
         var data = JSON.parse(reader.result);
-        if (!data.contracts) throw new Error("Not a PSA Trak backup");
-        state = data;
+        if (!data.contracts) throw new Error("Not a ConTrak backup");
+        state = T.migrateState(data);
         save();
         ui.contractId = state.contracts[0].id;
         ui.qpId = null;
@@ -1306,7 +1988,7 @@
           t.qps.push(q);
         });
         save();
-        toast("Imported " + parsed.qps.length + " QPs from " + sheetName);
+        toast("Imported " + parsed.qps.length + " " + nouns(contract()) + " from " + sheetName);
         ui.view = "ledger";
         render();
       } catch (err) {

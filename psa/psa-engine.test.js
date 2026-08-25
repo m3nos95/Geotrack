@@ -1,4 +1,4 @@
-/* Node tests for PSA Trak engine. Run: node psa/psa-engine.test.js */
+/* Node tests for ConTrak engine. Run: node psa/psa-engine.test.js */
 var fs = require("fs");
 var path = require("path");
 var vm = require("vm");
@@ -10,6 +10,7 @@ function load(file) {
 
 load("psa-engine.js");
 load("psa-catalog.js");
+load("psa-templates.js");
 load("psa-seed.js");
 
 var E = global.PsaEngine;
@@ -156,6 +157,34 @@ var parsed = E.parseTrackerSheet(rows);
 assert("Parsed 2 QPs", parsed.qps && parsed.qps.length === 2, parsed.error || (parsed.qps && parsed.qps.length));
 assert("Parsed NTP amount", nearly(parsed.qps[0].ntpAmount, 246252));
 assert("Parsed closed leftover", nearly(parsed.qps[1].returnedRemainder, 17496 - 15195.25));
+
+/* ConTrak templates — Finance can turn checks off and rename the assignment */
+var Tpl = global.ConTrakTemplates;
+var unit = Tpl.byId(Tpl.UNIT_PRICE_ID);
+assert("Unit-price template uses QP", unit.assignmentNoun === "QP");
+assert("Unit-price template has proposal+NTP+pay items", unit.workflow.proposal && unit.workflow.ntp && unit.workflow.payItems);
+var lump = Tpl.byId(Tpl.LUMP_SUM_ID);
+assert("Lump-sum template hides pay items", lump.workflow.payItems === false);
+assert("Lump-sum skips unit-price checks", lump.autoChecks.unit_prices === false);
+
+var ckLump = E.buildInvoiceChecklist(contract, task, qp, inv, lump);
+assert("Lump-sum checklist has no unit_prices row", !ckLump.checks.some(function (c) { return c.id === "unit_prices"; }));
+assert("Lump-sum checklist still has NTP money check", ckLump.checks.some(function (c) { return c.id === "within_ntp_balance"; }));
+assert("Lump-sum uses Task Order in open check", ckLump.checks.some(function (c) {
+  return c.id === "qp_open" && c.label.indexOf("Task Order") >= 0;
+}));
+
+var custom = Tpl.duplicate(unit, "Bridge design PSA");
+custom.adminChecks = [{ id: "pe_seal", label: "PE sealed drawings attached" }];
+custom.autoChecks.quantities = false;
+var ckCustom = E.buildInvoiceChecklist(contract, task, qp, inv, custom);
+assert("Custom admin check appears", ckCustom.checks.some(function (c) { return c.id === "pe_seal"; }));
+assert("Disabled quantity check omitted", !ckCustom.checks.some(function (c) { return c.id === "quantities"; }));
+
+var migrated = Tpl.migrateState({ version: 1, contracts: [{ id: "2216F", code: "2216F", paymentMethod: "Cost per unit of work" }] });
+assert("Migrate adds templates", migrated.templates && migrated.templates.length >= 2);
+assert("Migrate binds unit-price template", migrated.contracts[0].templateId === Tpl.UNIT_PRICE_ID);
+assert("Migrate default role is PM", migrated.role === "pm");
 
 if (fails) {
   console.error("\n" + fails + " failed");
