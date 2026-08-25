@@ -34,6 +34,11 @@
     * { box-sizing: border-box; }
     html, body { margin: 0; height: 100%; background: var(--bg); color: var(--text); font-family: var(--sans); font-size: 14px; }
     button, input, select, textarea { font: inherit; color: inherit; }
+    select, input, textarea {
+      background: var(--panel); border: 1px solid var(--border);
+      color: var(--text); border-radius: 6px;
+    }
+    select option { background: var(--panel); color: var(--text); }
     button { cursor: pointer; }
     a { color: var(--accent2); }
 
