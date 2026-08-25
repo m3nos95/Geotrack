@@ -92,9 +92,12 @@
       contractor: opts.contractor || "",
       pm: opts.pm || "",
       cap: E.money(opts.cap || 0),
-      agreementType: opts.agreementType || "IDIQ",
+      agreementType:
+        opts.agreementType || (template.workflow.payItems ? "IDIQ" : "Lump sum"),
       term: opts.term || "",
-      paymentMethod: opts.paymentMethod || "",
+      paymentMethod:
+        opts.paymentMethod ||
+        (template.workflow.payItems ? "Cost per unit of work" : "Lump sum"),
       funding: opts.funding || "",
       historical: !!opts.historical,
       templateId: template.id,
