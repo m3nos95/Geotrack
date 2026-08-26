@@ -36,6 +36,179 @@
     return p[1] + "/" + p[2] + "/" + p[0];
   }
 
+  var MONTHS_LONG = [
+    "January",
+    "February",
+    "March",
+    "April",
+    "May",
+    "June",
+    "July",
+    "August",
+    "September",
+    "October",
+    "November",
+    "December",
+  ];
+
+  function fmtDateLong(iso) {
+    if (!iso) return "";
+    var p = String(iso).slice(0, 10).split("-");
+    if (p.length !== 3) return String(iso);
+    var m = Number(p[1]);
+    var d = Number(p[2]);
+    if (!m || !d || !MONTHS_LONG[m - 1]) return String(iso);
+    return MONTHS_LONG[m - 1] + " " + d + ", " + p[0];
+  }
+
+  function fmtMoneyLetter(n) {
+    var x = money(n);
+    var neg = x < 0;
+    var abs = Math.abs(x);
+    var s;
+    if (Math.abs(abs - Math.round(abs)) < 0.005) {
+      s = Math.round(abs).toLocaleString("en-US");
+    } else {
+      s = abs.toLocaleString("en-US", {
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2,
+      });
+    }
+    return (neg ? "-$" : "$") + s;
+  }
+
+  function unitMeasureOf(line) {
+    if (!line) return "";
+    if (line.unitMeasure) return line.unitMeasure;
+    var u = String(line.unit || "").toUpperCase();
+    if (u === "EA" || u === "EACH") return "Each";
+    if (u === "LF") return "Linear Foot";
+    if (u === "HR") return "Per Hour";
+    if (u === "LS") return "LS";
+    if (u === "DAY") return "Day";
+    return line.unit || "";
+  }
+
+  function defaultLetterhead() {
+    return {
+      secretaryName: "SHANTÉ A. HASTINGS",
+      secretaryTitle: "Secretary",
+      officeAddress: "800 BAY ROAD · P.O. BOX 778 · DOVER, DELAWARE 19903",
+      deldotMailName: "Department of Transportation",
+      deldotStreet: "800 Bay Road",
+      deldotPoBox: "P.O. Box 778",
+      deldotCity: "Dover, Delaware 19903",
+      attention: "Aaron Wieczorek",
+      billingLeadIn: "billing ",
+      billingContractNo: "T2022-703-02",
+      billingContractTitle:
+        "Geotechnical Subsurface Investigation (Soil Borings) - Statewide",
+      signerName: "Aaron Wieczorek",
+      signerTitle: "Soil Lab Supervisor",
+      signerPhone: "(302) 760-2395",
+      contractorContact: "",
+      contractorCredentials: "",
+      contractorName: "",
+      contractorAddress: "",
+      contractorSalutation: "Dear Sir or Madam:",
+      contractorPhone: "",
+      cc: ["DOT Profservices", "DOT Audit Management", "Kathi Kressman, DelDOT"],
+    };
+  }
+
+  function ensureLetterhead(contract) {
+    var base = defaultLetterhead();
+    var extra = (contract && contract.letterhead) || {};
+    var lh = Object.assign({}, base, extra);
+    if (!lh.contractorName) lh.contractorName = (contract && contract.contractor) || "";
+    if (!Array.isArray(lh.cc) || !lh.cc.length) lh.cc = base.cc.slice();
+    if (lh.billingLeadIn == null) lh.billingLeadIn = "billing ";
+    return lh;
+  }
+
+  function ntpPacketLines(qp) {
+    if (qp && qp.ntpLines && qp.ntpLines.length) return qp.ntpLines;
+    return ntpLinesFromProposal(qp && qp.proposal);
+  }
+
+  function buildNtpPacket(contract, task, qp) {
+    contract = contract || {};
+    task = task || {};
+    qp = qp || {};
+    var lh = ensureLetterhead(contract);
+    var lines = ntpPacketLines(qp);
+    var amt = lines.length ? sumLines(lines) : money(qp.ntpAmount || 0);
+    var letterDate = qp.ntpLetterDate || qp.ntpDate || todayISO();
+    var proposalDate =
+      (qp.proposal && qp.proposal.submittedDate) || qp.ntpDate || letterDate;
+    var tnum = task.number != null ? String(task.number) : "";
+    var qpnum = qp.qpNumber != null ? String(qp.qpNumber) : "";
+    var tcode = qp.contractNo || "";
+    var project = qp.project || "";
+    var ref = tcode && project ? tcode + ", " + project : tcode || project;
+    var assignment =
+      "Agreement #" +
+      (contract.code || "") +
+      ", Task " +
+      tnum +
+      ", Quick Proposal " +
+      qpnum;
+    if (ref) assignment += " (" + ref + ")";
+    var lead = lh.billingLeadIn == null ? "billing " : String(lh.billingLeadIn);
+    var body =
+      "This letter is in reference to " +
+      lead +
+      "Contract No. " +
+      (lh.billingContractNo || "") +
+      " " +
+      (lh.billingContractTitle || "") +
+      ".\n\nPlease consider this letter as your official notice “Notice to Proceed” with work under the terms of " +
+      assignment +
+      " in the amount of " +
+      fmtMoneyLetter(amt) +
+      " per your proposal dated " +
+      fmtDateLong(proposalDate) +
+      " requested by the Department for the referenced contract. This work may begin immediately.\n\nShould you have any questions, please contact me at " +
+      (lh.signerPhone || "") +
+      ".";
+    var cc = (lh.cc || []).slice();
+    (qp.ccExtra || []).forEach(function (x) {
+      var s = String(x || "").trim();
+      if (s && cc.indexOf(s) < 0) cc.push(s);
+    });
+    return {
+      letterDate: letterDate,
+      letterDateLong: fmtDateLong(letterDate),
+      proposalDate: proposalDate,
+      proposalDateLong: fmtDateLong(proposalDate),
+      amount: amt,
+      amountLetter: fmtMoneyLetter(amt),
+      assignment: assignment,
+      body: body,
+      salutation: lh.contractorSalutation || "Dear Sir or Madam:",
+      cc: cc,
+      lines: lines,
+      proposalRows: lines.map(function (l) {
+        return {
+          itemNo: l.itemNo || l.itemCode || "",
+          description: l.description || "",
+          qty: l.qty != null ? l.qty : l.proposedQty,
+          unit: l.unit || "",
+          unitMeasure: unitMeasureOf(l),
+          unitPrice: money(l.unitPrice),
+          amount: l.amount != null ? money(l.amount) : lineExt(l),
+        };
+      }),
+      proposalTotal: amt,
+      letterhead: lh,
+      projectName: (qp.proposal && qp.proposal.projectName) || qp.project || "",
+      designNo: qp.contractNo || "",
+      billingNo: qp.billingNo || lh.billingContractNo || "",
+      agrLine: (contract.code || "") + " - " + (contract.title || ""),
+      taskLine: tnum + ", QP" + qpnum,
+    };
+  }
+
   function todayISO() {
     var d = new Date();
     var m = String(d.getMonth() + 1).padStart(2, "0");
@@ -345,8 +518,10 @@
         if (!qty) return null;
         return {
           itemCode: l.itemCode || "",
+          itemNo: l.itemNo || l.itemCode || "",
           description: l.description || "",
           unit: l.unit || "",
+          unitMeasure: l.unitMeasure || "",
           qty: qty,
           unitPrice: money(price),
           amount: money(qty * price),
@@ -925,9 +1100,12 @@
       ntpAmount: 0,
       returnedRemainder: 0,
       invoices: [],
-      proposal: { status: "draft", submittedDate: null, reviewNotes: "", lines: [] },
+      proposal: { status: "draft", submittedDate: null, projectName: "", reviewNotes: "", lines: [] },
       ntpLines: [],
       ntpNotes: "",
+      ntpLetterDate: null,
+      billingNo: "",
+      ccExtra: [],
       closeoutDate: null,
       closeoutNotes: "",
     };
@@ -963,6 +1141,12 @@
     uid: uid,
     fmtMoney: fmtMoney,
     fmtDate: fmtDate,
+    fmtDateLong: fmtDateLong,
+    fmtMoneyLetter: fmtMoneyLetter,
+    unitMeasureOf: unitMeasureOf,
+    defaultLetterhead: defaultLetterhead,
+    ensureLetterhead: ensureLetterhead,
+    buildNtpPacket: buildNtpPacket,
     todayISO: todayISO,
     lineExt: lineExt,
     sumLines: sumLines,

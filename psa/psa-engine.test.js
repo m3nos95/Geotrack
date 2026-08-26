@@ -211,6 +211,63 @@ assert("Task close-out returns leftover PO to agreement", nearly(E.taskReturnedT
 assert("Agreement available after task close-out", nearly(E.contractAvailable(agr), 3000000 - 3790), E.contractAvailable(agr));
 assert("Closed task committed is spent only", nearly(E.taskCommitted(fundedTask), 3790), E.taskCommitted(fundedTask));
 
+assert("Long date April 29, 2026", E.fmtDateLong("2026-04-29") === "April 29, 2026");
+assert("Letter money omits .00", E.fmtMoneyLetter(46124) === "$46,124", E.fmtMoneyLetter(46124));
+assert("Letter money keeps cents", E.fmtMoneyLetter(12975.5) === "$12,975.50", E.fmtMoneyLetter(12975.5));
+
+var codes = global.PsaCatalog.ITEMS.map(function (i) { return i.code; });
+assert("Catalog includes qualified logger", codes.indexOf("LOGGER") >= 0);
+assert("Catalog includes GPS", codes.indexOf("GPS") >= 0);
+assert("Catalog includes DNREC permit", codes.indexOf("DNREC") >= 0);
+assert("SPT has Appendix item 2", global.PsaCatalog.ITEMS.some(function (i) {
+  return i.code === "605540" && i.itemNo === "2";
+}));
+
+var cgc = JSON.parse(JSON.stringify(hist.cgc2019));
+cgc.payItems = global.PsaCatalog.applyPrices(global.PsaCatalog.cloneCatalog(), global.PsaSeed.CGC_PRICES);
+global.PsaSeed.applyPackets(cgc);
+cgc.letterhead = E.ensureLetterhead(cgc);
+var t4p = cgc.tasks.find(function (t) { return String(t.number) === "4"; });
+var qp13 = t4p.qps.find(function (q) { return q.qpNumber === "13"; });
+assert("QP13 proposal total 46124", nearly(E.proposalTotal(qp13.proposal), 46124), E.proposalTotal(qp13.proposal));
+assert("QP13 has 11 proposal lines", qp13.proposal.lines.length === 11, qp13.proposal.lines.length);
+var pkt13 = E.buildNtpPacket(cgc, t4p, qp13);
+assert("QP13 letter amount $46,124", pkt13.amountLetter === "$46,124", pkt13.amountLetter);
+assert("QP13 letter names Agreement 2019F Task 4 QP 13", pkt13.body.indexOf("Agreement #2019F, Task 4, Quick Proposal 13") >= 0, pkt13.assignment);
+assert("QP13 letter uses T# and Washington Street", pkt13.body.indexOf("T202566301, Washington Street") >= 0);
+assert("QP13 proposal dated April 17, 2026", pkt13.proposalDateLong === "April 17, 2026");
+assert("QP13 letter dated April 29, 2026", pkt13.letterDateLong === "April 29, 2026");
+assert("QP13 salutation Ms. Ziegler", pkt13.salutation.indexOf("Ziegler") >= 0);
+assert("QP13 cc includes Paul Moser", pkt13.cc.indexOf("Paul Moser, DelDOT") >= 0);
+
+var qp18 = t4p.qps.find(function (q) { return q.qpNumber === "18"; });
+assert("QP18 proposal total 12975.50", nearly(E.proposalTotal(qp18.proposal), 12975.5), E.proposalTotal(qp18.proposal));
+var pkt18 = E.buildNtpPacket(cgc, t4p, qp18);
+assert("QP18 letter amount keeps cents", pkt18.amountLetter === "$12,975.50", pkt18.amountLetter);
+
+var qp19 = t4p.qps.find(function (q) { return q.qpNumber === "19"; });
+assert("QP19 proposal total 3817", nearly(E.proposalTotal(qp19.proposal), 3817), E.proposalTotal(qp19.proposal));
+
+var hceaC = JSON.parse(JSON.stringify(hist.hcea2018));
+hceaC.payItems = global.PsaCatalog.applyPrices(global.PsaCatalog.cloneCatalog(), global.PsaSeed.HCEA_PRICES);
+global.PsaSeed.applyPackets(hceaC);
+hceaC.letterhead = E.ensureLetterhead(hceaC);
+var t3h = hceaC.tasks.find(function (t) { return String(t.number) === "3"; });
+var qp4 = t3h.qps.find(function (q) { return q.qpNumber === "4"; });
+assert("HCEA QP4 proposal total 23841", nearly(E.proposalTotal(qp4.proposal), 23841), E.proposalTotal(qp4.proposal));
+var pkt4 = E.buildNtpPacket(hceaC, t3h, qp4);
+assert("HCEA letter date August 10", pkt4.letterDateLong === "August 10, 2026");
+assert("HCEA letter omits billing lead-in", pkt4.body.indexOf("to billing Contract") < 0);
+assert("HCEA letter has Contract No.", pkt4.body.indexOf("Contract No. T2022-703-02") >= 0);
+assert("HCEA proposal billing T201870301", pkt4.billingNo === "T201870301");
+assert("HCEA salutation Mr. Opdyke", pkt4.salutation.indexOf("Opdyke") >= 0);
+
+var cloned = global.PsaCatalog.cloneCatalog();
+assert("cloneCatalog copies itemNo", cloned.some(function (i) { return i.code === "605545" && i.itemNo === "7"; }));
+var merged = global.PsaCatalog.mergeCatalog([{ code: "605545", description: "land", unit: "LF", unitPrice: 12 }]);
+assert("mergeCatalog fills itemNo on stored items", merged.some(function (i) { return i.code === "605545" && i.itemNo === "7"; }));
+assert("mergeCatalog adds logger", merged.some(function (i) { return i.code === "LOGGER"; }));
+
 if (fails) {
   console.error("\n" + fails + " failed");
   process.exit(1);

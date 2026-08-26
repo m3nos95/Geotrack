@@ -102,6 +102,10 @@
       funding: opts.funding || "",
       historical: !!opts.historical,
       templateId: template.id,
+      letterhead: E.ensureLetterhead({
+        contractor: opts.contractor || "",
+        letterhead: opts.letterhead || {},
+      }),
       payItems: payItems,
       tasks: [E.emptyTask("1", 0)],
     };
@@ -125,6 +129,16 @@
   function hydrateHistorical(raw) {
     var c = JSON.parse(JSON.stringify(raw));
     c.payItems = window.PsaCatalog.cloneCatalog();
+    var prices = window.PsaSeed && window.PsaSeed.pricesFor(c.code);
+    if (prices) c.payItems = window.PsaCatalog.applyPrices(c.payItems, prices);
+    if (c.code === "2018F") {
+      c.payItems.forEach(function (it) {
+        if (it.code === "GPS") {
+          it.unit = "LS";
+          it.unitMeasure = "LS";
+        }
+      });
+    }
     c.rfp = c.code;
     c.agreementType = "IDIQ";
     c.paymentMethod = c.paymentMethod || "Cost per unit of work";
@@ -139,6 +153,8 @@
         if (!q.ntpLines) q.ntpLines = [];
       });
     });
+    if (window.PsaSeed && window.PsaSeed.applyPackets) window.PsaSeed.applyPackets(c);
+    c.letterhead = E.ensureLetterhead(c);
     return c;
   }
 
@@ -177,6 +193,23 @@
     var c = contract();
     if (!ui.taskId || !task()) ui.taskId = (c.tasks[0] && c.tasks[0].id) || null;
     if (!ui.editTemplateId) ui.editTemplateId = tpl(c).id;
+    migrateLocalContracts();
+  }
+
+  function migrateLocalContracts() {
+    (state.contracts || []).forEach(function (agr) {
+      if (agr.payItems && window.PsaCatalog && window.PsaCatalog.mergeCatalog) {
+        agr.payItems = window.PsaCatalog.mergeCatalog(agr.payItems);
+        var prices = window.PsaSeed && window.PsaSeed.pricesFor(agr.code);
+        if (prices && agr.historical) {
+          agr.payItems.forEach(function (it) {
+            if (!Number(it.unitPrice) && prices[it.code] != null) it.unitPrice = prices[it.code];
+          });
+        }
+      }
+      if (window.PsaSeed && window.PsaSeed.applyPackets) window.PsaSeed.applyPackets(agr);
+      agr.letterhead = E.ensureLetterhead(agr);
+    });
   }
 
   function contract() {
@@ -626,7 +659,9 @@
       field("qpNumber", n + " #", q.qpNumber) +
       field("contractNo", "Contract / T#", q.contractNo) +
       field("project", "Project", q.project) +
+      field("billingNo", "Project billing number", q.billingNo || "") +
       field("notes", "Notes", q.notes, "textarea") +
+      field("ccExtra", "Extra cc on NTP letter (one per line)", (q.ccExtra || []).join("\n"), "textarea") +
       '</div><div style="margin-top:12px;display:flex;gap:8px;flex-wrap:wrap">' +
       '<button class="btn primary" data-act="save-qp-info">Save</button>' +
       '<button class="btn" data-act="add-supplement">Add supplement (e.g. ' +
@@ -899,7 +934,7 @@
             '"' +
             (it.code === selected ? " selected" : "") +
             ">" +
-            esc(it.code) +
+            esc(it.itemNo || it.code) +
             " · " +
             esc(it.description) +
             (it.unitPrice ? " · " + E.fmtMoney(it.unitPrice) : "") +
@@ -970,6 +1005,13 @@
     return (
       '<div class="card"><h2>Budget proposal review</h2>' +
       "<p class=\"muted\">Enter the contractor's proposed quantities. Engineer qty overrides the proposal when you issue the NTP. Unit prices come from this agreement's catalog.</p>" +
+      '<div class="fields" style="margin-bottom:10px">' +
+      '<label class="f">Proposal date<input id="propDate" type="date" value="' +
+      esc((q.proposal && q.proposal.submittedDate) || "") +
+      '"></label>' +
+      '<label class="f">Project name on proposal<input id="propProject" value="' +
+      esc((q.proposal && q.proposal.projectName) || q.project || "") +
+      '"></label></div>' +
       '<div class="row-between"><div>Proposed / reviewed total: <b>' +
       E.fmtMoney(review.total) +
       "</b> · task room " +
@@ -992,15 +1034,12 @@
   }
 
   function renderNtp(c, t, q) {
-    var lines = (q.ntpLines || []).length
-      ? q.ntpLines
-      : E.ntpLinesFromProposal(q.proposal);
-    var amt = lines.length ? E.sumLines(lines) : Number(q.ntpAmount || 0);
-    var lineRows = lines
+    var pkt = E.buildNtpPacket(c, t, q);
+    var lineRows = pkt.proposalRows
       .map(function (l) {
         return (
           "<tr><td>" +
-          esc(l.itemCode) +
+          esc(l.itemNo) +
           "</td><td>" +
           esc(l.description) +
           "</td><td>" +
@@ -1015,54 +1054,24 @@
         );
       })
       .join("");
-    var letter =
-      '<div class="print-only" id="ntpLetter"><h2 style="margin-top:0">NOTICE TO PROCEED</h2>' +
-      "<p>Delaware Department of Transportation · Materials &amp; Research</p>" +
-      "<p>Agreement <b>" +
-      esc(c.code) +
-      "</b> · " +
-      esc(c.title) +
-      "<br>Contractor: " +
-      esc(c.contractor) +
-      "<br>" +
-      esc(taskNoun(c)) +
-      " " +
-      esc(t.number) +
-      " · " +
-      esc(noun(c)) +
-      " " +
-      esc(q.qpNumber) +
-      "<br>Project: " +
-      esc(q.project) +
-      " · Contract No. " +
-      esc(q.contractNo) +
-      "</p>" +
-      "<p>You are authorized to proceed with the approved work in the amount of <b>" +
-      E.fmtMoney(amt) +
-      "</b>. Do not exceed this amount without a revised NTP.</p>" +
-      (lineRows
-        ? '<table class="grid"><thead><tr><th>Item</th><th>Description</th><th>Unit</th><th>Qty</th><th>Unit price</th><th>Amount</th></tr></thead><tbody>' +
-          lineRows +
-          "</tbody></table>"
-        : "") +
-      "<p>NTP date: " +
-      E.fmtDate(q.ntpDate || E.todayISO()) +
-      "<br>Notes: " +
-      esc(q.ntpNotes || "") +
-      "</p></div>";
     return (
-      letter +
       '<div class="card no-print"><h2>Issue NTP</h2>' +
       (q.ntpDate
         ? '<div class="banner info">NTP issued ' +
           E.fmtDate(q.ntpDate) +
           " for " +
           E.fmtMoney(q.ntpAmount) +
-          ". Issuing again records a revised NTP from the current proposal.</div>"
-        : "<p>Locks the approved proposal quantities and amount onto this QP (same role as NTP Amount / Date in your spreadsheet).</p>") +
+          ". Issuing again records a revised NTP from the current proposal. Print sends the DelDOT letter plus the attached proposal.</div>"
+        : "<p>Locks the approved proposal quantities and amount onto this QP. Print produces the same two-page packet you mail: Secretary letter + contractor unit-price proposal.</p>") +
       '<div class="fields">' +
-      '<label class="f">NTP date<input id="ntpDate" type="date" value="' +
+      '<label class="f">NTP / ledger date<input id="ntpDate" type="date" value="' +
       esc(q.ntpDate || E.todayISO()) +
+      '"></label>' +
+      '<label class="f">Letter date<input id="ntpLetterDate" type="date" value="' +
+      esc(q.ntpLetterDate || q.ntpDate || E.todayISO()) +
+      '"></label>' +
+      '<label class="f">Proposal date<input id="propDate" type="date" value="' +
+      esc((q.proposal && q.proposal.submittedDate) || q.ntpDate || "") +
       '"></label>' +
       '<label class="f">Lump-sum amount (if no line items)<input id="ntpLump" value="' +
       esc(q.ntpAmount || "") +
@@ -1071,17 +1080,146 @@
       esc(q.ntpNotes || "") +
       "</textarea></label></div>" +
       "<p>From proposal lines: <b>" +
-      E.fmtMoney(amt) +
+      E.fmtMoney(pkt.amount) +
       "</b></p>" +
       (lineRows
-        ? '<table class="grid"><thead><tr><th>Item</th><th>Description</th><th>Unit</th><th>Qty</th><th>Unit price</th><th>Amount</th></tr></thead><tbody>' +
+        ? '<table class="grid"><thead><tr><th>Item No.</th><th>Description</th><th>Unit</th><th>Qty</th><th>Unit price</th><th>Amount</th></tr></thead><tbody>' +
           lineRows +
           "</tbody></table>"
         : "") +
       '<div style="margin-top:12px;display:flex;gap:8px">' +
       '<button class="btn primary" data-act="issue-ntp">Issue / revise NTP</button>' +
-      '<button class="btn" data-act="print-ntp">Print NTP letter</button>' +
-      "</div></div>"
+      '<button class="btn" data-act="print-ntp">Print NTP packet</button>' +
+      "</div></div>" +
+      renderNtpPacket(c, t, q, pkt)
+    );
+  }
+
+  function nl(text) {
+    return esc(text || "").replace(/\n/g, "<br>");
+  }
+
+  function renderNtpPacket(c, t, q, pkt) {
+    pkt = pkt || E.buildNtpPacket(c, t, q);
+    var lh = pkt.letterhead;
+    var addr = String(lh.contractorAddress || "").split("\n");
+    var contactLine = [lh.contractorContact, lh.contractorCredentials]
+      .filter(Boolean)
+      .join(", ");
+    var ccHtml = (pkt.cc || [])
+      .map(function (x) {
+        return "<div>" + esc(x) + "</div>";
+      })
+      .join("");
+    var propRows = pkt.proposalRows
+      .map(function (l) {
+        return (
+          "<tr><td>" +
+          esc(l.itemNo) +
+          "</td><td>" +
+          esc(l.description) +
+          '</td><td class="num">' +
+          esc(l.qty) +
+          "</td><td>" +
+          esc(l.unitMeasure) +
+          '</td><td class="num">' +
+          E.fmtMoney(l.unitPrice) +
+          '</td><td class="num">' +
+          E.fmtMoney(l.amount) +
+          "</td></tr>"
+        );
+      })
+      .join("");
+    var bodyParts = pkt.body.split("\n\n");
+    var letterBody = bodyParts
+      .map(function (p) {
+        return "<p>" + nl(p) + "</p>";
+      })
+      .join("");
+    return (
+      '<div class="paper-stack" id="ntpLetter">' +
+      '<article class="letter-page ntp-letter">' +
+      '<div class="letter-brand"><img src="assets/deldot-logo.png" alt="Delaware Department of Transportation">' +
+      '<div class="letter-secretary">' +
+      esc(lh.secretaryName) +
+      "</div><div class=\"letter-secretary-title\">" +
+      esc(lh.secretaryTitle) +
+      "</div></div>" +
+      '<div class="letter-date">' +
+      esc(pkt.letterDateLong) +
+      "</div>" +
+      '<div class="letter-addr">' +
+      (contactLine ? "<div>" + esc(contactLine) + "</div>" : "") +
+      (lh.contractorName ? "<div>" + esc(lh.contractorName) + "</div>" : "") +
+      addr
+        .map(function (line) {
+          return line ? "<div>" + esc(line) + "</div>" : "";
+        })
+        .join("") +
+      "</div>" +
+      '<p class="letter-salute">' +
+      esc(pkt.salutation) +
+      "</p>" +
+      letterBody +
+      '<p class="letter-sign">Sincerely,</p>' +
+      '<p class="letter-sign-file">“Signature on File”</p>' +
+      "<p><b>" +
+      esc(lh.signerName) +
+      "</b><br>" +
+      esc(lh.signerTitle) +
+      "</p>" +
+      '<div class="letter-cc"><span>cc:</span><div>' +
+      ccHtml +
+      "</div></div></article>" +
+      '<article class="letter-page ntp-proposal">' +
+      '<div class="prop-head"><div class="prop-from"><b>' +
+      esc(lh.contractorName || c.contractor || "") +
+      "</b>" +
+      addr
+        .map(function (line) {
+          return line ? "<div>" + esc(line) + "</div>" : "";
+        })
+        .join("") +
+      (lh.contractorPhone ? "<div>Phone: " + esc(lh.contractorPhone) + "</div>" : "") +
+      '</div><div class="prop-to"><b>' +
+      esc(lh.deldotMailName) +
+      "</b><div>" +
+      esc(lh.deldotStreet) +
+      "</div><div>" +
+      esc(lh.deldotPoBox) +
+      "</div><div>" +
+      esc(lh.deldotCity) +
+      "</div><div>Attn: " +
+      esc(lh.attention) +
+      "</div></div></div>" +
+      '<table class="prop-meta"><tbody>' +
+      "<tr><th>Date:</th><td>" +
+      esc(pkt.proposalDateLong) +
+      "</td></tr>" +
+      "<tr><th>Project Name:</th><td>" +
+      esc(pkt.projectName) +
+      "</td></tr>" +
+      "<tr><th>Project Design Number:</th><td>" +
+      esc(pkt.designNo) +
+      "</td></tr>" +
+      "<tr><th>AGR:</th><td>" +
+      esc(pkt.agrLine) +
+      "</td></tr>" +
+      "<tr><th>Task:</th><td>" +
+      esc(pkt.taskLine) +
+      "</td></tr>" +
+      "<tr><th>Project Billing Number:</th><td>" +
+      esc(pkt.billingNo) +
+      "</td></tr>" +
+      "</tbody></table>" +
+      '<table class="prop-items"><thead><tr><th>Item No.</th><th>Description</th><th>Units</th><th>Unit Measure</th><th>Price</th><th>Total</th></tr></thead><tbody>' +
+      (propRows || '<tr><td colspan="6">No pay-item lines — lump-sum NTP ' + esc(pkt.amountLetter) + ".</td></tr>") +
+      "</tbody></table>" +
+      '<div class="prop-foot"><div><b>PROPOSAL</b><div>' +
+      esc(pkt.proposalDateLong) +
+      "</div></div><div class=\"prop-total\">Total Amount Due: <b>" +
+      esc(pkt.amountLetter) +
+      "</b></div></div></article></div>"
     );
   }
 
@@ -1247,11 +1385,16 @@
 
   function renderPayItems(c) {
     var canEditItems = isFinance();
+    var lh = E.ensureLetterhead(c);
     var rows = (c.payItems || [])
       .map(function (it, i) {
         if (canEditItems) {
           return (
-            "<tr><td><input data-act=\"item-field\" data-field=\"code\" data-i=\"" +
+            "<tr><td><input data-act=\"item-field\" data-field=\"itemNo\" data-i=\"" +
+            i +
+            '" value="' +
+            esc(it.itemNo || "") +
+            '" style="width:70px;background:var(--panel);border:1px solid var(--border);border-radius:6px;padding:4px"></td><td><input data-act="item-field" data-field="code" data-i="' +
             i +
             '" value="' +
             esc(it.code) +
@@ -1278,7 +1421,7 @@
         }
         return (
           "<tr><td>" +
-          esc(it.code) +
+          esc(it.itemNo || it.code) +
           "</td><td>" +
           esc(it.category) +
           "</td><td>" +
@@ -1297,19 +1440,36 @@
       '<div class="card"><h2>Pay items · ' +
       esc(c.code) +
       "</h2>" +
-      "<p class=\"muted\">Each agreement has its own catalog. PMs enter awarded unit prices. Finance can add or remove items so this is not locked to one contract's Appendix C.</p>" +
+      "<p class=\"muted\">Each agreement has its own catalog. Item No. is the Appendix number that prints on the contractor proposal (2, 5, 7…). PMs enter awarded unit prices. Finance can add or remove items.</p>" +
       '<div class="fields">' +
       field("contractor", "Contractor", c.contractor) +
       field("pm", "Project manager", c.pm) +
       field("cap", "Agreement cap", c.cap) +
       "</div>" +
+      '<h3 style="margin-top:16px">NTP letterhead</h3>' +
+      "<p class=\"muted\">Copied from the Secretary letters you mail. Finance fills the contractor block once per agreement; extra cc on a QP is set on that QP.</p>" +
+      '<div class="fields">' +
+      field("lhContact", "Contractor contact", lh.contractorContact) +
+      field("lhCreds", "Credentials", lh.contractorCredentials) +
+      field("lhSalute", "Salutation", lh.contractorSalutation) +
+      field("lhPhone", "Contractor phone", lh.contractorPhone) +
+      field("lhAddress", "Contractor address", lh.contractorAddress, "textarea") +
+      field("lhBillingNo", "Billing contract no.", lh.billingContractNo) +
+      field("lhBillingTitle", "Billing contract title", lh.billingContractTitle) +
+      field("lhSigner", "Signer", lh.signerName) +
+      field("lhSignerTitle", "Signer title", lh.signerTitle) +
+      field("lhSignerPhone", "Signer phone", lh.signerPhone) +
+      field("lhCc", "Default cc (one per line)", (lh.cc || []).join("\n"), "textarea") +
+      "</div>" +
       '<div style="margin:10px 0;display:flex;gap:8px;flex-wrap:wrap"><button class="btn primary" data-act="save-contract-meta">Save agreement header</button>' +
       (canEditItems ? '<button class="btn" data-act="add-payitem">+ Pay item</button>' : "") +
       "</div>" +
-      '<table class="grid"><thead><tr><th>Item</th><th>Category</th><th>Description</th><th>Unit</th><th>Unit price</th>' +
+      '<table class="grid"><thead><tr><th>Item No.</th>' +
+      (canEditItems ? "<th>Code</th>" : "") +
+      "<th>Category</th><th>Description</th><th>Unit</th><th>Unit price</th>" +
       (canEditItems ? "<th></th>" : "") +
       "</tr></thead><tbody>" +
-      (rows || '<tr><td colspan="6" class="muted">No pay items on this template. Finance can add them, or switch the agreement to a unit-price template.</td></tr>') +
+      (rows || '<tr><td colspan="7" class="muted">No pay items on this template. Finance can add them, or switch the agreement to a unit-price template.</td></tr>') +
       "</tbody></table></div>"
     );
   }
@@ -1834,8 +1994,10 @@
       c.payItems = c.payItems || [];
       c.payItems.push({
         code: "",
+        itemNo: "",
         description: "",
         unit: "EA",
+        unitMeasure: "Each",
         category: "Custom",
         unitPrice: 0,
       });
@@ -1900,6 +2062,13 @@
       q.contractNo = val("contractNo");
       q.project = val("project");
       q.notes = val("notes");
+      q.billingNo = val("billingNo");
+      q.ccExtra = String(val("ccExtra") || "")
+        .split("\n")
+        .map(function (s) {
+          return s.trim();
+        })
+        .filter(Boolean);
       save();
       toast(noun(c) + " saved");
       render();
@@ -2024,6 +2193,8 @@
     }
     if (act === "prop-save") {
       q.proposal.reviewNotes = val("reviewNotes");
+      q.proposal.submittedDate = val("propDate") || q.proposal.submittedDate;
+      q.proposal.projectName = val("propProject") || q.proposal.projectName;
       q.proposal.status = "draft";
       save();
       toast("Proposal draft saved");
@@ -2032,6 +2203,8 @@
     }
     if (act === "prop-approve") {
       q.proposal.reviewNotes = val("reviewNotes");
+      q.proposal.submittedDate = val("propDate") || q.proposal.submittedDate || E.todayISO();
+      q.proposal.projectName = val("propProject") || q.proposal.projectName;
       q.proposal.status = "approved";
       save();
       toast("Proposal approved — issue NTP next");
@@ -2041,6 +2214,8 @@
     }
     if (act === "prop-revision") {
       q.proposal.reviewNotes = val("reviewNotes");
+      q.proposal.submittedDate = val("propDate") || q.proposal.submittedDate;
+      q.proposal.projectName = val("propProject") || q.proposal.projectName;
       q.proposal.status = "revision";
       save();
       toast("Marked for revision");
@@ -2050,6 +2225,8 @@
     if (act === "issue-ntp") {
       var date = val("ntpDate") || E.todayISO();
       q.ntpNotes = val("ntpNotes");
+      q.ntpLetterDate = val("ntpLetterDate") || date;
+      if (val("propDate") && q.proposal) q.proposal.submittedDate = val("propDate");
       if (!(q.proposal && q.proposal.lines && q.proposal.lines.length)) {
         q.ntpAmount = E.money(val("ntpLump"));
         q.ntpDate = date;
@@ -2126,6 +2303,25 @@
       c.contractor = val("contractor");
       c.pm = val("pm");
       c.cap = E.money(val("cap"));
+      var lh = E.ensureLetterhead(c);
+      lh.contractorContact = val("lhContact");
+      lh.contractorCredentials = val("lhCreds");
+      lh.contractorSalutation = val("lhSalute");
+      lh.contractorPhone = val("lhPhone");
+      lh.contractorAddress = val("lhAddress");
+      lh.contractorName = c.contractor;
+      lh.billingContractNo = val("lhBillingNo");
+      lh.billingContractTitle = val("lhBillingTitle");
+      lh.signerName = val("lhSigner");
+      lh.signerTitle = val("lhSignerTitle");
+      lh.signerPhone = val("lhSignerPhone");
+      lh.cc = String(val("lhCc") || "")
+        .split("\n")
+        .map(function (s) {
+          return s.trim();
+        })
+        .filter(Boolean);
+      c.letterhead = lh;
       save();
       toast("Agreement header saved");
       render();
@@ -2210,6 +2406,8 @@
       if (item) {
         line.description = item.description;
         line.unit = item.unit;
+        line.unitMeasure = item.unitMeasure || "";
+        line.itemNo = item.itemNo || item.code;
         line.unitPrice = Number(item.unitPrice || 0);
       }
       save();
@@ -2237,6 +2435,8 @@
       if (item) {
         line.description = item.description;
         line.unit = item.unit;
+        line.unitMeasure = item.unitMeasure || "";
+        line.itemNo = item.itemNo || item.code;
         line.unitPrice = Number(item.unitPrice || 0);
       }
       if (inv.lines.length) inv.amount = E.sumLines(inv.lines);
