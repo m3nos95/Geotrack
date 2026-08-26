@@ -1,0 +1,624 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>DelDOT Source of Supply</title>
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="sos/sos.css?v=20260821c">
+</head>
+<body>
+<div class="topbar">
+  <div class="topbar-logo">
+    <img src="sos/deldot-mark.png" alt="DelDOT">
+  </div>
+  <div class="topbar-title">Source of Supply</div>
+  <div class="topbar-links">
+    <a href="deldot-sampletrack.html">LabTrak</a>
+    <a href="geotrak/">GeoTrak</a>
+  </div>
+  <div class="topbar-badge">DROP XLS → LETTER</div>
+</div>
+
+<div class="shell">
+  <div class="project-header">
+    <div class="ph-block">
+      <div class="ph-label">Document Type</div>
+      <select class="ph-input" id="ph-dockind" style="min-width:140px;">
+        <option value="application">Application No.</option>
+        <option value="contract">State Contract No.</option>
+        <option value="agreement">Construction Agreement No.</option>
+      </select>
+    </div>
+    <div class="ph-block">
+      <div class="ph-label">Contract / Application #</div>
+      <div class="ph-ac-wrap">
+        <input class="ph-input mono contract" id="ph-contract" autocomplete="off" placeholder="type the application or contract #">
+        <div class="ph-ac-dd" id="ph-ac-contract"></div>
+      </div>
+    </div>
+    <div class="ph-block">
+      <div class="ph-label">Spec Year</div>
+      <input class="ph-input" id="ph-specyear" readonly placeholder="—" title="Controlling specification year and revision from the Awarded Contract List. Item numbers are checked against that book.">
+    </div>
+    <div class="ph-block" style="flex:3; min-width:280px;">
+      <div class="ph-label">Project Title</div>
+      <div class="ph-ac-wrap">
+        <input class="ph-input wide" id="ph-title" style="width:100%;" autocomplete="off" placeholder="Project title">
+        <div class="ph-ac-dd" id="ph-ac-title"></div>
+      </div>
+    </div>
+    <div class="ph-block">
+      <div class="ph-label">Contractor</div>
+      <div style="display:flex;gap:4px;align-items:center;">
+        <div class="ph-ac-wrap" style="flex:1;">
+          <input class="ph-input" id="ph-contractor" style="width:100%;" autocomplete="off" placeholder="Contractor name">
+          <div class="ph-ac-dd" id="ph-ac-contractor"></div>
+        </div>
+        <button class="btn btn-ghost btn-sm btn-icon" onclick="openContractorModal()" title="Edit contractor address">✎</button>
+      </div>
+      <textarea id="ph-contractor-addr" style="display:none;" rows="3"></textarea>
+    </div>
+    <div class="ph-block">
+      <div class="ph-label">District</div>
+      <select class="ph-input" id="ph-district" style="min-width:120px;">
+        <option>South</option>
+        <option>North</option>
+        <option>Canal</option>
+        <option>Group 1</option>
+        <option>Group 2</option>
+        <option>Group 3</option>
+        <option>Group 4</option>
+      </select>
+    </div>
+    <div class="ph-block">
+      <div class="ph-label">DelDOT Contact</div>
+      <div class="ph-ac-wrap">
+        <input class="ph-input" id="ph-contact" autocomplete="off" placeholder="Inspector / PM">
+        <div class="ph-ac-dd" id="ph-ac-contact"></div>
+      </div>
+    </div>
+    <div class="ph-block">
+      <div class="ph-label">Letter Date</div>
+      <input class="ph-input" type="date" id="ph-date" title="Date printed on the letter. Set to today when you import a form or start a new letter, not the contractor SOS submission date.">
+    </div>
+    <div class="ph-block">
+      <div class="ph-label">Prepared by</div>
+      <input class="ph-input" id="ph-author-name" autocomplete="off" placeholder="Name on the letter" title="Person completing this letter. Goes on the signature block and Digitally signed by line.">
+    </div>
+    <div class="ph-block" style="flex:2; min-width:200px;">
+      <div class="ph-label">Title</div>
+      <input class="ph-input wide" id="ph-author-title" autocomplete="off" placeholder="Materials Technician" style="width:100%;">
+    </div>
+    <div class="ph-block">
+      <div class="ph-label">Phone</div>
+      <input class="ph-input" id="ph-author-phone" autocomplete="off" placeholder="302-760-2375" title="Printed in If you have any questions, please call me at…">
+    </div>
+    <div class="ph-actions">
+      <div class="rev-badge" id="rev-display">REV 01</div>
+      <button class="btn btn-ghost btn-sm" onclick="newLetter()" title="Clear this job and start a blank letter" style="color:var(--red);border-color:var(--red);">New letter</button>
+      <button class="btn btn-secondary btn-sm" onclick="openRevModal()">+ New Revision</button>
+      <button class="btn btn-primary btn-sm" onclick="refreshLetter()">↻ Refresh Letter</button>
+    </div>
+  </div>
+
+  <div class="main-panel">
+    <div id="warn-box" style="display:none;"></div>
+
+    <div class="tabs">
+      <div class="tab active" data-tab="import" onclick="switchTab('import',this)">Import</div>
+      <div class="tab" data-tab="items" onclick="switchTab('items',this)">
+        SOS Items <span class="tab-count" id="items-count">0</span>
+      </div>
+      <div class="tab" data-tab="cc" onclick="switchTab('cc',this)">
+        CC List <span class="tab-count" id="cc-count">0</span>
+      </div>
+      <div class="tab" data-tab="revisions" onclick="switchTab('revisions',this)">
+        Revisions <span class="tab-count" id="rev-count">0</span>
+      </div>
+      <div class="tab" data-tab="sources" onclick="switchTab('sources',this)">
+        Source Library <span class="tab-count" id="sources-count">0</span>
+      </div>
+      <div class="tab" data-tab="specs" onclick="switchTab('specs',this)">
+        Spec Library <span class="tab-count" id="specs-count">0</span>
+      </div>
+      <div class="tab" data-tab="lists" onclick="switchTab('lists',this)">
+        APL / Chart <span class="tab-count" id="lists-count">0</span>
+      </div>
+    </div>
+
+    <div class="tab-panel active" id="tab-import">
+      <div style="padding:12px 0;display:flex;flex-direction:column;gap:14px;">
+        <div class="import-zone" id="drop-zone" onclick="document.getElementById('file-input').click()">
+          <div class="import-zone-label" id="drop-label">Drop DelDOT SOS spreadsheet here</div>
+          <div class="import-zone-sub">Contractor Source of Supply form · .xls or .xlsx — parsed locally, no API key. Dropping a new form replaces the current letter.</div>
+          <input type="file" id="file-input" style="display:none" accept=".xls,.xlsx" onchange="handleImportFile(this.files[0])">
+        </div>
+        <div id="import-status" style="display:none;">
+          <div id="import-status-text"></div>
+        </div>
+        <div id="import-preview-block" style="display:none;">
+          <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;">
+            <div class="form-title" style="margin:0;flex:1;" id="import-preview-title">Parsed items</div>
+            <button class="btn btn-primary btn-sm" onclick="importAllParsed()">✓ Load into letter</button>
+            <button class="btn btn-ghost btn-sm" onclick="clearImportPreview()">✕ Clear preview</button>
+          </div>
+          <div class="items-table-wrap">
+            <table class="items-table">
+              <thead>
+                <tr>
+                  <th style="width:110px;">Spec #(s)</th>
+                  <th>Description</th>
+                  <th>Source</th>
+                  <th style="width:140px;">Action</th>
+                  <th style="width:90px;">Rule</th>
+                </tr>
+              </thead>
+              <tbody id="import-preview-tbody"></tbody>
+            </table>
+          </div>
+        </div>
+        <div style="font-size:11px;color:var(--text-dim);line-height:1.55;">
+          The spreadsheet is read in this browser. Each row is classified (borrow / GABC / Superpave / tack coat / APL / precast / PCC / …)
+          and the matching letter ACTION language is applied. Tack/striping check the linked Approved Product List. GABC/borrow check the Aggregate Chart on the <strong>APL / Chart</strong> tab — drop the current office chart there so approvals stay current.
+          Drop a contractor SOS form (.xls / .xlsx). Multi-tab lists (Spec / Item Description) are read on every sheet.
+          The last job stays in this browser until you drop a new form or click <strong>New letter</strong> (header) / <strong>Clear All</strong> (items). ✕ Clear preview only hides the import table — it does not wipe the loaded letter.
+        </div>
+      </div>
+    </div>
+
+    <div class="tab-panel" id="tab-items">
+      <div class="toolbar">
+        <button class="btn btn-primary btn-sm" onclick="openAddModal()">+ Add Item</button>
+        <select class="form-select" id="filter-action" style="font-size:11px;padding:4px 8px;" onchange="renderItems()">
+          <option value="">All Actions</option>
+          <option value="approved">Approved</option>
+          <option value="test">Must Be Tested</option>
+          <option value="not-approved">Not Approved</option>
+          <option value="apl">APL</option>
+          <option value="on-file">On File</option>
+          <option value="visual">Visual</option>
+          <option value="submit">Submit</option>
+        </select>
+        <div class="toolbar-sep"></div>
+        <button class="btn btn-ghost btn-sm" onclick="exportItemsXls()">↓ Export items</button>
+        <button class="btn btn-ghost btn-sm" onclick="clearAllItems()" style="color:var(--red);border-color:var(--red);">✕ Clear All</button>
+      </div>
+      <div id="items-empty" class="empty-state" style="display:none;">
+        <div class="empty-icon">📄</div>
+        <div class="empty-label">No SOS items yet</div>
+        <div class="empty-hint" style="font-size:12px;color:var(--text-dim);margin-bottom:10px;">Click New letter if the previous job is still in the header, then drop the next .xls.</div>
+        <div class="import-zone landing-drop" onclick="document.getElementById('file-input').click()">
+          <div class="import-zone-label">Drop the contractor .xls here</div>
+          <div class="import-zone-sub">or use the Import tab</div>
+        </div>
+      </div>
+      <div class="items-table-wrap" id="items-table-wrap">
+        <table class="items-table" id="items-table">
+          <thead>
+            <tr>
+              <th style="width:120px;">Spec #(s)</th>
+              <th style="width:180px;">Item Description</th>
+              <th>Primary Source</th>
+              <th style="width:220px;">Action</th>
+            </tr>
+          </thead>
+          <tbody id="items-tbody"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="tab-panel" id="tab-cc">
+      <div style="font-size:12px;color:var(--text-mid);line-height:1.5;margin:4px 0 10px;">
+        CC follows the materials on the letter. Soil / stone → lab results person; hot mix → HMA person.
+        Check <strong>Always</strong> plus <strong>Canal</strong> (or South / North) to copy someone on every job in that district.
+        Leave district boxes blank to copy in every district. District samplers below are for must-be-tested ACTION notes only.
+      </div>
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
+        <div style="font-size:10px;font-weight:700;color:var(--text-dim);letter-spacing:.08em;text-transform:uppercase;">Who to copy, by material</div>
+        <div style="display:flex;gap:6px;">
+          <button class="btn btn-ghost btn-sm" onclick="addCcRule()">+ Assignment</button>
+          <button class="btn btn-ghost btn-sm" onclick="resetCcRules()">Reset defaults</button>
+          <button class="btn btn-primary btn-sm" onclick="applyCcRulesToLetter()">Apply to this letter</button>
+        </div>
+      </div>
+      <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);overflow:auto;box-shadow:var(--shadow);margin-bottom:14px;">
+        <table class="items-table" id="cc-rules-table">
+          <thead>
+            <tr>
+              <th style="min-width:140px;">Name</th>
+              <th style="width:120px;">Phone</th>
+              <th>Copy when the letter has…</th>
+              <th style="width:40px;"></th>
+            </tr>
+          </thead>
+          <tbody id="cc-rules-tbody"></tbody>
+        </table>
+      </div>
+      <div style="font-size:10px;font-weight:700;color:var(--text-dim);letter-spacing:.08em;margin-bottom:6px;text-transform:uppercase;">District samplers (must-be-tested soil / stone)</div>
+      <div id="cc-sampler-fields" style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:14px;"></div>
+      <div class="toolbar">
+        <button class="btn btn-primary btn-sm" onclick="openCCModal()">+ Add person</button>
+        <button class="btn btn-ghost btn-sm" onclick="addHarvestedAlwaysToLetter()">+ Harvested names</button>
+        <input class="lib-search" id="cc-lib-search" placeholder="Search library…" oninput="renderCCLib()" style="width:180px;">
+      </div>
+      <div id="cc-harvest-status" style="font-size:12px;color:var(--text-mid);margin:4px 0 10px;line-height:1.45;"></div>
+      <div class="import-zone" id="cc-drop-zone" onclick="document.getElementById('cc-file-input').click()" style="margin-bottom:12px;padding:16px;">
+        <div class="import-zone-label">Drop SOS-cc.json here (optional library)</div>
+        <div class="import-zone-sub">Harvested names go into the library. ✕ on a library row takes a retired person off the master list so they will not come back from SOS-cc.json. Material assignments above decide who is actually copied on import.</div>
+        <input type="file" id="cc-file-input" style="display:none" accept=".json" onchange="handleCcFile(this.files[0])">
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:4px;">
+        <div>
+          <div style="font-size:10px;font-weight:700;color:var(--text-dim);letter-spacing:.08em;margin-bottom:6px;text-transform:uppercase;">CC Library <span id="cc-lib-count"></span></div>
+          <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;box-shadow:var(--shadow);">
+            <table class="items-table">
+              <thead><tr><th>Name</th><th>Org</th><th style="width:148px;"></th></tr></thead>
+              <tbody id="cc-lib-tbody"></tbody>
+            </table>
+          </div>
+        </div>
+        <div>
+          <div style="font-size:10px;font-weight:700;color:var(--text-dim);letter-spacing:.08em;margin-bottom:6px;text-transform:uppercase;">On This Letter <span id="cc-active-count"></span></div>
+          <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;box-shadow:var(--shadow);">
+            <table class="items-table">
+              <thead><tr><th>Name</th><th>Org</th><th style="width:88px;"></th></tr></thead>
+              <tbody id="cc-tbody"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="tab-panel" id="tab-revisions">
+      <div style="padding:12px 0;">
+        <div class="rev-timeline" id="rev-timeline"></div>
+      </div>
+    </div>
+
+    <div class="tab-panel" id="tab-sources">
+      <div class="toolbar">
+        <button class="btn btn-primary btn-sm" onclick="openSourceModal()">+ Add Source</button>
+        <input class="lib-search" id="lib-search" placeholder="Search suppliers…" oninput="renderSourceLib()">
+        <div class="toolbar-sep"></div>
+        <span style="font-size:11px;color:var(--text-dim);font-family:var(--mono);" id="lib-count-label"></span>
+      </div>
+      <div id="lib-harvest-status" class="ok-banner" style="display:none;margin:0 0 10px;"></div>
+      <div class="import-zone" id="sources-drop-zone" onclick="document.getElementById('sources-file-input').click()" style="min-height:72px;padding:14px;">
+        <div class="import-zone-label">Drop SOS-libraries.json from learn-sos.bat</div>
+        <div class="import-zone-sub">Fills Source Library and Spec Library from issued letters. Saved in this browser.</div>
+        <input type="file" id="sources-file-input" style="display:none" accept=".json" onchange="handleListFile(this.files[0])">
+      </div>
+      <div class="lib-table-wrap">
+        <table class="lib-table">
+          <thead>
+            <tr>
+              <th style="width:180px;">Supplier Name</th>
+              <th style="width:140px;">Location</th>
+              <th style="width:140px;">Address</th>
+              <th style="width:120px;">Phone</th>
+              <th>Tags</th>
+              <th style="width:80px;"></th>
+            </tr>
+          </thead>
+          <tbody id="lib-tbody"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="tab-panel" id="tab-specs">
+      <div class="toolbar">
+        <button class="btn btn-primary btn-sm" onclick="openSpecLibModal()">+ Add Spec</button>
+        <input class="lib-search" id="spec-lib-search" placeholder="Search spec # or description…" oninput="renderSpecLibTab()">
+        <div class="toolbar-sep"></div>
+        <span style="font-size:11px;color:var(--text-dim);font-family:var(--mono);" id="spec-lib-count-label"></span>
+      </div>
+      <div id="spec-harvest-status" class="ok-banner" style="display:none;margin:0 0 10px;"></div>
+      <div class="import-zone" id="specs-drop-zone" onclick="document.getElementById('specs-file-input').click()" style="min-height:72px;padding:14px;">
+        <div class="import-zone-label">Drop SOS-libraries.json from learn-sos.bat</div>
+        <div class="import-zone-sub">Same file as Source Library — specs and sources both load.</div>
+        <input type="file" id="specs-file-input" style="display:none" accept=".json" onchange="handleListFile(this.files[0])">
+      </div>
+      <div class="lib-table-wrap">
+        <table class="lib-table">
+          <thead>
+            <tr>
+              <th style="width:110px;">Spec #</th>
+              <th>Description</th>
+              <th style="width:160px;">Last Source</th>
+              <th style="width:80px;"></th>
+            </tr>
+          </thead>
+          <tbody id="spec-lib-tbody"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="tab-panel" id="tab-lists">
+      <div style="padding:12px 0;display:flex;flex-direction:column;gap:14px;">
+        <div id="lists-status" class="ok-banner" style="display:none;"></div>
+        <div style="font-size:12px;color:var(--text-mid);line-height:1.55;">
+          <a href="https://materialsandresearch.deldot.gov/index.php/Approved_Product_Lists" target="_blank" rel="noopener">DelDOT Approved Product Lists</a>
+          are public PDFs (tack coat, pavement marking, crack seal, curing, TTC, …). This app ships a snapshot and re-checks it when you run <code>refresh-sos-lists.bat</code>.
+          Aggregate pits move on and off the <strong>Approved Source List</strong> constantly. On the office PC, <code>refresh-sos-lists.bat</code> (daily) and <code>watch-sos-inbox.bat</code> pull
+          <code>\\DOTFS01\Groups\Geo Construction Test Report\Reference Samples\Approved Source List.xlsx</code>.
+          Chrome cannot open that folder from this HTML file. Use <strong>Pull chart from office share</strong> while <code>start-sos.bat</code> is running (that helper reads the share), or drop the .xlsx here.
+          The <strong>Source of Supply Database</strong> (Standard Items / Special Provisions) is the official item catalog — drop that .xlsx here so spec numbers pick up the Department description and acceptance method.
+          Item numbers on state contracts are also checked against the contract’s controlling <strong>spec year</strong> from the Awarded Contract List (6/5/2026 snapshot) and the Standard Items lists for spec years 15 / 20 / 25.
+        </div>
+        <div class="import-zone" id="lists-drop-zone" onclick="document.getElementById('lists-file-input').click()">
+          <div class="import-zone-label">Drop Approved Source List.xlsx, Source of Supply Database.xlsx, SOS-lists.json, SOS-language.json, SOS-libraries.json, or SOS-cc.json</div>
+          <div class="import-zone-sub">Issued letter PDFs do not need a matching .xls. Run learn-sos.bat, then drop SOS-language.json here and SOS-libraries.json on Source Library.</div>
+          <input type="file" id="lists-file-input" style="display:none" accept=".xls,.xlsx,.json" onchange="handleListFile(this.files[0])">
+        </div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;">
+          <button class="btn btn-primary btn-sm" onclick="pullOfficeChart()" title="Read Approved Source List.xlsx from the Geo Construction Test Report share">↓ Pull chart from office share</button>
+          <button class="btn btn-ghost btn-sm" onclick="reloadAplSnapshot()">↻ Reload APL snapshot</button>
+          <button class="btn btn-ghost btn-sm" onclick="clearAggregateChart()">✕ Clear aggregate chart</button>
+        </div>
+        <div>
+          <div style="font-size:10px;font-weight:700;color:var(--text-dim);letter-spacing:.08em;margin-bottom:6px;text-transform:uppercase;">Official APL PDFs</div>
+          <div id="apl-link-list" style="display:flex;flex-wrap:wrap;gap:6px;"></div>
+        </div>
+        <div class="items-table-wrap">
+          <table class="items-table">
+            <thead><tr><th>List</th><th>Loaded</th><th>Rows</th></tr></thead>
+            <tbody id="lists-tbody"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="letter-panel">
+    <div class="letter-panel-header">
+      <button class="btn btn-ghost btn-sm" id="highlight-btn" onclick="toggleHighlightMode()">🖊 Highlight</button>
+      <button class="btn btn-ghost btn-sm" onclick="clearHighlights()" title="Remove yellow highlight marks on the preview">✕ Clear highlights</button>
+      <button class="btn btn-ghost btn-sm" onclick="printLetter()">🖨 Print / PDF</button>
+      <button class="btn btn-ghost btn-sm" onclick="exportLetterDoc()" title="Save a Word file you can edit">Export .doc</button>
+      <button class="btn btn-ghost btn-sm" onclick="document.getElementById('sig-upload').click()">✍ Signature</button>
+      <input type="file" id="sig-upload" accept="image/*" style="display:none" onchange="uploadSignature(event)">
+    </div>
+    <div class="letter-scroll">
+      <div class="letter-preview-label">Letter Preview</div>
+      <div class="letter-doc" id="letter-doc"></div>
+    </div>
+  </div>
+</div>
+
+<!-- CONTRACTOR MODAL -->
+<div class="modal-backdrop" id="contractor-modal">
+  <div class="modal" style="max-width:420px;">
+    <div class="modal-header">
+      <div class="modal-title">Contractor Details</div>
+      <button class="btn btn-ghost btn-sm btn-icon" onclick="closeModal('contractor-modal')">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-group">
+        <label class="form-label">Company Name</label>
+        <input class="form-input" id="cm-name">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Street Address</label>
+        <input class="form-input" id="cm-street">
+      </div>
+      <div class="form-group">
+        <label class="form-label">City, State ZIP</label>
+        <input class="form-input" id="cm-citystatezip">
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost btn-sm" onclick="closeModal('contractor-modal')">Cancel</button>
+      <button class="btn btn-primary btn-sm" onclick="saveContractorModal()">Save</button>
+    </div>
+  </div>
+</div>
+
+<!-- ADD / EDIT ITEM -->
+<div class="modal-backdrop" id="add-modal">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title">SOS Item</div>
+      <button class="btn btn-ghost btn-sm btn-icon" onclick="closeModal('add-modal')">✕</button>
+    </div>
+    <div class="modal-body">
+      <div style="display:flex;flex-direction:column;gap:12px;">
+        <div class="form-group">
+          <div class="form-label">Specification Number(s)</div>
+          <div class="spec-field-wrap">
+            <div class="spec-tags" id="spec-tags-container" onclick="document.getElementById('spec-tag-input').focus()">
+              <input class="spec-tag-input" id="spec-tag-input" placeholder="Type # then Enter…"
+                onkeydown="handleSpecTagInput(event)" oninput="specDropdownSearch(this.value)"
+                onfocus="specDropdownSearch(this.value)" autocomplete="off">
+            </div>
+            <div class="spec-dropdown" id="spec-dd"></div>
+          </div>
+        </div>
+        <div class="form-group">
+          <div class="form-label">Item Description</div>
+          <input class="form-input" id="f-desc">
+        </div>
+        <div class="form-group">
+          <div class="form-label">Material Sub-Items</div>
+          <div class="spec-tags" id="subitem-tags-container" onclick="document.getElementById('subitem-tag-input').focus()">
+            <input class="spec-tag-input" id="subitem-tag-input" placeholder="Type sub-item and press Enter…" onkeydown="handleSubItemInput(event)">
+          </div>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+          <div class="form-group" style="grid-column:span 2;">
+            <div class="form-label">Primary Source</div>
+            <div class="src-field-wrap">
+              <input class="form-input" id="f-src-name" autocomplete="off"
+                oninput="srcAutocomplete('primary',this.value)" onfocus="srcAutocomplete('primary',this.value)"
+                onkeydown="srcKeyNav(event,'primary')">
+              <div class="src-dropdown" id="src-dd-primary"></div>
+            </div>
+          </div>
+          <div class="form-group"><div class="form-label">Location</div><input class="form-input" id="f-src-loc"></div>
+          <div class="form-group"><div class="form-label">Address</div><input class="form-input" id="f-src-addr"></div>
+          <div class="form-group"><div class="form-label">Phone</div><input class="form-input" id="f-src-phone"></div>
+          <div class="form-group" style="grid-column:span 2;">
+            <div class="form-label">Alt Source (optional)</div>
+            <div class="src-field-wrap">
+              <input class="form-input" id="f-alt-name" autocomplete="off"
+                oninput="srcAutocomplete('alt',this.value)" onfocus="srcAutocomplete('alt',this.value)"
+                onkeydown="srcKeyNav(event,'alt')">
+              <div class="src-dropdown" id="src-dd-alt"></div>
+            </div>
+          </div>
+          <div class="form-group"><div class="form-label">Alt Location</div><input class="form-input" id="f-alt-loc"></div>
+          <div class="form-group"><div class="form-label">Alt Address</div><input class="form-input" id="f-alt-addr"></div>
+          <div class="form-group">
+            <div class="form-label">Action Type</div>
+            <select class="form-select" id="f-action" onchange="onItemActionTypeChange()">
+              <option value="approved">Approved</option>
+              <option value="test">Must Be Tested</option>
+              <option value="not-approved">Not Approved</option>
+              <option value="apl">APL Item</option>
+              <option value="on-file">On File at M&amp;R Lab</option>
+              <option value="visual">Visual Inspection</option>
+              <option value="submit">Submit / Provide</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <div class="form-label">Test Date</div>
+            <input class="form-input" id="f-test-date" type="date">
+          </div>
+        </div>
+        <div class="form-group">
+          <div class="form-label">Action Notes</div>
+          <select class="form-select" id="f-action-note-preset" onchange="applyActionNotePreset(this.value)" style="margin-bottom:6px;">
+            <option value="">Choose a stock note…</option>
+          </select>
+          <textarea class="form-textarea" id="f-action-notes" placeholder="Pick a stock note or type your own. Must Be Tested fills the sampler / lab-results contacts for the district."></textarea>
+        </div>
+        <div style="display:flex;gap:16px;align-items:center;padding:8px 0;">
+          <label style="display:flex;align-items:center;gap:6px;font-size:12px;cursor:pointer;"><input type="checkbox" id="f-apl"> APL Item</label>
+          <label style="display:flex;align-items:center;gap:6px;font-size:12px;cursor:pointer;"><input type="checkbox" id="f-one-source"> One source at a time</label>
+          <label style="display:flex;align-items:center;gap:6px;font-size:12px;cursor:pointer;"><input type="checkbox" id="f-on-file"> Test reports on file</label>
+        </div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModal('add-modal')">Cancel</button>
+      <button class="btn btn-primary" onclick="saveItem()">Save Item</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-backdrop" id="cc-modal">
+  <div class="modal" style="width:400px;">
+    <div class="modal-header">
+      <div class="modal-title" id="cc-modal-title">Add CC person</div>
+      <button class="btn btn-ghost btn-sm btn-icon" onclick="closeModal('cc-modal')">✕</button>
+    </div>
+    <div class="modal-body">
+      <input type="hidden" id="cc-edit-lib-id" value="">
+      <input type="hidden" id="cc-edit-letter-id" value="">
+      <div class="form-group"><div class="form-label">Name</div><input class="form-input" id="cc-name" placeholder="First Last"></div>
+      <div class="form-group">
+        <div class="form-label">Organization</div>
+        <select class="form-select" id="cc-org">
+          <option>DelDOT</option>
+          <option>Contractor</option>
+          <option>Subconsultant</option>
+          <option>Other</option>
+        </select>
+      </div>
+      <div class="form-group"><div class="form-label">Role / Title</div><input class="form-input" id="cc-role"></div>
+      <label style="display:flex;align-items:center;gap:8px;font-size:13px;margin-top:4px;">
+        <input type="checkbox" id="cc-add-to-letter" checked>
+        Also put on this letter
+      </label>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModal('cc-modal')">Cancel</button>
+      <button class="btn btn-primary" onclick="saveCC()" id="cc-save-btn">Save</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-backdrop" id="rev-modal">
+  <div class="modal" style="width:420px;">
+    <div class="modal-header">
+      <div class="modal-title">Create New Revision</div>
+      <button class="btn btn-ghost btn-sm btn-icon" onclick="closeModal('rev-modal')">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-group">
+        <div class="form-label">Revision Notes</div>
+        <textarea class="form-textarea" id="rev-notes" style="min-height:80px;"></textarea>
+      </div>
+      <div class="form-group">
+        <div class="form-label">Changed Items (spec #s)</div>
+        <input class="form-input mono" id="rev-items" placeholder="#401xxx">
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModal('rev-modal')">Cancel</button>
+      <button class="btn btn-primary" onclick="saveRevision()">Create Revision</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-backdrop" id="spec-lib-modal">
+  <div class="modal" style="width:480px;">
+    <div class="modal-header">
+      <div class="modal-title" id="spec-lib-modal-title">Add Spec to Library</div>
+      <button class="btn btn-ghost btn-sm btn-icon" onclick="closeModal('spec-lib-modal')">✕</button>
+    </div>
+    <div class="modal-body">
+      <input type="hidden" id="sl-spec-edit-id">
+      <div class="form-group"><div class="form-label">Specification Number</div><input class="form-input mono" id="sl-spec-num"></div>
+      <div class="form-group"><div class="form-label">Description</div><input class="form-input" id="sl-spec-desc"></div>
+      <div class="form-group"><div class="form-label">Notes</div><input class="form-input" id="sl-spec-notes"></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModal('spec-lib-modal')">Cancel</button>
+      <button class="btn btn-primary" onclick="saveSpecLibEntry()">Save to Library</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-backdrop" id="source-modal">
+  <div class="modal" style="width:560px;">
+    <div class="modal-header">
+      <div class="modal-title" id="source-modal-title">Add Source to Library</div>
+      <button class="btn btn-ghost btn-sm btn-icon" onclick="closeModal('source-modal')">✕</button>
+    </div>
+    <div class="modal-body">
+      <input type="hidden" id="sl-edit-id">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+        <div class="form-group" style="grid-column:span 2;"><div class="form-label">Supplier Name</div><input class="form-input" id="sl-name"></div>
+        <div class="form-group"><div class="form-label">Location</div><input class="form-input" id="sl-loc"></div>
+        <div class="form-group"><div class="form-label">Address</div><input class="form-input" id="sl-addr"></div>
+        <div class="form-group"><div class="form-label">Phone</div><input class="form-input" id="sl-phone"></div>
+        <div class="form-group"><div class="form-label">Contact</div><input class="form-input" id="sl-contact"></div>
+      </div>
+      <div class="form-group" style="margin-top:10px;">
+        <div class="form-label">Material Tags</div>
+        <div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:8px;" id="sl-tag-preset"></div>
+        <div style="display:flex;gap:6px;">
+          <input class="form-input" id="sl-tag-input" placeholder="Custom tag…" style="flex:1;" onkeydown="if(event.key==='Enter'){event.preventDefault();addCustomTag();}">
+          <button class="btn btn-secondary btn-sm" onclick="addCustomTag()">+ Add</button>
+        </div>
+        <div style="display:flex;flex-wrap:wrap;gap:4px;margin-top:8px;min-height:28px;" id="sl-tags-active"></div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModal('source-modal')">Cancel</button>
+      <button class="btn btn-primary" onclick="saveSource()">Save to Library</button>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+<script src="sos/spec-letter-descs.js?v=20260821a"></script>
+<script src="sos/spec-year-data.js?v=20260821e"></script>
+<script src="sos/sos-data.js?v=20260821e"></script>
+<script src="sos/sos-lists.js?v=20260821e"></script>
+<script src="sos/sos-engine.js?v=20260821f"></script>
+<script src="sos/letter-export.js?v=20260821c"></script>
+<script src="sos/sos-app.js?v=20260821e"></script>
+</body>
+</html>

@@ -1,3 +1,23 @@
 node_modules/
 __pycache__/
 supabase/scripts/node_modules/
+
+# Contractor SOS examples + issued letters (public repo — keep local)
+sos/corpus/cases/*
+!sos/corpus/cases/.gitkeep
+sos/corpus/drop/*
+!sos/corpus/drop/.gitkeep
+sos/corpus/report.md
+sos/corpus/report.json
+sos/corpus/cc-harvest.json
+sos/corpus/language-harvest.json
+sos/corpus/SOS-language.json
+sos/corpus/SOS-cc.json
+sos/corpus/SOS-learn-report.md
+sos/corpus/libraries-harvest.json
+sos/corpus/SOS-libraries.json
+sos/lists/._tmp-apl.pdf
+sos/lists/aggregate-snapshot.json
+sos/lists/Approved Source List.xlsx
+sos/SOS-watch.json
+sos/inbox-staging/
