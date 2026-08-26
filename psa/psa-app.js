@@ -21,6 +21,7 @@
     bulkCloseoutId: null,
     bulkDate: "",
     bulkNotes: "",
+    bulkCc: null,
   };
 
   var state = null;
@@ -342,15 +343,17 @@
       .replace(/"/g, "&quot;");
   }
 
-  function officialLetterheadHtml(c) {
+  function officialLetterheadHtml(c, dateLong) {
     var lh = E.ensureLetterhead(c);
     return (
       '<div class="letter-letterhead">' +
       '<img src="assets/letterhead-header.jpg" alt="State of Delaware Department of Transportation">' +
-      '<div class="letter-secretary">' +
+      '<div class="letter-head-row"><div class="letter-secretary">' +
       esc(lh.secretaryName) +
       "<br>" +
       esc(lh.secretaryTitle) +
+      "</div>" +
+      (dateLong ? '<div class="letter-date">' + esc(dateLong) + "</div>" : "") +
       "</div></div>"
     );
   }
@@ -359,6 +362,101 @@
     return (
       '<div class="letter-official-footer"><img src="assets/letterhead-footer.png" alt="DelDOT"></div>'
     );
+  }
+
+  function letterAddrHtml(lh) {
+    var addr = String((lh && lh.contractorAddress) || "").split("\n");
+    var contactLine = [lh.contractorContact, lh.contractorCredentials]
+      .filter(Boolean)
+      .join(", ");
+    return (
+      '<div class="letter-addr">' +
+      (contactLine ? "<div>" + esc(contactLine) + "</div>" : "") +
+      (lh.contractorName ? "<div>" + esc(lh.contractorName) + "</div>" : "") +
+      addr
+        .map(function (line) {
+          return line ? "<div>" + esc(line) + "</div>" : "";
+        })
+        .join("") +
+      "</div>"
+    );
+  }
+
+  function letterSignHtml(lh) {
+    return (
+      '<p class="letter-sign">Sincerely,</p>' +
+      '<p class="letter-sign-file">“Signature on File”</p>' +
+      "<p><b>" +
+      esc(lh.signerName) +
+      "</b><br>" +
+      esc(lh.signerTitle) +
+      "</p>"
+    );
+  }
+
+  function letterCcBlockHtml(cc) {
+    return (
+      '<div class="letter-cc"><span>cc:</span><div>' +
+      (cc || [])
+        .map(function (x) {
+          return "<div>" + esc(x) + "</div>";
+        })
+        .join("") +
+      "</div></div>"
+    );
+  }
+
+  function renderCcEditor(list, scope) {
+    var rows = (list || [])
+      .map(function (name, i) {
+        return (
+          '<div class="cc-chip"><span>' +
+          esc(name) +
+          '</span><button type="button" class="btn small" data-act="cc-del" data-scope="' +
+          esc(scope) +
+          '" data-i="' +
+          i +
+          '">Remove</button></div>'
+        );
+      })
+      .join("");
+    return (
+      '<div class="cc-editor no-print"><div class="cc-label">cc on this letter</div>' +
+      (rows || '<div class="muted">No cc. Add a name below.</div>') +
+      '<div class="cc-add"><input id="ccAdd-' +
+      esc(scope) +
+      '" placeholder="Name, office"><button type="button" class="btn small" data-act="cc-add" data-scope="' +
+      esc(scope) +
+      '">Add cc</button></div></div>'
+    );
+  }
+
+  function workingCc(scope, c, t, q) {
+    var lh = E.ensureLetterhead(c);
+    if (scope === "ntp") return E.resolveLetterCc(q && q.cc, lh, q && q.ccExtra);
+    if (scope === "closeout") return E.resolveLetterCc(q && q.closeoutCc, lh);
+    if (scope === "bulk") {
+      if (ui.bulkCloseoutId) {
+        var b = E.findBulkCloseout(t, ui.bulkCloseoutId);
+        return E.resolveLetterCc(b && b.cc, lh);
+      }
+      if (Array.isArray(ui.bulkCc)) return ui.bulkCc.slice();
+      return E.resolveLetterCc(null, lh);
+    }
+    return E.resolveLetterCc(null, lh);
+  }
+
+  function setWorkingCc(scope, list, t, q) {
+    list = list || [];
+    if (scope === "ntp" && q) q.cc = list;
+    if (scope === "closeout" && q) q.closeoutCc = list;
+    if (scope === "bulk") {
+      ui.bulkCc = list;
+      if (ui.bulkCloseoutId && t) {
+        var b = E.findBulkCloseout(t, ui.bulkCloseoutId);
+        if (b) b.cc = list;
+      }
+    }
   }
 
   function statusPill(st) {
@@ -838,7 +936,7 @@
       field("project", "Project", q.project) +
       field("billingNo", "Project billing number", q.billingNo || "") +
       field("notes", "Notes", q.notes, "textarea") +
-      field("ccExtra", "Extra cc on NTP letter (one per line)", (q.ccExtra || []).join("\n"), "textarea") +
+      field("ccExtra", "Extra cc on letters (one per line, or use Add/Remove on the NTP and Close-out tabs)", (q.ccExtra || []).join("\n"), "textarea") +
       '</div><div style="margin-top:12px;display:flex;gap:8px;flex-wrap:wrap">' +
       '<button class="btn primary" data-act="save-qp-info">Save</button>' +
       '<button class="btn" data-act="add-supplement">Add supplement (e.g. ' +
@@ -846,9 +944,7 @@
       "A)</button>" +
       (q.qpClosed
         ? '<button class="btn" data-act="qp-tab" data-tab="closeout">View close-out</button>' +
-          '<button class="btn" data-act="reopen-qp">Reopen ' +
-          esc(n) +
-          "</button>"
+          '<button class="btn" data-act="reopen-qp">Undo close-out</button>'
         : '<button class="btn good" data-act="qp-tab" data-tab="closeout">Close out · return ' +
           E.fmtMoney(Math.max(E.qpNtp(q) - E.qpSpent(q), 0)) +
           " to " +
@@ -902,6 +998,7 @@
     ui.bulkCloseoutId = null;
     ui.bulkDate = "";
     ui.bulkNotes = "";
+    ui.bulkCc = null;
     ui.taskCloseout = false;
   }
 
@@ -966,10 +1063,11 @@
       ">" +
       esc(q.closeoutNotes || "") +
       "</textarea></label></div>" +
+      renderCcEditor(workingCc("closeout", c, t, q), "closeout") +
       '<div style="margin-top:12px;display:flex;gap:8px;flex-wrap:wrap">' +
       (q.qpClosed
         ? '<button class="btn primary" data-act="print-closeout">Print close-out letter</button>' +
-          '<button class="btn" data-act="reopen-qp">Reopen ' +
+          '<button class="btn" data-act="reopen-qp">Undo close-out · put leftover back on this ' +
           esc(n) +
           "</button>"
         : '<button class="btn good" data-act="issue-closeout">Issue close-out · return ' +
@@ -983,56 +1081,52 @@
   function renderQpCloseoutLetter(c, t, q, leftover) {
     leftover = leftover != null ? leftover : leftoverToTask(q);
     var returned = q.qpClosed ? E.qpReturned(q) : leftover;
+    var lh = E.ensureLetterhead(c);
+    var cc = workingCc("closeout", c, t, q);
+    var dateLong = E.fmtDateLong(q.closeoutDate || E.todayISO());
+    var lead = lh.billingLeadIn == null ? "billing " : String(lh.billingLeadIn);
+    var assignment =
+      "Agreement #" +
+      (c.code || "") +
+      ", Task " +
+      t.number +
+      ", Quick Proposal " +
+      q.qpNumber;
+    var refBits = [q.contractNo, q.project].filter(Boolean);
+    if (refBits.length) assignment += " (" + refBits.join(", ") + ")";
+    var notes = String(q.closeoutNotes || "").trim();
     return (
       '<div class="paper-stack" id="closeoutLetter">' +
-      '<article class="letter-page">' +
-      officialLetterheadHtml(c) +
-      '<div class="letter-date">' +
-      esc(E.fmtDateLong(q.closeoutDate || E.todayISO())) +
-      "</div>" +
-      "<p>Agreement <b>" +
-      esc(c.code) +
-      "</b> · " +
-      esc(c.title || "") +
-      "<br>Contractor: " +
-      esc(c.contractor) +
-      "<br>" +
-      esc(taskNoun(c)) +
-      " " +
-      esc(t.number) +
-      " · " +
-      esc(noun(c)) +
-      " " +
-      esc(q.qpNumber) +
-      "<br>Project: " +
-      esc(q.project || "") +
-      " · Contract / T#: " +
-      esc(q.contractNo || "") +
+      '<article class="letter-page ntp-letter">' +
+      officialLetterheadHtml(c, dateLong) +
+      letterAddrHtml(lh) +
+      '<p class="letter-salute">' +
+      esc(lh.contractorSalutation || "Dear Sir or Madam:") +
       "</p>" +
-      "<p>Work under this " +
-      esc(noun(c)) +
-      " is complete. This notice closes the assignment and returns unspent funds to the funded " +
-      esc(taskNoun(c).toLowerCase()) +
-      " for additional " +
-      esc(nouns(c)) +
+      "<p>This letter is in reference to " +
+      esc(lead) +
+      "Contract No. " +
+      esc(lh.billingContractNo || "") +
+      " " +
+      esc(lh.billingContractTitle || "") +
       ".</p>" +
-      "<p>NTP amount: <b>" +
-      E.fmtMoney(E.qpNtp(q)) +
-      "</b><br>Invoiced / spent: <b>" +
-      E.fmtMoney(E.qpSpent(q)) +
-      "</b><br>Unspent funds returned to " +
-      esc(taskNoun(c)) +
-      " " +
+      "<p>Please consider this letter as official notice that work under " +
+      esc(assignment) +
+      " is complete. The NTP amount was " +
+      esc(E.fmtMoneyLetter(E.qpNtp(q))) +
+      ". Invoiced / spent is " +
+      esc(E.fmtMoneyLetter(E.qpSpent(q))) +
+      ". Unspent funds of " +
+      esc(E.fmtMoneyLetter(returned)) +
+      " are returned to Task " +
       esc(t.number) +
-      ": <b>" +
-      E.fmtMoney(returned) +
-      "</b></p>" +
-      "<p>Close-out date: " +
-      E.fmtDate(q.closeoutDate || E.todayISO()) +
-      "<br>Notes: " +
-      esc(q.closeoutNotes || "") +
-      "</p>" +
-      "<p>cc: DOT Finance; DOT Audit Management. This letter closes the assignment only. Closing the consultant agreement is a Finance and Audit action (2 CFR 200.343).</p>" +
+      " for additional Quick Proposals.</p>" +
+      (notes ? "<p>" + nl(notes) + "</p>" : "") +
+      "<p>Should you have any questions, please contact me at " +
+      esc(lh.signerPhone || "") +
+      ".</p>" +
+      letterSignHtml(lh) +
+      letterCcBlockHtml(cc) +
       officialLetterFooterHtml() +
       "</article></div>"
     );
@@ -1145,9 +1239,13 @@
       ">" +
       esc(batch.notes || "") +
       "</textarea></label></div>" +
+      renderCcEditor(workingCc("bulk", c, t, null), "bulk") +
       '<div style="margin-top:12px;display:flex;gap:8px;flex-wrap:wrap">' +
       (issued
-        ? '<button class="btn primary" data-act="print-bulk-closeout">Print close-out letter</button>'
+        ? '<button class="btn primary" data-act="print-bulk-closeout">Print close-out letter</button>' +
+          '<button class="btn" data-act="undo-bulk-closeout">Undo this close-out · reopen these ' +
+          esc(ns) +
+          "</button>"
         : '<button class="btn good" data-act="issue-bulk-closeout"' +
           (totals.count ? "" : " disabled") +
           ">Issue close-out · return " +
@@ -1169,7 +1267,10 @@
     var totals = batch.totals || E.sumCloseoutRows(batch.rows || []);
     var n = noun(c);
     var ns = nouns(c);
-    var tn = taskNoun(c);
+    var lh = E.ensureLetterhead(c);
+    var cc = workingCc("bulk", c, t, null);
+    var lead = lh.billingLeadIn == null ? "billing " : String(lh.billingLeadIn);
+    var notes = String(batch.notes || "").trim();
     var rows = (batch.rows || [])
       .map(function (r) {
         return (
@@ -1191,34 +1292,29 @@
       .join("");
     return (
       '<div class="paper-stack" id="bulkCloseoutLetter">' +
-      '<article class="letter-page">' +
-      officialLetterheadHtml(c) +
-      '<div class="letter-date">' +
-      esc(E.fmtDateLong(batch.date || E.todayISO())) +
-      "</div>" +
-      "<p>Agreement <b>" +
-      esc(c.code) +
-      "</b> · " +
-      esc(c.title || "") +
-      "<br>Contractor: " +
-      esc(c.contractor) +
-      "<br>" +
-      esc(tn) +
-      " " +
-      esc(t.number) +
+      '<article class="letter-page ntp-letter">' +
+      officialLetterheadHtml(c, E.fmtDateLong(batch.date || E.todayISO())) +
+      letterAddrHtml(lh) +
+      '<p class="letter-salute">' +
+      esc(lh.contractorSalutation || "Dear Sir or Madam:") +
       "</p>" +
-      "<p>Work under the following " +
-      esc(ns) +
-      " is complete. This notice closes these assignments and returns unspent funds to the funded " +
-      esc(tn).toLowerCase() +
-      " for additional " +
-      esc(ns) +
+      "<p>This letter is in reference to " +
+      esc(lead) +
+      "Contract No. " +
+      esc(lh.billingContractNo || "") +
+      " " +
+      esc(lh.billingContractTitle || "") +
       ".</p>" +
+      "<p>Please consider this letter as official notice that work under the following Quick Proposals on Task " +
+      esc(t.number) +
+      " is complete. Unspent funds of " +
+      esc(E.fmtMoneyLetter(totals.returned)) +
+      " are returned to Task " +
+      esc(t.number) +
+      " for additional Quick Proposals.</p>" +
       '<table class="prop-items"><thead><tr><th>' +
       esc(n) +
-      " #</th><th>Project</th><th>Contract / T#</th><th>NTP amount</th><th>Invoiced / spent</th><th>Returned to " +
-      esc(tn) +
-      " " +
+      " #</th><th>Project</th><th>Contract / T#</th><th>NTP amount</th><th>Invoiced / spent</th><th>Returned to Task " +
       esc(t.number) +
       "</th></tr></thead><tbody>" +
       rows +
@@ -1233,19 +1329,12 @@
       '</th><th class="num">' +
       E.fmtMoney(totals.returned) +
       "</th></tr></tfoot></table>" +
-      "<p>Unspent funds returned to " +
-      esc(tn) +
-      " " +
-      esc(t.number) +
-      ": <b>" +
-      E.fmtMoney(totals.returned) +
-      "</b></p>" +
-      "<p>Close-out date: " +
-      E.fmtDate(batch.date || E.todayISO()) +
-      "<br>Notes: " +
-      esc(batch.notes || "") +
-      "</p>" +
-      "<p>cc: DOT Finance; DOT Audit Management. This letter closes the listed assignments only. Closing the consultant agreement is a Finance and Audit action (2 CFR 200.343).</p>" +
+      (notes ? "<p>" + nl(notes) + "</p>" : "") +
+      "<p>Should you have any questions, please contact me at " +
+      esc(lh.signerPhone || "") +
+      ".</p>" +
+      letterSignHtml(lh) +
+      letterCcBlockHtml(cc) +
       officialLetterFooterHtml() +
       "</article></div>"
     );
@@ -1278,7 +1367,10 @@
           E.fmtMoney(tot.returned) +
           '</td><td><button class="btn small" data-act="view-bulk-closeout" data-id="' +
           esc(b.id) +
-          '">View / print letter</button></td></tr>'
+          '">View / print</button> ' +
+          '<button class="btn small" data-act="undo-bulk-closeout" data-id="' +
+          esc(b.id) +
+          '">Undo</button></td></tr>'
         );
       })
       .join("");
@@ -1340,11 +1432,8 @@
   function renderTaskCloseoutLetter(c, t) {
     return (
       '<div class="paper-stack" id="taskCloseoutLetter">' +
-      '<article class="letter-page">' +
-      officialLetterheadHtml(c) +
-      '<div class="letter-date">' +
-      esc(E.fmtDateLong(t.closeoutDate || E.todayISO())) +
-      "</div>" +
+      '<article class="letter-page ntp-letter">' +
+      officialLetterheadHtml(c, E.fmtDateLong(t.closeoutDate || E.todayISO())) +
       "<p>Agreement <b>" +
       esc(c.code) +
       "</b> · " +
@@ -1639,6 +1728,7 @@
       esc(q.ntpNotes || "") +
       "</textarea></label></div>" +
       gateChecks +
+      renderCcEditor(workingCc("ntp", c, t, q), "ntp") +
       "<p>From proposal lines: <b>" +
       E.fmtMoney(pkt.amount) +
       "</b></p>" +
@@ -1664,14 +1754,7 @@
     pkt = pkt || E.buildNtpPacket(c, t, q);
     var lh = pkt.letterhead;
     var addr = String(lh.contractorAddress || "").split("\n");
-    var contactLine = [lh.contractorContact, lh.contractorCredentials]
-      .filter(Boolean)
-      .join(", ");
-    var ccHtml = (pkt.cc || [])
-      .map(function (x) {
-        return "<div>" + esc(x) + "</div>";
-      })
-      .join("");
+    var cc = workingCc("ntp", c, t, q);
     var propRows = pkt.proposalRows
       .map(function (l) {
         return (
@@ -1700,33 +1783,14 @@
     return (
       '<div class="paper-stack" id="ntpLetter">' +
       '<article class="letter-page ntp-letter">' +
-      officialLetterheadHtml(c) +
-      '<div class="letter-date">' +
-      esc(pkt.letterDateLong) +
-      "</div>" +
-      '<div class="letter-addr">' +
-      (contactLine ? "<div>" + esc(contactLine) + "</div>" : "") +
-      (lh.contractorName ? "<div>" + esc(lh.contractorName) + "</div>" : "") +
-      addr
-        .map(function (line) {
-          return line ? "<div>" + esc(line) + "</div>" : "";
-        })
-        .join("") +
-      "</div>" +
+      officialLetterheadHtml(c, pkt.letterDateLong) +
+      letterAddrHtml(lh) +
       '<p class="letter-salute">' +
       esc(pkt.salutation) +
       "</p>" +
       letterBody +
-      '<p class="letter-sign">Sincerely,</p>' +
-      '<p class="letter-sign-file">“Signature on File”</p>' +
-      "<p><b>" +
-      esc(lh.signerName) +
-      "</b><br>" +
-      esc(lh.signerTitle) +
-      "</p>" +
-      '<div class="letter-cc"><span>cc:</span><div>' +
-      ccHtml +
-      "</div></div>" +
+      letterSignHtml(lh) +
+      letterCcBlockHtml(cc) +
       officialLetterFooterHtml() +
       "</article>" +
       (q.proposalPdf
@@ -2396,6 +2460,17 @@
         ui.bulkNotes = bn.value;
       };
     }
+    ["ntp", "closeout", "bulk"].forEach(function (scope) {
+      var inp = document.getElementById("ccAdd-" + scope);
+      if (!inp) return;
+      inp.onkeydown = function (ev) {
+        if (ev.key === "Enter") {
+          ev.preventDefault();
+          var btn = document.querySelector('[data-act="cc-add"][data-scope="' + scope + '"]');
+          if (btn) btn.click();
+        }
+      };
+    });
     var ij = document.getElementById("importJson");
     if (ij) ij.onchange = importJsonFile;
     var ix = document.getElementById("importXlsx");
@@ -2806,6 +2881,7 @@
       return;
     }
     if (act === "close-qp" || act === "issue-closeout") {
+      q.closeoutCc = workingCc("closeout", c, t, q);
       E.closeQp(q, {
         date: val("closeoutDate") || E.todayISO(),
         notes: val("closeoutNotes"),
@@ -2874,6 +2950,7 @@
       var batch = E.bulkCloseQps(t, ids, {
         date: val("bulkCloseoutDate") || ui.bulkDate || E.todayISO(),
         notes: val("bulkCloseoutNotes") || ui.bulkNotes || "",
+        cc: workingCc("bulk", c, t, null),
       });
       if (!batch) {
         toast("Nothing to close");
@@ -2929,7 +3006,62 @@
       return;
     }
     if (act === "reopen-qp") {
-      E.reopenQp(q);
+      if (t && t.closed) {
+        toast("Reopen the " + taskNoun(c).toLowerCase() + " first");
+        return;
+      }
+      E.reopenQp(q, t);
+      save();
+      toast(noun(c) + " " + q.qpNumber + " reopened · leftover is back on this " + noun(c));
+      render();
+      return;
+    }
+    if (act === "undo-bulk-closeout") {
+      if (t && t.closed) {
+        toast("Reopen the " + taskNoun(c).toLowerCase() + " first");
+        return;
+      }
+      var undoId = el.getAttribute("data-id") || ui.bulkCloseoutId;
+      var undone = E.undoBulkCloseout(t, undoId);
+      if (!undone) {
+        toast("Could not undo that close-out");
+        return;
+      }
+      ui.bulkCloseoutId = null;
+      ui.bulkCc = null;
+      save();
+      toast(
+        "Undid close-out of " +
+          (undone.totals && undone.totals.count ? undone.totals.count : (undone.qpIds || []).length) +
+          " " +
+          nouns(c) +
+          " · leftover is back on those " +
+          nouns(c)
+      );
+      render();
+      return;
+    }
+    if (act === "cc-del") {
+      var scopeDel = el.getAttribute("data-scope");
+      var nextDel = E.removeLetterCc(workingCc(scopeDel, c, t, q), el.getAttribute("data-i"));
+      setWorkingCc(scopeDel, nextDel, t, q);
+      save();
+      render();
+      return;
+    }
+    if (act === "cc-add") {
+      var scopeAdd = el.getAttribute("data-scope");
+      var name = val("ccAdd-" + scopeAdd);
+      var nextAdd = E.addLetterCc(workingCc(scopeAdd, c, t, q), name);
+      if (nextAdd.length === workingCc(scopeAdd, c, t, q).length && String(name || "").trim()) {
+        toast("That cc is already on the letter");
+        return;
+      }
+      if (!String(name || "").trim()) {
+        toast("Type a name to add");
+        return;
+      }
+      setWorkingCc(scopeAdd, nextAdd, t, q);
       save();
       render();
       return;
