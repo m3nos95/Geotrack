@@ -22294,6 +22294,11 @@ async function yieldToUiLong(){ await new Promise(r=>requestAnimationFrame(()=>s
 let projectLoading=false;
 /* Screening estimates (infil rates, class/column profiles, DNA mids) — OFF until user enables. */
 let estimatesOn=false;
+/* Declared early — syncMapLegend / wireMapLegendUI run before the TCDM screen block */
+let calmingScreenOn=false;
+try{ calmingScreenOn=localStorage.getItem('geotrak_calming_screen')==='1'; }catch(_){}
+let calmingScreenLayer=null;
+let calmingScreenBands={candidate:false,study:false,out:false};
 try{ estimatesOn=localStorage.getItem('geotrak_estimates_on')==='1'; }catch(_){ estimatesOn=false; }
 function estimatesEnabled(){ return !!estimatesOn; }
 function syncEstimatesToggleUI(){
@@ -23425,9 +23430,9 @@ function syncMapLegend(){
     dgir:nDgir>0,
     bridge:nBr>0,
     firstmap:nFm>0,
-    calmCand:!!(calmingScreenLayer&&calmingScreenBands.candidate),
-    calmStudy:!!(calmingScreenLayer&&calmingScreenBands.study),
-    calmOut:!!(calmingScreenLayer&&calmingScreenBands.out)
+    calmCand:!!(typeof calmingScreenLayer!=='undefined'&&calmingScreenLayer&&typeof calmingScreenBands!=='undefined'&&calmingScreenBands.candidate),
+    calmStudy:!!(typeof calmingScreenLayer!=='undefined'&&calmingScreenLayer&&typeof calmingScreenBands!=='undefined'&&calmingScreenBands.study),
+    calmOut:!!(typeof calmingScreenLayer!=='undefined'&&calmingScreenLayer&&typeof calmingScreenBands!=='undefined'&&calmingScreenBands.out)
   };
   let any=false;
   box.querySelectorAll('[data-leg]').forEach(el=>{
@@ -34391,8 +34396,10 @@ const CALMING_TOOL_DEF={
     unknown:{label:'Review', meaning:'Could not map class/speed to a clear TCDM band — verify in the field.'}
   }
 };
-const CALMING_MEANING_HTML=`<div class="calm-meaning">
-  <div><b>Tool definition — ${CALMING_TOOL_DEF.name}</b> — <span class="is">screening aid</span> from the DelDOT <b>${CALMING_TOOL_DEF.source}</b>. ${esc(CALMING_TOOL_DEF.whatItIs)}</div>
+const CALMING_MEANING_HTML=null; /* built by calmingMeaningHtml() */
+function calmingMeaningHtml(){
+  return `<div class="calm-meaning">
+  <div><b>Tool definition — ${esc(CALMING_TOOL_DEF.name)}</b> — <span class="is">screening aid</span> from the DelDOT <b>${esc(CALMING_TOOL_DEF.source)}</b>. ${esc(CALMING_TOOL_DEF.whatItIs)}</div>
   <div style="margin-top:6px"><b>Band meanings</b> —
     <span class="calm-band candidate">Candidate</span> ${esc(CALMING_TOOL_DEF.bands.candidate.meaning)}
     <span class="calm-band study" style="margin-left:4px">Study</span> ${esc(CALMING_TOOL_DEF.bands.study.meaning)}
@@ -34402,10 +34409,8 @@ const CALMING_MEANING_HTML=`<div class="calm-meaning">
   <div style="margin-top:6px"><b>Always missing here</b> — ${esc(CALMING_TOOL_DEF.missingAlways)}</div>
   <div style="margin-top:6px"><a href="${TCDM_MANUAL_URL}" target="_blank" rel="noopener" style="color:var(--cyan)">Open the Traffic Calming Design Manual (PDF)</a></div>
 </div>`;
-let calmingScreenOn=false;
-try{ calmingScreenOn=localStorage.getItem('geotrak_calming_screen')==='1'; }catch(_){}
-let calmingScreenLayer=null;
-let calmingScreenBands={candidate:false,study:false,out:false};
+}
+/* calmingScreenOn / Layer / Bands declared with estimatesOn (above) — avoid TDZ in syncMapLegend */
 const CALMING_COLORS={candidate:'#3dcfbf', study:'#f0a84a', out:'#6b7280', unknown:'#94a3b8'};
 
 function setCalmingScreenOn(on){
@@ -34626,7 +34631,7 @@ function formatCalmingRailValue(C){
   return {v:String(C.n), s:'segments screened'};
 }
 function renderCalmingHudHtml(C){
-  let h=CALMING_MEANING_HTML;
+  let h=calmingMeaningHtml();
   if(!calmingScreenOn){
     h+=`<div class="hint warn">Calming screen is <b>off</b>. Turn it on under <b>Layers → Traffic calming screen</b>, then click the map again.</div>`;
     return h;
