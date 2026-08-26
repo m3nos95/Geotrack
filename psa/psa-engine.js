@@ -1346,13 +1346,85 @@
     return String(maxN + 1);
   }
 
+  function qpLeftover(qp) {
+    return money(Math.max(qpNtp(qp) - qpSpent(qp), 0));
+  }
+
+  function isQpCloseable(qp) {
+    return !!(qp && !qp.qpClosed && qp.status !== "canceled" && !qp.canceled);
+  }
+
+  function closeableQps(task) {
+    return (task && task.qps ? task.qps : []).filter(isQpCloseable);
+  }
+
+  function qpNumberSortKey(n) {
+    var s = String(n || "");
+    var m = s.match(/^(\d+)(.*)$/);
+    return m ? [parseInt(m[1], 10), m[2] || ""] : [99999, s];
+  }
+
+  function sortQpsByNumber(qps) {
+    return (qps || []).slice().sort(function (a, b) {
+      var ka = qpNumberSortKey(a.qpNumber);
+      var kb = qpNumberSortKey(b.qpNumber);
+      if (ka[0] !== kb[0]) return ka[0] - kb[0];
+      if (ka[1] < kb[1]) return -1;
+      if (ka[1] > kb[1]) return 1;
+      return 0;
+    });
+  }
+
+  function qpsByIds(task, ids) {
+    var wanted = {};
+    (ids || []).forEach(function (id) {
+      wanted[String(id)] = true;
+    });
+    return sortQpsByNumber(
+      (task && task.qps ? task.qps : []).filter(function (q) {
+        return wanted[String(q.id)];
+      })
+    );
+  }
+
+  function closeoutSnapshot(qp) {
+    qp = qp || {};
+    return {
+      id: qp.id,
+      qpNumber: qp.qpNumber,
+      project: qp.project || "",
+      contractNo: qp.contractNo || "",
+      billingNo: qp.billingNo || "",
+      ntpAmount: qpNtp(qp),
+      spent: qpSpent(qp),
+      returned: qp.qpClosed ? qpReturned(qp) : qpLeftover(qp),
+    };
+  }
+
+  function sumCloseoutRows(rows) {
+    var ntpAmount = 0;
+    var spent = 0;
+    var returned = 0;
+    (rows || []).forEach(function (r) {
+      ntpAmount += Number(r.ntpAmount || 0);
+      spent += Number(r.spent || 0);
+      returned += Number(r.returned || 0);
+    });
+    return {
+      count: (rows || []).length,
+      ntpAmount: money(ntpAmount),
+      spent: money(spent),
+      returned: money(returned),
+    };
+  }
+
   function closeQp(qp, opts) {
     opts = opts || {};
     qp.qpClosed = true;
     qp.status = "closed";
     qp.closeoutDate = opts.date || qp.closeoutDate || todayISO();
     if (opts.notes != null) qp.closeoutNotes = opts.notes;
-    qp.returnedRemainder = money(Math.max(qpNtp(qp) - qpSpent(qp), 0));
+    qp.returnedRemainder = qpLeftover(qp);
     return qp;
   }
 
@@ -1362,6 +1434,41 @@
     qp.closeoutDate = null;
     qp.status = deriveQpStatus(qp);
     return qp;
+  }
+
+  function bulkCloseQps(task, qpIds, opts) {
+    opts = opts || {};
+    if (!task) return null;
+    var date = opts.date || todayISO();
+    var notes = opts.notes != null ? opts.notes : "";
+    var closed = [];
+    qpsByIds(task, qpIds).forEach(function (q) {
+      if (!isQpCloseable(q)) return;
+      closeQp(q, { date: date, notes: notes });
+      closed.push(q);
+    });
+    if (!closed.length) return null;
+    var batch = {
+      id: opts.id || uid("bulk"),
+      date: date,
+      notes: notes,
+      qpIds: closed.map(function (q) {
+        return q.id;
+      }),
+      rows: closed.map(closeoutSnapshot),
+    };
+    batch.totals = sumCloseoutRows(batch.rows);
+    task.bulkCloseouts = task.bulkCloseouts || [];
+    task.bulkCloseouts.push(batch);
+    return batch;
+  }
+
+  function findBulkCloseout(task, id) {
+    var list = (task && task.bulkCloseouts) || [];
+    for (var i = 0; i < list.length; i++) {
+      if (String(list[i].id) === String(id)) return list[i];
+    }
+    return null;
   }
 
   function closeTask(task, opts) {
@@ -1542,6 +1649,7 @@
       closeoutDate: null,
       closeoutNotes: "",
       returnedToContract: 0,
+      bulkCloseouts: [],
       qps: [],
     };
   }
@@ -1597,8 +1705,16 @@
     buildInvoiceChecklist: buildInvoiceChecklist,
     ADMIN_CHECKS: ADMIN_CHECKS,
     nextQpNumber: nextQpNumber,
+    qpLeftover: qpLeftover,
+    isQpCloseable: isQpCloseable,
+    closeableQps: closeableQps,
+    qpsByIds: qpsByIds,
+    closeoutSnapshot: closeoutSnapshot,
+    sumCloseoutRows: sumCloseoutRows,
     closeQp: closeQp,
     reopenQp: reopenQp,
+    bulkCloseQps: bulkCloseQps,
+    findBulkCloseout: findBulkCloseout,
     closeTask: closeTask,
     reopenTask: reopenTask,
     parseTrackerSheet: parseTrackerSheet,

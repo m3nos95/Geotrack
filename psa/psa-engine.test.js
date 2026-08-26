@@ -211,6 +211,41 @@ assert("Task close-out returns leftover PO to agreement", nearly(E.taskReturnedT
 assert("Agreement available after task close-out", nearly(E.contractAvailable(agr), 3000000 - 3790), E.contractAvailable(agr));
 assert("Closed task committed is spent only", nearly(E.taskCommitted(fundedTask), 3790), E.taskCommitted(fundedTask));
 
+/* Bulk QP close-out: several QPs on one task, leftover NTP returns to the task */
+var bulkAgr = { cap: 3000000, tasks: [] };
+var bulkTask = E.emptyTask("4", 200000);
+function makeCloseable(num, ntp, spent) {
+  var q = E.emptyQp(bulkTask, num);
+  q.ntpAmount = ntp;
+  q.ntpDate = "2026-04-01";
+  if (spent) q.invoices = [{ id: "i-" + num, amount: spent, status: "posted" }];
+  bulkTask.qps.push(q);
+  return q;
+}
+var b1 = makeCloseable("2", 4558, 4558);
+var b2 = makeCloseable("3", 18703, 18703);
+var b3 = makeCloseable("10A", 3150, 3107.03);
+var bKeep = makeCloseable("13", 46124, 0);
+var bClosed = makeCloseable("1", 8000, 5000);
+E.closeQp(bClosed, { date: "2026-05-01" });
+var beforeFree = E.taskUnallocated(bulkTask);
+var batch = E.bulkCloseQps(bulkTask, [b1.id, b2.id, b3.id, bClosed.id, "missing"], {
+  date: "2026-08-26",
+  notes: "Old jobs complete",
+});
+assert("Bulk closes 3 open QPs", batch && batch.rows.length === 3, batch && batch.rows.length);
+assert("Bulk skips already closed", batch.qpIds.indexOf(bClosed.id) < 0);
+assert("Bulk letter lists QP 2, 3, 10A in order", batch.rows.map(function (r) { return r.qpNumber; }).join(",") === "2,3,10A");
+assert("Bulk returned is leftover sum", nearly(batch.totals.returned, 0 + 0 + 42.97), batch.totals.returned);
+assert("Bulk NTP total", nearly(batch.totals.ntpAmount, 4558 + 18703 + 3150), batch.totals.ntpAmount);
+assert("Closed QPs remaining 0", E.qpRemaining(b1) === 0 && E.qpRemaining(b3) === 0);
+assert("Unselected QP 13 still open", E.deriveQpStatus(bKeep) === "ntp");
+assert("Task free includes bulk leftovers", nearly(E.taskUnallocated(bulkTask), beforeFree + 42.97), E.taskUnallocated(bulkTask));
+bulkAgr.tasks = [bulkTask];
+assert("Agreement available unchanged after bulk QP close-out", nearly(E.contractAvailable(bulkAgr), 2800000));
+assert("Empty bulk close returns null", E.bulkCloseQps(bulkTask, [bKeep.id + "-no"]) == null);
+assert("Finds stored bulk close-out", E.findBulkCloseout(bulkTask, batch.id) && E.findBulkCloseout(bulkTask, batch.id).notes === "Old jobs complete");
+
 assert("Long date April 29, 2026", E.fmtDateLong("2026-04-29") === "April 29, 2026");
 assert("Letterhead secretary matches SOS app", E.defaultLetterhead().secretaryName === "Shanté A. Hastings");
 assert("Letter money omits .00", E.fmtMoneyLetter(46124) === "$46,124", E.fmtMoneyLetter(46124));
