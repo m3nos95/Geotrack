@@ -12,7 +12,7 @@ permissions:
 
 # New deploys cancel stuck/queued ones in this group (helps clear zombie Pages deploys).
 concurrency:
-  group: pages
+  group: pages-deploy
   cancel-in-progress: true
 
 jobs:
