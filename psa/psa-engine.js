@@ -126,6 +126,42 @@
     return money(Number(task.poAmount || 0) - taskAllocated(task));
   }
 
+  function taskReturnedToContract(task) {
+    if (!task || !task.closed) return 0;
+    if (task.returnedToContract != null && task.returnedToContract !== "") {
+      return money(task.returnedToContract);
+    }
+    return money(Math.max(Number(task.poAmount || 0) - taskSpent(task), 0));
+  }
+
+  function taskCommitted(task) {
+    var po = money(task && task.poAmount);
+    if (task && task.closed) return money(po - taskReturnedToContract(task));
+    return po;
+  }
+
+  function contractAvailable(contract, exceptTaskId) {
+    var committed = money(
+      (contract.tasks || []).reduce(function (s, t) {
+        if (exceptTaskId && t.id === exceptTaskId) return s;
+        return s + taskCommitted(t);
+      }, 0)
+    );
+    return money(Number(contract.cap || 0) - committed);
+  }
+
+  function qpCounts(task) {
+    var total = (task && task.qps ? task.qps.length : 0) || 0;
+    var open = 0;
+    var closed = 0;
+    ((task && task.qps) || []).forEach(function (q) {
+      var st = deriveQpStatus(q);
+      if (st === "closed" || st === "canceled") closed++;
+      else open++;
+    });
+    return { total: total, open: open, closed: closed };
+  }
+
   function contractRollup(contract) {
     var tasks = contract.tasks || [];
     var po = money(
@@ -143,6 +179,26 @@
         return s + taskSpent(t);
       }, 0)
     );
+    var funded = money(
+      tasks.reduce(function (s, t) {
+        return s + taskCommitted(t);
+      }, 0)
+    );
+    var returnedQps = money(
+      tasks.reduce(function (s, t) {
+        return (
+          s +
+          (t.qps || []).reduce(function (ss, q) {
+            return ss + qpReturned(q);
+          }, 0)
+        );
+      }, 0)
+    );
+    var returnedTasks = money(
+      tasks.reduce(function (s, t) {
+        return s + taskReturnedToContract(t);
+      }, 0)
+    );
     var cap = money(contract.cap || 0);
     var openQps = 0;
     var closedQps = 0;
@@ -158,11 +214,15 @@
     return {
       cap: cap,
       po: po,
+      funded: funded,
       allocated: allocated,
       spent: spent,
       unallocated: money(po - allocated),
       remainingCap: money(cap - allocated),
+      availableOnAgreement: money(cap - funded),
       ntpBalance: money(allocated - spent),
+      returnedQps: returnedQps,
+      returnedTasks: returnedTasks,
       openQps: openQps,
       closedQps: closedQps,
       pendingProposals: pendingProposals,
@@ -692,9 +752,12 @@
     return String(maxN + 1);
   }
 
-  function closeQp(qp) {
+  function closeQp(qp, opts) {
+    opts = opts || {};
     qp.qpClosed = true;
     qp.status = "closed";
+    qp.closeoutDate = opts.date || qp.closeoutDate || todayISO();
+    if (opts.notes != null) qp.closeoutNotes = opts.notes;
     qp.returnedRemainder = money(Math.max(qpNtp(qp) - qpSpent(qp), 0));
     return qp;
   }
@@ -702,8 +765,36 @@
   function reopenQp(qp) {
     qp.qpClosed = false;
     qp.returnedRemainder = 0;
+    qp.closeoutDate = null;
     qp.status = deriveQpStatus(qp);
     return qp;
+  }
+
+  function closeTask(task, opts) {
+    opts = opts || {};
+    var date = opts.date || todayISO();
+    (task.qps || []).forEach(function (q) {
+      if (!q.qpClosed && q.status !== "canceled") {
+        closeQp(q, {
+          date: date,
+          notes: q.closeoutNotes || "Closed with task close-out.",
+        });
+      }
+    });
+    task.closed = true;
+    task.closeoutDate = date;
+    if (opts.notes != null) task.closeoutNotes = opts.notes;
+    task.returnedToContract = money(
+      Math.max(Number(task.poAmount || 0) - taskSpent(task), 0)
+    );
+    return task;
+  }
+
+  function reopenTask(task) {
+    task.closed = false;
+    task.returnedToContract = 0;
+    task.closeoutDate = null;
+    return task;
   }
 
   function parseTrackerSheet(rows) {
@@ -837,6 +928,8 @@
       proposal: { status: "draft", submittedDate: null, reviewNotes: "", lines: [] },
       ntpLines: [],
       ntpNotes: "",
+      closeoutDate: null,
+      closeoutNotes: "",
     };
   }
 
@@ -846,6 +939,9 @@
       number: String(number || "1"),
       poAmount: money(poAmount || 0),
       closed: false,
+      closeoutDate: null,
+      closeoutNotes: "",
+      returnedToContract: 0,
       qps: [],
     };
   }
@@ -879,6 +975,10 @@
     taskAllocated: taskAllocated,
     taskSpent: taskSpent,
     taskUnallocated: taskUnallocated,
+    taskReturnedToContract: taskReturnedToContract,
+    taskCommitted: taskCommitted,
+    contractAvailable: contractAvailable,
+    qpCounts: qpCounts,
     contractRollup: contractRollup,
     catalogPrice: catalogPrice,
     catalogItem: catalogItem,
@@ -893,6 +993,8 @@
     nextQpNumber: nextQpNumber,
     closeQp: closeQp,
     reopenQp: reopenQp,
+    closeTask: closeTask,
+    reopenTask: reopenTask,
     parseTrackerSheet: parseTrackerSheet,
     excelDate: excelDate,
     emptyQp: emptyQp,

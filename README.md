@@ -27,4 +27,8 @@ Starter templates:
 - **DelDOT PSA — unit price (IDIQ)** — proposal review → NTP → invoice checklist against remaining NTP dollars and pay-item quantities. Bound to **2216F / 2217F** (RFP 2216-2217F, $3M cap) and the imported **2019F / 2018F** CGC and HCEA ledgers.
 - **DelDOT PSA — lump sum** — NTP amount and invoices, no unit-price catalog.
 
-Finance can duplicate a starter, rename assignments (QP / task order / work order), toggle workflow steps, and edit the invoice checklist. Data stays in the browser (`localStorage`). Use **Backup** to export JSON or import another Excel task sheet.
+Finance can duplicate a starter, rename assignments (QP / task order / work order), toggle workflow steps, and edit the invoice checklist.
+
+Money follows the subsurface pattern: the **agreement** is funded, **tasks** are issued from it (e.g. $500k), and **quick proposals** sit under a task (40+ QPs on one task is normal). Close a QP when the work is performed to print a close-out letter and return unspent NTP to that task. Close the task when that funding is finished to return leftover PO to the agreement.
+
+Data stays in the browser (`localStorage`). Use **Backup** to export JSON or import another Excel task sheet.

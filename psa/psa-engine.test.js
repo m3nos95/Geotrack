@@ -186,6 +186,31 @@ assert("Migrate adds templates", migrated.templates && migrated.templates.length
 assert("Migrate binds unit-price template", migrated.contracts[0].templateId === Tpl.UNIT_PRICE_ID);
 assert("Migrate default role is PM", migrated.role === "pm");
 
+/* Close-out: leftover NTP returns to the task; leftover task PO returns to the agreement */
+var agr = { cap: 3000000, tasks: [] };
+var fundedTask = E.emptyTask("1", 500000);
+var qpA = E.emptyQp(fundedTask, "1");
+qpA.ntpAmount = 8000;
+qpA.ntpDate = "2026-08-01";
+qpA.invoices = [{ id: "i1", amount: 3790, status: "posted" }];
+fundedTask.qps = [qpA];
+agr.tasks = [fundedTask];
+assert("Task PO funds 40+ QPs room", nearly(E.taskUnallocated(fundedTask), 492000), E.taskUnallocated(fundedTask));
+assert("Agreement available is cap minus task PO", nearly(E.contractAvailable(agr), 2500000), E.contractAvailable(agr));
+E.closeQp(qpA, { date: "2026-08-26", notes: "Work complete" });
+assert("Closed QP remaining is 0 after close-out", E.qpRemaining(qpA) === 0);
+assert("Unspent NTP returned to task", nearly(E.qpReturned(qpA), 4210), E.qpReturned(qpA));
+assert("Task free after QP close-out includes leftover", nearly(E.taskUnallocated(fundedTask), 496210), E.taskUnallocated(fundedTask));
+assert("Agreement available unchanged until task closes", nearly(E.contractAvailable(agr), 2500000));
+var forty = E.emptyTask("2", 500000);
+for (var n = 1; n <= 40; n++) forty.qps.push(E.emptyQp(forty, String(n)));
+assert("41st QP number after 40", E.nextQpNumber(forty) === "41");
+assert("QP count 40", E.qpCounts(forty).total === 40);
+E.closeTask(fundedTask, { date: "2026-08-26", notes: "Task complete" });
+assert("Task close-out returns leftover PO to agreement", nearly(E.taskReturnedToContract(fundedTask), 496210), E.taskReturnedToContract(fundedTask));
+assert("Agreement available after task close-out", nearly(E.contractAvailable(agr), 3000000 - 3790), E.contractAvailable(agr));
+assert("Closed task committed is spent only", nearly(E.taskCommitted(fundedTask), 3790), E.taskCommitted(fundedTask));
+
 if (fails) {
   console.error("\n" + fails + " failed");
   process.exit(1);

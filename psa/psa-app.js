@@ -15,6 +15,7 @@
     filter: "",
     modal: null,
     editTemplateId: null,
+    taskCloseout: false,
   };
 
   var state = null;
@@ -299,15 +300,20 @@
   }
 
   function renderKpis(c, r) {
+    var t = task();
     var capLabel = c.historical ? "Agreement / PO" : "IDIQ cap";
+    var taskAvail = t ? E.taskUnallocated(t) : r.unallocated;
+    var taskLabel = t
+      ? "Available on " + taskNoun(c) + " " + t.number
+      : "Available on " + taskNouns(c).toLowerCase();
     return (
       '<section class="kpis no-print">' +
       kpi(capLabel, E.fmtMoney(r.cap), c.contractor || "") +
-      kpi("Allocated to NTPs", E.fmtMoney(r.allocated), pct(r.allocated, r.cap) + "% of cap", r.allocated > r.cap ? "bad" : "") +
-      kpi("Spent", E.fmtMoney(r.spent), pct(r.spent, r.allocated || r.cap) + "% of allocated") +
-      kpi("NTP balance", E.fmtMoney(r.ntpBalance), "invoiced vs NTP", r.ntpBalance < 0 ? "bad" : "ok") +
-      kpi("Unallocated PO", E.fmtMoney(r.unallocated), "task PO minus NTPs", r.unallocated < 0 ? "bad" : "") +
-      kpi("Open " + nouns(c), String(r.openQps), r.pendingProposals + " proposal(s) to review", r.pendingProposals ? "warn" : "") +
+      kpi("Funded to " + taskNouns(c).toLowerCase(), E.fmtMoney(r.funded), pct(r.funded, r.cap) + "% of cap", r.funded > r.cap ? "bad" : "") +
+      kpi("Available on agreement", E.fmtMoney(r.availableOnAgreement), "cap minus open task POs", r.availableOnAgreement < 0 ? "bad" : "ok") +
+      kpi("Spent", E.fmtMoney(r.spent), pct(r.spent, r.allocated || r.cap) + "% of NTP") +
+      kpi(taskLabel, E.fmtMoney(taskAvail), "for more " + nouns(c), taskAvail < 0 ? "bad" : "") +
+      kpi("Open " + nouns(c), String(r.openQps), r.closedQps + " closed · " + r.pendingProposals + " to review", r.pendingProposals ? "warn" : "") +
       "</section>"
     );
   }
@@ -331,22 +337,35 @@
       .map(function (x) {
         var alloc = E.taskAllocated(x);
         var spent = E.taskSpent(x);
+        var avail = E.taskUnallocated(x);
+        var counts = E.qpCounts(x);
         var p = pct(alloc, x.poAmount || 1);
         return (
           '<div class="task-card' +
           (t && x.id === t.id ? " on" : "") +
+          (x.closed ? " closed" : "") +
           '" data-act="switch-task" data-id="' +
           esc(x.id) +
           '"><div class="n">' +
           esc(taskNoun(c)) +
           " " +
           esc(x.number) +
+          (x.closed ? ' <span class="pill st-closed">closed</span>' : "") +
           '</div><div class="m">PO ' +
           E.fmtMoney(x.poAmount) +
-          "<br>NTP " +
+          "<br>" +
+          counts.total +
+          " " +
+          (counts.total === 1 ? noun(c) : nouns(c)) +
+          " · NTP " +
           E.fmtMoney(alloc) +
-          " · spent " +
+          "<br>spent " +
           E.fmtMoney(spent) +
+          " · free " +
+          E.fmtMoney(avail) +
+          (x.closed
+            ? "<br>returned " + E.fmtMoney(E.taskReturnedToContract(x)) + " to agreement"
+            : "") +
           '</div><div class="bar"><i style="width:' +
           p +
           '%"></i></div></div>'
@@ -356,6 +375,8 @@
     return (
       '<aside class="tasks no-print"><h3>' +
       esc(taskNouns(c)) +
+      " under " +
+      esc(c.code) +
       "</h3>" +
       cards +
       '<button class="btn small" data-act="add-task">+ New ' +
@@ -415,7 +436,9 @@
           '</td><td class="num">' +
           E.fmtMoney(E.qpSpent(q)) +
           '</td><td class="num">' +
-          E.fmtMoney(E.qpRemaining(q)) +
+          (st === "closed" || st === "canceled"
+            ? E.fmtMoney(E.qpReturned(q)) + '<div class="muted">returned</div>'
+            : E.fmtMoney(E.qpRemaining(q))) +
           '</td><td class="muted">' +
           (invs || "—") +
           "</td></tr>"
@@ -439,7 +462,26 @@
       if (wf(c).payItems) {
         bits.push(priced + " of " + (c.payItems || []).length + " pay items priced");
       }
-      banner = '<div class="banner">' + bits.join(" · ") + ".</div>";
+      banner +=
+        '<div class="banner info">Agreement <b>' +
+        esc(c.code) +
+        "</b> funds " +
+        esc(taskNouns(c).toLowerCase()) +
+        ". This " +
+        esc(taskNoun(c).toLowerCase()) +
+        " is the funded bucket. " +
+        esc(nouns(c)) +
+        " are sub-tasks under it — 40+ on one " +
+        esc(taskNoun(c).toLowerCase()) +
+        " is expected. Close a " +
+        esc(noun(c)) +
+        " when the work is performed to issue a close-out letter and return unspent NTP to this " +
+        esc(taskNoun(c).toLowerCase()) +
+        " for the next " +
+        esc(noun(c)) +
+        ". Close the " +
+        esc(taskNoun(c).toLowerCase()) +
+        " when that funding is finished to return leftover PO to the agreement.</div>";
     } else {
       banner =
         '<div class="banner info">Imported ledger (' +
@@ -450,8 +492,14 @@
         esc(noun(c)) +
         " to continue the workflow Finance set on this template.</div>";
     }
+    var counts = E.qpCounts(t);
+    var agrAvail = E.contractAvailable(c, t.id);
+    var taskLetter = t.closed
+      ? renderTaskCloseoutLetter(c, t)
+      : "";
     return (
       banner +
+      taskLetter +
       '<div class="row-between"><div><b>' +
       esc(taskNoun(c)) +
       " " +
@@ -459,26 +507,53 @@
       "</b> · PO " +
       '<input id="poAmount" value="' +
       esc(t.poAmount || 0) +
-      '" style="width:120px;background:var(--panel);border:1px solid var(--border);border-radius:6px;padding:4px 6px">' +
-      " · allocated " +
+      '"' +
+      (t.closed ? " disabled" : "") +
+      ' style="width:120px;background:var(--panel);border:1px solid var(--border);border-radius:6px;padding:4px 6px">' +
+      " · " +
+      counts.total +
+      " " +
+      (counts.total === 1 ? noun(c) : nouns(c)) +
+      " · NTP " +
       E.fmtMoney(E.taskAllocated(t)) +
       " · spent " +
       E.fmtMoney(E.taskSpent(t)) +
-      " · unallocated " +
+      " · free for next " +
+      esc(noun(c)) +
+      " " +
       E.fmtMoney(E.taskUnallocated(t)) +
-      '</div><div>' +
+      '<div class="muted" style="margin-top:4px">Agreement still has ' +
+      E.fmtMoney(E.contractAvailable(c)) +
+      " unfunded (this " +
+      esc(taskNoun(c).toLowerCase()) +
+      " can be funded up to " +
+      E.fmtMoney(E.money(agrAvail + Number(t.poAmount || 0))) +
+      ").</div></div><div>" +
       '<input id="filter" placeholder="Filter ' +
       esc(noun(c)) +
       ' / project / T#" value="' +
       esc(ui.filter) +
       '" style="background:var(--panel);border:1px solid var(--border);border-radius:6px;padding:6px 8px;margin-right:8px">' +
-      '<button class="btn primary" data-act="add-qp">+ ' +
-      esc(noun(c)) +
-      "</button>" +
-      (!c.historical && !(t.qps || []).length && wf(c).payItems
-        ? '<button class="btn" data-act="demo-qp">Insert example ' + esc(noun(c)) + "</button>"
-        : "") +
+      (t.closed
+        ? '<button class="btn" data-act="print-task-closeout">Print task close-out</button>' +
+          '<button class="btn" data-act="reopen-task">Reopen ' +
+          esc(taskNoun(c).toLowerCase()) +
+          "</button>"
+        : '<button class="btn primary" data-act="add-qp">+ ' +
+          esc(noun(c)) +
+          "</button>" +
+          (!c.historical && !(t.qps || []).length && wf(c).payItems
+            ? '<button class="btn" data-act="demo-qp">Insert example ' +
+              esc(noun(c)) +
+              "</button>"
+            : "") +
+          '<button class="btn" data-act="goto-task-closeout">Close out ' +
+          esc(taskNoun(c).toLowerCase()) +
+          "</button>") +
       "</div></div>" +
+      (ui.taskCloseout && !t.closed
+        ? renderTaskCloseoutForm(c, t)
+        : "") +
       '<div class="card" style="padding:0;overflow:auto"><table class="grid"><thead><tr>' +
       "<th>" +
       esc(noun(c)) +
@@ -501,6 +576,7 @@
     if (w.proposal) tabNames.push("proposal");
     if (w.ntp) tabNames.push("ntp");
     if (w.invoices) tabNames.push("invoice");
+    tabNames.push("closeout");
     if (tabNames.indexOf(ui.qpTab) < 0) ui.qpTab = "info";
     var tabs = tabNames
       .map(function (name) {
@@ -510,7 +586,7 @@
           '" data-act="qp-tab" data-tab="' +
           name +
           '">' +
-          name.toUpperCase() +
+          (name === "closeout" ? "CLOSE-OUT" : name.toUpperCase()) +
           "</button>"
         );
       })
@@ -520,8 +596,10 @@
         ? renderProposal(c, t, q)
         : ui.qpTab === "ntp"
         ? renderNtp(c, t, q)
-        : ui.qpTab === "invoice"
+        :       ui.qpTab === "invoice"
         ? renderInvoice(c, t, q)
+        : ui.qpTab === "closeout"
+        ? renderCloseout(c, t, q)
         : renderQpInfo(c, t, q);
     return (
       '<div class="row-between no-print"><div><button class="btn" data-act="back-ledger">← Ledger</button> &nbsp; <b>' +
@@ -555,11 +633,14 @@
       esc(q.qpNumber) +
       "A)</button>" +
       (q.qpClosed
-        ? '<button class="btn" data-act="reopen-qp">Reopen ' + esc(n) + "</button>"
-        : '<button class="btn danger" data-act="close-qp">Close ' +
+        ? '<button class="btn" data-act="qp-tab" data-tab="closeout">View close-out</button>' +
+          '<button class="btn" data-act="reopen-qp">Reopen ' +
           esc(n) +
-          " · return " +
+          "</button>"
+        : '<button class="btn good" data-act="qp-tab" data-tab="closeout">Close out · return ' +
           E.fmtMoney(Math.max(E.qpNtp(q) - E.qpSpent(q), 0)) +
+          " to " +
+          esc(taskNoun(c).toLowerCase()) +
           "</button>") +
       '<button class="btn danger" data-act="cancel-qp">Mark canceled</button>' +
       "</div></div>" +
@@ -570,6 +651,216 @@
       " · balance " +
       E.fmtMoney(E.qpRemaining(q)) +
       (q.qpClosed ? " · returned " + E.fmtMoney(E.qpReturned(q)) : "") +
+      "</p></div>"
+    );
+  }
+
+  function leftoverToTask(q) {
+    return E.money(Math.max(E.qpNtp(q) - E.qpSpent(q), 0));
+  }
+
+  function renderCloseout(c, t, q) {
+    var leftover = leftoverToTask(q);
+    var afterTask = E.money(E.taskUnallocated(t) + (q.qpClosed ? 0 : leftover));
+    var n = noun(c);
+    var tn = taskNoun(c);
+    var letter = renderQpCloseoutLetter(c, t, q, leftover);
+    return (
+      letter +
+      '<div class="card no-print"><h2>Close-out letter</h2>' +
+      (q.qpClosed
+        ? '<div class="banner info">Closed ' +
+          E.fmtDate(q.closeoutDate) +
+          ". Unspent " +
+          E.fmtMoney(E.qpReturned(q)) +
+          " returned to " +
+          esc(tn) +
+          " " +
+          esc(t.number) +
+          " and is available for the next " +
+          esc(n) +
+          ".</div>"
+        : "<p>After the work is performed, issue a close-out letter. Unspent NTP returns to <b>" +
+          esc(tn) +
+          " " +
+          esc(t.number) +
+          "</b> so you can issue another " +
+          esc(n) +
+          " under this funded task. It does not leave agreement " +
+          esc(c.code) +
+          " until you close the " +
+          esc(tn).toLowerCase() +
+          " itself.</p>") +
+      '<div class="fields">' +
+      '<label class="f">Close-out date<input id="closeoutDate" type="date" value="' +
+      esc(q.closeoutDate || E.todayISO()) +
+      '"' +
+      (q.qpClosed ? " disabled" : "") +
+      "></label>" +
+      '<label class="f">NTP amount<input value="' +
+      esc(E.fmtMoney(E.qpNtp(q))) +
+      '" disabled></label>' +
+      '<label class="f">Invoiced / spent<input value="' +
+      esc(E.fmtMoney(E.qpSpent(q))) +
+      '" disabled></label>' +
+      '<label class="f">Unspent returning to ' +
+      esc(tn) +
+      " " +
+      esc(t.number) +
+      '<input value="' +
+      esc(E.fmtMoney(leftover)) +
+      '" disabled></label>' +
+      '<label class="f">' +
+      esc(tn) +
+      " free after this close-out<input value=\"" +
+      esc(E.fmtMoney(afterTask)) +
+      '" disabled></label>' +
+      '<label class="f">Close-out notes<textarea id="closeoutNotes"' +
+      (q.qpClosed ? " disabled" : "") +
+      ">" +
+      esc(q.closeoutNotes || "") +
+      "</textarea></label></div>" +
+      '<div style="margin-top:12px;display:flex;gap:8px;flex-wrap:wrap">' +
+      (q.qpClosed
+        ? '<button class="btn primary" data-act="print-closeout">Print close-out letter</button>' +
+          '<button class="btn" data-act="reopen-qp">Reopen ' +
+          esc(n) +
+          "</button>"
+        : '<button class="btn good" data-act="issue-closeout">Issue close-out · return ' +
+          E.fmtMoney(leftover) +
+          "</button>" +
+          '<button class="btn" data-act="print-closeout">Preview / print letter</button>') +
+      "</div></div>"
+    );
+  }
+
+  function renderQpCloseoutLetter(c, t, q, leftover) {
+    leftover = leftover != null ? leftover : leftoverToTask(q);
+    var returned = q.qpClosed ? E.qpReturned(q) : leftover;
+    return (
+      '<div class="print-only" id="closeoutLetter"><h2 style="margin-top:0">CLOSE-OUT NOTICE</h2>' +
+      "<p>Delaware Department of Transportation · Materials &amp; Research</p>" +
+      "<p>Agreement <b>" +
+      esc(c.code) +
+      "</b> · " +
+      esc(c.title || "") +
+      "<br>Contractor: " +
+      esc(c.contractor) +
+      "<br>" +
+      esc(taskNoun(c)) +
+      " " +
+      esc(t.number) +
+      " · " +
+      esc(noun(c)) +
+      " " +
+      esc(q.qpNumber) +
+      "<br>Project: " +
+      esc(q.project || "") +
+      " · Contract / T#: " +
+      esc(q.contractNo || "") +
+      "</p>" +
+      "<p>Work under this " +
+      esc(noun(c)) +
+      " is complete. This notice closes the assignment and returns unspent funds to the funded " +
+      esc(taskNoun(c).toLowerCase()) +
+      " for additional " +
+      esc(nouns(c)) +
+      ".</p>" +
+      "<p>NTP amount: <b>" +
+      E.fmtMoney(E.qpNtp(q)) +
+      "</b><br>Invoiced / spent: <b>" +
+      E.fmtMoney(E.qpSpent(q)) +
+      "</b><br>Unspent funds returned to " +
+      esc(taskNoun(c)) +
+      " " +
+      esc(t.number) +
+      ": <b>" +
+      E.fmtMoney(returned) +
+      "</b></p>" +
+      "<p>Close-out date: " +
+      E.fmtDate(q.closeoutDate || E.todayISO()) +
+      "<br>Notes: " +
+      esc(q.closeoutNotes || "") +
+      "</p></div>"
+    );
+  }
+
+  function renderTaskCloseoutForm(c, t) {
+    var leftover = E.money(Math.max(Number(t.poAmount || 0) - E.taskSpent(t), 0));
+    var open = E.qpCounts(t).open;
+    return (
+      '<div class="card no-print"><h2>Close out ' +
+      esc(taskNoun(c)) +
+      " " +
+      esc(t.number) +
+      "</h2>" +
+      "<p>Use this when the funded " +
+      esc(taskNoun(c).toLowerCase()) +
+      " is finished. Open " +
+      esc(nouns(c)) +
+      " will be closed first (their unspent NTP returns here), then leftover PO of <b>" +
+      E.fmtMoney(leftover) +
+      "</b> returns to agreement <b>" +
+      esc(c.code) +
+      "</b> and can fund another " +
+      esc(taskNoun(c).toLowerCase()) +
+      ".</p>" +
+      (open
+        ? '<div class="banner">' +
+          open +
+          " open " +
+          (open === 1 ? noun(c) : nouns(c)) +
+          " will be closed with this " +
+          esc(taskNoun(c).toLowerCase()) +
+          ".</div>"
+        : "") +
+      '<div class="fields"><label class="f">Close-out date<input id="taskCloseoutDate" type="date" value="' +
+      esc(E.todayISO()) +
+      '"></label>' +
+      '<label class="f">Notes<textarea id="taskCloseoutNotes"></textarea></label></div>' +
+      '<div style="margin-top:12px;display:flex;gap:8px;flex-wrap:wrap">' +
+      '<button class="btn good" data-act="issue-task-closeout">Issue task close-out · return ' +
+      E.fmtMoney(leftover) +
+      " to " +
+      esc(c.code) +
+      "</button>" +
+      '<button class="btn" data-act="cancel-task-closeout">Cancel</button></div></div>'
+    );
+  }
+
+  function renderTaskCloseoutLetter(c, t) {
+    return (
+      '<div class="print-only" id="taskCloseoutLetter"><h2 style="margin-top:0">TASK CLOSE-OUT NOTICE</h2>' +
+      "<p>Delaware Department of Transportation · Materials &amp; Research</p>" +
+      "<p>Agreement <b>" +
+      esc(c.code) +
+      "</b> · " +
+      esc(c.title || "") +
+      "<br>Contractor: " +
+      esc(c.contractor) +
+      "<br>" +
+      esc(taskNoun(c)) +
+      " " +
+      esc(t.number) +
+      "</p>" +
+      "<p>This funded " +
+      esc(taskNoun(c).toLowerCase()) +
+      " is complete. Unspent purchase-order funds are returned to the agreement and may be used to fund another " +
+      esc(taskNoun(c).toLowerCase()) +
+      ".</p>" +
+      "<p>Task PO: <b>" +
+      E.fmtMoney(t.poAmount) +
+      "</b><br>Spent: <b>" +
+      E.fmtMoney(E.taskSpent(t)) +
+      "</b><br>Unspent funds returned to agreement " +
+      esc(c.code) +
+      ": <b>" +
+      E.fmtMoney(E.taskReturnedToContract(t)) +
+      "</b></p>" +
+      "<p>Close-out date: " +
+      E.fmtDate(t.closeoutDate || E.todayISO()) +
+      "<br>Notes: " +
+      esc(t.closeoutNotes || "") +
       "</p></div>"
     );
   }
@@ -1320,7 +1611,18 @@
     if (po) {
       po.onchange = function () {
         var t = task();
+        var c = contract();
         t.poAmount = E.money(po.value);
+        var room = E.contractAvailable(c, t.id);
+        if (t.poAmount - room > 0.009) {
+          toast(
+            "This " +
+              taskNoun(c).toLowerCase() +
+              " PO is " +
+              E.fmtMoney(t.poAmount - room) +
+              " over remaining agreement funds"
+          );
+        }
         save();
         render();
       };
@@ -1360,6 +1662,7 @@
       ui.contractId = el.getAttribute("data-id");
       ui.qpId = null;
       ui.view = "ledger";
+      ui.taskCloseout = false;
       var nc = contract();
       ui.taskId = nc.tasks[0] && nc.tasks[0].id;
       render();
@@ -1369,6 +1672,7 @@
       ui.taskId = el.getAttribute("data-id");
       ui.qpId = null;
       ui.view = "ledger";
+      ui.taskCloseout = false;
       render();
       return;
     }
@@ -1556,6 +1860,10 @@
       return;
     }
     if (act === "add-qp") {
+      if (t.closed) {
+        toast(taskNoun(c) + " is closed — reopen it to add a " + noun(c));
+        return;
+      }
       var nq = E.emptyQp(t);
       t.qps.push(nq);
       ui.qpId = nq.id;
@@ -1622,10 +1930,63 @@
       render();
       return;
     }
-    if (act === "close-qp") {
-      E.closeQp(q);
+    if (act === "close-qp" || act === "issue-closeout") {
+      E.closeQp(q, {
+        date: val("closeoutDate") || E.todayISO(),
+        notes: val("closeoutNotes"),
+      });
       save();
-      toast(noun(c) + " closed · remainder returned to task");
+      toast(
+        noun(c) +
+          " closed · " +
+          E.fmtMoney(E.qpReturned(q)) +
+          " returned to " +
+          taskNoun(c) +
+          " " +
+          t.number
+      );
+      ui.qpTab = "closeout";
+      render();
+      return;
+    }
+    if (act === "print-closeout" || act === "print-task-closeout") {
+      window.print();
+      return;
+    }
+    if (act === "goto-task-closeout") {
+      ui.taskCloseout = true;
+      render();
+      return;
+    }
+    if (act === "cancel-task-closeout") {
+      ui.taskCloseout = false;
+      render();
+      return;
+    }
+    if (act === "issue-task-closeout") {
+      E.closeTask(t, {
+        date: val("taskCloseoutDate") || E.todayISO(),
+        notes: val("taskCloseoutNotes"),
+      });
+      ui.taskCloseout = false;
+      ui.qpId = null;
+      save();
+      toast(
+        taskNoun(c) +
+          " " +
+          t.number +
+          " closed · " +
+          E.fmtMoney(E.taskReturnedToContract(t)) +
+          " returned to " +
+          c.code
+      );
+      render();
+      return;
+    }
+    if (act === "reopen-task") {
+      E.reopenTask(t);
+      save();
+      toast(taskNoun(c) + " " + t.number + " reopened");
       render();
       return;
     }
