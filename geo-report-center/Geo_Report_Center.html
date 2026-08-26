@@ -34227,9 +34227,9 @@ async function setFirstmapLayerOn(id, on){
     }catch(_){}
     const n=(gj.features||[]).length;
     if(!n){
-      toastWarn(Lyr.label+': FirstMap returned 0 features (empty layer)');
+      toast(Lyr.label+': FirstMap returned 0 features (empty layer)', 8000);
     } else if(id==='traffic_counts'||id==='traffic_counts_10yr'){
-      toast(Lyr.label+': '+n.toLocaleString()+' road segments — amber lines on map; hover for AADT');
+      toast(Lyr.label+': '+n.toLocaleString()+' road segments — amber lines on map; hover for AADT', 6000);
     } else {
       toast(Lyr.id==='street_view'
         ?(`${Lyr.label}: ${n.toLocaleString()} points — click a point to open Street View`)

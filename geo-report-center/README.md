@@ -121,8 +121,8 @@ Full checklist and talking points: **[FEATURE_TOUR.md](./FEATURE_TOUR.md)**
 | Button | What it means | What you do |
 |--------|---------------|-------------|
 | **Estimates ON/OFF** | Master switch for screening numbers | Leave OFF for “facts only”; turn ON for rates/profiles |
-| **Layers** | Which reference layers feed Site Intel | Open → filter / All on / All off / Expand… |
-| **Markers** | Map dots | Toggle DGS wells (usually off) and infil anchors (usually on) |
+| **Layers** | Which reference layers feed Site Intel + DelDOT FirstMap online overlays | Open → filter / All on / All off / Expand… · **Traffic counts (AADT)** is under DelDOT FirstMap (amber road segments; hover for volume) |
+| **Markers** | Map dots for borings / DGS / infil / bridges | Not traffic — use Layers → FirstMap for AADT |
 | **Hydro** | Online water-table / aquifer / climate options | Turn online sampling on when you have internet |
 
 ![Layers popover](docs/readme-screenshots/05-layers-popover.png)
