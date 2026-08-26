@@ -863,7 +863,7 @@
       "></th>" +
       "<th>" +
       esc(noun(c)) +
-      " #</th><th>Contract</th><th>Project</th><th>Notes</th><th>Status</th><th>NTP date</th><th>NTP amount</th><th>Spent</th><th>Balance</th><th>Invoices</th>" +
+      " #</th><th>Design T#</th><th>Project</th><th>Notes</th><th>Status</th><th>NTP date</th><th>NTP amount</th><th>Spent</th><th>Balance</th><th>Invoices</th>" +
       "</tr></thead><tbody>" +
       (rows ||
         '<tr><td colspan="11" class="muted">No ' +
@@ -932,7 +932,7 @@
       esc(n) +
       " information</h2><div class=\"fields\">" +
       field("qpNumber", n + " #", q.qpNumber) +
-      field("contractNo", "Contract / T#", q.contractNo) +
+      field("contractNo", "Design contract / T#", q.contractNo) +
       field("project", "Project", q.project) +
       field("billingNo", "Project billing number", q.billingNo || "") +
       field("notes", "Notes", q.notes, "textarea") +
@@ -1084,7 +1084,6 @@
     var lh = E.ensureLetterhead(c);
     var cc = workingCc("closeout", c, t, q);
     var dateLong = E.fmtDateLong(q.closeoutDate || E.todayISO());
-    var lead = lh.billingLeadIn == null ? "billing " : String(lh.billingLeadIn);
     var assignment =
       "Agreement #" +
       (c.code || "") +
@@ -1092,8 +1091,8 @@
       t.number +
       ", Quick Proposal " +
       q.qpNumber;
-    var refBits = [q.contractNo, q.project].filter(Boolean);
-    if (refBits.length) assignment += " (" + refBits.join(", ") + ")";
+    if (q.contractNo) assignment += ", design contract " + q.contractNo;
+    if (q.project) assignment += " (" + q.project + ")";
     var notes = String(q.closeoutNotes || "").trim();
     return (
       '<div class="paper-stack" id="closeoutLetter">' +
@@ -1103,9 +1102,7 @@
       '<p class="letter-salute">' +
       esc(lh.contractorSalutation || "Dear Sir or Madam:") +
       "</p>" +
-      "<p>This letter is in reference to " +
-      esc(lead) +
-      "Contract No. " +
+      "<p>This letter is in reference to main Contract No. " +
       esc(lh.billingContractNo || "") +
       " " +
       esc(lh.billingContractTitle || "") +
@@ -1198,7 +1195,7 @@
       (totals.count
         ? '<table class="grid"><thead><tr><th>' +
           esc(n) +
-          " #</th><th>Project</th><th>Contract</th><th>NTP</th><th>Spent</th><th>Returned to " +
+          " #</th><th>Project</th><th>Design contract / T#</th><th>NTP</th><th>Spent</th><th>Returned to " +
           esc(tn) +
           "</th></tr></thead><tbody>" +
           rowHtml +
@@ -1269,7 +1266,6 @@
     var ns = nouns(c);
     var lh = E.ensureLetterhead(c);
     var cc = workingCc("bulk", c, t, null);
-    var lead = lh.billingLeadIn == null ? "billing " : String(lh.billingLeadIn);
     var notes = String(batch.notes || "").trim();
     var rows = (batch.rows || [])
       .map(function (r) {
@@ -1298,23 +1294,21 @@
       '<p class="letter-salute">' +
       esc(lh.contractorSalutation || "Dear Sir or Madam:") +
       "</p>" +
-      "<p>This letter is in reference to " +
-      esc(lead) +
-      "Contract No. " +
+      "<p>This letter is in reference to main Contract No. " +
       esc(lh.billingContractNo || "") +
       " " +
       esc(lh.billingContractTitle || "") +
       ".</p>" +
       "<p>Please consider this letter as official notice that work under the following Quick Proposals on Task " +
       esc(t.number) +
-      " is complete. Unspent funds of " +
+      " of this contract is complete. The table lists each QP on this Task with its design contract number. Unspent funds of " +
       esc(E.fmtMoneyLetter(totals.returned)) +
       " are returned to Task " +
       esc(t.number) +
       " for additional Quick Proposals.</p>" +
-      '<table class="prop-items"><thead><tr><th>' +
+      '<table class="prop-items closeout-chart"><thead><tr><th>' +
       esc(n) +
-      " #</th><th>Project</th><th>Contract / T#</th><th>NTP amount</th><th>Invoiced / spent</th><th>Returned to Task " +
+      " #</th><th>Project</th><th>Design contract / T#</th><th>NTP amount</th><th>Invoiced / spent</th><th>Returned to Task " +
       esc(t.number) +
       "</th></tr></thead><tbody>" +
       rows +
@@ -1322,11 +1316,11 @@
       totals.count +
       " " +
       (totals.count === 1 ? n : ns) +
-      '</th><th class="num">' +
+      "</th><th>" +
       E.fmtMoney(totals.ntpAmount) +
-      '</th><th class="num">' +
+      "</th><th>" +
       E.fmtMoney(totals.spent) +
-      '</th><th class="num">' +
+      "</th><th>" +
       E.fmtMoney(totals.returned) +
       "</th></tr></tfoot></table>" +
       (notes ? "<p>" + nl(notes) + "</p>" : "") +
