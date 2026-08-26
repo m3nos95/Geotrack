@@ -225,10 +225,13 @@
     .letter-secretary {
       font-family: "Copperplate Gothic Light", Copperplate, "Century Gothic", "Palatino Linotype", serif;
       font-size: 6.5pt; letter-spacing: .08em; text-transform: uppercase;
-      text-align: left; color: #17365D; margin: 4px 0 0; font-weight: 400; line-height: 1.25;
+      text-align: left; color: #17365D; margin: 0; font-weight: 400; line-height: 1.25;
     }
-    .letter-date { margin-bottom: 20px; }
-    .ntp-letter .letter-date { text-align: right; }
+    .letter-head-row {
+      display: flex; justify-content: space-between; align-items: flex-start;
+      gap: 16px; margin: 4px 0 20px;
+    }
+    .letter-date { margin: 0; text-align: right; white-space: nowrap; }
     .letter-addr { margin-bottom: 20px; line-height: 1.15; }
     .letter-salute { margin: 16px 0; }
     .letter-page p { margin: 0 0 18px; }
@@ -236,6 +239,15 @@
     .letter-sign-file { margin: 0 0 10px; }
     .letter-cc { display: flex; gap: 10px; margin-top: 16px; font-size: 12pt; line-height: 1.15; }
     .letter-cc span { width: 28px; flex-shrink: 0; }
+    .cc-editor { margin: 12px 0 4px; }
+    .cc-label { font-size: 12px; font-weight: 600; color: var(--muted); margin-bottom: 8px; }
+    .cc-chip {
+      display: flex; align-items: center; justify-content: space-between; gap: 8px;
+      padding: 6px 8px; border: 1px solid var(--border); border-radius: 6px;
+      margin-bottom: 6px; background: var(--panel);
+    }
+    .cc-add { display: flex; gap: 8px; margin-top: 8px; }
+    .cc-add input { flex: 1; padding: 6px 8px; }
     .letter-official-footer {
       margin-top: 28px; padding-top: 12px; text-align: right;
     }

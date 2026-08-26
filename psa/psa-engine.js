@@ -171,11 +171,7 @@
       " requested by the Department for the referenced contract. This work may begin immediately.\n\nShould you have any questions, please contact me at " +
       (lh.signerPhone || "") +
       ".";
-    var cc = (lh.cc || []).slice();
-    (qp.ccExtra || []).forEach(function (x) {
-      var s = String(x || "").trim();
-      if (s && cc.indexOf(s) < 0) cc.push(s);
-    });
+    var cc = resolveLetterCc(qp.cc, lh, qp.ccExtra);
     return {
       letterDate: letterDate,
       letterDateLong: fmtDateLong(letterDate),
@@ -207,6 +203,37 @@
       agrLine: (contract.code || "") + " - " + (contract.title || ""),
       taskLine: tnum + ", QP" + qpnum,
     };
+  }
+
+  function resolveLetterCc(override, letterhead, extra) {
+    if (Array.isArray(override)) {
+      return override
+        .map(function (x) {
+          return String(x || "").trim();
+        })
+        .filter(Boolean);
+    }
+    var lh = letterhead && letterhead.cc ? letterhead : ensureLetterhead({ letterhead: letterhead || {} });
+    var cc = (lh.cc || []).slice();
+    (extra || []).forEach(function (x) {
+      var s = String(x || "").trim();
+      if (s && cc.indexOf(s) < 0) cc.push(s);
+    });
+    return cc;
+  }
+
+  function addLetterCc(list, name) {
+    var s = String(name || "").trim();
+    var out = (list || []).slice();
+    if (!s || out.indexOf(s) >= 0) return out;
+    out.push(s);
+    return out;
+  }
+
+  function removeLetterCc(list, index) {
+    return (list || []).filter(function (_x, i) {
+      return i !== Number(index);
+    });
   }
 
   function todayISO() {
@@ -1428,12 +1455,32 @@
     return qp;
   }
 
-  function reopenQp(qp) {
+  function reopenQp(qp, task) {
     qp.qpClosed = false;
     qp.returnedRemainder = 0;
     qp.closeoutDate = null;
     qp.status = deriveQpStatus(qp);
+    if (task) detachQpFromBulkCloseouts(task, qp.id);
     return qp;
+  }
+
+  function detachQpFromBulkCloseouts(task, qpId) {
+    if (!task || !task.bulkCloseouts) return;
+    task.bulkCloseouts = task.bulkCloseouts
+      .map(function (b) {
+        var rows = (b.rows || []).filter(function (r) {
+          return String(r.id) !== String(qpId);
+        });
+        var qpIds = (b.qpIds || []).filter(function (id) {
+          return String(id) !== String(qpId);
+        });
+        if (!rows.length) return null;
+        b.rows = rows;
+        b.qpIds = qpIds;
+        b.totals = sumCloseoutRows(rows);
+        return b;
+      })
+      .filter(Boolean);
   }
 
   function bulkCloseQps(task, qpIds, opts) {
@@ -1452,6 +1499,7 @@
       id: opts.id || uid("bulk"),
       date: date,
       notes: notes,
+      cc: Array.isArray(opts.cc) ? opts.cc.slice() : null,
       qpIds: closed.map(function (q) {
         return q.id;
       }),
@@ -1469,6 +1517,22 @@
       if (String(list[i].id) === String(id)) return list[i];
     }
     return null;
+  }
+
+  function undoBulkCloseout(task, batchId) {
+    var batch = findBulkCloseout(task, batchId);
+    if (!batch) return null;
+    qpsByIds(task, batch.qpIds).forEach(function (q) {
+      if (!q.qpClosed) return;
+      q.qpClosed = false;
+      q.returnedRemainder = 0;
+      q.closeoutDate = null;
+      q.status = deriveQpStatus(q);
+    });
+    task.bulkCloseouts = (task.bulkCloseouts || []).filter(function (b) {
+      return String(b.id) !== String(batchId);
+    });
+    return batch;
   }
 
   function closeTask(task, opts) {
@@ -1632,6 +1696,8 @@
       ntpLetterDate: null,
       billingNo: "",
       ccExtra: [],
+      cc: null,
+      closeoutCc: null,
       closeoutDate: null,
       closeoutNotes: "",
       independentEstimate: 0,
@@ -1712,7 +1778,11 @@
     closeoutSnapshot: closeoutSnapshot,
     sumCloseoutRows: sumCloseoutRows,
     closeQp: closeQp,
+    resolveLetterCc: resolveLetterCc,
+    addLetterCc: addLetterCc,
+    removeLetterCc: removeLetterCc,
     reopenQp: reopenQp,
+    undoBulkCloseout: undoBulkCloseout,
     bulkCloseQps: bulkCloseQps,
     findBulkCloseout: findBulkCloseout,
     closeTask: closeTask,
