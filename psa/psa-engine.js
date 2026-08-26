@@ -435,6 +435,213 @@
     );
   }
 
+  var AGREEMENT_TYPES = ["IDIQ", "Multiphase", "Project-Specific", "State"];
+  var PAYMENT_METHODS = [
+    "Cost plus fixed fee",
+    "Cost per unit of work",
+    "Specific rates of compensation",
+    "Lump sum",
+  ];
+
+  function emptyPspm() {
+    return {
+      workPlan: false,
+      schedule: false,
+      auditReview: false,
+      dbeGoal: false,
+      dbeNa: false,
+      fundingAuthorized: false,
+    };
+  }
+
+  function ensurePspm(qp) {
+    if (!qp) return emptyPspm();
+    var base = emptyPspm();
+    var extra = qp.pspm && typeof qp.pspm === "object" ? qp.pspm : {};
+    qp.pspm = Object.assign({}, base, extra);
+    return qp.pspm;
+  }
+
+  function usesFederalFunds(contract) {
+    var f = String((contract && contract.funding) || "").toLowerCase();
+    if (!f) return true;
+    if (/\bstate\b/.test(f) && !/federal|fhwa|fahp|cfda/.test(f)) return false;
+    return true;
+  }
+
+  function estimateVariance(independentEstimate, proposedTotal) {
+    var est = money(independentEstimate || 0);
+    var tot = money(proposedTotal || 0);
+    if (!est) {
+      return {
+        status: "missing",
+        delta: tot,
+        pct: null,
+        message:
+          "Independent estimate not entered. PSPM §14 requires the PM to prepare a scope of work and independent estimate before reviewing the consultant cost proposal.",
+      };
+    }
+    var delta = money(tot - est);
+    var pct = est ? delta / est : 0;
+    if (delta > 0.009) {
+      return {
+        status: "over",
+        delta: delta,
+        pct: pct,
+        message:
+          "Proposal " +
+          fmtMoney(tot) +
+          " exceeds independent estimate " +
+          fmtMoney(est) +
+          " by " +
+          fmtMoney(delta) +
+          " (" +
+          Math.round(pct * 100) +
+          "%). Negotiate against the estimate (PSPM §9).",
+      };
+    }
+    return {
+      status: "ok",
+      delta: delta,
+      pct: pct,
+      message:
+        "Proposal " +
+        fmtMoney(tot) +
+        " is at or under independent estimate " +
+        fmtMoney(est) +
+        ".",
+    };
+  }
+
+  function ntpScopeChange(previousNtp, nextAmount) {
+    var oldAmt = money(previousNtp || 0);
+    var next = money(nextAmount || 0);
+    if (!oldAmt) {
+      return { kind: "initial", previous: oldAmt, next: next, pct: 0, message: "" };
+    }
+    var delta = money(next - oldAmt);
+    var pct = oldAmt ? Math.abs(delta) / oldAmt : 0;
+    if (delta > 0.009) {
+      return {
+        kind: "increase",
+        previous: oldAmt,
+        next: next,
+        pct: pct,
+        message:
+          "Additional work outside the initial scope needs a new proposal (work plan, cost, schedule) and a new NTP (PSPM §14).",
+      };
+    }
+    if (pct + 1e-9 >= 0.2 && delta < -0.009) {
+      return {
+        kind: "reduction",
+        previous: oldAmt,
+        next: next,
+        pct: pct,
+        message:
+          "Cost reduced " +
+          Math.round(pct * 100) +
+          "% from the issued NTP. PSPM §14 requires an adjusted proposal when the work is 20% or more below the original.",
+      };
+    }
+    return { kind: "revise", previous: oldAmt, next: next, pct: pct, message: "" };
+  }
+
+  function ntpGate(contract, qp) {
+    qp = qp || {};
+    var pspm = ensurePspm(qp);
+    var proposal = qp.proposal || {};
+    var total = proposalTotal(proposal);
+    if (!total) total = money(qp.ntpAmount || qp.proposalAmount || 0);
+    var hasCost = (proposal.lines && proposal.lines.length > 0) || total > 0;
+    var federal = usesFederalFunds(contract);
+    var est = estimateVariance(qp.independentEstimate, total);
+    var steps = [];
+
+    steps.push({
+      id: "independent_estimate",
+      label: "PM prepared a scope of work and independent estimate",
+      required: true,
+      status: est.status === "missing" ? "fail" : "pass",
+      detail:
+        est.status === "missing"
+          ? est.message
+          : "Estimate " +
+            fmtMoney(qp.independentEstimate) +
+            (est.status === "over" ? " — " + est.message : "."),
+    });
+
+    var proposalOk = !!(hasCost && pspm.workPlan && pspm.schedule);
+    steps.push({
+      id: "proposal_complete",
+      label: "Consultant proposal includes work plan, cost, and schedule",
+      required: true,
+      status: proposalOk ? "pass" : "fail",
+      detail: proposalOk
+        ? "Work plan, cost, and schedule marked complete."
+        : [
+            hasCost ? "" : "Cost proposal missing.",
+            pspm.workPlan ? "" : "Work plan not confirmed.",
+            pspm.schedule ? "" : "Schedule not confirmed.",
+          ]
+            .filter(Boolean)
+            .join(" "),
+    });
+
+    steps.push({
+      id: "audit_review",
+      label: "Audit pre-award review or risk assessment complete",
+      required: true,
+      status: pspm.auditReview ? "pass" : "fail",
+      detail: pspm.auditReview
+        ? "CCC forwarded the proposal; Audit review recorded."
+        : "PSPM §14: CCC sends the proposal to Audit for a pre-award review (or a risk assessment if below the mandatory threshold).",
+    });
+
+    if (federal && !pspm.dbeNa) {
+      steps.push({
+        id: "dbe_goal",
+        label: "DBE goal set for this assignment (federal funds)",
+        required: true,
+        status: pspm.dbeGoal ? "pass" : "fail",
+        detail: pspm.dbeGoal
+          ? "DBE review recorded."
+          : "Federal funds: CCC sends the proposal to DBE so a goal can be set for the assignment.",
+      });
+    } else {
+      steps.push({
+        id: "dbe_goal",
+        label: "DBE goal (federal funds only)",
+        required: false,
+        status: "na",
+        detail: "Not required on this agreement (state-only, or marked N/A).",
+      });
+    }
+
+    steps.push({
+      id: "funding",
+      label: "Funding authorized for this task",
+      required: true,
+      status: pspm.fundingAuthorized ? "pass" : "fail",
+      detail: pspm.fundingAuthorized
+        ? "Funding authorization recorded."
+        : "NTP issues after funding approval for the task is received (PSPM §14).",
+    });
+
+    var requiredFails = steps.filter(function (s) {
+      return s.required && s.status === "fail";
+    });
+    return {
+      ready: requiredFails.length === 0,
+      federal: federal,
+      estimate: est,
+      steps: steps,
+      requiredFailCount: requiredFails.length,
+      missingLabels: requiredFails.map(function (s) {
+        return s.label;
+      }),
+    };
+  }
+
   function reviewProposal(contract, proposal) {
     var flags = [];
     var lines = (proposal && proposal.lines) || [];
@@ -693,10 +900,15 @@
         checkResult(
           "invoice_date",
           qp.ntpDate
-            ? "Invoice date is on or after NTP date"
+            ? "Invoice date is on or after NTP date (earliest date work may begin)"
             : "Invoice date is present",
           dateOk ? "pass" : "fail",
-          dateDetail,
+          dateOk
+            ? dateDetail
+            : dateDetail +
+              (qp.ntpDate
+                ? " PSPM §14: the NTP date is the earliest date work may begin."
+                : ""),
           true
         )
       );
@@ -1108,6 +1320,8 @@
       ccExtra: [],
       closeoutDate: null,
       closeoutNotes: "",
+      independentEstimate: 0,
+      pspm: emptyPspm(),
     };
   }
 
@@ -1184,5 +1398,13 @@
     emptyQp: emptyQp,
     emptyTask: emptyTask,
     emptyInvoice: emptyInvoice,
+    AGREEMENT_TYPES: AGREEMENT_TYPES,
+    PAYMENT_METHODS: PAYMENT_METHODS,
+    emptyPspm: emptyPspm,
+    ensurePspm: ensurePspm,
+    usesFederalFunds: usesFederalFunds,
+    estimateVariance: estimateVariance,
+    ntpScopeChange: ntpScopeChange,
+    ntpGate: ntpGate,
   };
 })(typeof window !== "undefined" ? window : global);

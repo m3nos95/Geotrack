@@ -65,7 +65,103 @@
     return tpl(c).taskNounPlural || "Tasks";
   }
   function wf(c) {
-    return tpl(c).workflow || { proposal: true, ntp: true, payItems: true, invoices: true };
+    return tpl(c).workflow || {
+      proposal: true,
+      ntp: true,
+      payItems: true,
+      invoices: true,
+      pspNtpGate: true,
+    };
+  }
+
+  function optionList(values, selected) {
+    return (values || [])
+      .map(function (v) {
+        return (
+          '<option value="' +
+          esc(v) +
+          '"' +
+          (v === selected ? " selected" : "") +
+          ">" +
+          esc(v) +
+          "</option>"
+        );
+      })
+      .join("");
+  }
+
+  function selectField(id, values, selected, dis) {
+    var opts = (values || []).slice();
+    if (selected && opts.indexOf(selected) < 0) opts.unshift(selected);
+    return (
+      '<select id="' +
+      id +
+      '"' +
+      (dis || "") +
+      ">" +
+      optionList(opts, selected) +
+      "</select>"
+    );
+  }
+
+  function readPspmFromForm(q) {
+    if (!q) return;
+    E.ensurePspm(q);
+    function chk(id) {
+      var el = document.getElementById(id);
+      return el ? !!el.checked : null;
+    }
+    var v;
+    v = chk("pspWorkPlan");
+    if (v != null) q.pspm.workPlan = v;
+    v = chk("pspSchedule");
+    if (v != null) q.pspm.schedule = v;
+    v = chk("pspAudit");
+    if (v != null) q.pspm.auditReview = v;
+    v = chk("pspDbe");
+    if (v != null) q.pspm.dbeGoal = v;
+    v = chk("pspDbeNa");
+    if (v != null) q.pspm.dbeNa = v;
+    v = chk("pspFunding");
+    if (v != null) q.pspm.fundingAuthorized = v;
+    var est = document.getElementById("indepEst");
+    if (est) q.independentEstimate = E.money(est.value);
+  }
+
+  function renderNtpGate(c, q) {
+    if (wf(c).pspNtpGate === false) return "";
+    E.ensurePspm(q);
+    var gate = E.ntpGate(c, q);
+    var steps = gate.steps
+      .map(function (s) {
+        return (
+          '<div class="check"><div class="s ' +
+          esc(s.status) +
+          '">' +
+          esc(s.status) +
+          "</div><div><b>" +
+          esc(s.label) +
+          "</b><div class=\"muted\">" +
+          esc(s.detail) +
+          "</div></div></div>"
+        );
+      })
+      .join("");
+    var ready = gate.ready
+      ? '<div class="banner info">PSPM §14 gate is complete. Issue the NTP. The NTP date is the earliest date work may begin.</div>'
+      : '<div class="banner">PSPM §14 is not complete (' +
+        gate.requiredFailCount +
+        " item" +
+        (gate.requiredFailCount === 1 ? "" : "s") +
+        " remaining). You can still issue the letter; missing steps stay on the record.</div>";
+    return (
+      '<div class="card no-print"><h3>PSPM §14 — Notice to Proceed process</h3>' +
+      "<p class=\"muted\">PM prepares the independent estimate, the consultant submits work plan / cost / schedule, CCC sends the proposal to Audit (and DBE if federal), then funding is authorized. CCC issues NTP and copies the PM. This desk prints the same Secretary letter you already mail.</p>" +
+      ready +
+      '<div class="checks">' +
+      steps +
+      "</div></div>"
+    );
   }
 
   function makeAgreement(opts) {
@@ -94,12 +190,12 @@
       pm: opts.pm || "",
       cap: E.money(opts.cap || 0),
       agreementType:
-        opts.agreementType || (template.workflow.payItems ? "IDIQ" : "Lump sum"),
-      term: opts.term || "",
+        opts.agreementType || (template.workflow.payItems ? "IDIQ" : "Project-Specific"),
+      term: opts.term || (template.workflow.payItems ? "Three-year term with two possible one-year extensions" : ""),
       paymentMethod:
         opts.paymentMethod ||
         (template.workflow.payItems ? "Cost per unit of work" : "Lump sum"),
-      funding: opts.funding || "",
+      funding: opts.funding || (template.workflow.payItems ? "Federal; CFDA 20.205" : ""),
       historical: !!opts.historical,
       templateId: template.id,
       letterhead: E.ensureLetterhead({
@@ -142,6 +238,8 @@
     c.rfp = c.code;
     c.agreementType = "IDIQ";
     c.paymentMethod = c.paymentMethod || "Cost per unit of work";
+    c.funding = c.funding || "Federal; CFDA 20.205";
+    c.term = c.term || "Three-year term with two possible one-year extensions";
     if (!c.templateId) c.templateId = T.UNIT_PRICE_ID;
     var poSum = (c.tasks || []).reduce(function (s, t) {
       return s + Number(t.poAmount || 0);
@@ -353,7 +451,11 @@
 
   function renderKpis(c, r) {
     var t = task();
-    var capLabel = c.historical ? "Agreement / PO" : "IDIQ cap";
+    var capLabel = c.historical
+      ? "Agreement / PO"
+      : c.agreementType === "IDIQ"
+      ? "IDIQ maximum $"
+      : "Agreement ceiling";
     var taskAvail = t ? E.taskUnallocated(t) : r.unallocated;
     var taskLabel = t
       ? "Available on " + taskNoun(c) + " " + t.number
@@ -521,11 +623,13 @@
         esc(taskNouns(c).toLowerCase()) +
         ". This " +
         esc(taskNoun(c).toLowerCase()) +
-        " is the funded bucket. " +
+        " is the funded PO bucket. " +
         esc(nouns(c)) +
-        " are sub-tasks under it — 40+ on one " +
+        " are the NTP’d assignments under it — 40+ on one " +
         esc(taskNoun(c).toLowerCase()) +
-        " is expected. Close a " +
+        " is expected (PSPM IDIQ “task orders”; this office calls them " +
+        esc(nouns(c)) +
+        "). Close a " +
         esc(noun(c)) +
         " when the work is performed to issue a close-out letter and return unspent NTP to this " +
         esc(taskNoun(c).toLowerCase()) +
@@ -744,7 +848,7 @@
           esc(c.code) +
           " until you close the " +
           esc(tn).toLowerCase() +
-          " itself.</p>") +
+          " itself. Closing the consultant agreement is a Finance and Audit action (PSPM §3 / 2 CFR 200.343).</p>") +
       '<div class="fields">' +
       '<label class="f">Close-out date<input id="closeoutDate" type="date" value="' +
       esc(q.closeoutDate || E.todayISO()) +
@@ -840,6 +944,7 @@
       "<br>Notes: " +
       esc(q.closeoutNotes || "") +
       "</p>" +
+      "<p>cc: DOT Finance; DOT Audit Management. This letter closes the assignment only. Closing the consultant agreement is a Finance and Audit action (2 CFR 200.343).</p>" +
       officialLetterFooterHtml() +
       "</article></div>"
     );
@@ -926,6 +1031,7 @@
       "<br>Notes: " +
       esc(t.closeoutNotes || "") +
       "</p>" +
+      "<p>cc: DOT Finance; DOT Audit Management. Leftover PO returns to the agreement. Closing the consultant agreement itself remains a Finance and Audit action (2 CFR 200.343).</p>" +
       officialLetterFooterHtml() +
       "</article></div>"
     );
@@ -1033,16 +1139,33 @@
         );
       })
       .join("");
+    var estVar = E.estimateVariance(q.independentEstimate, review.total);
+    var estBanner =
+      estVar.status === "ok"
+        ? '<div class="banner info">' + esc(estVar.message) + "</div>"
+        : '<div class="banner">' + esc(estVar.message) + "</div>";
+    E.ensurePspm(q);
     return (
-      '<div class="card"><h2>Budget proposal review</h2>' +
-      "<p class=\"muted\">Enter the contractor's proposed quantities. Engineer qty overrides the proposal when you issue the NTP. Unit prices come from this agreement's catalog.</p>" +
+      '<div class="card"><h2>Consultant proposal review</h2>' +
+      "<p class=\"muted\">PSPM §14: the PM prepares a scope of work and independent estimate <b>before</b> reviewing the consultant’s cost proposal. The proposal must include a work plan, cost, and schedule. Engineer qty overrides the proposal when you issue the NTP. Unit prices come from this agreement’s catalog.</p>" +
+      estBanner +
       '<div class="fields" style="margin-bottom:10px">' +
+      '<label class="f">Independent estimate (PM)<input id="indepEst" value="' +
+      esc(q.independentEstimate || "") +
+      '" placeholder="0"></label>' +
       '<label class="f">Proposal date<input id="propDate" type="date" value="' +
       esc((q.proposal && q.proposal.submittedDate) || "") +
       '"></label>' +
       '<label class="f">Project name on proposal<input id="propProject" value="' +
       esc((q.proposal && q.proposal.projectName) || q.project || "") +
       '"></label></div>' +
+      '<div class="chk-grid" style="margin-bottom:10px">' +
+      '<label class="chk"><input type="checkbox" id="pspWorkPlan"' +
+      (q.pspm.workPlan ? " checked" : "") +
+      "> Work plan included</label>" +
+      '<label class="chk"><input type="checkbox" id="pspSchedule"' +
+      (q.pspm.schedule ? " checked" : "") +
+      "> Schedule included</label></div>" +
       '<div class="row-between"><div>Proposed / reviewed total: <b>' +
       E.fmtMoney(review.total) +
       "</b> · task room " +
@@ -1085,6 +1208,37 @@
         );
       })
       .join("");
+    E.ensurePspm(q);
+    var nextAmt = pkt.amount || E.money(q.ntpAmount || 0);
+    var scope = q.ntpDate ? E.ntpScopeChange(q.ntpAmount, nextAmt) : { kind: "initial", message: "" };
+    var scopeBanner = scope.message
+      ? '<div class="banner">' + esc(scope.message) + "</div>"
+      : "";
+    var gateChecks =
+      wf(c).pspNtpGate === false
+        ? ""
+        : '<div class="chk-grid" style="margin:10px 0">' +
+          '<label class="chk"><input type="checkbox" id="pspWorkPlan"' +
+          (q.pspm.workPlan ? " checked" : "") +
+          "> Work plan in the proposal</label>" +
+          '<label class="chk"><input type="checkbox" id="pspSchedule"' +
+          (q.pspm.schedule ? " checked" : "") +
+          "> Schedule in the proposal</label>" +
+          '<label class="chk"><input type="checkbox" id="pspAudit"' +
+          (q.pspm.auditReview ? " checked" : "") +
+          "> Audit pre-award review / risk assessment</label>" +
+          '<label class="chk"><input type="checkbox" id="pspDbe"' +
+          (q.pspm.dbeGoal ? " checked" : "") +
+          "> DBE goal set (federal)</label>" +
+          '<label class="chk"><input type="checkbox" id="pspDbeNa"' +
+          (q.pspm.dbeNa ? " checked" : "") +
+          "> DBE N/A (state-only)</label>" +
+          '<label class="chk"><input type="checkbox" id="pspFunding"' +
+          (q.pspm.fundingAuthorized ? " checked" : "") +
+          "> Funding authorized for this task</label></div>" +
+          '<label class="f">Independent estimate (PM)<input id="indepEst" value="' +
+          esc(q.independentEstimate || "") +
+          '"></label>';
     return (
       '<div class="card no-print"><h2>Issue NTP</h2>' +
       (q.ntpDate
@@ -1093,7 +1247,8 @@
           " for " +
           E.fmtMoney(q.ntpAmount) +
           ". Issuing again records a revised NTP from the current proposal. Print sends the DelDOT letter plus the attached proposal.</div>"
-        : "<p>Locks the approved proposal quantities and amount onto this QP. Print produces the same two-page packet you mail: Secretary letter + contractor unit-price proposal.</p>") +
+        : "<p>PSPM §14: the NTP date is the earliest date work may begin. The Department may disallow payment of fixed fee on work started before NTP. Print produces the same two-page packet you mail: Secretary letter + contractor proposal.</p>") +
+      scopeBanner +
       '<div class="fields">' +
       '<label class="f">NTP / ledger date<input id="ntpDate" type="date" value="' +
       esc(q.ntpDate || E.todayISO()) +
@@ -1110,6 +1265,7 @@
       '<label class="f">NTP notes<textarea id="ntpNotes">' +
       esc(q.ntpNotes || "") +
       "</textarea></label></div>" +
+      gateChecks +
       "<p>From proposal lines: <b>" +
       E.fmtMoney(pkt.amount) +
       "</b></p>" +
@@ -1122,6 +1278,7 @@
       '<button class="btn primary" data-act="issue-ntp">Issue / revise NTP</button>' +
       '<button class="btn" data-act="print-ntp">Print NTP packet</button>' +
       "</div></div>" +
+      renderNtpGate(c, q) +
       renderNtpPacket(c, t, q, pkt)
     );
   }
@@ -1597,7 +1754,17 @@
       '<main class="stage setup-stage">' +
       (locked
         ? '<div class="banner">You are in <b>PM</b> desk. The ledger, proposals, NTPs, and invoices are yours. Switch to <b>Finance</b> (upper right) to add agreements, pick a template, and set the checklist PMs must pass. Finance can set this up how they want the PM to work.</div>'
-        : '<div class="banner info">Finance desk. Add any professional-services agreement, not just 2216F / 2217F. Bind it to a DelDOT starter template or a copy you customize. PMs cannot change the rules — they work inside them. That is how this becomes the DelDOT standard.</div>') +
+        : '<div class="banner info">Finance desk. Add any professional-services agreement, not just 2216F / 2217F. Bind it to a DelDOT starter template or a copy you customize. Agreement types and payment methods follow the Professional Services Procurement Manual (2016). PMs cannot change the rules — they work inside them.</div>') +
+      '<div class="card"><h2>PSPM 2016 · how this desk maps</h2>' +
+      "<p class=\"muted\">Official manual: registration, solicitation, IDIQ / multiphase / project-specific / state agreements, then Notice to Proceed. Materials &amp; Research still funds work as Agreement → Task (PO) → QP (NTP’d assignment).</p>" +
+      '<table class="grid"><thead><tr><th>PSPM 2016</th><th>ConTrak (this office)</th></tr></thead><tbody>' +
+      "<tr><td>Agreement type: IDIQ, Multiphase, Project-Specific, or State. IDIQ: max 5 years including extensions, and a pre-set maximum dollar amount.</td><td>Agreement code (2216F) with cap / ceiling and term.</td></tr>" +
+      "<tr><td>Task orders issued as-needed under an IDIQ.</td><td>Quick Proposals under a funded Task. 40+ QPs on one Task is normal.</td></tr>" +
+      "<tr><td>Payment: cost plus fixed fee, cost per unit of work, specific rates of compensation, or lump sum.</td><td>Template + payment method on the agreement.</td></tr>" +
+      "<tr><td>§14 NTP: independent estimate, consultant proposal (work plan / cost / schedule), Audit review, DBE if federal, funding, then NTP. NTP date is the earliest work may begin.</td><td>Proposal tab + NTP gate. The mailed letter is unchanged.</td></tr>" +
+      "<tr><td>§3 close-out: PM notifies Finance and Audit (2 CFR 200.343).</td><td>QP close-out returns leftover NTP to the Task. Task close-out returns leftover PO to the agreement. Agreement close-out stays with Finance / Audit.</td></tr>" +
+      "</tbody></table>" +
+      '<p class="muted" style="margin-top:8px">Source: <a href="https://deldot.gov/Publications/manuals/professional_services/pdfs/ProfessionalServicesProcurementManual2016.pdf" target="_blank" rel="noopener">Professional Services Procurement Manual (2016)</a></p></div>' +
       '<div class="card"><h2>Office</h2><div class="fields">' +
       '<label class="f">Office name<input id="orgName" value="' +
       esc(state.orgName || "") +
@@ -1612,7 +1779,7 @@
       agreementRows +
       "</tbody></table></div>" +
       '<div class="card"><h2>New agreement</h2>' +
-      "<p class=\"muted\">Any PSA, IDIQ, or lump-sum professional services contract. Finance fills this in; the PM then runs " +
+      "<p class=\"muted\">Any professional-services agreement. Type and payment method are the PSPM 2016 lists. IDIQ period including extensions shall not exceed 5 years, and the cap is the maximum agreement dollar amount. Finance fills this in; the PM then runs " +
       esc(nouns(c)) +
       " against it.</p>" +
       '<div class="fields">' +
@@ -1628,18 +1795,29 @@
       '<label class="f">Project manager<input id="newPm"' +
       dis +
       "></label>" +
-      '<label class="f">Cap / ceiling<input id="newCap" placeholder="3000000"' +
+      '<label class="f">Maximum $ / ceiling<input id="newCap" placeholder="3000000"' +
       dis +
       "></label>" +
       '<label class="f">RFP / solicitation<input id="newRfp"' +
       dis +
       "></label>" +
-      '<label class="f">Type<input id="newType" placeholder="IDIQ / Lump sum / On-call"' +
+      '<label class="f">Agreement type' +
+      selectField("newType", E.AGREEMENT_TYPES, "IDIQ", dis) +
+      "</label>" +
+      '<label class="f">Payment method' +
+      selectField("newPay", E.PAYMENT_METHODS, "Cost per unit of work", dis) +
+      "</label>" +
+      '<label class="f">Term<input id="newTerm" placeholder="Three-year term with two 1-year extensions"' +
       dis +
       "></label>" +
-      '<label class="f">Payment method<input id="newPay" placeholder="Cost per unit of work"' +
-      dis +
-      "></label>" +
+      '<label class="f">Funding' +
+      selectField(
+        "newFunding",
+        ["Federal; CFDA 20.205", "State", "Federal and State"],
+        "Federal; CFDA 20.205",
+        dis
+      ) +
+      "</label>" +
       '<label class="f">Template<select id="newTemplate"' +
       dis +
       ">" +
@@ -1739,7 +1917,11 @@
       '<label class="chk"><input type="checkbox" data-act="tpl-wf" data-id="invoices"' +
       (editing.workflow.invoices ? " checked" : "") +
       dis +
-      "> Invoice checklist</label></div>" +
+      "> Invoice checklist</label>" +
+      '<label class="chk"><input type="checkbox" data-act="tpl-wf" data-id="pspNtpGate"' +
+      (editing.workflow.pspNtpGate !== false ? " checked" : "") +
+      dis +
+      "> PSPM §14 NTP process gate</label></div>" +
       "<h3 style=\"margin-top:16px\">Money checks (automatic)</h3>" +
       "<p class=\"muted\">Turn off a check if this office does not use it. Required fails still block posting.</p>" +
       '<div class="chk-grid">' +
@@ -1910,6 +2092,8 @@
         rfp: val("newRfp"),
         agreementType: val("newType"),
         paymentMethod: val("newPay"),
+        term: val("newTerm"),
+        funding: val("newFunding"),
         templateId: val("newTemplate") || T.UNIT_PRICE_ID,
       });
       state.contracts.push(agr);
@@ -2224,6 +2408,7 @@
       q.proposal.submittedDate = val("propDate") || q.proposal.submittedDate;
       q.proposal.projectName = val("propProject") || q.proposal.projectName;
       q.proposal.status = "draft";
+      readPspmFromForm(q);
       save();
       toast("Proposal draft saved");
       render();
@@ -2234,6 +2419,7 @@
       q.proposal.submittedDate = val("propDate") || q.proposal.submittedDate || E.todayISO();
       q.proposal.projectName = val("propProject") || q.proposal.projectName;
       q.proposal.status = "approved";
+      readPspmFromForm(q);
       save();
       toast("Proposal approved — issue NTP next");
       ui.qpTab = "ntp";
@@ -2245,16 +2431,19 @@
       q.proposal.submittedDate = val("propDate") || q.proposal.submittedDate;
       q.proposal.projectName = val("propProject") || q.proposal.projectName;
       q.proposal.status = "revision";
+      readPspmFromForm(q);
       save();
       toast("Marked for revision");
       render();
       return;
     }
     if (act === "issue-ntp") {
+      var prevNtp = q.ntpAmount;
       var date = val("ntpDate") || E.todayISO();
       q.ntpNotes = val("ntpNotes");
       q.ntpLetterDate = val("ntpLetterDate") || date;
       if (val("propDate") && q.proposal) q.proposal.submittedDate = val("propDate");
+      readPspmFromForm(q);
       if (!(q.proposal && q.proposal.lines && q.proposal.lines.length)) {
         q.ntpAmount = E.money(val("ntpLump"));
         q.ntpDate = date;
@@ -2262,8 +2451,18 @@
       } else {
         E.issueNtp(q, date, q.ntpNotes);
       }
+      var gate = E.ntpGate(c, q);
+      var scope = E.ntpScopeChange(prevNtp, q.ntpAmount);
+      var msg = "NTP issued for " + E.fmtMoney(q.ntpAmount);
+      if (scope.message) msg += ". " + scope.message;
+      else if (!gate.ready) {
+        msg +=
+          ". PSPM §14 still open: " +
+          gate.missingLabels.slice(0, 3).join("; ") +
+          ".";
+      }
       save();
-      toast("NTP issued for " + E.fmtMoney(q.ntpAmount));
+      toast(msg);
       render();
       return;
     }

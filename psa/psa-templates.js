@@ -42,13 +42,13 @@
       id: UNIT_PRICE_ID,
       name: "DelDOT PSA — unit price (IDIQ)",
       description:
-        "Materials & Research standard for cost-per-unit professional services. Review a budget proposal, issue NTP, then audit invoices against remaining NTP dollars and pay-item quantities.",
+        "PSPM 2016 IDIQ, paid cost per unit of work. Materials & Research subsurface standard: review a consultant proposal against an independent estimate, pass the §14 NTP gate, then audit invoices against remaining NTP dollars and pay-item quantities.",
       builtin: true,
       assignmentNoun: "QP",
       assignmentNounPlural: "QPs",
       taskNoun: "Task",
       taskNounPlural: "Tasks",
-      workflow: { proposal: true, ntp: true, payItems: true, invoices: true },
+      workflow: { proposal: true, ntp: true, payItems: true, invoices: true, pspNtpGate: true },
       invoiceSlots: 30,
       autoChecks: clone(ALL_AUTO),
       adminChecks: clone(UNIT_PRICE_ADMIN),
@@ -62,13 +62,13 @@
       id: LUMP_SUM_ID,
       name: "DelDOT PSA — lump sum",
       description:
-        "NTP amount and invoices only. No unit-price catalog. Finance still gets NTP-balance and task-PO money checks, plus whatever admin items they add.",
+        "PSPM 2016 lump-sum payment method: use only when scope, complexity, character, and duration are defined enough to set fair compensation at negotiation. NTP amount and invoices only — no unit-price catalog.",
       builtin: true,
       assignmentNoun: "Task Order",
       assignmentNounPlural: "Task Orders",
       taskNoun: "Task",
       taskNounPlural: "Tasks",
-      workflow: { proposal: false, ntp: true, payItems: false, invoices: true },
+      workflow: { proposal: false, ntp: true, payItems: false, invoices: true, pspNtpGate: true },
       invoiceSlots: 30,
       autoChecks: {
         ntp_issued: true,
@@ -128,7 +128,7 @@
     if (!t.taskNoun) t.taskNoun = "Task";
     if (!t.taskNounPlural) t.taskNounPlural = "Tasks";
     t.workflow = t.workflow || {};
-    ["proposal", "ntp", "payItems", "invoices"].forEach(function (k) {
+    ["proposal", "ntp", "payItems", "invoices", "pspNtpGate"].forEach(function (k) {
       if (t.workflow[k] == null) t.workflow[k] = true;
     });
     t.invoiceSlots = Number(t.invoiceSlots || 30);
@@ -180,7 +180,7 @@
   var AUTO_CHECK_META = [
     { id: "ntp_issued", label: "NTP has been issued" },
     { id: "qp_open", label: "Assignment is open (not closed or canceled)" },
-    { id: "invoice_date", label: "Invoice date is on or after NTP date" },
+    { id: "invoice_date", label: "Invoice date is on or after NTP date (earliest date work may begin)" },
     { id: "total_vs_lines", label: "Invoice total matches line-item extensions" },
     { id: "within_ntp_balance", label: "Invoice does not exceed remaining NTP balance" },
     { id: "within_task_po", label: "Payment stays within the task PO" },

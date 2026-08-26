@@ -269,6 +269,65 @@ var merged = global.PsaCatalog.mergeCatalog([{ code: "605545", description: "lan
 assert("mergeCatalog fills itemNo on stored items", merged.some(function (i) { return i.code === "605545" && i.itemNo === "7"; }));
 assert("mergeCatalog adds logger", merged.some(function (i) { return i.code === "LOGGER"; }));
 
+/* PSPM 2016 — agreement types, NTP §14 gate, independent estimate, 20% reduction */
+assert("PSPM agreement types include IDIQ and State", E.AGREEMENT_TYPES.indexOf("IDIQ") >= 0 && E.AGREEMENT_TYPES.indexOf("State") >= 0);
+assert("PSPM payment methods include cost per unit of work", E.PAYMENT_METHODS.indexOf("Cost per unit of work") >= 0);
+assert("Federal CFDA counts as federal funds", E.usesFederalFunds({ funding: "Federal; CFDA 20.205" }) === true);
+assert("State-only is not federal", E.usesFederalFunds({ funding: "State" }) === false);
+
+var gateQp = E.emptyQp(E.emptyTask("1", 50000), "1");
+gateQp.proposal = {
+  status: "draft",
+  lines: [{ itemCode: "605545", proposedQty: 10, unitPrice: 42 }],
+};
+var gate0 = E.ntpGate({ funding: "Federal; CFDA 20.205" }, gateQp);
+assert("Empty PSPM gate is not ready", gate0.ready === false);
+assert("Missing independent estimate fails", gate0.steps.some(function (s) {
+  return s.id === "independent_estimate" && s.status === "fail";
+}));
+assert("Federal DBE step is required", gate0.steps.some(function (s) {
+  return s.id === "dbe_goal" && s.required;
+}));
+
+gateQp.independentEstimate = 420;
+gateQp.pspm = {
+  workPlan: true,
+  schedule: true,
+  auditReview: true,
+  dbeGoal: true,
+  dbeNa: false,
+  fundingAuthorized: true,
+};
+var gate1 = E.ntpGate({ funding: "Federal; CFDA 20.205" }, gateQp);
+assert("Complete PSPM gate is ready", gate1.ready === true, JSON.stringify(gate1.missingLabels));
+
+var stateGate = E.ntpGate({ funding: "State" }, gateQp);
+assert("State-only DBE step is N/A", stateGate.steps.some(function (s) {
+  return s.id === "dbe_goal" && s.status === "na";
+}));
+
+var overEst = E.estimateVariance(1000, 1300);
+assert("Proposal over estimate is flagged", overEst.status === "over");
+var underEst = E.estimateVariance(1000, 900);
+assert("Proposal under estimate is ok", underEst.status === "ok");
+var missEst = E.estimateVariance(0, 900);
+assert("Missing estimate is missing", missEst.status === "missing");
+
+var inc = E.ntpScopeChange(10000, 12000);
+assert("NTP increase asks for new proposal", inc.kind === "increase" && inc.message.indexOf("new NTP") >= 0);
+var red = E.ntpScopeChange(10000, 7000);
+assert("20% NTP reduction requires adjusted proposal", red.kind === "reduction", red.kind + " " + red.pct);
+var small = E.ntpScopeChange(10000, 9000);
+assert("10% reduction is a revise not a 20% cut", small.kind === "revise");
+var first = E.ntpScopeChange(0, 5000);
+assert("First NTP is initial", first.kind === "initial");
+
+var unitTpl = Tpl.byId(Tpl.UNIT_PRICE_ID);
+assert("Unit-price template enables PSPM NTP gate", unitTpl.workflow.pspNtpGate === true);
+
+var dateCk = ck5.checks.find(function (c) { return c.id === "invoice_date"; });
+assert("Pre-NTP invoice cites earliest work date", dateCk.detail.indexOf("earliest date work may begin") >= 0, dateCk.detail);
+
 if (fails) {
   console.error("\n" + fails + " failed");
   process.exit(1);
