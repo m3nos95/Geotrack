@@ -212,6 +212,7 @@ assert("Agreement available after task close-out", nearly(E.contractAvailable(ag
 assert("Closed task committed is spent only", nearly(E.taskCommitted(fundedTask), 3790), E.taskCommitted(fundedTask));
 
 assert("Long date April 29, 2026", E.fmtDateLong("2026-04-29") === "April 29, 2026");
+assert("Letterhead secretary matches SOS app", E.defaultLetterhead().secretaryName === "Shanté A. Hastings");
 assert("Letter money omits .00", E.fmtMoneyLetter(46124) === "$46,124", E.fmtMoneyLetter(46124));
 assert("Letter money keeps cents", E.fmtMoneyLetter(12975.5) === "$12,975.50", E.fmtMoneyLetter(12975.5));
 

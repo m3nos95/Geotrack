@@ -91,7 +91,7 @@
 
   function defaultLetterhead() {
     return {
-      secretaryName: "SHANTÉ A. HASTINGS",
+      secretaryName: "Shanté A. Hastings",
       secretaryTitle: "Secretary",
       officeAddress: "800 BAY ROAD · P.O. BOX 778 · DOVER, DELAWARE 19903",
       deldotMailName: "Department of Transportation",

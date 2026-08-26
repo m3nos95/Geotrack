@@ -239,6 +239,25 @@
       .replace(/"/g, "&quot;");
   }
 
+  function officialLetterheadHtml(c) {
+    var lh = E.ensureLetterhead(c);
+    return (
+      '<div class="letter-letterhead">' +
+      '<img src="assets/letterhead-header.jpg" alt="State of Delaware Department of Transportation">' +
+      '<div class="letter-secretary">' +
+      esc(lh.secretaryName) +
+      "<br>" +
+      esc(lh.secretaryTitle) +
+      "</div></div>"
+    );
+  }
+
+  function officialLetterFooterHtml() {
+    return (
+      '<div class="letter-official-footer"><img src="assets/letterhead-footer.png" alt="DelDOT"></div>'
+    );
+  }
+
   function statusPill(st) {
     return '<span class="pill st-' + esc(st) + '">' + esc(st) + "</span>";
   }
@@ -773,8 +792,12 @@
     leftover = leftover != null ? leftover : leftoverToTask(q);
     var returned = q.qpClosed ? E.qpReturned(q) : leftover;
     return (
-      '<div class="print-only" id="closeoutLetter"><h2 style="margin-top:0">CLOSE-OUT NOTICE</h2>' +
-      "<p>Delaware Department of Transportation · Materials &amp; Research</p>" +
+      '<div class="paper-stack" id="closeoutLetter">' +
+      '<article class="letter-page">' +
+      officialLetterheadHtml(c) +
+      '<div class="letter-date">' +
+      esc(E.fmtDateLong(q.closeoutDate || E.todayISO())) +
+      "</div>" +
       "<p>Agreement <b>" +
       esc(c.code) +
       "</b> · " +
@@ -816,7 +839,9 @@
       E.fmtDate(q.closeoutDate || E.todayISO()) +
       "<br>Notes: " +
       esc(q.closeoutNotes || "") +
-      "</p></div>"
+      "</p>" +
+      officialLetterFooterHtml() +
+      "</article></div>"
     );
   }
 
@@ -865,8 +890,12 @@
 
   function renderTaskCloseoutLetter(c, t) {
     return (
-      '<div class="print-only" id="taskCloseoutLetter"><h2 style="margin-top:0">TASK CLOSE-OUT NOTICE</h2>' +
-      "<p>Delaware Department of Transportation · Materials &amp; Research</p>" +
+      '<div class="paper-stack" id="taskCloseoutLetter">' +
+      '<article class="letter-page">' +
+      officialLetterheadHtml(c) +
+      '<div class="letter-date">' +
+      esc(E.fmtDateLong(t.closeoutDate || E.todayISO())) +
+      "</div>" +
       "<p>Agreement <b>" +
       esc(c.code) +
       "</b> · " +
@@ -896,7 +925,9 @@
       E.fmtDate(t.closeoutDate || E.todayISO()) +
       "<br>Notes: " +
       esc(t.closeoutNotes || "") +
-      "</p></div>"
+      "</p>" +
+      officialLetterFooterHtml() +
+      "</article></div>"
     );
   }
 
@@ -1139,12 +1170,7 @@
     return (
       '<div class="paper-stack" id="ntpLetter">' +
       '<article class="letter-page ntp-letter">' +
-      '<div class="letter-brand"><img src="assets/deldot-logo.png" alt="Delaware Department of Transportation">' +
-      '<div class="letter-secretary">' +
-      esc(lh.secretaryName) +
-      "</div><div class=\"letter-secretary-title\">" +
-      esc(lh.secretaryTitle) +
-      "</div></div>" +
+      officialLetterheadHtml(c) +
       '<div class="letter-date">' +
       esc(pkt.letterDateLong) +
       "</div>" +
@@ -1170,7 +1196,9 @@
       "</p>" +
       '<div class="letter-cc"><span>cc:</span><div>' +
       ccHtml +
-      "</div></div></article>" +
+      "</div></div>" +
+      officialLetterFooterHtml() +
+      "</article>" +
       '<article class="letter-page ntp-proposal">' +
       '<div class="prop-head"><div class="prop-from"><b>' +
       esc(lh.contractorName || c.contractor || "") +
