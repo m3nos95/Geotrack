@@ -193,7 +193,7 @@ Left = **rail** (pick a topic). Center/right drawer = details. **Exit** closes S
 | **DGS** | Delaware Geological Survey wells / geophys | Lith / gamma links; shallow coarse/fine classes |
 | **Props** | Screening engineering properties | Subgrade / frost / drainage-style priors from AASHTO — not lab CBR |
 | **Poles** | DelDOT Table IV-11 signal/strain/camera base | Chart-strict (worst SPT in 0–5′ and 5–25′) plus a typical-profile suggestion and a per-hole PE override. **Click a boring marker** → log + pole base from **that hole only** (not Site Intel). |
-| **Calming** | Traffic calming screen (TCDM 2025) — **defined in-app** as a context filter | Click screen: nearby AADT + posted speed + functional class. **Statewide screen** (Layers): scores all ~4k FirstMap count segments → ranked candidate list + map paint. **Candidate** = local/collector ≤35 mph · **Study** = arterial / >35 / incomplete · **Out** = freeway. **Screening aid only — not a warrant.** Always notes missing 85th-percentile speed. |
+| **Calming** | Traffic calming screen (TCDM 2025) — **defined in-app** as a context filter | Click screen + **statewide** ranked list. Filters: band · **min AADT** (≥5k/10k/15k presets) · **county** · **posted 25–35**. Map follows filters. **Candidate** = local/collector ≤35 mph. **Screening only — not a warrant.** |
 | **Septic** | DNREC PercRate points nearby | Minutes/inch converted for screening (not App.1 ASTM) |
 | **Class** | AASHTO / USCS at the point | From nearby borings or NRCS fallback (Estimates ON) |
 | **Column** | Stick log 0–50′ (and deeper subsurface mode) | Layered class with depth (Estimates ON) |
