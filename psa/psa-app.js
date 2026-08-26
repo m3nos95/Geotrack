@@ -1102,7 +1102,7 @@
       '<p class="letter-salute">' +
       esc(lh.contractorSalutation || "Dear Sir or Madam:") +
       "</p>" +
-      "<p>This letter is in reference to main Contract No. " +
+      "<p>This letter is in reference to the main Contract No. " +
       esc(lh.billingContractNo || "") +
       " " +
       esc(lh.billingContractTitle || "") +
@@ -1276,11 +1276,11 @@
           esc(r.project) +
           "</td><td>" +
           esc(r.contractNo) +
-          '</td><td class="num">' +
+          "</td><td>" +
           E.fmtMoney(r.ntpAmount) +
-          '</td><td class="num">' +
+          "</td><td>" +
           E.fmtMoney(r.spent) +
-          '</td><td class="num">' +
+          "</td><td>" +
           E.fmtMoney(r.returned) +
           "</td></tr>"
         );
@@ -1294,7 +1294,7 @@
       '<p class="letter-salute">' +
       esc(lh.contractorSalutation || "Dear Sir or Madam:") +
       "</p>" +
-      "<p>This letter is in reference to main Contract No. " +
+      "<p>This letter is in reference to the main Contract No. " +
       esc(lh.billingContractNo || "") +
       " " +
       esc(lh.billingContractTitle || "") +
@@ -1306,7 +1306,7 @@
       " are returned to Task " +
       esc(t.number) +
       " for additional Quick Proposals.</p>" +
-      '<table class="prop-items closeout-chart"><thead><tr><th>' +
+      '<div class="closeout-chart-wrap"><table class="prop-items closeout-chart"><thead><tr><th>' +
       esc(n) +
       " #</th><th>Project</th><th>Design contract / T#</th><th>NTP amount</th><th>Invoiced / spent</th><th>Returned to Task " +
       esc(t.number) +
@@ -1322,7 +1322,7 @@
       E.fmtMoney(totals.spent) +
       "</th><th>" +
       E.fmtMoney(totals.returned) +
-      "</th></tr></tfoot></table>" +
+      "</th></tr></tfoot></table></div>" +
       (notes ? "<p>" + nl(notes) + "</p>" : "") +
       "<p>Should you have any questions, please contact me at " +
       esc(lh.signerPhone || "") +
