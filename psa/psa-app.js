@@ -16,6 +16,11 @@
     modal: null,
     editTemplateId: null,
     taskCloseout: false,
+    selectedQpIds: [],
+    bulkCloseout: false,
+    bulkCloseoutId: null,
+    bulkDate: "",
+    bulkNotes: "",
   };
 
   var state = null;
@@ -562,6 +567,14 @@
         String(q.notes).toLowerCase().indexOf(f) >= 0
       );
     });
+    var closeableOnTask = E.closeableQps(t);
+    var selectedOpen = selectedCloseableQps(t);
+    var visibleCloseable = qps.filter(E.isQpCloseable);
+    var allVisibleOn =
+      visibleCloseable.length > 0 &&
+      visibleCloseable.every(function (q) {
+        return qpIsSelected(q.id);
+      });
     var rows = qps
       .map(function (q) {
         var st = E.deriveQpStatus(q);
@@ -573,10 +586,22 @@
             return E.fmtDate(i.date) + " " + E.fmtMoney(i.amount);
           })
           .join("<br>");
+        var on = qpIsSelected(q.id);
+        var canClose = E.isQpCloseable(q);
         return (
           "<tr data-act=\"open-qp\" data-id=\"" +
           esc(q.id) +
-          '"><td>' +
+          '"' +
+          (on ? ' class="sel"' : "") +
+          '><td class="check no-print">' +
+          (canClose
+            ? '<input type="checkbox" data-act="toggle-bulk-qp" data-id="' +
+              esc(q.id) +
+              '"' +
+              (on ? " checked" : "") +
+              ">"
+            : "") +
+          "</td><td>" +
           esc(q.qpNumber) +
           "</td><td>" +
           esc(q.contractNo) +
@@ -653,12 +678,28 @@
     }
     var counts = E.qpCounts(t);
     var agrAvail = E.contractAvailable(c, t.id);
-    var taskLetter = t.closed
-      ? renderTaskCloseoutLetter(c, t)
-      : "";
+    var taskLetter = t.closed ? renderTaskCloseoutLetter(c, t) : "";
+    var bulk = previewBulkBatch(t);
+    var bulkLetter =
+      ui.bulkCloseout && bulk.rows && bulk.rows.length
+        ? renderBulkCloseoutLetter(c, t, bulk)
+        : "";
+    var bulkBtn =
+      !t.closed && closeableOnTask.length
+        ? '<button class="btn good" data-act="goto-bulk-closeout">' +
+          (selectedOpen.length
+            ? "Bulk close-out · " +
+              selectedOpen.length +
+              " " +
+              (selectedOpen.length === 1 ? noun(c) : nouns(c)) +
+              " · return " +
+              E.fmtMoney(E.sumCloseoutRows(selectedOpen.map(E.closeoutSnapshot)).returned)
+            : "Bulk close-out") +
+          "</button>"
+        : "";
     return (
+      '<div class="no-print">' +
       banner +
-      taskLetter +
       '<div class="row-between"><div><b>' +
       esc(taskNoun(c)) +
       " " +
@@ -687,7 +728,9 @@
       esc(taskNoun(c).toLowerCase()) +
       " can be funded up to " +
       E.fmtMoney(E.money(agrAvail + Number(t.poAmount || 0))) +
-      ").</div></div><div>" +
+      "). Check " +
+      esc(nouns(c)) +
+      " to close several old jobs on one letter.</div></div><div>" +
       '<input id="filter" placeholder="Filter ' +
       esc(noun(c)) +
       ' / project / T#" value="' +
@@ -706,26 +749,33 @@
               esc(noun(c)) +
               "</button>"
             : "") +
+          bulkBtn +
           '<button class="btn" data-act="goto-task-closeout">Close out ' +
           esc(taskNoun(c).toLowerCase()) +
           "</button>") +
       "</div></div>" +
-      (ui.taskCloseout && !t.closed
-        ? renderTaskCloseoutForm(c, t)
-        : "") +
+      (ui.taskCloseout && !t.closed ? renderTaskCloseoutForm(c, t) : "") +
+      (ui.bulkCloseout && !t.closed ? renderBulkCloseoutForm(c, t, bulk) : "") +
+      renderPastBulkCloseouts(c, t) +
       renderPdfDrop(null) +
       '<div class="card" style="padding:0;overflow:auto"><table class="grid"><thead><tr>' +
+      '<th class="check"><input type="checkbox" data-act="toggle-bulk-all"' +
+      (allVisibleOn ? " checked" : "") +
+      (t.closed || !visibleCloseable.length ? " disabled" : "") +
+      "></th>" +
       "<th>" +
       esc(noun(c)) +
       " #</th><th>Contract</th><th>Project</th><th>Notes</th><th>Status</th><th>NTP date</th><th>NTP amount</th><th>Spent</th><th>Balance</th><th>Invoices</th>" +
       "</tr></thead><tbody>" +
       (rows ||
-        '<tr><td colspan="10" class="muted">No ' +
+        '<tr><td colspan="11" class="muted">No ' +
           esc(nouns(c)) +
           " yet. Add a " +
           esc(noun(c)) +
           " to start.</td></tr>") +
-      "</tbody></table></div>"
+      "</tbody></table></div></div>" +
+      bulkLetter +
+      taskLetter
     );
   }
 
@@ -818,7 +868,41 @@
   }
 
   function leftoverToTask(q) {
-    return E.money(Math.max(E.qpNtp(q) - E.qpSpent(q), 0));
+    return E.qpLeftover(q);
+  }
+
+  function selectedQpIds() {
+    return ui.selectedQpIds || [];
+  }
+
+  function qpIsSelected(id) {
+    return selectedQpIds().indexOf(id) >= 0;
+  }
+
+  function selectedCloseableQps(t) {
+    return E.qpsByIds(t, selectedQpIds()).filter(E.isQpCloseable);
+  }
+
+  function previewBulkBatch(t) {
+    var stored = ui.bulkCloseoutId ? E.findBulkCloseout(t, ui.bulkCloseoutId) : null;
+    if (stored) return stored;
+    var rows = selectedCloseableQps(t).map(E.closeoutSnapshot);
+    return {
+      date: ui.bulkDate || E.todayISO(),
+      notes: ui.bulkNotes || "",
+      rows: rows,
+      totals: E.sumCloseoutRows(rows),
+      preview: true,
+    };
+  }
+
+  function clearBulkUi() {
+    ui.selectedQpIds = [];
+    ui.bulkCloseout = false;
+    ui.bulkCloseoutId = null;
+    ui.bulkDate = "";
+    ui.bulkNotes = "";
+    ui.taskCloseout = false;
   }
 
   function renderCloseout(c, t, q) {
@@ -951,6 +1035,262 @@
       "<p>cc: DOT Finance; DOT Audit Management. This letter closes the assignment only. Closing the consultant agreement is a Finance and Audit action (2 CFR 200.343).</p>" +
       officialLetterFooterHtml() +
       "</article></div>"
+    );
+  }
+
+  function renderBulkCloseoutForm(c, t, batch) {
+    batch = batch || previewBulkBatch(t);
+    var n = noun(c);
+    var ns = nouns(c);
+    var tn = taskNoun(c);
+    var totals = batch.totals || E.sumCloseoutRows(batch.rows || []);
+    var extra = batch.preview ? totals.returned : 0;
+    var afterTask = E.money(E.taskUnallocated(t) + extra);
+    var issued = !batch.preview && ui.bulkCloseoutId;
+    var rowHtml = (batch.rows || [])
+      .map(function (r) {
+        return (
+          "<tr><td>" +
+          esc(r.qpNumber) +
+          "</td><td>" +
+          esc(r.project) +
+          "</td><td>" +
+          esc(r.contractNo) +
+          '</td><td class="num">' +
+          E.fmtMoney(r.ntpAmount) +
+          '</td><td class="num">' +
+          E.fmtMoney(r.spent) +
+          '</td><td class="num">' +
+          E.fmtMoney(r.returned) +
+          "</td></tr>"
+        );
+      })
+      .join("");
+    return (
+      '<div class="card no-print"><h2>Bulk close-out · ' +
+      esc(tn) +
+      " " +
+      esc(t.number) +
+      "</h2>" +
+      (issued
+        ? '<div class="banner info">Closed ' +
+          totals.count +
+          " " +
+          (totals.count === 1 ? n : ns) +
+          " on " +
+          E.fmtDate(batch.date) +
+          ". Unspent " +
+          E.fmtMoney(totals.returned) +
+          " returned to " +
+          esc(tn) +
+          " " +
+          esc(t.number) +
+          " for the next " +
+          esc(n) +
+          ".</div>"
+        : "<p>Select open " +
+          esc(ns) +
+          " on this " +
+          esc(tn).toLowerCase() +
+          ". One letter lists every closed assignment and the unspent NTP returned to <b>" +
+          esc(tn) +
+          " " +
+          esc(t.number) +
+          "</b>. Leftover does not leave agreement " +
+          esc(c.code) +
+          " until you close the " +
+          esc(tn).toLowerCase() +
+          " itself.</p>") +
+      (totals.count
+        ? '<table class="grid"><thead><tr><th>' +
+          esc(n) +
+          " #</th><th>Project</th><th>Contract</th><th>NTP</th><th>Spent</th><th>Returned to " +
+          esc(tn) +
+          "</th></tr></thead><tbody>" +
+          rowHtml +
+          "</tbody><tfoot><tr><td colspan=\"3\"><b>" +
+          totals.count +
+          " " +
+          (totals.count === 1 ? n : ns) +
+          '</b></td><td class="num"><b>' +
+          E.fmtMoney(totals.ntpAmount) +
+          '</b></td><td class="num"><b>' +
+          E.fmtMoney(totals.spent) +
+          '</b></td><td class="num"><b>' +
+          E.fmtMoney(totals.returned) +
+          "</b></td></tr></tfoot></table>"
+        : '<div class="banner">Check two or more ' +
+          esc(ns) +
+          " in the ledger, then issue the close-out.</div>") +
+      '<div class="fields" style="margin-top:12px">' +
+      '<label class="f">Close-out date<input id="bulkCloseoutDate" data-act="bulk-date" type="date" value="' +
+      esc(batch.date || E.todayISO()) +
+      '"' +
+      (issued ? " disabled" : "") +
+      "></label>" +
+      '<label class="f">Unspent returning to ' +
+      esc(tn) +
+      " " +
+      esc(t.number) +
+      '<input value="' +
+      esc(E.fmtMoney(totals.returned)) +
+      '" disabled></label>' +
+      '<label class="f">' +
+      esc(tn) +
+      " free after this close-out<input value=\"" +
+      esc(E.fmtMoney(afterTask)) +
+      '" disabled></label>' +
+      '<label class="f">Close-out notes<textarea id="bulkCloseoutNotes"' +
+      (issued ? " disabled" : "") +
+      ">" +
+      esc(batch.notes || "") +
+      "</textarea></label></div>" +
+      '<div style="margin-top:12px;display:flex;gap:8px;flex-wrap:wrap">' +
+      (issued
+        ? '<button class="btn primary" data-act="print-bulk-closeout">Print close-out letter</button>'
+        : '<button class="btn good" data-act="issue-bulk-closeout"' +
+          (totals.count ? "" : " disabled") +
+          ">Issue close-out · return " +
+          E.fmtMoney(totals.returned) +
+          " to " +
+          esc(tn) +
+          " " +
+          esc(t.number) +
+          "</button>" +
+          '<button class="btn" data-act="print-bulk-closeout"' +
+          (totals.count ? "" : " disabled") +
+          ">Preview / print letter</button>") +
+      '<button class="btn" data-act="cancel-bulk-closeout">Done</button></div></div>'
+    );
+  }
+
+  function renderBulkCloseoutLetter(c, t, batch) {
+    batch = batch || previewBulkBatch(t);
+    var totals = batch.totals || E.sumCloseoutRows(batch.rows || []);
+    var n = noun(c);
+    var ns = nouns(c);
+    var tn = taskNoun(c);
+    var rows = (batch.rows || [])
+      .map(function (r) {
+        return (
+          "<tr><td>" +
+          esc(r.qpNumber) +
+          "</td><td>" +
+          esc(r.project) +
+          "</td><td>" +
+          esc(r.contractNo) +
+          '</td><td class="num">' +
+          E.fmtMoney(r.ntpAmount) +
+          '</td><td class="num">' +
+          E.fmtMoney(r.spent) +
+          '</td><td class="num">' +
+          E.fmtMoney(r.returned) +
+          "</td></tr>"
+        );
+      })
+      .join("");
+    return (
+      '<div class="paper-stack" id="bulkCloseoutLetter">' +
+      '<article class="letter-page">' +
+      officialLetterheadHtml(c) +
+      '<div class="letter-date">' +
+      esc(E.fmtDateLong(batch.date || E.todayISO())) +
+      "</div>" +
+      "<p>Agreement <b>" +
+      esc(c.code) +
+      "</b> · " +
+      esc(c.title || "") +
+      "<br>Contractor: " +
+      esc(c.contractor) +
+      "<br>" +
+      esc(tn) +
+      " " +
+      esc(t.number) +
+      "</p>" +
+      "<p>Work under the following " +
+      esc(ns) +
+      " is complete. This notice closes these assignments and returns unspent funds to the funded " +
+      esc(tn).toLowerCase() +
+      " for additional " +
+      esc(ns) +
+      ".</p>" +
+      '<table class="prop-items"><thead><tr><th>' +
+      esc(n) +
+      " #</th><th>Project</th><th>Contract / T#</th><th>NTP amount</th><th>Invoiced / spent</th><th>Returned to " +
+      esc(tn) +
+      " " +
+      esc(t.number) +
+      "</th></tr></thead><tbody>" +
+      rows +
+      '</tbody><tfoot><tr><th colspan="3">Total · ' +
+      totals.count +
+      " " +
+      (totals.count === 1 ? n : ns) +
+      '</th><th class="num">' +
+      E.fmtMoney(totals.ntpAmount) +
+      '</th><th class="num">' +
+      E.fmtMoney(totals.spent) +
+      '</th><th class="num">' +
+      E.fmtMoney(totals.returned) +
+      "</th></tr></tfoot></table>" +
+      "<p>Unspent funds returned to " +
+      esc(tn) +
+      " " +
+      esc(t.number) +
+      ": <b>" +
+      E.fmtMoney(totals.returned) +
+      "</b></p>" +
+      "<p>Close-out date: " +
+      E.fmtDate(batch.date || E.todayISO()) +
+      "<br>Notes: " +
+      esc(batch.notes || "") +
+      "</p>" +
+      "<p>cc: DOT Finance; DOT Audit Management. This letter closes the listed assignments only. Closing the consultant agreement is a Finance and Audit action (2 CFR 200.343).</p>" +
+      officialLetterFooterHtml() +
+      "</article></div>"
+    );
+  }
+
+  function renderPastBulkCloseouts(c, t) {
+    var list = ((t && t.bulkCloseouts) || []).slice().reverse();
+    if (!list.length) return "";
+    var n = noun(c);
+    var ns = nouns(c);
+    var items = list
+      .map(function (b) {
+        var tot = b.totals || E.sumCloseoutRows(b.rows || []);
+        return (
+          "<tr><td>" +
+          E.fmtDate(b.date) +
+          "</td><td>" +
+          tot.count +
+          " " +
+          (tot.count === 1 ? n : ns) +
+          "</td><td>" +
+          esc(
+            (b.rows || [])
+              .map(function (r) {
+                return r.qpNumber;
+              })
+              .join(", ")
+          ) +
+          '</td><td class="num">' +
+          E.fmtMoney(tot.returned) +
+          '</td><td><button class="btn small" data-act="view-bulk-closeout" data-id="' +
+          esc(b.id) +
+          '">View / print letter</button></td></tr>'
+        );
+      })
+      .join("");
+    return (
+      '<div class="card no-print"><h3>Previous bulk close-outs</h3>' +
+      '<table class="grid"><thead><tr><th>Date</th><th>Closed</th><th>' +
+      esc(n) +
+      " #</th><th>Returned to " +
+      esc(taskNoun(c)) +
+      '</th><th></th></tr></thead><tbody>' +
+      items +
+      "</tbody></table></div>"
     );
   }
 
@@ -2050,6 +2390,12 @@
         render();
       };
     }
+    var bn = document.getElementById("bulkCloseoutNotes");
+    if (bn && !bn.disabled) {
+      bn.oninput = function () {
+        ui.bulkNotes = bn.value;
+      };
+    }
     var ij = document.getElementById("importJson");
     if (ij) ij.onchange = importJsonFile;
     var ix = document.getElementById("importXlsx");
@@ -2107,11 +2453,14 @@
     file
       .arrayBuffer()
       .then(function (buf) {
-        return window.ConTrakPdf.extractText(buf).then(function (extracted) {
+        return window.ConTrakPdf.extractText(buf.slice(0)).then(function (extracted) {
           return { buf: buf, extracted: extracted };
         });
       })
       .then(function (pack) {
+        if (!pack.buf || !pack.buf.byteLength) {
+          throw new Error("PDF data was empty after reading");
+        }
         var parsed = E.parseConsultantProposal(pack.extracted.text);
         var c = contract();
         if (parsed.agreementCode) {
@@ -2128,6 +2477,7 @@
           target = E.findOrCreateQpForProposal(c, parsed);
         }
         var blob = new Blob([pack.buf], { type: "application/pdf" });
+        if (!blob.size) throw new Error("Could not keep the original PDF");
         return window.ConTrakPdf.savePdf(target.qp.id, blob, { name: file.name }).then(function () {
           target.qp.proposalPdf = {
             name: file.name,
@@ -2176,7 +2526,7 @@
       ui.contractId = el.getAttribute("data-id");
       ui.qpId = null;
       ui.view = "ledger";
-      ui.taskCloseout = false;
+      clearBulkUi();
       var nc = contract();
       ui.taskId = nc.tasks[0] && nc.tasks[0].id;
       render();
@@ -2186,7 +2536,7 @@
       ui.taskId = el.getAttribute("data-id");
       ui.qpId = null;
       ui.view = "ledger";
-      ui.taskCloseout = false;
+      clearBulkUi();
       render();
       return;
     }
@@ -2474,18 +2824,81 @@
       render();
       return;
     }
-    if (act === "print-closeout" || act === "print-task-closeout") {
+    if (act === "print-closeout" || act === "print-task-closeout" || act === "print-bulk-closeout") {
       window.print();
       return;
     }
     if (act === "goto-task-closeout") {
       ui.taskCloseout = true;
+      ui.bulkCloseout = false;
       render();
       return;
     }
     if (act === "cancel-task-closeout") {
       ui.taskCloseout = false;
       render();
+      return;
+    }
+    if (act === "goto-bulk-closeout") {
+      var pick = selectedCloseableQps(t);
+      if (!pick.length) {
+        toast("Check the " + nouns(c) + " on this " + taskNoun(c).toLowerCase() + " to close together");
+        return;
+      }
+      ui.bulkCloseout = true;
+      ui.bulkCloseoutId = null;
+      ui.taskCloseout = false;
+      ui.bulkDate = ui.bulkDate || E.todayISO();
+      render();
+      return;
+    }
+    if (act === "cancel-bulk-closeout") {
+      ui.bulkCloseout = false;
+      ui.bulkCloseoutId = null;
+      render();
+      return;
+    }
+    if (act === "view-bulk-closeout") {
+      ui.bulkCloseout = true;
+      ui.bulkCloseoutId = el.getAttribute("data-id");
+      ui.taskCloseout = false;
+      render();
+      return;
+    }
+    if (act === "issue-bulk-closeout") {
+      var ids = selectedQpIds();
+      if (!selectedCloseableQps(t).length) {
+        toast("Check open " + nouns(c) + " on this " + taskNoun(c).toLowerCase());
+        return;
+      }
+      var batch = E.bulkCloseQps(t, ids, {
+        date: val("bulkCloseoutDate") || ui.bulkDate || E.todayISO(),
+        notes: val("bulkCloseoutNotes") || ui.bulkNotes || "",
+      });
+      if (!batch) {
+        toast("Nothing to close");
+        return;
+      }
+      ui.bulkCloseout = true;
+      ui.bulkCloseoutId = batch.id;
+      ui.selectedQpIds = [];
+      save();
+      toast(
+        "Closed " +
+          batch.totals.count +
+          " " +
+          (batch.totals.count === 1 ? noun(c) : nouns(c)) +
+          " · " +
+          E.fmtMoney(batch.totals.returned) +
+          " returned to " +
+          taskNoun(c) +
+          " " +
+          t.number
+      );
+      render();
+      return;
+    }
+    if (act === "toggle-bulk-qp" || act === "toggle-bulk-all" || act === "bulk-date") {
       return;
     }
     if (act === "issue-task-closeout") {
@@ -2802,7 +3215,58 @@
     if (!el) return;
     var act = el.getAttribute("data-act");
     var c = contract();
+    var t = task();
     var q = qp();
+    if (act === "toggle-bulk-qp") {
+      var id = el.getAttribute("data-id");
+      var cur = selectedQpIds().slice();
+      var at = cur.indexOf(id);
+      if (el.checked) {
+        if (at < 0) cur.push(id);
+      } else if (at >= 0) {
+        cur.splice(at, 1);
+      }
+      ui.selectedQpIds = cur;
+      if (ui.bulkCloseoutId) ui.bulkCloseoutId = null;
+      render();
+      return;
+    }
+    if (act === "toggle-bulk-all") {
+      var visible = (t.qps || []).filter(function (item) {
+        if (!E.isQpCloseable(item)) return false;
+        if (!ui.filter) return true;
+        var f = ui.filter.toLowerCase();
+        return (
+          String(item.qpNumber).toLowerCase().indexOf(f) >= 0 ||
+          String(item.project).toLowerCase().indexOf(f) >= 0 ||
+          String(item.contractNo).toLowerCase().indexOf(f) >= 0 ||
+          String(item.notes).toLowerCase().indexOf(f) >= 0
+        );
+      });
+      var ids = selectedQpIds().slice();
+      if (el.checked) {
+        visible.forEach(function (item) {
+          if (ids.indexOf(item.id) < 0) ids.push(item.id);
+        });
+      } else {
+        var drop = {};
+        visible.forEach(function (item) {
+          drop[item.id] = true;
+        });
+        ids = ids.filter(function (id) {
+          return !drop[id];
+        });
+      }
+      ui.selectedQpIds = ids;
+      if (ui.bulkCloseoutId) ui.bulkCloseoutId = null;
+      render();
+      return;
+    }
+    if (act === "bulk-date") {
+      ui.bulkDate = el.value;
+      render();
+      return;
+    }
     if (act === "prop-item") {
       var i = Number(el.getAttribute("data-i"));
       var item = E.catalogItem(c, el.value);
