@@ -328,6 +328,45 @@ assert("Unit-price template enables PSPM NTP gate", unitTpl.workflow.pspNtpGate 
 var dateCk = ck5.checks.find(function (c) { return c.id === "invoice_date"; });
 assert("Pre-NTP invoice cites earliest work date", dateCk.detail.indexOf("earliest date work may begin") >= 0, dateCk.detail);
 
+var hceaText = [
+  "Hillis- Carnes",
+  "Date: August 24, 2026",
+  "Project Name: US9 @ Cool Spring Rd",
+  "Project Design Number: TXXXXXXXXX",
+  "AGR: 2018F - Geotechnical Subsurface Investigation",
+  "Task: Task 3 QP 5",
+  "Project Billing Number: T201870301",
+  "Item No. Description Units Unit Measure Price Total",
+  "2 ADDITIONAL STANDARD PENETRATION TESTS (SPT) 21.00 Each X 8.25\t$ = 173.25\t$",
+  "8 SOIL BORINGS, ATV *including permit if needed 120.00 Linear Foot X 18.00\t$ = 2,160.00\t$",
+  "9 MAN-HOUR OF MISCELLANEOUS WORK 90.00 Per Hour X 32.00\t$ = 2,880.00\t$",
+  "15 MOBILIZATION OF ATV OR SKID BORING RIG - Sussex County 3.00 Each X 1,000.00\t$ = 3,000.00\t$",
+  "19 MAN-HOUR OF PROJECT MANAGEMENT 30.00 Per Hour X 85.00\t$ = 2,550.00\t$",
+  "43 BOREHOLE ABANDONMENT New Castle, Kent, Sussex County 120.00 Linear Foot X 8.00\t$ = 960.00\t$",
+  "46 Qualified Logger 30.00 Per Hour X 75.00\t$ = 2,250.00\t$",
+  "59 GPS 1.00 ls X $400.00 = 400.00\t$",
+  "*including permit if needed Total Amount Due: 14,373.25\t$",
+].join("\n");
+var hcea = E.parseConsultantProposal(hceaText);
+assert("HCEA QP5 date", hcea.dateISO === "2026-08-24", hcea.dateISO);
+assert("HCEA QP5 project", hcea.projectName.indexOf("Cool Spring") >= 0, hcea.projectName);
+assert("HCEA QP5 skips placeholder T#", hcea.designNo === "", hcea.designNo);
+assert("HCEA QP5 agreement 2018F", hcea.agreementCode === "2018F", hcea.agreementCode);
+assert("HCEA QP5 task 3", hcea.taskNumber === "3", hcea.taskNumber);
+assert("HCEA QP5 qp 5", hcea.qpNumber === "5", hcea.qpNumber);
+assert("HCEA QP5 billing T201870301", hcea.billingNo === "T201870301", hcea.billingNo);
+assert("HCEA QP5 8 lines", hcea.lines.length === 8, hcea.lines.length);
+assert("HCEA QP5 total 14373.25", nearly(hcea.total, 14373.25), hcea.total);
+assert("HCEA QP5 item 15 qty 3", hcea.lines.some(function (l) { return l.itemNo === "15" && l.qty === 3; }));
+assert("HCEA QP5 GPS 400", hcea.lines.some(function (l) { return l.itemNo === "59" && nearly(l.amount, 400); }));
+
+var hceaAgr = { payItems: global.PsaCatalog.cloneCatalog(), tasks: [E.emptyTask("3", 200000)] };
+var placed = E.findOrCreateQpForProposal(hceaAgr, hcea);
+assert("Creates QP 5 on Task 3", placed.qp.qpNumber === "5" && String(placed.task.number) === "3");
+assert("Maps item 2 to SPT catalog code", placed.qp.proposal.lines[0].itemCode === "605540", placed.qp.proposal.lines[0].itemCode);
+assert("Maps logger item 46", placed.qp.proposal.lines.some(function (l) { return l.itemCode === "LOGGER"; }));
+assert("Proposal total from PDF lines", nearly(E.proposalTotal(placed.qp.proposal), 14373.25), E.proposalTotal(placed.qp.proposal));
+
 if (fails) {
   console.error("\n" + fails + " failed");
   process.exit(1);

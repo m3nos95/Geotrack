@@ -29,6 +29,6 @@ Starter templates:
 
 Finance can duplicate a starter, rename assignments (QP / task order / work order), toggle workflow steps, and edit the invoice checklist.
 
-Money follows the subsurface pattern: the **agreement** is funded, **tasks** are issued from it (e.g. $500k), and **quick proposals** sit under a task (40+ QPs on one task is normal). Close a QP when the work is performed to print a close-out letter and return unspent NTP to that task. Close the task when that funding is finished to return leftover PO to the agreement.
+Money follows the subsurface pattern: the **agreement** is funded, **tasks** are issued from it (e.g. $500k), and **quick proposals** sit under a task (40+ QPs on one task is normal). Drop the consultant’s proposal PDF onto a task to fill the QP and attach that original PDF to the NTP packet (Secretary letter + their file). Close a QP when the work is performed to print a close-out letter and return unspent NTP to that task. Close the task when that funding is finished to return leftover PO to the agreement.
 
 Data stays in the browser (`localStorage`). Use **Backup** to export JSON or import another Excel task sheet.

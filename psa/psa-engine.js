@@ -418,6 +418,213 @@
     return null;
   }
 
+  function catalogItemByNo(contract, itemNo) {
+    var no = String(itemNo || "").trim().toUpperCase();
+    if (!no) return null;
+    var items = (contract && contract.payItems) || [];
+    for (var i = 0; i < items.length; i++) {
+      if (String(items[i].itemNo || "").trim().toUpperCase() === no) return items[i];
+    }
+    return null;
+  }
+
+  var UNIT_WORDS = {
+    each: { unit: "EA", unitMeasure: "Each" },
+    ea: { unit: "EA", unitMeasure: "Each" },
+    "linear foot": { unit: "LF", unitMeasure: "Linear Foot" },
+    lf: { unit: "LF", unitMeasure: "Linear Foot" },
+    "per hour": { unit: "HR", unitMeasure: "Per Hour" },
+    hr: { unit: "HR", unitMeasure: "Per Hour" },
+    hour: { unit: "HR", unitMeasure: "Per Hour" },
+    day: { unit: "DAY", unitMeasure: "Day" },
+    ls: { unit: "LS", unitMeasure: "LS" },
+    "lump sum": { unit: "LS", unitMeasure: "LS" },
+  };
+
+  function parseMoneyToken(s) {
+    return money(String(s || "").replace(/[$,]/g, "").trim());
+  }
+
+  function parseProposalDate(s) {
+    if (!s) return null;
+    var iso = excelDate(s);
+    if (iso) return iso;
+    var m = String(s).match(/([A-Za-z]+)\s+(\d{1,2}),?\s+(\d{4})/);
+    if (!m) return null;
+    var mi = -1;
+    var name = m[1].toLowerCase();
+    MONTHS_LONG.forEach(function (mo, i) {
+      if (mo.toLowerCase() === name || mo.toLowerCase().slice(0, 3) === name.slice(0, 3)) {
+        mi = i;
+      }
+    });
+    if (mi < 0) return null;
+    return m[3] + "-" + String(mi + 1).padStart(2, "0") + "-" + String(m[2]).padStart(2, "0");
+  }
+
+  function fieldAfter(text, label, nextLabels) {
+    var src = " " + text + " ";
+    var start = src.search(new RegExp(label + "\\s*[:\\-]?\\s*", "i"));
+    if (start < 0) return "";
+    var rest = src.slice(start).replace(new RegExp("^.*?" + label + "\\s*[:\\-]?\\s*", "i"), "");
+    var cut = rest.length;
+    (nextLabels || []).forEach(function (n) {
+      var at = rest.search(new RegExp("\\s" + n + "(?:\\s*[:.\\-]|$|\\s)", "i"));
+      if (at >= 0 && at < cut) cut = at;
+    });
+    return rest.slice(0, cut).replace(/\s+/g, " ").trim();
+  }
+
+  function parseProposalLine(line) {
+    var s = String(line || "")
+      .replace(/\u00a0/g, " ")
+      .replace(/\t/g, " ")
+      .replace(/\s+/g, " ")
+      .replace(/\s*\$\s*/g, " ")
+      .trim();
+    if (!s || /^item\s*no/i.test(s) || /total amount due/i.test(s)) return null;
+    var m = s.match(
+      /^(\d{1,3}|DNREC)\s+(.+?)\s+([\d,]+\.\d{2})\s+(Each|Linear Foot|Per Hour|ls|LS|Day|EA|LF|HR)\s*X\s*([\d,]+\.\d{2})\s*=\s*([\d,]+\.\d{2})/i
+    );
+    if (!m) return null;
+    var unitKey = m[4].toLowerCase();
+    var u = UNIT_WORDS[unitKey] || { unit: m[4], unitMeasure: m[4] };
+    return {
+      itemNo: m[1],
+      description: m[2].replace(/\*including permit if needed/i, "").trim(),
+      qty: parseMoneyToken(m[3]),
+      unit: u.unit,
+      unitMeasure: u.unitMeasure,
+      unitPrice: parseMoneyToken(m[5]),
+      amount: parseMoneyToken(m[6]),
+    };
+  }
+
+  function parseConsultantProposal(text) {
+    var raw = String(text || "").replace(/\u00a0/g, " ");
+    var flat = raw.replace(/[ \t]+/g, " ");
+    var one = flat.replace(/\n+/g, " ");
+    var labels = [
+      "Date",
+      "Project Name",
+      "Project Design Number",
+      "AGR",
+      "Task",
+      "Project Billing Number",
+      "Item No",
+    ];
+    var agr = fieldAfter(one, "AGR", ["Task", "Project Billing Number", "Item No"]);
+    var agrCode = "";
+    var agrM = agr.match(/^([A-Za-z0-9]+)/);
+    if (agrM) agrCode = agrM[1];
+    var taskRaw = fieldAfter(one, "Task", ["Project Billing Number", "Item No", "Date"]);
+    var taskNumber = "";
+    var qpNumber = "";
+    var tqp = taskRaw.match(/(?:Task\s*)?(\d+)\s*(?:QP|Quick Proposal)?\s*(\d+[A-Za-z]?)/i);
+    if (tqp) {
+      taskNumber = tqp[1];
+      qpNumber = tqp[2];
+    }
+    var lines = [];
+    raw.split(/\n/).forEach(function (ln) {
+      var row = parseProposalLine(ln);
+      if (row) lines.push(row);
+    });
+    if (!lines.length) {
+      var re =
+        /(\d{1,3}|DNREC)\s+([A-Z][A-Z0-9 ,./()'*\-]+?)\s+([\d,]+\.\d{2})\s+(Each|Linear Foot|Per Hour|ls|LS|Day|EA|LF|HR)\s*X\s*\$?\s*([\d,]+\.\d{2})\s*=\s*\$?\s*([\d,]+\.\d{2})/gi;
+      var mm;
+      while ((mm = re.exec(one))) {
+        var row2 = parseProposalLine(mm[0]);
+        if (row2) lines.push(row2);
+      }
+    }
+    var totalM = one.match(/Total Amount Due:\s*\$?\s*([\d,]+\.\d{2})/i);
+    var total = totalM ? parseMoneyToken(totalM[1]) : sumLines(lines);
+    var designNo = fieldAfter(one, "Project Design Number", labels);
+    if (/X{3,}/i.test(designNo)) designNo = "";
+    var billingRaw = fieldAfter(one, "Project Billing Number", ["Item No", "Date"]);
+    var billM = billingRaw.match(/T[A-Z0-9\-]+/i);
+    var billingNo = billM ? billM[0] : billingRaw.split(/\s+/)[0] || "";
+    return {
+      dateISO: parseProposalDate(fieldAfter(one, "Date", ["Project Name", "AGR"])),
+      projectName: fieldAfter(one, "Project Name", ["Project Design Number", "AGR", "Task"]),
+      designNo: designNo,
+      agreementCode: agrCode,
+      agreementLine: agr,
+      taskNumber: taskNumber,
+      qpNumber: qpNumber,
+      billingNo: billingNo,
+      total: total,
+      lines: lines,
+    };
+  }
+
+  function applyConsultantProposal(contract, qp, parsed) {
+    parsed = parsed || {};
+    qp = qp || emptyQp();
+    if (parsed.qpNumber) qp.qpNumber = String(parsed.qpNumber);
+    if (parsed.projectName) qp.project = parsed.projectName;
+    if (parsed.designNo) qp.contractNo = parsed.designNo;
+    if (parsed.billingNo) qp.billingNo = parsed.billingNo;
+    qp.proposal = qp.proposal || {
+      status: "draft",
+      submittedDate: null,
+      projectName: "",
+      reviewNotes: "",
+      lines: [],
+    };
+    if (parsed.dateISO) qp.proposal.submittedDate = parsed.dateISO;
+    if (parsed.projectName) qp.proposal.projectName = parsed.projectName;
+    qp.proposal.source = "consultant-pdf";
+    qp.proposal.status = "draft";
+    qp.proposal.lines = (parsed.lines || []).map(function (l) {
+      var cat = catalogItemByNo(contract, l.itemNo);
+      return {
+        itemCode: cat ? cat.code : String(l.itemNo || ""),
+        itemNo: l.itemNo || (cat && cat.itemNo) || "",
+        description: (cat && cat.description) || l.description || "",
+        unit: (cat && cat.unit) || l.unit || "",
+        unitMeasure: (cat && cat.unitMeasure) || l.unitMeasure || "",
+        proposedQty: l.qty,
+        unitPrice: l.unitPrice,
+        amount: l.amount,
+      };
+    });
+    if (parsed.total) qp.proposalAmount = parsed.total;
+    return qp;
+  }
+
+  function findOrCreateQpForProposal(contract, parsed) {
+    parsed = parsed || {};
+    contract.tasks = contract.tasks || [];
+    var taskNum = parsed.taskNumber ? String(parsed.taskNumber) : "";
+    var task = null;
+    if (taskNum) {
+      contract.tasks.forEach(function (t) {
+        if (String(t.number) === taskNum) task = t;
+      });
+    }
+    if (!task) {
+      task = contract.tasks[0] || emptyTask(taskNum || "1", 0);
+      if (contract.tasks.indexOf(task) < 0) contract.tasks.push(task);
+    }
+    var qp = null;
+    if (parsed.qpNumber) {
+      (task.qps || []).forEach(function (q) {
+        if (String(q.qpNumber) === String(parsed.qpNumber)) qp = q;
+      });
+    }
+    var created = !qp;
+    if (!qp) {
+      qp = emptyQp(task, parsed.qpNumber || nextQpNumber(task));
+      task.qps = task.qps || [];
+      task.qps.push(qp);
+    }
+    applyConsultantProposal(contract, qp, parsed);
+    return { task: task, qp: qp, created: created };
+  }
+
   function proposalTotal(proposal) {
     if (!proposal) return 0;
     return money(
@@ -1322,6 +1529,7 @@
       closeoutNotes: "",
       independentEstimate: 0,
       pspm: emptyPspm(),
+      proposalPdf: null,
     };
   }
 
@@ -1406,5 +1614,10 @@
     estimateVariance: estimateVariance,
     ntpScopeChange: ntpScopeChange,
     ntpGate: ntpGate,
+    catalogItemByNo: catalogItemByNo,
+    parseConsultantProposal: parseConsultantProposal,
+    parseProposalLine: parseProposalLine,
+    applyConsultantProposal: applyConsultantProposal,
+    findOrCreateQpForProposal: findOrCreateQpForProposal,
   };
 })(typeof window !== "undefined" ? window : global);

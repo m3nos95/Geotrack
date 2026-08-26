@@ -373,6 +373,7 @@
     if (ui.view === "finance") {
       app.innerHTML = renderHeader(c) + '<div class="setup-wrap">' + renderFinance(c) + "</div>";
       bind();
+      afterRender();
       return;
     }
     if (ui.view === "settings") {
@@ -382,6 +383,7 @@
         renderSettings(c) +
         "</main></div>";
       bind();
+      afterRender();
       return;
     }
     var body;
@@ -397,6 +399,7 @@
       body +
       "</main></div>";
     bind();
+    afterRender();
   }
 
   function renderHeader(c) {
@@ -710,6 +713,7 @@
       (ui.taskCloseout && !t.closed
         ? renderTaskCloseoutForm(c, t)
         : "") +
+      renderPdfDrop(null) +
       '<div class="card" style="padding:0;overflow:auto"><table class="grid"><thead><tr>' +
       "<th>" +
       esc(noun(c)) +
@@ -1082,6 +1086,33 @@
     );
   }
 
+  function renderPdfDrop(q) {
+    var has = q && q.proposalPdf;
+    if (has) {
+      return (
+        '<div class="pdf-drop no-print" id="pdfDrop">' +
+        '<div class="banner info">Original consultant proposal: <b>' +
+        esc(q.proposalPdf.name) +
+        "</b>" +
+        (q.proposalPdf.pageCount
+          ? " · " +
+            q.proposalPdf.pageCount +
+            " page" +
+            (q.proposalPdf.pageCount === 1 ? "" : "s")
+          : "") +
+        ". The NTP packet prints the Secretary letter plus this PDF — not a rebuilt table. " +
+        '<label class="btn small">Replace<input type="file" id="propPdf" accept="application/pdf" hidden></label> ' +
+        '<button class="btn small danger" data-act="remove-pdf">Remove</button></div></div>'
+      );
+    }
+    return (
+      '<div class="pdf-drop no-print" id="pdfDrop">' +
+      '<label class="pdf-drop-zone" id="pdfDropZone">Drop the consultant proposal PDF here' +
+      "<small>ConTrak reads Task, QP, and pay items. The NTP packet includes this original file.</small>" +
+      '<input type="file" id="propPdf" accept="application/pdf" hidden></label></div>'
+    );
+  }
+
   function renderProposal(c, t, q) {
     if (!q.proposal) q.proposal = { status: "draft", lines: [], reviewNotes: "" };
     var review = E.reviewProposal(c, q.proposal);
@@ -1146,6 +1177,7 @@
         : '<div class="banner">' + esc(estVar.message) + "</div>";
     E.ensurePspm(q);
     return (
+      renderPdfDrop(q) +
       '<div class="card"><h2>Consultant proposal review</h2>' +
       "<p class=\"muted\">PSPM §14: the PM prepares a scope of work and independent estimate <b>before</b> reviewing the consultant’s cost proposal. The proposal must include a work plan, cost, and schedule. Engineer qty overrides the proposal when you issue the NTP. Unit prices come from this agreement’s catalog.</p>" +
       estBanner +
@@ -1240,14 +1272,15 @@
           esc(q.independentEstimate || "") +
           '"></label>';
     return (
+      renderPdfDrop(q) +
       '<div class="card no-print"><h2>Issue NTP</h2>' +
       (q.ntpDate
         ? '<div class="banner info">NTP issued ' +
           E.fmtDate(q.ntpDate) +
           " for " +
           E.fmtMoney(q.ntpAmount) +
-          ". Issuing again records a revised NTP from the current proposal. Print sends the DelDOT letter plus the attached proposal.</div>"
-        : "<p>PSPM §14: the NTP date is the earliest date work may begin. The Department may disallow payment of fixed fee on work started before NTP. Print produces the same two-page packet you mail: Secretary letter + contractor proposal.</p>") +
+          ". Issuing again records a revised NTP. Print sends the DelDOT letter plus the consultant’s original proposal PDF.</div>"
+        : "<p>PSPM §14: the NTP date is the earliest date work may begin. Print sends the Secretary letter plus the consultant’s original proposal PDF (drop it above if it is not attached yet).</p>") +
       scopeBanner +
       '<div class="fields">' +
       '<label class="f">NTP / ledger date<input id="ntpDate" type="date" value="' +
@@ -1356,6 +1389,16 @@
       "</div></div>" +
       officialLetterFooterHtml() +
       "</article>" +
+      (q.proposalPdf
+        ? '<div id="ntpProposalScan"></div>'
+        : renderGeneratedProposalPage(c, pkt, propRows, addr)) +
+      "</div>"
+    );
+  }
+
+  function renderGeneratedProposalPage(c, pkt, propRows, addr) {
+    var lh = pkt.letterhead;
+    return (
       '<article class="letter-page ntp-proposal">' +
       '<div class="prop-head"><div class="prop-from"><b>' +
       esc(lh.contractorName || c.contractor || "") +
@@ -1404,7 +1447,7 @@
       esc(pkt.proposalDateLong) +
       "</div></div><div class=\"prop-total\">Total Amount Due: <b>" +
       esc(pkt.amountLetter) +
-      "</b></div></div></article></div>"
+      "</b></div></div></article>"
     );
   }
 
@@ -2013,6 +2056,107 @@
     if (ix) ix.onchange = importXlsxFile;
   }
 
+  function afterRender() {
+    wirePdfDrop();
+    var host = document.getElementById("ntpProposalScan");
+    var q = qp();
+    if (host && q && window.ConTrakPdf) {
+      window.ConTrakPdf.paintQp(q.id, host).catch(function (err) {
+        toast("Could not show the proposal PDF: " + err.message);
+      });
+    }
+  }
+
+  function wirePdfDrop() {
+    var input = document.getElementById("propPdf");
+    if (input) {
+      input.onchange = function () {
+        if (input.files && input.files[0]) ingestPdfFile(input.files[0]);
+      };
+    }
+    var zone = document.getElementById("pdfDropZone") || document.getElementById("pdfDrop");
+    if (!zone) return;
+    zone.ondragover = function (ev) {
+      ev.preventDefault();
+      ev.stopPropagation();
+      zone.classList.add("drag");
+    };
+    zone.ondragleave = function () {
+      zone.classList.remove("drag");
+    };
+    zone.ondrop = function (ev) {
+      ev.preventDefault();
+      ev.stopPropagation();
+      zone.classList.remove("drag");
+      var f = ev.dataTransfer && ev.dataTransfer.files && ev.dataTransfer.files[0];
+      if (f) ingestPdfFile(f);
+    };
+  }
+
+  function ingestPdfFile(file) {
+    if (!file) return;
+    if (!/pdf/i.test(file.type || "") && !/\.pdf$/i.test(file.name || "")) {
+      toast("Drop a PDF proposal");
+      return;
+    }
+    if (!window.ConTrakPdf || !window.pdfjsLib) {
+      toast("PDF library did not load — check your network and refresh");
+      return;
+    }
+    toast("Reading " + file.name + "…");
+    file
+      .arrayBuffer()
+      .then(function (buf) {
+        return window.ConTrakPdf.extractText(buf).then(function (extracted) {
+          return { buf: buf, extracted: extracted };
+        });
+      })
+      .then(function (pack) {
+        var parsed = E.parseConsultantProposal(pack.extracted.text);
+        var c = contract();
+        if (parsed.agreementCode) {
+          var hit = (state.contracts || []).find(function (x) {
+            return String(x.code).toLowerCase() === String(parsed.agreementCode).toLowerCase();
+          });
+          if (hit) c = hit;
+        }
+        var target;
+        if (ui.qpId && qp() && !parsed.qpNumber) {
+          E.applyConsultantProposal(c, qp(), parsed);
+          target = { task: task(), qp: qp(), created: false };
+        } else {
+          target = E.findOrCreateQpForProposal(c, parsed);
+        }
+        var blob = new Blob([pack.buf], { type: "application/pdf" });
+        return window.ConTrakPdf.savePdf(target.qp.id, blob, { name: file.name }).then(function () {
+          target.qp.proposalPdf = {
+            name: file.name,
+            size: file.size,
+            pageCount: pack.extracted.pageCount,
+          };
+          ui.contractId = c.id;
+          ui.taskId = target.task.id;
+          ui.qpId = target.qp.id;
+          ui.qpTab = "ntp";
+          ui.view = "ledger";
+          save();
+          var amt = parsed.total || E.proposalTotal(target.qp.proposal);
+          var msg =
+            "Attached " +
+            file.name +
+            (amt ? " · " + E.fmtMoney(amt) : "") +
+            (parsed.lines.length
+              ? " · " + parsed.lines.length + " pay items"
+              : " · pay items not read; PDF still attaches to the NTP");
+          toast(msg);
+          render();
+        });
+      })
+      .catch(function (err) {
+        toast("Could not read PDF: " + (err && err.message ? err.message : err));
+      });
+  }
+
   function onKey(ev) {
     if (ev.key === "Enter" && ev.target && ev.target.id === "filter") {
       ev.preventDefault();
@@ -2466,8 +2610,31 @@
       render();
       return;
     }
+    if (act === "remove-pdf") {
+      if (!q) return;
+      var pdfLib = window.ConTrakPdf;
+      var done = pdfLib ? pdfLib.removePdf(q.id) : Promise.resolve();
+      done.then(function () {
+        q.proposalPdf = null;
+        save();
+        toast("Removed consultant PDF");
+        render();
+      });
+      return;
+    }
     if (act === "print-ntp") {
-      window.print();
+      var host = document.getElementById("ntpProposalScan");
+      if (host && q && q.proposalPdf && window.ConTrakPdf) {
+        window.ConTrakPdf.paintQp(q.id, host)
+          .then(function () {
+            window.print();
+          })
+          .catch(function () {
+            window.print();
+          });
+      } else {
+        window.print();
+      }
       return;
     }
     if (act === "add-inv") {
@@ -2555,11 +2722,22 @@
       return;
     }
     if (act === "export-json") {
-      var blob = new Blob([JSON.stringify(state, null, 2)], { type: "application/json" });
-      var a = document.createElement("a");
-      a.href = URL.createObjectURL(blob);
-      a.download = "contrak-backup.json";
-      a.click();
+      var payload = JSON.parse(JSON.stringify(state));
+      var finish = function (pdfs) {
+        payload.pdfs = pdfs || {};
+        var blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" });
+        var a = document.createElement("a");
+        a.href = URL.createObjectURL(blob);
+        a.download = "contrak-backup.json";
+        a.click();
+      };
+      if (window.ConTrakPdf) {
+        window.ConTrakPdf.collectPdfs(state).then(finish).catch(function () {
+          finish({});
+        });
+      } else {
+        finish({});
+      }
       return;
     }
     if (act === "reset") {
@@ -2742,11 +2920,19 @@
         var data = JSON.parse(reader.result);
         if (!data.contracts) throw new Error("Not a ConTrak backup");
         state = T.migrateState(data);
-        save();
-        ui.contractId = state.contracts[0].id;
-        ui.qpId = null;
-        toast("Imported backup");
-        render();
+        var pdfs = data.pdfs || {};
+        var go = function () {
+          save();
+          ui.contractId = state.contracts[0].id;
+          ui.qpId = null;
+          toast("Imported backup");
+          render();
+        };
+        if (window.ConTrakPdf && Object.keys(pdfs).length) {
+          window.ConTrakPdf.restorePdfs(pdfs).then(go).catch(go);
+        } else {
+          go();
+        }
       } catch (err) {
         toast("Import failed: " + err.message);
       }
