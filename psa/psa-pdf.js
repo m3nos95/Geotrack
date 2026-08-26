@@ -101,9 +101,13 @@
     return lib;
   }
 
+  function copyPdfData(arrayBuffer) {
+    return new Uint8Array(arrayBuffer.slice(0)).buffer;
+  }
+
   function extractText(arrayBuffer) {
     var lib = ensurePdfJs();
-    return lib.getDocument({ data: arrayBuffer }).promise.then(function (pdf) {
+    return lib.getDocument({ data: copyPdfData(arrayBuffer) }).promise.then(function (pdf) {
       var chain = Promise.resolve([]);
       var i;
       for (i = 1; i <= pdf.numPages; i++) {
@@ -143,7 +147,7 @@
   function renderPages(arrayBuffer, host) {
     var lib = ensurePdfJs();
     host.innerHTML = "";
-    return lib.getDocument({ data: arrayBuffer }).promise.then(function (pdf) {
+    return lib.getDocument({ data: copyPdfData(arrayBuffer) }).promise.then(function (pdf) {
       var chain = Promise.resolve();
       var i;
       for (i = 1; i <= pdf.numPages; i++) {
@@ -158,12 +162,18 @@
                 var canvas = document.createElement("canvas");
                 canvas.width = viewport.width;
                 canvas.height = viewport.height;
-                article.appendChild(canvas);
-                host.appendChild(article);
-                return page.render({
-                  canvasContext: canvas.getContext("2d"),
-                  viewport: viewport,
-                }).promise;
+                return page
+                  .render({
+                    canvasContext: canvas.getContext("2d"),
+                    viewport: viewport,
+                  })
+                  .promise.then(function () {
+                    var img = document.createElement("img");
+                    img.alt = "Consultant proposal page " + n;
+                    img.src = canvas.toDataURL("image/png");
+                    article.appendChild(img);
+                    host.appendChild(article);
+                  });
               });
             };
           })(i)
@@ -176,12 +186,17 @@
   function paintQp(qpId, host) {
     if (!host) return Promise.resolve();
     return loadPdf(qpId).then(function (row) {
-      if (!row || !row.blob) {
+      if (!row || !row.blob || !row.blob.size) {
         host.innerHTML =
           '<article class="letter-page ntp-proposal"><p>The original consultant proposal PDF is not in this browser. Drop it again on the Proposal tab.</p></article>';
         return;
       }
       return row.blob.arrayBuffer().then(function (buf) {
+        if (!buf || !buf.byteLength) {
+          host.innerHTML =
+            '<article class="letter-page ntp-proposal"><p>The stored proposal PDF is empty. Drop the consultant file again.</p></article>';
+          return;
+        }
         return renderPages(buf, host);
       });
     });

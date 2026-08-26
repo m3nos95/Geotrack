@@ -2107,11 +2107,14 @@
     file
       .arrayBuffer()
       .then(function (buf) {
-        return window.ConTrakPdf.extractText(buf).then(function (extracted) {
+        return window.ConTrakPdf.extractText(buf.slice(0)).then(function (extracted) {
           return { buf: buf, extracted: extracted };
         });
       })
       .then(function (pack) {
+        if (!pack.buf || !pack.buf.byteLength) {
+          throw new Error("PDF data was empty after reading");
+        }
         var parsed = E.parseConsultantProposal(pack.extracted.text);
         var c = contract();
         if (parsed.agreementCode) {
@@ -2128,6 +2131,7 @@
           target = E.findOrCreateQpForProposal(c, parsed);
         }
         var blob = new Blob([pack.buf], { type: "application/pdf" });
+        if (!blob.size) throw new Error("Could not keep the original PDF");
         return window.ConTrakPdf.savePdf(target.qp.id, blob, { name: file.name }).then(function () {
           target.qp.proposalPdf = {
             name: file.name,
