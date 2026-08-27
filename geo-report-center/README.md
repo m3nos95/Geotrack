@@ -121,7 +121,7 @@ Full checklist and talking points: **[FEATURE_TOUR.md](./FEATURE_TOUR.md)**
 | Button | What it means | What you do |
 |--------|---------------|-------------|
 | **Estimates ON/OFF** | Master switch for screening numbers | Leave OFF for “facts only”; turn ON for rates/profiles |
-| **Layers** | Which reference layers feed Site Intel + DelDOT FirstMap online overlays | Open → filter / All on / All off / Expand… · **Traffic counts (AADT)** under DelDOT FirstMap · **Traffic calming screen** (click + **statewide**) joins AADT × posted speed × functional class (screening only — not a warrant) |
+| **Layers** | Which reference layers feed Site Intel + DelDOT FirstMap online overlays | Open → filter / All on / All off / Expand… · **Traffic counts (AADT)** under DelDOT FirstMap · **Traffic calming screen** (click + **statewide**) joins AADT × posted speed × functional class, with crash/school overlays and **potential roundabouts** at all-way stops (screening only — not a warrant) |
 | **Markers** | Map dots for borings / DGS / infil / bridges | Not traffic — use Layers → FirstMap for AADT |
 | **Hydro** | Online water-table / aquifer / climate options | Turn online sampling on when you have internet |
 
