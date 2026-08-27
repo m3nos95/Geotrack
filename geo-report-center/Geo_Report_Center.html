@@ -35223,20 +35223,13 @@ async function loadCalmingSchoolsOnline(opts){
   if(!opts.silent) setStatewideCalmingStatus('Loading DE schools from FirstMap…','warn');
   try{
     await loadDeSchoolsFromFirstmap({ onStatus:msg=>{ if(!opts.silent) setStatewideCalmingStatus(msg,'warn'); } });
-    if(!calmingSafetyCtx){
-      calmingSafetyCtx={
-        ok:true, at:Date.now(),
-        schools:[], schoolN:0, schoolPublicN:0, schoolPrivateN:0,
-        crashes:[], schoolGrid:buildCalmingPointGrid([],0.015), crashGrid:buildCalmingPointGrid([],0.01),
-        yearMin:CALMING_CRASH_YEAR_MIN
-      };
-    }
     if(showCalmingSchoolMarkers) paintCalmingSchoolMarkers();
     if(statewideCalmingResult) renderStatewideCalmingDock();
     if(!opts.silent){
-      const n=(calmingSafetyCtx.schoolN||0).toLocaleString();
-      setStatewideCalmingStatus('Schools loaded — '+n+' on map (public + private). Run statewide screen for crash join.','good');
-      toast(n+' DE schools on map', 4000);
+      const pub=(calmingSafetyCtx.schoolPublicN||0).toLocaleString();
+      const priv=(calmingSafetyCtx.schoolPrivateN||0).toLocaleString();
+      setStatewideCalmingStatus('Schools loaded — '+pub+' public · '+priv+' private on map. Run statewide screen for crash join.','good');
+      toast((calmingSafetyCtx.schoolN||0).toLocaleString()+' DE schools on map', 4000);
     }
     return calmingSafetyCtx.schoolN||0;
   }catch(e){
