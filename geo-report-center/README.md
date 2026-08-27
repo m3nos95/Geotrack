@@ -121,7 +121,7 @@ Full checklist and talking points: **[FEATURE_TOUR.md](./FEATURE_TOUR.md)**
 | Button | What it means | What you do |
 |--------|---------------|-------------|
 | **Estimates ON/OFF** | Master switch for screening numbers | Leave OFF for “facts only”; turn ON for rates/profiles |
-| **Layers** | Which reference layers feed Site Intel + DelDOT FirstMap online overlays | Open → filter / All on / All off / Expand… · **Traffic counts (AADT)** under DelDOT FirstMap · **Traffic calming screen** (click + **statewide**) joins AADT × posted speed × functional class (screening only — not a warrant) |
+| **Layers** | Which reference layers feed Site Intel + DelDOT FirstMap online overlays | Open → filter / All on / All off / Expand… · **Traffic counts (AADT)** under DelDOT FirstMap · **Traffic calming screen** (click + **statewide**) joins AADT × posted speed × functional class, with crash/school overlays and **potential roundabouts** at all-way stops (screening only — not a warrant) |
 | **Markers** | Map dots for borings / DGS / infil / bridges | Not traffic — use Layers → FirstMap for AADT |
 | **Hydro** | Online water-table / aquifer / climate options | Turn online sampling on when you have internet |
 
@@ -193,7 +193,7 @@ Left = **rail** (pick a topic). Center/right drawer = details. **Exit** closes S
 | **DGS** | Delaware Geological Survey wells / geophys | Lith / gamma links; shallow coarse/fine classes |
 | **Props** | Screening engineering properties | Subgrade / frost / drainage-style priors from AASHTO — not lab CBR |
 | **Poles** | DelDOT Table IV-11 signal/strain/camera base | Chart-strict (worst SPT in 0–5′ and 5–25′) plus a typical-profile suggestion and a per-hole PE override. **Click a boring marker** → log + pole base from **that hole only** (not Site Intel). |
-| **Calming** | Traffic calming screen (TCDM 2025) — **defined in-app** as a context filter | Click screen + **statewide** ranked list. Filters: band · **min AADT** (≥5k/10k/15k presets) · **county** · **posted 25–35**. Map follows filters. **Candidate** = local/collector ≤35 mph. **Screening only — not a warrant.** |
+| **Calming** | Traffic calming screen (TCDM 2025) — **defined in-app** as a context filter | Click + **statewide** ranked list. Filters: band · min AADT · county · posted 25–35 · **near school/childcare** · **min injury/fatal crashes** (public FirstMap since 2021, + ped/bike) · **potential roundabout** (calming candidates near OSM all-way / 4-way stops; excludes DelDOT signals & existing FirstMap roundabouts; optional 4+ leg prefer). Risk sort uses crash + generator + roundabout proximity. **Screening only — not a warrant / not official crash records / verify stop control.** See [de.gov/roundabouts](https://de.gov/roundabouts). |
 | **Septic** | DNREC PercRate points nearby | Minutes/inch converted for screening (not App.1 ASTM) |
 | **Class** | AASHTO / USCS at the point | From nearby borings or NRCS fallback (Estimates ON) |
 | **Column** | Stick log 0–50′ (and deeper subsurface mode) | Layered class with depth (Estimates ON) |
