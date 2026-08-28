@@ -71,6 +71,10 @@
   let specDdFocusIdx = -1;
   let slActiveTags = [];
   let _srcModalCallback = null;
+  let _pdfJsLoading = null;
+  const PDFJS_SRC = 'https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/build/pdf.min.js';
+  const PDFJS_WORKER_SRC = 'https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/build/pdf.worker.min.js';
+  const LIB_TABLE_CAP = 250;
 
   function persistAll() {
     ls_set(STORE.items, items);
@@ -271,11 +275,12 @@
         num, desc: v.desc, tags: v.tags || [], notes: '', lastSrcName: '', lastSrcLoc: '', lastSrcAddr: '', lastSrcPhone: '',
       }));
     }
+    const sourceNames = sourceLib.map(x => x.name);
     const byNum = new Map();
     specLib.forEach((s) => {
       const num = String(s.num || '').toUpperCase().replace(/^([^#])/, '#$1');
       if (!num || num === '#') return;
-      const desc = SOSData.cleanSpecLibraryDesc(s.desc, [s.lastSrcName].concat(sourceLib.map(x => x.name))) || s.desc || '';
+      const desc = SOSData.cleanSpecLibraryDesc(s.desc, [s.lastSrcName].concat(sourceNames)) || s.desc || '';
       const rec = Object.assign({}, s, { num, desc });
       const prev = byNum.get(num);
       if (!prev) byNum.set(num, rec);
@@ -284,8 +289,15 @@
         if (rec.lastSrcName && !prev.lastSrcName) prev.lastSrcName = rec.lastSrcName;
       }
     });
+    Object.entries(SOSData.SPEC_CATALOG).forEach(([num, v]) => {
+      const key = String(num).toUpperCase().replace(/^([^#])/, '#$1');
+      if (byNum.has(key)) return;
+      byNum.set(key, {
+        num: key, desc: v.desc || '', tags: v.tags || [], notes: '',
+        lastSrcName: '', lastSrcLoc: '', lastSrcAddr: '', lastSrcPhone: '',
+      });
+    });
     specLib = [...byNum.values()];
-    Object.entries(SOSData.SPEC_CATALOG).forEach(([num, v]) => autoSaveSpec(num, v.desc, '', '', '', '', { silent: true }));
     saveSpecLib();
   }
   function saveSpecLib() {
@@ -1418,7 +1430,11 @@
     const filtered = q
       ? sourceLib.filter(s => s.name.toLowerCase().includes(q) || (s.loc || '').toLowerCase().includes(q) || (s.tags || []).some(t => t.toLowerCase().includes(q)))
       : sourceLib;
-    tbody.innerHTML = filtered.map(s => `
+    const shown = filtered.slice(0, LIB_TABLE_CAP);
+    const extra = (filtered.length > LIB_TABLE_CAP)
+      ? `<tr><td colspan="6" style="font-size:11px;color:var(--text-mid);padding:10px;">Showing ${LIB_TABLE_CAP} of ${filtered.length} sources. Type more of the name to narrow it down.</td></tr>`
+      : '';
+    tbody.innerHTML = shown.map(s => `
       <tr>
         <td style="font-weight:500;">${esc(s.name)}</td>
         <td>${esc(s.loc || '')}</td>
@@ -1426,7 +1442,7 @@
         <td style="font-family:var(--mono);font-size:11px;">${esc(s.phone || '')}</td>
         <td>${(s.tags || []).map(t => `<span class="lib-tag">${esc(t)}</span>`).join('')}</td>
         <td><button class="btn btn-ghost btn-sm" onclick="openSourceModal('${s.id}')">✎</button></td>
-      </tr>`).join('');
+      </tr>`).join('') + extra;
     saveSourceLib();
   };
   window.openSourceModal = function (editId, prefillName, callback) {
@@ -1482,16 +1498,20 @@
     const q = (document.getElementById('spec-lib-search')?.value || '').toLowerCase();
     const filtered = (q ? specLib.filter(s => s.num.toLowerCase().includes(q) || (s.desc || '').toLowerCase().includes(q)) : [...specLib])
       .sort((a, b) => a.num.localeCompare(b.num));
-    tbody.innerHTML = filtered.map(s => `
+    const shown = filtered.slice(0, LIB_TABLE_CAP);
+    const extra = (filtered.length > LIB_TABLE_CAP)
+      ? `<tr><td colspan="4" style="font-size:11px;color:var(--text-mid);padding:10px;">Showing ${LIB_TABLE_CAP} of ${filtered.length} specs. Type a spec number to find the rest.</td></tr>`
+      : '';
+    tbody.innerHTML = shown.map(s => `
       <tr>
         <td><span style="font-family:var(--mono);font-weight:700;color:var(--deldot);">${esc(s.num)}</span></td>
         <td>${esc(specPickerDesc(s) || s.desc || '')}</td>
         <td>${esc(s.lastSrcName || '—')}</td>
         <td><button class="btn btn-ghost btn-sm" onclick="openSpecLibModal('${s.num.replace(/'/g, "\\'")}')">✎</button></td>
-      </tr>`).join('');
+      </tr>`).join('') + extra;
     document.getElementById('specs-count').textContent = specLib.length;
     const lab = document.getElementById('spec-lib-count-label');
-    if (lab) lab.textContent = filtered.length + ' of ' + specLib.length + ' specs';
+    if (lab) lab.textContent = shown.length + ' of ' + specLib.length + ' specs';
   };
   window.openSpecLibModal = function (num) {
     setVal('sl-spec-edit-id', num || '');
@@ -1944,15 +1964,46 @@
     importAllParsed();
   }
 
+  function loadPdfJs() {
+    if (window.pdfjsLib) {
+      if (pdfjsLib.GlobalWorkerOptions && !pdfjsLib.GlobalWorkerOptions.workerSrc) {
+        pdfjsLib.GlobalWorkerOptions.workerSrc = PDFJS_WORKER_SRC;
+      }
+      return Promise.resolve(window.pdfjsLib);
+    }
+    if (_pdfJsLoading) return _pdfJsLoading;
+    _pdfJsLoading = new Promise((resolve, reject) => {
+      const s = document.createElement('script');
+      s.src = PDFJS_SRC;
+      s.onload = function () {
+        if (!window.pdfjsLib) {
+          _pdfJsLoading = null;
+          reject(new Error('PDF reader loaded but pdfjsLib is missing.'));
+          return;
+        }
+        pdfjsLib.GlobalWorkerOptions.workerSrc = PDFJS_WORKER_SRC;
+        resolve(window.pdfjsLib);
+      };
+      s.onerror = function () {
+        _pdfJsLoading = null;
+        reject(new Error('Could not load the PDF reader (needs network). Drop the .xls if you have it.'));
+      };
+      document.head.appendChild(s);
+    });
+    return _pdfJsLoading;
+  }
+
   async function handleImportPdf(file) {
     const label = document.getElementById('drop-label');
     if (label) label.textContent = file.name;
-    setImportStatus('Reading PDF…', 'blue');
+    setImportStatus('Loading PDF reader…', 'blue');
     try {
+      await loadPdfJs();
       if (typeof SosFormPdf === 'undefined') {
-        setImportStatus('PDF importer is not loaded. Refresh the page (needs network for the PDF reader).', 'red');
+        setImportStatus('PDF importer is not loaded. Refresh the page.', 'red');
         return;
       }
+      setImportStatus('Reading PDF…', 'blue');
       const buf = await file.arrayBuffer();
       const parsed = await SosFormPdf.parsePdf(buf, { filename: file.name });
       if (parsed.kind === 'issued-letter') {
@@ -2410,13 +2461,6 @@
     wireDropZone(document.getElementById('cc-drop-zone'));
     wireDropZone(document.getElementById('sources-drop-zone'));
     wireDropZone(document.getElementById('specs-drop-zone'));
-    loadAplSnapshot().then(() => {
-      mergeLiveListsIntoLibraries();
-      renderLists();
-      renderCCHarvestStatus();
-      renderSourceLib();
-      renderSpecLibTab();
-    });
     renderLists();
     renderItems();
     renderCC();
@@ -2424,11 +2468,18 @@
     renderCcRules();
     renderCCHarvestStatus();
     renderRevisions();
-    renderSourceLib();
-    renderSpecLibTab();
+    saveSourceLib();
+    saveSpecLib();
     renderLetter();
     renderWarnings();
     loadLetterEdits();
+    setTimeout(function () {
+      loadAplSnapshot().then(() => {
+        mergeLiveListsIntoLibraries();
+        renderLists();
+        renderCCHarvestStatus();
+      });
+    }, 0);
   }
 
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', initApp);
