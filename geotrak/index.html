@@ -23910,7 +23910,11 @@ function wireFloatPanel(cfg){
   const id=cfg.id||el.id;
   cfg={...cfg, el, id};
   FLOAT_PANEL_REGISTRY.push(cfg);
-  const handle=cfg.handle?(typeof cfg.handle==='string'?$(cfg.handle):cfg.handle):(el.querySelector('h3')||el.querySelector('.float-drag-hd'));
+  const handle=cfg.handle
+    ? (typeof cfg.handle==='string'
+      ? ($(cfg.handle)||el.querySelector(cfg.handle))
+      : cfg.handle)
+    : (el.querySelector('h3')||el.querySelector('.float-drag-hd')||el.querySelector('.ml-hd'));
   const resize=cfg.resize?(typeof cfg.resize==='string'?$(cfg.resize):cfg.resize):el.querySelector('.float-resize');
   applyFloatPanelLayout(cfg);
   try{
@@ -24035,7 +24039,7 @@ function wireAllFloatPanels(){
   wireFloatPanel({el:'mapPlaceSearch', handle:'mapPlaceSearchDrag', resize:'mapPlaceSearchResize', minW:200, minH:48, resizeHeight:false});
   wireFloatPanel({el:'hudDeck', handle:'hudDeckDragHd', resize:'hudDeckResize', minW:300, minH:280, clearAnchors:true});
   wireFloatPanel({el:'coldStart', handle:'coldStartDrag', resize:'coldStartResize', minW:240, minH:180, clearAnchors:true});
-  wireFloatPanel({el:'mapLegend', handle:'.ml-hd', resize:'mapLegendResize', minW:148, minH:120, clearAnchors:true});
+  wireFloatPanel({el:'mapLegend', resize:'mapLegendResize', minW:148, minH:120, clearAnchors:true});
   if(!window._floatPanelResizeHook){
     window._floatPanelResizeHook=true;
     window.addEventListener('resize', function(){
