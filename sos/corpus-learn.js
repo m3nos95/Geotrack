@@ -9,6 +9,7 @@ const fs = require('fs');
 const path = require('path');
 const { spawnSync } = require('child_process');
 const Engine = require('./sos-engine.js');
+const Pack = require('./training-pack.js');
 
 const ROOT = path.join(__dirname, 'corpus');
 const CASES = path.join(ROOT, 'cases');
@@ -63,6 +64,7 @@ function listFilesRecursive(dir, exts, depth) {
   const out = [];
   for (const name of names) {
     if (name.startsWith('.') || name === 'SOS-learn-report.md') continue;
+    if (Pack.isSkipLearnDir(name) || name.toLowerCase() === 'jobs') continue;
     const full = path.join(dir, name);
     let st;
     try { st = fs.statSync(full); } catch (e) { continue; }
@@ -366,6 +368,44 @@ function filenameAppIds(filename) {
   return contractKeysFrom(filename).filter(k => /^\d{9,10}$/.test(k));
 }
 
+function loadProgramSnapshot(dir) {
+  if (!dir || !fs.existsSync(dir)) return null;
+  const txtNames = ['program-output.txt', 'letter.txt'];
+  for (const name of txtNames) {
+    const full = path.join(dir, name);
+    if (!fs.existsSync(full)) continue;
+    try {
+      const parsed = parseIssuedSections(fs.readFileSync(full, 'utf8'));
+      if (parsed && parsed.sections && parsed.sections.length) {
+        return { file: name, ...parsed };
+      }
+    } catch (e) {}
+  }
+  const jsonNames = ['items.json', 'job.json'];
+  for (const name of jsonNames) {
+    const full = path.join(dir, name);
+    if (!fs.existsSync(full)) continue;
+    try {
+      const rec = JSON.parse(fs.readFileSync(full, 'utf8'));
+      const items = rec.items || [];
+      if (!items.length) continue;
+      return {
+        file: name,
+        kind: 'program-output',
+        intro: rec.project ? [rec.project.contract, rec.project.title].filter(Boolean).join(' ') : '',
+        sections: items.map(it => ({
+          section: (it.specs || it.letterSpecs || []).join(' ') + (it.section ? ' ' + it.section : ''),
+          source: it.source || it.srcName || '',
+          action: it.notes || it.actionNotes || it.action || '',
+          bullets: it.subs || it.subItems || [],
+        })),
+        cc: rec.cc || [],
+      };
+    } catch (e) {}
+  }
+  return null;
+}
+
 function discoverCases() {
   const cases = [];
   const inspected = {};
@@ -382,8 +422,8 @@ function discoverCases() {
 
   const takeFolder = (dir, slug) => {
     const xls = listFiles(dir, ['.xls', '.xlsx']);
-    const pdfs = listFiles(dir, ['.pdf']);
-    if (!xls.length && !pdfs.length) return;
+    const pdfs = listFiles(dir, ['.pdf']).filter(p => !Pack.isProgramOutputFile(p));
+    if (!xls.length && !pdfs.length && !loadProgramSnapshot(dir)) return;
     inspectAll(pdfs);
     const forms = pdfs.filter(p => inspected[p] && inspected[p].kind === 'contractor-form');
     const letters = pdfs.filter(p => !forms.includes(p));
@@ -402,6 +442,10 @@ function discoverCases() {
     loose.push(...listFiles(DROP, ['.xls', '.xlsx', '.pdf']));
   }
   extra.forEach(dir => {
+    const jobsDir = path.join(dir, 'jobs');
+    if (fs.existsSync(jobsDir)) {
+      listDirs(jobsDir).forEach(jobDir => takeFolder(jobDir, 'jobs/' + path.basename(jobDir)));
+    }
     loose.push(...listFilesRecursive(dir, ['.xls', '.xlsx', '.pdf']));
   });
   const pdfCount = loose.filter(p => /\.pdf$/i.test(p)).length;
@@ -433,8 +477,8 @@ function pairKey(filename) {
 
 function pairLooseFiles(files, inspected) {
   inspected = inspected || {};
-  const xls = files.filter(p => /\.xlsx?$/i.test(p));
-  const pdfs = files.filter(p => /\.pdf$/i.test(p));
+  const xls = files.filter(p => /\.xlsx?$/i.test(p) && !Pack.isProgramOutputFile(p));
+  const pdfs = files.filter(p => /\.pdf$/i.test(p) && !Pack.isProgramOutputFile(p));
   const all = [...xls, ...pdfs];
 
   const keysFor = (file) => {
@@ -540,27 +584,57 @@ function engineSummary(result) {
   };
 }
 
+function specSetFrom(itemsOrSections, kind) {
+  const set = new Set();
+  (itemsOrSections || []).forEach(row => {
+    const blob = kind === 'engine'
+      ? ((row.specs || []).join(' ') + ' ' + (row.section || ''))
+      : (row.section || '');
+    specTokens(blob).forEach(s => set.add(s));
+  });
+  return set;
+}
+
+function specDiff(left, right) {
+  const missing = [...right].filter(s => ![...left].some(e => e.replace('#', '') === s.replace('#', '')));
+  const extra = [...left].filter(s => ![...right].some(p => p.replace('#', '') === s.replace('#', '')));
+  return { missing, extra };
+}
+
 function attachDiff(out) {
   const issued = (out.letters || [])
     .filter(l => l.kind === 'issued-letter' && l.sections.length)
     .sort((a, b) => b.sections.length - a.sections.length);
-  if (out.engine && issued.length) {
-    const letter = issued[0];
-    const engSpecs = new Set(out.engine.items.flatMap(i => specTokens((i.specs || []).join(' ') + ' ' + i.section)));
-    const pdfSpecs = new Set(letter.sections.flatMap(s => specTokens(s.section)));
-    const missing = [...pdfSpecs].filter(s => ![...engSpecs].some(e => e.replace('#', '') === s.replace('#', '')));
-    const extra = [...engSpecs].filter(s => ![...pdfSpecs].some(p => p.replace('#', '') === s.replace('#', '')));
+  const letter = issued[0];
+  const issuedSpecs = letter ? specSetFrom(letter.sections) : new Set();
+  if (out.engine && letter) {
+    const engSpecs = specSetFrom(out.engine.items, 'engine');
+    const d = specDiff(engSpecs, issuedSpecs);
     out.diff = {
       against: letter.file,
       engineItems: out.engine.items.length,
       pdfSections: letter.sections.length,
-      specsInPdfNotEngine: missing,
-      specsInEngineNotPdf: extra,
+      specsInPdfNotEngine: d.missing,
+      specsInEngineNotPdf: d.extra,
       pdfIntro: letter.intro,
       enginePhrase: Engine.contractPhrase(out.engine.project),
     };
   } else {
     delete out.diff;
+  }
+  if (out.program && letter) {
+    const progSpecs = specSetFrom(out.program.sections);
+    const d = specDiff(progSpecs, issuedSpecs);
+    out.programDiff = {
+      against: letter.file,
+      programFile: out.program.file,
+      programSections: (out.program.sections || []).length,
+      pdfSections: letter.sections.length,
+      specsInIssuedNotProgram: d.missing,
+      specsInProgramNotIssued: d.extra,
+    };
+  } else {
+    delete out.programDiff;
   }
   return out;
 }
@@ -604,6 +678,7 @@ function mergeOneGroup(group) {
     pdfFiles: [...new Set(group.flatMap(g => g.pdfFiles || []))],
     unfiled: group.some(g => g.unfiled),
     engine: (withEngine && withEngine.engine) || null,
+    program: (group.find(g => g.program) || {}).program || null,
     letters: [],
     notes: [],
   };
@@ -1011,6 +1086,9 @@ function compareCase(c, lists) {
     }
   }
 
+  const program = loadProgramSnapshot(c.dir);
+  if (program) out.program = program;
+
   attachDiff(out);
   return out;
 }
@@ -1123,10 +1201,18 @@ function renderText(results, harvest, language, libraries) {
         lines.push('     ACTION ' + s.action.slice(0, 220));
       });
     }
+    if (r.program) {
+      lines.push('program-output: ' + r.program.file + ' (' + (r.program.sections || []).length + ' sections)');
+    }
     if (r.diff) {
       lines.push('diff vs ' + r.diff.against + ': engine ' + r.diff.engineItems + ' items / pdf ' + r.diff.pdfSections + ' sections');
       if (r.diff.specsInPdfNotEngine.length) lines.push('  in PDF, not engine: ' + r.diff.specsInPdfNotEngine.join(', '));
       if (r.diff.specsInEngineNotPdf.length) lines.push('  in engine, not PDF: ' + r.diff.specsInEngineNotPdf.join(', '));
+    }
+    if (r.programDiff) {
+      lines.push('program vs sent ' + r.programDiff.against + ': ' + r.programDiff.programFile + ' ' + r.programDiff.programSections + ' / issued ' + r.programDiff.pdfSections);
+      if (r.programDiff.specsInIssuedNotProgram.length) lines.push('  in sent letter, not program output: ' + r.programDiff.specsInIssuedNotProgram.join(', '));
+      if (r.programDiff.specsInProgramNotIssued.length) lines.push('  in program output, not sent letter: ' + r.programDiff.specsInProgramNotIssued.join(', '));
     }
     lines.push('');
   }
@@ -1154,6 +1240,11 @@ function renderSummary(results, harvest, language) {
         if (miss) status += '  letter-only ' + r.diff.specsInPdfNotEngine.join(',');
         if (extra) status += '  engine-only ' + r.diff.specsInEngineNotPdf.join(',');
       }
+    } else if (r.programDiff) {
+      const miss = (r.programDiff.specsInIssuedNotProgram || []).length;
+      const extra = (r.programDiff.specsInProgramNotIssued || []).length;
+      status = 'program ' + r.programDiff.programSections + ' / sent ' + r.programDiff.pdfSections;
+      if (!miss && !extra) status += '  specs match';
     } else if (!hasForm) status = 'letter only (language harvested)';
     else if (!letter) status = 'form only';
     lines.push('• ' + r.slug);
@@ -1234,5 +1325,6 @@ module.exports = {
   parseFormPdf,
   inspectPdf,
   loadListsForDir,
+  loadProgramSnapshot,
   looksLikeContractorForm,
 };

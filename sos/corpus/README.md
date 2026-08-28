@@ -1,6 +1,32 @@
 # SOS example corpus
 
-Dump **issued M&R letter PDFs** in the Desktop **SOS Program** folder. Contractor `.xls` files are optional. This GitHub repo is public, so those files stay on this machine (gitignored) and are not committed.
+The program learns from **three files per job**, kept on this machine (gitignored — this GitHub repo is public):
+
+| File | What it is |
+|---|---|
+| `submittal.xls` / `.xlsx` / `.pdf` | Contractor Source of Supply form |
+| `program-output.html` / `.txt` | What this tool produced (typed edits included) |
+| `issued.pdf` | The SOS letter that was actually sent |
+
+## Daily: save a training pack
+
+After the letter looks right (and you have printed / sent it, or are about to):
+
+1. Click **Save training pack** next to Print / PDF.
+2. If `start-sos.bat` is running, that writes `Desktop\SOS Program\jobs\<date>_<job>\`.
+3. If not, Chrome downloads a zip. Unzip it into `SOS Program\jobs\`.
+4. When the letter goes out, copy that PDF into the same folder as **`issued.pdf`**.
+
+Do not rename `program-output` files to look like issued letters. Harvest reads wording from `issued.pdf` only.
+
+## Weekly: run the learner
+
+1. Double-click **`learn-sos.bat`**.
+2. Drop **`SOS-language.json`** on **APL / Chart**, **`SOS-cc.json`** on **CC**, and **`SOS-libraries.json`** on **Source Library** (or Spec Library — one file fills both).
+
+The current Approved Source List and APL still decide approved vs must-be-tested / not approved. Harvested wording fills unknown items and matches issued phrasing when the decision is the same. The report (`SOS-learn-report.md`) diffs the contractor form against the engine, and **program output against the sent letter** — that second diff is what still needs a rule change.
+
+The first run over a large folder takes a while (each PDF is opened once). After the APL snapshot line you should see `Listed N PDFs` then `Reading PDFs 25/3000 …`. Leave the window open until it says Press any key.
 
 ## Issued letters only (no spreadsheet)
 
@@ -8,13 +34,9 @@ If you have thousands of issued letters and do not want to dig through email for
 
 1. Copy the letter PDFs into `Desktop\SOS Program` (subfolders are OK).
 2. Double-click **`learn-sos.bat`**.
-3. Drop **`SOS-language.json`** on **APL / Chart**, **`SOS-cc.json`** on **CC**, and **`SOS-libraries.json`** on **Source Library** (or Spec Library — one file fills both).
+3. Drop the three JSON files as above.
 
-The learner reads SECTION / SOURCE / ACTION from those PDFs. The current Approved Source List and APL still decide approved vs must-be-tested / not approved. Harvested wording fills unknown items and matches issued phrasing when the decision is the same.
-
-The first run over a large folder takes a while (each PDF is opened once). After the APL snapshot line you should see `Listed N PDFs` then `Reading PDFs 25/3000 …`. Leave the window open until it says Press any key. Then drop `SOS-language.json` on APL / Chart.
-
-## Optional: matching contractor forms
+## Optional: matching contractor forms by filename
 
 If you also have the contractor Source of Supply spreadsheet (or a PDF printout of the form), put it next to the issued letter. Same basename is enough (`Frey Entrance.xls` + `Frey Entrance.pdf`). That lets the report diff what the engine would write against what was issued.
 
@@ -42,7 +64,16 @@ node sos/corpus-learn.js --dir-only --dir "C:\Users\Aaron.Wieczorek\OneDrive - S
 
 ## Optional: one subfolder per job
 
-Use this when names do not match, or you want to keep original filenames:
+Use this when names do not match, or you want to keep original filenames. **Save training pack** builds this layout for you:
+
+```
+SOS Program/jobs/2026-08-28_Hunters_Creek/
+  submittal.xls
+  program-output.html
+  program-output.txt
+  items.json
+  issued.pdf
+```
 
 ```
 sos/corpus/cases/
@@ -60,4 +91,4 @@ After the files are in, say so in chat (or run it yourself):
 node sos/corpus-learn.js
 ```
 
-That reads issued letters even without a contractor spreadsheet, writes `SOS-language.json` / `cc-harvest.json`, and diffs form+letter pairs when both exist.
+That reads issued letters even without a contractor spreadsheet, writes `SOS-language.json` / `cc-harvest.json`, diffs form+letter pairs when both exist, and diffs **program output vs issued** when a training pack is present.

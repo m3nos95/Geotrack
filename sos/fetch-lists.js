@@ -249,10 +249,46 @@ function sendJson(res, status, body) {
     'Content-Type': 'application/json; charset=utf-8',
     'Content-Length': buf.length,
     'Access-Control-Allow-Origin': '*',
-    'Access-Control-Allow-Methods': 'GET, OPTIONS',
+    'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+    'Access-Control-Allow-Headers': 'Content-Type',
     'Cache-Control': 'no-store',
   });
   res.end(buf);
+}
+
+function readJsonBody(req, limitBytes) {
+  const limit = limitBytes || 12 * 1024 * 1024;
+  return new Promise((resolve, reject) => {
+    const chunks = [];
+    let n = 0;
+    req.on('data', c => {
+      n += c.length;
+      if (n > limit) {
+        reject(new Error('Training pack is too large (12 MB max).'));
+        req.destroy();
+        return;
+      }
+      chunks.push(c);
+    });
+    req.on('end', () => {
+      try { resolve(JSON.parse(Buffer.concat(chunks).toString('utf8') || '{}')); }
+      catch (e) { reject(new Error('Could not read training pack JSON.')); }
+    });
+    req.on('error', reject);
+  });
+}
+
+function handleSaveTraining(req, res) {
+  readJsonBody(req).then(body => {
+    const Pack = require('./training-pack.js');
+    const cfg = loadChartConfig();
+    const root = Pack.programDir(cfg);
+    const slug = Pack.safeSlug(body && body.slug, 'job');
+    const saved = Pack.saveTrainingPack(root, slug, (body && body.files) || []);
+    sendJson(res, 200, saved);
+  }).catch(e => {
+    sendJson(res, 400, { ok: false, error: e.message || String(e) });
+  });
 }
 
 function handleHelperRequest(req, res) {
@@ -260,9 +296,14 @@ function handleHelperRequest(req, res) {
   if (req.method === 'OPTIONS') {
     res.writeHead(204, {
       'Access-Control-Allow-Origin': '*',
-      'Access-Control-Allow-Methods': 'GET, OPTIONS',
+      'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+      'Access-Control-Allow-Headers': 'Content-Type',
     });
     res.end();
+    return;
+  }
+  if (req.method === 'POST' && url === '/api/save-training') {
+    handleSaveTraining(req, res);
     return;
   }
   if (url === '/api/pull-chart') {
@@ -326,6 +367,7 @@ async function main() {
     const port = addr && addr.port ? addr.port : SOS_HELPER_PORT;
     console.log('DelDOT SOS helper http://127.0.0.1:' + port + '/deldot-sos.html');
     console.log('Pull chart: http://127.0.0.1:' + port + '/api/pull-chart');
+    console.log('Save training pack: POST http://127.0.0.1:' + port + '/api/save-training');
     console.log('Reads ' + DEFAULT_AGGREGATE_CHART);
     console.log('Leave this window open while you use the SOS page. Click Pull chart from office share on APL / Chart.');
     return;

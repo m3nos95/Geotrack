@@ -73,6 +73,7 @@
   let _srcModalCallback = null;
   let _pdfJsLoading = null;
   let _xlsxLoading = null;
+  let lastSubmittal = null;
   const PDFJS_SRC = 'https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/build/pdf.min.js';
   const PDFJS_WORKER_SRC = 'https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/build/pdf.worker.min.js';
   const XLSX_SRC = 'https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js';
@@ -1396,6 +1397,7 @@
     revisions = [];
     currentRev = 1;
     parsedImport = null;
+    lastSubmittal = null;
     setVal('ph-contract', '');
     setVal('ph-title', '');
     setVal('ph-contractor', '');
@@ -2037,6 +2039,7 @@
         setImportStatus(parsed.error || 'Could not read a Source of Supply form from this PDF. Scanned phone photos usually have no selectable text — drop the .xls if you have it.', 'red');
         return;
       }
+      rememberSubmittal(file, buf);
       const grid = SosFormPdf.gridFromForm(parsed);
       const result = SOSEngine.processGrid(grid, { filename: file.name, lists: listsForEngine() });
       if (parsed.project) {
@@ -2087,6 +2090,7 @@
         switchTab('lists', document.querySelector('.tab[data-tab="lists"]'));
         return;
       }
+      rememberSubmittal(file, buf);
       const result = SOSEngine.processWorkbook(wb, { filename: file.name, lists: listsForEngine() });
       commitImportResult(result, file, 'spreadsheet');
     } catch (e) {
@@ -2289,6 +2293,221 @@
   function printLetterCss() {
     return (window.SOSLetterExport && SOSLetterExport.printLetterCss()) || '';
   }
+
+  function rememberSubmittal(file, buf) {
+    if (!file || !buf) return;
+    const src = buf instanceof ArrayBuffer ? buf : buf;
+    lastSubmittal = {
+      name: file.name || 'submittal.xls',
+      bytes: new Uint8Array(src.slice ? src.slice(0) : src),
+    };
+  }
+
+  function trainingSlug() {
+    const day = headerToday();
+    const bits = [val('ph-contract'), val('ph-title'), val('ph-contractor')].filter(Boolean);
+    const raw = [day].concat(bits).join('_');
+    return raw.replace(/[^\w.\-]+/g, '_').replace(/^_+|_+$/g, '').slice(0, 80) || (day + '_sos');
+  }
+
+  function currentLetterText() {
+    const el = document.getElementById('letter-doc');
+    return el ? String(el.innerText || el.textContent || '').trim() : '';
+  }
+
+  function trainingReadmeText() {
+    const who = [val('ph-contract'), val('ph-title'), val('ph-contractor')].filter(Boolean).join(' · ') || '(fill the header)';
+    return [
+      'SOS training pack',
+      'Job: ' + who,
+      '',
+      'This folder is how the program keeps learning:',
+      '  1. submittal.xls / .xlsx / .pdf  — contractor Source of Supply form',
+      '  2. program-output.html / .txt    — the letter this tool produced (your typed edits included)',
+      '  3. issued.pdf                    — the SOS letter that was actually sent',
+      '',
+      'After you send the letter, copy that PDF into this folder and name it issued.pdf.',
+      'Once a week, double-click learn-sos.bat, then drop SOS-language.json on APL / Chart,',
+      'SOS-libraries.json on Source Library, and SOS-cc.json on CC.',
+      '',
+    ].join('\n');
+  }
+
+  function trainingItemsJson() {
+    return JSON.stringify({
+      kind: 'training-pack',
+      savedAt: new Date().toISOString(),
+      project: {
+        contract: val('ph-contract'),
+        title: val('ph-title'),
+        contractor: val('ph-contractor'),
+        contractorAddr: val('ph-contractor-addr'),
+        contact: val('ph-contact'),
+        district: val('ph-district'),
+        date: val('ph-date'),
+        docKind: val('ph-dockind'),
+      },
+      cc: ccList,
+      warnings: warnings,
+      items: items.map(it => ({
+        specs: it.letterSpecs || it.specs,
+        family: it.family,
+        action: it.action,
+        rule: it.rule,
+        section: (typeof SOSEngine !== 'undefined' && SOSEngine.letterSectionLines)
+          ? SOSEngine.letterSectionLines(it).join(' / ')
+          : (it.desc || ''),
+        source: (typeof SOSEngine !== 'undefined' && SOSEngine.sourceLine)
+          ? SOSEngine.sourceLine(it).replace(/\n/g, ' | ')
+          : (it.srcName || ''),
+        notes: it.actionNotes,
+        subs: it.subItems || [],
+      })),
+    }, null, 2);
+  }
+
+  function bytesToBase64(u8) {
+    let s = '';
+    const step = 0x8000;
+    for (let i = 0; i < u8.length; i += step) {
+      s += String.fromCharCode.apply(null, u8.subarray(i, i + step));
+    }
+    return btoa(s);
+  }
+
+  function crc32(u8) {
+    let c = 0xffffffff;
+    for (let i = 0; i < u8.length; i++) {
+      c ^= u8[i];
+      for (let k = 0; k < 8; k++) c = (c >>> 1) ^ (0xedb88320 & -(c & 1));
+    }
+    return (c ^ 0xffffffff) >>> 0;
+  }
+
+  function zipStore(files) {
+    const enc = new TextEncoder();
+    const locals = [];
+    const centrals = [];
+    let offset = 0;
+    files.forEach(f => {
+      const name = enc.encode(f.name);
+      const data = f.bytes;
+      const crc = crc32(data);
+      const local = new Uint8Array(30 + name.length + data.length);
+      const lv = new DataView(local.buffer);
+      lv.setUint32(0, 0x04034b50, true);
+      lv.setUint16(4, 20, true);
+      lv.setUint16(8, 0, true);
+      lv.setUint16(10, 0, true);
+      lv.setUint16(12, 0, true);
+      lv.setUint32(14, crc, true);
+      lv.setUint32(18, data.length, true);
+      lv.setUint32(22, data.length, true);
+      lv.setUint16(26, name.length, true);
+      local.set(name, 30);
+      local.set(data, 30 + name.length);
+      const central = new Uint8Array(46 + name.length);
+      const cv = new DataView(central.buffer);
+      cv.setUint32(0, 0x02014b50, true);
+      cv.setUint16(4, 20, true);
+      cv.setUint16(6, 20, true);
+      cv.setUint32(16, crc, true);
+      cv.setUint32(20, data.length, true);
+      cv.setUint32(24, data.length, true);
+      cv.setUint16(28, name.length, true);
+      cv.setUint32(42, offset, true);
+      central.set(name, 46);
+      locals.push(local);
+      centrals.push(central);
+      offset += local.length;
+    });
+    const centralSize = centrals.reduce((n, b) => n + b.length, 0);
+    const end = new Uint8Array(22);
+    const ev = new DataView(end.buffer);
+    ev.setUint32(0, 0x06054b50, true);
+    ev.setUint16(8, files.length, true);
+    ev.setUint16(10, files.length, true);
+    ev.setUint32(12, centralSize, true);
+    ev.setUint32(16, offset, true);
+    const out = new Uint8Array(offset + centralSize + 22);
+    let p = 0;
+    locals.forEach(b => { out.set(b, p); p += b.length; });
+    centrals.forEach(b => { out.set(b, p); p += b.length; });
+    out.set(end, p);
+    return out;
+  }
+
+  function utf8Bytes(s) {
+    return new TextEncoder().encode(String(s || ''));
+  }
+
+  function buildTrainingFiles() {
+    const files = [
+      { name: 'README.txt', text: trainingReadmeText() },
+      { name: 'program-output.html', text: (document.getElementById('letter-doc') || {}).innerHTML || '' },
+      { name: 'program-output.txt', text: currentLetterText() },
+      { name: 'items.json', text: trainingItemsJson() },
+    ];
+    if (lastSubmittal && lastSubmittal.bytes && lastSubmittal.bytes.length) {
+      const ext = (String(lastSubmittal.name).match(/\.(xlsx?|pdf)$/i) || ['.xls'])[0].toLowerCase();
+      files.push({
+        name: 'submittal' + ext,
+        bytes: lastSubmittal.bytes,
+        base64: bytesToBase64(lastSubmittal.bytes),
+      });
+    }
+    return files;
+  }
+
+  function downloadTrainingZip(slug, files) {
+    const packed = files.map(f => ({
+      name: f.name,
+      bytes: f.bytes || utf8Bytes(f.text || ''),
+    }));
+    const zip = zipStore(packed);
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(new Blob([zip], { type: 'application/zip' }));
+    a.download = slug + '_training.zip';
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setTimeout(() => URL.revokeObjectURL(a.href), 2000);
+  }
+
+  window.saveTrainingPack = async function () {
+    if (!items.length && !currentLetterText()) {
+      setImportStatus('Load a contractor form and build the letter before saving a training pack.', 'red');
+      return;
+    }
+    const slug = trainingSlug();
+    const files = buildTrainingFiles();
+    const payload = { slug, files: files.map(f => ({ name: f.name, text: f.text, base64: f.base64 })) };
+    const urls = [
+      '/api/save-training',
+      'http://127.0.0.1:18765/api/save-training',
+      'http://localhost:18765/api/save-training',
+    ];
+    let lastErr = '';
+    for (const url of urls) {
+      try {
+        const res = await fetch(url, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload),
+        });
+        const body = await res.json();
+        if (body && body.ok && body.dest) {
+          setImportStatus('Saved training pack to ' + body.dest + '. After you send the letter, copy that PDF into the same folder as issued.pdf. Then run learn-sos.bat.', 'green');
+          return;
+        }
+        lastErr = (body && body.error) || ('HTTP ' + res.status);
+      } catch (e) {
+        lastErr = e.message || String(e);
+      }
+    }
+    downloadTrainingZip(slug, files);
+    setImportStatus('Downloaded ' + slug + '_training.zip (start-sos.bat was not running). Unzip it into Desktop SOS Program\\jobs\\. After you send the letter, add issued.pdf to that folder. Then run learn-sos.bat.', 'blue');
+  };
 
   window.printLetter = function () {
     const html = document.getElementById('letter-doc').innerHTML;

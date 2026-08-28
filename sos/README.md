@@ -82,7 +82,8 @@ Messages already tagged **DelDOT SOS** are not pulled again. This does **not** a
 | `spec-year-data.js` | Same catalog bundled for `file://` (no fetch) |
 | `build-spec-year-lists.py` | Rebuild spec-year snapshots from the awarded-list and item-list PDFs |
 | `sos-engine.test.js` | Node tests (`node sos/sos-engine.test.js`) |
-| `corpus-learn.js` | Diff contractor `.xls` vs issued PDF (`node sos/corpus-learn.js`) |
+| `corpus-learn.js` | Diff contractor form vs issued PDF, and program-output vs sent letter (`node sos/corpus-learn.js`) |
+| `training-pack.js` | SOS Program `jobs\` folder layout + helper save |
 | `sos-formpdf.js` | Browser/Node parser for contractor SOS forms saved as PDF |
 | `sos-formpdf.test.js` | PDF-form parse tests (`node sos/sos-formpdf.test.js`) |
 | `corpus-formpdf.py` | Extract text from contractor SOS form PDFs |
@@ -100,4 +101,14 @@ Libraries (sources, specs, CC, last project) persist in `localStorage` on this b
 
 ## Teaching the engine from real jobs
 
-Do **not** send examples one-by-one in chat. On the office PC, put issued SOS letter PDFs in the Desktop **SOS Program** folder and double-click `learn-sos.bat`. Contractor `.xls` files are optional. That writes `SOS-language.json` (item wording), `SOS-cc.json` (names), and `SOS-libraries.json` (sources + spec numbers). Drop `SOS-libraries.json` on **Source Library** or **Spec Library**. Drop `SOS-language.json` on **APL / Chart**. Who is copied on a letter is still the material assignments on the **CC** tab. Details: [corpus/README.md](corpus/README.md). Those files are gitignored (this GitHub repo is public).
+Do **not** send examples one-by-one in chat. Keep three files per job on the office PC:
+
+1. **Submittal** — the contractor `.xls` / `.xlsx` / form PDF
+2. **Program output** — the letter this tool produced (including typed edits). Click **Save training pack** after you are happy with the preview (or after Print / PDF).
+3. **Issued letter** — the SOS PDF that was actually sent. Copy it into the same job folder as `issued.pdf`
+
+If `start-sos.bat` is running, **Save training pack** writes `Desktop\SOS Program\jobs\<job>\`. Otherwise it downloads a zip — unzip that into `SOS Program\jobs\`.
+
+Then double-click `learn-sos.bat`. That writes `SOS-language.json` (item wording), `SOS-cc.json` (names), and `SOS-libraries.json` (sources + spec numbers). Drop `SOS-libraries.json` on **Source Library** or **Spec Library**. Drop `SOS-language.json` on **APL / Chart**. Who is copied on a letter is still the material assignments on the **CC** tab. Details: [corpus/README.md](corpus/README.md). Those files are gitignored (this GitHub repo is public).
+
+The learn report diffs **form → engine**, and **program output → issued letter** (what you still changed before sending). Harvest still reads SECTION / SOURCE / ACTION from issued PDFs only — program drafts are not treated as sent letters.

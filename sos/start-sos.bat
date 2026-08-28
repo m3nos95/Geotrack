@@ -24,7 +24,7 @@ if errorlevel 1 (
 )
 
 echo Starting the SOS page helper on http://127.0.0.1:18765/
-echo Leave this window open. In the page, open APL / Chart and click Pull chart from office share.
+    echo Leave this window open. Use Pull chart from office share, and Save training pack, from the SOS page.
 echo.
 timeout /t 1 /nobreak >nul
 start "" "http://127.0.0.1:18765/deldot-sos.html"

@@ -349,7 +349,7 @@
         </div>
         <div class="import-zone" id="lists-drop-zone" onclick="document.getElementById('lists-file-input').click()">
           <div class="import-zone-label">Drop Approved Source List.xlsx, Source of Supply Database.xlsx, SOS-lists.json, SOS-language.json, SOS-libraries.json, or SOS-cc.json</div>
-          <div class="import-zone-sub">Issued letter PDFs do not need a matching .xls. Run learn-sos.bat, then drop SOS-language.json here and SOS-libraries.json on Source Library.</div>
+          <div class="import-zone-sub">Issued letter PDFs do not need a matching .xls. Click <strong>Save training pack</strong> after you write a letter, put the sent PDF in that folder as issued.pdf, then run learn-sos.bat. Drop SOS-language.json here and SOS-libraries.json on Source Library.</div>
           <input type="file" id="lists-file-input" style="display:none" accept=".xls,.xlsx,.json" onchange="handleListFile(this.files[0])">
         </div>
         <div style="display:flex;gap:8px;flex-wrap:wrap;">
@@ -377,6 +377,7 @@
       <button class="btn btn-ghost btn-sm" onclick="clearHighlights()" title="Remove yellow highlight marks on the preview">✕ Clear highlights</button>
       <button class="btn btn-ghost btn-sm" onclick="printLetter()">🖨 Print / PDF</button>
       <button class="btn btn-ghost btn-sm" onclick="exportLetterDoc()" title="Save a Word file you can edit">Export .doc</button>
+      <button class="btn btn-ghost btn-sm" onclick="saveTrainingPack()" title="Save the contractor form + this letter so learn-sos.bat can compare them to the issued PDF you send">Save training pack</button>
       <button class="btn btn-ghost btn-sm" onclick="document.getElementById('sig-upload').click()">✍ Signature</button>
       <input type="file" id="sig-upload" accept="image/*" style="display:none" onchange="uploadSignature(event)">
     </div>
@@ -621,6 +622,6 @@
 <script src="sos/sos-engine.js?v=20260828e"></script>
 <script src="sos/sos-formpdf.js?v=20260828d"></script>
 <script src="sos/letter-export.js?v=20260828e"></script>
-<script src="sos/sos-app.js?v=20260828g"></script>
+<script src="sos/sos-app.js?v=20260828h"></script>
 </body>
 </html>
