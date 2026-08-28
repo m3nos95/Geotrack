@@ -8,14 +8,14 @@ The program learns from **three files per job**, kept on this machine (gitignore
 | `program-output.html` / `.txt` | What this tool produced (typed edits included) |
 | `issued.pdf` | The SOS letter that was actually sent |
 
-## Daily: save a training pack
+## Train from jobs you already issued
 
-After the letter looks right (and you have printed / sent it, or are about to):
+Drop the contractor form, let the program write a letter, then click **Save training pack**:
 
 1. Click **Save training pack** next to Print / PDF.
 2. If `start-sos.bat` is running, that writes `Desktop\SOS Program\jobs\<date>_<contract>\` (a Windows-safe name from today’s date and the application/contract number — not the project title).
 3. If not, Chrome downloads a zip. Unzip it into `SOS Program\jobs\`.
-4. When the letter goes out, copy that PDF into the same folder as **`issued.pdf`**.
+4. Copy the SOS PDF you **already issued** into that folder as **`issued.pdf`**. Nothing is emailed or sent.
 
 Do not rename `program-output` files to look like issued letters. Harvest reads wording from `issued.pdf` only.
 

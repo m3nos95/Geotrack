@@ -2371,9 +2371,9 @@
       'This folder is how the program keeps learning:',
       '  1. submittal.xls / .xlsx / .pdf  — contractor Source of Supply form',
       '  2. program-output.html / .txt    — the letter this tool produced (your typed edits included)',
-      '  3. issued.pdf                    — the SOS letter that was actually sent',
+      '  3. issued.pdf                    — the SOS letter that was already sent (the one you are training against)',
       '',
-      'After you send the letter, copy that PDF into this folder and name it issued.pdf.',
+      'Copy the issued SOS PDF into this folder and name it issued.pdf. Nothing is emailed or sent from this save.',
       'Once a week, double-click learn-sos.bat, then drop SOS-language.json on APL / Chart,',
       'SOS-libraries.json on Source Library, and SOS-cc.json on CC.',
       '',
@@ -2590,7 +2590,7 @@
             continue;
           }
           if (body && body.ok && body.dest) {
-            setLetterActionStatus('Saved to ' + body.dest + '. After you send the letter, copy that PDF into the same folder as issued.pdf.', 'green');
+            setLetterActionStatus('Saved this form + this program letter to ' + body.dest + '. Copy the SOS PDF you already issued into that folder and name it issued.pdf. Nothing is sent out.', 'green');
             return;
           }
           lastErr = (body && body.error) || ('HTTP ' + res.status);
@@ -2600,7 +2600,7 @@
       }
       downloadTrainingZip(slug, files);
       setLetterActionStatus(
-        'Downloaded ' + slug + '_training.zip. If start-sos.bat is open, the helper did not take the file (' + (lastErr || 'no response') + '). Unzip into Desktop SOS Program\\jobs\\.',
+        'Downloaded ' + slug + '_training.zip (folder save did not finish: ' + (lastErr || 'no response') + '). Unzip into Desktop SOS Program\\jobs\\, then copy the issued SOS PDF into that folder as issued.pdf.',
         'blue'
       );
     } catch (e) {

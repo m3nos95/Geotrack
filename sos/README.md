@@ -105,10 +105,10 @@ Do **not** send examples one-by-one in chat. Keep three files per job on the off
 
 1. **Submittal** — the contractor `.xls` / `.xlsx` / form PDF
 2. **Program output** — the letter this tool produced (including typed edits). Click **Save training pack** after you are happy with the preview (or after Print / PDF).
-3. **Issued letter** — the SOS PDF that was actually sent. Copy it into the same job folder as `issued.pdf`
+3. **Issued letter** — the SOS PDF that was already sent. Copy that existing PDF into the same job folder as `issued.pdf`. Nothing is emailed.
 
 If `start-sos.bat` is running, **Save training pack** writes `Desktop\SOS Program\jobs\<date>_<contract>\` (letters and punctuation are stripped so Windows will accept the folder). Otherwise it downloads a zip — unzip that into `SOS Program\jobs\`.
 
 Then double-click `learn-sos.bat`. That writes `SOS-language.json` (item wording), `SOS-cc.json` (names), and `SOS-libraries.json` (sources + spec numbers). Drop `SOS-libraries.json` on **Source Library** or **Spec Library**. Drop `SOS-language.json` on **APL / Chart**. Who is copied on a letter is still the material assignments on the **CC** tab. Details: [corpus/README.md](corpus/README.md). Those files are gitignored (this GitHub repo is public).
 
-The learn report diffs **form → engine**, and **program output → issued letter** (what you still changed before sending). Harvest still reads SECTION / SOURCE / ACTION from issued PDFs only — program drafts are not treated as sent letters.
+The learn report diffs **form → engine**, and **program output → issued letter** (what still differs from what went out). Harvest still reads SECTION / SOURCE / ACTION from issued PDFs only — program drafts are not treated as sent letters.

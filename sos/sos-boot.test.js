@@ -7,10 +7,11 @@ const html = fs.readFileSync(path.join(__dirname, '..', 'deldot-sos.html'), 'utf
 assert.ok(!/pdf\.min\.js/.test(html), 'pdf.js must not load on page open');
 assert.ok(!/xlsx\.full\.min\.js/.test(html), 'SheetJS must not load on page open');
 assert.ok(!/cdn\.jsdelivr\.net/.test(html), 'no jsDelivr scripts on page open');
-assert.ok(/sos-app\.js\?v=20260828l/.test(html), 'cache-bust sos-app.js');
+assert.ok(/sos-app\.js\?v=20260828m/.test(html), 'cache-bust sos-app.js');
 assert.ok(/id="letter-save-status"/.test(html), 'Save training pack status is next to the letter, not only on Import');
 
 const app = fs.readFileSync(path.join(__dirname, 'sos-app.js'), 'utf8');
+assert.ok(!/After you send the letter/.test(app), 'training copy is for already-issued letters, not a live send');
 assert.ok(/function fetchWithTimeout\(/.test(app), 'do not wait forever for start-sos.bat');
 assert.ok(/AbortController/.test(app), 'abort helper fetch if it hangs');
 assert.ok(/setLetterActionStatus/.test(app));
