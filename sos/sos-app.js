@@ -72,8 +72,10 @@
   let slActiveTags = [];
   let _srcModalCallback = null;
   let _pdfJsLoading = null;
+  let _xlsxLoading = null;
   const PDFJS_SRC = 'https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/build/pdf.min.js';
   const PDFJS_WORKER_SRC = 'https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/build/pdf.worker.min.js';
+  const XLSX_SRC = 'https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js';
   const LIB_TABLE_CAP = 250;
 
   function persistAll() {
@@ -1777,6 +1779,7 @@
         return;
       }
       if (!/\.xlsx?$/i.test(file.name)) return;
+      await loadXlsx();
       const buf = await file.arrayBuffer();
       const wb = XLSX.read(buf, { type: 'array', cellDates: false });
       const sheets = workbookToNamedSheets(wb);
@@ -1964,33 +1967,53 @@
     importAllParsed();
   }
 
-  function loadPdfJs() {
-    if (window.pdfjsLib) {
-      if (pdfjsLib.GlobalWorkerOptions && !pdfjsLib.GlobalWorkerOptions.workerSrc) {
-        pdfjsLib.GlobalWorkerOptions.workerSrc = PDFJS_WORKER_SRC;
-      }
-      return Promise.resolve(window.pdfjsLib);
-    }
-    if (_pdfJsLoading) return _pdfJsLoading;
-    _pdfJsLoading = new Promise((resolve, reject) => {
+  function loadCdnScript(src, globalName, loadingSlot, missingMsg, networkMsg) {
+    if (window[globalName]) return Promise.resolve(window[globalName]);
+    if (loadingSlot.get()) return loadingSlot.get();
+    const pending = new Promise((resolve, reject) => {
       const s = document.createElement('script');
-      s.src = PDFJS_SRC;
+      s.src = src;
       s.onload = function () {
-        if (!window.pdfjsLib) {
-          _pdfJsLoading = null;
-          reject(new Error('PDF reader loaded but pdfjsLib is missing.'));
+        if (!window[globalName]) {
+          loadingSlot.set(null);
+          reject(new Error(missingMsg));
           return;
         }
-        pdfjsLib.GlobalWorkerOptions.workerSrc = PDFJS_WORKER_SRC;
-        resolve(window.pdfjsLib);
+        resolve(window[globalName]);
       };
       s.onerror = function () {
-        _pdfJsLoading = null;
-        reject(new Error('Could not load the PDF reader (needs network). Drop the .xls if you have it.'));
+        loadingSlot.set(null);
+        reject(new Error(networkMsg));
       };
       document.head.appendChild(s);
     });
-    return _pdfJsLoading;
+    loadingSlot.set(pending);
+    return pending;
+  }
+
+  function loadPdfJs() {
+    return loadCdnScript(
+      PDFJS_SRC,
+      'pdfjsLib',
+      { get: function () { return _pdfJsLoading; }, set: function (v) { _pdfJsLoading = v; } },
+      'PDF reader loaded but pdfjsLib is missing.',
+      'Could not load the PDF reader (needs network). Drop the .xls if you have it.'
+    ).then(function (lib) {
+      if (lib.GlobalWorkerOptions && !lib.GlobalWorkerOptions.workerSrc) {
+        lib.GlobalWorkerOptions.workerSrc = PDFJS_WORKER_SRC;
+      }
+      return lib;
+    });
+  }
+
+  function loadXlsx() {
+    return loadCdnScript(
+      XLSX_SRC,
+      'XLSX',
+      { get: function () { return _xlsxLoading; }, set: function (v) { _xlsxLoading = v; } },
+      'Spreadsheet reader loaded but XLSX is missing.',
+      'Could not load the spreadsheet reader (needs network). Drop the form PDF if you have it.'
+    );
   }
 
   async function handleImportPdf(file) {
@@ -2051,8 +2074,10 @@
       return;
     }
     document.getElementById('drop-label').textContent = file.name;
-    setImportStatus('Reading spreadsheet…', 'blue');
+    setImportStatus('Loading spreadsheet reader…', 'blue');
     try {
+      await loadXlsx();
+      setImportStatus('Reading spreadsheet…', 'blue');
       const buf = await file.arrayBuffer();
       const wb = XLSX.read(buf, { type: 'array', cellDates: false });
       const grid = SOSEngine.workbookToGrid(wb);
@@ -2163,8 +2188,13 @@
     document.getElementById('file-input').value = '';
   };
 
-  window.exportItemsXls = function () {
-    if (typeof XLSX === 'undefined') return;
+  window.exportItemsXls = async function () {
+    try {
+      await loadXlsx();
+    } catch (e) {
+      setImportStatus(e.message, 'red');
+      return;
+    }
     const rows = [['Spec', 'Description', 'Sub-items', 'Source', 'Location', 'Alt', 'Action', 'Notes', 'Rule']];
     items.forEach(it => {
       rows.push([
