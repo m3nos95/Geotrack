@@ -258,18 +258,25 @@
   }
   function saveSourceLib() {
     ls_set(STORE.sources, sourceLib);
+    updateSourceLibCounts();
+  }
+  function specPickerDesc(entry) {
+    if (!entry) return '';
+    const catalog = (SOSData.SPEC_CATALOG && (SOSData.SPEC_CATALOG[entry.num] || SOSData.SPEC_CATALOG[String(entry.num || '').replace(/^#/, '')])) || {};
+    const extra = [entry.lastSrcName].filter(Boolean);
+    return SOSData.cleanSpecLibraryDesc(entry.desc, extra) || catalog.desc || '';
+  }
+
+  function updateSourceLibCounts() {
     const n = document.getElementById('sources-count');
     if (n) n.textContent = sourceLib.length;
     const l = document.getElementById('lib-count-label');
     if (l) l.textContent = sourceLib.length + ' suppliers';
   }
-  function specPickerDesc(entry) {
-    if (!entry) return '';
-    const catalog = (SOSData.SPEC_CATALOG && (SOSData.SPEC_CATALOG[entry.num] || SOSData.SPEC_CATALOG[String(entry.num || '').replace(/^#/, '')])) || {};
-    const extra = sourceLib.map(s => s.name).concat(entry.lastSrcName || []);
-    return SOSData.cleanSpecLibraryDesc(entry.desc, extra) || catalog.desc || '';
+  function updateSpecLibCounts() {
+    const n = document.getElementById('specs-count');
+    if (n) n.textContent = specLib.length;
   }
-
   function loadSpecLib() {
     specLib = ls_get(STORE.specs, []);
     if (!Array.isArray(specLib)) specLib = [];
@@ -277,21 +284,16 @@
       specLib = Object.entries(SOSData.SPEC_CATALOG).map(([num, v]) => ({
         num, desc: v.desc, tags: v.tags || [], notes: '', lastSrcName: '', lastSrcLoc: '', lastSrcAddr: '', lastSrcPhone: '',
       }));
+      saveSpecLib();
+      return;
     }
-    const sourceNames = sourceLib.map(x => x.name);
     const byNum = new Map();
     specLib.forEach((s) => {
       const num = String(s.num || '').toUpperCase().replace(/^([^#])/, '#$1');
       if (!num || num === '#') return;
-      const desc = SOSData.cleanSpecLibraryDesc(s.desc, [s.lastSrcName].concat(sourceNames)) || s.desc || '';
-      const rec = Object.assign({}, s, { num, desc });
-      const prev = byNum.get(num);
-      if (!prev) byNum.set(num, rec);
-      else {
-        prev.desc = SOSData.preferSpecDesc(prev.desc, rec.desc);
-        if (rec.lastSrcName && !prev.lastSrcName) prev.lastSrcName = rec.lastSrcName;
-      }
+      if (!byNum.has(num)) byNum.set(num, s);
     });
+    let added = 0;
     Object.entries(SOSData.SPEC_CATALOG).forEach(([num, v]) => {
       const key = String(num).toUpperCase().replace(/^([^#])/, '#$1');
       if (byNum.has(key)) return;
@@ -299,14 +301,15 @@
         num: key, desc: v.desc || '', tags: v.tags || [], notes: '',
         lastSrcName: '', lastSrcLoc: '', lastSrcAddr: '', lastSrcPhone: '',
       });
+      added += 1;
     });
     specLib = [...byNum.values()];
-    saveSpecLib();
+    if (added) saveSpecLib();
+    else updateSpecLibCounts();
   }
   function saveSpecLib() {
     ls_set(STORE.specs, specLib);
-    const n = document.getElementById('specs-count');
-    if (n) n.textContent = specLib.length;
+    updateSpecLibCounts();
   }
   function ccNameKey(name) {
     return (SOSData.normalizeCcName || ((n) => String(n || '').trim().toLowerCase()))(name);
@@ -582,7 +585,7 @@
   function autoSaveSpec(num, desc, srcName, srcLoc, srcAddr, srcPhone, extra) {
     if (!num) return;
     const key = String(num).toUpperCase().replace(/^([^#])/, '#$1');
-    const cleaned = SOSData.cleanSpecLibraryDesc(desc, [srcName].concat(sourceLib.map(s => s.name)));
+    const cleaned = SOSData.cleanSpecLibraryDesc(desc, srcName ? [srcName] : []);
     const existing = specLib.find(s => s.num === key);
     if (!existing) {
       specLib.push({ num: key, desc: cleaned || '', lastSrcName: srcName || '', lastSrcLoc: srcLoc || '', lastSrcAddr: srcAddr || '', lastSrcPhone: srcPhone || '', tags: [], notes: '' });
@@ -1313,7 +1316,7 @@
       id: editingItemId || Date.now(),
       specs: [...specTags],
       letterSpecs: [...specTags],
-      desc: SOSData.cleanSpecLibraryDesc(val('f-desc'), sourceLib.map(s => s.name)) || val('f-desc'),
+      desc: SOSData.cleanSpecLibraryDesc(val('f-desc'), val('f-src-name') ? [val('f-src-name')] : []) || val('f-desc'),
       subItems: [...subItemTags],
       srcName: val('f-src-name'),
       srcLoc: val('f-src-loc'),
@@ -1581,20 +1584,33 @@
   }
 
   function mergeLiveListsIntoLibraries() {
+    const specByNum = new Set(specLib.map(s => String(s.num || '').toUpperCase()));
+    let specAdded = 0;
     if (liveLists.sosDatabase && liveLists.sosDatabase.items) {
       Object.keys(liveLists.sosDatabase.items).forEach(num => {
         const rec = liveLists.sosDatabase.items[num];
         if (!rec || rec.na) return;
-        autoSaveSpec('#' + String(num).replace(/^#/, ''), rec.desc || '', '', '', '', '', { silent: true });
+        const key = '#' + String(num).replace(/^#/, '');
+        if (specByNum.has(key.toUpperCase())) return;
+        autoSaveSpec(key, rec.desc || '', '', '', '', '', { silent: true });
+        specAdded += 1;
       });
     }
+    const srcKey = (n, loc) => String(n || '').toLowerCase() + '\0' + String(loc || '').toLowerCase();
+    const haveSrc = new Set(sourceLib.map(s => srcKey(s.name, s.loc)));
+    let srcAdded = 0;
     (liveLists.aggregate && liveLists.aggregate.entries || []).forEach(e => {
       if (!e.name) return;
+      if (haveSrc.has(srcKey(e.name, e.loc))) return;
       const tags = e.material ? [e.material] : [];
       autoSaveSource(e.name, e.loc || '', '', '', { tags, silent: true });
+      haveSrc.add(srcKey(e.name, e.loc));
+      srcAdded += 1;
     });
-    saveSourceLib();
-    saveSpecLib();
+    if (srcAdded) saveSourceLib();
+    else updateSourceLibCounts();
+    if (specAdded) saveSpecLib();
+    else updateSpecLibCounts();
   }
 
   function ingestLanguageHarvest(language) {
@@ -2030,6 +2046,8 @@
       }
       setImportStatus('Reading PDF…', 'blue');
       const buf = await file.arrayBuffer();
+      const kept = copyFileBytes(buf);
+      rememberSubmittal(file, kept);
       const parsed = await SosFormPdf.parsePdf(buf, { filename: file.name });
       if (parsed.kind === 'issued-letter') {
         setImportStatus('That PDF is an issued M&R letter. Drop the contractor SOS form (.xls, .xlsx, or the form PDF).', 'red');
@@ -2039,7 +2057,6 @@
         setImportStatus(parsed.error || 'Could not read a Source of Supply form from this PDF. Scanned phone photos usually have no selectable text — drop the .xls if you have it.', 'red');
         return;
       }
-      rememberSubmittal(file, buf);
       const grid = SosFormPdf.gridFromForm(parsed);
       const result = SOSEngine.processGrid(grid, { filename: file.name, lists: listsForEngine() });
       if (parsed.project) {
@@ -2082,6 +2099,8 @@
       await loadXlsx();
       setImportStatus('Reading spreadsheet…', 'blue');
       const buf = await file.arrayBuffer();
+      const kept = copyFileBytes(buf);
+      rememberSubmittal(file, kept);
       const wb = XLSX.read(buf, { type: 'array', cellDates: false });
       const grid = SOSEngine.workbookToGrid(wb);
       if (SOSLists.looksLikeAggregateChart(file.name, grid)) {
@@ -2090,7 +2109,6 @@
         switchTab('lists', document.querySelector('.tab[data-tab="lists"]'));
         return;
       }
-      rememberSubmittal(file, buf);
       const result = SOSEngine.processWorkbook(wb, { filename: file.name, lists: listsForEngine() });
       commitImportResult(result, file, 'spreadsheet');
     } catch (e) {
@@ -2296,11 +2314,21 @@
 
   function rememberSubmittal(file, buf) {
     if (!file || !buf) return;
-    const src = buf instanceof ArrayBuffer ? buf : buf;
-    lastSubmittal = {
-      name: file.name || 'submittal.xls',
-      bytes: new Uint8Array(src.slice ? src.slice(0) : src),
-    };
+    try {
+      const view = buf instanceof Uint8Array ? buf : new Uint8Array(buf);
+      const bytes = new Uint8Array(view.byteLength);
+      bytes.set(view);
+      lastSubmittal = { name: file.name || 'submittal.xls', bytes };
+    } catch (e) {
+      lastSubmittal = { name: file.name || 'submittal.xls', bytes: null };
+    }
+  }
+
+  function copyFileBytes(buf) {
+    const view = buf instanceof Uint8Array ? buf : new Uint8Array(buf);
+    const out = new Uint8Array(view.byteLength);
+    out.set(view);
+    return out;
   }
 
   function trainingSlug() {
@@ -2697,12 +2725,8 @@
   });
 
   function initApp() {
-    loadSourceLib();
-    loadSpecLib();
-    loadCCLib();
-    loadCcRules();
-    loadProjectHeader();
     loadAuthor();
+    loadProjectHeader();
     wireProjectPersist();
     wireDropZone(document.getElementById('drop-zone'));
     document.querySelectorAll('.landing-drop').forEach(wireDropZone);
@@ -2710,19 +2734,21 @@
     wireDropZone(document.getElementById('cc-drop-zone'));
     wireDropZone(document.getElementById('sources-drop-zone'));
     wireDropZone(document.getElementById('specs-drop-zone'));
-    renderLists();
     renderItems();
     renderCC();
-    renderCCLib();
-    renderCcRules();
-    renderCCHarvestStatus();
     renderRevisions();
-    saveSourceLib();
-    saveSpecLib();
     renderLetter();
     renderWarnings();
     loadLetterEdits();
     setTimeout(function () {
+      loadSourceLib();
+      loadSpecLib();
+      loadCCLib();
+      loadCcRules();
+      updateSourceLibCounts();
+      updateSpecLibCounts();
+      renderCcRules();
+      renderCCHarvestStatus();
       loadAplSnapshot().then(() => {
         mergeLiveListsIntoLibraries();
         renderLists();
