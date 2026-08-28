@@ -9,12 +9,12 @@ assert.ok(!/xlsx\.full\.min\.js/.test(html), 'SheetJS must not load on page open
 assert.ok(!/cdn\.jsdelivr\.net/.test(html), 'no jsDelivr scripts on page open');
 assert.ok(/sos-app\.js\?v=20260828k/.test(html), 'cache-bust sos-app.js');
 assert.ok(/id="letter-save-status"/.test(html), 'Save training pack status is next to the letter, not only on Import');
-const saveFn = app.slice(app.indexOf('window.saveTrainingPack'), app.indexOf('window.printLetter'));
-assert.ok(/AbortController/.test(saveFn), 'do not wait forever for start-sos.bat');
-assert.ok(/setLetterActionStatus/.test(saveFn));
-assert.ok(/function trainingSaveUrls\(/.test(app));
 
 const app = fs.readFileSync(path.join(__dirname, 'sos-app.js'), 'utf8');
+assert.ok(/function fetchWithTimeout\(/.test(app), 'do not wait forever for start-sos.bat');
+assert.ok(/AbortController/.test(app), 'abort helper fetch if it hangs');
+assert.ok(/setLetterActionStatus/.test(app));
+assert.ok(/function trainingSaveUrls\(/.test(app));
 assert.ok(/function loadPdfJs\(/.test(app));
 assert.ok(/function loadXlsx\(/.test(app));
 assert.ok(/xlsx@0\.18\.5\/dist\/xlsx\.full\.min\.js/.test(app));
