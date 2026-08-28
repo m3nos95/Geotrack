@@ -418,8 +418,15 @@ try {
   assert.strictEqual(Lists.lookupAwardedContract({}, 'T2025-061-01').catalogYear, 25);
   assert.ok(Lists.lookupSpecYearItem({}, 25, '602130'));
   assert.ok(!Lists.lookupSpecYearItem({}, 25, '123456'));
+  assert.ok(!Lists.lookupAwardedContract({}, 'T200602342'), 'old T-number is not on the active awarded list');
+  const book = Lists.currentBookMeta({});
+  assert.ok(book);
+  assert.strictEqual(book.catalogYear, 25);
+  assert.ok(/May 11, 2026 Standard Items and Special Provisions/.test(book.bookName), book.bookName);
+  assert.strictEqual(Lists.defaultCatalogYear({}), 25);
   const summary = Lists.summary(Lists.mergeBundle(Lists.emptyBundle(), Lists.bundledSpecYearCatalog()));
   assert.ok(/Spec-year catalogs/i.test(summary), summary);
+  assert.ok(/May 11, 2026/.test(summary), summary);
   console.log('OK spec-year catalog snapshot', kirk.specYear);
 })();
 

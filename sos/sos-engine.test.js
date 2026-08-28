@@ -1168,7 +1168,7 @@ if (fs.existsSync(liveTriCounty)) {
     ['', 123456.0, 'Magic Pavement', '', 'Magic', 'Acme', '', 'Dover, DE', ''],
   ]]));
   const fakeWarn = (fake.warnings || []).join(' | ');
-  assert.ok(/#123456/.test(fakeWarn) && /not in the DelDOT catalog/i.test(fakeWarn), fakeWarn);
+  assert.ok(/#123456/.test(fakeWarn) && /May 11, 2026 Standard Items and Special Provisions/i.test(fakeWarn), fakeWarn);
   assert.ok(fake.items.some(i => (i.specs || []).includes('#123456')), 'unknown spec still listed');
   assert.ok(fake.items.some(i => (i.reviewFlags || []).some(f => /#123456/.test(f))));
   assert.ok(Engine.isKnownItemNumber('#401005'));
@@ -1274,6 +1274,7 @@ if (fs.existsSync(liveTriCounty)) {
   ]]));
   assert.strictEqual(kirkwood.project.specYear, '2025 January');
   assert.strictEqual(kirkwood.project.catalogYear, 25);
+  assert.strictEqual(kirkwood.project.catalogSource, 'awarded');
   assert.ok(!/not in the/i.test((kirkwood.warnings || []).join(' | ')), (kirkwood.warnings || []).join(' | '));
 
   const moved = Engine.processGrid(gridFromObjects([
@@ -1299,7 +1300,59 @@ if (fs.existsSync(liveTriCounty)) {
     ['', 701004.0, 'Valley Gutter 8"', '', 'Class B Concrete', 'Bear Concrete', '', 'Newark, DE', ''],
   ]]));
   assert.strictEqual(spec2016.project.catalogYear, 15);
+  assert.strictEqual(spec2016.project.catalogSource, 'awarded');
   assert.ok(!/#701004/.test((spec2016.warnings || []).join(' | ')), (spec2016.warnings || []).join(' | '));
+
+  const appJob = Engine.processGrid(gridFromObjects([
+    { 6: 'Agreement /Permit/Contract/Application #:', 7: '0000016055' },
+    { 6: 'Title of Contract:', 7: 'BOBBY FREY ENTRANCE(S)' },
+    { 7: 'Contractor: Acme' },
+    { 7: 'Address: 1 Main St, Dover, DE 19901' },
+  ], [[
+    ['', 602130.0, 'Adjusting and Repairing Existing Drainage Inlet', '', 'Class B Concrete', 'Bear Concrete', '', 'Newark, DE', ''],
+    ['', 701004.0, 'PCC Valley Gutter 8"', '', 'Class B Concrete', 'Bear Concrete', '', 'Newark, DE', ''],
+  ]]));
+  assert.strictEqual(appJob.project.catalogSource, 'current');
+  assert.strictEqual(appJob.project.catalogYear, 25);
+  assert.ok(/May 11, 2026/.test(appJob.project.specYear), appJob.project.specYear);
+  assert.ok(!appJob.project.awardedHit);
+  assert.ok(appJob.items.some(i => (i.specs || []).includes('#602130')));
+  assert.ok(!/#602130/.test((appJob.warnings || []).join(' | ')), (appJob.warnings || []).join(' | '));
+  const appWarn = (appJob.warnings || []).join(' | ');
+  assert.ok(/#701004/.test(appWarn) && /May 11, 2026/.test(appWarn), appWarn);
+  assert.ok(/#701513/.test(appWarn), appWarn);
+
+  const oldT = Engine.processGrid(gridFromObjects([
+    { 6: 'Agreement /Permit/Contract/Application #:', 7: 'T200602342' },
+    { 6: 'Title of Contract:', 7: 'Old T number not on awarded list' },
+    { 7: 'Contractor: Acme' },
+    { 7: 'Address: 1 Main St, Dover, DE 19901' },
+  ], [[
+    ['', 301001.0, 'GABC', '', 'GABC', 'Vulcan Materials', '', 'Salisbury, MD', ''],
+  ]]));
+  assert.ok(!Lists.lookupAwardedContract({}, 'T200602342'));
+  assert.ok(!oldT.project.awardedHit);
+  assert.strictEqual(oldT.project.catalogSource, 'current');
+  assert.strictEqual(oldT.project.catalogYear, 25);
+  const oldTWarn = (oldT.warnings || []).join(' | ');
+  assert.ok(/not on the Awarded Contract List/i.test(oldTWarn), oldTWarn);
+  assert.ok(/May 11, 2026 Standard Items and Special Provisions/i.test(oldTWarn), oldTWarn);
+  assert.ok(!/#301001/.test(oldTWarn), oldTWarn);
+
+  const yr2001 = Engine.processGrid(gridFromObjects([
+    { 6: 'Agreement /Permit/Contract/Application #:', 7: 'T2008-009-03' },
+    { 6: 'Title of Contract:', 7: 'HSIP Sussex' },
+    { 7: 'Contractor: Mumford & Miller Concrete, Inc.' },
+    { 7: 'Address: 1 Main St, Dover, DE 19901' },
+  ], [[
+    ['', 301001.0, 'GABC', '', 'GABC', 'Vulcan Materials', '', 'Salisbury, MD', ''],
+  ]]));
+  assert.ok(yr2001.project.awardedHit);
+  assert.strictEqual(yr2001.project.catalogSource, 'awarded');
+  assert.strictEqual(yr2001.project.specYear, '2001');
+  assert.strictEqual(yr2001.project.catalogYear, null);
+  assert.ok(/2001/.test((yr2001.warnings || []).join(' | ')), (yr2001.warnings || []).join(' | '));
+
   console.log('OK spec-year item catalog checks');
 })();
 

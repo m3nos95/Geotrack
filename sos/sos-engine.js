@@ -1139,38 +1139,62 @@
       ? Lists.lookupAwardedContract(lists, project.contract)
       : null;
     project.awardedHit = awarded || null;
-    if (!awarded) {
-      if (!project.specYear) project.specYear = '';
-      if (project.catalogYear == null) project.catalogYear = null;
+    if (awarded) {
+      project.catalogSource = 'awarded';
+      project.specYear = awarded.specYear || '';
+      project.catalogYear = awarded.catalogYear != null
+        ? awarded.catalogYear
+        : (Lists.catalogYearForAwardedSpec ? Lists.catalogYearForAwardedSpec(awarded.specYear) : null);
+      project.awardedFap = awarded.fap || '';
+      project.awardedTitle = awarded.title || '';
+      project.currentBook = '';
       return project;
     }
-    project.specYear = awarded.specYear || '';
-    project.catalogYear = awarded.catalogYear != null
-      ? awarded.catalogYear
-      : (Lists.catalogYearForAwardedSpec ? Lists.catalogYearForAwardedSpec(awarded.specYear) : null);
-    project.awardedFap = awarded.fap || '';
-    project.awardedTitle = awarded.title || '';
+    project.catalogSource = 'current';
+    project.awardedFap = project.awardedFap || '';
+    project.awardedTitle = project.awardedTitle || '';
+    const book = Lists.currentBookMeta ? Lists.currentBookMeta(lists) : null;
+    if (book) {
+      project.catalogYear = book.catalogYear;
+      project.specYear = book.specYear;
+      project.currentBook = book.bookName;
+    } else {
+      if (!project.specYear) project.specYear = '';
+      if (project.catalogYear == null) project.catalogYear = null;
+      project.currentBook = '';
+    }
     return project;
   }
 
   function specYearUnknownFlag(spec, lists, project) {
     const year = project && project.catalogYear;
     const specYear = (project && project.specYear) || '';
+    const current = project && project.catalogSource === 'current';
+    const bookName = current
+      ? (project.currentBook || ((Lists.currentBookMeta && Lists.currentBookMeta(lists) || {}).bookName) || '')
+      : '';
     const elsewhere = (year && Lists.findSpecYearItemElsewhere)
       ? Lists.findSpecYearItemElsewhere(lists, spec, year)
       : [];
     if (year && elsewhere.length) {
       const other = elsewhere[0];
-      let msg = spec + ' is not in the ' + specYear + ' specs for this contract.';
+      let msg = current && bookName
+        ? spec + ' is not in the ' + bookName + ' (used because this job is not on the Awarded Contract List).'
+        : spec + ' is not in the ' + specYear + ' specs for this contract.';
       msg += ' Spec year ' + other.catalogYear + ' (' + other.label + ') lists it as ' + other.desc + '.';
       const equiv = Lists.findSpecYearEquivalent
         ? Lists.findSpecYearEquivalent(lists, year, other.desc)
         : null;
       if (equiv && String(equiv.num) !== String(spec).replace(/\D/g, '')) {
-        msg += ' The ' + specYear + ' item is #' + equiv.num + ' (' + equiv.desc + ').';
+        const which = current && bookName ? bookName : specYear;
+        msg += ' The ' + which + ' item is #' + equiv.num + ' (' + equiv.desc + ').';
       }
       msg += ' Letter still lists the row; confirm the item number.';
       return msg;
+    }
+    if (current && bookName) {
+      return 'Item number ' + spec + ' is not in the ' + bookName
+        + '. Letter still lists the row; confirm the item number.';
     }
     if (specYear) {
       return 'Item number ' + spec + ' is not in the ' + specYear
@@ -1906,11 +1930,12 @@
         const asOf = Lists.specYearCatalog
           ? ((Lists.specYearCatalog(lists).awarded || {}).asOf || '')
           : '';
+        const book = project.currentBook || 'the current Standard Items and Special Provisions';
         warnings.push(
           'Contract ' + cleanContractNo(project.contract)
           + ' is not on the Awarded Contract List'
           + (asOf ? ' (' + asOf + ')' : '')
-          + ' — spec year unknown; item numbers checked against all loaded spec-year lists.'
+          + ' — item numbers checked against the ' + book + '.'
         );
       } else if (project.specYear && project.catalogYear == null) {
         warnings.push(

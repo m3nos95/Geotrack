@@ -39,15 +39,16 @@ Tack / pavement marking / crack seal check the live [Approved Product Lists](htt
 
 The **Source of Supply Database.xlsx** (DelDOT Standard Items / Special Provisions catalog, last modified Sept 2023 in the copy we were given) is the official item-number list. Drop it on **APL / Chart** (or keep `sos/lists/sos-database-snapshot.json`). It fills spec descriptions for items not already in the built-in catalog. It does **not** rewrite ACTION notes — those stay matched to issued letters.
 
-State contracts also look up the **Awarded Contract List** (snapshot `sos/lists/spec-year-catalog-snapshot.json`, printed 6/5/2026). That list has the controlling spec year / revision (for example Kirkwood `T2025-061-01` → **2025 January**). Item numbers are then checked against the Standard Items list for that book:
+State contracts look up the **Awarded Contract List** (snapshot `sos/lists/spec-year-catalog-snapshot.json`, printed 6/5/2026). If the job is on that list, item numbers are checked against **that contract’s spec year**. If it is **not** on the list — applications, construction agreements, and T-numbers that are not active (for example `T200602342`) — the program uses the current **May 11, 2026 Standard Items and Special Provisions** (spec year 25). Awarded jobs with 2001 specs still have no item list loaded.
 
 | Awarded spec year | Item list |
 |---|---|
 | 2016 (+ revision date) | Spec year 15 (2016 Standard Specs) |
 | 2020 / 2021 / 2022 | Spec year 20 |
 | 2024 / 2025 / 2026 | Spec year 25 (May 11, 2026 list) |
+| Not on the awarded list | Spec year 25 (May 11, 2026 list) |
 
-A number that belongs to a different spec year is still printed on the letter and flagged in REVIEW, with the current-book equivalent when the description matches (e.g. 2016 `#701004` valley gutter is 2025 `#701513`). Rebuild the snapshot with `python3 sos/build-spec-year-lists.py` when DelDOT issues a new awarded list or item catalog. Applications without a T-contract number keep the looser “is this a real 6-digit item” check.
+A number that belongs to a different spec year is still printed on the letter and flagged in REVIEW, with the current-book equivalent when the description matches (e.g. 2016 `#701004` valley gutter is 2025 `#701513`). Rebuild the snapshot with `python3 sos/build-spec-year-lists.py` when DelDOT issues a new awarded list or item catalog.
 
 Rows the contractor hid on the spreadsheet (Excel hidden rows) are still read and listed. REVIEW flags them, e.g. Greggo’s Kirkwood form hid `#701016`–`#701023` I.PCC curb and gutter, `#705002` 6" sidewalk, and `#705011` pedestrian connection special.
 

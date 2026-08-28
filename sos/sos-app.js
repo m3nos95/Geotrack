@@ -187,17 +187,36 @@
     const rec = (typeof SOSLists !== 'undefined' && SOSLists.lookupAwardedContract)
       ? SOSLists.lookupAwardedContract(listsForEngine(), contract)
       : null;
-    if (!rec || !rec.specYear) {
-      el.value = '';
-      el.placeholder = (contract && /^T/i.test(contract.trim())) ? 'not on awarded list' : '—';
-      el.title = 'Controlling specification year from the Awarded Contract List.';
+    if (rec && rec.specYear) {
+      el.value = rec.specYear;
+      const bits = [rec.specYear];
+      if (rec.fap) bits.push(rec.fap);
+      if (rec.title) bits.push(rec.title);
+      el.title = bits.join(' · ');
       return;
     }
-    el.value = rec.specYear;
-    const bits = [rec.specYear];
-    if (rec.fap) bits.push(rec.fap);
-    if (rec.title) bits.push(rec.title);
-    el.title = bits.join(' · ');
+    if (rec) {
+      el.value = rec.catalogYear ? ('spec year ' + rec.catalogYear) : '';
+      el.placeholder = rec.catalogYear ? '' : 'on awarded list — spec year not listed';
+      el.title = rec.title
+        ? rec.title + (rec.specYear ? '' : ' · spec year not listed on the Awarded Contract List')
+        : 'On the Awarded Contract List, but no spec year is printed.';
+      return;
+    }
+    const book = (typeof SOSLists !== 'undefined' && SOSLists.currentBookMeta)
+      ? SOSLists.currentBookMeta(listsForEngine())
+      : null;
+    if (book) {
+      el.value = book.shortLabel;
+      const why = (contract && /^T/i.test(contract.trim()))
+        ? 'Not on the Awarded Contract List'
+        : 'Not on the Awarded Contract List (application / agreement)';
+      el.title = why + ' — item numbers checked against the ' + book.bookName + '.';
+      return;
+    }
+    el.value = '';
+    el.placeholder = (contract && /^T/i.test(contract.trim())) ? 'not on awarded list' : '—';
+    el.title = 'Controlling specification year from the Awarded Contract List.';
   }
 
   function wireProjectPersist() {
@@ -1688,6 +1707,15 @@
         const cat = typeof SOSLists !== 'undefined' && SOSLists.specYearCatalog
           ? SOSLists.specYearCatalog(liveLists) : null;
         return cat && cat.awarded && cat.awarded.contracts ? Object.keys(cat.awarded.contracts).length : 0;
+      })()],
+      ['Current book (jobs not on awarded list)', (function () {
+        const book = typeof SOSLists !== 'undefined' && SOSLists.currentBookMeta
+          ? SOSLists.currentBookMeta(liveLists) : null;
+        return book ? book.bookName : '';
+      })(), (function () {
+        const book = typeof SOSLists !== 'undefined' && SOSLists.currentBookMeta
+          ? SOSLists.currentBookMeta(liveLists) : null;
+        return book ? book.catalogYear : 0;
       })()],
       ['CC harvest (library)', (liveLists.ccAlways || []).length ? 'library only' : '', (liveLists.ccAlways || []).length],
       ['Issued letter language', liveLists.language && liveLists.language.letters ? (liveLists.language.letters + ' letters') : '', liveLists.language && liveLists.language.bySpec ? Object.keys(liveLists.language.bySpec).length : 0],

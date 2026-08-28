@@ -782,6 +782,52 @@
     return 25;
   }
 
+  function formatCatalogAsOf(asOf) {
+    const m = String(asOf || '').match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+    if (!m) return String(asOf || '').trim();
+    const months = [
+      'January', 'February', 'March', 'April', 'May', 'June',
+      'July', 'August', 'September', 'October', 'November', 'December',
+    ];
+    const month = months[Number(m[1]) - 1];
+    if (!month) return String(asOf || '').trim();
+    return month + ' ' + String(Number(m[2])) + ', ' + m[3];
+  }
+
+  function defaultCatalogYear(lists) {
+    const cat = specYearCatalog(lists);
+    if (cat && cat.defaultCatalogYear != null && cat.years && cat.years[String(cat.defaultCatalogYear)]) {
+      return Number(cat.defaultCatalogYear);
+    }
+    if (cat && cat.years && cat.years['25']) return 25;
+    const keys = Object.keys((cat && cat.years) || {}).map(Number).filter(n => Number.isFinite(n)).sort((a, b) => a - b);
+    return keys.length ? keys[keys.length - 1] : null;
+  }
+
+  function currentBookMeta(lists) {
+    const year = defaultCatalogYear(lists);
+    const cat = specYearCatalog(lists);
+    const rec = year && cat && cat.years ? cat.years[String(year)] : null;
+    if (!rec) return null;
+    const asOf = rec.asOf || '';
+    const pretty = formatCatalogAsOf(asOf);
+    const bookName = pretty
+      ? pretty + ' Standard Items and Special Provisions'
+      : (rec.label || 'current Standard Items and Special Provisions');
+    const specYear = rec.label
+      ? (pretty ? rec.label + ' (' + pretty + ')' : rec.label)
+      : bookName;
+    return {
+      catalogYear: Number(year),
+      label: rec.label || ('spec year ' + year),
+      asOf,
+      file: rec.file || '',
+      bookName,
+      specYear,
+      shortLabel: pretty ? String(year) + ' (' + pretty + ')' : String(year),
+    };
+  }
+
   function lookupAwardedContract(catalog, contract) {
     const cat = catalog && catalog.awarded ? catalog : specYearCatalog(catalog);
     const contracts = (cat && cat.awarded && cat.awarded.contracts) || {};
@@ -923,6 +969,8 @@
         bits.push('Spec-year catalogs ' + nYears
           + (nContracts ? ` · ${nContracts} awarded contracts` : '')
           + (specCat.awarded && specCat.awarded.asOf ? ` (${specCat.awarded.asOf})` : ''));
+        const book = currentBookMeta(b);
+        if (book) bits.push('Current book ' + book.bookName);
       }
     }
     if (b.language && b.language.bySpec) {
@@ -951,6 +999,9 @@
     specYearCatalog,
     compactContractKey,
     catalogYearForAwardedSpec,
+    defaultCatalogYear,
+    currentBookMeta,
+    formatCatalogAsOf,
     lookupAwardedContract,
     lookupSpecYearItem,
     findSpecYearItemElsewhere,
