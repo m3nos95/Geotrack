@@ -2092,6 +2092,76 @@
     { name: 'Hanes Geo Components', loc: 'Winston Salem NC', addr: '815 Buxton St', phone: '(888) 239-4539', tags: ['Geotextile', 'Erosion Control'] },
   ];
 
+  function looksLikeSourceFragment(s) {
+    const t = String(s || '').replace(/\s+/g, ' ').trim();
+    if (!t) return true;
+    if (/^(or|and|alt|alternate)$/i.test(t)) return true;
+    if (/,\s*[A-Z]{2}(\s+\d{5})?\b/.test(t)) return true;
+    if (/\(\s*stockpile\s*\)/i.test(t) && !/gabc|pcc|crushed|concrete|stone|asphalt/i.test(t)) return true;
+    if (/^[A-Z][A-Za-z .&'-]{2,40},\s*[A-Z][A-Za-z .]+$/i.test(t)) return true;
+    const company = /\b(materials|excavating|aggregates?|paving|asphalt|concrete co\.?|inc\.?|llc|ltd|company|contractors?)\b/i.test(t);
+    const payItem = /^(gabc|pcc|rap|hma|superpave|graded aggregate|crushed (concrete|stone)|type\s*[a-z0-9-]+|patching|borrow|topsoil|millings|pipe|curb|sidewalk)/i.test(t)
+      || /\b(gabc|pcc curb|sidewalk|superpave|tack coat|class\s*[abc])\b/i.test(t);
+    if (company && !payItem) return true;
+    return false;
+  }
+
+  function collapseSpecDescParts(parts) {
+    const cleaned = [];
+    parts.forEach((part) => {
+      const t = String(part || '').replace(/\s+/g, ' ').trim();
+      if (!t) return;
+      const key = t.toLowerCase();
+      const idx = cleaned.findIndex(x => x.toLowerCase() === key
+        || x.toLowerCase().includes(key)
+        || key.includes(x.toLowerCase()));
+      if (idx < 0) {
+        cleaned.push(t);
+        return;
+      }
+      if (t.length > cleaned[idx].length) cleaned[idx] = t;
+    });
+    return cleaned;
+  }
+
+  function cleanSpecLibraryDesc(desc, extraSourceNames) {
+    let raw = String(desc || '').replace(/\u00a0/g, ' ').trim();
+    if (!raw) return '';
+    (extraSourceNames || []).concat((SOURCE_SEEDS || []).map(s => s.name)).forEach((name) => {
+      const n = String(name || '').trim();
+      if (n.length < 4) return;
+      const re = new RegExp('\\s*[-–—,|]\\s*' + n.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '\\b[^|]{0,80}', 'ig');
+      raw = raw.replace(re, '');
+    });
+    const chunks = raw.split(/\s*\|\s*|\n+/);
+    const parts = [];
+    chunks.forEach((chunk) => {
+      let t = String(chunk || '')
+        .replace(/^[\s\-–—\[\]•#]+/, '')
+        .replace(/[\s\[\]•]+$/g, '')
+        .replace(/\s+/g, ' ')
+        .trim();
+      t = t.replace(/^#?\d{6}\s*[-–—:]?\s*/i, '').trim();
+      if (!t || /^or$/i.test(t)) return;
+      const dashed = t.match(/^(.*?)[\s]*[-–—][\s]+(.+)$/);
+      if (dashed && looksLikeSourceFragment(dashed[2])) t = dashed[1].trim();
+      else if (looksLikeSourceFragment(t)) return;
+      if (t) parts.push(t);
+    });
+    return collapseSpecDescParts(parts).join(', ');
+  }
+
+  function preferSpecDesc(current, incoming) {
+    const a = cleanSpecLibraryDesc(current);
+    const b = cleanSpecLibraryDesc(incoming);
+    if (!a) return b;
+    if (!b) return a;
+    if (a.toLowerCase() === b.toLowerCase()) return a;
+    if (b.toLowerCase().includes(a.toLowerCase()) && b.length > a.length) return b;
+    if (a.toLowerCase().includes(b.toLowerCase())) return a;
+    return a.length >= b.length ? a : b;
+  }
+
   return {
     APL_URL,
     APL_FOOTNOTE,
@@ -2105,6 +2175,8 @@
     filterRetiredCcPeople,
     ccPersonSortName,
     sortCcPeople,
+    cleanSpecLibraryDesc,
+    preferSpecDesc,
     resolveContacts,
     samplerForDistrict,
     assignmentMatchesItems,

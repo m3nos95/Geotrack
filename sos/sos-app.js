@@ -254,14 +254,35 @@
     const l = document.getElementById('lib-count-label');
     if (l) l.textContent = sourceLib.length + ' suppliers';
   }
+  function specPickerDesc(entry) {
+    if (!entry) return '';
+    const catalog = (SOSData.SPEC_CATALOG && (SOSData.SPEC_CATALOG[entry.num] || SOSData.SPEC_CATALOG[String(entry.num || '').replace(/^#/, '')])) || {};
+    const extra = sourceLib.map(s => s.name).concat(entry.lastSrcName || []);
+    return SOSData.cleanSpecLibraryDesc(entry.desc, extra) || catalog.desc || '';
+  }
+
   function loadSpecLib() {
     specLib = ls_get(STORE.specs, []);
+    if (!Array.isArray(specLib)) specLib = [];
     if (!specLib.length) {
       specLib = Object.entries(SOSData.SPEC_CATALOG).map(([num, v]) => ({
         num, desc: v.desc, tags: v.tags || [], notes: '', lastSrcName: '', lastSrcLoc: '', lastSrcAddr: '', lastSrcPhone: '',
       }));
-      ls_set(STORE.specs, specLib);
     }
+    const byNum = new Map();
+    specLib.forEach((s) => {
+      const num = String(s.num || '').toUpperCase().replace(/^([^#])/, '#$1');
+      if (!num || num === '#') return;
+      const desc = SOSData.cleanSpecLibraryDesc(s.desc, [s.lastSrcName].concat(sourceLib.map(x => x.name))) || s.desc || '';
+      const rec = Object.assign({}, s, { num, desc });
+      const prev = byNum.get(num);
+      if (!prev) byNum.set(num, rec);
+      else {
+        prev.desc = SOSData.preferSpecDesc(prev.desc, rec.desc);
+        if (rec.lastSrcName && !prev.lastSrcName) prev.lastSrcName = rec.lastSrcName;
+      }
+    });
+    specLib = [...byNum.values()];
     Object.entries(SOSData.SPEC_CATALOG).forEach(([num, v]) => autoSaveSpec(num, v.desc, '', '', '', '', { silent: true }));
     saveSpecLib();
   }
@@ -544,11 +565,12 @@
   function autoSaveSpec(num, desc, srcName, srcLoc, srcAddr, srcPhone, extra) {
     if (!num) return;
     const key = String(num).toUpperCase().replace(/^([^#])/, '#$1');
+    const cleaned = SOSData.cleanSpecLibraryDesc(desc, [srcName].concat(sourceLib.map(s => s.name)));
     const existing = specLib.find(s => s.num === key);
     if (!existing) {
-      specLib.push({ num: key, desc: desc || '', lastSrcName: srcName || '', lastSrcLoc: srcLoc || '', lastSrcAddr: srcAddr || '', lastSrcPhone: srcPhone || '', tags: [], notes: '' });
+      specLib.push({ num: key, desc: cleaned || '', lastSrcName: srcName || '', lastSrcLoc: srcLoc || '', lastSrcAddr: srcAddr || '', lastSrcPhone: srcPhone || '', tags: [], notes: '' });
     } else {
-      if (desc && desc.length > (existing.desc || '').length) existing.desc = desc;
+      existing.desc = SOSData.preferSpecDesc(existing.desc, cleaned);
       if (srcName) existing.lastSrcName = srcName;
       if (srcLoc) existing.lastSrcLoc = srcLoc;
       if (srcAddr) existing.lastSrcAddr = srcAddr;
@@ -1053,18 +1075,29 @@
     const dd = document.getElementById('spec-dd');
     q = (q || '').trim().toLowerCase().replace(/^#/, '');
     if (!q) { dd.classList.remove('open'); dd.innerHTML = ''; return; }
-    const matches = specLib.filter(s => s.num.toLowerCase().replace('#', '').includes(q) || (s.desc || '').toLowerCase().includes(q)).slice(0, 12);
+    const seen = new Set();
+    const matches = specLib.filter((s) => {
+      const num = String(s.num || '').toUpperCase();
+      if (seen.has(num)) return false;
+      const label = specPickerDesc(s);
+      const hit = num.replace('#', '').toLowerCase().includes(q) || label.toLowerCase().includes(q);
+      if (!hit) return false;
+      seen.add(num);
+      return true;
+    }).slice(0, 12);
     if (!matches.length) { dd.classList.remove('open'); return; }
-    dd.innerHTML = matches.map(s =>
-      `<div class="spec-dd-option" onmousedown="specDdSelect(event,'${s.num.replace(/'/g, "\\'")}')"><span class="spec-dd-num">${esc(s.num)}</span><span class="spec-dd-desc">${esc(s.desc)}</span></div>`
-    ).join('');
+    dd.innerHTML = matches.map(s => {
+      const label = specPickerDesc(s);
+      return `<div class="spec-dd-option" onmousedown="specDdSelect(event,'${s.num.replace(/'/g, "\\'")}')"><span class="spec-dd-num">${esc(s.num)}</span><span class="spec-dd-desc">${esc(label)}</span></div>`;
+    }).join('');
     dd.classList.add('open');
   };
   window.specDdSelect = function (e, num) {
     e.preventDefault();
     if (!specTags.includes(num)) specTags.push(num);
     const entry = specLib.find(s => s.num === num);
-    if (entry && entry.desc && !val('f-desc')) setVal('f-desc', entry.desc);
+    const label = specPickerDesc(entry);
+    if (label && !val('f-desc')) setVal('f-desc', label);
     document.getElementById('spec-tag-input').value = '';
     document.getElementById('spec-dd').classList.remove('open');
     renderSpecTags();
@@ -1133,7 +1166,7 @@
       id: editingItemId || Date.now(),
       specs: [...specTags],
       letterSpecs: [...specTags],
-      desc: val('f-desc'),
+      desc: SOSData.cleanSpecLibraryDesc(val('f-desc'), sourceLib.map(s => s.name)) || val('f-desc'),
       subItems: [...subItemTags],
       srcName: val('f-src-name'),
       srcLoc: val('f-src-loc'),
@@ -1319,7 +1352,7 @@
     tbody.innerHTML = filtered.map(s => `
       <tr>
         <td><span style="font-family:var(--mono);font-weight:700;color:var(--deldot);">${esc(s.num)}</span></td>
-        <td>${esc(s.desc || '')}</td>
+        <td>${esc(specPickerDesc(s) || s.desc || '')}</td>
         <td>${esc(s.lastSrcName || '—')}</td>
         <td><button class="btn btn-ghost btn-sm" onclick="openSpecLibModal('${s.num.replace(/'/g, "\\'")}')">✎</button></td>
       </tr>`).join('');
@@ -1341,8 +1374,8 @@
     if (!num) return;
     if (!num.startsWith('#')) num = '#' + num;
     const existing = specLib.find(s => s.num === num);
-    if (existing) { existing.desc = val('sl-spec-desc'); existing.notes = val('sl-spec-notes'); }
-    else specLib.push({ num, desc: val('sl-spec-desc'), notes: val('sl-spec-notes'), tags: [], lastSrcName: '', lastSrcLoc: '' });
+    if (existing) { existing.desc = SOSData.cleanSpecLibraryDesc(val('sl-spec-desc')) || val('sl-spec-desc'); existing.notes = val('sl-spec-notes'); }
+    else specLib.push({ num, desc: SOSData.cleanSpecLibraryDesc(val('sl-spec-desc')) || val('sl-spec-desc'), notes: val('sl-spec-notes'), tags: [], lastSrcName: '', lastSrcLoc: '' });
     saveSpecLib(); closeModal('spec-lib-modal'); renderSpecLibTab();
   };
 

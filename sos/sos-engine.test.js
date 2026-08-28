@@ -647,6 +647,20 @@ assert.deepStrictEqual(sortedCc.map(p => p.name + '|' + p.org), [
   'Zane York|DelDOT',
 ]);
 assert.deepStrictEqual(DATA.sortCcPeople(['Mark', 'Aaron', 'Zane'], 'desc'), ['Zane', 'Mark', 'Aaron']);
+
+const dirty301001 = '#301001 - GABC Type B | - GABC Type B Patching | [] Crushed Concrete - Middletown Materials, Middletown DE';
+const cleaned301001 = DATA.cleanSpecLibraryDesc(dirty301001);
+assert.ok(!/middletown/i.test(cleaned301001), cleaned301001);
+assert.ok(/gabc type b patching/i.test(cleaned301001), cleaned301001);
+assert.ok(/crushed concrete/i.test(cleaned301001), cleaned301001);
+assert.ok(!/christiana|excavating/i.test(DATA.cleanSpecLibraryDesc(
+  '#301003 - GABC Type B | [] Crushed Concrete - Christiana Excavating, Lincoln DE (Stockpile) | Or | [] Crusher Run'
+)));
+assert.strictEqual(
+  DATA.preferSpecDesc('GABC', dirty301001),
+  DATA.cleanSpecLibraryDesc(dirty301001)
+);
+assert.ok(!/middletown/i.test(DATA.preferSpecDesc(dirty301001, 'GABC')));
 console.log('Retired CC names are skipped on harvest / library load');
 
 const prevJob = {
