@@ -2331,11 +2331,30 @@
     return out;
   }
 
+  function safeFolderBit(raw, fallback) {
+    const s = String(raw || '')
+      .normalize('NFKD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .replace(/['’`]/g, '')
+      .replace(/[^A-Za-z0-9_-]+/g, '_')
+      .replace(/_+/g, '_')
+      .replace(/^[-_.]+|[-_.]+$/g, '')
+      .slice(0, 60)
+      .replace(/[-_.]+$/g, '');
+    if (!s || /^(con|prn|aux|nul|com[1-9]|lpt[1-9])$/i.test(s)) return fallback || '';
+    return s;
+  }
+
+  /** Date + application/contract # only. Titles like "Chapel Creek (Gaines) #602951138" are not used — # & ' / trailing dots break Windows. */
   function trainingSlug() {
-    const day = headerToday();
-    const bits = [val('ph-contract'), val('ph-title'), val('ph-contractor')].filter(Boolean);
-    const raw = [day].concat(bits).join('_');
-    return raw.replace(/[^\w.\-]+/g, '_').replace(/^_+|_+$/g, '').slice(0, 80) || (day + '_sos');
+    const rawDay = String(headerToday() || '');
+    const day = /^\d{4}-\d{2}-\d{2}$/.test(rawDay) ? rawDay : new Date().toISOString().slice(0, 10);
+    let rawId = val('ph-contract');
+    if (typeof SOSEngine !== 'undefined' && SOSEngine.cleanContractNo) {
+      rawId = SOSEngine.cleanContractNo(rawId) || rawId;
+    }
+    const id = safeFolderBit(rawId, '');
+    return id ? (day + '_' + id) : (day + '_letter');
   }
 
   function currentLetterText() {

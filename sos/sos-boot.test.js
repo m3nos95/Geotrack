@@ -7,7 +7,7 @@ const html = fs.readFileSync(path.join(__dirname, '..', 'deldot-sos.html'), 'utf
 assert.ok(!/pdf\.min\.js/.test(html), 'pdf.js must not load on page open');
 assert.ok(!/xlsx\.full\.min\.js/.test(html), 'SheetJS must not load on page open');
 assert.ok(!/cdn\.jsdelivr\.net/.test(html), 'no jsDelivr scripts on page open');
-assert.ok(/sos-app\.js\?v=20260828i/.test(html), 'cache-bust sos-app.js');
+assert.ok(/sos-app\.js\?v=20260828j/.test(html), 'cache-bust sos-app.js');
 
 const app = fs.readFileSync(path.join(__dirname, 'sos-app.js'), 'utf8');
 assert.ok(/function loadPdfJs\(/.test(app));

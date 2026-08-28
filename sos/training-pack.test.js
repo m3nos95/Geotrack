@@ -21,6 +21,18 @@ assert.strictEqual(Pack.safePackName('secret.exe'), '');
 assert.strictEqual(Pack.safePackName('foo/bar.txt'), 'bar.txt');
 assert.strictEqual(Pack.safePackName('program-output.txt'), 'program-output.txt');
 
+assert.strictEqual(Pack.safeSlug('Chapel Creek (Gaines) #602951138', 'job'), 'Chapel_Creek_Gaines_602951138');
+assert.strictEqual(Pack.safeSlug("Greggo & Ferrara, Inc.", 'job'), 'Greggo_Ferrara_Inc');
+assert.strictEqual(Pack.safeSlug("O'Brien / foo:bar*", 'job'), 'OBrien_foo_bar');
+assert.strictEqual(Pack.safeSlug('2026-08-28_602951138', 'job'), '2026-08-28_602951138');
+assert.strictEqual(Pack.safeSlug('#602951138.', 'job'), '602951138');
+assert.strictEqual(Pack.safeSlug('...', 'job'), 'job');
+assert.strictEqual(Pack.safeSlug('CON', 'job'), 'job');
+assert.strictEqual(Pack.trainingFolderName({ date: '2026-08-28', contract: '#602951138' }), '2026-08-28_602951138');
+assert.strictEqual(Pack.trainingFolderName({ date: '2026-08-28', contract: 'T2025-061-01' }), '2026-08-28_T2025-061-01');
+assert.strictEqual(Pack.trainingFolderName({ date: '2026-08-28', title: 'Chapel Creek (Gaines) #602951138' }), '2026-08-28_letter');
+assert.ok(!/[<>:"/\\|?*#&'.]/.test(Pack.safeSlug("Greggo & Ferrara, Inc. #1", 'job')));
+
 const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'sos-pack-'));
 const saved = Pack.saveTrainingPack(tmp, '2026-08-28 Hunters Creek', [
   { name: 'README.txt', text: Pack.trainingReadme({ contract: '623641525', title: 'Hunters Creek' }) },
@@ -31,6 +43,14 @@ const saved = Pack.saveTrainingPack(tmp, '2026-08-28 Hunters Creek', [
 assert.ok(saved.ok);
 assert.ok(fs.existsSync(path.join(saved.dest, 'program-output.txt')));
 assert.ok(fs.existsSync(path.join(saved.dest, 'submittal.xls')));
+
+const dirty = Pack.saveTrainingPack(tmp, 'Chapel Creek (Gaines) #602951138.', [
+  { name: 'README.txt', text: 'ok' },
+]);
+assert.ok(dirty.ok);
+assert.strictEqual(path.basename(dirty.dest), 'Chapel_Creek_Gaines_602951138');
+assert.ok(!/[<>:"/\\|?*#&]/.test(path.basename(dirty.dest)));
+assert.ok(!/\.$/.test(path.basename(dirty.dest)));
 const snap = Learn.loadProgramSnapshot(saved.dest);
 assert.ok(snap);
 assert.ok(snap.sections.length >= 1);
@@ -113,6 +133,33 @@ process.env.SOS_PROGRAM_DIR = tmp;
     });
     assert.ok(body.ok, body.error || 'save-training failed');
     assert.ok(fs.existsSync(path.join(tmp, 'jobs', 'helper-job', 'program-output.txt')));
+
+    const dirtyPayload = JSON.stringify({
+      slug: "Greggo & Ferrara, Inc. #602951138",
+      files: [{ name: 'program-output.txt', text: 'SECTION: #401005\n' }],
+    });
+    const dirtyBody = await new Promise((resolve, reject) => {
+      const req = http.request({
+        hostname: '127.0.0.1',
+        port,
+        path: '/api/save-training',
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Content-Length': Buffer.byteLength(dirtyPayload) },
+      }, res => {
+        const chunks = [];
+        res.on('data', c => chunks.push(c));
+        res.on('end', () => {
+          try { resolve(JSON.parse(Buffer.concat(chunks).toString('utf8'))); }
+          catch (e) { reject(e); }
+        });
+      });
+      req.on('error', reject);
+      req.write(dirtyPayload);
+      req.end();
+    });
+    assert.ok(dirtyBody.ok, dirtyBody.error || 'dirty slug save failed');
+    assert.strictEqual(path.basename(dirtyBody.dest), 'Greggo_Ferrara_Inc_602951138');
+    assert.ok(fs.existsSync(path.join(tmp, 'jobs', 'Greggo_Ferrara_Inc_602951138', 'program-output.txt')));
   } finally {
     await new Promise(resolve => server.close(resolve));
   }

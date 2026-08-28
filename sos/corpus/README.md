@@ -13,7 +13,7 @@ The program learns from **three files per job**, kept on this machine (gitignore
 After the letter looks right (and you have printed / sent it, or are about to):
 
 1. Click **Save training pack** next to Print / PDF.
-2. If `start-sos.bat` is running, that writes `Desktop\SOS Program\jobs\<date>_<job>\`.
+2. If `start-sos.bat` is running, that writes `Desktop\SOS Program\jobs\<date>_<contract>\` (a Windows-safe name from today’s date and the application/contract number — not the project title).
 3. If not, Chrome downloads a zip. Unzip it into `SOS Program\jobs\`.
 4. When the letter goes out, copy that PDF into the same folder as **`issued.pdf`**.
 
@@ -67,7 +67,7 @@ node sos/corpus-learn.js --dir-only --dir "C:\Users\Aaron.Wieczorek\OneDrive - S
 Use this when names do not match, or you want to keep original filenames. **Save training pack** builds this layout for you:
 
 ```
-SOS Program/jobs/2026-08-28_Hunters_Creek/
+SOS Program/jobs/2026-08-28_623641525/
   submittal.xls
   program-output.html
   program-output.txt

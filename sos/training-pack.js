@@ -50,12 +50,35 @@ function isSubmittalFile(p) {
   return /^submittal\./.test(n);
 }
 
+const WINDOWS_RESERVED = /^(con|prn|aux|nul|com[1-9]|lpt[1-9])$/i;
+
+/** ASCII letters, digits, hyphen, underscore only — safe as a Windows folder or zip name. */
 function safeSlug(raw, fallback) {
-  const t = String(raw || '')
-    .replace(/[^\w.\-]+/g, '_')
-    .replace(/^_+|_+$/g, '')
-    .slice(0, 80);
-  return t || fallback || 'job';
+  const s = String(raw || '')
+    .normalize('NFKD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/['’`]/g, '')
+    .replace(/[^A-Za-z0-9_-]+/g, '_')
+    .replace(/_+/g, '_')
+    .replace(/^[-_.]+|[-_.]+$/g, '')
+    .slice(0, 60)
+    .replace(/[-_.]+$/g, '');
+  if (!s || WINDOWS_RESERVED.test(s) || /^\.+$/.test(s)) return fallback || 'job';
+  return s;
+}
+
+function isoDay(raw) {
+  const m = String(raw || '').match(/^(\d{4}-\d{2}-\d{2})/);
+  if (m) return m[1];
+  return new Date().toISOString().slice(0, 10);
+}
+
+/** Prefer date + application/contract #. Never include the project title (punctuation). */
+function trainingFolderName(meta) {
+  const day = isoDay(meta && meta.date);
+  const id = safeSlug((meta && (meta.contract || meta.application)) || '', '');
+  if (id) return day + '_' + id;
+  return day + '_letter';
 }
 
 function safePackName(name) {
@@ -97,8 +120,15 @@ function trainingReadme(project) {
 
 function saveTrainingPack(programRoot, slug, files) {
   const root = programRoot || programDir();
-  const dest = path.join(jobsRoot(root), safeSlug(slug, 'job'));
-  fs.mkdirSync(dest, { recursive: true });
+  const jobs = jobsRoot(root);
+  fs.mkdirSync(jobs, { recursive: true });
+  let dest = path.join(jobs, safeSlug(slug, 'job'));
+  try {
+    fs.mkdirSync(dest, { recursive: true });
+  } catch (e) {
+    dest = path.join(jobs, 'job-' + Date.now());
+    fs.mkdirSync(dest, { recursive: true });
+  }
   const written = [];
   (files || []).forEach(f => {
     const name = safePackName(f && f.name);
@@ -119,6 +149,7 @@ module.exports = {
   isProgramOutputFile,
   isSubmittalFile,
   safeSlug,
+  trainingFolderName,
   safePackName,
   jobsRoot,
   trainingReadme,
