@@ -243,16 +243,22 @@ function safePublicFile(urlPath) {
   return full;
 }
 
-function sendJson(res, status, body) {
-  const buf = Buffer.from(JSON.stringify(body));
-  res.writeHead(status, {
-    'Content-Type': 'application/json; charset=utf-8',
-    'Content-Length': buf.length,
+function corsHeaders() {
+  return {
     'Access-Control-Allow-Origin': '*',
     'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
     'Access-Control-Allow-Headers': 'Content-Type',
+    'Access-Control-Allow-Private-Network': 'true',
+  };
+}
+
+function sendJson(res, status, body) {
+  const buf = Buffer.from(JSON.stringify(body));
+  res.writeHead(status, Object.assign({
+    'Content-Type': 'application/json; charset=utf-8',
+    'Content-Length': buf.length,
     'Cache-Control': 'no-store',
-  });
+  }, corsHeaders()));
   res.end(buf);
 }
 
@@ -294,11 +300,7 @@ function handleSaveTraining(req, res) {
 function handleHelperRequest(req, res) {
   const url = (req.url || '/').split('?')[0];
   if (req.method === 'OPTIONS') {
-    res.writeHead(204, {
-      'Access-Control-Allow-Origin': '*',
-      'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
-      'Access-Control-Allow-Headers': 'Content-Type',
-    });
+    res.writeHead(204, corsHeaders());
     res.end();
     return;
   }

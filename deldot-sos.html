@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>DelDOT Source of Supply</title>
   <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="sos/sos.css?v=20260828e">
+  <link rel="stylesheet" href="sos/sos.css?v=20260828f">
 </head>
 <body>
 <div class="topbar">
@@ -377,10 +377,11 @@
       <button class="btn btn-ghost btn-sm" onclick="clearHighlights()" title="Remove yellow highlight marks on the preview">✕ Clear highlights</button>
       <button class="btn btn-ghost btn-sm" onclick="printLetter()">🖨 Print / PDF</button>
       <button class="btn btn-ghost btn-sm" onclick="exportLetterDoc()" title="Save a Word file you can edit">Export .doc</button>
-      <button class="btn btn-ghost btn-sm" onclick="saveTrainingPack()" title="Save the contractor form + this letter so learn-sos.bat can compare them to the issued PDF you send">Save training pack</button>
+      <button class="btn btn-ghost btn-sm" type="button" onclick="saveTrainingPack()" title="Save the contractor form + this letter so learn-sos.bat can compare them to the issued PDF you send">Save training pack</button>
       <button class="btn btn-ghost btn-sm" onclick="document.getElementById('sig-upload').click()">✍ Signature</button>
       <input type="file" id="sig-upload" accept="image/*" style="display:none" onchange="uploadSignature(event)">
     </div>
+    <div id="letter-save-status" class="letter-save-status" hidden></div>
     <div class="letter-scroll">
       <div class="letter-preview-label">Letter Preview — click the text to edit. Print / PDF uses what you see.</div>
       <div id="letter-edit-banner" class="letter-edit-banner" hidden>Typed edits are on this letter. Print uses this text. Refresh Letter rebuilds from SOS ITEMS.</div>
@@ -622,6 +623,6 @@
 <script src="sos/sos-engine.js?v=20260828e"></script>
 <script src="sos/sos-formpdf.js?v=20260828d"></script>
 <script src="sos/letter-export.js?v=20260828e"></script>
-<script src="sos/sos-app.js?v=20260828j"></script>
+<script src="sos/sos-app.js?v=20260828k"></script>
 </body>
 </html>

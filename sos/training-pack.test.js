@@ -31,7 +31,12 @@ assert.strictEqual(Pack.safeSlug('CON', 'job'), 'job');
 assert.strictEqual(Pack.trainingFolderName({ date: '2026-08-28', contract: '#602951138' }), '2026-08-28_602951138');
 assert.strictEqual(Pack.trainingFolderName({ date: '2026-08-28', contract: 'T2025-061-01' }), '2026-08-28_T2025-061-01');
 assert.strictEqual(Pack.trainingFolderName({ date: '2026-08-28', title: 'Chapel Creek (Gaines) #602951138' }), '2026-08-28_letter');
-assert.ok(!/[<>:"/\\|?*#&'.]/.test(Pack.safeSlug("Greggo & Ferrara, Inc. #1", 'job')));
+assert.deepStrictEqual(Pack.trainingSaveUrls({ protocol: 'file:', hostname: '' }), ['http://127.0.0.1:18765/api/save-training']);
+assert.deepStrictEqual(Pack.trainingSaveUrls({ protocol: 'http:', hostname: '127.0.0.1' }), ['/api/save-training']);
+assert.deepStrictEqual(Pack.trainingSaveUrls({ protocol: 'https:', hostname: 'example.github.io' }), [
+  '/api/save-training',
+  'http://127.0.0.1:18765/api/save-training',
+]);
 
 const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'sos-pack-'));
 const saved = Pack.saveTrainingPack(tmp, '2026-08-28 Hunters Creek', [
@@ -160,6 +165,22 @@ process.env.SOS_PROGRAM_DIR = tmp;
     assert.ok(dirtyBody.ok, dirtyBody.error || 'dirty slug save failed');
     assert.strictEqual(path.basename(dirtyBody.dest), 'Greggo_Ferrara_Inc_602951138');
     assert.ok(fs.existsSync(path.join(tmp, 'jobs', 'Greggo_Ferrara_Inc_602951138', 'program-output.txt')));
+
+    const optHeaders = await new Promise((resolve, reject) => {
+      const req = http.request({
+        hostname: '127.0.0.1',
+        port,
+        path: '/api/save-training',
+        method: 'OPTIONS',
+      }, res => {
+        resolve(res.headers);
+        res.resume();
+      });
+      req.on('error', reject);
+      req.end();
+    });
+    assert.strictEqual(optHeaders['access-control-allow-origin'], '*');
+    assert.strictEqual(optHeaders['access-control-allow-private-network'], 'true');
   } finally {
     await new Promise(resolve => server.close(resolve));
   }

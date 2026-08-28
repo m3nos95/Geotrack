@@ -550,6 +550,16 @@
     overflow-x: auto;
   }
   .letter-panel-header .btn-sm { padding: 4px 8px; white-space: nowrap; }
+  .letter-save-status {
+    font-family: var(--sans);
+    font-size: 12px;
+    line-height: 1.4;
+    padding: 7px 12px;
+    border-bottom: 1px solid var(--border);
+  }
+  .letter-save-status.is-ok { color: #0b5; background: var(--green-bg, #e8f8ee); }
+  .letter-save-status.is-err { color: #8a1f11; background: var(--amber-bg, #fff4d6); }
+  .letter-save-status.is-info { color: #184a8c; background: var(--blue-bg, #e8f1fb); }
   .letter-preview-label {
     font-family: var(--mono);
     font-size: 10px;
@@ -1081,7 +1091,7 @@
   }
   .topbar-links a:hover { text-decoration: underline; }
   @media print {
-    .topbar, .project-header, .main-panel, .letter-panel-header, .letter-preview-label, .letter-edit-banner { display: none !important; }
+    .topbar, .project-header, .main-panel, .letter-panel-header, .letter-save-status, .letter-preview-label, .letter-edit-banner { display: none !important; }
     .shell { display: block; height: auto; }
     .letter-panel { border: none; }
     .letter-scroll { overflow: visible; padding: 0; }

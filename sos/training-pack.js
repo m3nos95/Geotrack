@@ -143,6 +143,19 @@ function saveTrainingPack(programRoot, slug, files) {
   return { ok: true, dest, files: written };
 }
 
+/** Which helper URLs to try. file:// must not hit a relative /api path (that hangs or 404s with no zip fallback). */
+function trainingSaveUrls(loc) {
+  const proto = String((loc && loc.protocol) || '');
+  const host = String((loc && loc.hostname) || '');
+  const local = 'http://127.0.0.1:18765/api/save-training';
+  if (proto === 'http:' || proto === 'https:') {
+    const urls = ['/api/save-training'];
+    if (host !== '127.0.0.1' && host !== 'localhost') urls.push(local);
+    return urls;
+  }
+  return [local];
+}
+
 module.exports = {
   DEFAULT_PROGRAM_DIR,
   programDir,
@@ -151,6 +164,7 @@ module.exports = {
   isSubmittalFile,
   safeSlug,
   trainingFolderName,
+  trainingSaveUrls,
   safePackName,
   jobsRoot,
   trainingReadme,

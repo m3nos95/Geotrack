@@ -7,7 +7,12 @@ const html = fs.readFileSync(path.join(__dirname, '..', 'deldot-sos.html'), 'utf
 assert.ok(!/pdf\.min\.js/.test(html), 'pdf.js must not load on page open');
 assert.ok(!/xlsx\.full\.min\.js/.test(html), 'SheetJS must not load on page open');
 assert.ok(!/cdn\.jsdelivr\.net/.test(html), 'no jsDelivr scripts on page open');
-assert.ok(/sos-app\.js\?v=20260828j/.test(html), 'cache-bust sos-app.js');
+assert.ok(/sos-app\.js\?v=20260828k/.test(html), 'cache-bust sos-app.js');
+assert.ok(/id="letter-save-status"/.test(html), 'Save training pack status is next to the letter, not only on Import');
+const saveFn = app.slice(app.indexOf('window.saveTrainingPack'), app.indexOf('window.printLetter'));
+assert.ok(/AbortController/.test(saveFn), 'do not wait forever for start-sos.bat');
+assert.ok(/setLetterActionStatus/.test(saveFn));
+assert.ok(/Saving training pack/.test(saveFn));
 
 const app = fs.readFileSync(path.join(__dirname, 'sos-app.js'), 'utf8');
 assert.ok(/function loadPdfJs\(/.test(app));

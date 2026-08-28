@@ -2497,11 +2497,13 @@
     ];
     if (lastSubmittal && lastSubmittal.bytes && lastSubmittal.bytes.length) {
       const ext = (String(lastSubmittal.name).match(/\.(xlsx?|pdf)$/i) || ['.xls'])[0].toLowerCase();
-      files.push({
-        name: 'submittal' + ext,
-        bytes: lastSubmittal.bytes,
-        base64: bytesToBase64(lastSubmittal.bytes),
-      });
+      const entry = { name: 'submittal' + ext, bytes: lastSubmittal.bytes };
+      try {
+        if (lastSubmittal.bytes.length <= 6 * 1024 * 1024) {
+          entry.base64 = bytesToBase64(lastSubmittal.bytes);
+        }
+      } catch (e) {}
+      files.push(entry);
     }
     return files;
   }
@@ -2521,39 +2523,89 @@
     setTimeout(() => URL.revokeObjectURL(a.href), 2000);
   }
 
+  function trainingSaveUrls() {
+    const proto = (typeof location !== 'undefined' && location.protocol) || '';
+    const host = (typeof location !== 'undefined' && location.hostname) || '';
+    const local = 'http://127.0.0.1:18765/api/save-training';
+    if (proto === 'http:' || proto === 'https:') {
+      const urls = ['/api/save-training'];
+      if (host !== '127.0.0.1' && host !== 'localhost') urls.push(local);
+      return urls;
+    }
+    return [local];
+  }
+
+  function fetchWithTimeout(url, opts, ms) {
+    const ctrl = typeof AbortController !== 'undefined' ? new AbortController() : null;
+    const timer = setTimeout(() => { if (ctrl) ctrl.abort(); }, ms);
+    const req = fetch(url, Object.assign({}, opts, ctrl ? { signal: ctrl.signal } : {}));
+    return req.finally(() => clearTimeout(timer));
+  }
+
+  function setLetterActionStatus(msg, color) {
+    const el = document.getElementById('letter-save-status');
+    if (el) {
+      el.hidden = !msg;
+      el.textContent = msg || '';
+      el.className = 'letter-save-status' + (
+        color === 'green' ? ' is-ok' : color === 'red' ? ' is-err' : ' is-info'
+      );
+    }
+    try {
+      if (msg) setImportStatus(msg, color);
+    } catch (e) {}
+  }
+
   window.saveTrainingPack = async function () {
-    if (!items.length && !currentLetterText()) {
-      setImportStatus('Load a contractor form and build the letter before saving a training pack.', 'red');
-      return;
-    }
-    const slug = trainingSlug();
-    const files = buildTrainingFiles();
-    const payload = { slug, files: files.map(f => ({ name: f.name, text: f.text, base64: f.base64 })) };
-    const urls = [
-      '/api/save-training',
-      'http://127.0.0.1:18765/api/save-training',
-      'http://localhost:18765/api/save-training',
-    ];
-    let lastErr = '';
-    for (const url of urls) {
-      try {
-        const res = await fetch(url, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(payload),
-        });
-        const body = await res.json();
-        if (body && body.ok && body.dest) {
-          setImportStatus('Saved training pack to ' + body.dest + '. After you send the letter, copy that PDF into the same folder as issued.pdf. Then run learn-sos.bat.', 'green');
-          return;
-        }
-        lastErr = (body && body.error) || ('HTTP ' + res.status);
-      } catch (e) {
-        lastErr = e.message || String(e);
+    if (window.saveTrainingPack.busy) return;
+    window.saveTrainingPack.busy = true;
+    try {
+      if (!items.length && !currentLetterText()) {
+        setLetterActionStatus('Load a contractor form and build the letter before saving a training pack.', 'red');
+        return;
       }
+      setLetterActionStatus('Saving training pack…', 'blue');
+      const slug = trainingSlug();
+      const files = buildTrainingFiles();
+      const payload = {
+        slug,
+        files: files.map(f => ({ name: f.name, text: f.text, base64: f.base64 })),
+      };
+      const urls = trainingSaveUrls();
+      let lastErr = '';
+      for (const url of urls) {
+        try {
+          const ms = url.charAt(0) === '/' ? 8000 : 2500;
+          const res = await fetchWithTimeout(url, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload),
+          }, ms);
+          const text = await res.text();
+          let body = null;
+          try { body = JSON.parse(text); } catch (e) {
+            lastErr = url + ' HTTP ' + res.status;
+            continue;
+          }
+          if (body && body.ok && body.dest) {
+            setLetterActionStatus('Saved to ' + body.dest + '. After you send the letter, copy that PDF into the same folder as issued.pdf.', 'green');
+            return;
+          }
+          lastErr = (body && body.error) || ('HTTP ' + res.status);
+        } catch (e) {
+          lastErr = (e && e.name === 'AbortError') ? 'helper did not answer in time' : (e.message || String(e));
+        }
+      }
+      downloadTrainingZip(slug, files);
+      setLetterActionStatus(
+        'Downloaded ' + slug + '_training.zip. If start-sos.bat is open, the helper did not take the file (' + (lastErr || 'no response') + '). Unzip into Desktop SOS Program\\jobs\\.',
+        'blue'
+      );
+    } catch (e) {
+      setLetterActionStatus('Could not save the training pack: ' + (e.message || String(e)), 'red');
+    } finally {
+      window.saveTrainingPack.busy = false;
     }
-    downloadTrainingZip(slug, files);
-    setImportStatus('Downloaded ' + slug + '_training.zip (start-sos.bat was not running). Unzip it into Desktop SOS Program\\jobs\\. After you send the letter, add issued.pdf to that folder. Then run learn-sos.bat.', 'blue');
   };
 
   window.printLetter = function () {
