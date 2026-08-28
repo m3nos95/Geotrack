@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
-<meta name="geotrak-version" content="0.99.5">
+<meta name="geotrak-version" content="0.99.6">
 <meta name="geotrak-pages-rev" content="2026-08-27T17:25Z">
 <title>DelDOT GeoTrak</title>
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=Press+Start+2P&family=Syne:wght@500;600;700;800&display=swap" rel="stylesheet">
@@ -21047,6 +21047,14 @@ main{position:absolute;top:44px;left:0;right:0;bottom:0}
 .calm-meaning b{color:var(--amber)}
 .calm-meaning .is{color:var(--cyan)}
 .calm-meaning .isnot{color:var(--dim)}
+.calm-spot{border:1px solid rgba(61,207,191,.4);background:rgba(61,207,191,.07);padding:10px 12px;margin-bottom:10px;font-size:11.5px;line-height:1.45}
+.calm-spot h4{margin:0 0 6px;font-size:13px;color:var(--text);font-weight:700}
+.calm-spot .calm-spot-meta{font-family:var(--mono);font-size:10px;color:var(--dim);margin-bottom:8px}
+.calm-spot .calm-risk-grid{display:grid;grid-template-columns:1fr auto;gap:3px 10px;margin:8px 0;font-family:var(--mono);font-size:10.5px}
+.calm-spot .calm-risk-grid .tot{color:var(--amber);font-weight:700;border-top:1px solid rgba(46,58,72,.6);padding-top:4px;margin-top:2px}
+.calm-spot .calm-idea{margin:8px 0 0;padding:7px 8px;border-left:3px solid rgba(61,207,191,.55);background:rgba(10,16,22,.35)}
+.calm-spot .calm-idea b{display:block;color:var(--cyan);font-size:10px;letter-spacing:.04em;text-transform:uppercase;margin-bottom:2px}
+.calm-spot .calm-idea span{color:var(--text);font-size:11px;line-height:1.4}
 .calm-band{display:inline-block;font-family:var(--mono);font-size:10px;letter-spacing:.06em;text-transform:uppercase;padding:2px 7px;border-radius:3px;border:1px solid var(--line)}
 .calm-band.candidate{border-color:rgba(61,207,191,.55);color:var(--cyan);background:rgba(61,207,191,.1)}
 .calm-band.study{border-color:rgba(240,168,74,.55);color:var(--amber);background:rgba(240,168,74,.1)}
@@ -21721,7 +21729,7 @@ table.list td{padding:5px 8px;border-bottom:1px solid rgba(46,58,72,.5);font-fam
 <div id="hdr">
   <div class="brand" title="Delaware Department of Transportation">
     <img src="data:image/png;base64,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" width="28" height="28" alt="DelDOT">
-    <h1><b>DelDOT</b> GeoTrak<span class="badge">v0.99.5</span></h1>
+    <h1><b>DelDOT</b> GeoTrak<span class="badge">v0.99.6</span></h1>
   </div>
   <button class="tab on" data-p="map">Map</button>
   <button class="tab" data-p="refs">Reference data</button>
@@ -21865,7 +21873,7 @@ table.list td{padding:5px 8px;border-bottom:1px solid rgba(46,58,72,.5);font-fam
   <h3 id="statewideCalmingDockTitle" title="Drag to move panel">Statewide calming screen<span class="sp"></span>
     <button type="button" class="hdr-pop-close" id="statewideCalmingDockClose" title="Close panel">✕</button>
   </h3>
-  <div class="hint">Ranked <b>screening</b> list from FirstMap AADT × posted speed × functional class, plus public crash risk, <b>school</b> proximity (not childcare), and potential roundabouts. Stats row shows public/private school counts when loaded. Click a row to zoom (RA rows focus the all-way stop pin). Drag the <b>title</b> to move · drag the <b>bottom-right corner</b> to resize (double-click resets). Not a warrant list.</div>
+  <div class="hint">Ranked <b>screening</b> list from FirstMap AADT × posted speed × functional class, plus public crash risk, <b>school</b> proximity (not childcare), and potential roundabouts. Stats row shows public/private school counts when loaded. <b>Click a row</b> (or a painted segment) to close this list and open <b>Site Intel → Calming</b> for that spot — risk score, what it means, and TCDM measure families. Drag the <b>title</b> to move · drag the <b>bottom-right corner</b> to resize (double-click resets). Not a warrant list.</div>
   <div class="sc-stats" id="statewideCalmingStats"></div>
   <div class="sc-filters" role="group" aria-label="Band filter">
     <button type="button" class="btn on" id="scFilterCand" data-sc-filter="candidate">Candidates</button>
@@ -22447,6 +22455,8 @@ let calmingRoundaboutCtx=null; /* OSM all-way stops + FirstMap signals/roundabou
 let statewideCalmingRaLayer=null;
 let statewideCalmingRaFocusLayer=null;
 let statewideCalmingRaMarkers={}; /* id -> circleMarker */
+let statewideCalmingPaintedSegs=[]; /* current painted list for map-click → spot detail */
+let lastStatewideCalmingFocusSeg=null; /* segment opened in Site Intel → Calming */
 let calmingSchoolMapLayer=null;
 let showCalmingSchoolMarkers=true;
 try{ showCalmingSchoolMarkers=localStorage.getItem('geotrak_show_calming_schools')!=='0'; }catch(_){}
@@ -32437,7 +32447,7 @@ async function runPointQuery(lat,lng,opts){
   qMarker=L.circleMarker([lat,lng],{radius:8,color:'#fff',weight:2,fillColor:'#e8a33d',fillOpacity:1}).addTo(map);
   qCircle=L.circle([lat,lng],{radius:radFt*0.3048,color:'#e8a33d',weight:1.2,fillColor:'#e8a33d',fillOpacity:0.05,dashArray:'5 5'}).addTo(map);
 
-  const immersive=!$('immersiveMode')||$('immersiveMode').checked;
+  const immersive=(!$('immersiveMode')||$('immersiveMode').checked)||!!opts.forceHud;
   if(!opts.quiet){
     try{
       const z=immersive?Math.max(map.getZoom(),17):Math.max(map.getZoom(),15);
@@ -32467,7 +32477,8 @@ async function runPointQuery(lat,lng,opts){
   });
   const geophysNear=nearestDgirGeophysZones(lat,lng,GEOPHYS_SOFT_MAX_FT);
 
-  const ctx={lat,lng,radFt,hits:hitsUi,hitsEng,near,nearLab,E,profile,hydro:null,dgirNear,geophysNear,opts};
+  const ctx={lat,lng,radFt,hits:hitsUi,hitsEng,near,nearLab,E,profile,hydro:null,dgirNear,geophysNear,opts,calmingFocusSeg:opts.calmingFocusSeg||null};
+  if(opts.calmingFocusSeg) lastStatewideCalmingFocusSeg=opts.calmingFocusSeg;
   lastHudCtx=ctx;
 
   if(immersive){
@@ -33487,9 +33498,16 @@ function renderHudDrawer(ctx){
     }
     h+=renderPoleBaseHudHtml(est, ctx);
   } else if(tab==='calming'){
-    h+=renderCalmingHudHtml(P.calming);
-    if(calmingScreenOn){
-      h+=`<div class="br-actions" style="margin-top:8px"><button type="button" class="btn" id="calmingHudRerun" style="border-color:var(--cyan);color:var(--cyan)">Re-screen this click</button></div>`;
+    h+=renderCalmingHudHtml(P.calming, ctx.calmingFocusSeg||lastStatewideCalmingFocusSeg);
+    if(calmingScreenOn||lastStatewideCalmingFocusSeg){
+      h+=`<div class="br-actions" style="margin-top:8px;display:flex;flex-wrap:wrap;gap:6px">`;
+      if(lastStatewideCalmingFocusSeg&&statewideCalmingResult&&statewideCalmingResult.ok){
+        h+=`<button type="button" class="btn" id="calmingBackStatewide" style="border-color:var(--cyan);color:var(--cyan)">Back to statewide list</button>`;
+      }
+      if(calmingScreenOn){
+        h+=`<button type="button" class="btn" id="calmingHudRerun" style="border-color:var(--amber);color:var(--amber)">Re-screen this click</button>`;
+      }
+      h+=`</div>`;
     }
   } else if(tab==='hydro'){
     if(!ctx.hydro) h+=`<div class="hint">Sampling DGS grids…</div>`;
@@ -33517,6 +33535,11 @@ function renderHudDrawer(ctx){
   if(calmBtn) calmBtn.onclick=()=>{
     toast('Re-screening calming candidates…');
     runCalmingScreenForCtx(ctx, {openTab:true});
+  };
+  const calmBack=$('calmingBackStatewide');
+  if(calmBack) calmBack.onclick=()=>{
+    openStatewideCalmingDock();
+    toast('Statewide calming list', 2500);
   };
   const en=$('estEnableFromPanel');
   if(en) en.onclick=()=>setEstimatesOn(true);
@@ -34729,7 +34752,12 @@ function paintCalmingScreen(result){
   if(typeof syncMapLegend==='function') syncMapLegend();
 }
 function formatCalmingRailValue(C){
-  if(!calmingScreenOn) return {v:'off', s:'Layers → Traffic calming screen'};
+  if(!calmingScreenOn && !lastStatewideCalmingFocusSeg) return {v:'off', s:'Layers → Traffic calming screen'};
+  if(lastStatewideCalmingFocusSeg&&lastStatewideCalmingFocusSeg.road){
+    const s=lastStatewideCalmingFocusSeg;
+    const band=s.band==='candidate'?'cand':(s.band==='study'?'study':(s.band||'—'));
+    return {v:band+(s.riskScore!=null?(' · '+s.riskScore):''), s:(s.road||'spot')+' · screen'};
+  }
   if(!C) return {v:'…', s:'run on map click'};
   if(C.error) return {v:'err', s:String(C.error).slice(0,48)};
   if(!C.n) return {v:'—', s:'no AADT segments in '+C.radiusFt+' ft'};
@@ -34737,22 +34765,163 @@ function formatCalmingRailValue(C){
   if(C.counts&&C.counts.study) return {v:String(C.counts.study)+' study', s:C.n+' seg · screen only'};
   return {v:String(C.n), s:'segments screened'};
 }
-function renderCalmingHudHtml(C){
-  let h=calmingMeaningHtml();
-  if(!calmingScreenOn){
-    h+=`<div class="hint warn">Calming screen is <b>off</b>. Turn it on under <b>Layers → Traffic calming screen</b>, then click the map again.</div>`;
+function calmingRiskParts(seg){
+  const fatal=+(seg&&seg.crashFatal||0);
+  const inj=+(seg&&seg.crashInj||0);
+  const pedBike=+(seg&&seg.crashPedBike||0);
+  const schoolN=+(seg&&seg.schoolN||0);
+  const base=fatal*8 + inj*2 + pedBike*6 + schoolN*5;
+  let ra=0;
+  if(seg&&seg.roundaboutPotential){
+    const hits=+(seg.roundaboutN||0);
+    const maxLegs=+(seg.roundaboutMaxLegs||0);
+    ra=hits*4 + (maxLegs>=4?6:(maxLegs>=3?3:0));
+  }
+  const total=(seg&&seg.riskScore!=null)?+seg.riskScore:(base+ra);
+  return {fatal, inj, pedBike, schoolN, base, ra, total};
+}
+function calmingMeasureGuidanceHtml(seg){
+  if(!seg) return '';
+  const ideas=[];
+  const aadt=seg.aadt!=null&&Number.isFinite(+seg.aadt)?+seg.aadt:null;
+  const posted=seg.postedMph;
+  const band=seg.band||'unknown';
+  const fc=(seg.funcClass||'').toLowerCase();
+
+  ideas.push({
+    t:'Speed study first',
+    b:'Outside subdivisions, TCDM eligibility for many horizontal/vertical measures needs a measured 85th-percentile speed (typically 85th ≥ posted + 5 mph). GeoTrak has no speed study here — confirm before scoping devices.'
+  });
+
+  if(band==='out'){
+    ideas.push({t:'Not applicable', b:'Freeway / interstate / expressway — traffic calming measures are not appropriate on this class.'});
+  } else if(band==='study'){
+    ideas.push({
+      t:'Study track',
+      b:'Arterial context and/or posted > 35 mph — the manual expects careful planning / engineering study before treating the corridor as a calming candidate. Do not jump to speed humps from this screen alone.'
+    });
+  } else if(band==='candidate'){
+    ideas.push({
+      t:'Candidate context',
+      b:'Local / collector (or similar) with posted ≤ 35 mph — calming measures may be on the table. Still screening only; community / legislator process and field verification control.'
+    });
+  }
+
+  if((+seg.schoolN||0)>0 || (+seg.crashPedBike||0)>0){
+    ideas.push({
+      t:'Vulnerable users',
+      b:'Schools and/or ped/bike crashes nearby elevate priority for pedestrian comfort: raised crosswalks / speed tables at crossings, corner extensions (bulbouts), median islands, and clearer crossings — from the TCDM vertical and horizontal families.'
+    });
+  }
+
+  if(seg.roundaboutPotential){
+    ideas.push({
+      t:'Intersection form',
+      b:'All-way stop nearby — screen for mini-roundabout, traffic circle, or realigned intersection (horizontal). Verify stop control and leg count in the field. See de.gov/roundabouts — not a roundabout warrant.'
+    });
+  }
+
+  if(band==='candidate'||band==='study'){
+    if(aadt!=null&&aadt<=12000&&(posted==null||posted<=35)){
+      ideas.push({
+        t:'Vertical family (if eligible)',
+        b:'AADT ≤ ~12k is where vertical speed-control devices (speed humps, cushions, tables) have been more successful in Delaware. Still run the TCDM VSCD flowchart (class, posted, 85th, snow route, AADT) before proposing them.'
+      });
+    } else if(aadt!=null&&aadt>12000){
+      ideas.push({
+        t:'Vertical family less likely',
+        b:'Higher AADT — VSCDs are less often successful. Lean toward horizontal measures, lane narrowing, radar speed signs, or volume management rather than speed humps.'
+      });
+    } else if(band==='candidate'){
+      ideas.push({
+        t:'Vertical family',
+        b:'Speed humps / cushions / tables only after the TCDM VSCD eligibility flowchart — need speed study, AADT, and snow-route checks.'
+      });
+    }
+  }
+
+  if(aadt!=null&&aadt<=20000&&(/collector|local|minor arterial|subdivision/.test(fc)||band==='candidate')){
+    ideas.push({
+      t:'Road diet / lane reallocation',
+      b:'AADT ≤ 20k — a road diet (FHWA guidance cited in TCDM) may be considered where the cross-section allows, as a horizontal measure that also helps multimodal space.'
+    });
+  }
+
+  if(band==='candidate'){
+    ideas.push({
+      t:'Horizontal family',
+      b:'Typical TCDM tools on this band: chicanes, chokers, median islands, corner extensions, lateral shifts, and mini-roundabouts — chosen for geometry, drainage, and emergency/snow access, not from this risk score alone.'
+    });
+    ideas.push({
+      t:'Other / lighter measures',
+      b:'Radar speed signs, lane narrowing, speed-reduction markings, and all-way stop control (often minor projects) may fit where reconstruction is not yet warranted.'
+    });
+  }
+
+  ideas.push({
+    t:'What GeoTrak will not do',
+    b:'This panel does not pick a device, set warrants, or approve a project. Use the Traffic Calming Design Manual for geometric design, signing, and markings.'
+  });
+
+  return ideas.map(it=>`<div class="calm-idea"><b>${esc(it.t)}</b><span>${esc(it.b)}</span></div>`).join('');
+}
+function calmingSpotDetailHtml(seg){
+  if(!seg) return '';
+  const parts=calmingRiskParts(seg);
+  const bandCls=seg.band==='candidate'?'candidate':seg.band==='study'?'study':(seg.band==='out'?'out':'unknown');
+  const bandLabel=(CALMING_TOOL_DEF.bands[seg.band]&&CALMING_TOOL_DEF.bands[seg.band].label)||seg.label||seg.band||'—';
+  const bandMeaning=(CALMING_TOOL_DEF.bands[seg.band]&&CALMING_TOOL_DEF.bands[seg.band].meaning)||(seg.why||'');
+  let h=`<div class="calm-spot">`;
+  h+=`<h4>${esc(seg.road||'Selected corridor')}${seg.roundaboutPotential?' <span class="calm-band roundabout">RA</span>':''}</h4>`;
+  h+=`<div class="calm-spot-meta">${esc(seg.county||'—')} · AADT ${seg.aadt!=null?Number(seg.aadt).toLocaleString():'—'} · ${seg.postedMph!=null?(seg.postedMph+' mph'):'spd —'} · ${esc(seg.funcClass||'class —')}</div>`;
+  h+=`<div><span class="calm-band ${esc(bandCls)}">${esc(bandLabel)}</span></div>`;
+  h+=`<div class="hint" style="margin-top:6px">${esc(bandMeaning)}</div>`;
+  if(seg.why) h+=`<div class="hint" style="margin-top:4px">${esc(seg.why)}</div>`;
+
+  h+=`<div style="margin-top:10px"><b style="color:var(--amber)">Risk score ${parts.total}</b> <span class="hint">— statewide ranking aid only (not a crash prediction or warrant)</span></div>`;
+  h+=`<div class="calm-risk-grid">`;
+  h+=`<span>Fatal crashes × 8</span><span>${parts.fatal} → ${parts.fatal*8}</span>`;
+  h+=`<span>Injury crashes × 2</span><span>${parts.inj} → ${parts.inj*2}</span>`;
+  h+=`<span>Ped / bike involved × 6</span><span>${parts.pedBike} → ${parts.pedBike*6}</span>`;
+  h+=`<span>Schools within 0.25 mi × 5</span><span>${parts.schoolN} → ${parts.schoolN*5}</span>`;
+  if(parts.ra) h+=`<span>Potential roundabout boost</span><span>+${parts.ra}</span>`;
+  h+=`<span class="tot">Total risk</span><span class="tot">${parts.total}</span>`;
+  h+=`</div>`;
+  if(seg.schoolNames&&seg.schoolNames.length){
+    h+=`<div class="hint">Schools: ${esc(seg.schoolNames.join(', '))}${(seg.schoolN||0)>seg.schoolNames.length?'…':''}</div>`;
+  }
+  if(seg.roundaboutHint) h+=`<div class="hint" style="color:#7dd3fc;margin-top:4px">${esc(seg.roundaboutHint)}</div>`;
+  h+=`<div class="hint" style="margin-top:6px">Crash pts are public FirstMap injury/fatal &amp; ped/bike since ~2021 within ~${CALMING_CRASH_BUF_FT} ft of the segment — not official crash reports.</div>`;
+
+  h+=`<div style="margin-top:12px"><b style="color:var(--cyan)">What could reasonably be considered (TCDM families)</b></div>`;
+  h+=calmingMeasureGuidanceHtml(seg);
+  h+=`<div style="margin-top:10px"><a href="${TCDM_MANUAL_URL}" target="_blank" rel="noopener" style="color:var(--cyan)">Open the Traffic Calming Design Manual (PDF)</a>`;
+  if(seg.roundaboutPotential) h+=` · <a href="${ROUNDABOUT_INFO_URL}" target="_blank" rel="noopener" style="color:#7dd3fc">de.gov/roundabouts</a>`;
+  h+=`</div></div>`;
+  return h;
+}
+function renderCalmingHudHtml(C, focusSeg){
+  focusSeg=focusSeg||lastStatewideCalmingFocusSeg||null;
+  let h='';
+  if(focusSeg) h+=calmingSpotDetailHtml(focusSeg);
+  else h+=calmingMeaningHtml();
+  if(!calmingScreenOn && !focusSeg){
+    h+=`<div class="hint warn">Calming screen is <b>off</b>. Turn it on under <b>Layers → Traffic calming screen</b>, then click the map again — or open a row from the statewide list.</div>`;
     return h;
   }
-  if(!C){
+  if(!C && !focusSeg){
     h+=`<div class="hint">Screening nearby FirstMap segments…</div>`;
     return h;
   }
-  if(C.error){
-    h+=`<div class="hint warn">Screen failed: ${esc(C.error)}. Needs internet to FirstMap.</div>`;
-    return h;
+  if(C&&C.error){
+    h+=`<div class="hint warn">Nearby screen failed: ${esc(C.error)}. Spot detail above still uses the statewide join when available.</div>`;
   }
-  if(!C.n){
-    h+=`<div class="hint warn">No traffic-count segments within ${C.radiusFt} ft. Zoom to a state road or widen Search radius, then click again.</div>`;
+  if(focusSeg){
+    h+=`<div class="hint" style="margin:8px 0 6px"><b>Nearby AADT segments</b> at this map point (click screen) — for corridor context.</div>`;
+  }
+  if(!C||!C.n){
+    if(!focusSeg) h+=`<div class="hint warn">No traffic-count segments within ${(C&&C.radiusFt)||'—'} ft. Zoom to a state road or widen Search radius, then click again.</div>`;
+    else if(!C||!C.error) h+=`<div class="hint">No additional traffic-count segments in the click radius — spot detail above is from the statewide screen.</div>`;
     return h;
   }
   h+=`<div class="hint" style="margin-bottom:8px">${C.n} segment(s) in ${C.radiusFt} ft ·
@@ -34772,7 +34941,9 @@ function renderCalmingHudHtml(C){
     h+=`<tr><td colspan="5" class="wrap hint" style="padding-top:0;padding-bottom:8px">${esc(s.why)}${(s.notes&&s.notes.length)?' · '+esc(s.notes.join(' · ')):''}${s.roundaboutHint?' · '+esc(s.roundaboutHint):''}${(s.missing&&s.missing.length)?' · <b>Missing:</b> '+esc(s.missing.join('; ')):''}</td></tr>`;
   });
   h+=`</table>`;
-  h+=`<div class="hint" style="margin-top:10px">Painted on map: teal = candidate · amber = study · grey = not applicable. Use the PDF for measure selection (horizontal / vertical / other). GeoTrak does not pick a device.</div>`;
+  if(!focusSeg){
+    h+=`<div class="hint" style="margin-top:10px">Painted on map: teal = candidate · amber = study · grey = not applicable. Use the PDF for measure selection (horizontal / vertical / other). GeoTrak does not pick a device.</div>`;
+  }
   return h;
 }
 async function runCalmingScreenForCtx(ctx, opts){
@@ -35805,13 +35976,15 @@ function paintStatewideCalming(result, opts){
       });
     }
   }
-  const feats=(segs||[]).filter(s=>s&&s.geometry).map(s=>({
+  const feats=(segs||[]).filter(s=>s&&s.geometry).map((s,i)=>({
     type:'Feature',
     geometry:s.geometry,
-    properties:{band:s.band, road:s.road, aadt:s.aadt, postedMph:s.postedMph, funcClass:s.funcClass, county:s.county, why:s.why, label:s.label, roundaboutPotential:!!s.roundaboutPotential}
+    properties:{band:s.band, road:s.road, aadt:s.aadt, postedMph:s.postedMph, funcClass:s.funcClass, county:s.county, why:s.why, label:s.label, roundaboutPotential:!!s.roundaboutPotential, _scIdx:i}
   }));
+  statewideCalmingPaintedSegs=(segs||[]).filter(s=>s&&s.geometry);
   if(!feats.length){
     statewideCalmingBands={candidate:false,study:false};
+    statewideCalmingPaintedSegs=[];
     paintStatewideCalmingRoundabouts([]);
     if(typeof syncMapLegend==='function') syncMapLegend();
     return;
@@ -35841,8 +36014,15 @@ function paintStatewideCalming(result, opts){
         +(p.postedMph!=null?(' · '+p.postedMph+' mph'):'')
         +(p.funcClass?(' · '+p.funcClass):'')
         +(p.roundaboutPotential?' · potential roundabout':'')
-        +' · '+(p.label||p.band);
+        +' · '+(p.label||p.band)
+        +' · click for spot detail';
       try{ layer.bindTooltip(tip,{className:'btip',sticky:true,direction:'top'}); }catch(_){}
+      layer.on('click', function(ev){
+        try{ if(typeof L!=='undefined'&&L.DomEvent) L.DomEvent.stopPropagation(ev); }catch(_){}
+        const idx=p._scIdx;
+        const s=(idx!=null&&statewideCalmingPaintedSegs[idx])?statewideCalmingPaintedSegs[idx]:null;
+        if(s) openCalmingSpotFromSegment(s);
+      });
     }
   }).addTo(map);
   paintStatewideCalmingRoundabouts(segs);
@@ -35897,6 +36077,50 @@ function zoomToCalmingSegment(seg){
     if(b&&b.isValid()) map.fitBounds(b.pad(0.4), { maxZoom:16 });
   }catch(e){
     console.warn('zoomToCalmingSegment', e);
+  }
+}
+/** Close statewide list → open Site Intel Calming with risk + TCDM guidance for this segment. */
+async function openCalmingSpotFromSegment(seg){
+  if(!seg) return;
+  lastStatewideCalmingFocusSeg=seg;
+  try{ closeStatewideCalmingDock(); }catch(_){}
+  if(typeof closeHdrPop==='function') try{ closeHdrPop(); }catch(_){}
+  if(!calmingScreenOn){
+    calmingScreenOn=true;
+    try{ localStorage.setItem('geotrak_calming_screen','1'); }catch(_){}
+    const cb=$('calmingScreenOn'); if(cb) cb.checked=true;
+  }
+  try{ zoomToCalmingSegment(seg); }catch(e){ console.warn(e); }
+
+  let lat=null, lon=null;
+  if(seg.roundaboutPotential&&seg.roundaboutStops&&seg.roundaboutStops.length){
+    lat=+seg.roundaboutStops[0].lat;
+    lon=+seg.roundaboutStops[0].lon;
+  }
+  if((lat==null||lon==null||!Number.isFinite(lat)||!Number.isFinite(lon))&&seg.geometry){
+    const pt=typeof calmingGeomOnRoadPoint==='function'?calmingGeomOnRoadPoint(seg.geometry):null;
+    if(pt&&Number.isFinite(pt.lat)&&Number.isFinite(pt.lon)){ lat=pt.lat; lon=pt.lon; }
+  }
+  if((lat==null||lon==null)&&seg.lat!=null&&seg.lon!=null){
+    lat=+seg.lat; lon=+seg.lon;
+  }
+  if(lat==null||lon==null||!Number.isFinite(lat)||!Number.isFinite(lon)){
+    toast('Could not locate this segment on the map', 4000);
+    return;
+  }
+  try{
+    await runPointQuery(lat, lon, {
+      hudTab:'calming',
+      quiet:true,
+      forceHud:true,
+      calmingFocusSeg:seg
+    });
+    /* Keep statewide highlight after Site Intel target paints */
+    try{ highlightCalmingSegment(seg); }catch(_){}
+    if(seg.roundaboutPotential) try{ focusCalmingRoundaboutStops(seg); }catch(_){}
+  }catch(e){
+    console.warn('openCalmingSpotFromSegment', e);
+    toast('Could not open spot calming detail', 4000);
   }
 }
 function statewideCalmingPassesAdvanced(s){
@@ -36048,7 +36272,7 @@ function renderStatewideCalmingDock(){
     if(s.schoolN) riskBits.push((s.schoolN)+' school'+(s.schoolN===1?'':'s')+(s.schoolNames&&s.schoolNames.length?(' · '+s.schoolNames.join(', ')):""));
     if(s.roundaboutPotential) riskBits.push('potential roundabout'+(s.roundaboutMaxLegs?(' · '+s.roundaboutMaxLegs+'-leg'):'')+(s.roundaboutN>1?(' · '+s.roundaboutN+' stops'):''));
     if(s.riskScore) riskBits.push('risk '+s.riskScore);
-    html+=`<div class="sc-row" data-sc-i="${i}" title="Zoom to segment">
+    html+=`<div class="sc-row" data-sc-i="${i}" title="Open spot calming detail">
       <span class="calm-band ${bandCls}">${esc(s.band)}</span>
       <div><div class="rd">${esc(s.road)}${s.roundaboutPotential?' <span class="calm-band roundabout">RA</span>':''}</div>
         <div class="meta">${esc(s.county||'—')} · AADT ${s.aadt!=null?s.aadt.toLocaleString():'—'} · ${s.postedMph!=null?(s.postedMph+' mph'):'spd —'} · ${esc(s.funcClass||'class —')}</div>
@@ -36064,7 +36288,7 @@ function renderStatewideCalmingDock(){
     el.onclick=function(){
       const i=+this.getAttribute('data-sc-i');
       const seg=rows[i];
-      if(seg) zoomToCalmingSegment(seg);
+      if(seg) openCalmingSpotFromSegment(seg);
     };
   });
 }
@@ -36280,6 +36504,8 @@ function closeStatewideCalmingDock(){
 function clearStatewideCalmingScreen(){
   clearStatewideCalmingOverlay();
   statewideCalmingResult=null;
+  statewideCalmingPaintedSegs=[];
+  lastStatewideCalmingFocusSeg=null;
   closeStatewideCalmingDock();
   setStatewideCalmingStatus('Cleared calming screen. Schools stay on map if still enabled under Layers.');
   syncStatewideCalmingButtons();
