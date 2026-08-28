@@ -109,7 +109,7 @@ function trainingReadme(project) {
     'Copy the issued SOS PDF into this folder and name it issued.pdf (or issued-rev1.pdf).',
     'This save does not email or send anything. Do not rename program-output files to look like issued letters.',
     '',
-    'Once a week (or after a batch of letters), double-click learn-sos.bat.',
+    'Once a week (or after a batch of packs), double-click learn-new-jobs.bat.',
     'Then drop SOS-language.json on APL / Chart, SOS-libraries.json on Source Library,',
     'and SOS-cc.json on CC.',
     '',

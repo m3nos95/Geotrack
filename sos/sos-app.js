@@ -2374,7 +2374,7 @@
       '  3. issued.pdf                    — the SOS letter that was already sent (the one you are training against)',
       '',
       'Copy the issued SOS PDF into this folder and name it issued.pdf. Nothing is emailed or sent from this save.',
-      'Once a week, double-click learn-sos.bat, then drop SOS-language.json on APL / Chart,',
+      'Once a week, double-click learn-new-jobs.bat (training packs only), then drop SOS-language.json on APL / Chart,',
       'SOS-libraries.json on Source Library, and SOS-cc.json on CC.',
       '',
     ].join('\n');

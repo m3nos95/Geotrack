@@ -306,4 +306,39 @@ assert.ok(fs.existsSync(outFile));
 assert.strictEqual(fs.readFileSync(outFile, 'utf8').trim(), '');
 fs.rmSync(tmp, { recursive: true, force: true });
 
+const Learn = require('./corpus-learn.js');
+assert.ok(Learn.trainingJobsDir('C:\\SOS Program').replace(/\\/g, '/').endsWith('/jobs'));
+assert.strictEqual(path.basename(Learn.harvestWriteDir('/tmp/SOS Program/jobs')), 'SOS Program');
+
+const keptLang = Learn.mergeLanguageHarvest({
+  kind: 'issued-language',
+  letters: 6747,
+  sections: 33000,
+  bySpec: { '#301001': { action: 'Must be tested and approved prior to use.', uses: 256, intent: 'test' } },
+  byFamily: { aggregate: { action: 'Must be tested and approved prior to use.', uses: 1000 } },
+}, {
+  kind: 'issued-language',
+  letters: 1,
+  sections: 4,
+  bySpec: {
+    '#301001': { action: 'Must be tested.', uses: 1, intent: 'test' },
+    '#999001': { action: 'Approved for use.', uses: 1, intent: 'approved' },
+  },
+  byFamily: {},
+});
+assert.strictEqual(keptLang.letters, 6747);
+assert.ok(/Must be tested and approved/.test(keptLang.bySpec['#301001'].action));
+assert.ok(keptLang.bySpec['#999001']);
+
+const jobsRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'sos-jobs-only-'));
+fs.mkdirSync(path.join(jobsRoot, 'jobs', '2026-08-28_602951138'), { recursive: true });
+fs.writeFileSync(path.join(jobsRoot, 'jobs', '2026-08-28_602951138', 'program-output.txt'),
+  'SECTION: #401005 - SUPERPAVE TYPE C\nSOURCE: Allan Myers\nACTION: Approved.\n');
+fs.writeFileSync(path.join(jobsRoot, 'loose-dump.pdf'), 'not a job pack');
+const jobCases = Learn.discoverCases({ dirOnly: true, jobsOnly: true, dirs: [jobsRoot] });
+assert.strictEqual(jobCases.length, 1, 'jobs-only scans training packs, not the letter dump');
+assert.ok(/602951138/.test(jobCases[0].slug));
+assert.ok(!jobCases.some(c => /loose-dump/.test(c.slug + c.dir)));
+fs.rmSync(jobsRoot, { recursive: true, force: true });
+
 console.log('OK corpus pairing');

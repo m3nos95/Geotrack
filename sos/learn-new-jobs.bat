@@ -1,7 +1,8 @@
 @echo off
 setlocal EnableExtensions
-REM Learn SOS letter rules from issued letters (contractor .xls optional).
-REM Default folder is Aaron's Desktop SOS Program. Drag another folder onto this bat to use it.
+REM Learn from SOS Program\jobs\ training packs only (submittal + program-output + issued.pdf).
+REM Does not rescan the thousands of issued-letter PDFs. Merges into existing SOS-*.json.
+REM Default folder is Aaron's Desktop SOS Program.
 
 cd /d "%~dp0.."
 
@@ -13,7 +14,7 @@ if not exist "%FOLDER%\" (
   echo Folder not found:
   echo   %FOLDER%
   echo.
-  echo Drag the SOS Program folder onto this file, or edit the path in sos\learn-sos.bat
+  echo Drag the SOS Program folder onto this file, or edit the path in sos\learn-new-jobs.bat
   pause
   exit /b 1
 )
@@ -50,22 +51,17 @@ if errorlevel 1 (
 )
 
 echo.
-echo SOS Program folder:
-echo   %FOLDER%
+echo Training packs only:
+echo   %FOLDER%\jobs
 echo.
-echo After the APL snapshot line it will list PDFs, then print Reading PDFs 25/3000 ...
-echo That is the slow part. Leave this window open until it says Press any key.
+echo This does not read the full issued-letter dump. New packs are merged into SOS-language.json /
+echo SOS-libraries.json / SOS-cc.json that are already in that folder.
 echo.
 
-node sos\corpus-learn.js --dir-only --dir "%FOLDER%"
+node sos\corpus-learn.js --dir-only --jobs-only --dir "%FOLDER%"
 set ERR=%ERRORLEVEL%
 echo.
-echo Wrote SOS-learn-report.md, SOS-cc.json, SOS-language.json, and SOS-libraries.json in that folder.
-echo Drop SOS-language.json on APL / Chart.
-echo Drop SOS-libraries.json on Source Library or Spec Library (fills both).
-echo Training packs live in SOS Program\jobs\  (submittal + program-output + issued.pdf).
-echo To learn ONLY those packs (not the full letter dump), double-click learn-new-jobs.bat.
-echo Contractor .xls files are optional — issued letter PDFs are enough.
+echo Drop SOS-language.json on APL / Chart, SOS-libraries.json on Source Library, SOS-cc.json on CC.
 echo.
 pause
 exit /b %ERR%

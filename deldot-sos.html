@@ -349,7 +349,7 @@
         </div>
         <div class="import-zone" id="lists-drop-zone" onclick="document.getElementById('lists-file-input').click()">
           <div class="import-zone-label">Drop Approved Source List.xlsx, Source of Supply Database.xlsx, SOS-lists.json, SOS-language.json, SOS-libraries.json, or SOS-cc.json</div>
-          <div class="import-zone-sub">To train from old jobs: drop the contractor form, click <strong>Save training pack</strong>, then copy the SOS PDF you already issued into that folder as issued.pdf. Run learn-sos.bat when you have a batch. Drop SOS-language.json here and SOS-libraries.json on Source Library.</div>
+          <div class="import-zone-sub">To train from old jobs: drop the contractor form, click <strong>Save training pack</strong>, then copy the SOS PDF you already issued into that folder as issued.pdf. Double-click <strong>learn-new-jobs.bat</strong> to learn only those packs (not the full letter dump). Drop SOS-language.json here and SOS-libraries.json on Source Library.</div>
           <input type="file" id="lists-file-input" style="display:none" accept=".xls,.xlsx,.json" onchange="handleListFile(this.files[0])">
         </div>
         <div style="display:flex;gap:8px;flex-wrap:wrap;">
@@ -623,6 +623,6 @@
 <script src="sos/sos-engine.js?v=20260828e"></script>
 <script src="sos/sos-formpdf.js?v=20260828d"></script>
 <script src="sos/letter-export.js?v=20260828e"></script>
-<script src="sos/sos-app.js?v=20260828m"></script>
+<script src="sos/sos-app.js?v=20260828n"></script>
 </body>
 </html>

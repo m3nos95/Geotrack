@@ -21,8 +21,11 @@ Do not rename `program-output` files to look like issued letters. Harvest reads 
 
 ## Weekly: run the learner
 
-1. Double-click **`learn-sos.bat`**.
-2. Drop **`SOS-language.json`** on **APL / Chart**, **`SOS-cc.json`** on **CC**, and **`SOS-libraries.json`** on **Source Library** (or Spec Library — one file fills both).
+**First time / full dump:** double-click **`learn-sos.bat`**. That reads every issued letter in SOS Program (slow).
+
+**New training packs only:** double-click **`learn-new-jobs.bat`**. That reads `SOS Program\jobs\` (the three-file folders from Save training pack) and **merges** into the `SOS-*.json` files already in SOS Program. It does not reopen the thousands of old PDFs.
+
+Then drop **`SOS-language.json`** on **APL / Chart**, **`SOS-cc.json`** on **CC**, and **`SOS-libraries.json`** on **Source Library**.
 
 The current Approved Source List and APL still decide approved vs must-be-tested / not approved. Harvested wording fills unknown items and matches issued phrasing when the decision is the same. The report (`SOS-learn-report.md`) diffs the contractor form against the engine, and **program output against the sent letter** — that second diff is what still needs a rule change.
 

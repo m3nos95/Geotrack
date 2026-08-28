@@ -16,7 +16,22 @@ const CASES = path.join(ROOT, 'cases');
 const DROP = path.join(ROOT, 'drop');
 const WANT_JSON = process.argv.includes('--json');
 const DIR_ONLY = process.argv.includes('--dir-only');
+const JOBS_ONLY = process.argv.includes('--jobs-only');
 const VERBOSE = process.argv.includes('--verbose');
+
+function trainingJobsDir(root) {
+  if (!root) return '';
+  return path.basename(root).toLowerCase() === 'jobs' ? root : path.join(root, 'jobs');
+}
+
+function harvestWriteDir(root) {
+  if (!root) return '';
+  return path.basename(root).toLowerCase() === 'jobs' ? path.dirname(root) : root;
+}
+
+function readJsonIf(file) {
+  try { return JSON.parse(fs.readFileSync(file, 'utf8')); } catch (e) { return null; }
+}
 
 function argvDirs() {
   const dirs = [];
@@ -406,10 +421,16 @@ function loadProgramSnapshot(dir) {
   return null;
 }
 
-function discoverCases() {
+function discoverCases(opts) {
+  const opt = opts || {};
+  const dirOnly = opt.dirOnly != null ? !!opt.dirOnly : DIR_ONLY;
+  const jobsOnly = opt.jobsOnly != null ? !!opt.jobsOnly : JOBS_ONLY;
+  const extra = opt.dirs || argvDirs();
   const cases = [];
   const inspected = {};
-  console.error('Listing PDFs and spreadsheets (OneDrive can sit here a minute)…');
+  console.error(jobsOnly
+    ? 'Listing training packs in jobs\\ (not the full letter dump)…'
+    : 'Listing PDFs and spreadsheets (OneDrive can sit here a minute)…');
   const inspectAll = (files) => {
     const pdfs = files.filter(p => /\.pdf$/i.test(p));
     inspectPdfBatch(pdfs);
@@ -430,23 +451,26 @@ function discoverCases() {
     cases.push({ slug, dir, xls, pdfs: letters, formPdfs: forms });
   };
 
-  const extra = argvDirs();
-  if (!DIR_ONLY) {
+  if (!dirOnly) {
     listDirs(CASES).forEach(dir => takeFolder(dir, path.basename(dir)));
     listDirs(DROP).forEach(dir => takeFolder(dir, 'drop/' + path.basename(dir)));
   }
 
   const loose = [];
-  if (!DIR_ONLY) {
+  if (!dirOnly) {
     loose.push(...listFiles(CASES, ['.xls', '.xlsx', '.pdf']));
     loose.push(...listFiles(DROP, ['.xls', '.xlsx', '.pdf']));
   }
   extra.forEach(dir => {
-    const jobsDir = path.join(dir, 'jobs');
-    if (fs.existsSync(jobsDir)) {
+    const jobsDir = trainingJobsDir(dir);
+    if (jobsDir && fs.existsSync(jobsDir)) {
       listDirs(jobsDir).forEach(jobDir => takeFolder(jobDir, 'jobs/' + path.basename(jobDir)));
+    } else if (jobsOnly) {
+      console.error('No jobs\\ folder in ' + dir + '. Click Save training pack first.');
     }
-    loose.push(...listFilesRecursive(dir, ['.xls', '.xlsx', '.pdf']));
+    if (!jobsOnly) {
+      loose.push(...listFilesRecursive(dir, ['.xls', '.xlsx', '.pdf']));
+    }
   });
   const pdfCount = loose.filter(p => /\.pdf$/i.test(p)).length;
   const xlsCount = loose.filter(p => /\.xlsx?$/i.test(p)).length;
@@ -1255,6 +1279,86 @@ function renderSummary(results, harvest, language) {
   return lines.join('\n');
 }
 
+function mergeLanguageHarvest(prev, neu) {
+  if (!prev || prev.kind !== 'issued-language' || !prev.bySpec) return neu;
+  if (!neu || !neu.bySpec) return prev;
+  const bySpec = Object.assign({}, prev.bySpec);
+  Object.keys(neu.bySpec).forEach(k => {
+    const a = bySpec[k];
+    const b = neu.bySpec[k];
+    if (!a || (b.uses || 0) > (a.uses || 0)) bySpec[k] = b;
+  });
+  const byFamily = Object.assign({}, prev.byFamily || {});
+  Object.keys(neu.byFamily || {}).forEach(k => {
+    const a = byFamily[k];
+    const b = neu.byFamily[k];
+    if (!a || (b.uses || 0) > (a.uses || 0)) byFamily[k] = b;
+  });
+  return {
+    kind: 'issued-language',
+    generatedAt: neu.generatedAt || new Date().toISOString(),
+    letters: Math.max(prev.letters || 0, neu.letters || 0),
+    sections: Math.max(prev.sections || 0, neu.sections || 0),
+    bySpec,
+    byFamily,
+  };
+}
+
+function mergeLibraryHarvest(prev, neu) {
+  if (!prev || !Array.isArray(prev.sources)) return neu;
+  if (!neu) return prev;
+  const srcKey = s => String((s && s.name) || '').toLowerCase() + '\0' + String((s && s.loc) || '').toLowerCase();
+  const sources = new Map();
+  (prev.sources || []).forEach(s => { if (s && s.name) sources.set(srcKey(s), s); });
+  (neu.sources || []).forEach(s => {
+    if (!s || !s.name) return;
+    const k = srcKey(s);
+    const old = sources.get(k);
+    if (!old || (s.letters || 0) > (old.letters || 0)) sources.set(k, s);
+  });
+  const specMap = new Map();
+  (prev.specs || []).forEach(s => {
+    if (s && s.num) specMap.set(String(s.num).toUpperCase(), s);
+  });
+  (neu.specs || []).forEach(s => {
+    if (!s || !s.num) return;
+    const k = String(s.num).toUpperCase();
+    if (!specMap.has(k)) specMap.set(k, s);
+  });
+  return {
+    kind: 'issued-libraries',
+    generatedAt: neu.generatedAt || new Date().toISOString(),
+    letters: Math.max(prev.letters || 0, neu.letters || 0),
+    sources: [...sources.values()].sort((a, b) => (b.letters || 0) - (a.letters || 0) || String(a.name).localeCompare(b.name)),
+    specs: [...specMap.values()].sort((a, b) => String(a.num).localeCompare(String(b.num))),
+  };
+}
+
+function mergeCcHarvest(prev, neu) {
+  if (!prev || !Array.isArray(prev.people)) return neu;
+  if (!neu) return prev;
+  const map = new Map();
+  (prev.people || []).forEach(p => {
+    if (p && p.name) map.set(String(p.name).toLowerCase(), p);
+  });
+  (neu.people || []).forEach(p => {
+    if (!p || !p.name) return;
+    const k = String(p.name).toLowerCase();
+    const old = map.get(k);
+    if (!old || (p.letters || 0) > (old.letters || 0)) map.set(k, p);
+  });
+  const people = [...map.values()].sort((a, b) => (b.letters || 0) - (a.letters || 0) || String(a.name).localeCompare(b.name));
+  const letters = Math.max(prev.letters || 0, neu.letters || 0);
+  const threshold = Math.max(2, Math.ceil(letters * 0.4));
+  const always = people.filter(p => p.letters >= threshold).map(p => ({ name: p.name, org: p.org }));
+  return {
+    generatedAt: (neu && neu.generatedAt) || new Date().toISOString(),
+    letters,
+    always,
+    people,
+  };
+}
+
 function main() {
   fs.mkdirSync(CASES, { recursive: true });
   fs.mkdirSync(DROP, { recursive: true });
@@ -1263,22 +1367,34 @@ function main() {
     console.error('No --dir folder found. Pass --dir "C:\\path\\to\\SOS Program"');
     process.exit(1);
   }
-  extra.forEach(d => console.error('Scanning ' + d));
+  extra.forEach(d => {
+    if (JOBS_ONLY) console.error('Training packs only: ' + trainingJobsDir(d));
+    else console.error('Scanning ' + d);
+  });
   const lists = loadListsForDir(extra[0] || '');
   if (lists.tack && lists.tack.entries && lists.tack.entries.length) {
     console.error('APL snapshot: ' + require('./sos-lists.js').summary(lists));
   }
   const results = mergeComparedResults(discoverCases().map(c => compareCase(c, lists)));
-  const harvest = harvestCcFromResults(results);
-  const language = harvestLanguageFromResults(results);
-  const libraries = harvestLibrariesFromResults(results);
+  let harvest = harvestCcFromResults(results);
+  let language = harvestLanguageFromResults(results);
+  let libraries = harvestLibrariesFromResults(results);
+  const outDirs = extra.length ? extra.map(harvestWriteDir) : [];
+  if (JOBS_ONLY) {
+    outDirs.forEach(out => {
+      harvest = mergeCcHarvest(readJsonIf(path.join(out, 'SOS-cc.json')), harvest);
+      language = mergeLanguageHarvest(readJsonIf(path.join(out, 'SOS-language.json')), language);
+      libraries = mergeLibraryHarvest(readJsonIf(path.join(out, 'SOS-libraries.json')), libraries);
+    });
+    console.error('Merged new training packs into the existing SOS-*.json harvest (did not rescan the full letter dump).');
+  }
   const text = renderText(results, harvest, language, libraries);
   fs.writeFileSync(path.join(ROOT, 'report.md'), text);
   fs.writeFileSync(path.join(ROOT, 'report.json'), JSON.stringify(results, null, 2));
   fs.writeFileSync(path.join(ROOT, 'cc-harvest.json'), JSON.stringify(harvest, null, 2));
   fs.writeFileSync(path.join(ROOT, 'language-harvest.json'), JSON.stringify(language, null, 2));
   fs.writeFileSync(path.join(ROOT, 'libraries-harvest.json'), JSON.stringify(libraries, null, 2));
-  extra.forEach(dir => {
+  outDirs.forEach(dir => {
     try { fs.writeFileSync(path.join(dir, 'SOS-learn-report.md'), text); }
     catch (e) { console.error('Could not write report into ' + dir + ': ' + e.message); }
     try { fs.writeFileSync(path.join(dir, 'SOS-cc.json'), JSON.stringify(harvest, null, 2)); }
@@ -1292,7 +1408,7 @@ function main() {
   else {
     console.log(VERBOSE ? text : renderSummary(results, harvest, language));
     console.log('\nFull report: sos/corpus/report.md');
-    extra.forEach(dir => {
+    outDirs.forEach(dir => {
       console.log('Copy: ' + path.join(dir, 'SOS-learn-report.md'));
       console.log('CC list: ' + path.join(dir, 'SOS-cc.json') + '  (drop this on the CC tab)');
       console.log('Language: ' + path.join(dir, 'SOS-language.json') + '  (drop this on APL / Chart)');
@@ -1327,4 +1443,10 @@ module.exports = {
   loadListsForDir,
   loadProgramSnapshot,
   looksLikeContractorForm,
+  discoverCases,
+  trainingJobsDir,
+  harvestWriteDir,
+  mergeLanguageHarvest,
+  mergeLibraryHarvest,
+  mergeCcHarvest,
 };
