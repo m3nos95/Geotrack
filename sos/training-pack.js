@@ -147,10 +147,12 @@ function saveTrainingPack(programRoot, slug, files) {
 function trainingSaveUrls(loc) {
   const proto = String((loc && loc.protocol) || '');
   const host = String((loc && loc.hostname) || '');
+  const port = String((loc && loc.port) || '');
   const local = 'http://127.0.0.1:18765/api/save-training';
   if (proto === 'http:' || proto === 'https:') {
     const urls = ['/api/save-training'];
-    if (host !== '127.0.0.1' && host !== 'localhost') urls.push(local);
+    const onHelper = (host === '127.0.0.1' || host === 'localhost') && port === '18765';
+    if (!onHelper) urls.push(local);
     return urls;
   }
   return [local];

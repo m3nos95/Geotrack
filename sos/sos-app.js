@@ -2526,10 +2526,12 @@
   function trainingSaveUrls() {
     const proto = (typeof location !== 'undefined' && location.protocol) || '';
     const host = (typeof location !== 'undefined' && location.hostname) || '';
+    const port = (typeof location !== 'undefined' && location.port) || '';
     const local = 'http://127.0.0.1:18765/api/save-training';
     if (proto === 'http:' || proto === 'https:') {
       const urls = ['/api/save-training'];
-      if (host !== '127.0.0.1' && host !== 'localhost') urls.push(local);
+      const onHelper = (host === '127.0.0.1' || host === 'localhost') && port === '18765';
+      if (!onHelper) urls.push(local);
       return urls;
     }
     return [local];

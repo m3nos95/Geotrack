@@ -32,7 +32,11 @@ assert.strictEqual(Pack.trainingFolderName({ date: '2026-08-28', contract: '#602
 assert.strictEqual(Pack.trainingFolderName({ date: '2026-08-28', contract: 'T2025-061-01' }), '2026-08-28_T2025-061-01');
 assert.strictEqual(Pack.trainingFolderName({ date: '2026-08-28', title: 'Chapel Creek (Gaines) #602951138' }), '2026-08-28_letter');
 assert.deepStrictEqual(Pack.trainingSaveUrls({ protocol: 'file:', hostname: '' }), ['http://127.0.0.1:18765/api/save-training']);
-assert.deepStrictEqual(Pack.trainingSaveUrls({ protocol: 'http:', hostname: '127.0.0.1' }), ['/api/save-training']);
+assert.deepStrictEqual(Pack.trainingSaveUrls({ protocol: 'http:', hostname: '127.0.0.1', port: '18765' }), ['/api/save-training']);
+assert.deepStrictEqual(Pack.trainingSaveUrls({ protocol: 'http:', hostname: '127.0.0.1', port: '8765' }), [
+  '/api/save-training',
+  'http://127.0.0.1:18765/api/save-training',
+]);
 assert.deepStrictEqual(Pack.trainingSaveUrls({ protocol: 'https:', hostname: 'example.github.io' }), [
   '/api/save-training',
   'http://127.0.0.1:18765/api/save-training',
