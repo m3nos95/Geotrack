@@ -1,12 +1,12 @@
 # Source of Supply (SOS) letter module
 
-Browser app that turns a contractor DelDOT **Source of Supply** `.xls` / `.xlsx` into the M&R review letter.
+Browser app that turns a contractor DelDOT **Source of Supply** `.xls` / `.xlsx` / form `.pdf` into the M&R review letter.
 
 Open: [deldot-sos.html](../deldot-sos.html) (GitHub Pages: `/Geotrack/deldot-sos.html`).
 
 ## Daily workflow
 
-1. Drop the contractor form (`DEL DOT - SOS - ….xls`) on **Import**. Compact contractor lists (`Spec` / `Item Description`, including multi-tab workbooks like `460 - SOS List.xlsx`) are read the same way. A new form **replaces** the current letter (you will be asked). Click **New letter** (or **Clear All** on the items tab) to wipe the header and start blank — the previous job is saved in this browser until you do. ✕ Clear preview only hides the import table. ✕ Clear highlights on the letter pane only removes yellow marks.
+1. Drop the contractor form (`DEL DOT - SOS - ….xls` or a PDF of that same form) on **Import**. Compact contractor lists (`Spec` / `Item Description`, including multi-tab workbooks like `460 - SOS List.xlsx`) are read the same way. Issued M&R letter PDFs are not imported. A new form **replaces** the current letter (you will be asked). Click **New letter** (or **Clear All** on the items tab) to wipe the header and start blank — the previous job is saved in this browser until you do. ✕ Clear preview only hides the import table. ✕ Clear highlights on the letter pane only removes yellow marks.
 2. The app reads the sheet in the browser (no API key), groups related specs, and applies ACTION language.
 3. Fill **Contract / Application #** if the contractor left it blank (the Frey form often does).
 4. Review items — especially **MUST BE TESTED** (highlighted) and APL / not-approved tack coat. **Add item** fills a stock ACTION note from the Action Type (Must Be Tested includes the district sampler and lab-results contacts). Pick another stock note from the list under Action Notes, or edit the text.
@@ -83,7 +83,9 @@ Messages already tagged **DelDOT SOS** are not pulled again. This does **not** a
 | `build-spec-year-lists.py` | Rebuild spec-year snapshots from the awarded-list and item-list PDFs |
 | `sos-engine.test.js` | Node tests (`node sos/sos-engine.test.js`) |
 | `corpus-learn.js` | Diff contractor `.xls` vs issued PDF (`node sos/corpus-learn.js`) |
-| `corpus-formpdf.py` | Read contractor SOS forms that were saved as PDF |
+| `sos-formpdf.js` | Browser/Node parser for contractor SOS forms saved as PDF |
+| `sos-formpdf.test.js` | PDF-form parse tests (`node sos/sos-formpdf.test.js`) |
+| `corpus-formpdf.py` | Extract text from contractor SOS form PDFs |
 | `corpus-learn.test.js` | Pairing tests (`node sos/corpus-learn.test.js`) |
 | `watch-inbox.js` | Process SOS attachments into completed letter folders |
 | `outlook-pull.ps1` | Save .xls/.xlsx/.pdf from the signed-in Outlook inbox |

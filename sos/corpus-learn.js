@@ -158,29 +158,12 @@ function inspectPdfBatch(pdfs) {
 }
 
 function parseFormPdf(pdfPath) {
-  return JSON.parse(runScript([FORMPDF, '--parse', pdfPath]));
+  const text = readPdf(pdfPath);
+  return require('./sos-formpdf.js').parseFormText(text, { filename: path.basename(pdfPath) });
 }
 
 function gridFromForm(parsed) {
-  const p = parsed.project || {};
-  const rows = [
-    ['', '', '', '', '', '', 'Agreement /Permit/Contract/Application #:', p.contract || '', ''],
-    ['', '', '', '', '', '', 'Title of Contract:', p.title || '', ''],
-    ['Source of Supply', '', '', '', '', '', '', 'Contractor: ' + (p.contractor || ''), ''],
-    ['', '', '', '', '', '', '', 'Address: ' + (p.address || ''), ''],
-    ['', '', '', '', '', '', '', 'Date:' + (p.date || ''), ''],
-    ['', 'District: ' + (p.district || ''), '', '', '', '', '', '', ''],
-    ['', '', '', '', '', '', '', 'DelDOT Contact: ' + (p.contact || ''), ''],
-    ['Specification #', '', 'Item Description', '', 'Material', 'Supplier', '', 'Manufacturer', 'Alternate Manufacturer'],
-    ['', '', '', '', '', '', '', 'Address & Contact', 'Address & Contact'],
-  ];
-  for (const it of parsed.items || []) {
-    const spec = /^\d+$/.test(it.spec) ? Number(it.spec) : it.spec;
-    rows.push(['', spec, it.desc || '', '', it.material || '', it.supplier || '', '', it.manufacturer || '', it.alt || '']);
-    if (it.loc) rows.push(['', '', '', '', '', '', '', it.loc, '']);
-    rows.push(Array(9).fill(''));
-  }
-  return rows;
+  return require('./sos-formpdf.js').gridFromForm(parsed);
 }
 
 function readGrid(xlsPath) {

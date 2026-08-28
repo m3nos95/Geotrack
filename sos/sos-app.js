@@ -878,7 +878,7 @@
 
     const ccHtml = ccList.map(cc => `${esc(cc.name)}, ${esc(cc.org)}`).join('<br>');
     const empty = !items.length
-      ? '<p style="color:#888;font-style:italic;">Drop a contractor SOS spreadsheet on the Import tab to generate this letter.</p>' : '';
+      ? '<p style="color:#888;font-style:italic;">Drop a contractor SOS spreadsheet or form PDF on the Import tab to generate this letter.</p>' : '';
 
     const headerSrc = new URL('sos/letterhead-header.jpg', window.location.href).href;
     const footerSrc = new URL('sos/letterhead-footer.png', window.location.href).href;
@@ -1795,13 +1795,75 @@
     txt.textContent = msg;
   }
 
+  function commitImportResult(result, file, kindLabel) {
+    parsedImport = result;
+    const rows = (result.ungrouped && result.ungrouped.length) ? result.ungrouped.length : (result.parsed && result.parsed.items ? result.parsed.items.length : result.items.length);
+    if (jobIsDirty() && !confirm('Replace the current letter with ' + file.name + '?\n\nThis clears the previous job. Click Cancel to keep it and only preview the new form.')) {
+      warnings = result.warnings || [];
+      setImportStatus('Parsed ' + result.items.length + ' items. Current letter was kept. Click Load into letter to replace it, or New letter to start blank.', 'blue');
+      renderImportPreview();
+      renderWarnings();
+      return;
+    }
+    warnings = result.warnings || [];
+    setImportStatus(`Parsed ${result.items.length} letter item${result.items.length === 1 ? '' : 's'} from ${rows} ${kindLabel} row${rows === 1 ? '' : 's'}. Loaded as a new letter.`, 'green');
+    renderImportPreview();
+    importAllParsed();
+  }
+
+  async function handleImportPdf(file) {
+    const label = document.getElementById('drop-label');
+    if (label) label.textContent = file.name;
+    setImportStatus('Reading PDF…', 'blue');
+    try {
+      if (typeof SosFormPdf === 'undefined') {
+        setImportStatus('PDF importer is not loaded. Refresh the page (needs network for the PDF reader).', 'red');
+        return;
+      }
+      const buf = await file.arrayBuffer();
+      const parsed = await SosFormPdf.parsePdf(buf, { filename: file.name });
+      if (parsed.kind === 'issued-letter') {
+        setImportStatus('That PDF is an issued M&R letter. Drop the contractor SOS form (.xls, .xlsx, or the form PDF).', 'red');
+        return;
+      }
+      if (parsed.kind !== 'contractor-form' || !(parsed.items || []).length) {
+        setImportStatus(parsed.error || 'Could not read a Source of Supply form from this PDF. Scanned phone photos usually have no selectable text — drop the .xls if you have it.', 'red');
+        return;
+      }
+      const grid = SosFormPdf.gridFromForm(parsed);
+      const result = SOSEngine.processGrid(grid, { filename: file.name, lists: listsForEngine() });
+      if (parsed.project) {
+        const p = parsed.project;
+        result.project = Object.assign({}, result.project, {
+          contract: p.contract || result.project.contract,
+          title: p.title || result.project.title,
+          contractor: p.contractor || result.project.contractor,
+          contractorAddr: p.contractorAddr || p.address || result.project.contractorAddr,
+          contact: p.contact || result.project.contact,
+          district: p.district || result.project.district,
+          docKind: p.docKind || result.project.docKind,
+        });
+      }
+      commitImportResult(result, file, 'form');
+    } catch (e) {
+      console.error(e);
+      setImportStatus('Could not parse this PDF: ' + e.message, 'red');
+    } finally {
+      const input = document.getElementById('file-input');
+      if (input) input.value = '';
+    }
+  }
+
   window.handleImportFile = async function (file) {
     if (!file) return;
     if (/\.json$/i.test(file.name) || SOSLists.looksLikeAggregateChart(file.name) || SOSLists.looksLikeSosDatabase(file.name, [])) {
       return handleListFile(file);
     }
+    if (/\.pdf$/i.test(file.name)) {
+      return handleImportPdf(file);
+    }
     if (!/\.xlsx?$/i.test(file.name)) {
-      setImportStatus('Drop the contractor SOS .xls / .xlsx form (not the issued PDF).', 'red');
+      setImportStatus('Drop the contractor SOS .xls / .xlsx / .pdf form (not an issued M&R letter PDF).', 'red');
       return;
     }
     document.getElementById('drop-label').textContent = file.name;
@@ -1817,18 +1879,7 @@
         return;
       }
       const result = SOSEngine.processWorkbook(wb, { filename: file.name, lists: listsForEngine() });
-      parsedImport = result;
-      if (jobIsDirty() && !confirm('Replace the current letter with ' + file.name + '?\n\nThis clears the previous job. Click Cancel to keep it and only preview the new form.')) {
-        warnings = result.warnings || [];
-        setImportStatus('Parsed ' + result.items.length + ' items. Current letter was kept. Click Load into letter to replace it, or New letter to start blank.', 'blue');
-        renderImportPreview();
-        renderWarnings();
-        return;
-      }
-      warnings = result.warnings || [];
-      setImportStatus(`Parsed ${result.items.length} letter item${result.items.length === 1 ? '' : 's'} from ${result.ungrouped.length} spreadsheet row${result.ungrouped.length === 1 ? '' : 's'}. Loaded as a new letter.`, 'green');
-      renderImportPreview();
-      importAllParsed();
+      commitImportResult(result, file, 'spreadsheet');
     } catch (e) {
       console.error(e);
       setImportStatus('Could not parse this file: ' + e.message, 'red');
