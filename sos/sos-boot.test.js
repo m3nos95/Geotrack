@@ -12,7 +12,7 @@ assert.ok(/id="letter-save-status"/.test(html), 'Save training pack status is ne
 const saveFn = app.slice(app.indexOf('window.saveTrainingPack'), app.indexOf('window.printLetter'));
 assert.ok(/AbortController/.test(saveFn), 'do not wait forever for start-sos.bat');
 assert.ok(/setLetterActionStatus/.test(saveFn));
-assert.ok(/Saving training pack/.test(saveFn));
+assert.ok(/function trainingSaveUrls\(/.test(app));
 
 const app = fs.readFileSync(path.join(__dirname, 'sos-app.js'), 'utf8');
 assert.ok(/function loadPdfJs\(/.test(app));
