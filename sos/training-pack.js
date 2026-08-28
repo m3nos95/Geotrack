@@ -54,6 +54,7 @@ const WINDOWS_RESERVED = /^(con|prn|aux|nul|com[1-9]|lpt[1-9])$/i;
 
 /** ASCII letters, digits, hyphen, underscore only — safe as a Windows folder or zip name. */
 function safeSlug(raw, fallback) {
+  const fb = fallback === undefined ? 'job' : fallback;
   const s = String(raw || '')
     .normalize('NFKD')
     .replace(/[\u0300-\u036f]/g, '')
@@ -63,7 +64,7 @@ function safeSlug(raw, fallback) {
     .replace(/^[-_.]+|[-_.]+$/g, '')
     .slice(0, 60)
     .replace(/[-_.]+$/g, '');
-  if (!s || WINDOWS_RESERVED.test(s) || /^\.+$/.test(s)) return fallback || 'job';
+  if (!s || WINDOWS_RESERVED.test(s) || /^\.+$/.test(s)) return fb;
   return s;
 }
 
