@@ -101,6 +101,26 @@
     });
   }
 
+  function ccPersonSortName(person) {
+    return String(typeof person === 'string' ? person : (person && person.name) || '')
+      .trim()
+      .replace(/\s+/g, ' ');
+  }
+
+  function sortCcPeople(people, dir) {
+    const sign = String(dir || 'asc').toLowerCase() === 'desc' ? -1 : 1;
+    return (people || []).slice().sort((a, b) => {
+      const cmp = ccPersonSortName(a).localeCompare(ccPersonSortName(b), undefined, {
+        sensitivity: 'base',
+        numeric: true,
+      });
+      if (cmp) return cmp * sign;
+      const orgA = String(typeof a === 'string' ? '' : (a && a.org) || '');
+      const orgB = String(typeof b === 'string' ? '' : (b && b.org) || '');
+      return orgA.localeCompare(orgB, undefined, { sensitivity: 'base' }) * sign;
+    });
+  }
+
   const CC_LIBRARY_SEEDS = [
     { name: 'Hunter McCabe', org: 'DelDOT' },
     { name: 'Ray Glanden', org: 'DelDOT' },
@@ -2083,6 +2103,8 @@
     CC_LIBRARY_SEEDS,
     normalizeCcName,
     filterRetiredCcPeople,
+    ccPersonSortName,
+    sortCcPeople,
     resolveContacts,
     samplerForDistrict,
     assignmentMatchesItems,

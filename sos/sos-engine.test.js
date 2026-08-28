@@ -633,6 +633,20 @@ assert.strictEqual(keptCc.length, 1);
 assert.strictEqual(keptCc[0].name, 'James Smith');
 assert.strictEqual(DATA.filterRetiredCcPeople(mixedCc, []).length, 3);
 assert.strictEqual(DATA.filterRetiredCcPeople(['Hunter McCabe', 'Ray Glanden'], ['HUNTER MCCABE']).join(), 'Ray Glanden');
+
+const sortedCc = DATA.sortCcPeople([
+  { name: 'Mark Schafer', org: 'DelDOT' },
+  { name: 'aaron wieczorek', org: 'DelDOT' },
+  { name: 'Zane York', org: 'DelDOT' },
+  { name: 'Aaron Wieczorek', org: 'Consultant' },
+]);
+assert.deepStrictEqual(sortedCc.map(p => p.name + '|' + p.org), [
+  'Aaron Wieczorek|Consultant',
+  'aaron wieczorek|DelDOT',
+  'Mark Schafer|DelDOT',
+  'Zane York|DelDOT',
+]);
+assert.deepStrictEqual(DATA.sortCcPeople(['Mark', 'Aaron', 'Zane'], 'desc'), ['Zane', 'Mark', 'Aaron']);
 console.log('Retired CC names are skipped on harvest / library load');
 
 const prevJob = {

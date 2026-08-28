@@ -7,6 +7,7 @@
     cc: 'deldot_sos_cc_v2',
     cc_lib: 'deldot_sos_cc_lib',
     cc_lib_ready: 'deldot_sos_cc_lib_ready',
+    cc_lib_sort: 'deldot_sos_cc_lib_sort',
     cc_retired: 'deldot_sos_cc_retired',
     revisions: 'deldot_sos_revisions_v2',
     rev: 'deldot_sos_currentrev_v2',
@@ -47,6 +48,7 @@
   let items = ls_get(STORE.items, []);
   let ccList = ls_get(STORE.cc, []);
   let ccLib = [];
+  let ccLibSortDir = 'asc';
   let ccRetired = [];
   let ccAssignments = [];
   let samplerContacts = {};
@@ -298,16 +300,23 @@
     persistRetiredNames();
   }
 
+  function persistCCLib() {
+    ccLib = SOSData.sortCcPeople(ccLib, ccLibSortDir);
+    ls_set(STORE.cc_lib, ccLib);
+    ls_set(STORE.cc_lib_sort, ccLibSortDir);
+  }
+
   function loadCCLib() {
     loadRetiredNames();
     const ready = !!ls_get(STORE.cc_lib_ready, false);
+    ccLibSortDir = ls_get(STORE.cc_lib_sort, 'asc') === 'desc' ? 'desc' : 'asc';
     ccLib = ls_get(STORE.cc_lib, []);
     if (!Array.isArray(ccLib)) ccLib = [];
     if (!ready && !ccLib.length) {
       ccLib = SOSData.CC_LIBRARY_SEEDS.map((p, i) => ({ id: 'cl' + (i + 1), role: p.role || '', ...p }));
     }
     ccLib = SOSData.filterRetiredCcPeople(ccLib, ccRetired);
-    ls_set(STORE.cc_lib, ccLib);
+    persistCCLib();
     ls_set(STORE.cc_lib_ready, true);
   }
 
@@ -626,7 +635,10 @@
     const q = (document.getElementById('cc-lib-search')?.value || '').toLowerCase();
     const tbody = document.getElementById('cc-lib-tbody');
     const activeNames = new Set(ccList.map(c => c.name.toLowerCase()));
-    const filtered = ccLib.filter(p => !q || p.name.toLowerCase().includes(q) || (p.org || '').toLowerCase().includes(q));
+    const filtered = SOSData.sortCcPeople(
+      ccLib.filter(p => !q || p.name.toLowerCase().includes(q) || (p.org || '').toLowerCase().includes(q)),
+      ccLibSortDir
+    );
     tbody.innerHTML = filtered.map(p => {
       const onLetter = activeNames.has(p.name.toLowerCase());
       const idJs = JSON.stringify(p.id);
@@ -644,6 +656,16 @@
       </tr>`;
     }).join('');
     document.getElementById('cc-lib-count').textContent = `(${filtered.length})`;
+    const ind = document.getElementById('cc-lib-sort-ind');
+    if (ind) ind.textContent = ccLibSortDir === 'desc' ? 'Z–A' : 'A–Z';
+    const btn = document.getElementById('cc-lib-sort-btn');
+    if (btn) btn.title = ccLibSortDir === 'desc' ? 'Sorted Z–A. Click for A–Z.' : 'Sorted A–Z. Click for Z–A.';
+  };
+  window.sortCCLib = function (dir) {
+    if (dir === 'asc' || dir === 'desc') ccLibSortDir = dir;
+    else ccLibSortDir = ccLibSortDir === 'asc' ? 'desc' : 'asc';
+    ls_set(STORE.cc_lib, ccLib);
+    renderCCLib();
   };
   window.addCCFromLib = function (libId) {
     const entry = ccLib.find(p => p.id === libId);
@@ -661,7 +683,7 @@
     const key = ccNameKey(person.name);
     retireName(person.name);
     ccLib = ccLib.filter(p => p.id !== libId);
-    ls_set(STORE.cc_lib, ccLib);
+    persistCCLib();
     ccList = ccList.filter(c => ccNameKey(c.name) !== key);
     ccAssignments = ccAssignments.filter(a => ccNameKey(a.name) !== key);
     persistCcRules();
@@ -706,7 +728,7 @@
     } else {
       ccLib.push({ id: 'cl' + Date.now(), name, org, role });
     }
-    ls_set(STORE.cc_lib, ccLib);
+    persistCCLib();
     ccList.forEach(c => {
       if (ccNameKey(c.name) === oldKey || ccNameKey(c.name) === newKey) {
         c.name = name;
@@ -1413,7 +1435,7 @@
     if (existing) return existing;
     const entry = { id: 'cl' + Date.now() + '-' + ccLib.length, name: n, org: org || 'DelDOT', role: '' };
     ccLib.push(entry);
-    ls_set(STORE.cc_lib, ccLib);
+    persistCCLib();
     return entry;
   }
 

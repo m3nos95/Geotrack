@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>DelDOT Source of Supply</title>
   <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="sos/sos.css?v=20260821c">
+  <link rel="stylesheet" href="sos/sos.css?v=20260828b">
 </head>
 <body>
 <div class="topbar">
@@ -241,6 +241,7 @@
         <button class="btn btn-primary btn-sm" onclick="openCCModal()">+ Add person</button>
         <button class="btn btn-ghost btn-sm" onclick="addHarvestedAlwaysToLetter()">+ Harvested names</button>
         <input class="lib-search" id="cc-lib-search" placeholder="Search library…" oninput="renderCCLib()" style="width:180px;">
+        <button class="btn btn-ghost btn-sm" id="cc-lib-sort-btn" onclick="sortCCLib()" title="Sorted A–Z. Click for Z–A.">Sort <span id="cc-lib-sort-ind">A–Z</span></button>
       </div>
       <div id="cc-harvest-status" style="font-size:12px;color:var(--text-mid);margin:4px 0 10px;line-height:1.45;"></div>
       <div class="import-zone" id="cc-drop-zone" onclick="document.getElementById('cc-file-input').click()" style="margin-bottom:12px;padding:16px;">
@@ -253,7 +254,7 @@
           <div style="font-size:10px;font-weight:700;color:var(--text-dim);letter-spacing:.08em;margin-bottom:6px;text-transform:uppercase;">CC Library <span id="cc-lib-count"></span></div>
           <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;box-shadow:var(--shadow);">
             <table class="items-table">
-              <thead><tr><th>Name</th><th>Org</th><th style="width:148px;"></th></tr></thead>
+              <thead><tr><th><button type="button" class="th-sort" onclick="sortCCLib()">Name</button></th><th>Org</th><th style="width:148px;"></th></tr></thead>
               <tbody id="cc-lib-tbody"></tbody>
             </table>
           </div>
@@ -615,10 +616,10 @@
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <script src="sos/spec-letter-descs.js?v=20260821a"></script>
 <script src="sos/spec-year-data.js?v=20260821e"></script>
-<script src="sos/sos-data.js?v=20260821e"></script>
+<script src="sos/sos-data.js?v=20260828b"></script>
 <script src="sos/sos-lists.js?v=20260828a"></script>
 <script src="sos/sos-engine.js?v=20260828a"></script>
 <script src="sos/letter-export.js?v=20260821c"></script>
-<script src="sos/sos-app.js?v=20260828a"></script>
+<script src="sos/sos-app.js?v=20260828b"></script>
 </body>
 </html>
