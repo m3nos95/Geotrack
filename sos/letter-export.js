@@ -100,6 +100,7 @@ hr, hr.letter-divider { border: none; border-top: 1px solid #ccc; margin: 14pt 0
 .letter-sig-name { font-weight: 400; margin-top: 4pt; }
 .letter-sig:not(.has-image) .letter-sig-name { margin-top: 8pt; }
 .letter-cc { margin-top: 14pt; font-size: 12pt; line-height: 1.15; page-break-inside: avoid; }
+.letter-edit, [contenteditable] { outline: none !important; box-shadow: none !important; background: transparent !important; caret-color: transparent; }
 ${footer}
 `;
 }
@@ -157,17 +158,20 @@ function letterItemsHtml(items, h) {
   const letterSectionLines = h.letterSectionLines;
   const sourceLine = h.sourceLine;
   const actionHtml = h.actionHtml;
-  return (items || []).map((item) => {
+  return (items || []).map((item, idx) => {
     const specLines = letterSectionLines(item);
     const src = sourceLine(item).split('\n').map(esc).join('<br>');
     const subs = (item.subItems || []).map(s => `&nbsp;&nbsp;&bull; ${esc(s)}`).join('<br>');
     const specs = specLines.map(esc).join('<br>');
-    return `<div class="letter-section-block">
+    const id = esc(item.id != null ? item.id : idx + 1);
+    const edit = (kind, extraClass) =>
+      `contenteditable="true" spellcheck="true" class="letter-edit${extraClass ? ' ' + extraClass : ''}" data-edit="${kind}" data-item-id="${id}"`;
+    return `<div class="letter-section-block" data-item-id="${id}">
       <div class="letter-row"><div class="letter-field-label letter-label-section">SECTION:</div>
-        <div class="letter-section-lines">${specs}${subs ? '<br>' + subs : ''}</div></div>
-      <div class="letter-row"><div class="letter-field-label">SOURCE:</div><div>${src}</div></div>
+        <div ${edit('section', 'letter-section-lines')}>${specs}${subs ? '<br>' + subs : ''}</div></div>
+      <div class="letter-row"><div class="letter-field-label">SOURCE:</div><div ${edit('source', 'letter-source-text')}>${src}</div></div>
       <div class="letter-row"><div class="letter-field-label">ACTION:</div>
-        <div class="letter-action-text">${actionHtml(item)}</div></div>
+        <div ${edit('action', 'letter-action-text')}>${actionHtml(item)}</div></div>
     </div>`;
   }).join('\n');
 }

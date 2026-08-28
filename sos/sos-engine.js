@@ -1332,11 +1332,19 @@
     return [...new Set(flags)];
   }
 
+  function mfgHasCompanyName(item) {
+    const raw = cellStr(item && item.mfgName);
+    if (!raw) return false;
+    if (isWeakSourceName(raw) || isCityState(raw) || isStreet(raw)) return false;
+    return !!letterizePlantName(raw);
+  }
+
   function pickLetterSource(item) {
-    // APL / manufactured products: manufacturer is the SOURCE.
-    // Bulk plants: supplier name + plant city from manufacturer address column.
-    const manufactured = ['tack', 'crack-seal', 'curing', 'expansion', 'apl-product', 'ttc', 'signs', 'castings', 'striping', 'hardware', 'seed'].includes(item.family);
-    if (manufactured && item.mfgName && !isCityState(item.mfgName)) {
+    // Manufacturer column with a company name is the plant / producer (SOURCE).
+    // Supplier is the distributor or paving contractor (e.g. Delmarva Paving laying
+    // Allan Myers mix). When Manufacturer is only an address, SOURCE is the
+    // supplier name plus that plant city — same as issued River Asphalt 1 / 2 letters.
+    if (mfgHasCompanyName(item)) {
       let altName = letterizePlantName(item.altMfgName || item.altName);
       const srcName = letterizePlantName(item.mfgName);
       if (altName && srcName && altName.toLowerCase() === srcName.toLowerCase()
@@ -2156,6 +2164,30 @@
     return line;
   }
 
+  function parseSourceLineText(text) {
+    const lines = String(text || '').split(/\n/).map(s => s.replace(/\s+/g, ' ').trim()).filter(Boolean);
+    const stripNote = (s) => s.replace(/\s*\((?:tested|requires testing)[^)]*\)\s*$/i, '').trim();
+    const parseOne = (line) => {
+      const clean = stripNote(String(line || '').replace(/^alt:\s*/i, ''));
+      const m = clean.match(/^(.*?)\s+[-–—]\s+(.*)$/);
+      if (m) return { name: m[1].trim(), loc: m[2].replace(/,\s*$/, '').trim() };
+      return { name: clean, loc: '' };
+    };
+    const out = { srcName: '', srcLoc: '', altName: '', altLoc: '' };
+    if (lines[0] && !/^alt:/i.test(lines[0])) {
+      const p = parseOne(lines[0]);
+      out.srcName = p.name;
+      out.srcLoc = p.loc;
+    }
+    const alt = lines.find(l => /^alt:/i.test(l));
+    if (alt) {
+      const p = parseOne(alt);
+      out.altName = p.name;
+      out.altLoc = p.loc;
+    }
+    return out;
+  }
+
   function letterPlainText(project, items, cc) {
     const dateStr = formatLongDate(project.date);
     const lines = [];
@@ -2214,6 +2246,7 @@
     digitalSignatureLines,
     todayISO,
     sourceLine,
+    parseSourceLineText,
     letterSectionLines,
     letterPlainText,
     familyFromSpec,

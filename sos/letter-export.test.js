@@ -55,6 +55,12 @@ assert.ok(/letter-label-section/.test(Export.letterItemsHtml([{ specs: ['#301001
   sourceLine: () => 'Vulcan',
   actionHtml: () => 'Approved for use.',
 })));
+assert.ok(/contenteditable="true"/.test(Export.letterItemsHtml([{ id: 3, specs: ['#301001'], desc: 'GABC', subItems: [], actionNotes: 'Approved for use.' }], {
+  esc: (s) => String(s),
+  letterSectionLines: () => ['#301001 - GABC'],
+  sourceLine: () => 'Vulcan',
+  actionHtml: () => 'Approved for use.',
+})));
 assert.ok(/margin-bottom:\s*12pt/.test(Export.printLetterCss()), 'blank line between SECTION / SOURCE / ACTION');
 
 console.log('OK letter-export print highlights and Word wrap');

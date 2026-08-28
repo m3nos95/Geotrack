@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>DelDOT Source of Supply</title>
   <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="sos/sos.css?v=20260828b">
+  <link rel="stylesheet" href="sos/sos.css?v=20260828e">
 </head>
 <body>
 <div class="topbar">
@@ -340,7 +340,7 @@
         <div id="lists-status" class="ok-banner" style="display:none;"></div>
         <div style="font-size:12px;color:var(--text-mid);line-height:1.55;">
           <a href="https://materialsandresearch.deldot.gov/index.php/Approved_Product_Lists" target="_blank" rel="noopener">DelDOT Approved Product Lists</a>
-          are public PDFs (tack coat, pavement marking, crack seal, curing, TTC, …). This app ships a snapshot and re-checks it when you run <code>refresh-sos-lists.bat</code>.
+          are public PDFs. <strong>You do not need to download them one by one.</strong> This app already ships a snapshot of the lists SOS actually checks (tack coat, pavement marking, crack seal, curing) and re-reads those PDFs when you run <code>refresh-sos-lists.bat</code>. Other lists on that page (admixtures, RCP, precast, guardrail, UHPC, …) are not pulled — SOS ACTION language does not look them up. Links to the official PDFs are below if you want to open one.
           Aggregate pits move on and off the <strong>Approved Source List</strong> constantly. On the office PC, <code>refresh-sos-lists.bat</code> (daily) and <code>watch-sos-inbox.bat</code> pull
           <code>\\DOTFS01\Groups\Geo Construction Test Report\Reference Samples\Approved Source List.xlsx</code>.
           Chrome cannot open that folder from this HTML file. Use <strong>Pull chart from office share</strong> while <code>start-sos.bat</code> is running (that helper reads the share), or drop the .xlsx here.
@@ -381,7 +381,8 @@
       <input type="file" id="sig-upload" accept="image/*" style="display:none" onchange="uploadSignature(event)">
     </div>
     <div class="letter-scroll">
-      <div class="letter-preview-label">Letter Preview</div>
+      <div class="letter-preview-label">Letter Preview — click the text to edit. Print / PDF uses what you see.</div>
+      <div id="letter-edit-banner" class="letter-edit-banner" hidden>Typed edits are on this letter. Print uses this text. Refresh Letter rebuilds from SOS ITEMS.</div>
       <div class="letter-doc" id="letter-doc"></div>
     </div>
   </div>
@@ -624,9 +625,9 @@
 <script src="sos/spec-year-data.js?v=20260821e"></script>
 <script src="sos/sos-data.js?v=20260828c"></script>
 <script src="sos/sos-lists.js?v=20260828a"></script>
-<script src="sos/sos-engine.js?v=20260828a"></script>
+<script src="sos/sos-engine.js?v=20260828e"></script>
 <script src="sos/sos-formpdf.js?v=20260828d"></script>
-<script src="sos/letter-export.js?v=20260821c"></script>
-<script src="sos/sos-app.js?v=20260828d"></script>
+<script src="sos/letter-export.js?v=20260828e"></script>
+<script src="sos/sos-app.js?v=20260828e"></script>
 </body>
 </html>

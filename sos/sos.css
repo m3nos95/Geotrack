@@ -554,11 +554,32 @@
     font-family: var(--mono);
     font-size: 10px;
     font-weight: 600;
-    letter-spacing: 0.12em;
+    letter-spacing: 0.08em;
     text-transform: uppercase;
     color: var(--text-mid);
-    margin: 0 0 10px 2px;
+    margin: 0 0 8px 2px;
   }
+  .letter-edit-banner {
+    font-family: var(--sans);
+    font-size: 11px;
+    color: #6b5200;
+    background: var(--amber-bg);
+    border: 1px solid #e8c060;
+    border-radius: 2px;
+    padding: 6px 10px;
+    margin: 0 0 10px;
+  }
+  .letter-edit {
+    outline: 1px dashed transparent;
+    border-radius: 2px;
+    min-height: 1em;
+  }
+  .letter-edit:hover { outline-color: #c5d4e8; }
+  .letter-edit:focus {
+    outline: 2px solid #4a7ab5;
+    background: #f7fbff;
+  }
+  .letter-scroll:not(.highlight-mode) .letter-doc { cursor: text; }
   .letter-scroll {
     flex: 1;
     overflow-y: auto;
@@ -1060,7 +1081,7 @@
   }
   .topbar-links a:hover { text-decoration: underline; }
   @media print {
-    .topbar, .project-header, .main-panel, .letter-panel-header, .letter-preview-label { display: none !important; }
+    .topbar, .project-header, .main-panel, .letter-panel-header, .letter-preview-label, .letter-edit-banner { display: none !important; }
     .shell { display: block; height: auto; }
     .letter-panel { border: none; }
     .letter-scroll { overflow: visible; padding: 0; }
@@ -1083,6 +1104,10 @@
     .letter-action-text span[style*="ffff80"] {
       background: #ffff80 !important;
       box-shadow: inset 0 0 0 9999px #ffff80 !important;
+    }
+    .letter-edit, [contenteditable] {
+      outline: none !important;
+      background: transparent !important;
     }
     .letter-print-pages > tfoot { display: table-footer-group; }
     .letter-closing {

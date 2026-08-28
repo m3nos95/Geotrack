@@ -1040,6 +1040,8 @@ assert.ok(/Bear Materials/i.test(easternPcc.srcName));
 
 const easternHma = eastern.items.find(i => i.family === 'hma-mix');
 assert.ok(easternHma && easternHma.specs.includes('#401005') && easternHma.specs.includes('#401014'));
+assert.ok(/Contractors Materials/i.test(easternHma.srcName), 'address-only manufacturer keeps supplier plant: ' + easternHma.srcName);
+assert.ok(/Allan Myers/i.test(easternHma.altName), easternHma.altName);
 
 const easternBeads = eastern.items.find(i => (i.letterSpecs || i.specs).includes('#817002'));
 assert.ok(easternBeads, 'glass beads #817002 parsed');
@@ -1405,5 +1407,32 @@ if (fs.existsSync(liveTriCounty)) {
   assert.ok(/hidden on the contractor spreadsheet/i.test(flag) && /#701016/.test(flag), flag);
   console.log('OK hidden spreadsheet rows');
 })();
+
+// Hunters Creek Superpave: Manufacturer Allan Myers Georgetown is SOURCE, not
+// Supplier Delmarva Paving (the paving contractor).
+const huntersHma = Engine.processGrid(gridFromObjects(FREY_HEADER, [[
+  ['', 401005.0, 'Superpave Type C, PG 64-22 (Carbonate Stone)', '', 'Superpave Type C', 'Delmarva Paving', '', 'Allan Myers', 'Allan Myers'],
+  ['', '', '', '', '', '38279 Old Stage Road', '', '22351 Joseph Ln', 'Bishopville, MD'],
+  ['', '', '', '', '', 'Delmar, DE 19940', '', 'Georgetown, DE', 'Plant # 22'],
+  ['', '', '', '', '', '410-819-3001', '', '', ''],
+]])).items.find(i => (i.letterSpecs || i.specs || []).includes('#401005'));
+assert.ok(huntersHma, 'Hunters Creek Superpave parsed');
+assert.ok((huntersHma.letterSpecs || huntersHma.specs).includes('#401005'));
+assert.ok(/Allan Myers/i.test(huntersHma.srcName), huntersHma.srcName);
+assert.ok(/Georgetown/i.test(huntersHma.srcLoc), huntersHma.srcLoc);
+assert.ok(!/Delmarva/i.test(huntersHma.srcName), 'paving contractor is not SOURCE: ' + huntersHma.srcName);
+assert.ok(/Allan Myers/i.test(huntersHma.altName), huntersHma.altName);
+assert.ok(/Bishopville/i.test(huntersHma.altLoc), huntersHma.altLoc);
+const huntersSrc = Engine.sourceLine(huntersHma);
+assert.ok(/Allan Myers - Georgetown/i.test(huntersSrc), huntersSrc);
+assert.ok(/Alt: Allan Myers - Bishopville/i.test(huntersSrc), huntersSrc);
+
+const parsedSrc = Engine.parseSourceLineText(
+  'Allan Myers - Georgetown DE\nAlt: Allan Myers - Bishopville MD'
+);
+assert.strictEqual(parsedSrc.srcName, 'Allan Myers');
+assert.strictEqual(parsedSrc.srcLoc, 'Georgetown DE');
+assert.strictEqual(parsedSrc.altName, 'Allan Myers');
+assert.strictEqual(parsedSrc.altLoc, 'Bishopville MD');
 
 console.log('--- letter ---\n' + letter);

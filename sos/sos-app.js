@@ -22,6 +22,7 @@
     cc_rules: 'deldot_sos_cc_rules_v1',
     cc_samplers: 'deldot_sos_cc_samplers_v1',
     author: 'deldot_sos_author_v1',
+    letter: 'deldot_sos_letter_html_v1',
   };
 
   const actionMeta = {
@@ -65,6 +66,7 @@
   let signatureImage = localStorage.getItem('sosSignatureImage') || '';
   let signedAt = '';
   let highlightMode = false;
+  let letterPreviewDirty = false;
   let srcFocusIdx = { primary: -1, alt: -1 };
   let specDdFocusIdx = -1;
   let slActiveTags = [];
@@ -232,8 +234,8 @@
         if (id === 'ph-district' || id === 'ph-contact') {
           if (items.length) applyCcRulesToLetter();
         }
-        if (id === 'ph-contract' && items.length) applyListsToOpenLetter();
-        renderLetter();
+        if (id === 'ph-contract' && items.length && !letterPreviewDirty) applyListsToOpenLetter();
+        if (!letterPreviewDirty) renderLetter();
         renderWarnings();
       });
       el.addEventListener('blur', persistProject);
@@ -843,7 +845,132 @@
     return html;
   }
 
-  window.renderLetter = function () {
+  function letterEditAttr(kind) {
+    return `contenteditable="true" spellcheck="true" class="letter-edit" data-edit="${kind}"`;
+  }
+
+  function persistLetterHtml() {
+    const doc = document.getElementById('letter-doc');
+    if (!doc) return;
+    ls_set(STORE.letter, { dirty: !!letterPreviewDirty, html: letterPreviewDirty ? doc.innerHTML : '' });
+  }
+
+  function clearLetterEdits() {
+    letterPreviewDirty = false;
+    ls_set(STORE.letter, { dirty: false, html: '' });
+    updateLetterEditBanner();
+  }
+
+  function markLetterDirty() {
+    letterPreviewDirty = true;
+    persistLetterHtml();
+    updateLetterEditBanner();
+  }
+
+  function updateLetterEditBanner() {
+    const el = document.getElementById('letter-edit-banner');
+    if (!el) return;
+    el.hidden = !letterPreviewDirty;
+  }
+
+  function setLetterEditable(on) {
+    document.querySelectorAll('#letter-doc [data-edit]').forEach((el) => {
+      el.setAttribute('contenteditable', on ? 'true' : 'false');
+    });
+  }
+
+  function itemByEditId(id) {
+    const want = String(id);
+    return items.find((i) => String(i.id) === want);
+  }
+
+  function applyLetterFieldEdit(el) {
+    const kind = el.getAttribute('data-edit');
+    const id = el.getAttribute('data-item-id');
+    const text = (el.innerText || '').replace(/\u00a0/g, ' ').replace(/\r/g, '').replace(/\n{3,}/g, '\n\n').trim();
+    if (kind === 'source') {
+      const item = itemByEditId(id);
+      if (!item || !SOSEngine.parseSourceLineText) return;
+      const parsed = SOSEngine.parseSourceLineText(text);
+      if (parsed.srcName) {
+        item.srcName = parsed.srcName;
+        item.srcLoc = parsed.srcLoc;
+        item.mfgName = parsed.srcName;
+        item.mfgLoc = parsed.srcLoc;
+      }
+      item.altName = parsed.altName;
+      item.altLoc = parsed.altLoc;
+      if (parsed.altName) item.altMfgName = parsed.altName;
+      persistAll();
+      renderItems();
+    } else if (kind === 'action') {
+      const item = itemByEditId(id);
+      if (!item) return;
+      item.actionNotes = text;
+      persistAll();
+      renderItems();
+    } else if (kind === 'to') {
+      const lines = text.split('\n').map((s) => s.trim()).filter(Boolean);
+      if (lines[0] && lines[0] !== '[Contractor]') {
+        setVal('ph-contractor', lines[0]);
+        setVal('ph-contractor-addr', lines.slice(1).join('\n'));
+        persistProject();
+      }
+    } else if (kind === 'questions') {
+      const m = text.match(/call me at\s+(.+)$/i);
+      if (m) {
+        setVal('ph-author-phone', m[1].trim());
+        persistAuthor();
+      }
+    }
+  }
+
+  function wireLetterEditing() {
+    const doc = document.getElementById('letter-doc');
+    if (!doc) return;
+    if (doc.dataset.editWired !== '1') {
+      doc.dataset.editWired = '1';
+      doc.addEventListener('input', (e) => {
+        const t = e.target && e.target.closest && e.target.closest('[data-edit]');
+        if (!t) return;
+        markLetterDirty();
+      });
+      doc.addEventListener('focusout', (e) => {
+        const t = e.target && e.target.closest && e.target.closest('[data-edit]');
+        if (!t) return;
+        applyLetterFieldEdit(t);
+      });
+      doc.addEventListener('paste', (e) => {
+        const t = e.target && e.target.closest && e.target.closest('[data-edit]');
+        if (!t) return;
+        e.preventDefault();
+        const paste = (e.clipboardData || window.clipboardData).getData('text/plain');
+        document.execCommand('insertText', false, paste);
+      });
+      doc.addEventListener('dragover', (e) => { e.preventDefault(); });
+      doc.addEventListener('drop', (e) => { e.preventDefault(); });
+    }
+    setLetterEditable(!highlightMode);
+  }
+
+  function loadLetterEdits() {
+    const saved = ls_get(STORE.letter, null);
+    if (!saved || !saved.dirty || !saved.html) return;
+    const doc = document.getElementById('letter-doc');
+    if (!doc) return;
+    letterPreviewDirty = true;
+    doc.innerHTML = saved.html;
+    wireLetterEditing();
+    updateLetterEditBanner();
+  }
+
+  window.renderLetter = function (force) {
+    const rebuild = force === true || (force && force.force);
+    if (letterPreviewDirty && !rebuild) {
+      updateLetterEditBanner();
+      return;
+    }
+    if (rebuild) letterPreviewDirty = false;
     const contract = val('ph-contract');
     const title = (val('ph-title') || '').toUpperCase();
     const contractor = val('ph-contractor');
@@ -858,7 +985,7 @@
       ? SOSEngine.digitalSignatureLines(signedAt, author.name)
       : ['Digitally signed by', author.name]).map(esc).join('<br>');
     const sigImg = signatureImage
-      ? `<img class="letter-sig-img" src="${signatureImage}" alt="signature">`
+      ? `<img class="letter-sig-img" src="${signatureImage}" alt="signature" contenteditable="false">`
       : '';
     const addrHtml = contrAddr
       ? contrAddr.split('\n').map(l => esc(l.trim())).filter(Boolean).join('<br>')
@@ -883,19 +1010,19 @@
     const headerSrc = new URL('sos/letterhead-header.jpg', window.location.href).href;
     const footerSrc = new URL('sos/letterhead-footer.png', window.location.href).href;
     const inner = `
-      <div class="letter-letterhead">
+      <div class="letter-letterhead" contenteditable="false">
         <img src="${headerSrc}" alt="State of Delaware Department of Transportation">
         <div class="letter-secretary">${esc(SOSData.CONTACTS.secretary)}<br>Secretary</div>
       </div>
-      <div class="letter-date">${esc(dateStr)}</div>
-      <div class="letter-to">${esc(contractor || '[Contractor]')}<br>${addrHtml}</div>
+      <div class="letter-date" ${letterEditAttr('date')}>${esc(dateStr)}</div>
+      <div class="letter-to" ${letterEditAttr('to')}>${esc(contractor || '[Contractor]')}<br>${addrHtml}</div>
       <div class="letter-body">
-        <p>The following material sources have been reviewed by this office for <strong>${esc(phrase)}</strong> as to their acceptability for use on this project. Please note that all materials must conform to the Standard Specifications, and Special Provisions, and/or Plans governing this project. The following action must be taken in order that we may expedite the inspection and approval of the material.</p>
+        <p ${letterEditAttr('intro')}>The following material sources have been reviewed by this office for <strong>${esc(phrase)}</strong> as to their acceptability for use on this project. Please note that all materials must conform to the Standard Specifications, and Special Provisions, and/or Plans governing this project. The following action must be taken in order that we may expedite the inspection and approval of the material.</p>
       </div>
       ${empty}${sections}
       <div class="letter-closing">
       <hr class="letter-divider">
-      <div class="letter-questions">If you have any questions, please call me at ${esc(author.phone)}.</div>
+      <div class="letter-questions" ${letterEditAttr('questions')}>If you have any questions, please call me at ${esc(author.phone)}.</div>
       <div class="letter-sig${signatureImage ? ' has-image' : ''}">
         Sincerely,
         <div class="letter-sig-row">
@@ -904,18 +1031,23 @@
         </div>
         <div class="letter-sig-name">${esc(author.name)}<br>${esc(author.title)}</div>
       </div>
-      <div class="letter-cc">cc: ${ccHtml || '<em style="color:#aaa;">(none)</em>'}</div>
+      <div class="letter-cc" ${letterEditAttr('cc')}>cc: ${ccHtml || '<em style="color:#aaa;">(none)</em>'}</div>
       </div>
     `;
     const wrap = window.SOSLetterExport && SOSLetterExport.wrapLetterPages;
-    document.getElementById('letter-doc').innerHTML = wrap
+    const doc = document.getElementById('letter-doc');
+    doc.innerHTML = wrap
       ? wrap(inner, footerSrc)
       : inner + `<div class="letter-official-footer"><img src="${footerSrc}" alt="DelDOT"></div>`;
+    wireLetterEditing();
+    updateLetterEditBanner();
+    persistLetterHtml();
   };
   window.refreshLetter = function () {
     persistProject();
+    clearLetterEdits();
     if (typeof applyListsToOpenLetter === 'function' && items.length) applyListsToOpenLetter();
-    else renderLetter();
+    else renderLetter(true);
   };
 
   window.renderWarnings = function () {
@@ -949,7 +1081,7 @@
     if (!name) { alert('Company name required.'); return; }
     setVal('ph-contractor', name);
     setVal('ph-contractor-addr', addr);
-    persistProject(); renderLetter(); closeModal('contractor-modal');
+    persistProject(); renderLetter(true); closeModal('contractor-modal');
   };
   window.openAddModal = function () {
     editingItemId = null;
@@ -1192,7 +1324,7 @@
     } else items.push(newItem);
     persistAll();
     closeModal('add-modal');
-    renderItems(); renderLetter(); renderSourceLib();
+    renderItems(); renderLetter(true); renderSourceLib();
   };
   window.editItem = function (id) {
     const item = items.find(i => i.id === id);
@@ -1221,7 +1353,7 @@
   window.deleteItem = function (id) {
     if (!confirm('Remove this item?')) return;
     items = items.filter(i => i.id !== id);
-    persistAll(); renderItems(); renderLetter();
+    persistAll(); renderItems(); renderLetter(true);
   };
   window.clearAllItems = function () {
     newLetter();
@@ -1271,11 +1403,12 @@
     persistAll();
     updateContractWarn();
     refreshSpecYearFromContract();
+    clearLetterEdits();
     renderItems();
     renderCC();
     renderCCLib();
     renderRevisions();
-    renderLetter();
+    renderLetter(true);
     renderWarnings();
   }
 
@@ -1594,7 +1727,7 @@
     persistAll();
     renderImportPreview();
     renderItems();
-    renderLetter();
+    renderLetter(true);
     renderWarnings();
   }
 
@@ -1966,7 +2099,8 @@
     });
     persistAll();
     renderItems(); renderCC(); renderCCLib(); renderRevisions(); renderSourceLib(); renderSpecLibTab();
-    renderLetter(); renderWarnings();
+    clearLetterEdits();
+    renderLetter(true); renderWarnings();
     switchTab('items', document.querySelector('.tab[data-tab="items"]'));
     setImportStatus('Letter loaded. Fill the application/contract number if it is highlighted, then print. Drop another .xls or click New letter to start the next job.', 'green');
     return items.length;
@@ -2003,7 +2137,7 @@
       normalizeSignatureImage(e.target.result, (dataUrl) => {
         signatureImage = dataUrl;
         localStorage.setItem('sosSignatureImage', signatureImage);
-        renderLetter();
+        renderLetter(true);
       });
     };
     reader.readAsDataURL(file);
@@ -2209,6 +2343,7 @@
     btn.classList.toggle('active', highlightMode);
     scroll.classList.toggle('highlight-mode', highlightMode);
     btn.textContent = highlightMode ? '🖊 Highlighting…' : '🖊 Highlight';
+    setLetterEditable(!highlightMode);
   };
   window.clearHighlights = function () {
     const doc = document.getElementById('letter-doc');
@@ -2293,6 +2428,7 @@
     renderSpecLibTab();
     renderLetter();
     renderWarnings();
+    loadLetterEdits();
   }
 
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', initApp);
