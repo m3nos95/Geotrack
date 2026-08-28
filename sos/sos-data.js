@@ -1807,6 +1807,7 @@
     '#601032': { desc: 'REINFORCED CONCRETE PIPE, 15", CLASS IV', family: 'rcp', tags: ['RCP'] },
     '#601033': { desc: 'REINFORCED CONCRETE PIPE, 18", CLASS IV', family: 'rcp', tags: ['RCP'] },
     '#601213': { desc: 'CORRUGATED POLYETHYLENE PIPE, TYPE C, 15"', family: 'hdpe', tags: ['Pipe', 'HDPE'] },
+    '#601221': { desc: 'CORRUGATED POLYETHYLENE PIPE', family: 'hdpe', tags: ['Pipe', 'HDPE'] },
     '#602003': { desc: 'DRAINAGE INLET, 34" X 24"', family: 'precast', tags: ['Precast', 'Drainage'] },
     '#602004': { desc: 'DRAINAGE INLET, 48" X 30"', family: 'precast', tags: ['Precast', 'Drainage'] },
     '#602005': { desc: 'DRAINAGE INLET, 48" X 48"', family: 'precast', tags: ['Precast', 'Drainage'] },
@@ -1870,7 +1871,21 @@
    * Do not rewrite #301003 → #301001: the SOS Database lists 301003 as GABC (TON),
    * and issued letters keep 301003 for crusher run / crushed concrete.
    */
-  const SPEC_CORRECTIONS = [];
+  const SPEC_CORRECTIONS = [
+    {
+      whenSpec: '#705013',
+      whenDesc: /truncated dome|detectable warning/i,
+      toSpec: '#705007',
+      note: 'Form listed #705013; letter uses #705007 DETECTABLE WARNING SURFACE.',
+    },
+    {
+      whenSpec: '#801000',
+      whenDesc: /u-?channel|sign stand|plaque|hi-?pro|temporary (warning )?sign|warning sign|plastic sign/i,
+      unlessDesc: /attenuator|barricade|drum|flagger/i,
+      toSpec: '#810001',
+      note: 'Form listed #801000 MOT; letter uses #810001 TEMPORARY WARNING SIGNS AND PLAQUES.',
+    },
+  ];
 
   /**
    * Known tack-coat APL producers. Location matters — Seaford Russell Standard
@@ -2080,6 +2095,7 @@
     { name: 'Hanover Architectural Products', loc: 'Hanover PA', addr: '', phone: '', tags: ['Concrete', 'APL'] },
     { name: 'Nitterhouse Masonry Products', loc: 'Chambersburg PA', addr: '', phone: '', tags: ['Concrete', 'APL'] },
     { name: 'J&K Foam Fabricating', loc: 'Pottstown PA', addr: '', phone: '', tags: ['Concrete', 'Expansion'] },
+    { name: 'JD Russell', loc: 'Hamburg NY', addr: '', phone: '', tags: ['Concrete', 'Expansion'] },
     { name: 'ADS', loc: 'Logan Township NJ', addr: '', phone: '', tags: ['Pipe', 'HDPE'] },
     { name: 'East Jordan Iron Works', loc: 'Middletown DE', addr: '', phone: '', tags: ['Drainage', 'APL'] },
     { name: 'Neenah Foundry', loc: 'Neenah WI', addr: '2121 Brooks Ave', phone: '(920) 725-7000', tags: ['Drainage'] },

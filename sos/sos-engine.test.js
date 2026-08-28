@@ -890,7 +890,9 @@ if (fs.existsSync(liveKirkwood)) {
     assert.ok(/flex/i.test(expansion.srcName), expansion.srcName);
     assert.ok(/Utica/i.test(expansion.srcLoc), expansion.srcLoc);
     assert.ok(!/meadows/i.test(expansion.srcName));
-    const dws = live.items.find(i => (i.letterSpecs || i.specs || []).includes('#705013') || /truncated dome/i.test(i.desc || ''));
+    const dws = live.items.find(i => (i.letterSpecs || i.specs || []).includes('#705007')
+      || (i.formSpecs || []).includes('#705013')
+      || /truncated dome|detectable warning/i.test(i.desc || ''));
     assert.ok(dws);
     assert.ok(/Hanover/i.test(dws.srcName));
     assert.strictEqual((dws.actionNotes.match(/prodlists/gi) || []).length, 1, dws.actionNotes);
@@ -1171,7 +1173,8 @@ if (fs.existsSync(liveTriCounty)) {
     const expansion = tri.items.find(i => i.family === 'expansion');
     assert.ok(/J&K Foam/i.test(expansion.srcName), expansion.srcName);
     assert.ok(/Russell/i.test(expansion.altName), expansion.altName);
-    const dws = tri.items.find(i => (i.letterSpecs || i.specs).includes('#705013'));
+    const dws = tri.items.find(i => (i.letterSpecs || i.specs).includes('#705007')
+      || (i.formSpecs || []).includes('#705013'));
     assert.ok(/Nitterhouse/i.test(dws.srcName), dws.srcName);
     assert.ok(/Hanover/i.test(dws.altName), dws.altName);
     const seed = tri.items.find(i => (i.letterSpecs || i.specs).includes('#908016'));
@@ -1436,3 +1439,80 @@ assert.strictEqual(parsedSrc.altName, 'Allan Myers');
 assert.strictEqual(parsedSrc.altLoc, 'Bishopville MD');
 
 console.log('--- letter ---\n' + letter);
+
+(function chapelCreekLetterRules() {
+  assert.ok(Engine.isStripingProductCode('884490'));
+  assert.ok(Engine.isStripingProductCode(884685));
+  assert.ok(Engine.isStripingProductCode('980801'));
+  assert.ok(!Engine.isStripingProductCode('817002'));
+  assert.ok(!Engine.looksLikeSpecStart(884490));
+  assert.deepStrictEqual(Engine.extractSpecs('884490'), []);
+  assert.deepStrictEqual(Engine.extractSpecs('817002 / 884490'), ['#817002']);
+  assert.ok(!Engine.isKnownItemNumber('#884490'));
+  assert.strictEqual(Engine.familyFromSpec('#601221', 'Corrugated Polyethylene Pipe', 'HDPE ADS'), 'hdpe');
+  assert.strictEqual(Engine.familyFromSpec('#601012', '18" RCP', 'Reinforced concrete pipe'), 'rcp');
+
+  const pack = Engine.processGrid(gridFromObjects(FREY_HEADER, [
+    [
+      ['', 862006.0, 'Permanent Pavement Striping, Alkyd-Thermoplastic, Symbol/Legend', '', 'Ennis', 'Ennis Flint', '', 'Greensboro, NC', ''],
+    ],
+    [
+      ['', 884490.0, 'White', '', '884490 (White)', 'Ennis Flint', '', 'Greensboro, NC', ''],
+      ['', 884685.0, 'Yellow', '', '884685 (Yellow)', '', '', '', ''],
+    ],
+    [
+      ['', 401005.0, 'Superpave Type C, PG 64-22', '', 'Superpave Type C', 'River Asphalt', '', 'Dagsboro, DE', ''],
+      ['', '', 'CRS-1', '', 'CRS-1', 'Asphalt Emulsion Industries', '', 'Manassas, VA', ''],
+    ],
+    [
+      ['', 705013.0, 'Truncated Dome Detectable Warning', '', 'ADA Truncated Dome', 'Nitterhouse Masonry Products', '', 'Chambersburg, PA', ''],
+    ],
+    [
+      ['', 701013.0, 'PCC Curb, Type 1-8', '', 'Class B Concrete', 'Bear Concrete', '', 'Newark, DE', ''],
+      ['', '', 'Curing Compound', '', 'Silencure DOT', 'ChemMasters', '', 'Madison, OH', ''],
+    ],
+    [
+      ['', 601012.0, 'Reinforced Concrete Pipe, 18"', '', 'RCP', 'Rinker Materials', '', 'Middletown, DE', ''],
+    ],
+    [
+      ['', 601221.0, 'Corrugated Polyethylene Pipe', '', 'HDPE', 'ADS', '', 'Logan Township, NJ', ''],
+    ],
+    [
+      ['', 801000.0, 'Temporary Warning Signs', '', 'U-channel posts / Hi-Pro sign stand', 'Plasticade', '', 'Lake Barrington, IL', ''],
+    ],
+  ]));
+  const letterSpecs = pack.items.flatMap(i => i.letterSpecs || i.specs);
+  assert.ok(!letterSpecs.includes('#884490'), letterSpecs.join(','));
+  assert.ok(!letterSpecs.includes('#884685'), letterSpecs.join(','));
+  const stripe = pack.items.find(i => (i.letterSpecs || i.specs).includes('#862006'));
+  assert.ok(stripe, 'striping parent kept');
+  assert.ok(/884490/.test((stripe.subItems || []).join(' ')), stripe.subItems);
+  assert.ok(/884685/.test((stripe.subItems || []).join(' ')), stripe.subItems);
+  assert.ok(stripe.action !== 'not-approved', stripe.actionNotes);
+  const tack = pack.items.find(i => i.family === 'tack');
+  assert.ok(tack, 'stacked CRS-1 is tack');
+  assert.ok((tack.letterSpecs || []).includes('#401xxx'));
+  assert.ok(/CRS-1/i.test((tack.subItems || []).join(' ') + tack.desc));
+  const dws = pack.items.find(i => /detectable warning/i.test(i.desc || ''));
+  assert.ok(dws);
+  assert.ok((dws.letterSpecs || dws.specs).includes('#705007'));
+  assert.ok((dws.formSpecs || []).includes('#705013'));
+  const curing = pack.items.find(i => i.family === 'curing');
+  assert.ok(curing, 'Silencure stays #701/705xxx');
+  assert.ok((curing.letterSpecs || []).includes('#701/705xxx'));
+  assert.ok(/ChemMasters/i.test(curing.srcName), curing.srcName);
+  const pcc = pack.items.find(i => i.family === 'pcc');
+  assert.ok(pcc && !/ChemMasters/i.test(pcc.srcName + ' ' + (pcc.altName || '')));
+  const rcp = pack.items.find(i => (i.letterSpecs || i.specs).includes('#601012'));
+  const hdpe = pack.items.find(i => (i.letterSpecs || i.specs).includes('#601221'));
+  assert.ok(rcp && rcp.family === 'rcp');
+  assert.ok(hdpe && hdpe.family === 'hdpe');
+  assert.ok(!((rcp.letterSpecs || rcp.specs).includes('#601221')));
+  assert.ok(/AASHTO M294/i.test(hdpe.actionNotes), hdpe.actionNotes);
+  const signs = pack.items.find(i => i.family === 'ttc' || i.family === 'signs');
+  assert.ok(signs);
+  assert.ok((signs.letterSpecs || signs.specs).includes('#810001'));
+  assert.ok((signs.formSpecs || []).includes('#801000'));
+  console.log('OK Chapel Creek / Silver View letter rules');
+})();
+

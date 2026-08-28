@@ -177,3 +177,62 @@ if (fs.existsSync(pdfPath)) {
 }
 
 console.log('OK sos-formpdf ' + parsed.items.length + ' form rows → ' + result.items.length + ' letter items');
+
+(function chapelCreekFormPdf() {
+  const text = `Agreement /Permit/Contract/Application #: 602951138
+Title of Contract: Chapel Creek
+Source of Supply
+Materials & Research Contractor: Gaines Company Inc
+Address: 1 Main St Dover, DE 19901
+Delaware Department of Transportation Sub-Contractor:
+Date: 8/28/2026
+District: Central
+DelDOT Contact: James Smith
+Specification # Item Description Plan sheet included with Material Supplier Manufacturer Alternate Manufacturer
+Material Requirements? Address & Contact Address & Contact
+401005 Superpave Type C PG 64-22 River Asphalt Dagsboro, DE
+CRS-1 Tack Coat Russell Standard Seaford, DE
+302005 Stone DE No. 57 Allan Myers Elk Mills, MD
+601012 18" RCP Rinker Materials Middletown, DE
+601221 HDPE corrugated polyethylene pipe ADS Logan Township, NJ
+817002 Permanent Pavement Striping Alkyd-Thermoplastic Ennis Flint 884490 (White) 884685 (Yellow) Greensboro, NC
+701013 PCC Curb Class B Bear Concrete Newark, DE
+Silencure DOT ChemMasters Madison, OH
+705013 Truncated Dome Nitterhouse Chambersburg, PA
+801000 U-channel posts Hi-Pro temporary warning signs Plasticade
+If material requirements are not provided in the Standard Specifications or a Special Provision, submit all Plan sheets that contain relevant material requirements as documentation with the source of supply submission.`;
+  assert.ok(!FormPdf.isLikelySpec('884490', '\n'));
+  assert.ok(!FormPdf.isLikelySpec('884685', 'Ennis '));
+  const parsed = FormPdf.parseFormText(text, { filename: 'chapel-creek.pdf' });
+  assert.strictEqual(parsed.kind, 'contractor-form', parsed.error || parsed.kind);
+  const specs = parsed.items.map(it => String(it.spec).replace(/\D/g, ''));
+  assert.ok(!specs.includes('884490'), 'paint SKU is not a spec: ' + specs.join(','));
+  assert.ok(!specs.includes('884685'), specs.join(','));
+  assert.ok(specs.includes('302005'), specs.join(','));
+  const stripe = parsed.items.find(it => String(it.spec) === '817002');
+  assert.ok(stripe);
+  assert.ok(/884490/.test(stripe.material), stripe.material);
+  const hdpe = parsed.items.find(it => String(it.spec) === '601221');
+  assert.ok(hdpe);
+  assert.strictEqual(hdpe.family, 'hdpe');
+  assert.ok(/ADS/i.test(hdpe.supplier), hdpe.supplier);
+  const rcp = parsed.items.find(it => String(it.spec) === '601012');
+  assert.ok(rcp);
+  assert.ok(!/ADS/i.test(rcp.supplier || ''), rcp.supplier);
+  const tack = parsed.items.find(it => it.family === 'tack' || /tack|crs-?1/i.test(it.material + it.desc));
+  assert.ok(tack, 'stacked CRS-1 became a tack row');
+  const curing = parsed.items.find(it => it.family === 'curing' || /silencure/i.test(it.material + it.desc));
+  assert.ok(curing, 'ChemMasters curing is not a PCC alt');
+  const pcc = parsed.items.find(it => String(it.spec) === '701013');
+  assert.ok(pcc);
+  assert.ok(!/ChemMasters/i.test(pcc.alt || pcc.supplier || ''));
+  const grid = FormPdf.gridFromForm(parsed);
+  const letter = Engine.processGrid(grid, { filename: 'chapel-creek.pdf' });
+  const letterSpecs = letter.items.flatMap(it => it.letterSpecs || it.specs);
+  assert.ok(!letterSpecs.includes('#884490'));
+  assert.ok(letterSpecs.includes('#401xxx') || letter.items.some(i => i.family === 'tack'));
+  assert.ok(letter.items.some(i => i.family === 'hdpe'));
+  assert.ok(letter.items.some(i => (i.letterSpecs || i.specs).includes('#705007')));
+  console.log('OK chapel-creek form pdf');
+})();
+

@@ -61,17 +61,38 @@
     const out = [];
     let m;
     const re = new RegExp(SPEC_TOKEN_RE.source, 'g');
-    while ((m = re.exec(s))) out.push('#' + m[1]);
+    while ((m = re.exec(s))) {
+      if (!isStripingProductCode(m[1])) out.push('#' + m[1]);
+    }
     if (!out.length && /^\d{3,6}/.test(s)) {
       const n = normalizeSpec(s);
-      if (n) out.push(n);
+      if (n && !isStripingProductCode(n)) out.push(n);
     }
     return [...new Set(out)];
+  }
+
+  // Ennis / 3M paint SKUs (884490 white, 884685 yellow, 980801/980802) are
+  // product IDs, not Standard Construction Item numbers. Never a letter SECTION.
+  function isStripingProductCode(raw) {
+    const digits = String(raw == null ? '' : raw).replace(/\D/g, '');
+    if (!/^(884|980)\d{3}$/.test(digits)) return false;
+    const key = '#' + digits;
+    if (SPEC_CATALOG[key] || SPEC_CATALOG[digits]) return false;
+    return true;
+  }
+
+  function stripingProductLabel(raw, extra) {
+    const digits = String(raw == null ? '' : raw).replace(/\D/g, '');
+    if (!isStripingProductCode(digits)) return '';
+    const blob = `${cellStr(raw)} ${cellStr(extra)}`;
+    const color = blob.match(/\b(white|yellow)\b/i);
+    return color ? `${digits} (${color[1][0].toUpperCase()}${color[1].slice(1).toLowerCase()})` : digits;
   }
 
   function looksLikeSpecStart(raw) {
     const s = cellStr(raw);
     if (!s) return false;
+    if (isStripingProductCode(raw) || isStripingProductCode(s)) return false;
     if (typeof raw === 'number' && raw > 100000) return true;
     return /^\d{6}(\.\d+)?$/.test(s) || /^\d{6}\s*[/-]/.test(s) || /#\d{6}/.test(s);
   }
@@ -105,8 +126,8 @@
   function isProductLabel(s) {
     const t = cellStr(s);
     if (!t) return false;
-    if (/^(gabc|millings|topsoil|cntt|em-?50-?tt|class\s*[abc]|silencure(\s+dot)?|curlex|bituminous|concrete)$/i.test(t)) return true;
-    return /superpave|tack coat|curing compound|expansion joint|erosion control blanket|ada paver|pg\s*\d{2}-\d{2}|1600[-\s]?white|subdivision mix/i.test(t);
+    if (/^(gabc|millings|topsoil|cntt|em-?50-?tt|crs-?1h?|class\s*[abc]|silencure(\s+dot)?|curlex|bituminous|concrete)$/i.test(t)) return true;
+    return /superpave|tack coat|curing compound|expansion joint|erosion control blanket|ada paver|pg\s*\d{2}-\d{2}|1600[-\s]?white|subdivision mix|ennis:?\s*\d{6}/i.test(t);
   }
 
   function isCompanyName(s) {
@@ -397,6 +418,16 @@
     return '';
   }
 
+  function productCodeCellFromRow(row, cols) {
+    if (isStripingProductCode(row[cols.spec]) || isStripingProductCode(cellStr(row[cols.spec]))) {
+      return row[cols.spec];
+    }
+    if (cols.spec === 0 && (isStripingProductCode(row[1]) || isStripingProductCode(cellStr(row[1])))) {
+      return row[1];
+    }
+    return '';
+  }
+
   function isColumnSubHeaderRow(row, cols) {
     const spec = cellStr(row[cols.spec]);
     const desc = cellStr(row[cols.desc]);
@@ -427,8 +458,9 @@
     const specText = cellStr(spec);
     const smallNum = (typeof spec === 'number' && spec >= 0 && spec < 10) || /^(0|1)$/.test(specText);
     const blob = `${cellStr(row[cols.desc])} ${cellStr(row[cols.material])}`.toLowerCase();
-    const accessory = /curing|expansion|joint sealer|1600|truncated dome|detectable warning|rubber expansion|reflex|silencure/.test(blob);
-    if (accessory && !specCellFromRow(row, cols) && (cellStr(row[cols.material]) || cellStr(row[cols.mfg]))) return true;
+    const accessory = /curing|expansion|joint sealer|1600|truncated dome|detectable warning|rubber expansion|reflex|silencure|tack\s*coat|crs-?1|em-?50|cntt|ennis:?\s*\d{6}|884490|884685/.test(blob);
+    if (isStripingProductCode(spec) || isStripingProductCode(specText)) return true;
+    if (accessory && !specCellFromRow(row, cols) && (cellStr(row[cols.material]) || cellStr(row[cols.mfg]) || cellStr(row[cols.desc]))) return true;
     if (!smallNum) return false;
     return accessory;
   }
@@ -436,7 +468,7 @@
   function currentLooksLikeProduct(current) {
     if (!current) return false;
     const blob = `${cellStr((current.descLines || [])[0])} ${cellStr((current.materialLines || [])[0])}`.toLowerCase();
-    return /curing|expansion|joint sealer|1600|truncated dome|rubber expansion|reflex/.test(blob);
+    return /curing|expansion|joint sealer|1600|truncated dome|rubber expansion|reflex|tack\s*coat|crs-?1|ennis:?\s*\d{6}/.test(blob);
   }
 
   function bulkShareFamilies(a, b) {
@@ -687,6 +719,29 @@
         continue;
       }
       const specNums = specCell ? extractSpecs(specCell) : [];
+      const productCodeCell = productCodeCellFromRow(row, cols);
+      if (current && productCodeCell && !specNums.length) {
+        const currentFamPeek = familyFromSpec(
+          (current.specs || [])[0] || '',
+          cellStr((current.descLines || [])[0]),
+          cellStr((current.materialLines || [])[0])
+        );
+        if (currentFamPeek === 'striping' || /817|861|862/.test((current.specs || []).join(' '))) {
+          const label = stripingProductLabel(
+            productCodeCell,
+            `${cellStr(row[cols.desc])} ${cellStr(row[cols.material])}`
+          );
+          if (label) pushLine(current.materialLines, label);
+          appendToLastSpec(row);
+          noteRowSpecDescs(current, row, cols);
+          pushLine(current.descLines, row[cols.desc]);
+          pushLine(current.materialLines, row[cols.material]);
+          expandContactLines(row[cols.supplier]).forEach(t => pushLine(current.supLines, t));
+          expandContactLines(row[cols.mfg]).forEach(t => pushLine(current.mfgLines, t));
+          expandContactLines(row[cols.alt]).forEach(t => pushLine(current.altLines, t));
+          continue;
+        }
+      }
       const productRow = isLooseProductRow(row, cols);
       const incomingFam = familyFromSpec(
         specNums[0] || '',
@@ -763,9 +818,63 @@
     }
     flush();
 
-    const nonempty = items.filter(it => it.specs.length || it.desc);
+    const nonempty = foldStripingProductItems(items.filter(it => it.specs.length || it.desc));
     if (!nonempty.length) warnings.push('No material items found below the header.');
     return { items: nonempty, warnings };
+  }
+
+  function itemLooksLikeStripingProduct(item) {
+    const specs = item.specs || [];
+    if (specs.length && specs.every(s => isStripingProductCode(s))) return true;
+    if (specs.length) return false;
+    const blob = `${item.desc || ''} ${item.material || ''} ${(item.subItems || []).join(' ')}`;
+    return isStripingProductCode(blob) || /\b(?:884490|884685|980801|980802)\b/.test(blob);
+  }
+
+  function productBulletsFromItem(item) {
+    const parts = [item.material, item.desc, ...(item.subItems || [])].filter(Boolean);
+    const out = [];
+    parts.forEach((p) => {
+      const m = String(p).match(/\b((?:884|980)\d{3})\b(?:\s*\((white|yellow)\))?/i);
+      if (m && isStripingProductCode(m[1])) {
+        const label = stripingProductLabel(m[1], p);
+        if (label && !out.includes(label)) out.push(label);
+      } else if (/ennis/i.test(p) && /\d{6}/.test(p)) {
+        const t = String(p).replace(/\s+/g, ' ').trim();
+        if (t && !out.includes(t)) out.push(t);
+      }
+    });
+    return out;
+  }
+
+  function foldStripingProductItems(items) {
+    const out = [];
+    for (const item of items) {
+      if (!itemLooksLikeStripingProduct(item)) {
+        out.push(item);
+        continue;
+      }
+      const bullets = productBulletsFromItem(item);
+      const parent = [...out].reverse().find(i => i.family === 'striping'
+        || /817|861|862/.test((i.specs || []).join(' '))
+        || /pavement strip|thermoplastic|epoxy resin|alkyd/i.test(`${i.desc || ''} ${i.material || ''}`))
+        || out.find(i => /817|861|862/.test((i.specs || []).join(' ')));
+      if (!parent) {
+        out.push(item);
+        continue;
+      }
+      bullets.forEach((b) => {
+        if (!(parent.subItems || []).some(s => String(s).toLowerCase() === String(b).toLowerCase())) {
+          parent.subItems = [...(parent.subItems || []), b];
+        }
+      });
+      if ((!parent.srcName || isWeakSourceName(parent.srcName)) && item.srcName && !isWeakSourceName(item.srcName)) {
+        parent.srcName = item.srcName;
+        parent.srcLoc = item.srcLoc || parent.srcLoc;
+        parent.mfgName = item.mfgName || parent.mfgName;
+      }
+    }
+    return out;
   }
 
   function parseSosGrid(rows, meta) {
@@ -792,7 +901,10 @@
   const OMIT_SPECS = new Set(['#201000', '#202000', '#211000']);
 
   function shouldOmitItem(item) {
-    if ((item.specs || []).some(s => OMIT_SPECS.has(s))) return true;
+    const specs = item.specs || [];
+    if (specs.some(s => OMIT_SPECS.has(s))) return true;
+    if (specs.length && specs.every(s => isStripingProductCode(s))) return true;
+    if (itemLooksLikeStripingProduct(item) && !specs.some(s => !isStripingProductCode(s))) return true;
     const blob = `${item.desc || ''} ${item.material || ''} ${(item.subItems || []).join(' ')}`.toLowerCase();
     return /\bn\/?a\b/.test(blob) && /clearing|excavation and embankment|removal of structures/.test(blob);
   }
@@ -846,6 +958,7 @@
     const mat = `${material || ''} ${extraBlob}`.toLowerCase();
     const blob = `${desc || ''} ${mat}`.toLowerCase();
     const prefix = (spec || '').replace('#', '').slice(0, 3);
+    const digits = (spec || '').replace(/\D/g, '');
     if (isTack(desc, material, spec)) return 'tack';
     // Contractor forms list expansion / curing under the parent 701/705 spec numbers.
     // The material column is the product; do not keep those rows as PCC curb/sidewalk.
@@ -854,13 +967,19 @@
     if (/curing compound|pigmented curing|1600[-\s]?white|silencure/.test(mat)) return 'curing';
     if (/expansion/.test(blob) && !/crack\s*(and\s*)?joint|joint sealing/.test(blob) && !/pcc|sidewalk|curb/.test(blob)) return 'expansion';
     if (/curing/.test(blob) && !/pcc|sidewalk|curb/.test(blob)) return 'curing';
+    // HDPE / ADS polyethylene is 601-series but is not RCP. Check before catalog and prefix.
+    if (/polyethylene|\bhdpe\b|corrugated poly/.test(blob) && !/reinforced concrete|\brcp\b/.test(blob)) return 'hdpe';
+    if (/^60122/.test(digits) && !/reinforced concrete|\brcp\b/.test(blob)) return 'hdpe';
     // Ready-mix Class B used to adjust inlets / sanitary / gas valves is PCC, not a precast product.
     if (/class\s*[abc]/.test(mat) && /concrete/.test(mat) && !/precast/.test(mat)
         && (!prefix || /^(602|701|702|705|710|711)$/.test(prefix))) {
       return 'pcc';
     }
     const cat = SPEC_CATALOG[spec];
-    if (cat) return cat.family;
+    if (cat) {
+      if (/polyethylene|\bhdpe\b/.test((cat.desc || '').toLowerCase())) return 'hdpe';
+      return cat.family;
+    }
     if (/tie bar|dowel bar|contraction basket|stake pin|anchoring adhesive|redhead|welded hook/.test(blob)) return 'hardware';
     if (/millings|recycled asphalt pavement/.test(blob) && !/superpave|stone matrix|sma\b|wearing surface/.test(blob)) return 'aggregate';
     if (/channel bed|\bcbf\b|cbf light/.test(blob)) return 'aggregate';
@@ -870,7 +989,7 @@
     if (/superpave|hot mix|hma|pg\s*\d{2}/.test(blob)) return 'hma-mix';
     if (/borrow|backfill/.test(blob)) return 'borrow';
     if (/gabc|crusher run|graded aggregate|no\.?\s*57|no\.?\s*3 stone|#57|#3 stone/.test(blob)) return 'aggregate';
-    if (/rcp|reinforced concrete pipe|flared end|storm conveyance pipe/.test(blob)) return 'rcp';
+    if (/rcp|reinforced concrete pipe|flared end|storm conveyance pipe/.test(blob) && !/polyethylene|\bhdpe\b/.test(blob)) return 'rcp';
     if (/drainage inlet|manhole/.test(blob) && /grate|frame|cover/.test(blob)) return 'castings';
     if (/drainage inlet|manhole|precast/.test(blob)) return 'precast';
     if (/sidewalk|curb|pcc /.test(blob)) return 'pcc';
@@ -906,8 +1025,11 @@
   }
 
   function isTack(desc, material, spec) {
-    const blob = `${desc} ${material} ${spec}`.toLowerCase();
-    return /tack/.test(blob) || spec === '#401501';
+    const blob = `${desc || ''} ${material || ''} ${spec || ''}`.toLowerCase();
+    if (spec === '#401501') return true;
+    if (/tack/.test(blob)) return true;
+    if (/superpave|hot mix|\bhma\b|pg\s*\d{2}/.test(blob) && !/tack/.test(blob)) return false;
+    return /crs-?1(?![0-9])|em-?50|\bcntt\b/.test(blob);
   }
 
   function cleanCompany(name) {
@@ -1041,6 +1163,22 @@
         subItems = [item.material];
       }
       if (catalogDescs[0]) sectionDesc = catalogDescs[0];
+    } else if (family === 'striping') {
+      const fromParts = [item.material, item.desc, ...(item.subItems || [])];
+      const bullets = [];
+      fromParts.forEach((p) => {
+        const t = String(p || '').replace(/\s+/g, ' ').trim();
+        if (!t) return;
+        const m = t.match(/\b((?:884|980)\d{3})\b(?:\s*\((white|yellow)\))?/i);
+        if (m && isStripingProductCode(m[1])) {
+          const label = stripingProductLabel(m[1], t);
+          if (label && !bullets.some(b => b.replace(/\*+$/, '') === label)) bullets.push(label);
+        }
+      });
+      if (bullets.length) {
+        const kept = (item.subItems || []).filter(s => !isStripingProductCode(s) && !/\b(?:884|980)\d{3}\b/.test(s));
+        subItems = [...kept, ...bullets];
+      }
     }
 
     subItems = subItems.filter(s => s && s.toLowerCase() !== sectionDesc.toLowerCase());
@@ -1222,6 +1360,7 @@
 
   function isKnownItemNumber(spec, lists, project) {
     if (!spec || isPlaceholderSpec(spec)) return true;
+    if (isStripingProductCode(spec)) return false;
     const key = String(spec).replace(/^([^#])/, '#$1');
     const digits = key.replace(/\D/g, '');
     if (digits.length !== 6) return true;
@@ -2232,6 +2371,8 @@
     cellStr,
     normalizeSpec,
     extractSpecs,
+    isStripingProductCode,
+    looksLikeSpecStart,
     parseSosGrid,
     parseProject,
     parseItems,
