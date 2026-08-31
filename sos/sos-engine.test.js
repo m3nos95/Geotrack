@@ -1544,3 +1544,124 @@ console.log('--- letter ---\n' + letter);
   console.log('OK Chapel Creek / Silver View letter rules');
 })();
 
+(function towerHillPulaskiLetterRules() {
+  const under = Engine.processGrid(gridFromObjects(FREY_HEADER, [
+    [
+      ['', 601213.0, 'Corrugated Polyethylene Pipe, Type C, 15"', '', 'HDPE', 'ADS', '', 'Logan Township, NJ', ''],
+    ],
+    [
+      ['', 601225.0, 'Corrugated Polyethylene Pipe, Type S, 36"', '', 'HDPE', 'ADS', '', 'Logan Township, NJ', ''],
+    ],
+    [
+      ['', 709001.0, 'Perforated Pipe Underdrains, 6"', '', 'Perforated PE', 'ADS', '', 'Logan Township, NJ', ''],
+    ],
+  ]));
+  const hdpePipe = under.items.find(i => (i.letterSpecs || i.specs).some(s => /^#6012/.test(s)));
+  const drain = under.items.find(i => (i.letterSpecs || i.specs).includes('#709001'));
+  assert.ok(hdpePipe && drain, 'underdrain stays off the HDPE M294 section');
+  assert.ok(!(hdpePipe.letterSpecs || hdpePipe.specs).includes('#709001'), hdpePipe.letterSpecs);
+  assert.ok(/AASHTO M294/i.test(hdpePipe.actionNotes), hdpePipe.actionNotes);
+  assert.ok(/AASHTO M252/i.test(drain.actionNotes), drain.actionNotes);
+  assert.ok(!/AASHTO M294/i.test(drain.actionNotes), drain.actionNotes);
+
+  const jk = Engine.processGrid(gridFromObjects(FREY_HEADER, [
+    [
+      ['', 701019.0, 'I.PCC Curb and Gutter, Type 2', '', 'Class B Concrete', 'Heritage Concrete', '', 'Cheswold, DE', 'Atlantic Concrete'],
+      ['', '', '', '', '', '', '', '', 'Harrington, DE'],
+    ],
+    [
+      ['', 701013.0, 'PCC Curb, Type 1-8', '', '', 'J&K Foam Fabricating', '', 'Pottstown, PA', ''],
+    ],
+  ]));
+  const expansion = jk.items.find(i => i.family === 'expansion');
+  assert.ok(expansion, 'J&K Foam on a 701 spec is expansion, not a ready-mix plant');
+  assert.deepStrictEqual(expansion.letterSpecs, ['#701/705xxx']);
+  assert.ok(/J&K Foam/i.test(expansion.srcName), expansion.srcName);
+  const pccJk = jk.items.find(i => i.family === 'pcc');
+  assert.ok(pccJk && (pccJk.letterSpecs || pccJk.specs).includes('#701019'));
+  assert.ok(!/J&K Foam/i.test((pccJk.srcName || '') + ' ' + (pccJk.altName || '')));
+  assert.ok(!(pccJk.letterSpecs || pccJk.specs).includes('#701013'));
+
+  const nchrp = Engine.processGrid(gridFromObjects(FREY_HEADER, [
+    [
+      ['', 810001.0, 'Temporary Warning Signs and Plaques', '', '4860K Temporary Sign Stand (NCHRP-350 Device)', 'MDI', '', 'Farmington Hills, MI', ''],
+    ],
+    [
+      ['', 808002.0, 'Provide/Maintain Truck Mounted Attenuator, T II', '', 'Scorpion C 10K', 'TrafFix Devices', '', 'San Clemente, CA', ''],
+    ],
+  ]));
+  const stand = nchrp.items.find(i => (i.letterSpecs || i.specs).includes('#810001'));
+  const tma = nchrp.items.find(i => (i.letterSpecs || i.specs).includes('#808002'));
+  assert.ok(stand && tma, 'TMA is not grouped with the temp sign stand');
+  assert.ok(!(stand.letterSpecs || stand.specs).includes('#808002'));
+  assert.strictEqual(stand.action, 'not-approved');
+  assert.ok(/sunset/i.test(stand.actionNotes) && /MASH/i.test(stand.actionNotes), stand.actionNotes);
+  assert.notStrictEqual(tma.action, 'not-approved');
+
+  const grate = Engine.processGrid(gridFromObjects(FREY_HEADER, [
+    [
+      ['', 602002.0, 'Drainage Inlet, 34" x 18"', '', 'Frame/Grate', 'EJ USA', '', 'Middletown, DE', ''],
+    ],
+    [
+      ['', 602003.0, 'Drainage Inlet, 34" x 24"', '', 'Precast Concrete', 'Gillespie Precast', '', 'Chestertown, MD', ''],
+    ],
+  ]));
+  const casting = grate.items.find(i => i.family === 'castings');
+  const precast = grate.items.find(i => i.family === 'precast');
+  assert.ok(casting, 'frame/grate is castings');
+  assert.ok(/EJ/i.test(casting.srcName), casting.srcName);
+  assert.ok(/conforms to the requirements of the specifications/i.test(casting.actionNotes), casting.actionNotes);
+  assert.ok(precast && (precast.letterSpecs || precast.specs).includes('#602003'));
+  assert.ok(!(precast.letterSpecs || precast.specs).includes('#602002'));
+
+  const stackedPcc = Engine.processGrid(gridFromObjects(FREY_HEADER, [
+    [
+      ['', 701012.0, 'PCC Curb, Type 1-6', '', 'Class B Concrete', 'Russell Standard', '', 'Seaford, DE', ''],
+    ],
+    [
+      ['', 701012.0, 'PCC Curb, Type 1-6', '', 'Class B Concrete', 'GFP Cement', '', 'Wilmington, DE', ''],
+    ],
+    [
+      ['', 705001.0, 'PCC Sidewalk, 4"', '', 'Class B Concrete', 'Heritage Concrete', '', 'Wilmington, DE', ''],
+    ],
+    [
+      ['', 705008.0, 'Pedestrian Connection, Type 1', '', 'Class B Concrete', '& Equipment', '', 'New Castle, DE', ''],
+    ],
+  ]));
+  const pccs = stackedPcc.items.filter(i => i.family === 'pcc');
+  assert.strictEqual(pccs.length, 1, 'stacked curb/sidewalk/ped is one Class B section');
+  const pcc = pccs[0];
+  assert.ok((pcc.letterSpecs || pcc.specs).includes('#701012'));
+  assert.ok((pcc.letterSpecs || pcc.specs).includes('#705001'));
+  assert.ok((pcc.letterSpecs || pcc.specs).includes('#705008'));
+  assert.ok(/GFP|Heritage/i.test(pcc.srcName + ' ' + (pcc.altName || '')), pcc.srcName + ' / ' + pcc.altName);
+  assert.ok(!/Russell Standard/i.test((pcc.srcName || '') + ' ' + (pcc.altName || '')), pcc.srcName);
+  assert.ok(!/&\s*Equipment/i.test((pcc.srcName || '') + ' ' + (pcc.altName || '')));
+
+  const cureHarvest = Engine.processGrid(gridFromObjects(FREY_HEADER, [
+    [
+      ['', 701013.0, 'PCC Curb, Type 1-8', '', 'Silencure DOT', 'ChemMasters', '', 'Madison, OH', ''],
+    ],
+  ]), {
+    lists: {
+      language: {
+        kind: 'issued-language',
+        bySpec: {
+          '#701013': {
+            action: 'Approved; material sources and admixture certifications are on file at the Central Lab.',
+            intent: 'approved',
+            uses: 80,
+          },
+        },
+        byFamily: {},
+      },
+    },
+  }).items.find(i => i.family === 'curing');
+  assert.ok(cureHarvest);
+  assert.ok((cureHarvest.letterSpecs || []).includes('#701/705xxx'));
+  assert.ok(!/admixture certifications/i.test(cureHarvest.actionNotes), cureHarvest.actionNotes);
+  assert.ok(/on APL/i.test(cureHarvest.actionNotes), cureHarvest.actionNotes);
+
+  console.log('OK Tower Hill / Pulaski letter rules');
+})();
+

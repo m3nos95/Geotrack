@@ -1880,7 +1880,7 @@
     },
     {
       whenSpec: '#801000',
-      whenDesc: /u-?channel|sign stand|plaque|hi-?pro|temporary (warning )?sign|warning sign|plastic sign/i,
+      whenDesc: /u-?channel|sign stand|plaque|hi-?pro|temporary (warning )?sign|warning sign|plastic sign|marion steel|franklin industries|mdi\b|farmington hills|plasticade|eastern metal/i,
       unlessDesc: /attenuator|barricade|drum|flagger/i,
       toSpec: '#810001',
       note: 'Form listed #801000 MOT; letter uses #810001 TEMPORARY WARNING SIGNS AND PLAQUES.',
@@ -1936,6 +1936,7 @@
     expansionAashto: 'Approved provided Preformed Expansion Joint Material meets AASHTO M153, Type I, II, or IV.',
     hdpeM294: 'Approved provided pipe meets all requirements of AASHTO M294. Verify compliance through the AASHTO Product Evaluation & Audit Solutions.',
     hdpeM252: 'Approved provided pipe meets all requirements of AASHTO M252. Verify compliance through the AASHTO Product Evaluation & Audit Solutions.',
+    nchrpSunset: 'Not Approved. Resubmit MASH Compliant temp sign stand listed on APL. (NCHRP 350 Devices were "sunset" on 1.1.2025)',
     apl: 'Approved for use. (on APL)',
     aplOn: 'Approved for use. (ON APL)',
     ttcInspect: 'Temporary Traffic control Devices will be inspected on-site by DelDOT or authorized representative.',
