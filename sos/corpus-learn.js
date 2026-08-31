@@ -1073,27 +1073,37 @@ function compareCase(c, lists) {
     notes: [],
   };
 
-  if (c.xls.length > 1) out.notes.push('Multiple spreadsheets matched this name — using the first.');
+  if (c.xls.length > 1 || ((c.formPdfs || []).length + c.xls.length) > 1) {
+    out.notes.push('Multiple contractor forms — merged into one letter.');
+  }
 
-  if (c.xls.length) {
+  const formSheets = [];
+  (c.xls || []).forEach((p) => {
     try {
-      const grid = readGrid(c.xls[0]);
-      const result = Engine.processGrid(grid, { filename: path.basename(c.xls[0]), lists });
+      formSheets.push({ name: path.basename(p), rows: readGrid(p) });
+    } catch (e) {
+      out.notes.push('Could not parse spreadsheet ' + path.basename(p) + ': ' + e.message);
+    }
+  });
+  (c.formPdfs || []).forEach((p) => {
+    try {
+      const parsed = parseFormPdf(p);
+      formSheets.push({ name: path.basename(p), rows: gridFromForm(parsed) });
+    } catch (e) {
+      out.notes.push('Could not parse contractor form PDF ' + path.basename(p) + ': ' + e.message);
+    }
+  });
+  if (formSheets.length) {
+    try {
+      const result = Engine.processSosSheets(formSheets, {
+        filename: path.basename((c.xls[0] || (c.formPdfs || [])[0] || '')),
+        lists,
+      });
       out.engine = engineSummary(result);
     } catch (e) {
-      out.notes.push('Could not parse spreadsheet: ' + e.message);
+      out.notes.push('Could not parse contractor form: ' + e.message);
     }
-  } else if ((c.formPdfs || []).length) {
-    try {
-      const parsed = parseFormPdf(c.formPdfs[0]);
-      out.notes.push('Contractor form is a PDF (not .xls) — parsed the spec table from the PDF.');
-      const grid = gridFromForm(parsed);
-      const result = Engine.processGrid(grid, { filename: path.basename(c.formPdfs[0]), lists });
-      out.engine = engineSummary(result);
-    } catch (e) {
-      out.notes.push('Could not parse contractor form PDF: ' + e.message);
-    }
-  } else {
+  } else if (!(c.xls || []).length && !((c.formPdfs || []).length)) {
     out.notes.push('Letter only (no contractor spreadsheet). SECTION / SOURCE / ACTION language is still harvested.');
   }
 

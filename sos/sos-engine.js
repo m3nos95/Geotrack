@@ -2195,7 +2195,10 @@
       name: s.name,
       parsed: parseSosGrid(s.rows, Object.assign({}, meta || {}, { hiddenRows: s.hiddenRows || [] })),
     }));
-    const project = parsedSheets[0].parsed.project;
+    let project = parsedSheets[0].parsed.project;
+    for (let i = 1; i < parsedSheets.length; i++) {
+      project = overlayProject(project, parsedSheets[i].parsed.project, false);
+    }
     const items = parsedSheets.flatMap(s => s.parsed.items);
     const warnings = [];
     if (parsedSheets.length > 1) {

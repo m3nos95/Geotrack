@@ -15,6 +15,8 @@ assert.ok(Pack.isProgramOutputFile('items.json'));
 assert.ok(!Pack.isProgramOutputFile('issued.pdf'));
 assert.ok(!Pack.isProgramOutputFile('Source of Supply 623641525.pdf'));
 assert.ok(Pack.isSubmittalFile('submittal.xls'));
+assert.ok(Pack.isSubmittalFile('submittal-2.pdf'));
+assert.ok(!Pack.isSubmittalFile('issued.pdf'));
 assert.ok(Pack.isSkipLearnDir('inbox-staging'));
 assert.ok(!Pack.isSkipLearnDir('jobs'));
 assert.strictEqual(Pack.safePackName('secret.exe'), '');

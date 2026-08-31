@@ -7,8 +7,10 @@ const html = fs.readFileSync(path.join(__dirname, '..', 'deldot-sos.html'), 'utf
 assert.ok(!/pdf\.min\.js/.test(html), 'pdf.js must not load on page open');
 assert.ok(!/xlsx\.full\.min\.js/.test(html), 'SheetJS must not load on page open');
 assert.ok(!/cdn\.jsdelivr\.net/.test(html), 'no jsDelivr scripts on page open');
-assert.ok(/sos-app\.js\?v=20260828n/.test(html), 'cache-bust sos-app.js');
+assert.ok(/sos-app\.js\?v=20260831a/.test(html), 'cache-bust sos-app.js');
 assert.ok(/id="letter-save-status"/.test(html), 'Save training pack status is next to the letter, not only on Import');
+assert.ok(/id="file-input"[^>]*multiple/.test(html.replace(/\s+/g, ' ')), 'Import file picker accepts several SOS forms');
+assert.ok(/several files at once/.test(html), 'drop box tells Aaron he can drop more than one file');
 
 const app = fs.readFileSync(path.join(__dirname, 'sos-app.js'), 'utf8');
 assert.ok(!/After you send the letter/.test(app), 'training copy is for already-issued letters, not a live send');
@@ -23,8 +25,10 @@ assert.ok(/pdfjs-dist@3\.11\.174\/build\/pdf\.min\.js/.test(app));
 assert.ok(!/renderSourceLib\(\);/.test(app.slice(app.indexOf('function initApp()'), app.indexOf('function initApp()') + 1800)));
 const loadSpec = app.slice(app.indexOf('function loadSpecLib()'), app.indexOf('function saveSpecLib()'));
 assert.ok(!/cleanSpecLibraryDesc/.test(loadSpec), 'do not clean every spec against every plant on open');
-const pdfFn = app.slice(app.indexOf('async function handleImportPdf'), app.indexOf('window.handleImportFile'));
+assert.ok(/window.handleImportFiles =/.test(app), 'drop zone can take several files');
+const pdfFn = app.slice(app.indexOf('async function parseImportFileToSheets'), app.indexOf('window.handleImportFile'));
 assert.ok(pdfFn.indexOf('copyFileBytes') < pdfFn.indexOf('parsePdf'), 'copy PDF bytes before pdf.js can detach them');
+assert.ok(/submittal-/.test(app), 'training pack keeps extra contractor files as submittal-2');
 
 function copyFileBytes(buf) {
   const view = buf instanceof Uint8Array ? buf : new Uint8Array(buf);

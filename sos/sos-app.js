@@ -74,6 +74,7 @@
   let _pdfJsLoading = null;
   let _xlsxLoading = null;
   let lastSubmittal = null;
+  let lastSubmittals = [];
   const PDFJS_SRC = 'https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/build/pdf.min.js';
   const PDFJS_WORKER_SRC = 'https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/build/pdf.worker.min.js';
   const XLSX_SRC = 'https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js';
@@ -1401,6 +1402,7 @@
     currentRev = 1;
     parsedImport = null;
     lastSubmittal = null;
+    lastSubmittals = [];
     setVal('ph-contract', '');
     setVal('ph-title', '');
     setVal('ph-contractor', '');
@@ -1972,7 +1974,8 @@
   function commitImportResult(result, file, kindLabel) {
     parsedImport = result;
     const rows = (result.ungrouped && result.ungrouped.length) ? result.ungrouped.length : (result.parsed && result.parsed.items ? result.parsed.items.length : result.items.length);
-    if (jobIsDirty() && !confirm('Replace the current letter with ' + file.name + '?\n\nThis clears the previous job. Click Cancel to keep it and only preview the new form.')) {
+    const label = typeof file === 'string' ? file : (file && file.name) || 'these files';
+    if (jobIsDirty() && !confirm('Replace the current letter with ' + label + '?\n\nThis clears the previous job. Click Cancel to keep it and only preview the new form.')) {
       warnings = result.warnings || [];
       setImportStatus('Parsed ' + result.items.length + ' items. Current letter was kept. Click Load into letter to replace it, or New letter to start blank.', 'blue');
       renderImportPreview();
@@ -2035,85 +2038,156 @@
   }
 
   async function handleImportPdf(file) {
-    const label = document.getElementById('drop-label');
-    if (label) label.textContent = file.name;
-    setImportStatus('Loading PDF reader…', 'blue');
-    try {
+    return handleImportFiles([file]);
+  }
+
+  function fileListArray(list) {
+    return Array.prototype.slice.call(list || []).filter(Boolean);
+  }
+
+  function isListDropName(name) {
+    return /\.json$/i.test(name)
+      || (typeof SOSLists !== 'undefined' && SOSLists.looksLikeAggregateChart(name))
+      || (typeof SOSLists !== 'undefined' && SOSLists.looksLikeSosDatabase(name, []));
+  }
+
+  function isSosFormName(name) {
+    return /\.(xlsx?|pdf)$/i.test(name || '');
+  }
+
+  function joinFileNames(files) {
+    const names = (files || []).map(f => f && f.name).filter(Boolean);
+    if (!names.length) return 'these files';
+    if (names.length === 1) return names[0];
+    if (names.length === 2) return names[0] + ' and ' + names[1];
+    return names.slice(0, -1).join(', ') + ', and ' + names[names.length - 1];
+  }
+
+  async function parseImportFileToSheets(file) {
+    if (/\.pdf$/i.test(file.name)) {
       await loadPdfJs();
       if (typeof SosFormPdf === 'undefined') {
-        setImportStatus('PDF importer is not loaded. Refresh the page.', 'red');
-        return;
+        return { skip: 'error', name: file.name, error: 'PDF importer is not loaded. Refresh the page.' };
       }
-      setImportStatus('Reading PDF…', 'blue');
       const buf = await file.arrayBuffer();
       const kept = copyFileBytes(buf);
-      rememberSubmittal(file, kept);
       const parsed = await SosFormPdf.parsePdf(buf, { filename: file.name });
       if (parsed.kind === 'issued-letter') {
-        setImportStatus('That PDF is an issued M&R letter. Drop the contractor SOS form (.xls, .xlsx, or the form PDF).', 'red');
-        return;
+        return { skip: 'issued-letter', name: file.name };
       }
       if (parsed.kind !== 'contractor-form' || !(parsed.items || []).length) {
-        setImportStatus(parsed.error || 'Could not read a Source of Supply form from this PDF. Scanned phone photos usually have no selectable text — drop the .xls if you have it.', 'red');
-        return;
+        return {
+          skip: 'unreadable',
+          name: file.name,
+          error: parsed.error || 'Could not read a Source of Supply form from this PDF.',
+        };
       }
-      const grid = SosFormPdf.gridFromForm(parsed);
-      const result = SOSEngine.processGrid(grid, { filename: file.name, lists: listsForEngine() });
-      if (parsed.project) {
-        const p = parsed.project;
-        result.project = Object.assign({}, result.project, {
-          contract: p.contract || result.project.contract,
-          title: p.title || result.project.title,
-          contractor: p.contractor || result.project.contractor,
-          contractorAddr: p.contractorAddr || p.address || result.project.contractorAddr,
-          contact: p.contact || result.project.contact,
-          district: p.district || result.project.district,
-          docKind: p.docKind || result.project.docKind,
-        });
-      }
-      commitImportResult(result, file, 'form');
-    } catch (e) {
-      console.error(e);
-      setImportStatus('Could not parse this PDF: ' + e.message, 'red');
-    } finally {
-      const input = document.getElementById('file-input');
-      if (input) input.value = '';
+      rememberSubmittal(file, kept);
+      return {
+        name: file.name,
+        sheets: [{ name: file.name, rows: SosFormPdf.gridFromForm(parsed) }],
+        project: parsed.project || null,
+      };
     }
+    if (!/\.xlsx?$/i.test(file.name)) {
+      return { skip: 'type', name: file.name };
+    }
+    await loadXlsx();
+    const buf = await file.arrayBuffer();
+    const kept = copyFileBytes(buf);
+    const wb = XLSX.read(buf, { type: 'array', cellDates: false });
+    const grid = SOSEngine.workbookToGrid(wb);
+    if (SOSLists.looksLikeAggregateChart(file.name, grid)) {
+      ingestAggregateGrid(grid, file.name);
+      return { skip: 'chart', name: file.name };
+    }
+    rememberSubmittal(file, kept);
+    const sheets = SOSEngine.workbookToSheets(wb).map((s) => ({
+      name: file.name + (s.name ? ' / ' + s.name : ''),
+      rows: s.rows,
+      hiddenRows: s.hiddenRows || [],
+    }));
+    return { name: file.name, sheets };
   }
 
   window.handleImportFile = async function (file) {
     if (!file) return;
-    if (/\.json$/i.test(file.name) || SOSLists.looksLikeAggregateChart(file.name) || SOSLists.looksLikeSosDatabase(file.name, [])) {
-      return handleListFile(file);
+    return handleImportFiles([file]);
+  };
+
+  window.handleImportFiles = async function (fileList) {
+    const files = fileListArray(fileList);
+    if (!files.length) return;
+    const listFiles = files.filter(f => isListDropName(f.name));
+    const formFiles = files.filter(f => !isListDropName(f.name) && isSosFormName(f.name));
+    const other = files.filter(f => !listFiles.includes(f) && !formFiles.includes(f));
+    for (let i = 0; i < listFiles.length; i++) {
+      await handleListFile(listFiles[i]);
     }
-    if (/\.pdf$/i.test(file.name)) {
-      return handleImportPdf(file);
-    }
-    if (!/\.xlsx?$/i.test(file.name)) {
-      setImportStatus('Drop the contractor SOS .xls / .xlsx / .pdf form (not an issued M&R letter PDF).', 'red');
+    if (!formFiles.length) {
+      if (other.length) {
+        setImportStatus('Drop the contractor SOS .xls / .xlsx / .pdf form (not an issued M&R letter PDF).', 'red');
+      }
+      const input = document.getElementById('file-input');
+      if (input) input.value = '';
       return;
     }
-    document.getElementById('drop-label').textContent = file.name;
-    setImportStatus('Loading spreadsheet reader…', 'blue');
+
+    const labelEl = document.getElementById('drop-label');
+    if (labelEl) labelEl.textContent = formFiles.length === 1 ? formFiles[0].name : (formFiles.length + ' files');
+    setImportStatus(
+      formFiles.length === 1 ? 'Reading ' + formFiles[0].name + '…' : 'Reading ' + formFiles.length + ' files…',
+      'blue'
+    );
+
+    lastSubmittals = [];
+    lastSubmittal = null;
+    const sheets = [];
+    const used = [];
+    const skipped = [];
     try {
-      await loadXlsx();
-      setImportStatus('Reading spreadsheet…', 'blue');
-      const buf = await file.arrayBuffer();
-      const kept = copyFileBytes(buf);
-      rememberSubmittal(file, kept);
-      const wb = XLSX.read(buf, { type: 'array', cellDates: false });
-      const grid = SOSEngine.workbookToGrid(wb);
-      if (SOSLists.looksLikeAggregateChart(file.name, grid)) {
-        ingestAggregateGrid(grid, file.name);
-        setImportStatus('Loaded aggregate chart from ' + file.name + '. SOS form still needed on this drop zone.', 'green');
-        switchTab('lists', document.querySelector('.tab[data-tab="lists"]'));
+      for (let i = 0; i < formFiles.length; i++) {
+        const file = formFiles[i];
+        setImportStatus(
+          formFiles.length === 1
+            ? (/pdf$/i.test(file.name) ? 'Reading PDF…' : 'Reading spreadsheet…')
+            : ('Reading ' + (i + 1) + ' of ' + formFiles.length + ': ' + file.name),
+          'blue'
+        );
+        const parsed = await parseImportFileToSheets(file);
+        if (parsed.skip === 'issued-letter') {
+          skipped.push(file.name + ' (issued M&R letter — not imported)');
+          continue;
+        }
+        if (parsed.skip === 'chart') {
+          skipped.push(file.name + ' (aggregate chart — loaded on APL / Chart)');
+          continue;
+        }
+        if (parsed.skip) {
+          skipped.push(file.name + (parsed.error ? ': ' + parsed.error : ' (skipped)'));
+          continue;
+        }
+        (parsed.sheets || []).forEach(s => sheets.push(s));
+        used.push(file.name);
+      }
+      if (!sheets.length) {
+        const why = skipped.length ? skipped.join(' ') : 'No contractor SOS form found in the drop.';
+        setImportStatus(why, 'red');
         return;
       }
-      const result = SOSEngine.processWorkbook(wb, { filename: file.name, lists: listsForEngine() });
-      commitImportResult(result, file, 'spreadsheet');
+      const result = SOSEngine.processSosSheets(sheets, {
+        filename: used[0] || formFiles[0].name,
+        lists: listsForEngine(),
+      });
+      if (used.length > 1) {
+        result.warnings = [...(result.warnings || []), 'Read ' + used.length + ' files (' + used.join(', ') + ').'];
+      }
+      skipped.forEach(s => { result.warnings = [...(result.warnings || []), 'Skipped ' + s]; });
+      const kindLabel = used.length > 1 ? 'file' : (/\.pdf$/i.test(used[0] || '') ? 'form' : 'spreadsheet');
+      commitImportResult(result, joinFileNames(formFiles.filter(f => used.includes(f.name))), kindLabel);
     } catch (e) {
       console.error(e);
-      setImportStatus('Could not parse this file: ' + e.message, 'red');
+      setImportStatus('Could not parse this drop: ' + e.message, 'red');
     } finally {
       const input = document.getElementById('file-input');
       if (input) input.value = '';
@@ -2318,7 +2392,10 @@
       const view = buf instanceof Uint8Array ? buf : new Uint8Array(buf);
       const bytes = new Uint8Array(view.byteLength);
       bytes.set(view);
-      lastSubmittal = { name: file.name || 'submittal.xls', bytes };
+      const rec = { name: file.name || 'submittal.xls', bytes };
+      lastSubmittals = lastSubmittals || [];
+      lastSubmittals.push(rec);
+      lastSubmittal = rec;
     } catch (e) {
       lastSubmittal = { name: file.name || 'submittal.xls', bytes: null };
     }
@@ -2369,7 +2446,7 @@
       'Job: ' + who,
       '',
       'This folder is how the program keeps learning:',
-      '  1. submittal.xls / .xlsx / .pdf  — contractor Source of Supply form',
+      '  1. submittal.xls / .xlsx / .pdf  — contractor Source of Supply form (several files if they split the job)',
       '  2. program-output.html / .txt    — the letter this tool produced (your typed edits included)',
       '  3. issued.pdf                    — the SOS letter that was already sent (the one you are training against)',
       '',
@@ -2495,7 +2572,25 @@
       { name: 'program-output.txt', text: currentLetterText() },
       { name: 'items.json', text: trainingItemsJson() },
     ];
-    if (lastSubmittal && lastSubmittal.bytes && lastSubmittal.bytes.length) {
+    if (lastSubmittals && lastSubmittals.length) {
+      const used = new Set();
+      lastSubmittals.forEach((rec, i) => {
+        if (!rec || !rec.bytes || !rec.bytes.length) return;
+        const ext = (String(rec.name).match(/\.(xlsx?|pdf)$/i) || ['.xls'])[0].toLowerCase();
+        let name = (i === 0 ? 'submittal' : 'submittal-' + (i + 1)) + ext;
+        let n = i + 1;
+        while (used.has(name)) {
+          n += 1;
+          name = 'submittal-' + n + ext;
+        }
+        used.add(name);
+        const entry = { name, bytes: rec.bytes };
+        try {
+          if (rec.bytes.length <= 6 * 1024 * 1024) entry.base64 = bytesToBase64(rec.bytes);
+        } catch (e) {}
+        files.push(entry);
+      });
+    } else if (lastSubmittal && lastSubmittal.bytes && lastSubmittal.bytes.length) {
       const ext = (String(lastSubmittal.name).match(/\.(xlsx?|pdf)$/i) || ['.xls'])[0].toLowerCase();
       const entry = { name: 'submittal' + ext, bytes: lastSubmittal.bytes };
       try {
@@ -2786,10 +2881,11 @@
       e.preventDefault();
       el.classList.remove('drag-over');
       const file = e.dataTransfer.files[0];
-      if (!file) return;
+      const files = e.dataTransfer.files;
+      if (!files || !files.length) return;
       if (el.id === 'lists-drop-zone' || el.id === 'sources-drop-zone' || el.id === 'specs-drop-zone') handleListFile(file);
       else if (el.id === 'cc-drop-zone') handleCcFile(file);
-      else handleImportFile(file);
+      else handleImportFiles(files);
     });
   }
 

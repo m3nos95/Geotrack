@@ -47,7 +47,7 @@ function isProgramOutputFile(p) {
 
 function isSubmittalFile(p) {
   const n = path.basename(String(p || '')).toLowerCase();
-  return /^submittal\./.test(n);
+  return /^submittal(?:-\d+)?\./.test(n);
 }
 
 const WINDOWS_RESERVED = /^(con|prn|aux|nul|com[1-9]|lpt[1-9])$/i;
@@ -102,7 +102,7 @@ function trainingReadme(project) {
     'Job: ' + who,
     '',
     'This folder is how the program keeps learning:',
-    '  1. submittal.xls / .xlsx / .pdf  — contractor Source of Supply form',
+    '  1. submittal.xls / .xlsx / .pdf  — contractor Source of Supply form (submittal-2.pdf if they split the job)',
     '  2. program-output.html / .txt    — the letter this tool produced (your typed edits included)',
     '  3. issued.pdf                    — the SOS letter that was already sent (the one you are training against)',
     '',

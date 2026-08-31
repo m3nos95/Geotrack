@@ -931,6 +931,34 @@ assert.ok(multi.items.some(i => (i.specs || []).includes('#401755')));
 assert.ok(/Re-Steel|RE-STEEL/i.test(multi.items.find(i => i.family === 'hardware').srcName));
 console.log('Compact Spec/Item Description SOS list (multi-tab) parses');
 
+(function twoFileContractorDrop() {
+  const asphalt = gridFromObjects([
+    { 6: 'Agreement /Permit/Contract/Application #:' },
+    { 6: 'Title of Contract:', 7: 'Chapel Creek' },
+    { 7: 'Contractor: Gaines Company' },
+    { 7: 'Address: 1 Main St, Dover, DE 19901' },
+  ], [[
+    ['', 401005.0, 'Superpave Type C, PG 64-22', '', 'Superpave Type C', 'River Asphalt', '', 'Dagsboro, DE', ''],
+  ]]);
+  const concrete = gridFromObjects([
+    { 6: 'Agreement /Permit/Contract/Application #:', 7: '602951138' },
+    { 6: 'Title of Contract:', 7: 'Chapel Creek' },
+    { 7: 'Contractor: Gaines Company' },
+    { 7: 'Address: 1 Main St, Dover, DE 19901' },
+  ], [[
+    ['', 701013.0, 'PCC Curb, Type 1-8', '', 'Class B Concrete', 'Bear Concrete', '', 'Newark, DE', ''],
+  ]]);
+  const merged = Engine.processSosSheets([
+    { name: 'asphalt.xls', rows: asphalt },
+    { name: 'concrete.xls', rows: concrete },
+  ]);
+  assert.ok(merged.items.some(i => (i.specs || i.letterSpecs || []).includes('#401005')), 'asphalt file items');
+  assert.ok(merged.items.some(i => (i.specs || i.letterSpecs || []).includes('#701013')), 'concrete file items');
+  assert.strictEqual(merged.project.contract, '602951138');
+  assert.ok(merged.warnings.some(w => /2 SOS tabs/.test(w)), merged.warnings.join(' | '));
+  console.log('OK two-file contractor drop merges into one letter');
+})();
+
 assert.strictEqual(Engine.cleanContractNo('Application 642721600'), '642721600');
 assert.strictEqual(Engine.detectDocKind('Application 642721600'), 'application');
 assert.strictEqual(Engine.detectDocKind('642721600'), 'application');
