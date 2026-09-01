@@ -2172,18 +2172,6 @@
       "</th><th>" +
       esc(result) +
       "</th></tr></tfoot></table></div>" +
-      "<p><b>Checklist:</b> " +
-      esc(ck.overall.toUpperCase()) +
-      ". " +
-      ck.checks
-        .filter(function (x) {
-          return x.required && x.status === "fail";
-        })
-        .map(function (x) {
-          return esc(x.label) + " — " + esc(x.detail);
-        })
-        .join(" ") +
-      "</p>" +
       letterSignHtml(lh) +
       officialLetterFooterHtml() +
       "</article>" +
