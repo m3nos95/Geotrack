@@ -263,6 +263,62 @@ E.undoBulkCloseout(bulkTask, batch2.id);
 assert("Undo bulk reopens those QPs", E.deriveQpStatus(bKeep) === "ntp");
 assert("Undo bulk removes the batch", !E.findBulkCloseout(bulkTask, batch2.id));
 assert("Undo bulk puts leftover back on the QPs", nearly(E.taskUnallocated(bulkTask), freeBeforeUndo - 46124), E.taskUnallocated(bulkTask));
+
+/* Delete a mistaken QP from the ledger — gone, not canceled */
+var delTask = E.emptyTask("1", 100000);
+var delOpen = E.emptyQp(delTask, "7");
+delOpen.ntpAmount = 8000;
+delOpen.ntpDate = "2026-08-01";
+delOpen.invoices = [{ id: "inv-del", amount: 1200, status: "posted" }];
+var delClosed = E.emptyQp(delTask, "8");
+delClosed.ntpAmount = 5000;
+delClosed.ntpDate = "2026-07-01";
+delClosed.invoices = [{ id: "inv-c", amount: 4800, status: "posted" }];
+var delDraft = E.emptyQp(delTask, "9");
+delTask.qps = [delOpen, delClosed, delDraft];
+E.closeQp(delClosed, { date: "2026-08-01" });
+assert("Before delete: NTP + closed spend on the task", nearly(E.taskUnallocated(delTask), 100000 - 8000 - 4800), E.taskUnallocated(delTask));
+assert("Missing QP delete returns null", E.deleteQp(delTask, "nope") == null);
+var freeBeforeOpenDel = E.taskUnallocated(delTask);
+var gone = E.deleteQp(delTask, delOpen.id);
+assert("Deletes the open QP record", gone && gone.qpNumber === "7" && delTask.qps.length === 2);
+assert("Open NTP is released to the task", nearly(E.taskUnallocated(delTask), freeBeforeOpenDel + 8000), E.taskUnallocated(delTask));
+assert("Posted spend on the deleted QP is gone", nearly(E.taskSpent(delTask), 4800), E.taskSpent(delTask));
+E.deleteQp(delTask, delDraft.id);
+assert("Draft delete does not change money", nearly(E.taskUnallocated(delTask), 100000 - 4800), E.taskUnallocated(delTask));
+E.deleteQp(delTask, delClosed.id);
+assert("After all deletes the task is fully free", nearly(E.taskUnallocated(delTask), 100000), E.taskUnallocated(delTask));
+assert("Ledger empty after deletes", delTask.qps.length === 0);
+
+var delBulkTask = E.emptyTask("2", 50000);
+function makeDel(num, ntp, spent) {
+  var q = E.emptyQp(delBulkTask, num);
+  q.ntpAmount = ntp;
+  q.ntpDate = "2026-04-01";
+  if (spent) q.invoices = [{ id: "i" + num, amount: spent, status: "posted" }];
+  delBulkTask.qps.push(q);
+  return q;
+}
+var d1 = makeDel("1", 1000, 1000);
+var d2 = makeDel("2", 2000, 1500);
+var d3 = makeDel("3", 3000, 3000);
+var delBatch = E.bulkCloseQps(delBulkTask, [d1.id, d2.id, d3.id], { date: "2026-08-26" });
+assert("Delete-bulk starts with 3 QPs", delBatch && delBatch.rows.length === 3);
+E.deleteQp(delBulkTask, d2.id);
+var leftoverBatch = E.findBulkCloseout(delBulkTask, delBatch.id);
+assert("Deleted QP drops from the bulk letter", leftoverBatch && leftoverBatch.rows.length === 2 && leftoverBatch.qpIds.indexOf(d2.id) < 0);
+E.deleteQp(delBulkTask, d1.id);
+E.deleteQp(delBulkTask, d3.id);
+assert("Empty bulk letter is removed", !E.findBulkCloseout(delBulkTask, delBatch.id));
+
+var closedDel = E.emptyTask("9", 10000);
+var cq = E.emptyQp(closedDel, "1");
+cq.ntpAmount = 1000;
+closedDel.qps = [cq];
+E.closeTask(closedDel, { date: "2026-08-01" });
+assert("Cannot delete QP on a closed task", E.deleteQp(closedDel, cq.id) == null);
+assert("Closed-task QP still there", closedDel.qps.length === 1);
+
 var ccDef = E.resolveLetterCc(null, E.defaultLetterhead());
 assert("Default cc includes Profservices", ccDef.indexOf("DOT Profservices") >= 0);
 assert("Override cc can drop a name", E.resolveLetterCc(["DOT Audit Management"], E.defaultLetterhead()).length === 1);

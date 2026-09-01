@@ -1520,6 +1520,24 @@
       .filter(Boolean);
   }
 
+  function deleteQp(task, qpId) {
+    if (!task || qpId == null || qpId === "") return null;
+    if (task.closed) return null;
+    task.qps = task.qps || [];
+    var idx = -1;
+    for (var i = 0; i < task.qps.length; i++) {
+      if (String(task.qps[i].id) === String(qpId)) {
+        idx = i;
+        break;
+      }
+    }
+    if (idx < 0) return null;
+    var removed = task.qps[idx];
+    task.qps.splice(idx, 1);
+    detachQpFromBulkCloseouts(task, qpId);
+    return removed;
+  }
+
   function bulkCloseQps(task, qpIds, opts) {
     opts = opts || {};
     if (!task) return null;
@@ -1819,6 +1837,7 @@
     addLetterCc: addLetterCc,
     removeLetterCc: removeLetterCc,
     reopenQp: reopenQp,
+    deleteQp: deleteQp,
     undoBulkCloseout: undoBulkCloseout,
     bulkCloseQps: bulkCloseQps,
     findBulkCloseout: findBulkCloseout,
