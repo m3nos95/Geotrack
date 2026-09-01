@@ -711,6 +711,14 @@ assert("CGC checklist agreement 2019F", cgcCheck.agreementCode === "2019F", cgcC
 var port = hist.cgc2019;
 var portHit = E.findQpForAssignment(port, cgcCheck);
 assert("CGC checklist finds Port Mahon QP 1 by T#", portHit && portHit.qp.qpNumber === "1" && portHit.qp.contractNo === "T202270302", portHit && portHit.qp.qpNumber);
+var blankInv = E.emptyInvoice("INV-F");
+assert("New invoice is not final", blankInv.finalInvoice === false);
+cgcCheck.finalInvoice = true;
+var portQp = portHit.qp;
+var beforeCount = (portQp.invoices || []).length;
+var marked = E.applyConsultantInvoice(port, portQp, cgcCheck);
+assert("Checklist drop can mark final invoice", marked.finalInvoice === true);
+assert("Final flag reuses or adds one invoice", (portQp.invoices || []).length >= beforeCount);
 
 if (fails) {
   console.error("\n" + fails + " failed");

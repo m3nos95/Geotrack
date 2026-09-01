@@ -844,6 +844,7 @@
     });
     inv.amount = parsed.total != null ? money(parsed.total) : sumLines(inv.lines);
     inv.source = "consultant-pdf";
+    if (parsed.finalInvoice != null) inv.finalInvoice = !!parsed.finalInvoice;
     if (inv.status !== "posted") inv.status = "draft";
     return inv;
   }
@@ -2050,6 +2051,7 @@
       status: "draft",
       lines: [],
       adminChecks: {},
+      finalInvoice: false,
     };
   }
 
