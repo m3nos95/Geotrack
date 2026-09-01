@@ -120,7 +120,7 @@
                   var lastY = null;
                   (tc.items || []).forEach(function (it) {
                     var y = it.transform ? it.transform[5] : 0;
-                    if (lastY != null && Math.abs(y - lastY) > 3) {
+                    if (lastY != null && Math.abs(y - lastY) > 8) {
                       lines.push(row.replace(/\s+/g, " ").trim());
                       row = "";
                     }

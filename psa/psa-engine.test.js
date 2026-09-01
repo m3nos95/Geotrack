@@ -428,6 +428,36 @@ assert("Maps item 2 to SPT catalog code", placed.qp.proposal.lines[0].itemCode =
 assert("Maps logger item 46", placed.qp.proposal.lines.some(function (l) { return l.itemCode === "LOGGER"; }));
 assert("Proposal total from PDF lines", nearly(E.proposalTotal(placed.qp.proposal), 14373.25), E.proposalTotal(placed.qp.proposal));
 
+/* CGC PDF extract often splits the first pay-item rows (header rules / different Y). */
+var cgcSplit = [
+  "Date: September 1, 2026",
+  "Project Name: SR 10 @ South State Street",
+  "Project Design Number: T202504703",
+  "AGR: 2019F",
+  "Task: Task 4 QP 21",
+  "Project Billing Number: T2022-703-02",
+  "Item No. Description Units Unit Measure Price Total 2 ADDITIONAL STANDARD PENETRATION TESTS (SPT)",
+  "50.00 Each X $ 18.00 = $ 900.00",
+  "8 SOIL BORINGS, ATV *including permit if needed",
+  "600.00 Linear Foot X $ 16.00 = $ 9,600.00",
+  "14 MOBILIZATION OF ATV OR SKID BORING RIG - Kent County",
+  "1.00 Each X $ 500.00 = $ 500.00",
+  "19 MAN-HOUR OF PROJECT MANAGEMENT 12.00 Per Hour X $ 75.00 = $ 900.00",
+  "20 MOT - TWO LANE, TWO-WAY WITH SHOULDER CLOSURE (TA-3) 1.00 Each X $ 450.00 = $ 450.00",
+  "43 BOREHOLE ABANDONMENT New Castle, Kent, Sussex County 40.00 Linear Foot X $ 5.75 = $ 230.00",
+  "46 QUALIFIED LOGGER 8.00 Per Hour X $ 70.00 = $ 560.00",
+  "59 GPS 1.00 each X $ 100.00 = $ 100.00",
+  "DNREC Boring Permit 1.00 Each x $ 275.00 = $ 275.00",
+  "Total Amount Due: $ 13,515.00",
+].join("\n");
+var cgc = E.parseConsultantProposal(cgcSplit);
+assert("CGC split still finds item 2 SPT", cgc.lines.some(function (l) { return l.itemNo === "2" && nearly(l.amount, 900); }), JSON.stringify(cgc.lines.map(function (l) { return l.itemNo; })));
+assert("CGC split still finds item 8 ATV borings", cgc.lines.some(function (l) { return l.itemNo === "8" && nearly(l.qty, 600) && nearly(l.amount, 9600); }));
+assert("CGC split still finds item 14 mob", cgc.lines.some(function (l) { return l.itemNo === "14" && nearly(l.amount, 500); }));
+assert("CGC split keeps later items", cgc.lines.some(function (l) { return l.itemNo === "19"; }) && cgc.lines.some(function (l) { return l.itemNo === "DNREC"; }));
+assert("CGC split has 9 pay items", cgc.lines.length === 9, cgc.lines.length);
+assert("CGC split total 13515", nearly(cgc.total, 13515), cgc.total);
+
 if (fails) {
   console.error("\n" + fails + " failed");
   process.exit(1);

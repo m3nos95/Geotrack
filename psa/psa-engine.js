@@ -502,22 +502,30 @@
     return rest.slice(0, cut).replace(/\s+/g, " ").trim();
   }
 
-  function parseProposalLine(line) {
-    var s = String(line || "")
+  function stripProposalHeader(s) {
+    return String(s || "")
       .replace(/\u00a0/g, " ")
       .replace(/\t/g, " ")
       .replace(/\s+/g, " ")
       .replace(/\s*\$\s*/g, " ")
+      .replace(
+        /^item\s*no\.?\s+description\s+units\s+unit\s+measure\s+price\s+total\s+/i,
+        ""
+      )
       .trim();
-    if (!s || /^item\s*no/i.test(s) || /total amount due/i.test(s)) return null;
+  }
+
+  function parseProposalLine(line) {
+    var s = stripProposalHeader(line);
+    if (!s || /total amount due/i.test(s)) return null;
     var m = s.match(
-      /^(\d{1,3}|DNREC)\s+(.+?)\s+([\d,]+\.\d{2})\s+(Each|Linear Foot|Per Hour|ls|LS|Day|EA|LF|HR)\s*X\s*([\d,]+\.\d{2})\s*=\s*([\d,]+\.\d{2})/i
+      /^(\d{1,3}|DNREC)\s+(.+?)\s+([\d,]+\.\d{2})\s+(Each|Linear Foot|Per Hour|ls|LS|Day|EA|LF|HR)\s*[Xx×]\s*([\d,]+\.\d{2})\s*=\s*([\d,]+\.\d{2})/i
     );
     if (!m) return null;
     var unitKey = m[4].toLowerCase();
     var u = UNIT_WORDS[unitKey] || { unit: m[4], unitMeasure: m[4] };
     return {
-      itemNo: m[1],
+      itemNo: String(m[1]).toUpperCase() === "DNREC" ? "DNREC" : m[1],
       description: m[2].replace(/\*including permit if needed/i, "").trim(),
       qty: parseMoneyToken(m[3]),
       unit: u.unit,
@@ -525,6 +533,49 @@
       unitPrice: parseMoneyToken(m[5]),
       amount: parseMoneyToken(m[6]),
     };
+  }
+
+  function looksLikeItemStart(line) {
+    return /^(\d{1,3}|DNREC)\s+[A-Za-z*]/i.test(stripProposalHeader(line));
+  }
+
+  function collectProposalLines(raw) {
+    var chunks = String(raw || "")
+      .split(/\n/)
+      .map(function (ln) {
+        return ln.replace(/\s+/g, " ").trim();
+      })
+      .filter(Boolean);
+    var lines = [];
+    var seen = {};
+    function add(row) {
+      if (!row || seen[String(row.itemNo)]) return;
+      seen[String(row.itemNo)] = true;
+      lines.push(row);
+    }
+    var i;
+    for (i = 0; i < chunks.length; i++) {
+      var buf = chunks[i];
+      var row = parseProposalLine(buf);
+      while (
+        !row &&
+        i + 1 < chunks.length &&
+        !looksLikeItemStart(chunks[i + 1]) &&
+        !/total amount due/i.test(chunks[i + 1])
+      ) {
+        i += 1;
+        buf += " " + chunks[i];
+        row = parseProposalLine(buf);
+      }
+      add(row);
+    }
+    var flat = stripProposalHeader(chunks.join(" "));
+    var re = /(\d{1,3}|DNREC)\s+/gi;
+    var mm;
+    while ((mm = re.exec(flat))) {
+      add(parseProposalLine(flat.slice(mm.index)));
+    }
+    return lines;
   }
 
   function parseConsultantProposal(text) {
@@ -552,20 +603,7 @@
       taskNumber = tqp[1];
       qpNumber = tqp[2];
     }
-    var lines = [];
-    raw.split(/\n/).forEach(function (ln) {
-      var row = parseProposalLine(ln);
-      if (row) lines.push(row);
-    });
-    if (!lines.length) {
-      var re =
-        /(\d{1,3}|DNREC)\s+([A-Z][A-Z0-9 ,./()'*\-]+?)\s+([\d,]+\.\d{2})\s+(Each|Linear Foot|Per Hour|ls|LS|Day|EA|LF|HR)\s*X\s*\$?\s*([\d,]+\.\d{2})\s*=\s*\$?\s*([\d,]+\.\d{2})/gi;
-      var mm;
-      while ((mm = re.exec(one))) {
-        var row2 = parseProposalLine(mm[0]);
-        if (row2) lines.push(row2);
-      }
-    }
+    var lines = collectProposalLines(raw);
     var totalM = one.match(/Total Amount Due:\s*\$?\s*([\d,]+\.\d{2})/i);
     var total = totalM ? parseMoneyToken(totalM[1]) : sumLines(lines);
     var designNo = fieldAfter(one, "Project Design Number", labels);
