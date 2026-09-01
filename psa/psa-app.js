@@ -3620,6 +3620,27 @@
       render();
       return;
     }
+    if (act === "pay-check") {
+      var invMark = findInv(q);
+      if (!invMark) return;
+      var mi = Number(el.getAttribute("data-i"));
+      if (mi < 0 || mi > 4 || !isFinite(mi)) return;
+      invMark.formChecks = formChecksOf(invMark);
+      invMark.formChecks[mi] = !invMark.formChecks[mi];
+      save();
+      render();
+      return;
+    }
+    if (act === "clear-sign") {
+      var lhClear = E.ensureLetterhead(c);
+      lhClear.signatureDataUrl = "";
+      lhClear.signatureName = "";
+      c.letterhead = lhClear;
+      save();
+      toast("Signature removed");
+      render();
+      return;
+    }
   }
 
   function insertDemoQp(c, t) {
@@ -3775,27 +3796,6 @@
       invq.lines[Number(el.getAttribute("data-i"))].qty = Number(el.value || 0);
       if (invq.lines.length) invq.amount = E.sumLines(invq.lines);
       save();
-      render();
-      return;
-    }
-    if (act === "pay-check") {
-      var invMark = findInv(q);
-      if (!invMark) return;
-      var mi = Number(el.getAttribute("data-i"));
-      if (mi < 0 || mi > 4 || !isFinite(mi)) return;
-      invMark.formChecks = formChecksOf(invMark);
-      invMark.formChecks[mi] = !invMark.formChecks[mi];
-      save();
-      render();
-      return;
-    }
-    if (act === "clear-sign") {
-      var lhClear = E.ensureLetterhead(c);
-      lhClear.signatureDataUrl = "";
-      lhClear.signatureName = "";
-      c.letterhead = lhClear;
-      save();
-      toast("Signature removed");
       render();
       return;
     }
