@@ -685,6 +685,16 @@ var kept = (roundtrip.tasks[0].qps || []).some(function (q) {
   return q.qpNumber === "21" && q.proposal && (q.proposal.lines || []).length >= 8;
 });
 assert("Dropped QP survives localStorage round-trip", kept, JSON.stringify((roundtrip.tasks[0].qps || []).map(function (q) { return q.qpNumber; })));
+var stored = global.ConTrakTemplates.migrateState({
+  version: 2,
+  role: "pm",
+  ui: { contractId: "2216F", taskId: working2216.tasks[0].id, qpId: dropped21.qp.id, view: "ledger" },
+  contracts: [working2216],
+});
+var reloaded = JSON.parse(JSON.stringify(stored));
+var again = global.ConTrakTemplates.migrateState(reloaded);
+assert("Refresh keeps the dropped QP on 2216F", again.contracts[0].tasks[0].qps.some(function (q) { return q.qpNumber === "21"; }));
+assert("Refresh restores the open QP", again.ui && again.ui.qpId === dropped21.qp.id);
 
 if (fails) {
   console.error("\n" + fails + " failed");

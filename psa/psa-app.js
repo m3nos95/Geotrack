@@ -2105,66 +2105,12 @@
   }
 
   function renderInvoiceReview(c, t, q, inv) {
-    var rec = E.reconcileInvoiceToNtp(q, inv);
-    var ck = E.buildInvoiceChecklist(c, t, q, inv, tpl(c));
-    var lh = E.ensureLetterhead(c);
-    var dateLong = E.fmtDateLong(inv.date || E.todayISO());
-    var n = noun(c);
-    var tn = taskNoun(c);
-    var result = rec.hasBlocker ? "DO NOT POST" : ck.overall === "fail" ? "DO NOT POST" : "WITHIN NTP";
-    var lead = rec.overDollars
-      ? "This invoice exceeds the remaining NTP and must not be posted."
-      : rec.hasBlocker
-      ? "The invoice total is within the NTP dollar cap, but one or more pay items are not on the NTP or exceed NTP quantity. Do not post until those exceptions are resolved."
-      : "This invoice stays within the NTP. Unspent NTP after this invoice is " +
-        E.fmtMoney(rec.remainingAfter) +
-        ".";
+    if (inv && inv.pdf) {
+      return '<div class="paper-stack" id="invoiceReview"><div id="invoiceScan"></div></div>';
+    }
     return (
       '<div class="paper-stack" id="invoiceReview">' +
-      '<article class="letter-page invoice-review-letter">' +
-      officialLetterheadHtml(c, dateLong) +
-      letterAddrHtml(lh) +
-      '<p class="letter-salute">Invoice review</p>' +
-      "<p>This letter reviews consultant invoice <b>" +
-      esc(inv.number || "") +
-      "</b> dated " +
-      esc(dateLong) +
-      " against the Notice to Proceed for Agreement #" +
-      esc(c.code) +
-      ", " +
-      esc(tn) +
-      " " +
-      esc(t.number) +
-      ", " +
-      esc(n) +
-      " " +
-      esc(q.qpNumber) +
-      (q.contractNo || q.project
-        ? " (" +
-          esc([q.contractNo, q.project].filter(Boolean).join(", ")) +
-          ")"
-        : "") +
-      ". Result: <b>" +
-      esc(result) +
-      "</b>.</p>" +
-      "<p>NTP " +
-      E.fmtMoney(rec.ntpAmount) +
-      (rec.ntpDate ? " issued " + E.fmtDate(rec.ntpDate) : "") +
-      ". Invoice " +
-      E.fmtMoney(rec.invoiceAmount) +
-      ". Remaining NTP after this invoice " +
-      E.fmtMoney(rec.remainingAfter) +
-      ".</p>" +
-      "<p>" +
-      lead +
-      (inv.pdf
-        ? " The consultant invoice PDF is attached."
-        : " Drop the consultant invoice PDF to attach the source sheet.") +
-      "</p>" +
-      letterSignHtml(lh) +
-      officialLetterFooterHtml() +
-      "</article>" +
-      (inv.pdf ? '<div id="invoiceScan"></div>' : "") +
+      '<p class="muted no-print">Drop the consultant invoice PDF (the CGC checklist sheet). Print sends that source file — ConTrak does not rebuild the pay-item chart.</p>' +
       "</div>"
     );
   }
@@ -3481,8 +3427,24 @@
       render();
       return;
     }
-    if (act === "print-checklist" || act === "print-invoice-review") {
+    if (act === "print-checklist") {
       window.print();
+      return;
+    }
+    if (act === "print-invoice-review") {
+      var invPrint = findInv(q);
+      var invHost = document.getElementById("invoiceScan");
+      if (invHost && invPrint && invPrint.pdf && window.ConTrakPdf) {
+        window.ConTrakPdf.paintQp("inv-" + invPrint.id, invHost)
+          .then(function () {
+            window.print();
+          })
+          .catch(function () {
+            window.print();
+          });
+      } else {
+        window.print();
+      }
       return;
     }
     if (act === "save-contract-meta") {
