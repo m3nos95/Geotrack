@@ -361,7 +361,13 @@
       height: 1.15em;
       margin-top: 0.15em;
       border-bottom: 1px solid #111;
+      text-align: center;
+      font-weight: 700;
+      line-height: 1.05em;
+      cursor: pointer;
+      user-select: none;
     }
+    .pay-check-init.on { color: #111; }
     .pay-check-cert { margin: 28px 0 48px !important; text-align: left; }
     .pay-check-agr {
       display: inline-block;
@@ -377,9 +383,22 @@
       gap: 8px;
     }
     .pay-check-sig {
+      position: relative;
       flex: 1;
       border-bottom: 1px solid #111;
-      min-height: 1.2em;
+      min-height: 0.62in;
+    }
+    .pay-check-sig-img {
+      position: absolute;
+      left: 10px;
+      bottom: 3px;
+      max-height: 0.52in;
+      max-width: 2.55in;
+      width: auto;
+      height: auto;
+      object-fit: contain;
+      print-color-adjust: exact;
+      -webkit-print-color-adjust: exact;
     }
     .pay-check-date {
       width: 2.3in;
@@ -465,11 +484,11 @@
   <div class="toast" id="toast"></div>
   <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/build/pdf.min.js"></script>
-  <script src="psa-engine.js?v=final-invoice"></script>
+  <script src="psa-engine.js?v=form-checks"></script>
   <script src="psa-catalog.js"></script>
   <script src="psa-templates.js"></script>
   <script src="psa-seed.js"></script>
   <script src="psa-pdf.js?v=qp20-font"></script>
-  <script src="psa-app.js?v=final-invoice-box"></script>
+  <script src="psa-app.js?v=checklist-sign"></script>
 </body>
 </html>

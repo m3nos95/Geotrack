@@ -2106,9 +2106,27 @@
       esc(noun(c)) +
       "</button>" +
       '<button class="btn primary" data-act="print-invoice-review">Print checklist</button>' +
+      '<label class="btn">Import signature<input type="file" id="pmSign" accept="image/*" hidden></label>' +
+      (E.ensureLetterhead(c).signatureDataUrl
+        ? '<button class="btn" data-act="clear-sign">Remove signature</button>'
+        : "") +
       "</div></div>"
     );
   }
+
+  function formChecksOf(inv) {
+    var marks = inv && Array.isArray(inv.formChecks) ? inv.formChecks.slice() : [];
+    while (marks.length < 5) marks.push(false);
+    return marks.slice(0, 5);
+  }
+
+  var PAY_CHECK_ITEMS = [
+    "Verified that all work performed by the consultant on this payment is within allowable timeframes/dates as set forth in the signed agreement under which this work was performed.",
+    "Verified that the scope of work performed by consultant is within the scope as set forth in the signed agreement under which this work was performed.",
+    "Verified that the amount of this payment is within the upset limit as set forth in the signed agreement under which this work was performed",
+    "Verified that all amounts being billed by the consultant are within other established limits including profit, overhead, travel, and other incidental costs.",
+    "Communicated with fiscal staff or preparer of payment request as to how the invoice is to be funded (ie Federal/State/J etc) especially if different from how the project or activity (phase) was initially set up. For example – Must notify preparer if certain payments are ineligible for federal funds (Non-participating) even though project was set up as federally participating.",
+  ];
 
   function payCheckField(label, value) {
     return (
@@ -2120,9 +2138,15 @@
     );
   }
 
-  function payCheckItem(text) {
+  function payCheckItem(i, text, on) {
     return (
-      '<p class="pay-check-item"><span class="pay-check-init" aria-hidden="true"></span><span>' +
+      '<p class="pay-check-item"><span class="pay-check-init' +
+      (on ? " on" : "") +
+      '" data-act="pay-check" data-i="' +
+      i +
+      '" title="Mark this item">' +
+      (on ? "X" : "") +
+      "</span><span>" +
       esc(text) +
       "</span></p>"
     );
@@ -2132,6 +2156,11 @@
     var agr = c.agreementNo || c.code || "";
     var projectNo = q.contractNo || q.billingNo || "";
     var amount = E.fmtMoney(inv.amount || 0);
+    var marks = formChecksOf(inv);
+    var lh = E.ensureLetterhead(c);
+    var items = PAY_CHECK_ITEMS.map(function (text, i) {
+      return payCheckItem(i, text, !!marks[i]);
+    }).join("");
     return (
       '<div class="paper-stack" id="invoiceReview">' +
       '<article class="letter-page pay-checklist">' +
@@ -2152,26 +2181,20 @@
       payCheckField("Project No:", projectNo) +
       payCheckField("Invoice dollar amount", amount) +
       "</div></div>" +
-      payCheckItem(
-        "Verified that all work performed by the consultant on this payment is within allowable timeframes/dates as set forth in the signed agreement under which this work was performed."
-      ) +
-      payCheckItem(
-        "Verified that the scope of work performed by consultant is within the scope as set forth in the signed agreement under which this work was performed."
-      ) +
-      payCheckItem(
-        "Verified that the amount of this payment is within the upset limit as set forth in the signed agreement under which this work was performed"
-      ) +
-      payCheckItem(
-        "Verified that all amounts being billed by the consultant are within other established limits including profit, overhead, travel, and other incidental costs."
-      ) +
-      payCheckItem(
-        "Communicated with fiscal staff or preparer of payment request as to how the invoice is to be funded (ie Federal/State/J etc) especially if different from how the project or activity (phase) was initially set up. For example – Must notify preparer if certain payments are ineligible for federal funds (Non-participating) even though project was set up as federally participating."
-      ) +
+      items +
       '<p class="pay-check-cert">I certify that I have read and understand the terms and conditions set forth in agreement number <span class="pay-check-agr">' +
       esc(agr) +
       "</span>, and that all work itemized in the attached billing from the consultant is in conformance with said terms and conditions of the signed agreement, DelDOT policies/procedures, and established funding authorization dates and limits.</p>" +
       '<div class="pay-check-sign">' +
-      '<div class="pay-check-sign-row"><span>Signed</span><span class="pay-check-sig"></span><span>Date</span><span class="pay-check-date"></span></div>' +
+      '<div class="pay-check-sign-row"><span>Signed</span><span class="pay-check-sig">' +
+      (lh.signatureDataUrl
+        ? '<img class="pay-check-sig-img" alt="Project Manager signature" src="' +
+          String(lh.signatureDataUrl).replace(/"/g, "") +
+          '">'
+        : "") +
+      '</span><span>Date</span><span class="pay-check-date">' +
+      (lh.signatureDataUrl ? esc(E.fmtDate(inv.date || E.todayISO())) : "") +
+      "</span></div>" +
       '<div class="pay-check-pm">Project Manager</div>' +
       "</div>" +
       "</article>" +
@@ -2623,6 +2646,12 @@
         }
       };
     });
+    var signIn = document.getElementById("pmSign");
+    if (signIn) {
+      signIn.onchange = function () {
+        if (signIn.files && signIn.files[0]) ingestSignatureFile(signIn.files[0]);
+      };
+    }
     var ij = document.getElementById("importJson");
     if (ij) ij.onchange = importJsonFile;
     var ix = document.getElementById("importXlsx");
@@ -2685,6 +2714,26 @@
       var f = ev.dataTransfer && ev.dataTransfer.files && ev.dataTransfer.files[0];
       if (f) ingestPdfFile(f);
     };
+  }
+
+  function ingestSignatureFile(file) {
+    if (!file) return;
+    if (!/^image\//i.test(file.type || "") && !/\.(png|jpe?g|gif|webp)$/i.test(file.name || "")) {
+      toast("Use a PNG or JPG of the signature");
+      return;
+    }
+    var reader = new FileReader();
+    reader.onload = function () {
+      var c = contract();
+      var lh = E.ensureLetterhead(c);
+      lh.signatureDataUrl = reader.result;
+      lh.signatureName = file.name || "signature";
+      c.letterhead = lh;
+      save();
+      toast("Signature on the Project Manager line");
+      render();
+    };
+    reader.readAsDataURL(file);
   }
 
   function ingestPdfFile(file) {
@@ -3726,6 +3775,27 @@
       invq.lines[Number(el.getAttribute("data-i"))].qty = Number(el.value || 0);
       if (invq.lines.length) invq.amount = E.sumLines(invq.lines);
       save();
+      render();
+      return;
+    }
+    if (act === "pay-check") {
+      var invMark = findInv(q);
+      if (!invMark) return;
+      var mi = Number(el.getAttribute("data-i"));
+      if (mi < 0 || mi > 4 || !isFinite(mi)) return;
+      invMark.formChecks = formChecksOf(invMark);
+      invMark.formChecks[mi] = !invMark.formChecks[mi];
+      save();
+      render();
+      return;
+    }
+    if (act === "clear-sign") {
+      var lhClear = E.ensureLetterhead(c);
+      lhClear.signatureDataUrl = "";
+      lhClear.signatureName = "";
+      c.letterhead = lhClear;
+      save();
+      toast("Signature removed");
       render();
       return;
     }

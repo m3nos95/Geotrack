@@ -713,6 +713,7 @@ var portHit = E.findQpForAssignment(port, cgcCheck);
 assert("CGC checklist finds Port Mahon QP 1 by T#", portHit && portHit.qp.qpNumber === "1" && portHit.qp.contractNo === "T202270302", portHit && portHit.qp.qpNumber);
 var blankInv = E.emptyInvoice("INV-F");
 assert("New invoice is not final", blankInv.finalInvoice === false);
+assert("New invoice has 5 form checks off", Array.isArray(blankInv.formChecks) && blankInv.formChecks.length === 5 && !blankInv.formChecks.some(Boolean));
 cgcCheck.finalInvoice = true;
 var portQp = portHit.qp;
 var beforeCount = (portQp.invoices || []).length;
