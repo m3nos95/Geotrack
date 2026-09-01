@@ -2052,6 +2052,7 @@
       lines: [],
       adminChecks: {},
       finalInvoice: false,
+      formChecks: [false, false, false, false, false],
     };
   }
 
