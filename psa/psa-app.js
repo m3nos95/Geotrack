@@ -1,4 +1,4 @@
-/* ConTrak UI — DelDOT-standard professional-services tracker */
+/* ConTrak UI — DelDOT IDIQ tracker (Agreement → Task → QP) */
 (function () {
   "use strict";
   var E = window.PsaEngine;
@@ -195,12 +195,11 @@
       contractor: opts.contractor || "",
       pm: opts.pm || "",
       cap: E.money(opts.cap || 0),
-      agreementType:
-        opts.agreementType || (template.workflow.payItems ? "IDIQ" : "Project-Specific"),
-      term: opts.term || (template.workflow.payItems ? "Three-year term with two possible one-year extensions" : ""),
+      agreementType: "IDIQ",
+      term: opts.term || "Three-year term with two possible one-year extensions",
       paymentMethod:
         opts.paymentMethod ||
-        (template.workflow.payItems ? "Cost per unit of work" : "Lump sum"),
+        E.paymentMethodFromPayItems(template.workflow.payItems),
       funding: opts.funding || (template.workflow.payItems ? "Federal; CFDA 20.205" : ""),
       historical: !!opts.historical,
       templateId: template.id,
@@ -531,11 +530,11 @@
       '<div class="topbar-logo" title="Delaware Department of Transportation"><img src="assets/deldot-logo.png" alt="DelDOT"></div>' +
       '<div class="brand"><span class="brand-title"><b>DelDOT</b> ConTrak</span><small>' +
       esc(org) +
-      " · Professional Services</small></div>" +
+      " · IDIQ</small></div>" +
       '<div class="contract-switch">' +
       btns +
       (isFinance()
-        ? '<button class="cbtn add" data-act="view" data-view="finance">+ Agreement</button>'
+        ? '<button class="cbtn add" data-act="view" data-view="finance">+ IDIQ</button>'
         : "") +
       '</div><div class="spacer"></div>' +
       '<div class="role-switch" title="Until DelDOT SSO is wired, switch desks here. Finance configures the standard; PMs work inside it.">' +
@@ -557,11 +556,7 @@
 
   function renderKpis(c, r) {
     var t = task();
-    var capLabel = c.historical
-      ? "Agreement / PO"
-      : c.agreementType === "IDIQ"
-      ? "IDIQ maximum $"
-      : "Agreement ceiling";
+    var capLabel = c.historical ? "Agreement / PO" : "IDIQ maximum $";
     var taskAvail = t ? E.taskUnallocated(t) : r.unallocated;
     var taskLabel = t
       ? "Available on " + taskNoun(c) + " " + t.number
@@ -751,11 +746,7 @@
         esc(taskNoun(c).toLowerCase()) +
         " is the funded PO bucket. " +
         esc(nouns(c)) +
-        " are the NTP’d assignments under it — 40+ on one " +
-        esc(taskNoun(c).toLowerCase()) +
-        " is expected (PSPM IDIQ “task orders”; this office calls them " +
-        esc(nouns(c)) +
-        "). Close a " +
+        " are the NTP’d assignments under it (PSPM IDIQ task orders). Close a " +
         esc(noun(c)) +
         " when the work is performed to issue a close-out letter and return unspent NTP to this " +
         esc(taskNoun(c).toLowerCase()) +
@@ -2128,7 +2119,7 @@
           (x.id === editId ? " selected" : "") +
           ">" +
           esc(x.name) +
-          (x.builtin ? " · DelDOT starter" : "") +
+          (x.builtin ? " · IDIQ starter" : "") +
           "</option>"
         );
       })
@@ -2200,18 +2191,11 @@
     return (
       '<main class="stage setup-stage">' +
       (locked
-        ? '<div class="banner">You are in <b>PM</b> desk. The ledger, proposals, NTPs, and invoices are yours. Switch to <b>Finance</b> (upper right) to add agreements, pick a template, and set the checklist PMs must pass. Finance can set this up how they want the PM to work.</div>'
-        : '<div class="banner info">Finance desk. Add any professional-services agreement, not just 2216F / 2217F. Bind it to a DelDOT starter template or a copy you customize. Agreement types and payment methods follow the Professional Services Procurement Manual (2016). PMs cannot change the rules — they work inside them.</div>') +
-      '<div class="card"><h2>PSPM 2016 · how this desk maps</h2>' +
-      "<p class=\"muted\">Official manual: registration, solicitation, IDIQ / multiphase / project-specific / state agreements, then Notice to Proceed. Materials &amp; Research still funds work as Agreement → Task (PO) → QP (NTP’d assignment).</p>" +
-      '<table class="grid"><thead><tr><th>PSPM 2016</th><th>ConTrak (this office)</th></tr></thead><tbody>' +
-      "<tr><td>Agreement type: IDIQ, Multiphase, Project-Specific, or State. IDIQ: max 5 years including extensions, and a pre-set maximum dollar amount.</td><td>Agreement code (2216F) with cap / ceiling and term.</td></tr>" +
-      "<tr><td>Task orders issued as-needed under an IDIQ.</td><td>Quick Proposals under a funded Task. 40+ QPs on one Task is normal.</td></tr>" +
-      "<tr><td>Payment: cost plus fixed fee, cost per unit of work, specific rates of compensation, or lump sum.</td><td>Template + payment method on the agreement.</td></tr>" +
-      "<tr><td>§14 NTP: independent estimate, consultant proposal (work plan / cost / schedule), Audit review, DBE if federal, funding, then NTP. NTP date is the earliest work may begin.</td><td>Proposal tab + NTP gate. The mailed letter is unchanged.</td></tr>" +
-      "<tr><td>§3 close-out: PM notifies Finance and Audit (2 CFR 200.343).</td><td>QP close-out returns leftover NTP to the Task. Task close-out returns leftover PO to the agreement. Agreement close-out stays with Finance / Audit.</td></tr>" +
-      "</tbody></table>" +
-      '<p class="muted" style="margin-top:8px">Source: <a href="https://deldot.gov/Publications/manuals/professional_services/pdfs/ProfessionalServicesProcurementManual2016.pdf" target="_blank" rel="noopener">Professional Services Procurement Manual (2016)</a></p></div>' +
+        ? '<div class="banner">You are in <b>PM</b> desk. Switch to <b>Finance</b> to add an IDIQ, pick unit price or lump sum, and set the checklist PMs must pass.</div>'
+        : '<div class="banner info">IDIQ desk. Add an IDIQ (maximum $, term up to 5 years including extensions). Bind unit price or lump sum. PMs run Tasks and QPs inside those rules.</div>') +
+      '<div class="card"><h2>IDIQ</h2>' +
+      "<p class=\"muted\">PSPM IDIQ: one agreement, a pre-set maximum dollar amount, a term of at most five years including extensions, and work issued as needed under NTPs. This office funds that as Agreement → Task (PO) → QP (the NTP’d assignment; PSPM calls those task orders).</p>" +
+      "<p class=\"muted\">Payment is cost per unit of work or lump sum — the template picks which. Close a QP to return leftover NTP to the Task. Close the Task to return leftover PO to the agreement. RFQ, RFP, and other agreement types stay with Contract Administration.</p></div>" +
       '<div class="card"><h2>Office</h2><div class="fields">' +
       '<label class="f">Office name<input id="orgName" value="' +
       esc(state.orgName || "") +
@@ -2221,19 +2205,19 @@
       '<div style="margin-top:10px"><button class="btn primary" data-act="save-org"' +
       dis +
       ">Save office name</button></div></div>" +
-      '<div class="card"><h2>Agreements in this office</h2>' +
+      '<div class="card"><h2>IDIQs in this office</h2>' +
       '<table class="grid"><thead><tr><th>Code</th><th>Contractor</th><th>PM</th><th>Cap</th><th>Template</th><th></th></tr></thead><tbody>' +
       agreementRows +
       "</tbody></table></div>" +
-      '<div class="card"><h2>New agreement</h2>' +
-      "<p class=\"muted\">Any professional-services agreement. Type and payment method are the PSPM 2016 lists. IDIQ period including extensions shall not exceed 5 years, and the cap is the maximum agreement dollar amount. Finance fills this in; the PM then runs " +
+      '<div class="card"><h2>New IDIQ</h2>' +
+      "<p class=\"muted\">Maximum $ is the agreement cap. Term including extensions shall not exceed 5 years. The template sets unit price (pay items) or lump sum. The PM then runs " +
       esc(nouns(c)) +
       " against it.</p>" +
       '<div class="fields">' +
       '<label class="f">Agreement code<input id="newCode" placeholder="2220F"' +
       dis +
       "></label>" +
-      '<label class="f">Title<input id="newTitle" placeholder="Bridge design, lab testing, …"' +
+      '<label class="f">Title<input id="newTitle" placeholder="Subsurface Investigation Services"' +
       dis +
       "></label>" +
       '<label class="f">Contractor<input id="newContractor"' +
@@ -2242,18 +2226,12 @@
       '<label class="f">Project manager<input id="newPm"' +
       dis +
       "></label>" +
-      '<label class="f">Maximum $ / ceiling<input id="newCap" placeholder="3000000"' +
+      '<label class="f">IDIQ maximum $<input id="newCap" placeholder="3000000"' +
       dis +
       "></label>" +
       '<label class="f">RFP / solicitation<input id="newRfp"' +
       dis +
       "></label>" +
-      '<label class="f">Agreement type' +
-      selectField("newType", E.AGREEMENT_TYPES, "IDIQ", dis) +
-      "</label>" +
-      '<label class="f">Payment method' +
-      selectField("newPay", E.PAYMENT_METHODS, "Cost per unit of work", dis) +
-      "</label>" +
       '<label class="f">Term<input id="newTerm" placeholder="Three-year term with two 1-year extensions"' +
       dis +
       "></label>" +
@@ -2272,11 +2250,11 @@
       "</select></label></div>" +
       '<div style="margin-top:12px"><button class="btn primary" data-act="create-agreement"' +
       dis +
-      ">Create agreement</button></div></div>" +
-      '<div class="card"><h2>This agreement · ' +
+      ">Create IDIQ</button></div></div>" +
+      '<div class="card"><h2>This IDIQ · ' +
       esc(c.code) +
       "</h2>" +
-      "<p class=\"muted\">Point this contract at a template. Changing the template changes the nouns, tabs, and invoice checklist the PM sees.</p>" +
+      "<p class=\"muted\">Unit-price IDIQ uses the pay-item catalog. Lump-sum IDIQ invoices against the NTP amount only.</p>" +
       '<div class="fields"><label class="f">Bound template<select id="bindTemplate"' +
       dis +
       ">" +
@@ -2288,7 +2266,7 @@
       esc(c.code) +
       "</button></div></div>" +
       '<div class="card"><h2>Template editor</h2>' +
-      "<p class=\"muted\">DelDOT starters ship with unit-price IDIQ and lump-sum PSA. Duplicate one for another section (bridge, traffic, environmental) and change only what that office needs. Built-in starters can be edited in this browser; Reset puts the original back.</p>" +
+      "<p class=\"muted\">Starters are unit-price IDIQ and lump-sum IDIQ. Duplicate one if this agreement needs different checklist items. Reset puts the original starter back.</p>" +
       '<div class="row-between"><label class="f" style="flex:1">Editing<select id="pickTemplate" data-act="pick-template">' +
       templateOptions +
       "</select></label><div style=\"display:flex;gap:8px;flex-wrap:wrap;align-items:flex-end\">" +
@@ -2299,7 +2277,7 @@
       dis +
       ">New blank</button>" +
       (editing.builtin
-        ? '<button class="btn" data-act="reset-template"' + dis + ">Reset to DelDOT default</button>"
+        ? '<button class="btn" data-act="reset-template"' + dis + ">Reset to IDIQ starter</button>"
         : '<button class="btn danger" data-act="del-template"' + dis + ">Delete template</button>") +
       "</div></div>" +
       '<div class="fields" style="margin-top:12px">' +
@@ -2625,7 +2603,7 @@
     if (act === "set-role") {
       state.role = el.getAttribute("data-role") === "finance" ? "finance" : "pm";
       save();
-      toast(state.role === "finance" ? "Finance desk — you can configure templates" : "PM desk — work inside the template");
+      toast(state.role === "finance" ? "Finance desk — set up the IDIQ" : "PM desk — work inside the IDIQ");
       render();
       return;
     }
@@ -2659,8 +2637,7 @@
         pm: val("newPm"),
         cap: val("newCap"),
         rfp: val("newRfp"),
-        agreementType: val("newType"),
-        paymentMethod: val("newPay"),
+        agreementType: "IDIQ",
         term: val("newTerm"),
         funding: val("newFunding"),
         templateId: val("newTemplate") || T.UNIT_PRICE_ID,
@@ -2682,6 +2659,8 @@
       if (bound.workflow.payItems && !(c.payItems && c.payItems.length) && bound.seedCatalog === "subsurface") {
         c.payItems = window.PsaCatalog.cloneCatalog();
       }
+      c.agreementType = "IDIQ";
+      c.paymentMethod = E.paymentMethodFromPayItems(bound.workflow.payItems);
       save();
       toast(c.code + " now uses " + bound.name);
       render();
@@ -2695,13 +2674,13 @@
       state.templates.push(copy);
       ui.editTemplateId = copy.id;
       save();
-      toast("Duplicated template — rename it for the office that will use it");
+      toast("Duplicated template — rename it if this IDIQ needs different checks");
       render();
       return;
     }
     if (act === "new-template") {
       if (!isFinance()) return;
-      var blank = T.emptyCustom("Custom PSA template");
+      var blank = T.emptyCustom("Custom IDIQ template");
       state.templates.push(blank);
       ui.editTemplateId = blank.id;
       save();

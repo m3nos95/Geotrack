@@ -185,6 +185,13 @@ var migrated = Tpl.migrateState({ version: 1, contracts: [{ id: "2216F", code: "
 assert("Migrate adds templates", migrated.templates && migrated.templates.length >= 2);
 assert("Migrate binds unit-price template", migrated.contracts[0].templateId === Tpl.UNIT_PRICE_ID);
 assert("Migrate default role is PM", migrated.role === "pm");
+assert("Migrate forces IDIQ type", migrated.contracts[0].agreementType === "IDIQ");
+var migratedPay = Tpl.migrateState({
+  version: 1,
+  contracts: [{ id: "x", code: "x", paymentMethod: "Cost plus fixed fee", agreementType: "Multiphase" }],
+});
+assert("Migrate drops cost plus onto unit price", migratedPay.contracts[0].paymentMethod === "Cost per unit of work");
+assert("Migrate relabels Multiphase as IDIQ", migratedPay.contracts[0].agreementType === "IDIQ");
 
 /* Close-out: leftover NTP returns to the task; leftover task PO returns to the agreement */
 var agr = { cap: 3000000, tasks: [] };
@@ -321,8 +328,11 @@ assert("mergeCatalog fills itemNo on stored items", merged.some(function (i) { r
 assert("mergeCatalog adds logger", merged.some(function (i) { return i.code === "LOGGER"; }));
 
 /* PSPM 2016 — agreement types, NTP §14 gate, independent estimate, 20% reduction */
-assert("PSPM agreement types include IDIQ and State", E.AGREEMENT_TYPES.indexOf("IDIQ") >= 0 && E.AGREEMENT_TYPES.indexOf("State") >= 0);
-assert("PSPM payment methods include cost per unit of work", E.PAYMENT_METHODS.indexOf("Cost per unit of work") >= 0);
+assert("IDIQ is the only agreement type", E.AGREEMENT_TYPES.length === 1 && E.AGREEMENT_TYPES[0] === "IDIQ");
+assert("IDIQ payment methods are unit price and lump sum", E.PAYMENT_METHODS.indexOf("Cost per unit of work") >= 0 && E.PAYMENT_METHODS.indexOf("Lump sum") >= 0 && E.PAYMENT_METHODS.length === 2);
+assert("Cost plus is not an IDIQ option", E.PAYMENT_METHODS.indexOf("Cost plus fixed fee") < 0);
+assert("Unit-price template maps to cost per unit", E.paymentMethodFromPayItems(true) === "Cost per unit of work");
+assert("Lump-sum template maps to lump sum", E.paymentMethodFromPayItems(false) === "Lump sum");
 assert("Federal CFDA counts as federal funds", E.usesFederalFunds({ funding: "Federal; CFDA 20.205" }) === true);
 assert("State-only is not federal", E.usesFederalFunds({ funding: "State" }) === false);
 

@@ -40,9 +40,9 @@
   function unitPriceTemplate() {
     return {
       id: UNIT_PRICE_ID,
-      name: "DelDOT PSA — unit price (IDIQ)",
+      name: "DelDOT IDIQ — unit price",
       description:
-        "PSPM 2016 IDIQ, paid cost per unit of work. Materials & Research subsurface standard: review a consultant proposal against an independent estimate, pass the §14 NTP gate, then audit invoices against remaining NTP dollars and pay-item quantities.",
+        "IDIQ paid cost per unit of work. Review a consultant proposal against an independent estimate, pass the §14 NTP gate, then audit invoices against remaining NTP dollars and pay-item quantities.",
       builtin: true,
       assignmentNoun: "QP",
       assignmentNounPlural: "QPs",
@@ -60,9 +60,9 @@
   function lumpSumTemplate() {
     return {
       id: LUMP_SUM_ID,
-      name: "DelDOT PSA — lump sum",
+      name: "DelDOT IDIQ — lump sum",
       description:
-        "PSPM 2016 lump-sum payment method: use only when scope, complexity, character, and duration are defined enough to set fair compensation at negotiation. NTP amount and invoices only — no unit-price catalog.",
+        "IDIQ paid lump sum when scope and duration are defined enough to set the NTP amount at negotiation. Invoices against that NTP — no unit-price catalog.",
       builtin: true,
       assignmentNoun: "Task Order",
       assignmentNounPlural: "Task Orders",
@@ -103,8 +103,8 @@
     var t = lumpSumTemplate();
     t.id = "tpl-" + Date.now().toString(36) + "-" + Math.random().toString(36).slice(2, 6);
     t.builtin = false;
-    t.name = name || "Custom PSA template";
-    t.description = "Finance-built template for this office.";
+    t.name = name || "Custom IDIQ template";
+    t.description = "Finance-built IDIQ template for this office.";
     t.assignmentNoun = "Assignment";
     t.assignmentNounPlural = "Assignments";
     t.seedCatalog = "none";
@@ -115,7 +115,7 @@
     var t = clone(src || unitPriceTemplate());
     t.id = "tpl-" + Date.now().toString(36) + "-" + Math.random().toString(36).slice(2, 6);
     t.builtin = false;
-    t.name = newName || (src && src.name ? src.name + " (copy)" : "Custom PSA template");
+    t.name = newName || (src && src.name ? src.name + " (copy)" : "Custom IDIQ template");
     return t;
   }
 
@@ -171,6 +171,10 @@
           /lump/i.test(c.paymentMethod || "") ||
           /lump/i.test(c.agreementType || "");
         c.templateId = lump ? LUMP_SUM_ID : UNIT_PRICE_ID;
+      }
+      c.agreementType = "IDIQ";
+      if (c.paymentMethod !== "Cost per unit of work" && c.paymentMethod !== "Lump sum") {
+        c.paymentMethod = /lump/i.test(c.paymentMethod || "") ? "Lump sum" : "Cost per unit of work";
       }
     });
     state.version = Math.max(Number(state.version || 0), 2);
