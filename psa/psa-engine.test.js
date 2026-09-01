@@ -514,6 +514,68 @@ assert("CGC split keeps later items", cgc.lines.some(function (l) { return l.ite
 assert("CGC split has 9 pay items", cgc.lines.length === 9, cgc.lines.length);
 assert("CGC split total 13515", nearly(cgc.total, 13515), cgc.total);
 
+/* Task 4 QP20.pdf — Excel font maps unit prices to Greek digits; only MOT 20 stayed ASCII. */
+function cgcPdfDigits(s) {
+  return String(s).replace(/[0-9.]/g, function (ch) {
+    if (ch === ".") return String.fromCharCode(856);
+    return String.fromCharCode(1004 + Number(ch));
+  });
+}
+var psi = String.fromCharCode(936);
+var qp20Pdf = [
+  "Date:",
+  "August 28, 2026",
+  "Project Name: SR1 0 and S outh State Street",
+  "Project Design Number: T202104202",
+  "AGR: 2019F - Geotechnical Subsurface Investigation",
+  "Task: 4, QP 20",
+  "Project Billing Number: T2022-703-02",
+  "Item No. Description Units Unit",
+  "Measure",
+  "Price Total",
+  "2 ADDITIONAL STANDARD PENETRATION TESTS (SPT) 21.00 Each X " + cgcPdfDigits("18.00") + " " + psi + " = 378.00 $",
+  "8 SOIL BORINGS, ATV *including permit if needed 70.00 Linear Foot X " + cgcPdfDigits("16.00") + " " + psi + " = 1,120.00 $",
+  "14 MOBILIZATION OF ATV OR SKID BORING RIG - Kent County 7.00 Each X " + cgcPdfDigits("500.00") + " " + psi + " = 3,500.00 $",
+  "19 MAN-HOUR OF PROJECT MANAGEMENT 14.00 Per Hour X " + cgcPdfDigits("75.00") + " " + psi + " = 1,050.00 $",
+  "20 MOT - TWO LANE, TWO-WAY WITH SHOULDER CLOSURE (TA-3) 2.00 Each X 450.00 $ = 900.00 $",
+  "43 BOREHOLE ABANDONMENT New Castle, Kent, Sussex County 70.00 Linear Foot X " + cgcPdfDigits("5.75") + " " + psi + " = 402.50 $",
+  "46 QUALIFIED LOGGER 10.00 Per Hour X " + cgcPdfDigits("70.00") + " " + psi + " = 700.00 $",
+  "52 BOREHOLE INFILTRATION TEST Kent County 7.00 Each X " + cgcPdfDigits("650.00") + " " + psi + " = 4,550.00 $",
+  "59 GPS 1.00 ĞĂĐŚ X " + cgcPdfDigits("100.00") + " " + psi + " = 100.00 $",
+  "DNREC Boring Permit " + cgcPdfDigits("1.00") + " " + String.fromCharCode(28) + "ĂĐŚ x " + cgcPdfDigits("275.00") + " " + psi + " = 275.00 $",
+  "*including permit if needed Total Amount Due: 12,975.50 $",
+].join("\n");
+assert("QP20 font decode 18.00", E.decodeConsultantPdfText(cgcPdfDigits("18.00")) === "18.00");
+var qp20 = E.parseConsultantProposal(qp20Pdf);
+assert("QP20 agreement 2019F", qp20.agreementCode === "2019F", qp20.agreementCode);
+assert("QP20 task 4 from '4, QP 20'", qp20.taskNumber === "4", qp20.taskNumber);
+assert("QP20 qp number 20", qp20.qpNumber === "20", qp20.qpNumber);
+assert("QP20 date August 28", qp20.dateISO === "2026-08-28", qp20.dateISO);
+assert("QP20 design T202104202", qp20.designNo === "T202104202", qp20.designNo);
+assert("QP20 has 10 pay items not just MOT 20", qp20.lines.length === 10, JSON.stringify(qp20.lines.map(function (l) { return l.itemNo; })));
+assert("QP20 item 2 SPT 378", qp20.lines.some(function (l) { return l.itemNo === "2" && nearly(l.qty, 21) && nearly(l.unitPrice, 18) && nearly(l.amount, 378); }));
+assert("QP20 item 8 ATV 1120", qp20.lines.some(function (l) { return l.itemNo === "8" && nearly(l.qty, 70) && nearly(l.unitPrice, 16) && nearly(l.amount, 1120); }));
+assert("QP20 item 14 Kent mob 3500", qp20.lines.some(function (l) { return l.itemNo === "14" && nearly(l.amount, 3500); }));
+assert("QP20 item 19 PM 1050", qp20.lines.some(function (l) { return l.itemNo === "19" && nearly(l.amount, 1050); }));
+assert("QP20 item 20 MOT still 900", qp20.lines.some(function (l) { return l.itemNo === "20" && nearly(l.qty, 2) && nearly(l.amount, 900); }));
+assert("QP20 item 43 abandon 402.50", qp20.lines.some(function (l) { return l.itemNo === "43" && nearly(l.unitPrice, 5.75) && nearly(l.amount, 402.5); }));
+assert("QP20 item 46 logger 700", qp20.lines.some(function (l) { return l.itemNo === "46" && nearly(l.amount, 700); }));
+assert("QP20 item 52 infiltration 4550", qp20.lines.some(function (l) { return l.itemNo === "52" && nearly(l.amount, 4550); }));
+assert("QP20 GPS each 100", qp20.lines.some(function (l) { return l.itemNo === "59" && l.unit === "EA" && nearly(l.amount, 100); }));
+assert("QP20 DNREC 275", qp20.lines.some(function (l) { return l.itemNo === "DNREC" && nearly(l.qty, 1) && nearly(l.amount, 275); }));
+assert("QP20 total 12975.50", nearly(qp20.total, 12975.5), qp20.total);
+
+var qp20DateOrphan = [
+  "Date:",
+  "Project Name: SR 10 and South State Street",
+  "AGR: 2019F",
+  "Task: 4, QP 20",
+  "2 ADDITIONAL STANDARD PENETRATION TESTS (SPT) 21.00 Each X 18.00 = 378.00",
+  "Total Amount Due: 378.00",
+  "August 28, 2026",
+].join("\n");
+assert("QP20 date still found when Excel parks it off the Date: line", E.parseConsultantProposal(qp20DateOrphan).dateISO === "2026-08-28");
+
 if (fails) {
   console.error("\n" + fails + " failed");
   process.exit(1);

@@ -116,20 +116,46 @@
             return function (lines) {
               return pdf.getPage(n).then(function (page) {
                 return page.getTextContent().then(function (tc) {
-                  var row = "";
-                  var lastY = null;
+                  var buckets = [];
                   (tc.items || []).forEach(function (it) {
-                    var y = it.transform ? it.transform[5] : 0;
-                    if (lastY != null && Math.abs(y - lastY) > 8) {
-                      lines.push(row.replace(/\s+/g, " ").trim());
-                      row = "";
-                    }
-                    lastY = y;
                     var str = String(it.str || "");
                     if (!str) return;
-                    row += (row && !/\s$/.test(row) && !/^\s/.test(str) ? " " : "") + str;
+                    var y = it.transform ? it.transform[5] : 0;
+                    var x = it.transform ? it.transform[4] : 0;
+                    var w = Number(it.width) || 0;
+                    var bucket = null;
+                    var bi;
+                    for (bi = 0; bi < buckets.length; bi++) {
+                      if (Math.abs(buckets[bi].y - y) <= 8) {
+                        bucket = buckets[bi];
+                        break;
+                      }
+                    }
+                    if (!bucket) {
+                      bucket = { y: y, items: [] };
+                      buckets.push(bucket);
+                    }
+                    bucket.items.push({ x: x, w: w, str: str });
                   });
-                  if (row.trim()) lines.push(row.replace(/\s+/g, " ").trim());
+                  buckets.sort(function (a, b) {
+                    return b.y - a.y;
+                  });
+                  buckets.forEach(function (bucket) {
+                    bucket.items.sort(function (a, b) {
+                      return a.x - b.x;
+                    });
+                    var row = "";
+                    var lastEnd = null;
+                    bucket.items.forEach(function (it) {
+                      var gap = lastEnd == null ? 0 : it.x - lastEnd;
+                      if (row && !/\s$/.test(row) && !/^\s/.test(it.str) && gap > 1.2) {
+                        row += " ";
+                      }
+                      row += it.str;
+                      lastEnd = it.x + it.w;
+                    });
+                    if (row.trim()) lines.push(row.replace(/\s+/g, " ").trim());
+                  });
                   lines.push("");
                   return lines;
                 });

@@ -472,6 +472,40 @@
     return money(String(s || "").replace(/[$,]/g, "").trim());
   }
 
+  /* CGC Excel→PDF fonts map 0–9, ".", and "$" onto Greek/control glyphs.
+     Item 20 on QP 20 stayed ASCII ($450) so it parsed; the other unit prices did not. */
+  function decodeConsultantPdfText(s) {
+    var out = "";
+    var i;
+    s = String(s || "");
+    for (i = 0; i < s.length; i++) {
+      var c = s.charCodeAt(i);
+      if (c >= 1004 && c <= 1013) out += String(c - 1004);
+      else if (c === 856) out += ".";
+      else if (c === 936) out += "$";
+      else if (c === 853) out += ",";
+      else if (c === 855) out += ":";
+      else if (c === 882) out += "-";
+      else if (c < 32 && c !== 9 && c !== 10 && c !== 13) out += " ";
+      else out += s.charAt(i);
+    }
+    return out;
+  }
+
+  function unitFromToken(tok) {
+    var key = String(tok || "")
+      .replace(/\s+/g, " ")
+      .trim()
+      .toLowerCase();
+    if (UNIT_WORDS[key]) return UNIT_WORDS[key];
+    if (/linear\s*foot|\blf\b/i.test(key)) return UNIT_WORDS["linear foot"];
+    if (/per\s*hour|\bhr\b|hour/i.test(key)) return UNIT_WORDS["per hour"];
+    if (/lump|\bls\b/i.test(key)) return UNIT_WORDS.ls;
+    if (/day/i.test(key)) return UNIT_WORDS.day;
+    if (/each|\bea\b/i.test(key) || /[\u0100-\u024f]{2,}/i.test(tok)) return UNIT_WORDS.each;
+    return UNIT_WORDS.each;
+  }
+
   function parseProposalDate(s) {
     if (!s) return null;
     var iso = excelDate(s);
@@ -503,7 +537,7 @@
   }
 
   function stripProposalHeader(s) {
-    return String(s || "")
+    return decodeConsultantPdfText(s)
       .replace(/\u00a0/g, " ")
       .replace(/\t/g, " ")
       .replace(/\s+/g, " ")
@@ -519,19 +553,22 @@
     var s = stripProposalHeader(line);
     if (!s || /total amount due/i.test(s)) return null;
     var m = s.match(
-      /^(\d{1,3}|DNREC)\s+(.+?)\s+([\d,]+\.\d{2})\s+(Each|Linear Foot|Per Hour|ls|LS|Day|EA|LF|HR)\s*[Xx×]\s*([\d,]+\.\d{2})\s*=\s*([\d,]+\.\d{2})/i
+      /^(\d{1,3}|DNREC)\s+(.+?)\s+([\d,]+\.\d{2})\s+(.+?)\s*[Xx×]\s*([\d,]+\.\d{2})\s*=\s*([\d,]+\.\d{2})/i
     );
     if (!m) return null;
-    var unitKey = m[4].toLowerCase();
-    var u = UNIT_WORDS[unitKey] || { unit: m[4], unitMeasure: m[4] };
+    var u = unitFromToken(m[4]);
+    var qty = parseMoneyToken(m[3]);
+    var unitPrice = parseMoneyToken(m[5]);
+    var amount = parseMoneyToken(m[6]);
+    if (!unitPrice && qty) unitPrice = money(amount / qty);
     return {
       itemNo: String(m[1]).toUpperCase() === "DNREC" ? "DNREC" : m[1],
       description: m[2].replace(/\*including permit if needed/i, "").trim(),
-      qty: parseMoneyToken(m[3]),
+      qty: qty,
       unit: u.unit,
       unitMeasure: u.unitMeasure,
-      unitPrice: parseMoneyToken(m[5]),
-      amount: parseMoneyToken(m[6]),
+      unitPrice: unitPrice,
+      amount: amount,
     };
   }
 
@@ -579,7 +616,7 @@
   }
 
   function parseConsultantProposal(text) {
-    var raw = String(text || "").replace(/\u00a0/g, " ");
+    var raw = decodeConsultantPdfText(String(text || "").replace(/\u00a0/g, " "));
     var flat = raw.replace(/[ \t]+/g, " ");
     var one = flat.replace(/\n+/g, " ");
     var labels = [
@@ -598,7 +635,9 @@
     var taskRaw = fieldAfter(one, "Task", ["Project Billing Number", "Item No", "Date"]);
     var taskNumber = "";
     var qpNumber = "";
-    var tqp = taskRaw.match(/(?:Task\s*)?(\d+)\s*(?:QP|Quick Proposal)?\s*(\d+[A-Za-z]?)/i);
+    var tqp = taskRaw.match(
+      /(?:Task\s*)?(\d+)\s*,?\s*(?:QP|Quick Proposal)?\s*(\d+[A-Za-z]?)/i
+    );
     if (tqp) {
       taskNumber = tqp[1];
       qpNumber = tqp[2];
@@ -608,11 +647,18 @@
     var total = totalM ? parseMoneyToken(totalM[1]) : sumLines(lines);
     var designNo = fieldAfter(one, "Project Design Number", labels);
     if (/X{3,}/i.test(designNo)) designNo = "";
+    var dateISO = parseProposalDate(fieldAfter(one, "Date", ["Project Name", "AGR"]));
+    if (!dateISO) {
+      var dateHit = one.match(
+        /\b(January|February|March|April|May|June|July|August|September|October|November|December)\s+\d{1,2},?\s+\d{4}\b/i
+      );
+      if (dateHit) dateISO = parseProposalDate(dateHit[0]);
+    }
     var billingRaw = fieldAfter(one, "Project Billing Number", ["Item No", "Date"]);
     var billM = billingRaw.match(/T[A-Z0-9\-]+/i);
     var billingNo = billM ? billM[0] : billingRaw.split(/\s+/)[0] || "";
     return {
-      dateISO: parseProposalDate(fieldAfter(one, "Date", ["Project Name", "AGR"])),
+      dateISO: dateISO,
       projectName: fieldAfter(one, "Project Name", ["Project Design Number", "AGR", "Task"]),
       designNo: designNo,
       agreementCode: agrCode,
@@ -1860,6 +1906,7 @@
     catalogItemByNo: catalogItemByNo,
     parseConsultantProposal: parseConsultantProposal,
     parseProposalLine: parseProposalLine,
+    decodeConsultantPdfText: decodeConsultantPdfText,
     applyConsultantProposal: applyConsultantProposal,
     findOrCreateQpForProposal: findOrCreateQpForProposal,
   };
