@@ -286,6 +286,80 @@
     .invoice-review-chart tr.inv-st-over_qty td,
     .invoice-review-chart tr.inv-st-not_on_ntp td,
     .invoice-review-chart tr.inv-st-price td { color: #8b2020; font-weight: 600; }
+    .letter-page.pay-checklist {
+      font-family: "Times New Roman", Tinos, Times, serif;
+      font-size: 12pt;
+      line-height: 1.35;
+      color: #111;
+      padding: 0.55in 0.7in 0.6in;
+    }
+    .pay-check-title, .pay-check-sub {
+      margin: 0;
+      text-align: center;
+      font-size: 13pt;
+      font-weight: 700;
+      line-height: 1.25;
+    }
+    .pay-check-sub { margin-bottom: 28px; }
+    .pay-check-fields {
+      width: 58%;
+      margin: 0 0 36px auto;
+    }
+    .pay-check-field {
+      display: flex;
+      align-items: baseline;
+      gap: 8px;
+      margin: 0 0 10px;
+    }
+    .pay-check-lbl { white-space: nowrap; }
+    .pay-check-uline {
+      flex: 1;
+      min-height: 1.15em;
+      border-bottom: 1px solid #111;
+      padding: 0 4px 1px;
+    }
+    .pay-check-item {
+      display: flex;
+      align-items: flex-start;
+      gap: 12px;
+      margin: 0 0 22px !important;
+      text-align: left;
+    }
+    .pay-check-init {
+      flex: 0 0 48px;
+      height: 1.15em;
+      margin-top: 0.15em;
+      border-bottom: 1px solid #111;
+    }
+    .pay-check-cert { margin: 28px 0 48px !important; text-align: left; }
+    .pay-check-agr {
+      display: inline-block;
+      min-width: 2.4in;
+      border-bottom: 1px solid #111;
+      padding: 0 6px;
+      text-align: center;
+    }
+    .pay-check-sign { margin-top: 12px; }
+    .pay-check-sign-row {
+      display: flex;
+      align-items: baseline;
+      gap: 8px;
+    }
+    .pay-check-sig {
+      flex: 1;
+      border-bottom: 1px solid #111;
+      min-height: 1.2em;
+    }
+    .pay-check-date {
+      width: 2.3in;
+      border-bottom: 1px solid #111;
+      min-height: 1.2em;
+    }
+    .pay-check-pm {
+      width: 62%;
+      text-align: center;
+      margin-top: 6px;
+    }
     .prop-foot { display: flex; justify-content: space-between; align-items: flex-end; margin-top: 18px; }
     .prop-total { font-size: 15px; }
     .pdf-drop-zone {
@@ -365,6 +439,6 @@
   <script src="psa-templates.js"></script>
   <script src="psa-seed.js"></script>
   <script src="psa-pdf.js?v=qp20-font"></script>
-  <script src="psa-app.js?v=invoice-vs-ntp-form"></script>
+  <script src="psa-app.js?v=pay-checklist-form"></script>
 </body>
 </html>

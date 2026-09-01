@@ -1987,14 +1987,14 @@
         '<div class="pdf-drop no-print" id="invDrop">' +
         '<div class="banner info">Consultant invoice: <b>' +
         esc(inv.pdf.name) +
-        "</b>. Print invoice review shows the vs-NTP form plus this source sheet. " +
+        "</b>. Print checklist fills the payment-approval form and attaches this source sheet. " +
         '<label class="btn small">Replace<input type="file" id="invPdf" accept="application/pdf" hidden></label></div></div>'
       );
     }
     return (
       '<div class="pdf-drop no-print" id="invDrop">' +
       '<label class="pdf-drop-zone" id="invDropZone">Drop the consultant invoice PDF here' +
-      "<small>Reads Invoice #, Task, QP, and pay items. Checks each line against the NTP and will not post if it goes over.</small>" +
+      "<small>Reads Invoice #, Task, QP, T#, and pay items from the CGC checklist invoice.</small>" +
       '<input type="file" id="invPdf" accept="application/pdf" hidden></label></div>'
     );
   }
@@ -2099,105 +2099,66 @@
       '<button class="btn good" data-act="post-inv">Post to ' +
       esc(noun(c)) +
       "</button>" +
-      '<button class="btn primary" data-act="print-invoice-review">Print invoice review</button>' +
+      '<button class="btn primary" data-act="print-invoice-review">Print checklist</button>' +
       "</div></div>"
     );
   }
 
-  function invoiceReviewStatusLabel(st) {
-    if (st === "over_qty") return "OVER qty";
-    if (st === "not_on_ntp") return "Not on NTP";
-    if (st === "price") return "Price mismatch";
-    return "OK";
+  function payCheckField(label, value) {
+    return (
+      '<div class="pay-check-field"><span class="pay-check-lbl">' +
+      esc(label) +
+      '</span><span class="pay-check-uline">' +
+      esc(value || "") +
+      "</span></div>"
+    );
+  }
+
+  function payCheckItem(text) {
+    return (
+      '<p class="pay-check-item"><span class="pay-check-init" aria-hidden="true"></span><span>' +
+      esc(text) +
+      "</span></p>"
+    );
   }
 
   function renderInvoiceReview(c, t, q, inv) {
-    var rec = E.reconcileInvoiceToNtp(q, inv);
-    var ck = E.buildInvoiceChecklist(c, t, q, inv, tpl(c));
-    var dateLong = E.fmtDateLong(inv.date || E.todayISO());
-    var n = noun(c);
-    var tn = taskNoun(c);
-    var rows = rec.rows
-      .map(function (r) {
-        return (
-          "<tr class=\"inv-st-" +
-          esc(r.status) +
-          "\"><td>" +
-          esc(r.itemNo) +
-          "</td><td>" +
-          esc(r.description) +
-          '</td><td class="num">' +
-          esc(r.ntpQty || "—") +
-          '</td><td class="num">' +
-          esc(r.billedQty) +
-          "</td><td>" +
-          esc(r.unit) +
-          '</td><td class="num">' +
-          E.fmtMoney(r.unitPrice) +
-          '</td><td class="num">' +
-          E.fmtMoney(r.amount) +
-          "</td><td>" +
-          esc(invoiceReviewStatusLabel(r.status)) +
-          (r.note && r.status !== "ok" ? '<div class="muted">' + esc(r.note) + "</div>" : "") +
-          "</td></tr>"
-        );
-      })
-      .join("");
-    var result = rec.hasBlocker ? "DO NOT POST" : ck.overall === "fail" ? "DO NOT POST" : "WITHIN NTP";
-    var lead = rec.overDollars
-      ? "This invoice exceeds the remaining NTP and must not be posted."
-      : rec.hasBlocker
-      ? "The invoice total is within the NTP dollar cap, but one or more pay items are not on the NTP or exceed NTP quantity. Do not post until those exceptions are resolved."
-      : rec.rows.length
-      ? "This invoice stays within the NTP. Unspent NTP after this invoice is " +
-        E.fmtMoney(rec.remainingAfter) +
-        "."
-      : "Dollar check against the NTP. Drop the CGC checklist invoice PDF to attach the source sheet.";
+    var agr = c.agreementNo || c.code || "";
+    var projectNo = q.contractNo || q.billingNo || "";
+    var amount = E.fmtMoney(inv.amount || 0);
     return (
       '<div class="paper-stack" id="invoiceReview">' +
-      '<article class="letter-page invoice-review-letter">' +
-      officialLetterheadHtml(c, dateLong) +
-      '<p class="letter-salute">Invoice review</p>' +
-      "<p>Consultant invoice <b>" +
-      esc(inv.number || "") +
-      "</b> dated " +
-      esc(dateLong) +
-      " against the Notice to Proceed for Agreement #" +
-      esc(c.code) +
-      ", " +
-      esc(tn) +
-      " " +
-      esc(t.number) +
-      ", " +
-      esc(n) +
-      " " +
-      esc(q.qpNumber) +
-      (q.contractNo || q.project
-        ? " (" +
-          esc([q.contractNo, q.project].filter(Boolean).join(", ")) +
-          ")"
-        : "") +
-      ".</p>" +
-      "<p>NTP " +
-      E.fmtMoney(rec.ntpAmount) +
-      (rec.ntpDate ? " issued " + E.fmtDate(rec.ntpDate) : "") +
-      ". Invoice " +
-      E.fmtMoney(rec.invoiceAmount) +
-      ". Remaining NTP after this invoice " +
-      E.fmtMoney(rec.remainingAfter) +
-      ".</p>" +
-      "<p>" +
-      lead +
-      "</p>" +
-      '<div class="closeout-chart-wrap"><table class="prop-items closeout-chart invoice-review-chart">' +
-      "<thead><tr><th>Item</th><th>Description</th><th>NTP qty</th><th>This invoice</th><th>Unit</th><th>Price</th><th>Amount</th><th>vs NTP</th></tr></thead><tbody>" +
-      (rows ||
-        '<tr><td colspan="8">No pay items on this invoice — dollar cap only. Attach the CGC checklist invoice PDF for the source sheet.</td></tr>') +
-      '</tbody><tfoot><tr><th colspan="6">Invoice total</th><th class="num">' +
-      E.fmtMoney(rec.invoiceAmount) +
-      "</th><th>" +
-      esc(result) +
-      "</th></tr></tfoot></table></div>" +
+      '<article class="letter-page pay-checklist">' +
+      '<h1 class="pay-check-title">Department of Transportation Consultant Agreement Payment Approval</h1>' +
+      '<h2 class="pay-check-sub">Check List Form</h2>' +
+      '<div class="pay-check-fields">' +
+      payCheckField("Agreement No:", agr) +
+      payCheckField("Consultant Name:", c.contractor || "") +
+      payCheckField("Project No:", projectNo) +
+      payCheckField("Invoice dollar amount", amount) +
+      "</div>" +
+      payCheckItem(
+        "Verified that all work performed by the consultant on this payment is within allowable timeframes/dates as set forth in the signed agreement under which this work was performed."
+      ) +
+      payCheckItem(
+        "Verified that the scope of work performed by consultant is within the scope as set forth in the signed agreement under which this work was performed."
+      ) +
+      payCheckItem(
+        "Verified that the amount of this payment is within the upset limit as set forth in the signed agreement under which this work was performed"
+      ) +
+      payCheckItem(
+        "Verified that all amounts being billed by the consultant are within other established limits including profit, overhead, travel, and other incidental costs."
+      ) +
+      payCheckItem(
+        "Communicated with fiscal staff or preparer of payment request as to how the invoice is to be funded (ie Federal/State/J etc) especially if different from how the project or activity (phase) was initially set up. For example – Must notify preparer if certain payments are ineligible for federal funds (Non-participating) even though project was set up as federally participating."
+      ) +
+      '<p class="pay-check-cert">I certify that I have read and understand the terms and conditions set forth in agreement number <span class="pay-check-agr">' +
+      esc(agr) +
+      "</span>, and that all work itemized in the attached billing from the consultant is in conformance with said terms and conditions of the signed agreement, DelDOT policies/procedures, and established funding authorization dates and limits.</p>" +
+      '<div class="pay-check-sign">' +
+      '<div class="pay-check-sign-row"><span>Signed</span><span class="pay-check-sig"></span><span>Date</span><span class="pay-check-date"></span></div>' +
+      '<div class="pay-check-pm">Project Manager</div>' +
+      "</div>" +
       "</article>" +
       (inv.pdf ? '<div id="invoiceScan"></div>' : "") +
       "</div>"
