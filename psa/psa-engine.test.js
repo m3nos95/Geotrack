@@ -576,6 +576,100 @@ var qp20DateOrphan = [
 ].join("\n");
 assert("QP20 date still found when Excel parks it off the Date: line", E.parseConsultantProposal(qp20DateOrphan).dateISO === "2026-08-28");
 
+var gpsBare = E.parseProposalLine("GPS 1.00 Each X 100.00 100.00");
+assert("GPS line without = still parses", gpsBare && gpsBare.itemNo === "GPS" && nearly(gpsBare.amount, 100), gpsBare);
+
+var inv5986Text = [
+  "CGC Geoservices, LLC",
+  "Invoice #: 5986",
+  "Date:",
+  "Project Name: SR48 and SR41 Intersection Safety Improvements",
+  "Project Design Number: T202104104",
+  "AGR: 2019F - Geotechnical Subsurface Investigation",
+  "Task: 4, QP14",
+  "Project Billing Number: T2022-703-02",
+  "2 ADDITIONAL STANDARD PENETRATION TESTS (SPT) 17.00 Each X 18.00 = 306.00",
+  "5 ROCK CORE DRILLING (NXM) *including permit if needed 9.00 Linear Foot X 60.00 = 540.00",
+  "7 SOIL BORINGS, LAND *including permit if needed 66.00 Linear Foot X 12.00 = 792.00",
+  "10 MOBILIZATION OF TRUCK MOUNTED BORING RIG NCC 2.00 Each X 400.00 = 800.00",
+  "19 MAN-HOUR OF PROJECT MANAGEMENT 14.00 Per Hour X 75.00 = 1,050.00",
+  "20 MOT - TWO LANE, TWO-WAY WITH SHOULDER CLOSURE (TA-3) 1.00 Each X 450.00 = 450.00",
+  "21 MOT - TWO LANE, TWO-WAY WITH LANE CLOSURE (TA-10) 1.00 Each X 1,350.00 = 1,350.00",
+  "43 BOREHOLE ABANDONMENT New Castle, Kent, Sussex County 75.00 Linear Foot X 5.75 = 431.25",
+  "46 QUALIFIED LOGGER 11.00 Per Hour X 70.00 = 770.00",
+  "58 ROADWAY PAVEMENT CORING 1.00 Linear Foot X 130.00 = 130.00",
+  "DNREC Boring Permit 1.00 Each X 275.00 = 275.00",
+  "GPS 1.00 Each X 100.00 100.00",
+  "Total Amount Due: 6,994.25",
+  "July 12, 2026",
+].join("\n");
+var inv5986 = E.parseConsultantProposal(inv5986Text);
+assert("Invoice 5986 is an invoice", E.isConsultantInvoice(inv5986) && inv5986.invoiceNumber === "5986");
+assert("Invoice 5986 finds Task 4 QP 14", inv5986.taskNumber === "4" && inv5986.qpNumber === "14");
+assert("Invoice 5986 date July 12", inv5986.dateISO === "2026-07-12", inv5986.dateISO);
+assert("Invoice 5986 total 6994.25", nearly(inv5986.total, 6994.25), inv5986.total);
+assert("Invoice 5986 has 12 pay items", inv5986.lines.length === 12, inv5986.lines.map(function (l) { return l.itemNo; }).join(","));
+assert("Invoice 5986 GPS 100", inv5986.lines.some(function (l) { return l.itemNo === "GPS" && nearly(l.amount, 100); }));
+
+var ntp14Text = [
+  "Project Name: SR48 and SR41 Intersection Safety Improvements",
+  "Project Design Number: T202104104",
+  "AGR: 2019F - Geotechnical Subsurface Investigation",
+  "Task: 4, QP14",
+  "2 ADDITIONAL STANDARD PENETRATION TESTS (SPT) 18.00 Each X 18.00 = 324.00",
+  "5 ROCK CORE DRILLING (NXM) 10.00 Linear Foot X 60.00 = 600.00",
+  "8 SOIL BORINGS, ATV *including permit if needed 80.00 Linear Foot X 16.00 = 1,280.00",
+  "13 MOBILIZATION OF ATV OR SKID BORING RIG - New Castle County 2.00 Each X 450.00 = 900.00",
+  "19 MAN-HOUR OF PROJECT MANAGEMENT 12.00 Per Hour X 75.00 = 900.00",
+  "21 MOT - TWO LANE, TWO-WAY WITH LANE CLOSURE (TA-10) 1.00 Each X 1,350.00 = 1,350.00",
+  "43 BOREHOLE ABANDONMENT New Castle, Kent, Sussex County 80.00 Linear Foot X 5.75 = 460.00",
+  "46 QUALIFIED LOGGER 12.00 Per Hour X 70.00 = 840.00",
+  "59 GPS 1.00 each X 100.00 = 100.00",
+  "DNREC Boring Permit 1.00 Each x 275.00 = 275.00",
+  "Total Amount Due: 7,029.00",
+  "April 27, 2026",
+].join("\n");
+var ntp14 = E.parseConsultantProposal(ntp14Text);
+assert("NTP packet is not an invoice", !E.isConsultantInvoice(ntp14));
+assert("NTP 14 total 7029", nearly(ntp14.total, 7029), ntp14.total);
+
+var agr14 = { code: "2019F", payItems: global.PsaCatalog.cloneCatalog(), tasks: [] };
+var task14 = E.emptyTask("4", 599975);
+var qp14 = E.emptyQp(task14, "14");
+qp14.project = "SR 48 and SR 41";
+qp14.ntpAmount = 7029;
+qp14.ntpDate = "2026-04-27";
+task14.qps = [qp14];
+agr14.tasks = [task14];
+E.applyConsultantProposal(agr14, qp14, ntp14);
+assert("NTP PDF fills ntpLines on an already-issued QP", qp14.ntpLines && qp14.ntpLines.length === 10, qp14.ntpLines && qp14.ntpLines.length);
+
+var found14 = E.findQpForAssignment(agr14, inv5986);
+assert("Finds QP 14 on the ledger", found14 && found14.qp.id === qp14.id);
+assert("Missing QP is not created", E.findQpForAssignment(agr14, { taskNumber: "4", qpNumber: "99" }) == null);
+
+var seedInv = E.emptyInvoice("INV-1");
+seedInv.date = "2026-07-12";
+seedInv.amount = 6994.25;
+seedInv.status = "posted";
+qp14.invoices = [seedInv];
+var applied = E.applyConsultantInvoice(agr14, qp14, inv5986);
+assert("Reuses the line-less seed invoice of the same amount", applied.id === seedInv.id && qp14.invoices.length === 1);
+assert("Sets invoice number 5986", applied.number === "5986");
+assert("Invoice lines attached", applied.lines.length === 12);
+
+var rec14 = E.reconcileInvoiceToNtp(qp14, applied);
+assert("Invoice 5986 stays under the NTP dollar cap", nearly(rec14.invoiceAmount, 6994.25) && rec14.remainingAfter > 0 && !rec14.overDollars, rec14.remainingAfter);
+assert("PM hours over NTP qty", rec14.rows.some(function (r) { return r.itemNo === "19" && r.status === "over_qty"; }));
+assert("Land borings 7 not on NTP", rec14.rows.some(function (r) { return r.itemNo === "7" && r.status === "not_on_ntp"; }));
+assert("Truck mob 10 not on NTP", rec14.rows.some(function (r) { return r.itemNo === "10" && r.status === "not_on_ntp"; }));
+assert("MOT TA-3 20 not on NTP", rec14.rows.some(function (r) { return r.itemNo === "20" && r.status === "not_on_ntp"; }));
+assert("Pavement core 58 not on NTP", rec14.rows.some(function (r) { return r.itemNo === "58" && r.status === "not_on_ntp"; }));
+assert("MOT TA-10 matches NTP", rec14.rows.some(function (r) { return r.itemNo === "21" && r.status === "ok"; }));
+assert("Review form is blocked", rec14.hasBlocker === true);
+var ck14 = E.buildInvoiceChecklist(agr14, task14, qp14, applied);
+assert("Checklist will not post Invoice 5986", ck14.requiredFailCount > 0 && ck14.overall === "fail");
+
 if (fails) {
   console.error("\n" + fails + " failed");
   process.exit(1);

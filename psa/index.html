@@ -283,6 +283,9 @@
       text-align: center !important;
       vertical-align: middle;
     }
+    .invoice-review-chart tr.inv-st-over_qty td,
+    .invoice-review-chart tr.inv-st-not_on_ntp td,
+    .invoice-review-chart tr.inv-st-price td { color: #8b2020; font-weight: 600; }
     .prop-foot { display: flex; justify-content: space-between; align-items: flex-end; margin-top: 18px; }
     .prop-total { font-size: 15px; }
     .pdf-drop-zone {
@@ -357,11 +360,11 @@
   <div class="toast" id="toast"></div>
   <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/build/pdf.min.js"></script>
-  <script src="psa-engine.js?v=qp20-font"></script>
+  <script src="psa-engine.js?v=invoice-review"></script>
   <script src="psa-catalog.js"></script>
   <script src="psa-templates.js"></script>
   <script src="psa-seed.js"></script>
   <script src="psa-pdf.js?v=qp20-font"></script>
-  <script src="psa-app.js?v=delete-qp"></script>
+  <script src="psa-app.js?v=invoice-review"></script>
 </body>
 </html>
