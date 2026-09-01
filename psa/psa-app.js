@@ -2195,7 +2195,7 @@
         : '<div class="banner info">IDIQ desk. Add an IDIQ (maximum $, term up to 5 years including extensions). Bind unit price or lump sum. PMs run Tasks and QPs inside those rules.</div>') +
       '<div class="card"><h2>IDIQ</h2>' +
       "<p class=\"muted\">PSPM IDIQ: one agreement, a pre-set maximum dollar amount, a term of at most five years including extensions, and work issued as needed under NTPs. This office funds that as Agreement → Task (PO) → QP (the NTP’d assignment; PSPM calls those task orders).</p>" +
-      "<p class=\"muted\">Payment is cost per unit of work or lump sum — the template picks which. Close a QP to return leftover NTP to the Task. Close the Task to return leftover PO to the agreement. RFQ, RFP, and other agreement types stay with Contract Administration.</p></div>" +
+      "<p class=\"muted\">Payment is cost per unit of work or lump sum — the template picks which. Close a QP to return leftover NTP to the Task. Close the Task to return leftover PO to the agreement. RFQ, RFP, and non-IDIQ contracts stay with Contract Administration.</p></div>" +
       '<div class="card"><h2>Office</h2><div class="fields">' +
       '<label class="f">Office name<input id="orgName" value="' +
       esc(state.orgName || "") +
