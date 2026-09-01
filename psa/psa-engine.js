@@ -1,4 +1,4 @@
-/* ConTrak — money, proposal, NTP, and invoice-checklist engine.
+/* ConTrak — IDIQ money, proposal, NTP, and invoice-checklist engine.
    Works in the browser and in Node tests. */
 (function (global) {
   "use strict";
@@ -669,13 +669,12 @@
     );
   }
 
-  var AGREEMENT_TYPES = ["IDIQ", "Multiphase", "Project-Specific", "State"];
-  var PAYMENT_METHODS = [
-    "Cost plus fixed fee",
-    "Cost per unit of work",
-    "Specific rates of compensation",
-    "Lump sum",
-  ];
+  var AGREEMENT_TYPES = ["IDIQ"];
+  var PAYMENT_METHODS = ["Cost per unit of work", "Lump sum"];
+
+  function paymentMethodFromPayItems(payItems) {
+    return payItems ? "Cost per unit of work" : "Lump sum";
+  }
 
   function emptyPspm() {
     return {
@@ -1794,6 +1793,7 @@
     emptyInvoice: emptyInvoice,
     AGREEMENT_TYPES: AGREEMENT_TYPES,
     PAYMENT_METHODS: PAYMENT_METHODS,
+    paymentMethodFromPayItems: paymentMethodFromPayItems,
     emptyPspm: emptyPspm,
     ensurePspm: ensurePspm,
     usesFederalFunds: usesFederalFunds,
