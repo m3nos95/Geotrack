@@ -300,10 +300,41 @@
       font-weight: 700;
       line-height: 1.25;
     }
-    .pay-check-sub { margin-bottom: 28px; }
+    .pay-check-sub { margin-bottom: 22px; }
+    .pay-check-top {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 24px;
+      margin: 0 0 36px;
+    }
+    .pay-check-final {
+      flex: 0 0 38%;
+      text-align: left;
+      font-weight: 700;
+      letter-spacing: .02em;
+      padding-top: 4px;
+    }
+    .pay-check-yn {
+      margin-top: 10px;
+      font-weight: 400;
+      letter-spacing: 0;
+    }
+    .pay-check-box {
+      display: inline-block;
+      width: 0.85em;
+      height: 0.85em;
+      border: 1px solid #111;
+      text-align: center;
+      line-height: 0.8em;
+      font-size: 11pt;
+      font-weight: 700;
+      vertical-align: middle;
+      margin-right: 4px;
+    }
     .pay-check-fields {
       width: 58%;
-      margin: 0 0 36px auto;
+      margin: 0;
     }
     .pay-check-field {
       display: flex;
@@ -434,11 +465,11 @@
   <div class="toast" id="toast"></div>
   <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/build/pdf.min.js"></script>
-  <script src="psa-engine.js?v=cgc-checklist-inv"></script>
+  <script src="psa-engine.js?v=final-invoice"></script>
   <script src="psa-catalog.js"></script>
   <script src="psa-templates.js"></script>
   <script src="psa-seed.js"></script>
   <script src="psa-pdf.js?v=qp20-font"></script>
-  <script src="psa-app.js?v=pay-checklist-form"></script>
+  <script src="psa-app.js?v=final-invoice-box"></script>
 </body>
 </html>

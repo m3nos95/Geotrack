@@ -2094,6 +2094,12 @@
       '<div class="checks">' +
       checks +
       "</div>" +
+      '<label style="display:inline-flex;align-items:center;gap:8px;margin-top:12px">' +
+      '<input type="checkbox" data-act="inv-final"' +
+      (inv.finalInvoice ? " checked" : "") +
+      "> <b>Final invoice</b> for this " +
+      esc(noun(c)) +
+      "</label>" +
       '<div style="margin-top:12px;display:flex;gap:8px;flex-wrap:wrap">' +
       '<button class="btn" data-act="save-inv">Save invoice</button>' +
       '<button class="btn good" data-act="post-inv">Post to ' +
@@ -2131,12 +2137,21 @@
       '<article class="letter-page pay-checklist">' +
       '<h1 class="pay-check-title">Department of Transportation Consultant Agreement Payment Approval</h1>' +
       '<h2 class="pay-check-sub">Check List Form</h2>' +
+      '<div class="pay-check-top">' +
+      '<div class="pay-check-final">' +
+      "<div>FINAL INVOICE</div>" +
+      '<div class="pay-check-yn"><span class="pay-check-box">' +
+      (inv.finalInvoice ? "X" : "") +
+      "</span> YES &nbsp;&nbsp;<span class=\"pay-check-box\">" +
+      (inv.finalInvoice ? "" : "X") +
+      "</span> NO</div>" +
+      "</div>" +
       '<div class="pay-check-fields">' +
       payCheckField("Agreement No:", agr) +
       payCheckField("Consultant Name:", c.contractor || "") +
       payCheckField("Project No:", projectNo) +
       payCheckField("Invoice dollar amount", amount) +
-      "</div>" +
+      "</div></div>" +
       payCheckItem(
         "Verified that all work performed by the consultant on this payment is within allowable timeframes/dates as set forth in the signed agreement under which this work was performed."
       ) +
@@ -3457,6 +3472,8 @@
       cur.number = val("invNumber");
       cur.date = val("invDate");
       cur.amount = E.money(val("invAmount"));
+      var finalEl = document.querySelector('[data-act="inv-final"]');
+      if (finalEl) cur.finalInvoice = !!finalEl.checked;
       if (cur.lines && cur.lines.length && !Number(val("invAmount"))) {
         cur.amount = E.sumLines(cur.lines);
       }
@@ -3708,6 +3725,12 @@
       var invq = findInv(q);
       invq.lines[Number(el.getAttribute("data-i"))].qty = Number(el.value || 0);
       if (invq.lines.length) invq.amount = E.sumLines(invq.lines);
+      save();
+      render();
+      return;
+    }
+    if (act === "inv-final") {
+      findInv(q).finalInvoice = !!el.checked;
       save();
       render();
       return;
