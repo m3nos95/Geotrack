@@ -1265,17 +1265,17 @@
     var rows = (batch.rows || [])
       .map(function (r) {
         return (
-          "<tr><td>" +
+          '<tr><td style="text-align:center">' +
           esc(r.qpNumber) +
-          "</td><td>" +
+          '</td><td style="text-align:center">' +
           esc(r.project) +
-          "</td><td>" +
+          '</td><td style="text-align:center">' +
           esc(r.contractNo) +
-          '</td><td class="num">' +
+          '</td><td style="text-align:center">' +
           E.fmtMoney(r.ntpAmount) +
-          '</td><td class="num">' +
+          '</td><td style="text-align:center">' +
           E.fmtMoney(r.spent) +
-          '</td><td class="num">' +
+          '</td><td style="text-align:center">' +
           E.fmtMoney(r.returned) +
           "</td></tr>"
         );
@@ -1303,23 +1303,28 @@
       " are returned to Task " +
       esc(t.number) +
       " for additional Quick Proposals.</p>" +
-      '<table class="prop-items"><thead><tr><th>' +
+      '<div class="closeout-chart-wrap"><table class="prop-items closeout-chart" style="text-align:center"><thead><tr>' +
+      '<th style="text-align:center">' +
       esc(n) +
-      " #</th><th>Project</th><th>Contract / T#</th><th>NTP amount</th><th>Invoiced / spent</th><th>Returned to Task " +
+      ' #</th><th style="text-align:center">Project</th>' +
+      '<th style="text-align:center">Design contract / T#</th>' +
+      '<th style="text-align:center">NTP amount</th>' +
+      '<th style="text-align:center">Invoiced / spent</th>' +
+      '<th style="text-align:center">Returned to Task ' +
       esc(t.number) +
       "</th></tr></thead><tbody>" +
       rows +
-      '</tbody><tfoot><tr><th colspan="3">Total · ' +
+      '</tbody><tfoot><tr><th colspan="3" style="text-align:center">Total · ' +
       totals.count +
       " " +
       (totals.count === 1 ? n : ns) +
-      '</th><th class="num">' +
+      '</th><th style="text-align:center">' +
       E.fmtMoney(totals.ntpAmount) +
-      '</th><th class="num">' +
+      '</th><th style="text-align:center">' +
       E.fmtMoney(totals.spent) +
-      '</th><th class="num">' +
+      '</th><th style="text-align:center">' +
       E.fmtMoney(totals.returned) +
-      "</th></tr></tfoot></table>" +
+      "</th></tr></tfoot></table></div>" +
       (notes ? "<p>" + nl(notes) + "</p>" : "") +
       "<p>Should you have any questions, please contact me at " +
       esc(lh.signerPhone || "") +
