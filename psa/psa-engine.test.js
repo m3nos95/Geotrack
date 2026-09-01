@@ -670,6 +670,32 @@ assert("Review form is blocked", rec14.hasBlocker === true);
 var ck14 = E.buildInvoiceChecklist(agr14, task14, qp14, applied);
 assert("Checklist will not post Invoice 5986", ck14.requiredFailCount > 0 && ck14.overall === "fail");
 
+var working2216 = {
+  id: "2216F",
+  code: "2216F",
+  payItems: global.PsaCatalog.cloneCatalog(),
+  tasks: [E.emptyTask("4", 3000000)],
+};
+assert("CGC proposal is labeled 2019F", cgc.agreementCode === "2019F", cgc.agreementCode);
+var dropped21 = E.findOrCreateQpForProposal(working2216, cgc);
+assert("Drop creates QP 21 on the open 2216F ledger", dropped21.qp.qpNumber === "21" && working2216.code === "2216F");
+assert("Drop does not invent a second 2019F agreement", working2216.tasks.length === 1 && String(dropped21.task.number) === "4");
+var roundtrip = JSON.parse(JSON.stringify(working2216));
+var kept = (roundtrip.tasks[0].qps || []).some(function (q) {
+  return q.qpNumber === "21" && q.proposal && (q.proposal.lines || []).length >= 8;
+});
+assert("Dropped QP survives localStorage round-trip", kept, JSON.stringify((roundtrip.tasks[0].qps || []).map(function (q) { return q.qpNumber; })));
+var stored = global.ConTrakTemplates.migrateState({
+  version: 2,
+  role: "pm",
+  ui: { contractId: "2216F", taskId: working2216.tasks[0].id, qpId: dropped21.qp.id, view: "ledger" },
+  contracts: [working2216],
+});
+var reloaded = JSON.parse(JSON.stringify(stored));
+var again = global.ConTrakTemplates.migrateState(reloaded);
+assert("Refresh keeps the dropped QP on 2216F", again.contracts[0].tasks[0].qps.some(function (q) { return q.qpNumber === "21"; }));
+assert("Refresh restores the open QP", again.ui && again.ui.qpId === dropped21.qp.id);
+
 if (fails) {
   console.error("\n" + fails + " failed");
   process.exit(1);

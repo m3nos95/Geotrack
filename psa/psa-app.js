@@ -36,7 +36,31 @@
     }, 2600);
   }
 
+  function persistUi() {
+    if (!state) return;
+    state.ui = {
+      contractId: ui.contractId,
+      taskId: ui.taskId,
+      qpId: ui.qpId,
+      qpTab: ui.qpTab,
+      invoiceId: ui.invoiceId,
+      view: ui.view,
+    };
+  }
+
+  function restoreUi() {
+    var s = state && state.ui;
+    if (!s) return;
+    if (s.contractId) ui.contractId = s.contractId;
+    if (s.taskId) ui.taskId = s.taskId;
+    if (s.qpId) ui.qpId = s.qpId;
+    if (s.qpTab) ui.qpTab = s.qpTab;
+    if (s.invoiceId) ui.invoiceId = s.invoiceId;
+    if (s.view) ui.view = s.view;
+  }
+
   function save() {
+    persistUi();
     try {
       localStorage.setItem(STORE, JSON.stringify(state));
     } catch (err) {
@@ -292,6 +316,7 @@
     } catch (e) {
       state = defaultState();
     }
+    restoreUi();
     if (!ui.contractId || !contract()) ui.contractId = state.contracts[0].id;
     var c = contract();
     if (!ui.taskId || !task()) ui.taskId = (c.tasks[0] && c.tasks[0].id) || null;
@@ -2079,115 +2104,13 @@
     );
   }
 
-  function invoiceReviewStatusLabel(st) {
-    if (st === "over_qty") return "OVER qty";
-    if (st === "not_on_ntp") return "Not on NTP";
-    if (st === "price") return "Price mismatch";
-    return "OK";
-  }
-
   function renderInvoiceReview(c, t, q, inv) {
-    var rec = E.reconcileInvoiceToNtp(q, inv);
-    var ck = E.buildInvoiceChecklist(c, t, q, inv, tpl(c));
-    var lh = E.ensureLetterhead(c);
-    var dateLong = E.fmtDateLong(inv.date || E.todayISO());
-    var n = noun(c);
-    var tn = taskNoun(c);
-    var rows = rec.rows
-      .map(function (r) {
-        return (
-          "<tr class=\"inv-st-" +
-          esc(r.status) +
-          "\"><td>" +
-          esc(r.itemNo) +
-          "</td><td>" +
-          esc(r.description) +
-          '</td><td class="num">' +
-          esc(r.ntpQty || "—") +
-          '</td><td class="num">' +
-          esc(r.billedQty) +
-          "</td><td>" +
-          esc(r.unit) +
-          '</td><td class="num">' +
-          E.fmtMoney(r.unitPrice) +
-          '</td><td class="num">' +
-          E.fmtMoney(r.amount) +
-          "</td><td>" +
-          esc(invoiceReviewStatusLabel(r.status)) +
-          (r.note && r.status !== "ok" ? '<div class="muted">' + esc(r.note) + "</div>" : "") +
-          "</td></tr>"
-        );
-      })
-      .join("");
-    var result = rec.hasBlocker ? "DO NOT POST" : ck.overall === "fail" ? "DO NOT POST" : "WITHIN NTP";
-    var lead = rec.overDollars
-      ? "This invoice exceeds the remaining NTP and must not be posted."
-      : rec.hasBlocker
-      ? "The invoice total is within the NTP dollar cap, but one or more pay items are not on the NTP or exceed NTP quantity. Do not post until those exceptions are resolved."
-      : "This invoice stays within the NTP. Unspent NTP after this invoice is " +
-        E.fmtMoney(rec.remainingAfter) +
-        ".";
+    if (inv && inv.pdf) {
+      return '<div class="paper-stack" id="invoiceReview"><div id="invoiceScan"></div></div>';
+    }
     return (
       '<div class="paper-stack" id="invoiceReview">' +
-      '<article class="letter-page invoice-review-letter">' +
-      officialLetterheadHtml(c, dateLong) +
-      letterAddrHtml(lh) +
-      '<p class="letter-salute">Invoice review</p>' +
-      "<p>This letter reviews consultant invoice <b>" +
-      esc(inv.number || "") +
-      "</b> dated " +
-      esc(dateLong) +
-      " against the Notice to Proceed for Agreement #" +
-      esc(c.code) +
-      ", " +
-      esc(tn) +
-      " " +
-      esc(t.number) +
-      ", " +
-      esc(n) +
-      " " +
-      esc(q.qpNumber) +
-      (q.contractNo || q.project
-        ? " (" +
-          esc([q.contractNo, q.project].filter(Boolean).join(", ")) +
-          ")"
-        : "") +
-      ".</p>" +
-      "<p>NTP " +
-      E.fmtMoney(rec.ntpAmount) +
-      (rec.ntpDate ? " issued " + E.fmtDate(rec.ntpDate) : "") +
-      ". Invoice " +
-      E.fmtMoney(rec.invoiceAmount) +
-      ". Remaining NTP after this invoice " +
-      E.fmtMoney(rec.remainingAfter) +
-      ".</p>" +
-      "<p>" +
-      lead +
-      "</p>" +
-      '<div class="closeout-chart-wrap"><table class="prop-items closeout-chart invoice-review-chart">' +
-      "<thead><tr><th>Item</th><th>Description</th><th>NTP qty</th><th>This invoice</th><th>Unit</th><th>Price</th><th>Amount</th><th>vs NTP</th></tr></thead><tbody>" +
-      (rows || '<tr><td colspan="8">No pay items on this invoice — dollar cap only.</td></tr>') +
-      '</tbody><tfoot><tr><th colspan="6">Invoice total</th><th class="num">' +
-      E.fmtMoney(rec.invoiceAmount) +
-      "</th><th>" +
-      esc(result) +
-      "</th></tr></tfoot></table></div>" +
-      "<p><b>Checklist:</b> " +
-      esc(ck.overall.toUpperCase()) +
-      ". " +
-      ck.checks
-        .filter(function (x) {
-          return x.required && x.status === "fail";
-        })
-        .map(function (x) {
-          return esc(x.label) + " — " + esc(x.detail);
-        })
-        .join(" ") +
-      "</p>" +
-      letterSignHtml(lh) +
-      officialLetterFooterHtml() +
-      "</article>" +
-      (inv.pdf ? '<div id="invoiceScan"></div>' : "") +
+      '<p class="muted no-print">Drop the consultant invoice PDF (the CGC checklist sheet). Print sends that source file — ConTrak does not rebuild the pay-item chart.</p>' +
       "</div>"
     );
   }
@@ -2730,12 +2653,11 @@
           }
         }
         var c = contract();
-        if (parsed.agreementCode) {
-          var hit = (state.contracts || []).find(function (x) {
-            return String(x.code).toLowerCase() === String(parsed.agreementCode).toLowerCase();
-          });
-          if (hit) c = hit;
-        }
+        var agrMismatch =
+          parsed.agreementCode &&
+          String(parsed.agreementCode).toLowerCase() !== String(c.code).toLowerCase()
+            ? "PDF says " + parsed.agreementCode + " — saved on " + c.code
+            : "";
         if (E.isConsultantInvoice(parsed)) {
           var found = E.findQpForAssignment(c, parsed);
           if (!found && ui.qpId && qp() && !parsed.qpNumber) {
@@ -2756,6 +2678,14 @@
           }
           var inv = E.applyConsultantInvoice(c, found.qp, parsed);
           var rec = E.reconcileInvoiceToNtp(found.qp, inv);
+          ui.contractId = c.id;
+          ui.taskId = found.task.id;
+          ui.qpId = found.qp.id;
+          ui.invoiceId = inv.id;
+          ui.qpTab = "invoice";
+          ui.view = "ledger";
+          save();
+          render();
           var blobInv = new Blob([pack.buf], { type: "application/pdf" });
           if (!blobInv.size) throw new Error("Could not keep the original invoice PDF");
           return window.ConTrakPdf.savePdf("inv-" + inv.id, blobInv, { name: file.name }).then(function () {
@@ -2764,12 +2694,6 @@
               size: file.size,
               pageCount: pack.extracted.pageCount,
             };
-            ui.contractId = c.id;
-            ui.taskId = found.task.id;
-            ui.qpId = found.qp.id;
-            ui.invoiceId = inv.id;
-            ui.qpTab = "invoice";
-            ui.view = "ledger";
             save();
             var msg =
               "Invoice " +
@@ -2783,6 +2707,7 @@
             if (rec.overDollars) msg += " — OVER NTP";
             else if (rec.hasBlocker) msg += " — line items do not match the NTP";
             else msg += " · remaining " + E.fmtMoney(rec.remainingAfter);
+            if (agrMismatch) msg += " · " + agrMismatch;
             toast(msg);
             render();
           });
@@ -2794,6 +2719,13 @@
         } else {
           target = E.findOrCreateQpForProposal(c, parsed);
         }
+        ui.contractId = c.id;
+        ui.taskId = target.task.id;
+        ui.qpId = target.qp.id;
+        ui.qpTab = "ntp";
+        ui.view = "ledger";
+        save();
+        render();
         var blob = new Blob([pack.buf], { type: "application/pdf" });
         if (!blob.size) throw new Error("Could not keep the original PDF");
         return window.ConTrakPdf.savePdf(target.qp.id, blob, { name: file.name }).then(function () {
@@ -2802,20 +2734,20 @@
             size: file.size,
             pageCount: pack.extracted.pageCount,
           };
-          ui.contractId = c.id;
-          ui.taskId = target.task.id;
-          ui.qpId = target.qp.id;
-          ui.qpTab = "ntp";
-          ui.view = "ledger";
           save();
           var amt = parsed.total || E.proposalTotal(target.qp.proposal);
           var msg =
-            "Attached " +
-            file.name +
+            "Saved " +
+            noun(c) +
+            " " +
+            target.qp.qpNumber +
+            " on " +
+            c.code +
             (amt ? " · " + E.fmtMoney(amt) : "") +
             (parsed.lines.length
               ? " · " + parsed.lines.length + " pay items"
               : " · pay items not read; PDF still attaches to the NTP");
+          if (agrMismatch) msg += " · " + agrMismatch;
           toast(msg);
           render();
         });
@@ -3495,8 +3427,24 @@
       render();
       return;
     }
-    if (act === "print-checklist" || act === "print-invoice-review") {
+    if (act === "print-checklist") {
       window.print();
+      return;
+    }
+    if (act === "print-invoice-review") {
+      var invPrint = findInv(q);
+      var invHost = document.getElementById("invoiceScan");
+      if (invHost && invPrint && invPrint.pdf && window.ConTrakPdf) {
+        window.ConTrakPdf.paintQp("inv-" + invPrint.id, invHost)
+          .then(function () {
+            window.print();
+          })
+          .catch(function () {
+            window.print();
+          });
+      } else {
+        window.print();
+      }
       return;
     }
     if (act === "save-contract-meta") {
