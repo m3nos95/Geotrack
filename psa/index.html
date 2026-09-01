@@ -151,6 +151,8 @@
     table.grid .muted { color: var(--muted); }
     table.grid th.check, table.grid td.check { width: 36px; text-align: center; padding-left: 8px; padding-right: 4px; }
     table.grid td.check input, table.grid th.check input { width: 16px; height: 16px; accent-color: var(--gold); }
+    table.grid th.del, table.grid td.del { width: 72px; text-align: right; white-space: nowrap; }
+    table.grid .ledger-del { color: var(--red2); }
     table.grid tfoot td { border-top: 1px solid var(--border); }
 
     .pill {
@@ -355,11 +357,11 @@
   <div class="toast" id="toast"></div>
   <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/build/pdf.min.js"></script>
-  <script src="psa-engine.js?v=split-lines"></script>
+  <script src="psa-engine.js?v=delete-qp"></script>
   <script src="psa-catalog.js"></script>
   <script src="psa-templates.js"></script>
   <script src="psa-seed.js"></script>
   <script src="psa-pdf.js?v=split-lines"></script>
-  <script src="psa-app.js?v=chart-center"></script>
+  <script src="psa-app.js?v=delete-qp"></script>
 </body>
 </html>

@@ -716,6 +716,12 @@
             : E.fmtMoney(E.qpRemaining(q))) +
           '</td><td class="muted">' +
           (invs || "—") +
+          '</td><td class="del no-print">' +
+          (t.closed
+            ? ""
+            : '<button type="button" class="btn small ghost ledger-del" data-act="delete-qp" data-id="' +
+              esc(q.id) +
+              '" title="Delete from ledger">Delete</button>') +
           "</td></tr>"
         );
       })
@@ -855,9 +861,10 @@
       "<th>" +
       esc(noun(c)) +
       " #</th><th>Contract</th><th>Project</th><th>Notes</th><th>Status</th><th>NTP date</th><th>NTP amount</th><th>Spent</th><th>Balance</th><th>Invoices</th>" +
+      '<th class="del no-print"></th>' +
       "</tr></thead><tbody>" +
       (rows ||
-        '<tr><td colspan="11" class="muted">No ' +
+        '<tr><td colspan="12" class="muted">No ' +
           esc(nouns(c)) +
           " yet. Add a " +
           esc(noun(c)) +
@@ -942,7 +949,18 @@
           esc(taskNoun(c).toLowerCase()) +
           "</button>") +
       '<button class="btn danger" data-act="cancel-qp">Mark canceled</button>' +
-      "</div></div>" +
+      (t.closed
+        ? ""
+        : '<button class="btn ghost" data-act="delete-qp" data-id="' +
+          esc(q.id) +
+          '">Delete from ledger</button>') +
+      "</div>" +
+      '<p class="muted" style="margin:10px 0 0">Canceled ' +
+      esc(nouns(c)) +
+      " stay on the ledger. Delete removes the row if this " +
+      esc(n) +
+      " should not have been entered.</p>" +
+      "</div>" +
       '<div class="card"><h3>Money</h3><p>NTP ' +
       E.fmtMoney(q.ntpAmount) +
       " · spent " +
@@ -956,6 +974,57 @@
 
   function leftoverToTask(q) {
     return E.qpLeftover(q);
+  }
+
+  function confirmDeleteQp(c, t, q) {
+    var n = noun(c);
+    var tn = taskNoun(c);
+    var label = n + " " + (q.qpNumber || "");
+    var lines = ["Delete " + label + " from the ledger? This cannot be undone."];
+    var ntp = E.qpNtp(q);
+    var spent = E.qpSpent(q);
+    if (ntp && !q.qpClosed && q.status !== "canceled") {
+      lines.push(E.fmtMoney(ntp) + " NTP will no longer count against " + tn + " " + t.number + ".");
+    }
+    if (spent) {
+      lines.push(E.fmtMoney(spent) + " in posted invoices will be deleted with it.");
+    }
+    if (q.qpClosed && ntp) {
+      lines.push("Leftover NTP is already back on the " + tn.toLowerCase() + ".");
+    }
+    lines.push("Any saved proposal PDF will be removed.");
+    return confirm(lines.join("\n\n"));
+  }
+
+  function finishDeleteQp(c, t, q) {
+    var id = q.id;
+    var num = q.qpNumber;
+    var removed = E.deleteQp(t, id);
+    if (!removed) {
+      toast(
+        t && t.closed
+          ? "Reopen the " + taskNoun(c).toLowerCase() + " first"
+          : "Could not delete that " + noun(c)
+      );
+      return;
+    }
+    ui.selectedQpIds = selectedQpIds().filter(function (x) {
+      return x !== id;
+    });
+    if (ui.qpId === id) {
+      ui.qpId = null;
+      ui.qpTab = "info";
+    }
+    ui.invoiceId = null;
+    var pdfLib = window.ConTrakPdf;
+    var done = pdfLib ? pdfLib.removePdf(id) : Promise.resolve();
+    Promise.resolve(done)
+      .catch(function () {})
+      .then(function () {
+        save();
+        toast(noun(c) + " " + num + " removed from the ledger");
+        render();
+      });
   }
 
   function selectedQpIds() {
@@ -3055,6 +3124,23 @@
       q.canceled = true;
       save();
       render();
+      return;
+    }
+    if (act === "delete-qp") {
+      var delId = el.getAttribute("data-id") || ui.qpId;
+      var delQp = (t.qps || []).find(function (x) {
+        return String(x.id) === String(delId);
+      });
+      if (!delQp) {
+        toast("Could not find that " + noun(c));
+        return;
+      }
+      if (t.closed) {
+        toast("Reopen the " + taskNoun(c).toLowerCase() + " first");
+        return;
+      }
+      if (!confirmDeleteQp(c, t, delQp)) return;
+      finishDeleteQp(c, t, delQp);
       return;
     }
     if (act === "prop-add") {
