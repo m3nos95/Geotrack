@@ -672,9 +672,26 @@
     var billingRaw = fieldAfter(one, "Project Billing Number", ["Item No", "Date"]);
     var billM = billingRaw.match(/T[A-Z0-9\-]+/i);
     var billingNo = billM ? billM[0] : billingRaw.split(/\s+/)[0] || "";
+    if (!billingNo || billingNo === "T") {
+      var tHit = one.match(/\bT\s*[-]?\s*(\d{6,}(?:-\d+)*)\b/i);
+      if (tHit) billingNo = "T" + tHit[1];
+    }
+    if (!agrCode) {
+      var agrHit = one.match(/\b(\d{4}F)\b/i);
+      if (agrHit) agrCode = agrHit[1].toUpperCase();
+    }
     var invNo = "";
     var invM = one.match(/Invoice\s*#\s*:?\s*([A-Za-z0-9\-]+)/i);
     if (invM) invNo = invM[1];
+    if (!invNo) {
+      var splitInv = one.match(/Invoice\s*#\s*:?\s*((?:\d\s*){3,}\d)/i);
+      if (splitInv) invNo = splitInv[1].replace(/\s+/g, "");
+    }
+    if (!totalM && !lines.length) {
+      var cash = one.match(/\$\s*([\d,]+\.\d{2})/);
+      if (cash) total = parseMoneyToken(cash[1]);
+    }
+    var isInv = !!invNo || /FINAL INVOICE/i.test(one);
     return {
       dateISO: dateISO,
       projectName: fieldAfter(one, "Project Name", ["Project Design Number", "AGR", "Task"]),
@@ -685,7 +702,7 @@
       qpNumber: qpNumber,
       billingNo: billingNo,
       invoiceNumber: invNo,
-      kind: invNo ? "invoice" : "proposal",
+      kind: isInv ? "invoice" : "proposal",
       total: total,
       lines: lines,
     };
@@ -695,7 +712,13 @@
     if (parsedOrText && typeof parsedOrText === "object") {
       return parsedOrText.kind === "invoice" || !!parsedOrText.invoiceNumber;
     }
-    return /Invoice\s*#/i.test(String(parsedOrText || ""));
+    return /Invoice\s*#/i.test(String(parsedOrText || "")) || /FINAL INVOICE/i.test(String(parsedOrText || ""));
+  }
+
+  function sameJobNo(a, b) {
+    var na = String(a || "").replace(/\s+/g, "").toUpperCase();
+    var nb = String(b || "").replace(/\s+/g, "").toUpperCase();
+    return !!(na && nb && na === nb);
   }
 
   function applyConsultantProposal(contract, qp, parsed) {
@@ -745,11 +768,23 @@
       if (taskNum && String(t.number) === taskNum) task = t;
     });
     if (!task && !taskNum) task = (contract.tasks || [])[0] || null;
-    if (!task) return null;
     var qp = null;
-    if (parsed.qpNumber) {
+    if (task && parsed.qpNumber) {
       (task.qps || []).forEach(function (q) {
         if (String(q.qpNumber) === String(parsed.qpNumber)) qp = q;
+      });
+    }
+    if (!qp) {
+      var job = parsed.designNo || parsed.billingNo || "";
+      (contract.tasks || []).some(function (t) {
+        return (t.qps || []).some(function (q) {
+          if (sameJobNo(q.contractNo, job) || sameJobNo(q.billingNo, job)) {
+            task = t;
+            qp = q;
+            return true;
+          }
+          return false;
+        });
       });
     }
     if (!qp) return null;

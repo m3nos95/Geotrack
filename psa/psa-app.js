@@ -1987,7 +1987,7 @@
         '<div class="pdf-drop no-print" id="invDrop">' +
         '<div class="banner info">Consultant invoice: <b>' +
         esc(inv.pdf.name) +
-        "</b>. The review form prints with this PDF attached. " +
+        "</b>. Print invoice review shows the vs-NTP form plus this source sheet. " +
         '<label class="btn small">Replace<input type="file" id="invPdf" accept="application/pdf" hidden></label></div></div>'
       );
     }
@@ -2104,13 +2104,102 @@
     );
   }
 
+  function invoiceReviewStatusLabel(st) {
+    if (st === "over_qty") return "OVER qty";
+    if (st === "not_on_ntp") return "Not on NTP";
+    if (st === "price") return "Price mismatch";
+    return "OK";
+  }
+
   function renderInvoiceReview(c, t, q, inv) {
-    if (inv && inv.pdf) {
-      return '<div class="paper-stack" id="invoiceReview"><div id="invoiceScan"></div></div>';
-    }
+    var rec = E.reconcileInvoiceToNtp(q, inv);
+    var ck = E.buildInvoiceChecklist(c, t, q, inv, tpl(c));
+    var dateLong = E.fmtDateLong(inv.date || E.todayISO());
+    var n = noun(c);
+    var tn = taskNoun(c);
+    var rows = rec.rows
+      .map(function (r) {
+        return (
+          "<tr class=\"inv-st-" +
+          esc(r.status) +
+          "\"><td>" +
+          esc(r.itemNo) +
+          "</td><td>" +
+          esc(r.description) +
+          '</td><td class="num">' +
+          esc(r.ntpQty || "—") +
+          '</td><td class="num">' +
+          esc(r.billedQty) +
+          "</td><td>" +
+          esc(r.unit) +
+          '</td><td class="num">' +
+          E.fmtMoney(r.unitPrice) +
+          '</td><td class="num">' +
+          E.fmtMoney(r.amount) +
+          "</td><td>" +
+          esc(invoiceReviewStatusLabel(r.status)) +
+          (r.note && r.status !== "ok" ? '<div class="muted">' + esc(r.note) + "</div>" : "") +
+          "</td></tr>"
+        );
+      })
+      .join("");
+    var result = rec.hasBlocker ? "DO NOT POST" : ck.overall === "fail" ? "DO NOT POST" : "WITHIN NTP";
+    var lead = rec.overDollars
+      ? "This invoice exceeds the remaining NTP and must not be posted."
+      : rec.hasBlocker
+      ? "The invoice total is within the NTP dollar cap, but one or more pay items are not on the NTP or exceed NTP quantity. Do not post until those exceptions are resolved."
+      : rec.rows.length
+      ? "This invoice stays within the NTP. Unspent NTP after this invoice is " +
+        E.fmtMoney(rec.remainingAfter) +
+        "."
+      : "Dollar check against the NTP. Drop the CGC checklist invoice PDF to attach the source sheet.";
     return (
       '<div class="paper-stack" id="invoiceReview">' +
-      '<p class="muted no-print">Drop the consultant invoice PDF (the CGC checklist sheet). Print sends that source file — ConTrak does not rebuild the pay-item chart.</p>' +
+      '<article class="letter-page invoice-review-letter">' +
+      officialLetterheadHtml(c, dateLong) +
+      '<p class="letter-salute">Invoice review</p>' +
+      "<p>Consultant invoice <b>" +
+      esc(inv.number || "") +
+      "</b> dated " +
+      esc(dateLong) +
+      " against the Notice to Proceed for Agreement #" +
+      esc(c.code) +
+      ", " +
+      esc(tn) +
+      " " +
+      esc(t.number) +
+      ", " +
+      esc(n) +
+      " " +
+      esc(q.qpNumber) +
+      (q.contractNo || q.project
+        ? " (" +
+          esc([q.contractNo, q.project].filter(Boolean).join(", ")) +
+          ")"
+        : "") +
+      ".</p>" +
+      "<p>NTP " +
+      E.fmtMoney(rec.ntpAmount) +
+      (rec.ntpDate ? " issued " + E.fmtDate(rec.ntpDate) : "") +
+      ". Invoice " +
+      E.fmtMoney(rec.invoiceAmount) +
+      ". Remaining NTP after this invoice " +
+      E.fmtMoney(rec.remainingAfter) +
+      ".</p>" +
+      "<p>" +
+      lead +
+      "</p>" +
+      '<div class="closeout-chart-wrap"><table class="prop-items closeout-chart invoice-review-chart">' +
+      "<thead><tr><th>Item</th><th>Description</th><th>NTP qty</th><th>This invoice</th><th>Unit</th><th>Price</th><th>Amount</th><th>vs NTP</th></tr></thead><tbody>" +
+      (rows ||
+        '<tr><td colspan="8">No pay items on this invoice — dollar cap only. Attach the CGC checklist invoice PDF for the source sheet.</td></tr>') +
+      '</tbody><tfoot><tr><th colspan="6">Invoice total</th><th class="num">' +
+      E.fmtMoney(rec.invoiceAmount) +
+      "</th><th>" +
+      esc(result) +
+      "</th></tr></tfoot></table></div>" +
+      "</article>" +
+      (inv.pdf ? '<div id="invoiceScan"></div>' : "") +
       "</div>"
     );
   }

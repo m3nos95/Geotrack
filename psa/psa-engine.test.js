@@ -696,6 +696,22 @@ var again = global.ConTrakTemplates.migrateState(reloaded);
 assert("Refresh keeps the dropped QP on 2216F", again.contracts[0].tasks[0].qps.some(function (q) { return q.qpNumber === "21"; }));
 assert("Refresh restores the open QP", again.ui && again.ui.qpId === dropped21.qp.id);
 
+var cgcCheckText = [
+  "FINAL INVOICE 2019F Geotechnical Subsurface Investigation",
+  "YES NO CGC GEOSERVICES, LLC",
+  "T202270302",
+  "$4,647.38 Invoice #5889",
+  "2019F",
+].join("\n");
+var cgcCheck = E.parseConsultantProposal(cgcCheckText);
+assert("CGC checklist PDF is an invoice", E.isConsultantInvoice(cgcCheck) && cgcCheck.invoiceNumber === "5889", cgcCheck.invoiceNumber);
+assert("CGC checklist amount 4647.38", nearly(cgcCheck.total, 4647.38), cgcCheck.total);
+assert("CGC checklist T#", cgcCheck.billingNo === "T202270302", cgcCheck.billingNo);
+assert("CGC checklist agreement 2019F", cgcCheck.agreementCode === "2019F", cgcCheck.agreementCode);
+var port = hist.cgc2019;
+var portHit = E.findQpForAssignment(port, cgcCheck);
+assert("CGC checklist finds Port Mahon QP 1 by T#", portHit && portHit.qp.qpNumber === "1" && portHit.qp.contractNo === "T202270302", portHit && portHit.qp.qpNumber);
+
 if (fails) {
   console.error("\n" + fails + " failed");
   process.exit(1);
