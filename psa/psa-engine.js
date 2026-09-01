@@ -445,12 +445,23 @@
     return null;
   }
 
+  function payItemList(contract) {
+    var items = (contract && contract.payItems) || [];
+    if (items.length) return items;
+    var Cat = global.PsaCatalog;
+    return (Cat && Cat.ITEMS) || [];
+  }
+
   function catalogItemByNo(contract, itemNo) {
     var no = String(itemNo || "").trim().toUpperCase();
     if (!no) return null;
-    var items = (contract && contract.payItems) || [];
-    for (var i = 0; i < items.length; i++) {
+    var items = payItemList(contract);
+    var i;
+    for (i = 0; i < items.length; i++) {
       if (String(items[i].itemNo || "").trim().toUpperCase() === no) return items[i];
+    }
+    for (i = 0; i < items.length; i++) {
+      if (String(items[i].code || "").trim().toUpperCase() === no) return items[i];
     }
     return null;
   }
@@ -553,7 +564,7 @@
     var s = stripProposalHeader(line);
     if (!s || /total amount due/i.test(s)) return null;
     var m = s.match(
-      /^(\d{1,3}|DNREC)\s+(.+?)\s+([\d,]+\.\d{2})\s+(.+?)\s*[Xx×]\s*([\d,]+\.\d{2})\s*=\s*([\d,]+\.\d{2})/i
+      /^(\d{1,3}|DNREC|GPS)(?:\s+(?![0-9])(.+?))?\s+([\d,]+\.\d{2})\s+(.+?)\s*[Xx×]\s*([\d,]+\.\d{2})\s*=?\s*([\d,]+\.\d{2})/i
     );
     if (!m) return null;
     var u = unitFromToken(m[4]);
@@ -561,9 +572,13 @@
     var unitPrice = parseMoneyToken(m[5]);
     var amount = parseMoneyToken(m[6]);
     if (!unitPrice && qty) unitPrice = money(amount / qty);
+    var rawNo = String(m[1]).toUpperCase();
+    var itemNo = rawNo === "DNREC" || rawNo === "GPS" ? rawNo : m[1];
     return {
-      itemNo: String(m[1]).toUpperCase() === "DNREC" ? "DNREC" : m[1],
-      description: m[2].replace(/\*including permit if needed/i, "").trim(),
+      itemNo: itemNo,
+      description: String(m[2] || itemNo)
+        .replace(/\*including permit if needed/i, "")
+        .trim(),
       qty: qty,
       unit: u.unit,
       unitMeasure: u.unitMeasure,
@@ -573,7 +588,7 @@
   }
 
   function looksLikeItemStart(line) {
-    return /^(\d{1,3}|DNREC)\s+[A-Za-z*]/i.test(stripProposalHeader(line));
+    return /^(\d{1,3}|DNREC|GPS)\s+/i.test(stripProposalHeader(line));
   }
 
   function collectProposalLines(raw) {
@@ -607,7 +622,7 @@
       add(row);
     }
     var flat = stripProposalHeader(chunks.join(" "));
-    var re = /(\d{1,3}|DNREC)\s+/gi;
+    var re = /(\d{1,3}|DNREC|GPS)\s+/gi;
     var mm;
     while ((mm = re.exec(flat))) {
       add(parseProposalLine(flat.slice(mm.index)));
@@ -657,6 +672,9 @@
     var billingRaw = fieldAfter(one, "Project Billing Number", ["Item No", "Date"]);
     var billM = billingRaw.match(/T[A-Z0-9\-]+/i);
     var billingNo = billM ? billM[0] : billingRaw.split(/\s+/)[0] || "";
+    var invNo = "";
+    var invM = one.match(/Invoice\s*#\s*:?\s*([A-Za-z0-9\-]+)/i);
+    if (invM) invNo = invM[1];
     return {
       dateISO: dateISO,
       projectName: fieldAfter(one, "Project Name", ["Project Design Number", "AGR", "Task"]),
@@ -666,9 +684,18 @@
       taskNumber: taskNumber,
       qpNumber: qpNumber,
       billingNo: billingNo,
+      invoiceNumber: invNo,
+      kind: invNo ? "invoice" : "proposal",
       total: total,
       lines: lines,
     };
+  }
+
+  function isConsultantInvoice(parsedOrText) {
+    if (parsedOrText && typeof parsedOrText === "object") {
+      return parsedOrText.kind === "invoice" || !!parsedOrText.invoiceNumber;
+    }
+    return /Invoice\s*#/i.test(String(parsedOrText || ""));
   }
 
   function applyConsultantProposal(contract, qp, parsed) {
@@ -703,7 +730,87 @@
       };
     });
     if (parsed.total) qp.proposalAmount = parsed.total;
+    if (qp.ntpAmount && (!qp.ntpLines || !qp.ntpLines.length) && qp.proposal.lines.length) {
+      qp.ntpLines = ntpLinesFromProposal(qp.proposal);
+    }
     return qp;
+  }
+
+  function findQpForAssignment(contract, parsed) {
+    parsed = parsed || {};
+    if (!contract) return null;
+    var taskNum = parsed.taskNumber ? String(parsed.taskNumber) : "";
+    var task = null;
+    (contract.tasks || []).forEach(function (t) {
+      if (taskNum && String(t.number) === taskNum) task = t;
+    });
+    if (!task && !taskNum) task = (contract.tasks || [])[0] || null;
+    if (!task) return null;
+    var qp = null;
+    if (parsed.qpNumber) {
+      (task.qps || []).forEach(function (q) {
+        if (String(q.qpNumber) === String(parsed.qpNumber)) qp = q;
+      });
+    }
+    if (!qp) return null;
+    return { task: task, qp: qp };
+  }
+
+  function parsedLineToInvoiceLine(contract, l) {
+    var cat = catalogItemByNo(contract, l.itemNo);
+    return {
+      itemCode: cat ? cat.code : String(l.itemNo || ""),
+      itemNo: (cat && cat.itemNo) || l.itemNo || "",
+      description: (cat && cat.description) || l.description || "",
+      unit: (cat && cat.unit) || l.unit || "",
+      qty: l.qty,
+      unitPrice: l.unitPrice,
+      amount: l.amount != null ? l.amount : money((l.qty || 0) * (l.unitPrice || 0)),
+    };
+  }
+
+  function findMatchingInvoice(qp, parsed) {
+    var list = (qp && qp.invoices) || [];
+    var num = parsed && parsed.invoiceNumber ? String(parsed.invoiceNumber) : "";
+    var amt = parsed && parsed.total != null ? money(parsed.total) : null;
+    var date = parsed && parsed.dateISO ? parsed.dateISO : "";
+    var hit = null;
+    if (num) {
+      list.forEach(function (inv) {
+        if (String(inv.number) === num) hit = inv;
+      });
+      if (hit) return hit;
+    }
+    list.forEach(function (inv) {
+      if ((inv.lines || []).length) return;
+      if (amt != null && money(inv.amount) === amt) hit = inv;
+      else if (date && inv.date === date && !hit) hit = inv;
+    });
+    return hit;
+  }
+
+  function applyConsultantInvoice(contract, qp, parsed) {
+    parsed = parsed || {};
+    qp = qp || emptyQp();
+    qp.invoices = qp.invoices || [];
+    if (qp.ntpAmount && (!qp.ntpLines || !qp.ntpLines.length)) {
+      var scoped = ntpLinesFromProposal(qp.proposal);
+      if (scoped.length) qp.ntpLines = scoped;
+    }
+    var inv = findMatchingInvoice(qp, parsed);
+    if (!inv) {
+      inv = emptyInvoice(parsed.invoiceNumber || "");
+      qp.invoices.push(inv);
+    }
+    if (parsed.invoiceNumber) inv.number = String(parsed.invoiceNumber);
+    if (parsed.dateISO) inv.date = parsed.dateISO;
+    inv.lines = (parsed.lines || []).map(function (l) {
+      return parsedLineToInvoiceLine(contract, l);
+    });
+    inv.amount = parsed.total != null ? money(parsed.total) : sumLines(inv.lines);
+    inv.source = "consultant-pdf";
+    if (inv.status !== "posted") inv.status = "draft";
+    return inv;
   }
 
   function findOrCreateQpForProposal(contract, parsed) {
@@ -1068,32 +1175,110 @@
     return qp;
   }
 
+  function ntpScopeLines(qp) {
+    if (qp && qp.ntpLines && qp.ntpLines.length) return qp.ntpLines;
+    return ntpLinesFromProposal(qp && qp.proposal);
+  }
+
+  function samePayItem(a, key) {
+    if (!a || key == null || key === "") return false;
+    var k = String(key).toUpperCase();
+    if (String(a.itemCode || "").toUpperCase() === k) return true;
+    if (String(a.itemNo || "").toUpperCase() === k) return true;
+    return false;
+  }
+
   function billedQty(qp, itemCode, excludeInvoiceId) {
     var qty = 0;
     (qp.invoices || []).forEach(function (inv) {
       if (inv.status === "void") return;
       if (excludeInvoiceId && inv.id === excludeInvoiceId) return;
       (inv.lines || []).forEach(function (l) {
-        if (l.itemCode === itemCode) qty += Number(l.qty || 0);
+        if (samePayItem(l, itemCode)) qty += Number(l.qty || 0);
       });
     });
     return qty;
   }
 
   function ntpQty(qp, itemCode) {
-    var lines = qp.ntpLines || [];
-    for (var i = 0; i < lines.length; i++) {
-      if (lines[i].itemCode === itemCode) return Number(lines[i].qty || 0);
-    }
-    return 0;
+    var n = ntpLine(qp, itemCode);
+    return n ? Number(n.qty || 0) : 0;
   }
 
   function ntpLine(qp, itemCode) {
-    var lines = qp.ntpLines || [];
+    var lines = ntpScopeLines(qp);
     for (var i = 0; i < lines.length; i++) {
-      if (lines[i].itemCode === itemCode) return lines[i];
+      if (samePayItem(lines[i], itemCode)) return lines[i];
     }
     return null;
+  }
+
+  function reconcileInvoiceToNtp(qp, invoice) {
+    invoice = invoice || {};
+    var scope = ntpScopeLines(qp);
+    var spentElse = money(
+      (qp.invoices || [])
+        .filter(function (i) {
+          return i.status !== "void" && i.id !== invoice.id;
+        })
+        .reduce(function (s, i) {
+          return s + Number(i.amount || 0);
+        }, 0)
+    );
+    var ntpAmt = qpNtp(qp);
+    var invAmt = money(invoice.amount || sumLines(invoice.lines || []));
+    var remainingBefore = money(ntpAmt - spentElse);
+    var remainingAfter = money(remainingBefore - invAmt);
+    var rows = (invoice.lines || []).map(function (l) {
+      var key = l.itemCode || l.itemNo;
+      var n = ntpLine(qp, key);
+      if (!n && l.itemNo) n = ntpLine(qp, l.itemNo);
+      var billedElse = billedQty(qp, key, invoice.id);
+      var remainQty = n ? money(n.qty - billedElse) : 0;
+      var status = "ok";
+      var note = "Within NTP";
+      if (!n) {
+        status = "not_on_ntp";
+        note = "Not on the NTP";
+      } else if (money(l.unitPrice || 0) && money(n.unitPrice) && money(l.unitPrice) !== money(n.unitPrice)) {
+        status = "price";
+        note = "Price " + fmtMoney(l.unitPrice) + " vs NTP " + fmtMoney(n.unitPrice);
+      } else if (Number(l.qty || 0) - remainQty > 0.0001) {
+        status = "over_qty";
+        note = "Billed " + l.qty + " · NTP remaining " + remainQty;
+      } else if (Number(l.qty || 0) + 0.0001 < Number(n.qty || 0)) {
+        status = "ok";
+        note = "Partial vs NTP " + n.qty;
+      }
+      return {
+        itemNo: l.itemNo || (n && n.itemNo) || "",
+        itemCode: l.itemCode || (n && n.itemCode) || "",
+        description: l.description || (n && n.description) || "",
+        ntpQty: n ? n.qty : 0,
+        billedQty: Number(l.qty || 0),
+        unit: l.unit || (n && n.unit) || "",
+        unitPrice: l.unitPrice || 0,
+        amount: l.amount != null ? l.amount : money((l.qty || 0) * (l.unitPrice || 0)),
+        status: status,
+        note: note,
+      };
+    });
+    var hasBlocker =
+      remainingAfter < -0.009 ||
+      rows.some(function (r) {
+        return r.status === "over_qty" || r.status === "not_on_ntp" || r.status === "price";
+      });
+    return {
+      ntpAmount: ntpAmt,
+      ntpDate: qp && qp.ntpDate,
+      invoiceAmount: invAmt,
+      remainingBefore: remainingBefore,
+      remainingAfter: remainingAfter,
+      overDollars: remainingAfter < -0.009,
+      ntpLineCount: scope.length,
+      rows: rows,
+      hasBlocker: hasBlocker,
+    };
   }
 
   var ADMIN_CHECKS = [
@@ -1909,5 +2094,10 @@
     decodeConsultantPdfText: decodeConsultantPdfText,
     applyConsultantProposal: applyConsultantProposal,
     findOrCreateQpForProposal: findOrCreateQpForProposal,
+    isConsultantInvoice: isConsultantInvoice,
+    findQpForAssignment: findQpForAssignment,
+    applyConsultantInvoice: applyConsultantInvoice,
+    reconcileInvoiceToNtp: reconcileInvoiceToNtp,
+    ntpScopeLines: ntpScopeLines,
   };
 })(typeof window !== "undefined" ? window : global);
