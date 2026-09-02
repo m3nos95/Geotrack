@@ -2094,12 +2094,19 @@
       '<div class="checks">' +
       checks +
       "</div>" +
-      '<label style="display:inline-flex;align-items:center;gap:8px;margin-top:12px">' +
+      '<div style="display:flex;align-items:center;gap:18px;flex-wrap:wrap;margin-top:12px">' +
+      '<label style="display:inline-flex;align-items:center;gap:8px">' +
       '<input type="checkbox" data-act="inv-final"' +
       (inv.finalInvoice ? " checked" : "") +
       "> <b>Final invoice</b> for this " +
       esc(noun(c)) +
       "</label>" +
+      '<label style="display:inline-flex;align-items:center;gap:8px">' +
+      '<input type="checkbox" data-act="pay-check-all"' +
+      (formChecksOf(inv).every(Boolean) ? " checked" : "") +
+      "> <b>Check all</b> verification lines" +
+      "</label>" +
+      "</div>" +
       '<div style="margin-top:12px;display:flex;gap:8px;flex-wrap:wrap">' +
       '<button class="btn" data-act="save-inv">Save invoice</button>' +
       '<button class="btn good" data-act="post-inv">Post to ' +
@@ -3801,6 +3808,15 @@
     }
     if (act === "inv-final") {
       findInv(q).finalInvoice = !!el.checked;
+      save();
+      render();
+      return;
+    }
+    if (act === "pay-check-all") {
+      var invAll = findInv(q);
+      if (!invAll) return;
+      var on = !!el.checked;
+      invAll.formChecks = [on, on, on, on, on];
       save();
       render();
       return;
