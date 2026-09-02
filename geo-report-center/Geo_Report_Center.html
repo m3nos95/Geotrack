@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
-<meta name="geotrak-version" content="0.99.13">
+<meta name="geotrak-version" content="0.99.14">
 <meta name="geotrak-pages-rev" content="2026-08-27T17:25Z">
 <title>DelDOT GeoTrak</title>
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=Press+Start+2P&family=Syne:wght@500;600;700;800&display=swap" rel="stylesheet">
@@ -20845,6 +20845,7 @@ button,input,select,textarea{font-family:inherit}
 #hdrTools .hdr-tool.boring-req.on{border-color:var(--amber);color:var(--amber);background:rgba(240,168,74,.14)}
 #hdrTools .hdr-tool.boring-req .b{color:var(--amber)}
 #hdrTools .hdr-tool.measure.on{border-color:var(--cyan);color:var(--cyan);background:rgba(61,207,191,.12)}
+#hdrTools .hdr-tool.ra-icd.on{border-color:#38bdf8;color:#7dd3fc;background:rgba(14,165,233,.14)}
 
 /* ── Shipped polish (v0.81) ── */
 #hdr{backdrop-filter:blur(10px);background:rgba(18,26,34,.92)}
@@ -20916,6 +20917,19 @@ button,input,select,textarea{font-family:inherit}
 #measureDock .meas-readout .sub{font-size:11px;color:var(--dim);margin-top:4px}
 #measureDock .meas-actions{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}
 .map-measure{cursor:crosshair !important}
+/* Roundabout ICD overlay tool dock */
+#raIcdDock{display:none;position:absolute;top:52px;left:max(12px,min(28vw,320px));z-index:1700;width:min(420px,calc(100vw - 24px));
+  max-height:min(72vh,720px);overflow:hidden;background:var(--panel);border:1px solid rgba(56,189,248,.5);border-radius:8px;
+  box-shadow:0 16px 48px rgba(0,0,0,.55);padding:12px 14px 16px;box-sizing:border-box}
+#raIcdDock.open{display:flex;flex-direction:column}
+#raIcdDock h3{font-size:11px;text-transform:uppercase;letter-spacing:.07em;color:#7dd3fc;margin:0 0 8px;display:flex;align-items:center;gap:8px;cursor:move;user-select:none;flex:0 0 auto}
+#raIcdDock h3 .sp{flex:1}
+#raIcdDock .hdr-pop-close{background:transparent;border:1px solid var(--line);color:var(--dim);border-radius:4px;padding:3px 8px;cursor:pointer;font-size:11px}
+#raIcdDock .hdr-pop-close:hover{border-color:#38bdf8;color:#7dd3fc}
+#raIcdDock .ra-icd-body{flex:1 1 auto;min-height:0;overflow:auto;margin-top:6px}
+#raIcdDock .ra-icd-actions{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}
+#raIcdDock.float-custom{max-height:none}
+.map-ra-icd{cursor:crosshair !important}
 /* Shared float panel chrome — drag title · resize corner · dblclick resets */
 .float-resize{
   position:absolute;right:0;bottom:0;width:18px;height:18px;cursor:nwse-resize;z-index:5;
@@ -20937,7 +20951,7 @@ button,input,select,textarea{font-family:inherit}
 #hdrPop .hdr-pop-panel.on{height:min(70vh,640px);min-height:280px}
 #hdrPop .hdr-pop-panel.float-custom{max-height:min(92vh,920px)}
 #hdrPop .hdr-pop-panel .float-resize{z-index:20}
-#measureDock.float-custom,#boringReqDock.float-custom{max-height:none}
+#measureDock.float-custom,#boringReqDock.float-custom,#raIcdDock.float-custom{max-height:none}
 
 #mapPlaceSearch.float-custom{width:auto}
 #mapPlaceSearch .mps-drag{
@@ -20958,7 +20972,7 @@ button,input,select,textarea{font-family:inherit}
 
 @media (max-width:900px){
   #boringReqDock{left:10px;right:10px;width:auto}
-  #measureDock{left:10px;right:10px;width:auto}
+  #measureDock,#raIcdDock{left:10px;right:10px;width:auto}
 }
 #hdrPop{position:absolute;top:44px;left:0;right:0;bottom:0;z-index:1600;pointer-events:none;display:none;overflow:visible}
 #hdrPop.open{display:block}
@@ -21318,7 +21332,7 @@ html[data-skin="retro"] body::before{
   background-size:8px 8px;
 }
 html[data-skin="retro"] :where(
-  #hdr, #qPanel, #hdrPop .hdr-pop-panel, #boringReqDock, #measureDock, #statewideCalmingDock,
+  #hdr, #qPanel, #hdrPop .hdr-pop-panel, #boringReqDock, #measureDock, #raIcdDock, #statewideCalmingDock,
   #mapLegend, #mapLegendToggle, #guideTour .gt-card, #toast,
   .hbtn, .btn, button, .tab, .hdr-tool, .card, .wrap .card,
   input, select, textarea, .layerRow
@@ -21777,7 +21791,7 @@ table.list td{padding:5px 8px;border-bottom:1px solid rgba(46,58,72,.5);font-fam
 <div id="hdr">
   <div class="brand" title="Delaware Department of Transportation">
     <img src="data:image/png;base64,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" width="28" height="28" alt="DelDOT">
-    <h1><b>DelDOT</b> GeoTrak<span class="badge">v0.99.13</span></h1>
+    <h1><b>DelDOT</b> GeoTrak<span class="badge">v0.99.14</span></h1>
   </div>
   <button class="tab on" data-p="map">Map</button>
   <button class="tab" data-p="refs">Reference data</button>
@@ -21788,6 +21802,7 @@ table.list td{padding:5px 8px;border-bottom:1px solid rgba(46,58,72,.5);font-fam
     <button type="button" class="hdr-tool" id="hdrBtnLayers" data-pop="layers" title="Loaded reference layers + hydro grids">Layers<span class="b" id="hdrLayersBadge">0</span></button>
     <button type="button" class="hdr-tool" id="hdrBtnMarkers" data-pop="markers" title="Map marker toggles">Markers</button>
     <button type="button" class="hdr-tool measure" id="hdrBtnMeasure" title="Measure distance or area on the map">Measure</button>
+    <button type="button" class="hdr-tool ra-icd" id="hdrBtnRaIcd" title="Roundabout ICD overlay — click any map spot for mini / single-lane rings + building space screen">RA screen</button>
     <button type="button" class="hdr-tool boring-req" id="hdrBtnBoringReq" title="Request soil borings — draft M&amp;R Soil Boring Request Sheet">Request borings<span class="b" id="hdrBoringReqBadge">0</span></button>
     <button type="button" class="hdr-tool" id="hdrBtnGuide" title="Guided walkthrough for new users">Guide</button>
   </div>
@@ -21924,6 +21939,23 @@ table.list td{padding:5px 8px;border-bottom:1px solid rgba(46,58,72,.5);font-fam
     <button type="button" class="btn" id="measFinishBtn" disabled style="border-color:var(--cyan);color:var(--cyan)">Finish</button>
   </div>
   <button type="button" class="float-resize" id="measureDockResize" title="Drag to resize · double-click to reset" aria-label="Resize measure panel"></button>
+</div>
+<div id="raIcdDock" role="dialog" aria-labelledby="raIcdDockTitle">
+  <h3 id="raIcdDockTitle" title="Drag to move · double-click corner to reset size/position">Roundabout ICD screen<span class="sp"></span>
+    <button type="button" class="hdr-pop-close" id="raIcdDockClose" title="Exit RA screen mode">✕</button>
+  </h3>
+  <div class="hint">Click any map spot. Draws <b>90 ft mini</b> / <b>130 ft single-lane</b> ICD rings, highlights buildings that nick them (Microsoft + OSM), and screens nearby intersection / stop / signal / road context. Not a warrant · not DelDOT ROW.</div>
+  <label class="layerRow" style="margin:8px 0 0;padding:0;border:none;background:transparent;gap:8px;align-items:center;max-width:none">
+    <input type="checkbox" id="raIcdSnapIx" checked style="margin:0">
+    <span class="nm" style="font-size:11px;color:var(--dim)">Snap to nearest FirstMap intersection (≤120 ft)</span>
+  </label>
+  <div class="hint" id="raIcdHint" style="margin-top:8px">RA screen mode on — click the map.</div>
+  <div class="ra-icd-body" id="raIcdBody"><div class="empty-state"><b>No point yet.</b> Click an intersection or any spot to screen space.</div></div>
+  <div class="ra-icd-actions">
+    <button type="button" class="btn" id="raIcdClearBtn" disabled>Clear overlay</button>
+    <button type="button" class="btn" id="raIcdRescreenBtn" disabled style="border-color:#38bdf8;color:#7dd3fc">Rescreen last</button>
+  </div>
+  <button type="button" class="float-resize" id="raIcdDockResize" title="Drag to resize · double-click to reset" aria-label="Resize RA screen panel"></button>
 </div>
 <div id="statewideCalmingDock" role="dialog" aria-labelledby="statewideCalmingDockTitle">
   <h3 id="statewideCalmingDockTitle" title="Drag to move panel">Statewide calming screen<span class="sp"></span>
@@ -24086,6 +24118,7 @@ function wireFloatPanel(cfg){
 function wireAllFloatPanels(){
   migrateFloatPanelLayout();
   wireFloatPanel({el:'measureDock', handle:'measureDockTitle', resize:'measureDockResize', minW:260, minH:200});
+  wireFloatPanel({el:'raIcdDock', handle:'raIcdDockTitle', resize:'raIcdDockResize', minW:300, minH:260});
   wireFloatPanel({el:'boringReqDock', handle:'boringReqDockTitle', resize:'boringReqResize', minW:300, minH:240});
   wireFloatPanel({el:'hdrPopLayers', handle:'hdrPopLayersTitle', resize:'hdrPopLayersResize', minW:320, minH:280});
   wireFloatPanel({el:'hdrPopMarkers', handle:'hdrPopMarkersTitle', resize:'hdrPopMarkersResize', minW:280, minH:220});
@@ -27324,6 +27357,7 @@ function openMeasureDock(){
   }catch(_){}
   if(typeof closeHdrPop==='function') closeHdrPop();
   if(typeof closeBoringReqDock==='function') closeBoringReqDock();
+  if(typeof closeRaIcdDock==='function') closeRaIcdDock();
   const dock=$('measureDock');
   if(dock){
     dock.classList.add('open');
@@ -27356,6 +27390,9 @@ function stopMeasureMode(opts){
   if(keep) updateMeasureReadout();
 }
 function startMeasureMode(kind){
+  if(typeof raIcdTool!=='undefined'&&raIcdTool.active){
+    stopRaIcdMode({keepOverlay:!!raIcdTool.lastFit});
+  }
   if(limitsMode==='draw'){
     limitsMode=null;
     try{ map.doubleClickZoom.enable(); }catch(_){}
@@ -33996,6 +34033,10 @@ function setHudTab(tab){
       stopMeasureMode({keepGraphics:false});
       return;
     }
+    if(typeof raIcdTool!=='undefined' && raIcdTool.active){
+      stopRaIcdMode({keepOverlay:!!raIcdTool.lastFit});
+      return;
+    }
     if(typeof boringReq!=='undefined' && boringReq.active && boringReq.picking){
       cancelBoringRequestPick();
       setBoringReqHint(boringReq.points.length?'Pick cancelled — review request or add another.':'Request cancelled.');
@@ -34015,6 +34056,10 @@ map.on('click',e=>{
   }
   if(typeof measure!=='undefined' && measure.active){
     onMeasureMapClick(e.latlng);
+    return;
+  }
+  if(typeof raIcdTool!=='undefined' && raIcdTool.active){
+    onRaIcdMapClick(e.latlng);
     return;
   }
   if(boringReq.active && boringReq.picking){
@@ -34617,6 +34662,7 @@ function wireGuideTour(){
 wireProjectLimitsUI();
 wireBoringRequestUI();
 wireMeasureUI();
+wireRaIcdUI();
 wireMapLegendUI();
 try{ wireAllFloatPanels(); }catch(e){ console.warn("float panels", e); }
 wireLimitsEstCta();
@@ -36344,6 +36390,396 @@ function clearStatewideCalmingRaFitOverlay(){
   }
   statewideCalmingRaFitLayer=null;
 }
+
+/* ---------- Roundabout ICD overlay tool (click-anywhere space screen) ---------- */
+let raIcdExtraLayer=null;
+const raIcdTool={
+  active:false,
+  busy:false,
+  snapIntersect:true,
+  lastClick:null, /* {lat,lon} raw click */
+  lastCenter:null, /* {lat,lon} after optional snap */
+  lastFit:null,
+  lastCtx:null,
+  token:0
+};
+const RA_ICD_SNAP_FT=120;
+const RA_ICD_CTX_FT=400;
+
+function setRaIcdHint(msg, cls){
+  const el=$('raIcdHint'); if(!el) return;
+  el.className='hint'+(cls?' '+cls:'');
+  el.textContent=msg||'';
+}
+function updateRaIcdButtons(){
+  if($('hdrBtnRaIcd')) $('hdrBtnRaIcd').classList.toggle('on', !!raIcdTool.active);
+  if($('raIcdClearBtn')) $('raIcdClearBtn').disabled=!(raIcdTool.lastFit||raIcdExtraLayer);
+  if($('raIcdRescreenBtn')) $('raIcdRescreenBtn').disabled=!raIcdTool.lastCenter||!!raIcdTool.busy;
+  if($('raIcdSnapIx')) $('raIcdSnapIx').checked=!!raIcdTool.snapIntersect;
+}
+function applyRaIcdCursor(on){
+  try{
+    map.getContainer().classList.toggle('map-ra-icd', !!on);
+    if(on) map.getContainer().style.cursor='crosshair';
+    else if(!(typeof measure!=='undefined'&&measure.active)&&limitsMode!=='draw') map.getContainer().style.cursor='';
+  }catch(_){}
+}
+function clearRaIcdExtraOverlay(){
+  if(raIcdExtraLayer&&typeof map!=='undefined'&&map){
+    try{ map.removeLayer(raIcdExtraLayer); }catch(_){}
+  }
+  raIcdExtraLayer=null;
+}
+function clearRaIcdOverlay(){
+  clearStatewideCalmingRaFitOverlay();
+  clearRaIcdExtraOverlay();
+}
+function openRaIcdDock(){
+  try{
+    document.querySelectorAll('.tab').forEach(t=>t.classList.toggle('on', t.dataset.p==='map'));
+    document.querySelectorAll('.page').forEach(p=>p.classList.toggle('on', p.id==='page-map'));
+  }catch(_){}
+  if(typeof closeHdrPop==='function') closeHdrPop();
+  if(typeof closeBoringReqDock==='function') closeBoringReqDock();
+  if(typeof closeMeasureDock==='function') closeMeasureDock();
+  const dock=$('raIcdDock');
+  if(dock){
+    dock.classList.add('open');
+    try{ applyFloatPanelLayout({el:dock, id:'raIcdDock', minW:300, minH:260}); }catch(_){}
+  }
+}
+function closeRaIcdDock(){
+  const dock=$('raIcdDock');
+  if(dock) dock.classList.remove('open');
+}
+function stopRaIcdMode(opts){
+  opts=opts||{};
+  raIcdTool.active=false;
+  applyRaIcdCursor(false);
+  closeRaIcdDock();
+  if(!opts.keepOverlay){
+    clearRaIcdOverlay();
+    raIcdTool.lastFit=null;
+    raIcdTool.lastCtx=null;
+    raIcdTool.lastClick=null;
+    raIcdTool.lastCenter=null;
+    const body=$('raIcdBody');
+    if(body) body.innerHTML='<div class="empty-state"><b>No point yet.</b> Click an intersection or any spot to screen space.</div>';
+    setRaIcdHint('RA screen mode off.');
+  } else {
+    setRaIcdHint('RA screen mode off — overlay kept. Re-open tool to click another spot.');
+  }
+  updateRaIcdButtons();
+}
+function startRaIcdMode(){
+  if(typeof measure!=='undefined'&&measure.active){
+    stopMeasureMode({keepGraphics:!!(measure.verts&&measure.verts.length)});
+  }
+  if(limitsMode==='draw'){
+    limitsMode=null;
+    try{ map.doubleClickZoom.enable(); }catch(_){}
+    map.getContainer().style.cursor='';
+    updateLimitsButtons();
+    setLimitsHint('Draw paused — RA screen mode active.');
+  }
+  if(typeof boringReq!=='undefined'&&boringReq.active&&boringReq.picking){
+    boringReq.picking=false;
+    if(typeof stopBoringReqPickCursor==='function') stopBoringReqPickCursor();
+    if(boringReq.points.length){ boringReq.step='review'; renderBoringReqPanel(); }
+    updateBoringReqButtons();
+  }
+  raIcdTool.active=true;
+  openRaIcdDock();
+  applyRaIcdCursor(true);
+  setRaIcdHint('Click any map spot — ICD rings + building / intersection screen.','good');
+  updateRaIcdButtons();
+  toast('RA screen — click a spot on the map');
+}
+async function fetchOsmAllWayStopsNear(lat, lon, radiusFt, opts){
+  opts=opts||{};
+  const meters=Math.max(40, Math.round((+radiusFt||RA_ICD_CTX_FT)*0.3048));
+  const q='[out:json][timeout:25];node["highway"="stop"]["stop"="all"](around:'+meters+','+lat+','+lon+');out body;';
+  let lastErr=null;
+  for(let i=0;i<CALMING_RA_OVERPASS_URLS.length;i++){
+    const url=CALMING_RA_OVERPASS_URLS[i];
+    try{
+      const res=await fetch(url,{
+        method:'POST',
+        headers:{'Content-Type':'application/x-www-form-urlencoded;charset=UTF-8'},
+        body:'data='+encodeURIComponent(q)
+      });
+      if(!res.ok) throw new Error('Overpass HTTP '+res.status);
+      const data=await res.json();
+      const stops=[];
+      (data.elements||[]).forEach(el=>{
+        if(el.type!=='node'||el.lat==null||el.lon==null) return;
+        stops.push({id:'osm:'+el.id, lat:+el.lat, lon:+el.lon, source:'osm_all_way'});
+      });
+      return stops;
+    }catch(e){
+      lastErr=e;
+      console.warn('overpass all-way near', url, e);
+    }
+  }
+  throw lastErr||new Error('Could not load nearby OSM all-way stops');
+}
+function nearestCalmingFeat(list, lat, lon, maxFt){
+  let best=null, bestD=Infinity;
+  (list||[]).forEach(p=>{
+    if(!p||p.lat==null||p.lon==null) return;
+    const d=calmingDistFt(lat, lon, p.lat, p.lon);
+    if(d<bestD){ bestD=d; best=p; }
+  });
+  if(best&&bestD<=(maxFt!=null?maxFt:RA_ICD_CTX_FT)) return {feat:best, distFt:Math.round(bestD*10)/10};
+  return null;
+}
+async function snapRaIcdToIntersection(lat, lon){
+  try{
+    const feats=await fetchFirstmapNear('Transportation/DE_Roadways_Main/FeatureServer', 6, lat, lon, RA_ICD_SNAP_FT,
+      'INTERSECTIONID,INTERSECTING_ROADS');
+    const pts=[];
+    (feats||[]).forEach(f=>{
+      const ll=calmingFeatureLatLon(f);
+      if(!ll) return;
+      const p=f.properties||{};
+      pts.push({
+        lat:ll.lat, lon:ll.lon,
+        id:p.INTERSECTIONID||null,
+        roads:p.INTERSECTING_ROADS||'',
+        legs:calmingIntersectionLegCount(p.INTERSECTING_ROADS)
+      });
+    });
+    const hit=nearestCalmingFeat(pts, lat, lon, RA_ICD_SNAP_FT);
+    return hit?hit.feat:null;
+  }catch(e){
+    console.warn('RA ICD snap', e);
+    return null;
+  }
+}
+async function fetchRaIcdNearbyContext(lat, lon, opts){
+  opts=opts||{};
+  const rad=RA_ICD_CTX_FT;
+  const onStatus=opts.onStatus||function(){};
+  const out={
+    ok:true, lat, lon,
+    intersection:null, allWay:null, signal:null, existingRa:null,
+    road:null, calming:null, errors:[]
+  };
+  onStatus('RA screen: nearby roads / control…');
+  const tasks=[
+    fetchFirstmapNear('Transportation/DE_Roadways_Main/FeatureServer', 6, lat, lon, rad, 'INTERSECTIONID,INTERSECTING_ROADS')
+      .then(feats=>{
+        const pts=[];
+        (feats||[]).forEach(f=>{
+          const ll=calmingFeatureLatLon(f);
+          if(!ll) return;
+          const p=f.properties||{};
+          pts.push({lat:ll.lat, lon:ll.lon, id:p.INTERSECTIONID||null, roads:p.INTERSECTING_ROADS||'', legs:calmingIntersectionLegCount(p.INTERSECTING_ROADS)});
+        });
+        const hit=nearestCalmingFeat(pts, lat, lon, rad);
+        if(hit) out.intersection={...hit.feat, distFt:hit.distFt};
+      }).catch(e=>{ out.errors.push('intersections: '+(e.message||e)); }),
+    fetchFirstmapNear('Transportation/DE_Boundary_and_Point/FeatureServer', 29, lat, lon, rad, 'OBJECTID')
+      .then(feats=>{
+        const pts=[];
+        (feats||[]).forEach(f=>{ const ll=calmingFeatureLatLon(f); if(ll) pts.push(ll); });
+        const hit=nearestCalmingFeat(pts, lat, lon, rad);
+        if(hit) out.signal={lat:hit.feat.lat, lon:hit.feat.lon, distFt:hit.distFt};
+      }).catch(e=>{ out.errors.push('signals: '+(e.message||e)); }),
+    fetchFirstmapNear('Transportation/DE_Roadways_Other/FeatureServer', 4, lat, lon, rad, 'OBJECTID')
+      .then(feats=>{
+        const pts=[];
+        (feats||[]).forEach(f=>{ const ll=calmingFeatureLatLon(f); if(ll) pts.push(ll); });
+        const hit=nearestCalmingFeat(pts, lat, lon, rad);
+        if(hit) out.existingRa={lat:hit.feat.lat, lon:hit.feat.lon, distFt:hit.distFt};
+      }).catch(e=>{ out.errors.push('existing RA: '+(e.message||e)); }),
+    fetchOsmAllWayStopsNear(lat, lon, rad)
+      .then(stops=>{
+        const hit=nearestCalmingFeat(stops, lat, lon, rad);
+        if(hit) out.allWay={...hit.feat, distFt:hit.distFt};
+      }).catch(e=>{ out.errors.push('all-way: '+(e.message||e)); }),
+    screenTrafficCalmingAt(lat, lon, Math.max(rad, 600))
+      .then(C=>{
+        out.calming=C;
+        const seg=(C.segments||[])[0]||null;
+        if(seg) out.road={
+          road:seg.road, county:seg.county, aadt:seg.aadt, postedMph:seg.postedMph,
+          band:seg.band, label:seg.label, why:seg.why, funcClass:seg.funcClass
+        };
+      }).catch(e=>{ out.errors.push('roads: '+(e.message||e)); })
+  ];
+  await Promise.all(tasks);
+  return out;
+}
+function paintRaIcdExtraOverlay(center, ctx){
+  clearRaIcdExtraOverlay();
+  if(!center||typeof L==='undefined'||typeof map==='undefined') return;
+  ensureCalmingMapPanes();
+  const group=L.layerGroup();
+  group.addLayer(L.circleMarker([center.lat, center.lon], {
+    pane:'calmingRaPane',
+    radius:7, color:'#0a1218', weight:2, fillColor:'#38bdf8', fillOpacity:1, interactive:false
+  }).bindTooltip('RA ICD center '+center.lat.toFixed(5)+', '+center.lon.toFixed(5), {permanent:false, direction:'top', className:'btip'}));
+  if(ctx&&ctx.allWay){
+    group.addLayer(L.circleMarker([ctx.allWay.lat, ctx.allWay.lon], {
+      pane:'calmingRaPane', radius:6, color:'#0a1218', weight:1, fillColor:'#fbbf24', fillOpacity:1, interactive:false
+    }).bindTooltip('OSM all-way @ '+ctx.allWay.distFt+' ft', {className:'btip', direction:'top'}));
+  }
+  if(ctx&&ctx.signal){
+    group.addLayer(L.circleMarker([ctx.signal.lat, ctx.signal.lon], {
+      pane:'calmingRaPane', radius:6, color:'#0a1218', weight:1, fillColor:'#f87171', fillOpacity:1, interactive:false
+    }).bindTooltip('Signal @ '+ctx.signal.distFt+' ft', {className:'btip', direction:'top'}));
+  }
+  if(ctx&&ctx.existingRa){
+    group.addLayer(L.circleMarker([ctx.existingRa.lat, ctx.existingRa.lon], {
+      pane:'calmingRaPane', radius:7, color:'#0a1218', weight:1, fillColor:'#a78bfa', fillOpacity:1, interactive:false
+    }).bindTooltip('Existing roundabout @ '+ctx.existingRa.distFt+' ft', {className:'btip', direction:'top'}));
+  }
+  raIcdExtraLayer=group.addTo(map);
+}
+function raIcdContextHtml(ctx, center, click){
+  if(!ctx) return '';
+  let h=`<div style="margin-top:10px;padding:10px 12px;border:1px solid rgba(148,163,184,.28);border-radius:8px;background:rgba(30,41,59,.35)">`;
+  h+=`<div style="font-family:var(--mono);font-size:11px;color:#7dd3fc;letter-spacing:.06em;text-transform:uppercase;margin-bottom:6px">Click context</div>`;
+  if(center){
+    h+=`<div class="hint">Center <b>${center.lat.toFixed(5)}, ${center.lon.toFixed(5)}</b>`;
+    if(click&&(Math.abs(click.lat-center.lat)>1e-6||Math.abs(click.lon-center.lon)>1e-6)){
+      h+=` <span style="color:var(--dim)">(snapped from ${click.lat.toFixed(5)}, ${click.lon.toFixed(5)})</span>`;
+    }
+    h+=`</div>`;
+  }
+  if(ctx.road){
+    const r=ctx.road;
+    h+=`<div class="hint" style="margin-top:4px"><b>${esc(r.road||'Road')}</b>`;
+    if(r.county) h+=` · ${esc(r.county)}`;
+    if(r.aadt!=null) h+=` · AADT ${Number(r.aadt).toLocaleString()}`;
+    if(r.postedMph!=null) h+=` · ${r.postedMph} mph`;
+    if(r.band) h+=` · <span class="calm-band ${esc(r.band)}">${esc(r.label||r.band)}</span>`;
+    h+=`</div>`;
+    if(r.why) h+=`<div class="hint" style="margin-top:2px">${esc(r.why)}</div>`;
+  } else {
+    h+=`<div class="hint" style="margin-top:4px">No FirstMap AADT segment nearby — rings still screen buildings at the click.</div>`;
+  }
+  const bits=[];
+  if(ctx.intersection){
+    bits.push((ctx.intersection.legs?ctx.intersection.legs+'-leg ':'')+'intersection @ '+ctx.intersection.distFt+' ft'
+      +(ctx.intersection.roads?(' · '+String(ctx.intersection.roads).split('|').slice(0,4).join(' / ')):'') );
+  } else bits.push('No FirstMap intersection within '+RA_ICD_CTX_FT+' ft');
+  if(ctx.allWay) bits.push('OSM all-way stop @ '+ctx.allWay.distFt+' ft');
+  else bits.push('No OSM all-way stop within '+RA_ICD_CTX_FT+' ft');
+  if(ctx.signal) bits.push('Signal @ '+ctx.signal.distFt+' ft (often excludes RA conversion)');
+  if(ctx.existingRa) bits.push('Existing FirstMap roundabout @ '+ctx.existingRa.distFt+' ft');
+  h+=`<ul style="margin:8px 0 0;padding-left:18px;color:var(--dim);font-size:12px;line-height:1.45">`
+    +bits.map(b=>`<li>${esc(b)}</li>`).join('')+`</ul>`;
+  if(ctx.errors&&ctx.errors.length){
+    h+=`<div class="hint warn" style="margin-top:6px">Partial context: ${esc(ctx.errors.slice(0,3).join(' · '))}</div>`;
+  }
+  h+=`<div class="hint" style="margin-top:6px"><a href="${ROUNDABOUT_INFO_URL}" target="_blank" rel="noopener" style="color:#7dd3fc">de.gov/roundabouts</a> · screening only.</div>`;
+  h+=`</div>`;
+  return h;
+}
+function renderRaIcdDock(fit, ctx, center, click){
+  const body=$('raIcdBody');
+  if(!body) return;
+  let h='';
+  if(fit) h+=raFeasibilityHtml(fit);
+  h+=raIcdContextHtml(ctx, center, click);
+  body.innerHTML=h||'<div class="empty-state">No results.</div>';
+}
+async function runRaIcdScreenAt(lat, lon, opts){
+  opts=opts||{};
+  const token=++raIcdTool.token;
+  raIcdTool.busy=true;
+  updateRaIcdButtons();
+  const click={lat:+lat, lon:+lon};
+  raIcdTool.lastClick=click;
+  let center={lat:+lat, lon:+lon};
+  try{
+    if(raIcdTool.snapIntersect){
+      setRaIcdHint('RA screen: snapping to intersection…','');
+      const snap=await snapRaIcdToIntersection(lat, lon);
+      if(token!==raIcdTool.token) return null;
+      if(snap) center={lat:snap.lat, lon:snap.lon, snapped:true, intersection:snap};
+    }
+    raIcdTool.lastCenter=center;
+    const siteId='ra-tool:'+center.lat.toFixed(5)+','+center.lon.toFixed(5);
+    setRaIcdHint('RA screen: buildings + nearby control…','');
+    const [fit, ctx]=await Promise.all([
+      runRaBuildingFeasibilityAt(center.lat, center.lon, {
+        siteId, force:true,
+        onStatus:msg=>{ if(token===raIcdTool.token) setRaIcdHint(msg,''); }
+      }),
+      fetchRaIcdNearbyContext(center.lat, center.lon, {
+        onStatus:msg=>{ if(token===raIcdTool.token) setRaIcdHint(msg,''); }
+      })
+    ]);
+    if(token!==raIcdTool.token) return null;
+    if(center.intersection&&!ctx.intersection){
+      ctx.intersection={...center.intersection, distFt:calmingDistFt(center.lat, center.lon, click.lat, click.lon)};
+    }
+    raIcdTool.lastFit=fit;
+    raIcdTool.lastCtx=ctx;
+    paintRaFeasibilityOverlay(fit);
+    paintRaIcdExtraOverlay(center, ctx);
+    renderRaIcdDock(fit, ctx, center, click);
+    const label=(fit&&fit.label)||'Unknown';
+    setRaIcdHint(label+' · click another spot or Clear.','good');
+    toast('RA screen: '+label);
+    return {fit, ctx, center};
+  }catch(e){
+    console.warn('RA ICD tool', e);
+    setRaIcdHint('RA screen failed: '+(e.message||e),'warn');
+    toast('RA screen failed', 4000);
+    return null;
+  }finally{
+    if(token===raIcdTool.token){
+      raIcdTool.busy=false;
+      updateRaIcdButtons();
+    }
+  }
+}
+function onRaIcdMapClick(ll){
+  if(!raIcdTool.active||!ll||raIcdTool.busy) return false;
+  runRaIcdScreenAt(+ll.lat, +ll.lng);
+  return true;
+}
+function wireRaIcdUI(){
+  if($('hdrBtnRaIcd')) $('hdrBtnRaIcd').onclick=e=>{
+    e.stopPropagation();
+    if(raIcdTool.active){
+      stopRaIcdMode({keepOverlay:!!raIcdTool.lastFit});
+      return;
+    }
+    startRaIcdMode();
+  };
+  if($('raIcdDockClose')) $('raIcdDockClose').onclick=()=>stopRaIcdMode({keepOverlay:!!raIcdTool.lastFit});
+  if($('raIcdClearBtn')) $('raIcdClearBtn').onclick=()=>{
+    clearRaIcdOverlay();
+    raIcdTool.lastFit=null;
+    raIcdTool.lastCtx=null;
+    const body=$('raIcdBody');
+    if(body) body.innerHTML='<div class="empty-state"><b>Overlay cleared.</b> Click the map to screen another spot.</div>';
+    setRaIcdHint(raIcdTool.active?'Overlay cleared — click the map.':'Overlay cleared.');
+    updateRaIcdButtons();
+  };
+  if($('raIcdRescreenBtn')) $('raIcdRescreenBtn').onclick=()=>{
+    if(!raIcdTool.lastClick) return;
+    if(!raIcdTool.active) startRaIcdMode();
+    runRaIcdScreenAt(raIcdTool.lastClick.lat, raIcdTool.lastClick.lon);
+  };
+  if($('raIcdSnapIx')) $('raIcdSnapIx').onchange=function(){
+    raIcdTool.snapIntersect=!!this.checked;
+  };
+  document.addEventListener('keydown',e=>{
+    if(e.key!=='Escape') return;
+    if(!raIcdTool.active) return;
+    const t=e.target&&e.target.tagName;
+    if(t==='INPUT'||t==='TEXTAREA'||t==='SELECT') return;
+    stopRaIcdMode({keepOverlay:!!raIcdTool.lastFit});
+  });
+  updateRaIcdButtons();
+}
+
 function calmingIntersectionLegCount(intersectingRoads){
   if(!intersectingRoads) return 0;
   return String(intersectingRoads).split('|').map(s=>s.trim()).filter(Boolean).length;
