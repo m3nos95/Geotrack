@@ -675,16 +675,18 @@
         ".</div>"
       );
     }
-    var qps = (t.qps || []).filter(function (q) {
-      if (!ui.filter) return true;
-      var f = ui.filter.toLowerCase();
-      return (
-        String(q.qpNumber).toLowerCase().indexOf(f) >= 0 ||
-        String(q.project).toLowerCase().indexOf(f) >= 0 ||
-        String(q.contractNo).toLowerCase().indexOf(f) >= 0 ||
-        String(q.notes).toLowerCase().indexOf(f) >= 0
-      );
-    });
+    var qps = E.sortQpsByNumber(
+      (t.qps || []).filter(function (q) {
+        if (!ui.filter) return true;
+        var f = ui.filter.toLowerCase();
+        return (
+          String(q.qpNumber).toLowerCase().indexOf(f) >= 0 ||
+          String(q.project).toLowerCase().indexOf(f) >= 0 ||
+          String(q.contractNo).toLowerCase().indexOf(f) >= 0 ||
+          String(q.notes).toLowerCase().indexOf(f) >= 0
+        );
+      })
+    );
     var closeableOnTask = E.closeableQps(t);
     var selectedOpen = selectedCloseableQps(t);
     var visibleCloseable = qps.filter(E.isQpCloseable);
@@ -2200,7 +2202,7 @@
           '">'
         : "") +
       '</span><span>Date</span><span class="pay-check-date">' +
-      (lh.signatureDataUrl ? esc(E.fmtDate(inv.date || E.todayISO())) : "") +
+      esc(E.fmtDate(E.todayISO())) +
       "</span></div>" +
       '<div class="pay-check-pm">Project Manager</div>' +
       "</div>" +

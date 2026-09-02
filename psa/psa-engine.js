@@ -2098,6 +2098,7 @@
     qpLeftover: qpLeftover,
     isQpCloseable: isQpCloseable,
     closeableQps: closeableQps,
+    sortQpsByNumber: sortQpsByNumber,
     qpsByIds: qpsByIds,
     closeoutSnapshot: closeoutSnapshot,
     sumCloseoutRows: sumCloseoutRows,

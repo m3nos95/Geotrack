@@ -720,6 +720,18 @@ var beforeCount = (portQp.invoices || []).length;
 var marked = E.applyConsultantInvoice(port, portQp, cgcCheck);
 assert("Checklist drop can mark final invoice", marked.finalInvoice === true);
 assert("Final flag reuses or adds one invoice", (portQp.invoices || []).length >= beforeCount);
+var ledgerOrder = E.sortQpsByNumber([
+  { qpNumber: "11A" },
+  { qpNumber: "12" },
+  { qpNumber: "13" },
+  { qpNumber: "15" },
+  { qpNumber: "20" },
+  { qpNumber: "14" },
+]).map(function (q) {
+  return q.qpNumber;
+});
+assert("Ledger sorts QP 14 before 15 and 20", ledgerOrder.join(",") === "11A,12,13,14,15,20", ledgerOrder.join(","));
+assert("Signing date formats as MM/DD/YYYY", /^\d{2}\/\d{2}\/\d{4}$/.test(E.fmtDate(E.todayISO())));
 
 if (fails) {
   console.error("\n" + fails + " failed");
