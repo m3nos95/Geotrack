@@ -39,10 +39,17 @@ jobs:
           if [ -f geo-report-center/Geo_Report_Center.html ]; then
             mkdir -p _site/geotrak
             cp geo-report-center/Geo_Report_Center.html _site/geotrak/index.html
+            # Keep repo geotrak/ mirror in sync too (Pages artifact uses the copy above)
+            cp geo-report-center/Geo_Report_Center.html geotrak/index.html || true
           fi
           touch _site/.nojekyll
           # Bust CDN/edge caches that latch onto old GeoTrak builds
           date -u +'%Y-%m-%dT%H:%M:%SZ' > _site/.pages-built-at
+          VER=$(grep -oE 'geotrak-version" content="[^"]+"' _site/geotrak/index.html | head -1 || true)
+          BADGE=$(grep -oE 'badge">v[0-9.]+' _site/geotrak/index.html | head -1 || true)
+          echo "Deploying GeoTrak $VER / $BADGE"
+          echo "$VER" > _site/geotrak/.deployed-version
+          test -n "$VER"
       - uses: actions/upload-pages-artifact@v3
         with:
           path: _site
