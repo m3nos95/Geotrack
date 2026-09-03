@@ -36853,15 +36853,15 @@ function paintRaSchematicBuildout(group, fit, paneName, mPerFt){
   const drawMeta=sugMeta||(fit.rings||[]).find(r=>Math.abs(+r.ft-outerFt)<1)||{};
   const hitN=buildingsUnknown?0:(drawMeta.hitN||0);
   const conflicted=!buildingsUnknown&&!!hitN;
-  const circLaneFt=Math.min(20, Math.max(16, Math.round(outerFt*0.11)));
-  const apronFt=Math.min(12, Math.max(8, Math.round(outerFt*0.065)));
+  const circLaneFt=Math.min(30, Math.max(22, Math.round(outerFt*0.155)));
+  const apronFt=Math.min(10, Math.max(7, Math.round(outerFt*0.05)));
   const islandFt=Math.max(16, outerFt-circLaneFt-apronFt);
   const curb=conflicted?'#b91c1c':'#1a1a1a';
-  const fillAsphalt=conflicted?'#3f2a2a':'#3a3a3a';
+  const fillAsphalt=conflicted?'#3f2a2a':'#2f2f2f';
   const fillApron=conflicted?'#a16207':'#c4b49a'; /* concrete truck apron */
   const fillIsland=conflicted?'#7f1d1d':'#a86b45'; /* brick / mulch island like Willow Grove */
   const fillSplitter='#ece7dc';
-  const opacAsphalt=0.78, opacApron=0.62, opacIsland=0.7, opacSplitter=0.82;
+  const opacAsphalt=0.88, opacApron=0.55, opacIsland=0.55, opacSplitter=0.88;
   const lat0=+fit.lat, lon0=+fit.lon;
   const bearings=(fit.approachBearingsDeg||[]).slice().filter(b=>Number.isFinite(+b));
   const bearingsKnown=bearings.length>=2;
