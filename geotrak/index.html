@@ -36554,6 +36554,54 @@ function paintRaFeasibilityOverlay(fit){
       })
     }));
   });
+  /* ---------- Schematic buildout preview (beyond rings) ---------- */
+  try{
+    const outerFt=fit.suggestedFt!=null?+fit.suggestedFt:((fit.traffic&&fit.traffic.preferFt!=null)?+fit.traffic.preferFt:+RA_ICD_SINGLE_FT);
+    const laneWidthFt=14; /* typical circulating lane width (schematic only) */
+    const innerFt=Math.max(8, outerFt-laneWidthFt); /* traversable / central island approx */
+    const bearings=(fit.approachBearingsDeg||[]).slice();
+    const legsN=(fit.splitterLegsN!=null?+fit.splitterLegsN:null);
+    if(!bearings.length){
+      const n=legsN?Math.min(4,Math.max(3,legsN)):3;
+      for(let i=0;i<n;i++) bearings.push(i*360/n);
+    }
+    /* central island */
+    group.addLayer(L.circle([fit.lat, fit.lon], {
+      pane:paneName,
+      radius:innerFt*mPerFt,
+      color:'#fbbf24',
+      weight:2,
+      dashArray:null,
+      fillColor:'#f59e0b',
+      fillOpacity:0.22,
+      interactive:false,
+      bubblingMouseEvents:false
+    }));
+    /* splitter islands (triangles) */
+    const widthFt=10;
+    const startFt=innerFt+3;
+    const endFt=Math.max(startFt+10, outerFt-8);
+    bearings.slice(0,4).forEach(b=>{
+      const br=(+b||0)*Math.PI/180;
+      const base=offsetLatLonByFt(fit.lat, fit.lon, startFt, br); /* [lat,lon] */
+      const tip=offsetLatLonByFt(fit.lat, fit.lon, endFt, br);
+      const left=offsetLatLonByFt(base[0], base[1], widthFt/2, br+Math.PI/2);
+      const right=offsetLatLonByFt(base[0], base[1], widthFt/2, br-Math.PI/2);
+      group.addLayer(L.polygon([
+        [left[0], left[1]],
+        [tip[0], tip[1]],
+        [right[0], right[1]]
+      ],{
+        pane:paneName,
+        color:'#fbbf24',
+        weight:1.5,
+        fillColor:'#f59e0b',
+        fillOpacity:0.14,
+        interactive:false,
+        bubblingMouseEvents:false
+      }));
+    });
+  }catch(_){}
   const maxFt=RA_ICD_RINGS[RA_ICD_RINGS.length-1].ft;
   (fit.buildings||[]).forEach(b=>{
     if(!b.ring||b.ring.length<3) return;
@@ -36742,7 +36790,8 @@ async function fetchRaIcdNearbyContext(lat, lon, opts){
   const out={
     ok:true, lat, lon,
     intersection:null, allWay:null, signal:null, existingRa:null,
-    road:null, calming:null, errors:[]
+    road:null, calming:null, errors:[],
+    approachBearingsDeg:[] /* splitter-island bearings for schematic preview */
   };
   onStatus('RA screen: nearby roads / control…');
   const tasks=[
@@ -36776,6 +36825,36 @@ async function fetchRaIcdNearbyContext(lat, lon, opts){
       .then(stops=>{
         const hit=nearestCalmingFeat(stops, lat, lon, rad);
         if(hit) out.allWay={...hit.feat, distFt:hit.distFt};
+        try{
+          /* Use nearby all-way stop points as crude “approach directions”.
+             We cluster their bearings into up to 4 unique angles. */
+          const pts=(stops||[]).filter(s=>s&&s.lat!=null&&s.lon!=null);
+          const toBrg=(la0,lo0,la1,lo1)=>{
+            const midLat=((la0+la1)/2)*Math.PI/180;
+            const dLon=(lo1-lo0)*Math.cos(midLat);
+            const dLat=(la1-la0);
+            return (Math.atan2(dLon,dLat)*180/Math.PI+360)%360; /* 0°=north, clockwise */
+          };
+          const tmp=[];
+          pts.forEach(s=>{
+            tmp.push({
+              b:toBrg(lat, lon, s.lat, s.lon),
+              d:calmingDistFt(lat, lon, s.lat, s.lon)
+            });
+          });
+          tmp.sort((a,b)=>a.d-b.d);
+          const keep=[];
+          for(const x of tmp){
+            if(keep.length>=4) break;
+            const exists=keep.some(y=>{
+              let diff=Math.abs(y.b-x.b);
+              diff=Math.min(diff, 360-diff);
+              return diff<25;
+            });
+            if(!exists) keep.push(x);
+          }
+          out.approachBearingsDeg=keep.map(x=>x.b);
+        }catch(_){}
       }).catch(e=>{ out.errors.push('all-way: '+(e.message||e)); }),
     screenTrafficCalmingAt(lat, lon, Math.max(rad, 600))
       .then(C=>{
@@ -36920,6 +36999,9 @@ async function runRaIcdScreenAt(lat, lon, opts){
       fit.siteId=siteId;
       raBuildingFitCache[siteId]=fit;
     }
+    /* Pass splitter direction hints to the schematic preview painter */
+    fit.approachBearingsDeg=ctx&&ctx.approachBearingsDeg?ctx.approachBearingsDeg:[];
+    fit.splitterLegsN=ctx&&ctx.intersection&&ctx.intersection.legs!=null?ctx.intersection.legs:null;
     raIcdTool.lastFit=fit;
     raIcdTool.lastCtx=ctx;
     paintRaFeasibilityOverlay(fit);
