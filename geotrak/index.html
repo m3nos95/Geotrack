@@ -20941,6 +20941,14 @@ button,input,select,textarea{font-family:inherit}
 .ra-icd-ring-label.likely{border-color:#34d399;color:#a7f3d0}
 .ra-icd-ring-label.prefer{border-color:#fbbf24;color:#fde68a}
 .ra-icd-ring-label .rl-sub{opacity:.85;font-weight:500}
+.ra-icd-schematic-label{
+  background:rgba(8,12,18,.92);border:1px solid rgba(251,191,36,.7);border-radius:5px;
+  color:#fde68a;font:700 11px/1.25 var(--mono),ui-monospace,monospace;letter-spacing:.03em;
+  padding:4px 8px;white-space:nowrap;box-shadow:0 3px 12px rgba(0,0,0,.5);
+  pointer-events:none !important;text-align:center;
+}
+.ra-icd-schematic-label.take{border-color:#f87171;color:#fecaca}
+.ra-icd-schematic-label .rl-sub{display:block;font-weight:500;font-size:9px;opacity:.9;margin-top:2px;letter-spacing:.04em;text-transform:uppercase}
 /* Shared float panel chrome — drag title · resize corner · dblclick resets */
 .float-resize{
   position:absolute;right:0;bottom:0;width:18px;height:18px;cursor:nwse-resize;z-index:5;
@@ -21802,7 +21810,7 @@ table.list td{padding:5px 8px;border-bottom:1px solid rgba(46,58,72,.5);font-fam
 <div id="hdr">
   <div class="brand" title="Delaware Department of Transportation">
     <img src="data:image/png;base64,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" width="28" height="28" alt="DelDOT">
-    <h1><b>DelDOT</b> GeoTrak<span class="badge">v0.99.20</span></h1>
+    <h1><b>DelDOT</b> GeoTrak<span class="badge">v0.99.21</span></h1>
   </div>
   <button class="tab on" data-p="map">Map</button>
   <button class="tab" data-p="refs">Reference data</button>
@@ -21955,7 +21963,7 @@ table.list td{padding:5px 8px;border-bottom:1px solid rgba(46,58,72,.5);font-fam
   <h3 id="raIcdDockTitle" title="Drag to move · double-click corner to reset size/position">Roundabout ICD screen<span class="sp"></span>
     <button type="button" class="hdr-pop-close" id="raIcdDockClose" title="Exit RA screen mode">✕</button>
   </h3>
-  <div class="hint">Click any map spot. Draws ICD rings (<b>45 / 90 / 120 / 130 / 180 ft</b>), highlights buildings that nick them (Microsoft + OSM), and screens nearby intersection / stop / signal / road context. AADT + speed bias sizes — building hits downgrade “more likely” (takes). Not a warrant · not DelDOT ROW.</div>
+  <div class="hint">Click any map spot. Draws ICD rings (<b>45 / 90 / 120 / 130 / 180 ft</b>), a <b>schematic buildout</b> at the traffic-typical size (island · apron · circulating lane · splitters), and building hits (Microsoft + OSM). Building hits downgrade “more likely.” Not a warrant · not DelDOT ROW.</div>
   <label class="layerRow" style="margin:8px 0 0;padding:0;border:none;background:transparent;gap:8px;align-items:center;max-width:none">
     <input type="checkbox" id="raIcdSnapIx" checked style="margin:0">
     <span class="nm" style="font-size:11px;color:var(--dim)">Snap to nearest FirstMap intersection (≤120 ft)</span>
@@ -36599,6 +36607,148 @@ async function enrichSegWithRaBuildingFit(seg, opts){
   }
   return fit;
 }
+function paintRaSchematicBuildout(group, fit, paneName, mPerFt){
+  /* Rich schematic at the traffic-typical ICD so the footprint reads on aerials.
+     When that size hits buildings, style as conflicted (takes) — do not shrink to the clear mini. */
+  if(!group||!fit||fit.lat==null||fit.lon==null||typeof L==='undefined') return;
+  if(typeof offsetLatLonByFt!=='function') return;
+  const mft=mPerFt!=null?+mPerFt:0.3048;
+  const preferId=(fit.traffic&&fit.traffic.preferRingId)||null;
+  const preferMeta=(fit.rings||[]).find(r=>r.id===preferId)||{};
+  const outerFt=Math.max(40, +((fit.traffic&&fit.traffic.preferFt)!=null?fit.traffic.preferFt:(fit.suggestedFt!=null?fit.suggestedFt:RA_ICD_SINGLE_FT)));
+  const hitN=preferMeta.hitN||0;
+  const conflicted=!!hitN || (preferId&&fit.spaceOkForPrefer===false);
+  const circLaneFt=Math.min(20, Math.max(14, Math.round(outerFt*0.11)));
+  const apronFt=Math.min(16, Math.max(8, Math.round(outerFt*0.07)));
+  const islandFt=Math.max(12, outerFt-circLaneFt-apronFt);
+  const stroke=conflicted?'#f87171':'#fbbf24';
+  const fillRoad=conflicted?'#450a0a':'#0f172a';
+  const fillApron=conflicted?'#78350f':'#a8a29e';
+  const fillIsland=conflicted?'#9a3412':'#ca8a04';
+  const opacRoad=conflicted?0.38:0.42;
+  const opacApron=conflicted?0.4:0.45;
+  const opacIsland=conflicted?0.5:0.55;
+  const lat0=+fit.lat, lon0=+fit.lon;
+  const bearings=(fit.approachBearingsDeg||[]).slice();
+  const legsN=(fit.splitterLegsN!=null?+fit.splitterLegsN:null);
+  if(!bearings.length){
+    const n=legsN?Math.min(4, Math.max(3, legsN)):3;
+    for(let i=0;i<n;i++) bearings.push((i*360/n)+15);
+  }
+  function addCirc(radiusFt, opts){
+    group.addLayer(L.circle([lat0, lon0], Object.assign({
+      pane:paneName,
+      radius:radiusFt*mft,
+      interactive:false,
+      bubblingMouseEvents:false
+    }, opts||{})));
+  }
+  /* Layered footprint: circulating pavement → truck apron → central island */
+  addCirc(outerFt, {
+    color:stroke, weight:conflicted?3.5:3, dashArray:conflicted?'10 6':null,
+    fillColor:fillRoad, fillOpacity:opacRoad
+  });
+  addCirc(islandFt+apronFt, {
+    color:'rgba(255,255,255,.25)', weight:1, dashArray:null,
+    fillColor:fillApron, fillOpacity:opacApron
+  });
+  addCirc(islandFt, {
+    color:stroke, weight:2, dashArray:null,
+    fillColor:fillIsland, fillOpacity:opacIsland
+  });
+  /* Circulating-direction chevrons (schematic only) */
+  for(let i=0;i<8;i++){
+    const br=((i*45)+22)*Math.PI/180;
+    const midR=islandFt+apronFt+circLaneFt*0.45;
+    const tip=offsetLatLonByFt(lat0, lon0, midR, br);
+    const tang=br+Math.PI/2; /* CCW traffic */
+    const a=offsetLatLonByFt(tip[0], tip[1], 7, tang);
+    const b=offsetLatLonByFt(tip[0], tip[1], 7, tang+Math.PI);
+    const c=offsetLatLonByFt(tip[0], tip[1], 9, tang+Math.PI/2);
+    group.addLayer(L.polygon([[a[0],a[1]],[c[0],c[1]],[b[0],b[1]]], {
+      pane:paneName, color:stroke, weight:1, fillColor:stroke, fillOpacity:0.55,
+      interactive:false, bubblingMouseEvents:false
+    }));
+  }
+  /* Approach lanes + splitter islands — extend past ICD so the buildout is obvious */
+  const splitterHalfW=Math.min(14, Math.max(9, outerFt*0.06));
+  const laneHalfW=Math.min(18, Math.max(11, outerFt*0.08));
+  const approachOut=outerFt+Math.min(90, Math.max(50, outerFt*0.45));
+  bearings.slice(0,4).forEach(bDeg=>{
+    const br=(+bDeg||0)*Math.PI/180;
+    /* Entry / exit pavement strips on both sides of splitter */
+    [-1, 1].forEach(side=>{
+      const off=side*(splitterHalfW+laneHalfW*0.55);
+      const p0=offsetLatLonByFt(lat0, lon0, outerFt-6, br);
+      const p1=offsetLatLonByFt(lat0, lon0, approachOut, br);
+      const p0a=offsetLatLonByFt(p0[0], p0[1], laneHalfW*0.5, br+side*Math.PI/2);
+      const p0b=offsetLatLonByFt(p0[0], p0[1], off, br+side*Math.PI/2);
+      const p1a=offsetLatLonByFt(p1[0], p1[1], laneHalfW*0.55, br+side*Math.PI/2);
+      const p1b=offsetLatLonByFt(p1[0], p1[1], off*0.85, br+side*Math.PI/2);
+      group.addLayer(L.polygon([
+        [p0a[0],p0a[1]],[p1a[0],p1a[1]],[p1b[0],p1b[1]],[p0b[0],p0b[1]]
+      ],{
+        pane:paneName, color:stroke, weight:1,
+        fillColor:fillRoad, fillOpacity:opacRoad*0.85,
+        interactive:false, bubblingMouseEvents:false
+      }));
+    });
+    /* Splitter island — elongated triangle pointing outbound along approach */
+    const baseR=Math.max(islandFt+apronFt+2, outerFt-8);
+    const tipR=approachOut*0.82;
+    const midR=(baseR+tipR)*0.45;
+    const bL=offsetLatLonByFt(lat0, lon0, baseR, br);
+    const bL2=offsetLatLonByFt(bL[0], bL[1], splitterHalfW, br+Math.PI/2);
+    const bR2=offsetLatLonByFt(bL[0], bL[1], splitterHalfW, br-Math.PI/2);
+    const tip=offsetLatLonByFt(lat0, lon0, tipR, br);
+    const midL=offsetLatLonByFt(lat0, lon0, midR, br);
+    const midLw=offsetLatLonByFt(midL[0], midL[1], splitterHalfW*0.55, br+Math.PI/2);
+    const midRw=offsetLatLonByFt(midL[0], midL[1], splitterHalfW*0.55, br-Math.PI/2);
+    group.addLayer(L.polygon([
+      [bL2[0],bL2[1]],[midLw[0],midLw[1]],[tip[0],tip[1]],[midRw[0],midRw[1]],[bR2[0],bR2[1]]
+    ],{
+      pane:paneName, color:stroke, weight:1.5,
+      fillColor:fillIsland, fillOpacity:opacIsland*0.95,
+      interactive:false, bubblingMouseEvents:false
+    }));
+    /* Yield hash at entry (simple chord near ICD) */
+    const yR=outerFt+4;
+    const y0=offsetLatLonByFt(lat0, lon0, yR, br-0.18);
+    const y1=offsetLatLonByFt(lat0, lon0, yR, br+0.18);
+    group.addLayer(L.polyline([[y0[0],y0[1]],[y1[0],y1[1]]], {
+      pane:paneName, color:'#f8fafc', weight:2, dashArray:'4 3',
+      opacity:0.75, interactive:false, bubblingMouseEvents:false
+    }));
+  });
+  /* Caption — what size is drawn + takes warning */
+  const preferLabel=(fit.traffic&&fit.traffic.preferLabel)||(Math.round(outerFt)+' ft ICD');
+  const takeTxt=conflicted
+    ?((hitN?hitN+' building hit'+(hitN===1?'':'s'):'building conflicts')+' · property takes')
+    :'footprint clear of buildings';
+  const capHtml='<div class="ra-icd-schematic-label'+(conflicted?' take':'')+'">'
+    +'Schematic · '+esc(preferLabel)
+    +'<span class="rl-sub">'+esc(takeTxt)+'</span></div>';
+  group.addLayer(L.marker([lat0, lon0], {
+    pane:paneName,
+    interactive:false,
+    keyboard:false,
+    zIndexOffset:600,
+    icon:L.divIcon({
+      className:'ra-icd-ring-label-wrap',
+      html:capHtml,
+      iconSize:[1,1],
+      iconAnchor:[70,12]
+    })
+  }));
+  /* Ghost the clear-fit ICD if it differs (so space vs traffic is visible) */
+  const sugFt=fit.suggestedFt!=null?+fit.suggestedFt:null;
+  if(sugFt!=null&&Math.abs(sugFt-outerFt)>8){
+    addCirc(sugFt, {
+      color:'#34d399', weight:2, dashArray:'5 4',
+      fillColor:'#34d399', fillOpacity:0.06
+    });
+  }
+}
 function paintRaFeasibilityOverlay(fit){
   clearStatewideCalmingRaFitOverlay();
   if(!fit||typeof L==='undefined'||typeof map==='undefined') return;
@@ -36666,53 +36816,9 @@ function paintRaFeasibilityOverlay(fit){
       })
     }));
   });
-  /* ---------- Schematic buildout preview (beyond rings) ---------- */
+  /* ---------- Schematic buildout preview (traffic-typical footprint) ---------- */
   try{
-    const outerFt=fit.suggestedFt!=null?+fit.suggestedFt:((fit.traffic&&fit.traffic.preferFt!=null)?+fit.traffic.preferFt:+RA_ICD_SINGLE_FT);
-    const laneWidthFt=14; /* typical circulating lane width (schematic only) */
-    const innerFt=Math.max(8, outerFt-laneWidthFt); /* traversable / central island approx */
-    const bearings=(fit.approachBearingsDeg||[]).slice();
-    const legsN=(fit.splitterLegsN!=null?+fit.splitterLegsN:null);
-    if(!bearings.length){
-      const n=legsN?Math.min(4,Math.max(3,legsN)):3;
-      for(let i=0;i<n;i++) bearings.push(i*360/n);
-    }
-    /* central island */
-    group.addLayer(L.circle([fit.lat, fit.lon], {
-      pane:paneName,
-      radius:innerFt*mPerFt,
-      color:'#fbbf24',
-      weight:2,
-      dashArray:null,
-      fillColor:'#f59e0b',
-      fillOpacity:0.22,
-      interactive:false,
-      bubblingMouseEvents:false
-    }));
-    /* splitter islands (triangles) */
-    const widthFt=10;
-    const startFt=innerFt+3;
-    const endFt=Math.max(startFt+10, outerFt-8);
-    bearings.slice(0,4).forEach(b=>{
-      const br=(+b||0)*Math.PI/180;
-      const base=offsetLatLonByFt(fit.lat, fit.lon, startFt, br); /* [lat,lon] */
-      const tip=offsetLatLonByFt(fit.lat, fit.lon, endFt, br);
-      const left=offsetLatLonByFt(base[0], base[1], widthFt/2, br+Math.PI/2);
-      const right=offsetLatLonByFt(base[0], base[1], widthFt/2, br-Math.PI/2);
-      group.addLayer(L.polygon([
-        [left[0], left[1]],
-        [tip[0], tip[1]],
-        [right[0], right[1]]
-      ],{
-        pane:paneName,
-        color:'#fbbf24',
-        weight:1.5,
-        fillColor:'#f59e0b',
-        fillOpacity:0.14,
-        interactive:false,
-        bubblingMouseEvents:false
-      }));
-    });
+    paintRaSchematicBuildout(group, fit, paneName, mPerFt);
   }catch(_){}
   const maxFt=RA_ICD_RINGS[RA_ICD_RINGS.length-1].ft;
   (fit.buildings||[]).forEach(b=>{
