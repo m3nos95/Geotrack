@@ -20930,6 +20930,17 @@ button,input,select,textarea{font-family:inherit}
 #raIcdDock .ra-icd-actions{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}
 #raIcdDock.float-custom{max-height:none}
 .map-ra-icd{cursor:crosshair !important}
+/* RA ICD ring labels — click-through (pane + icon are non-interactive) */
+.ra-icd-ring-label{
+  background:rgba(8,12,18,.88);border:1px solid rgba(56,189,248,.55);border-radius:4px;
+  color:#e2e8f0;font:600 10px/1.2 var(--mono),ui-monospace,monospace;letter-spacing:.02em;
+  padding:2px 6px;white-space:nowrap;box-shadow:0 2px 8px rgba(0,0,0,.45);
+  pointer-events:none !important;
+}
+.ra-icd-ring-label.hit{border-color:#f87171;color:#fecaca}
+.ra-icd-ring-label.likely{border-color:#34d399;color:#a7f3d0}
+.ra-icd-ring-label.prefer{border-color:#fbbf24;color:#fde68a}
+.ra-icd-ring-label .rl-sub{opacity:.85;font-weight:500}
 /* Shared float panel chrome — drag title · resize corner · dblclick resets */
 .float-resize{
   position:absolute;right:0;bottom:0;width:18px;height:18px;cursor:nwse-resize;z-index:5;
@@ -36491,7 +36502,28 @@ function paintRaFeasibilityOverlay(fit){
   const preferId=(fit.traffic&&fit.traffic.preferRingId)||null;
   const rings=[...RA_ICD_RINGS].sort((a,b)=>b.ft-a.ft); /* draw large first */
   const paneName=(typeof ensureRaIcdPane==='function'&&ensureRaIcdPane())?'raIcdPane':'calmingRaPane';
-  rings.forEach(r=>{
+  const famTier={};
+  ((fit.traffic&&fit.traffic.likelihood)||[]).forEach(L=>{ famTier[L.family]=L.tier; });
+  function raIcdLabelLatLng(lat0, lon0, radiusFt, bearingDeg){
+    const m=(+radiusFt||0)*mPerFt;
+    const br=(+bearingDeg||90)*Math.PI/180;
+    const dLat=(m*Math.cos(br))/111320;
+    const dLon=(m*Math.sin(br))/(111320*Math.max(0.2, Math.cos((+lat0||39)*Math.PI/180)));
+    return [+lat0+dLat, +lon0+dLon];
+  }
+  function raIcdRingLabelHtml(r, hitN, preferred){
+    const tier=famTier[r.family]||'possible';
+    const tierTxt=tier==='more_likely'?'more likely':(tier==='unlikely'?'unlikely':'possible');
+    const spaceTxt=hitN?'hits':'clear';
+    let cls='ra-icd-ring-label';
+    if(hitN) cls+=' hit';
+    else if(tier==='more_likely') cls+=' likely';
+    if(preferred) cls+=' prefer';
+    const star=preferred?' ★':'';
+    return '<div class="'+cls+'">'+esc(r.short|| (r.ft+' ft'))+star
+      +' <span class="rl-sub">· '+esc(spaceTxt)+' · '+esc(tierTxt)+'</span></div>';
+  }
+  rings.forEach((r, idx)=>{
     const hitN=((fit.rings||[]).find(x=>x.id===r.id)||{}).hitN||0;
     const preferred=r.id===preferId;
     const isMiniCore=r.id==='mini90';
@@ -36505,6 +36537,21 @@ function paintRaFeasibilityOverlay(fit){
       fillOpacity:isMiniCore?0.1:(preferred?0.05:0.02),
       interactive:false,
       bubblingMouseEvents:false
+    }));
+    /* Fan labels on the NE–E arc so they do not stack; non-interactive divIcons */
+    const bearing=28+idx*14;
+    const ll=raIcdLabelLatLng(fit.lat, fit.lon, r.ft, bearing);
+    group.addLayer(L.marker(ll, {
+      pane:paneName,
+      interactive:false,
+      keyboard:false,
+      zIndexOffset:400-idx,
+      icon:L.divIcon({
+        className:'ra-icd-ring-label-wrap',
+        html:raIcdRingLabelHtml(r, hitN, preferred),
+        iconSize:[1,1],
+        iconAnchor:[0,10]
+      })
     }));
   });
   const maxFt=RA_ICD_RINGS[RA_ICD_RINGS.length-1].ft;
