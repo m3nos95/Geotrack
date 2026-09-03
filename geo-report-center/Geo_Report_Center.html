@@ -35330,7 +35330,7 @@ function calmingMeasureGuidanceHtml(seg){
   if(seg.roundaboutPotential){
     ideas.push({
       t:'Intersection form',
-      b:'All-way stop nearby — screen for mini-roundabout, traffic circle, or realigned intersection (horizontal). Verify stop control and leg count in the field. See de.gov/roundabouts — not a roundabout warrant.'
+      b:(seg.roundaboutHint||'Nearby all-way stop or 3+ leg intersection')+' — screen for mini-roundabout, traffic circle, or realigned intersection (horizontal). Verify control and leg count in the field. See de.gov/roundabouts — not a roundabout warrant.'
     });
     const fit=seg.roundaboutFit;
     if(fit&&fit.verdict==='unlikely_mini'){
@@ -36084,7 +36084,7 @@ function enrichCalmingSegmentsWithSafety(segments){
   return segments;
 }
 
-/* ---------- Potential roundabouts: calming candidates × all-way / 4-way stops ---------- */
+/* ---------- Potential roundabouts: all-way stops OR FirstMap 3+ leg intersections ---------- */
 const CALMING_RA_STOP_BUF_FT=320;
 const CALMING_RA_SIGNAL_EXCL_FT=180;
 const CALMING_RA_EXISTING_EXCL_FT=320;
