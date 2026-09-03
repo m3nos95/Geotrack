@@ -36844,17 +36844,17 @@ function paintRaSchematicBuildout(group, fit, paneName, mPerFt){
   /* Circulating roadway — stroke only so the intersection stays visible */
   addCirc(outerFt, {
     color:stroke, weight:conflicted?3:2.5, dashArray:conflicted?'8 5':null,
-    fillColor:'#0f172a', fillOpacity:0.06, opacity:0.95
+    fillColor:'#0f172a', fillOpacity:0, opacity:0.95
   });
   /* Truck apron edge */
   addCirc(islandFt+apronFt, {
     color:fillApron, weight:1.6, dashArray:null,
-    fillColor:fillApron, fillOpacity:0.08, opacity:0.9
+    fillColor:fillApron, fillOpacity:0, opacity:0.9
   });
-  /* Central island — outline + whisper fill (see-through) */
+  /* Central island — outline only (see-through center) */
   addCirc(islandFt, {
     color:fillIsland, weight:1.8, dashArray:null,
-    fillColor:fillIsland, fillOpacity:0.1, opacity:0.9
+    fillColor:fillIsland, fillOpacity:0, opacity:0.9
   });
   if(bearingsKnown){
     const splitterHalfW=Math.min(10, Math.max(6, outerFt*0.045));
