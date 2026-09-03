@@ -22024,7 +22024,7 @@ table.list td{padding:5px 8px;border-bottom:1px solid rgba(46,58,72,.5);font-fam
   <h3 id="raIcdDockTitle" title="Drag to move · drag bottom-right corner to resize · double-click corner to reset">Roundabout ICD screen<span class="sp"></span>
     <button type="button" class="hdr-pop-close" id="raIcdDockClose" title="Exit RA screen mode">✕</button>
   </h3>
-  <div class="hint">Click any map spot. Map shows the <b>best ICD</b> as a patterned roundabout overlay (island · apron · circulating · splitters), road-aligned when bearings are known. Other sizes stay in this panel. Not a warrant · not DelDOT ROW.</div>
+  <div class="hint">Click any map spot. Map shows the <b>best ICD</b> as a built roundabout: asphalt circulating road joining the existing approaches, brick island, concrete splitters. Other sizes stay in this panel. Not a warrant · not DelDOT ROW.</div>
   <label class="layerRow" style="margin:8px 0 0;padding:0;border:none;background:transparent;gap:8px;align-items:center;max-width:none">
     <input type="checkbox" id="raIcdSnapIx" checked style="margin:0">
     <span class="nm" style="font-size:11px;color:var(--dim)">Snap to nearest FirstMap intersection (≤120 ft)</span>
@@ -36810,10 +36810,32 @@ function raApproachBearingsFromRoadGeoms(lat, lon, feats, maxFt){
   candidates.sort((a,b)=>a.d-b.d);
   return raClusterBearingsDeg(candidates.map(c=>c.b), 32);
 }
+function raRingPts(lat, lon, rFt, n, clockwise){
+  n=n||72;
+  const pts=[];
+  for(let i=0;i<n;i++){
+    const t=clockwise?(n-i)/n:i/n;
+    const p=offsetLatLonByFt(lat, lon, rFt, t*Math.PI*2);
+    pts.push([p[0],p[1]]);
+  }
+  if(pts.length) pts.push(pts[0]);
+  return pts;
+}
+function raArcPts(lat, lon, rFt, br0, br1, n){
+  n=n||10;
+  let a0=+br0, a1=+br1;
+  while(a1<a0) a1+=Math.PI*2;
+  if(a1-a0>Math.PI){ const tmp=a0; a0=a1-Math.PI*2; a1=tmp; while(a1<a0) a1+=Math.PI*2; }
+  const pts=[];
+  for(let i=0;i<=n;i++){
+    const p=offsetLatLonByFt(lat, lon, rFt, a0+(a1-a0)*i/n);
+    pts.push([p[0],p[1]]);
+  }
+  return pts;
+}
 function paintRaSchematicBuildout(group, fit, paneName, mPerFt){
-  /* Best-pick patterned RA overlay: green island, terra apron, dark circulating lane,
-     triangular splitters, road-aligned approaches. One size only — readable on aerial
-     without the old fully opaque blot or the hollow wireframe. */
+  /* Draw like a built RA (Willow Grove pattern): asphalt circulating RING that
+     connects out to existing roads, brick island, concrete splitters — not stacked disks. */
   if(!group||!fit||fit.lat==null||fit.lon==null||typeof L==='undefined') return;
   if(typeof offsetLatLonByFt!=='function') return;
   const mft=mPerFt!=null?+mPerFt:0.3048;
@@ -36831,99 +36853,87 @@ function paintRaSchematicBuildout(group, fit, paneName, mPerFt){
   const drawMeta=sugMeta||(fit.rings||[]).find(r=>Math.abs(+r.ft-outerFt)<1)||{};
   const hitN=buildingsUnknown?0:(drawMeta.hitN||0);
   const conflicted=!buildingsUnknown&&!!hitN;
-  const circLaneFt=Math.min(18, Math.max(14, Math.round(outerFt*0.10)));
-  const apronFt=Math.min(16, Math.max(10, Math.round(outerFt*0.085)));
-  const islandFt=Math.max(14, outerFt-circLaneFt-apronFt);
-  const stroke=buildingsUnknown?'#94a3b8':(conflicted?'#f87171':'#1e293b');
-  const fillRoad='#111827';
-  const fillApron=conflicted?'#9a3412':'#b45309';
-  const fillIsland=conflicted?'#3f6212':'#4d7c0f';
-  /* Visible patterned RA — translucent enough to read pavement underneath */
-  const opacRoad=0.42, opacApron=0.48, opacIsland=0.4;
+  const circLaneFt=Math.min(30, Math.max(22, Math.round(outerFt*0.155)));
+  const apronFt=Math.min(10, Math.max(7, Math.round(outerFt*0.05)));
+  const islandFt=Math.max(16, outerFt-circLaneFt-apronFt);
+  const curb=conflicted?'#b91c1c':'#1a1a1a';
+  const fillAsphalt=conflicted?'#3f2a2a':'#2f2f2f';
+  const fillApron=conflicted?'#a16207':'#c4b49a'; /* concrete truck apron */
+  const fillIsland=conflicted?'#7f1d1d':'#a86b45'; /* brick / mulch island like Willow Grove */
+  const fillSplitter='#ece7dc';
+  const opacAsphalt=0.88, opacApron=0.55, opacIsland=0.55, opacSplitter=0.88;
   const lat0=+fit.lat, lon0=+fit.lon;
   const bearings=(fit.approachBearingsDeg||[]).slice().filter(b=>Number.isFinite(+b));
   const bearingsKnown=bearings.length>=2;
-  function addCirc(radiusFt, opts){
-    group.addLayer(L.circle([lat0, lon0], Object.assign({
-      pane:paneName, radius:radiusFt*mft, interactive:false, bubblingMouseEvents:false
-    }, opts||{})));
-  }
-  /* Circulating roadway (ICD) */
-  addCirc(outerFt, {
-    color:stroke, weight:conflicted?2.8:2.2, dashArray:conflicted?'8 5':null,
-    fillColor:fillRoad, fillOpacity:opacRoad, opacity:0.95
-  });
-  /* Truck apron */
-  addCirc(islandFt+apronFt, {
-    color:'rgba(255,255,255,.35)', weight:1.2, dashArray:null,
-    fillColor:fillApron, fillOpacity:opacApron, opacity:0.95
-  });
-  /* Central island */
-  addCirc(islandFt, {
-    color:'rgba(255,255,255,.4)', weight:1.4, dashArray:null,
-    fillColor:fillIsland, fillOpacity:opacIsland, opacity:0.95
-  });
-  /* CCW chevrons in circulating lane */
-  for(let i=0;i<6;i++){
-    const br=((i*60)+30)*Math.PI/180;
-    const midR=islandFt+apronFt+circLaneFt*0.5;
-    const tip=offsetLatLonByFt(lat0, lon0, midR, br);
-    const tang=br+Math.PI/2;
-    const a=offsetLatLonByFt(tip[0], tip[1], 6, tang);
-    const b=offsetLatLonByFt(tip[0], tip[1], 6, tang+Math.PI);
-    const c=offsetLatLonByFt(tip[0], tip[1], 8, tang+Math.PI/2);
-    group.addLayer(L.polygon([[a[0],a[1]],[c[0],c[1]],[b[0],b[1]]], {
-      pane:paneName, color:'#fbbf24', weight:0, fillColor:'#fbbf24', fillOpacity:0.55,
-      interactive:false, bubblingMouseEvents:false
-    }));
-  }
+  const polyOpts=(extra)=>Object.assign({
+    pane:paneName, interactive:false, bubblingMouseEvents:false
+  }, extra||{});
+  const innerCurbFt=islandFt+apronFt;
+  /* 1) New circulating roadway as a DONUT (asphalt ring) — not a filled disk */
+  group.addLayer(L.polygon([
+    raRingPts(lat0, lon0, outerFt, 80, false),
+    raRingPts(lat0, lon0, innerCurbFt, 80, true)
+  ], polyOpts({
+    color:curb, weight:1.4, fillColor:fillAsphalt, fillOpacity:opacAsphalt, opacity:0.95
+  })));
+  /* 2) Truck apron ring (thin concrete) */
+  group.addLayer(L.polygon([
+    raRingPts(lat0, lon0, innerCurbFt, 64, false),
+    raRingPts(lat0, lon0, islandFt, 64, true)
+  ], polyOpts({
+    color:'rgba(255,255,255,.35)', weight:0.8, fillColor:fillApron, fillOpacity:opacApron, opacity:0.9
+  })));
+  /* 3) Central island (brick / landscaping) */
+  group.addLayer(L.polygon(raRingPts(lat0, lon0, islandFt, 56, false), polyOpts({
+    color:'rgba(255,255,255,.25)', weight:1, fillColor:fillIsland, fillOpacity:opacIsland, opacity:0.95
+  })));
+  const laneHalf=Math.min(18, Math.max(12, outerFt*0.08));
+  const splitterHalfW=Math.min(11, Math.max(7, outerFt*0.05));
+  const approachOut=outerFt+Math.min(90, Math.max(50, outerFt*0.42));
   if(bearingsKnown){
-    const splitterHalfW=Math.min(12, Math.max(8, outerFt*0.055));
-    const laneHalfW=Math.min(16, Math.max(11, outerFt*0.075));
-    const approachOut=outerFt+Math.min(100, Math.max(55, outerFt*0.5));
     bearings.slice(0,4).forEach(bDeg=>{
       const br=(+bDeg||0)*Math.PI/180;
-      const deflect=0.1;
-      [-1, 1].forEach(side=>{
-        const entryBr=br+side*deflect;
-        const off=side*(splitterHalfW+laneHalfW*0.5);
-        const throat=outerFt-4;
-        const p0=offsetLatLonByFt(lat0, lon0, throat, entryBr);
-        const pMid=offsetLatLonByFt(lat0, lon0, (throat+approachOut)*0.55, br+side*deflect*0.4);
-        const p1=offsetLatLonByFt(lat0, lon0, approachOut, br);
-        const ring=[
-          offsetLatLonByFt(p0[0], p0[1], Math.abs(off)*0.35, entryBr+side*Math.PI/2),
-          offsetLatLonByFt(pMid[0], pMid[1], Math.abs(off)*0.85, br+side*Math.PI/2),
-          offsetLatLonByFt(p1[0], p1[1], Math.abs(off)*0.95, br+side*Math.PI/2),
-          offsetLatLonByFt(p1[0], p1[1], splitterHalfW*0.15, br+side*Math.PI/2),
-          offsetLatLonByFt(pMid[0], pMid[1], splitterHalfW*0.2, br+side*Math.PI/2),
-          offsetLatLonByFt(p0[0], p0[1], splitterHalfW*0.35, entryBr+side*Math.PI/2)
-        ];
-        group.addLayer(L.polygon(ring.map(p=>[p[0],p[1]]), {
-          pane:paneName, color:'rgba(15,23,42,.45)', weight:1,
-          fillColor:fillRoad, fillOpacity:0.55,
-          interactive:false, bubblingMouseEvents:false
-        }));
-      });
-      /* Splitter island */
-      const baseR=outerFt-2;
+      const flare=Math.atan2(laneHalf*1.15, outerFt);
+      const arc=raArcPts(lat0, lon0, outerFt, br-flare, br+flare, 12);
+      const far=offsetLatLonByFt(lat0, lon0, approachOut, br);
+      const farL=offsetLatLonByFt(far[0], far[1], laneHalf, br+Math.PI/2);
+      const farR=offsetLatLonByFt(far[0], far[1], laneHalf, br-Math.PI/2);
+      /* New pavement connecting the circulating ring out to the existing road */
+      const roadRing=arc.concat([[farR[0],farR[1]],[farL[0],farL[1]]]);
+      group.addLayer(L.polygon(roadRing, polyOpts({
+        color:curb, weight:1.1, fillColor:fillAsphalt, fillOpacity:opacAsphalt, opacity:0.95
+      })));
+      /* Concrete splitter island in the approach (Willow Grove teardrop) */
+      const baseR=outerFt+6;
       const tipR=approachOut*0.78;
-      const midR=(baseR+tipR)*0.42;
+      const midR=(baseR+tipR)*0.48;
       const base=offsetLatLonByFt(lat0, lon0, baseR, br);
       const tip=offsetLatLonByFt(lat0, lon0, tipR, br);
       const mid=offsetLatLonByFt(lat0, lon0, midR, br);
-      const bL=offsetLatLonByFt(base[0], base[1], splitterHalfW*1.05, br+Math.PI/2);
-      const bR=offsetLatLonByFt(base[0], base[1], splitterHalfW*1.05, br-Math.PI/2);
-      const mL=offsetLatLonByFt(mid[0], mid[1], splitterHalfW*0.55, br+Math.PI/2);
-      const mR=offsetLatLonByFt(mid[0], mid[1], splitterHalfW*0.55, br-Math.PI/2);
+      const bL=offsetLatLonByFt(base[0], base[1], splitterHalfW*1.15, br+Math.PI/2);
+      const bR=offsetLatLonByFt(base[0], base[1], splitterHalfW*1.15, br-Math.PI/2);
+      const mL=offsetLatLonByFt(mid[0], mid[1], splitterHalfW*0.5, br+Math.PI/2);
+      const mR=offsetLatLonByFt(mid[0], mid[1], splitterHalfW*0.5, br-Math.PI/2);
       group.addLayer(L.polygon([
         [bL[0],bL[1]],[mL[0],mL[1]],[tip[0],tip[1]],[mR[0],mR[1]],[bR[0],bR[1]]
-      ],{
-        pane:paneName, color:'rgba(255,255,255,.25)', weight:1,
-        fillColor:fillApron, fillOpacity:0.65,
-        interactive:false, bubblingMouseEvents:false
-      }));
+      ], polyOpts({
+        color:'rgba(30,30,30,.45)', weight:1, fillColor:fillSplitter, fillOpacity:opacSplitter
+      })));
     });
+  }
+  /* CCW travel arrows on the circulating asphalt */
+  const nArr=bearingsKnown?Math.max(4, bearings.length*2):8;
+  const midR=innerCurbFt+circLaneFt*0.5;
+  for(let i=0;i<nArr;i++){
+    const br=((i+0.5)/nArr)*Math.PI*2;
+    const tip=offsetLatLonByFt(lat0, lon0, midR, br);
+    const tang=br+Math.PI/2; /* CCW */
+    const a=offsetLatLonByFt(tip[0], tip[1], 5.5, tang);
+    const b=offsetLatLonByFt(tip[0], tip[1], 5.5, tang+Math.PI);
+    const c=offsetLatLonByFt(tip[0], tip[1], 8, tang+Math.PI/2);
+    group.addLayer(L.polygon([[a[0],a[1]],[c[0],c[1]],[b[0],b[1]]], polyOpts({
+      color:'#f5f5f4', weight:0, fillColor:'#fafafa', fillOpacity:0.85
+    })));
   }
   let takeTxt, labelCls='ra-icd-schematic-label';
   if(buildingsUnknown){
@@ -36933,19 +36943,19 @@ function paintRaSchematicBuildout(group, fit, paneName, mPerFt){
     takeTxt=(hitN?hitN+' building hit'+(hitN===1?'':'s'):'building conflicts')+' · takes';
     labelCls+=' take';
   } else {
-    takeTxt=bearingsKnown?'pattern · road-aligned':'pattern · ring only';
+    takeTxt=bearingsKnown?'new circulating road · joins existing':'circulating road';
   }
   if(existing) takeTxt=(existing?'existing RA area · ':'')+takeTxt;
   const capHtml='<div class="'+labelCls+'"><span class="rl-title">Best · '+esc(drawLabel||(Math.round(outerFt)+' ft'))+'</span>'
     +'<span class="rl-sub">'+esc(takeTxt)+'</span></div>';
-  const capLL=offsetLatLonByFt(lat0, lon0, outerFt+40, Math.PI*0.92);
+  const capLL=offsetLatLonByFt(lat0, lon0, outerFt+42, Math.PI*0.92);
   group.addLayer(L.marker([capLL[0], capLL[1]], {
     pane:paneName, interactive:false, keyboard:false, zIndexOffset:600,
     icon:L.divIcon({
       className:'ra-icd-ring-label-wrap',
       html:capHtml,
-      iconSize:[210,40],
-      iconAnchor:[105,8]
+      iconSize:[220,40],
+      iconAnchor:[110,8]
     })
   }));
 }
