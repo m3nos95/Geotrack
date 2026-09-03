@@ -36807,8 +36807,9 @@ function raApproachBearingsFromRoadGeoms(lat, lon, feats, maxFt){
   return raClusterBearingsDeg(candidates.map(c=>c.b), 32);
 }
 function paintRaSchematicBuildout(group, fit, paneName, mPerFt){
-  /* Best-pick wireframe only: one ICD size, see-through center, approaches only when
-     road bearings are known (no fake cardinal arms that fight the aerial). */
+  /* Best-pick patterned RA overlay: green island, terra apron, dark circulating lane,
+     triangular splitters, road-aligned approaches. One size only — readable on aerial
+     without the old fully opaque blot or the hollow wireframe. */
   if(!group||!fit||fit.lat==null||fit.lon==null||typeof L==='undefined') return;
   if(typeof offsetLatLonByFt!=='function') return;
   const mft=mPerFt!=null?+mPerFt:0.3048;
@@ -36816,7 +36817,6 @@ function paintRaSchematicBuildout(group, fit, paneName, mPerFt){
   const sugId=fit.suggestedRingId||null;
   const sugMeta=(fit.rings||[]).find(r=>r.id===sugId)||null;
   const existing=!!(fit.existingRaNear||fit.ctxExistingRa);
-  /* Always pattern the screen pick (best), not a second traffic size */
   let outerFt, drawLabel;
   if(fit.schematicFt!=null){ outerFt=+fit.schematicFt; drawLabel=fit.schematicLabel||(Math.round(outerFt)+' ft'); }
   else if(sugMeta&&sugMeta.ft!=null){ outerFt=+sugMeta.ft; drawLabel=sugMeta.label; }
@@ -36830,9 +36830,12 @@ function paintRaSchematicBuildout(group, fit, paneName, mPerFt){
   const circLaneFt=Math.min(18, Math.max(14, Math.round(outerFt*0.10)));
   const apronFt=Math.min(16, Math.max(10, Math.round(outerFt*0.085)));
   const islandFt=Math.max(14, outerFt-circLaneFt-apronFt);
-  const stroke=buildingsUnknown?'#94a3b8':(conflicted?'#f87171':'#38bdf8');
+  const stroke=buildingsUnknown?'#94a3b8':(conflicted?'#f87171':'#1e293b');
+  const fillRoad='#111827';
   const fillApron=conflicted?'#9a3412':'#b45309';
   const fillIsland=conflicted?'#3f6212':'#4d7c0f';
+  /* Visible patterned RA — translucent enough to read pavement underneath */
+  const opacRoad=0.42, opacApron=0.48, opacIsland=0.4;
   const lat0=+fit.lat, lon0=+fit.lon;
   const bearings=(fit.approachBearingsDeg||[]).slice().filter(b=>Number.isFinite(+b));
   const bearingsKnown=bearings.length>=2;
@@ -36841,63 +36844,79 @@ function paintRaSchematicBuildout(group, fit, paneName, mPerFt){
       pane:paneName, radius:radiusFt*mft, interactive:false, bubblingMouseEvents:false
     }, opts||{})));
   }
-  /* Circulating roadway — stroke only so the intersection stays visible */
+  /* Circulating roadway (ICD) */
   addCirc(outerFt, {
-    color:stroke, weight:conflicted?3:2.5, dashArray:conflicted?'8 5':null,
-    fillColor:'#0f172a', fillOpacity:0, opacity:0.95
+    color:stroke, weight:conflicted?2.8:2.2, dashArray:conflicted?'8 5':null,
+    fillColor:fillRoad, fillOpacity:opacRoad, opacity:0.95
   });
-  /* Truck apron edge */
+  /* Truck apron */
   addCirc(islandFt+apronFt, {
-    color:fillApron, weight:1.6, dashArray:null,
-    fillColor:fillApron, fillOpacity:0, opacity:0.9
+    color:'rgba(255,255,255,.35)', weight:1.2, dashArray:null,
+    fillColor:fillApron, fillOpacity:opacApron, opacity:0.95
   });
-  /* Central island — outline only (see-through center) */
+  /* Central island */
   addCirc(islandFt, {
-    color:fillIsland, weight:1.8, dashArray:null,
-    fillColor:fillIsland, fillOpacity:0, opacity:0.9
+    color:'rgba(255,255,255,.4)', weight:1.4, dashArray:null,
+    fillColor:fillIsland, fillOpacity:opacIsland, opacity:0.95
   });
+  /* CCW chevrons in circulating lane */
+  for(let i=0;i<6;i++){
+    const br=((i*60)+30)*Math.PI/180;
+    const midR=islandFt+apronFt+circLaneFt*0.5;
+    const tip=offsetLatLonByFt(lat0, lon0, midR, br);
+    const tang=br+Math.PI/2;
+    const a=offsetLatLonByFt(tip[0], tip[1], 6, tang);
+    const b=offsetLatLonByFt(tip[0], tip[1], 6, tang+Math.PI);
+    const c=offsetLatLonByFt(tip[0], tip[1], 8, tang+Math.PI/2);
+    group.addLayer(L.polygon([[a[0],a[1]],[c[0],c[1]],[b[0],b[1]]], {
+      pane:paneName, color:'#fbbf24', weight:0, fillColor:'#fbbf24', fillOpacity:0.55,
+      interactive:false, bubblingMouseEvents:false
+    }));
+  }
   if(bearingsKnown){
-    const splitterHalfW=Math.min(10, Math.max(6, outerFt*0.045));
-    const approachOut=outerFt+Math.min(80, Math.max(45, outerFt*0.4));
+    const splitterHalfW=Math.min(12, Math.max(8, outerFt*0.055));
+    const laneHalfW=Math.min(16, Math.max(11, outerFt*0.075));
+    const approachOut=outerFt+Math.min(100, Math.max(55, outerFt*0.5));
     bearings.slice(0,4).forEach(bDeg=>{
       const br=(+bDeg||0)*Math.PI/180;
-      const throat=outerFt-2;
-      const p0=offsetLatLonByFt(lat0, lon0, throat, br);
-      const p1=offsetLatLonByFt(lat0, lon0, approachOut, br);
-      /* Approach guide along the road — thin, not a filled blot */
-      group.addLayer(L.polyline([[p0[0],p0[1]],[p1[0],p1[1]]], {
-        pane:paneName, color:'#0f172a', weight:2.2, opacity:0.55,
-        interactive:false, bubblingMouseEvents:false
-      }));
-      const laneHalf=Math.min(12, Math.max(8, outerFt*0.055));
-      const edgeL0=offsetLatLonByFt(p0[0], p0[1], laneHalf, br+Math.PI/2);
-      const edgeL1=offsetLatLonByFt(p1[0], p1[1], laneHalf, br+Math.PI/2);
-      const edgeR0=offsetLatLonByFt(p0[0], p0[1], laneHalf, br-Math.PI/2);
-      const edgeR1=offsetLatLonByFt(p1[0], p1[1], laneHalf, br-Math.PI/2);
-      group.addLayer(L.polyline([[edgeL0[0],edgeL0[1]],[edgeL1[0],edgeL1[1]]], {
-        pane:paneName, color:'#38bdf8', weight:1, opacity:0.35, dashArray:'4 4',
-        interactive:false, bubblingMouseEvents:false
-      }));
-      group.addLayer(L.polyline([[edgeR0[0],edgeR0[1]],[edgeR1[0],edgeR1[1]]], {
-        pane:paneName, color:'#38bdf8', weight:1, opacity:0.35, dashArray:'4 4',
-        interactive:false, bubblingMouseEvents:false
-      }));
-      /* Splitter island — light outline triangle */
-      const baseR=outerFt+2;
-      const tipR=approachOut*0.72;
-      const midR=(baseR+tipR)*0.45;
+      const deflect=0.1;
+      [-1, 1].forEach(side=>{
+        const entryBr=br+side*deflect;
+        const off=side*(splitterHalfW+laneHalfW*0.5);
+        const throat=outerFt-4;
+        const p0=offsetLatLonByFt(lat0, lon0, throat, entryBr);
+        const pMid=offsetLatLonByFt(lat0, lon0, (throat+approachOut)*0.55, br+side*deflect*0.4);
+        const p1=offsetLatLonByFt(lat0, lon0, approachOut, br);
+        const ring=[
+          offsetLatLonByFt(p0[0], p0[1], Math.abs(off)*0.35, entryBr+side*Math.PI/2),
+          offsetLatLonByFt(pMid[0], pMid[1], Math.abs(off)*0.85, br+side*Math.PI/2),
+          offsetLatLonByFt(p1[0], p1[1], Math.abs(off)*0.95, br+side*Math.PI/2),
+          offsetLatLonByFt(p1[0], p1[1], splitterHalfW*0.15, br+side*Math.PI/2),
+          offsetLatLonByFt(pMid[0], pMid[1], splitterHalfW*0.2, br+side*Math.PI/2),
+          offsetLatLonByFt(p0[0], p0[1], splitterHalfW*0.35, entryBr+side*Math.PI/2)
+        ];
+        group.addLayer(L.polygon(ring.map(p=>[p[0],p[1]]), {
+          pane:paneName, color:'rgba(15,23,42,.45)', weight:1,
+          fillColor:fillRoad, fillOpacity:0.55,
+          interactive:false, bubblingMouseEvents:false
+        }));
+      });
+      /* Splitter island */
+      const baseR=outerFt-2;
+      const tipR=approachOut*0.78;
+      const midR=(baseR+tipR)*0.42;
       const base=offsetLatLonByFt(lat0, lon0, baseR, br);
       const tip=offsetLatLonByFt(lat0, lon0, tipR, br);
       const mid=offsetLatLonByFt(lat0, lon0, midR, br);
-      const bL=offsetLatLonByFt(base[0], base[1], splitterHalfW, br+Math.PI/2);
-      const bR=offsetLatLonByFt(base[0], base[1], splitterHalfW, br-Math.PI/2);
-      const mL=offsetLatLonByFt(mid[0], mid[1], splitterHalfW*0.45, br+Math.PI/2);
-      const mR=offsetLatLonByFt(mid[0], mid[1], splitterHalfW*0.45, br-Math.PI/2);
+      const bL=offsetLatLonByFt(base[0], base[1], splitterHalfW*1.05, br+Math.PI/2);
+      const bR=offsetLatLonByFt(base[0], base[1], splitterHalfW*1.05, br-Math.PI/2);
+      const mL=offsetLatLonByFt(mid[0], mid[1], splitterHalfW*0.55, br+Math.PI/2);
+      const mR=offsetLatLonByFt(mid[0], mid[1], splitterHalfW*0.55, br-Math.PI/2);
       group.addLayer(L.polygon([
         [bL[0],bL[1]],[mL[0],mL[1]],[tip[0],tip[1]],[mR[0],mR[1]],[bR[0],bR[1]]
       ],{
-        pane:paneName, color:fillApron, weight:1.2,
-        fillColor:fillApron, fillOpacity:0.22,
+        pane:paneName, color:'rgba(255,255,255,.25)', weight:1,
+        fillColor:fillApron, fillOpacity:0.65,
         interactive:false, bubblingMouseEvents:false
       }));
     });
@@ -36910,13 +36929,12 @@ function paintRaSchematicBuildout(group, fit, paneName, mPerFt){
     takeTxt=(hitN?hitN+' building hit'+(hitN===1?'':'s'):'building conflicts')+' · takes';
     labelCls+=' take';
   } else {
-    takeTxt=bearingsKnown?'best pick · road-aligned':'best pick · ring only';
+    takeTxt=bearingsKnown?'pattern · road-aligned':'pattern · ring only';
   }
   if(existing) takeTxt=(existing?'existing RA area · ':'')+takeTxt;
   const capHtml='<div class="'+labelCls+'"><span class="rl-title">Best · '+esc(drawLabel||(Math.round(outerFt)+' ft'))+'</span>'
     +'<span class="rl-sub">'+esc(takeTxt)+'</span></div>';
-  /* Caption outside the ICD so the center stays readable */
-  const capLL=offsetLatLonByFt(lat0, lon0, outerFt+36, Math.PI*0.92);
+  const capLL=offsetLatLonByFt(lat0, lon0, outerFt+40, Math.PI*0.92);
   group.addLayer(L.marker([capLL[0], capLL[1]], {
     pane:paneName, interactive:false, keyboard:false, zIndexOffset:600,
     icon:L.divIcon({
@@ -36941,52 +36959,34 @@ function paintRaFeasibilityOverlay(fit){
   const paneName=(typeof ensureRaIcdPane==='function'&&ensureRaIcdPane())?'raIcdPane':'calmingRaPane';
   const ringMeta={};
   (fit.rings||[]).forEach(r=>{ ringMeta[r.id]=r; });
-  /* One ring only — the screen pick (best). Other sizes live in the panel. */
   const bestRing=preferId
     ? (RA_ICD_RINGS.find(r=>r.id===preferId)||null)
     : (fit.suggestedFt!=null
       ? {id:'best', ft:+fit.suggestedFt, color:'#34d399'}
       : (trafficPreferId?RA_ICD_RINGS.find(r=>r.id===trafficPreferId):null));
-  if(bestRing&&bestRing.ft!=null){
-    const meta=ringMeta[bestRing.id]||{};
-    const hitN=meta.hitN||0;
-    group.addLayer(L.circle([fit.lat, fit.lon], {
-      pane:paneName,
-      radius:(+bestRing.ft)*mPerFt,
-      color:hitN?'#f87171':'#34d399',
-      weight:2.8,
-      dashArray:hitN?'7 5':null,
-      fillColor:'transparent',
-      fillOpacity:0,
-      opacity:0.95,
-      interactive:false,
-      bubblingMouseEvents:false
-    }));
-  }
-  /* Optional faint ghost if traffic-typical size differs a lot — stroke only, no fill */
+  /* Optional faint ghost if traffic-typical size differs a lot from the patterned best */
   try{
-    const bestFt=bestRing&&bestRing.ft!=null?+bestRing.ft:null;
+    const bestFt=bestRing&&bestRing.ft!=null?+bestRing.ft:(fit.suggestedFt!=null?+fit.suggestedFt:null);
     const trafficFt=(fit.traffic&&fit.traffic.preferFt!=null)?+fit.traffic.preferFt:null;
     if(bestFt!=null&&trafficFt!=null&&Math.abs(trafficFt-bestFt)>12){
       group.addLayer(L.circle([fit.lat, fit.lon], {
         pane:paneName,
         radius:trafficFt*mPerFt,
         color:'#fbbf24',
-        weight:1.4,
+        weight:1.5,
         dashArray:'4 6',
         fillColor:'transparent',
         fillOpacity:0,
-        opacity:0.45,
+        opacity:0.5,
         interactive:false,
         bubblingMouseEvents:false
       }));
     }
   }catch(_){}
-  /* ---------- Schematic buildout preview (best-fit footprint) ---------- */
+  /* Patterned best-pick schematic is the map overlay (not a second hollow ring stack) */
   try{
     paintRaSchematicBuildout(group, fit, paneName, mPerFt);
   }catch(_){}
-  /* Highlight buildings that nick the BEST ICD only (not every ring) */
   const bestFtForHits=(bestRing&&bestRing.ft!=null)?+bestRing.ft:(fit.suggestedFt||RA_ICD_SINGLE_FT);
   (fit.buildings||[]).forEach(b=>{
     if(!b.ring||b.ring.length<3) return;
