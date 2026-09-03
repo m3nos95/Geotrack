@@ -24175,6 +24175,8 @@ function wireFloatPanel(cfg){
       if(!resizing) return;
       resizing=false;
       el.classList.remove('float-resizing');
+      /* Let CSS max-height caps (e.g. RA dock viewport clamp) apply again */
+      el.style.maxHeight='';
       document.removeEventListener('mousemove', onMove);
       document.removeEventListener('mouseup', onUp);
       document.removeEventListener('touchmove', onMove);
