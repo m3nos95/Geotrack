@@ -36878,7 +36878,7 @@ function paintRaSchematicBuildout(group, fit, paneName, mPerFt){
   else if(fit.suggestedFt!=null){ outerFt=+fit.suggestedFt; drawLabel=fit.suggestedLabel||(Math.round(outerFt)+' ft'); }
   else if(fit.traffic&&fit.traffic.preferFt!=null){ outerFt=+fit.traffic.preferFt; drawLabel=fit.traffic.preferLabel; }
   else { outerFt=+RA_ICD_SINGLE_FT; drawLabel=RA_ICD_SINGLE_FT+' ft single-lane'; }
-  outerFt=Math.max(60, Math.min(220, outerFt));
+  outerFt=typeof clampRaIcdSizeFt==='function'?clampRaIcdSizeFt(outerFt):Math.max(RA_ICD_SIZE_MIN_FT, Math.min(RA_ICD_SIZE_MAX_FT, Math.round(+outerFt||RA_ICD_SINGLE_FT)));
   const drawMeta=sugMeta||(fit.rings||[]).find(r=>Math.abs(+r.ft-outerFt)<1)||{};
   const hitN=buildingsUnknown?0:(drawMeta.hitN||0);
   const conflicted=!buildingsUnknown&&!!hitN;
