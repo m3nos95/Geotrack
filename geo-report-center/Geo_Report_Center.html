@@ -6,8 +6,8 @@
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<meta name="geotrak-build" content="0.99.33-ra-resize">
-<meta name="geotrak-version" content="0.99.33">
+<meta name="geotrak-build" content="0.99.34-ra-rotate">
+<meta name="geotrak-version" content="0.99.34">
 <meta name="geotrak-pages-rev" content="2026-08-27T17:25Z">
 <title>DelDOT GeoTrak</title>
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=Press+Start+2P&family=Syne:wght@500;600;700;800&display=swap" rel="stylesheet">
@@ -20951,6 +20951,12 @@ button,input,select,textarea{font-family:inherit}
 .ra-icd-handle{width:18px;height:18px;border-radius:3px;background:#0ea5e9;border:2px solid #e0f2fe;box-shadow:0 2px 8px rgba(0,0,0,.55);cursor:nwse-resize;position:absolute;left:2px;top:2px}
 .ra-icd-handle.move{border-radius:50%;cursor:move;background:#38bdf8;position:absolute;left:2px;top:2px}
 .ra-icd-handle.sizing{background:#fbbf24;border-color:#fff}
+.ra-icd-handle.approach{
+  border-radius:3px;cursor:grab;background:#f59e0b;border-color:#fff7ed;
+  transform:rotate(45deg);left:3px;top:3px;width:16px;height:16px;
+}
+.ra-icd-handle.approach:active, body.ra-icd-rotating .ra-icd-handle.approach{cursor:grabbing}
+body.ra-icd-rotating, body.ra-icd-rotating .leaflet-container{cursor:grabbing !important}
 .ra-icd-handle-ft{
   position:absolute;left:22px;top:-2px;white-space:nowrap;padding:2px 5px;border-radius:3px;
   background:rgba(8,12,18,.88);border:1px solid rgba(56,189,248,.65);color:#7dd3fc;
@@ -21892,7 +21898,7 @@ table.list td{padding:5px 8px;border-bottom:1px solid rgba(46,58,72,.5);font-fam
 <div id="hdr">
   <div class="brand" title="Delaware Department of Transportation">
     <img src="data:image/png;base64,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" width="28" height="28" alt="DelDOT">
-    <h1><b>DelDOT</b> GeoTrak<span class="badge">v0.99.33</span></h1>
+    <h1><b>DelDOT</b> GeoTrak<span class="badge">v0.99.34</span></h1>
   </div>
   <button class="tab on" data-p="map">Map</button>
   <button class="tab" data-p="refs">Reference data</button>
@@ -22045,7 +22051,7 @@ table.list td{padding:5px 8px;border-bottom:1px solid rgba(46,58,72,.5);font-fam
   <h3 id="raIcdDockTitle" title="Drag to move · drag bottom-right corner to resize · double-click corner to reset">Roundabout ICD screen<span class="sp"></span>
     <button type="button" class="hdr-pop-close" id="raIcdDockClose" title="Exit RA screen mode">✕</button>
   </h3>
-  <div class="hint">Click any map spot. Map shows a <b>to-scale</b> roundabout overlay (asphalt circulating road · island · splitters). <b>Drag the blue handle</b> or use the ICD slider to size it, then Measure to verify feet. Not a warrant · not DelDOT ROW.</div>
+  <div class="hint">Click any map spot. Map shows a <b>to-scale</b> roundabout overlay. <b>Size</b> with the blue □ / slider · <b>rotate approaches</b> with the amber handles on each leg to align with existing roads · Measure to verify. Not a warrant · not DelDOT ROW.</div>
   <label class="layerRow" style="margin:8px 0 0;padding:0;border:none;background:transparent;gap:8px;align-items:center;max-width:none">
     <input type="checkbox" id="raIcdSnapIx" checked style="margin:0">
     <span class="nm" style="font-size:11px;color:var(--dim)">Snap to nearest FirstMap intersection (≤120 ft)</span>
@@ -22065,9 +22071,10 @@ table.list td{padding:5px 8px;border-bottom:1px solid rgba(46,58,72,.5);font-fam
     <div class="ra-icd-size-row">
       <input type="number" id="raIcdSizeFt" min="45" max="240" step="1" value="120" inputmode="numeric" aria-label="ICD diameter feet number">
       <span class="hint" id="raIcdSizeReadout">120 ft ICD · 60 ft radius</span>
-      <button type="button" class="btn" id="raIcdSizeReset" title="Back to screen-pick size">Reset</button>
+      <button type="button" class="btn" id="raIcdSizeReset" title="Back to screen-pick size">Reset size</button>
+      <button type="button" class="btn" id="raIcdApproachReset" title="Back to screen-detected approach bearings">Reset legs</button>
     </div>
-    <div class="hint" style="margin-top:4px">Drag the <b>blue □</b> on the map rim (live ft badge) · drag <b>center</b> to nudge · Measure to verify. No plan needed.</div>
+    <div class="hint" style="margin-top:4px">Blue □ = size · <b>amber ◇</b> on each leg = rotate around the circle · center = nudge · Measure to verify.</div>
   </div>
   <div class="hint" id="raIcdHint" style="margin-top:8px">RA screen mode on — click the map.</div>
   <div class="ra-icd-body" id="raIcdBody"><div class="empty-state"><b>No point yet.</b> Click an intersection or any spot to screen space.</div></div>
@@ -22617,7 +22624,8 @@ const raIcdTool={
   token:0,
   abort:null, /* AbortController for in-flight screen */
   sizing:false,
-  moving:false
+  moving:false,
+  rotating:false
 };
 const RA_ICD_SNAP_FT=120;
 const RA_ICD_CTX_FT=400;
@@ -36908,7 +36916,9 @@ function paintRaSchematicBuildout(group, fit, paneName, mPerFt){
   const fillSplitter='#ece7dc';
   const opacAsphalt=0.88, opacApron=0.55, opacIsland=0.55, opacSplitter=0.88;
   const lat0=+fit.lat, lon0=+fit.lon;
-  const bearings=(fit.approachBearingsDeg||[]).slice().filter(b=>Number.isFinite(+b));
+  const bearings=(typeof ensureRaIcdApproachBearings==='function'
+    ? ensureRaIcdApproachBearings(fit)
+    : (fit.approachBearingsDeg||[]).slice().filter(b=>Number.isFinite(+b)));
   const bearingsKnown=bearings.length>=2;
   const polyOpts=(extra)=>Object.assign({
     pane:paneName, interactive:false, bubblingMouseEvents:false
@@ -37007,6 +37017,65 @@ function paintRaSchematicBuildout(group, fit, paneName, mPerFt){
 }
 
 
+function normalizeRaBearingDeg(d){
+  let x=(+d)%360;
+  if(!Number.isFinite(x)) return 0;
+  if(x<0) x+=360;
+  return x;
+}
+function raIcdApproachOutFt(outerFt){
+  const o=+outerFt||RA_ICD_SINGLE_FT;
+  return o+Math.min(90, Math.max(50, o*0.42));
+}
+function raIcdApproachHandleFt(outerFt){
+  return raIcdApproachOutFt(outerFt)*0.92;
+}
+function ensureRaIcdApproachBearings(fit){
+  if(!fit) return [0,90,180,270];
+  let b=(fit.approachBearingsDeg||[]).map(x=>+x).filter(Number.isFinite).map(normalizeRaBearingDeg);
+  if(b.length<2){
+    b=[0,90,180,270];
+    fit.approachBearingsDefaulted=true;
+  }
+  b=b.slice(0,4);
+  fit.approachBearingsDeg=b;
+  return b;
+}
+function setRaIcdApproachBearing(idx, deg, opts){
+  opts=opts||{};
+  const fit=raIcdTool.lastFit;
+  if(!fit||fit.lat==null||fit.lon==null) return null;
+  const bearings=ensureRaIcdApproachBearings(fit);
+  const i=+idx;
+  if(!(i>=0)||i>=bearings.length) return null;
+  if(fit.approachBearingsScreenDeg==null) fit.approachBearingsScreenDeg=bearings.slice();
+  bearings[i]=normalizeRaBearingDeg(deg);
+  fit.approachBearingsDeg=bearings;
+  fit.approachUserRotated=!(opts.fromScreen);
+  if(!opts.skipPaint){
+    const live=!!(opts.live||raIcdTool.rotating||raIcdTool.sizing||raIcdTool.moving);
+    paintRaFeasibilityOverlay(fit, {keepHandles:live});
+    if(!live&&raIcdTool.lastCenter) paintRaIcdExtraOverlay(raIcdTool.lastCenter, raIcdTool.lastCtx);
+  }
+  if(!opts.quiet&&!opts.live){
+    setRaIcdHint('Approach '+(i+1)+' at '+Math.round(bearings[i])+'° — drag amber ◇ to align with roads.','good');
+  }
+  return bearings[i];
+}
+function resetRaIcdApproaches(){
+  const fit=raIcdTool.lastFit;
+  if(!fit) return;
+  const screen=(fit.approachBearingsScreenDeg||[]).slice();
+  if(screen.length>=2){
+    fit.approachBearingsDeg=screen.map(normalizeRaBearingDeg);
+  } else {
+    fit.approachBearingsDeg=[0,90,180,270];
+  }
+  fit.approachUserRotated=false;
+  paintRaFeasibilityOverlay(fit);
+  if(raIcdTool.lastCenter) paintRaIcdExtraOverlay(raIcdTool.lastCenter, raIcdTool.lastCtx);
+  setRaIcdHint('Approaches reset to screen bearings.','good');
+}
 function clampRaIcdSizeFt(ft){
   const n=Math.round(+ft||0);
   if(!Number.isFinite(n)) return RA_ICD_SINGLE_FT;
@@ -37045,7 +37114,7 @@ function setRaIcdOverlaySize(ft, opts){
   fit.schematicUserSized=!(opts.fromScreen);
   syncRaIcdSizeControls(v);
   if(!opts.skipPaint){
-    const live=!!(opts.live||raIcdTool.sizing||raIcdTool.moving);
+    const live=!!(opts.live||raIcdTool.sizing||raIcdTool.moving||raIcdTool.rotating);
     paintRaFeasibilityOverlay(fit, {keepHandles:live});
     if(!live&&raIcdTool.lastCenter) paintRaIcdExtraOverlay(raIcdTool.lastCenter, raIcdTool.lastCtx);
   }
@@ -37062,7 +37131,7 @@ function setRaIcdOverlayCenter(lat, lon, opts){
   fit.lat=+lat; fit.lon=+lon;
   if(raIcdTool.lastCenter){ raIcdTool.lastCenter.lat=+lat; raIcdTool.lastCenter.lon=+lon; }
   if(!opts.skipPaint){
-    const live=!!(opts.live||raIcdTool.sizing||raIcdTool.moving);
+    const live=!!(opts.live||raIcdTool.sizing||raIcdTool.moving||raIcdTool.rotating);
     paintRaFeasibilityOverlay(fit, {keepHandles:live});
     if(!live) paintRaIcdExtraOverlay({lat:+lat, lon:+lon}, raIcdTool.lastCtx);
   }
@@ -37074,7 +37143,9 @@ function clearRaIcdHandleOverlay(){
   raIcdHandleLayer=null;
   raIcdTool.sizing=false;
   raIcdTool.moving=false;
+  raIcdTool.rotating=false;
   try{ document.body.classList.remove('ra-icd-sizing'); }catch(_){}
+  try{ document.body.classList.remove('ra-icd-rotating'); }catch(_){}
 }
 function updateRaIcdHandlePositions(fit){
   if(!raIcdHandleLayer||!fit||fit.lat==null||fit.lon==null) return;
@@ -37094,6 +37165,14 @@ function updateRaIcdHandlePositions(fit){
       const badge=el&&el.querySelector?el.querySelector('.ra-icd-handle-ft'):null;
       if(badge) badge.textContent=Math.round(outerFt)+'′';
     }
+    const bearings=ensureRaIcdApproachBearings(fit);
+    const tipFt=raIcdApproachHandleFt(outerFt);
+    (h.approachMks||[]).forEach((mk,i)=>{
+      if(!mk||i>=bearings.length) return;
+      const br=normalizeRaBearingDeg(bearings[i])*Math.PI/180;
+      const ll=offsetLatLonByFt(+fit.lat, +fit.lon, tipFt, br);
+      mk.setLatLng([ll[0], ll[1]]);
+    });
   }catch(_){}
   syncRaIcdSizeControls(outerFt);
 }
@@ -37170,6 +37249,72 @@ function paintRaIcdInteractiveHandles(fit){
   });
   group.addLayer(sizeMk);
   group.addLayer(moveMk);
+  const bearings=ensureRaIcdApproachBearings(fit);
+  const tipFt=raIcdApproachHandleFt(outerFt);
+  const approachMks=[];
+  bearings.forEach((bDeg, idx)=>{
+    const br=normalizeRaBearingDeg(bDeg)*Math.PI/180;
+    const ll=offsetLatLonByFt(+fit.lat, +fit.lon, tipFt, br);
+    const mk=L.marker([ll[0], ll[1]], {
+      pane:paneName,
+      interactive:true,
+      keyboard:false,
+      zIndexOffset:880,
+      draggable:false,
+      icon:L.divIcon({
+        className:'ra-icd-handle-wrap',
+        html:'<div class="ra-icd-handle-stack"><div class="ra-icd-handle approach" title="Drag to rotate this approach around the ICD"></div></div>',
+        iconSize:[22,22],
+        iconAnchor:[11,11]
+      })
+    });
+    group.addLayer(mk);
+    approachMks.push(mk);
+  });
+  function bindApproachDrag(target, idx){
+    let dragging=false;
+    const onMove=(e)=>{
+      if(!dragging) return;
+      L.DomEvent.stop(e);
+      const ll=e.latlng||(e.touches?map.mouseEventToLatLng(e.touches[0]):null);
+      if(!ll) return;
+      const f=raIcdTool.lastFit||fit;
+      if(!f||f.lat==null||f.lon==null) return;
+      const deg=raBearingDeg(+f.lat, +f.lon, +ll.lat, +ll.lng);
+      setRaIcdApproachBearing(idx, deg, {live:true, quiet:true});
+    };
+    const onUp=()=>{
+      if(!dragging) return;
+      dragging=false;
+      raIcdTool.rotating=false;
+      map.dragging.enable();
+      map.off('mousemove', onMove);
+      map.off('mouseup', onUp);
+      map.off('touchmove', onMove);
+      map.off('touchend', onUp);
+      try{ document.body.classList.remove('ra-icd-rotating'); }catch(_){}
+      const f=raIcdTool.lastFit;
+      if(f){
+        paintRaFeasibilityOverlay(f);
+        if(raIcdTool.lastCenter) paintRaIcdExtraOverlay(raIcdTool.lastCenter, raIcdTool.lastCtx);
+        const b=(f.approachBearingsDeg||[])[idx];
+        if(b!=null) setRaIcdHint('Approach '+(idx+1)+' at '+Math.round(+b)+'° — drag other amber handles to align roads.','good');
+      }
+    };
+    const onDown=(e)=>{
+      L.DomEvent.stop(e);
+      dragging=true;
+      raIcdTool.rotating=true;
+      map.dragging.disable();
+      map.on('mousemove', onMove);
+      map.on('mouseup', onUp);
+      map.on('touchmove', onMove);
+      map.on('touchend', onUp);
+      try{ document.body.classList.add('ra-icd-rotating'); }catch(_){}
+    };
+    target.on('mousedown', onDown);
+    target.on('touchstart', onDown);
+  }
   function bindSizeDrag(target){
     let dragging=false;
     const onMove=(e)=>{
@@ -37254,15 +37399,16 @@ function paintRaIcdInteractiveHandles(fit){
   bindSizeDrag(rim);
   bindSizeDrag(sizeMk);
   bindMoveDrag(moveMk);
+  approachMks.forEach((mk,i)=>bindApproachDrag(mk, i));
   try{
-    [rim, sizeMk, moveMk].forEach(ly=>{
+    [rim, sizeMk, moveMk].concat(approachMks).forEach(ly=>{
       if(L.DomEvent&&ly.getElement&&ly.getElement()){
         L.DomEvent.disableClickPropagation(ly.getElement());
         L.DomEvent.disableScrollPropagation(ly.getElement());
       }
     });
   }catch(_){}
-  group._raHandles={rim, guide, spoke, sizeMk, moveMk};
+  group._raHandles={rim, guide, spoke, sizeMk, moveMk, approachMks};
   raIcdHandleLayer=group.addTo(map);
   syncRaIcdSizeControls(outerFt);
 }
@@ -37747,6 +37893,9 @@ async function runRaIcdScreenAt(lat, lon, opts){
     }
     /* Pass splitter direction hints to the schematic preview painter */
     fit.approachBearingsDeg=ctx&&ctx.approachBearingsDeg?ctx.approachBearingsDeg:[];
+    ensureRaIcdApproachBearings(fit);
+    fit.approachBearingsScreenDeg=fit.approachBearingsDeg.slice();
+    fit.approachUserRotated=false;
     fit.splitterLegsN=ctx&&ctx.intersection&&ctx.intersection.legs!=null?ctx.intersection.legs:null;
     fit.existingRaNear=!!(ctx&&ctx.existingRa&&ctx.existingRa.distFt!=null&&ctx.existingRa.distFt<=320);
     fit.ctxExistingRa=fit.existingRaNear;
@@ -37799,7 +37948,7 @@ async function runRaIcdScreenAt(lat, lon, opts){
 }
 function onRaIcdMapClick(ll){
   if(!raIcdTool.active||!ll) return false;
-  if(raIcdTool.sizing||raIcdTool.moving) return true;
+  if(raIcdTool.sizing||raIcdTool.moving||raIcdTool.rotating) return true;
   /* Always accept a new click — token cancels any in-flight screen */
   runRaIcdScreenAt(+ll.lat, +ll.lng);
   return true;
@@ -37847,6 +37996,7 @@ function wireRaIcdUI(){
     if(!fit||fit.schematicScreenFt==null) return;
     setRaIcdOverlaySize(fit.schematicScreenFt, {fromScreen:true});
   };
+  if($('raIcdApproachReset')) $('raIcdApproachReset').onclick=()=>resetRaIcdApproaches();
   try{
     document.querySelectorAll('#raIcdSizePresets [data-icd]').forEach(btn=>{
       btn.onclick=()=>{
