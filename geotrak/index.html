@@ -6,8 +6,8 @@
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<meta name="geotrak-build" content="0.99.31-ra-road">
-<meta name="geotrak-version" content="0.99.31">
+<meta name="geotrak-build" content="0.99.33-ra-resize">
+<meta name="geotrak-version" content="0.99.33">
 <meta name="geotrak-pages-rev" content="2026-08-27T17:25Z">
 <title>DelDOT GeoTrak</title>
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=Press+Start+2P&family=Syne:wght@500;600;700;800&display=swap" rel="stylesheet">
@@ -20936,6 +20936,27 @@ button,input,select,textarea{font-family:inherit}
   -webkit-overflow-scrolling:touch;overscroll-behavior:contain;
 }
 #raIcdDock .ra-icd-actions{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px;padding-right:22px;flex:0 0 auto}
+#raIcdDock .ra-icd-size{flex:0 0 auto;margin-top:10px;padding:8px 10px;border:1px solid rgba(56,189,248,.35);border-radius:6px;background:rgba(14,22,34,.55)}
+#raIcdDock .ra-icd-size-hd{font:700 10px/1.2 var(--mono);letter-spacing:.06em;text-transform:uppercase;color:#7dd3fc;margin-bottom:6px}
+#raIcdDock .ra-icd-size-hd .hint{font-weight:500;text-transform:none;letter-spacing:0;color:var(--dim)}
+#raIcdDock .ra-icd-size-row{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:6px;font-size:11px;color:var(--dim)}
+#raIcdDock .ra-icd-size-row input[type=range]{flex:1;min-width:120px;accent-color:#38bdf8}
+#raIcdDock .ra-icd-size-row input[type=number]{width:72px;background:rgba(8,12,18,.7);border:1px solid var(--line);color:var(--text);border-radius:4px;padding:4px 6px;font:12px var(--mono)}
+#raIcdDock .ra-icd-size-row .btn{padding:3px 8px;font-size:11px}
+#raIcdDock .ra-icd-size-presets{display:flex;gap:4px;flex-wrap:wrap;margin:4px 0 2px}
+#raIcdDock .ra-icd-size-presets .btn{padding:3px 8px;font:700 11px/1.1 var(--mono);min-width:36px}
+#raIcdDock .ra-icd-size-presets .btn.on{border-color:#38bdf8;color:#7dd3fc;background:rgba(56,189,248,.12)}
+.ra-icd-handle-wrap.leaflet-div-icon{background:transparent !important;border:none !important;width:auto !important;height:auto !important;margin:0 !important}
+.ra-icd-handle-stack{position:relative;width:22px;height:22px}
+.ra-icd-handle{width:18px;height:18px;border-radius:3px;background:#0ea5e9;border:2px solid #e0f2fe;box-shadow:0 2px 8px rgba(0,0,0,.55);cursor:nwse-resize;position:absolute;left:2px;top:2px}
+.ra-icd-handle.move{border-radius:50%;cursor:move;background:#38bdf8;position:absolute;left:2px;top:2px}
+.ra-icd-handle.sizing{background:#fbbf24;border-color:#fff}
+.ra-icd-handle-ft{
+  position:absolute;left:22px;top:-2px;white-space:nowrap;padding:2px 5px;border-radius:3px;
+  background:rgba(8,12,18,.88);border:1px solid rgba(56,189,248,.65);color:#7dd3fc;
+  font:700 10px/1.1 var(--mono);pointer-events:none;box-shadow:0 2px 8px rgba(0,0,0,.45);
+}
+body.ra-icd-sizing, body.ra-icd-sizing .leaflet-container{cursor:nwse-resize !important}
 /* Keep a viewport cap after drag/resize (inline maxHeight:none must not let the panel grow off-screen) */
 #raIcdDock.float-custom{max-height:min(92vh,calc(100vh - 48px)) !important}
 #raIcdDock .float-resize,
@@ -21871,7 +21892,7 @@ table.list td{padding:5px 8px;border-bottom:1px solid rgba(46,58,72,.5);font-fam
 <div id="hdr">
   <div class="brand" title="Delaware Department of Transportation">
     <img src="data:image/png;base64,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" width="28" height="28" alt="DelDOT">
-    <h1><b>DelDOT</b> GeoTrak<span class="badge">v0.99.31</span></h1>
+    <h1><b>DelDOT</b> GeoTrak<span class="badge">v0.99.33</span></h1>
   </div>
   <button class="tab on" data-p="map">Map</button>
   <button class="tab" data-p="refs">Reference data</button>
@@ -22024,11 +22045,30 @@ table.list td{padding:5px 8px;border-bottom:1px solid rgba(46,58,72,.5);font-fam
   <h3 id="raIcdDockTitle" title="Drag to move · drag bottom-right corner to resize · double-click corner to reset">Roundabout ICD screen<span class="sp"></span>
     <button type="button" class="hdr-pop-close" id="raIcdDockClose" title="Exit RA screen mode">✕</button>
   </h3>
-  <div class="hint">Click any map spot. Map shows the <b>best ICD</b> as a built roundabout: asphalt circulating road joining the existing approaches, brick island, concrete splitters. Other sizes stay in this panel. Not a warrant · not DelDOT ROW.</div>
+  <div class="hint">Click any map spot. Map shows a <b>to-scale</b> roundabout overlay (asphalt circulating road · island · splitters). <b>Drag the blue handle</b> or use the ICD slider to size it, then Measure to verify feet. Not a warrant · not DelDOT ROW.</div>
   <label class="layerRow" style="margin:8px 0 0;padding:0;border:none;background:transparent;gap:8px;align-items:center;max-width:none">
     <input type="checkbox" id="raIcdSnapIx" checked style="margin:0">
     <span class="nm" style="font-size:11px;color:var(--dim)">Snap to nearest FirstMap intersection (≤120 ft)</span>
   </label>
+  <div class="ra-icd-size" id="raIcdSizeBox" hidden>
+    <div class="ra-icd-size-hd">Resize overlay <span class="hint">(to scale · map feet)</span></div>
+    <div class="ra-icd-size-presets" id="raIcdSizePresets" role="group" aria-label="ICD size presets">
+      <button type="button" class="btn" data-icd="45" title="45 ft mini (tight)">45</button>
+      <button type="button" class="btn" data-icd="90" title="90 ft mini">90</button>
+      <button type="button" class="btn" data-icd="120" title="120 ft compact">120</button>
+      <button type="button" class="btn" data-icd="130" title="130 ft single-lane">130</button>
+      <button type="button" class="btn" data-icd="180" title="180 ft truck-class">180</button>
+    </div>
+    <label class="ra-icd-size-row">ICD diameter
+      <input type="range" id="raIcdSizeRange" min="45" max="240" step="5" value="120" aria-label="ICD diameter feet">
+    </label>
+    <div class="ra-icd-size-row">
+      <input type="number" id="raIcdSizeFt" min="45" max="240" step="1" value="120" inputmode="numeric" aria-label="ICD diameter feet number">
+      <span class="hint" id="raIcdSizeReadout">120 ft ICD · 60 ft radius</span>
+      <button type="button" class="btn" id="raIcdSizeReset" title="Back to screen-pick size">Reset</button>
+    </div>
+    <div class="hint" style="margin-top:4px">Drag the <b>blue □</b> on the map rim (live ft badge) · drag <b>center</b> to nudge · Measure to verify. No plan needed.</div>
+  </div>
   <div class="hint" id="raIcdHint" style="margin-top:8px">RA screen mode on — click the map.</div>
   <div class="ra-icd-body" id="raIcdBody"><div class="empty-state"><b>No point yet.</b> Click an intersection or any spot to screen space.</div></div>
   <div class="ra-icd-actions">
@@ -22565,6 +22605,7 @@ let firstmapLayerGroup=null;
 let layerFilterQ='';
 /* RA ICD overlay tool state — must init before wireRaIcdUI() / startMeasureMode (avoid TDZ) */
 let raIcdExtraLayer=null;
+let raIcdHandleLayer=null;
 const raIcdTool={
   active:false,
   busy:false,
@@ -22574,10 +22615,14 @@ const raIcdTool={
   lastFit:null,
   lastCtx:null,
   token:0,
-  abort:null /* AbortController for in-flight screen */
+  abort:null, /* AbortController for in-flight screen */
+  sizing:false,
+  moving:false
 };
 const RA_ICD_SNAP_FT=120;
 const RA_ICD_CTX_FT=400;
+const RA_ICD_SIZE_MIN_FT=45;
+const RA_ICD_SIZE_MAX_FT=240;
 const RA_ICD_FETCH_MS_MS=12000; /* Microsoft footprints HTTP budget */
 const RA_ICD_FETCH_OSM_MS=8000; /* Overpass often stalls — fail soft */
 const RA_ICD_FETCH_CTX_MS=10000; /* FirstMap / OSM context budget */
@@ -36849,7 +36894,7 @@ function paintRaSchematicBuildout(group, fit, paneName, mPerFt){
   else if(fit.suggestedFt!=null){ outerFt=+fit.suggestedFt; drawLabel=fit.suggestedLabel||(Math.round(outerFt)+' ft'); }
   else if(fit.traffic&&fit.traffic.preferFt!=null){ outerFt=+fit.traffic.preferFt; drawLabel=fit.traffic.preferLabel; }
   else { outerFt=+RA_ICD_SINGLE_FT; drawLabel=RA_ICD_SINGLE_FT+' ft single-lane'; }
-  outerFt=Math.max(60, Math.min(220, outerFt));
+  outerFt=typeof clampRaIcdSizeFt==='function'?clampRaIcdSizeFt(outerFt):Math.max(RA_ICD_SIZE_MIN_FT, Math.min(RA_ICD_SIZE_MAX_FT, Math.round(+outerFt||RA_ICD_SINGLE_FT)));
   const drawMeta=sugMeta||(fit.rings||[]).find(r=>Math.abs(+r.ft-outerFt)<1)||{};
   const hitN=buildingsUnknown?0:(drawMeta.hitN||0);
   const conflicted=!buildingsUnknown&&!!hitN;
@@ -36946,7 +36991,8 @@ function paintRaSchematicBuildout(group, fit, paneName, mPerFt){
     takeTxt=bearingsKnown?'new circulating road · joins existing':'circulating road';
   }
   if(existing) takeTxt=(existing?'existing RA area · ':'')+takeTxt;
-  const capHtml='<div class="'+labelCls+'"><span class="rl-title">Best · '+esc(drawLabel||(Math.round(outerFt)+' ft'))+'</span>'
+  const sizeTag=fit.schematicUserSized?'Sized':'Screen';
+  const capHtml='<div class="'+labelCls+'"><span class="rl-title">'+esc(sizeTag)+' · '+esc(drawLabel||(Math.round(outerFt)+' ft ICD'))+'</span>'
     +'<span class="rl-sub">'+esc(takeTxt)+'</span></div>';
   const capLL=offsetLatLonByFt(lat0, lon0, outerFt+42, Math.PI*0.92);
   group.addLayer(L.marker([capLL[0], capLL[1]], {
@@ -36961,8 +37007,270 @@ function paintRaSchematicBuildout(group, fit, paneName, mPerFt){
 }
 
 
-function paintRaFeasibilityOverlay(fit){
+function clampRaIcdSizeFt(ft){
+  const n=Math.round(+ft||0);
+  if(!Number.isFinite(n)) return RA_ICD_SINGLE_FT;
+  return Math.max(RA_ICD_SIZE_MIN_FT, Math.min(RA_ICD_SIZE_MAX_FT, n));
+}
+function syncRaIcdSizeControls(ft){
+  const v=clampRaIcdSizeFt(ft);
+  const box=$('raIcdSizeBox');
+  if(box) box.hidden=!(raIcdTool.lastFit&&raIcdTool.lastFit.lat!=null);
+  const range=$('raIcdSizeRange');
+  const num=$('raIcdSizeFt');
+  const read=$('raIcdSizeReadout');
+  if(range&&String(range.value)!==String(v)) range.value=String(v);
+  if(num&&String(num.value)!==String(v)) num.value=String(v);
+  if(read) read.textContent=v+' ft ICD · '+(Math.round(v/2))+' ft radius';
+  const reset=$('raIcdSizeReset');
+  if(reset){
+    const screen=raIcdTool.lastFit&&raIcdTool.lastFit.schematicScreenFt!=null?+raIcdTool.lastFit.schematicScreenFt:null;
+    reset.disabled=!(screen!=null&&Math.abs(screen-v)>0.5);
+  }
+  try{
+    document.querySelectorAll('#raIcdSizePresets [data-icd]').forEach(btn=>{
+      const p=+btn.getAttribute('data-icd');
+      btn.classList.toggle('on', Math.abs(p-v)<0.5);
+    });
+  }catch(_){}
+}
+function setRaIcdOverlaySize(ft, opts){
+  opts=opts||{};
+  const fit=raIcdTool.lastFit;
+  if(!fit||fit.lat==null||fit.lon==null) return null;
+  const v=clampRaIcdSizeFt(ft);
+  if(fit.schematicScreenFt==null&&fit.schematicFt!=null) fit.schematicScreenFt=+fit.schematicFt;
+  fit.schematicFt=v;
+  fit.schematicLabel=Math.round(v)+' ft ICD';
+  fit.schematicUserSized=!(opts.fromScreen);
+  syncRaIcdSizeControls(v);
+  if(!opts.skipPaint){
+    const live=!!(opts.live||raIcdTool.sizing||raIcdTool.moving);
+    paintRaFeasibilityOverlay(fit, {keepHandles:live});
+    if(!live&&raIcdTool.lastCenter) paintRaIcdExtraOverlay(raIcdTool.lastCenter, raIcdTool.lastCtx);
+  }
+  if(!opts.quiet&&!opts.live){
+    setRaIcdHint('Overlay ICD '+v+' ft (to scale)'+(fit.schematicUserSized?' · drag handle or slider · Measure to verify':''),'good');
+  }
+  return v;
+}
+function setRaIcdOverlayCenter(lat, lon, opts){
+  opts=opts||{};
+  const fit=raIcdTool.lastFit;
+  if(!fit) return;
+  if(!Number.isFinite(+lat)||!Number.isFinite(+lon)) return;
+  fit.lat=+lat; fit.lon=+lon;
+  if(raIcdTool.lastCenter){ raIcdTool.lastCenter.lat=+lat; raIcdTool.lastCenter.lon=+lon; }
+  if(!opts.skipPaint){
+    const live=!!(opts.live||raIcdTool.sizing||raIcdTool.moving);
+    paintRaFeasibilityOverlay(fit, {keepHandles:live});
+    if(!live) paintRaIcdExtraOverlay({lat:+lat, lon:+lon}, raIcdTool.lastCtx);
+  }
+}
+function clearRaIcdHandleOverlay(){
+  if(raIcdHandleLayer&&typeof map!=='undefined'&&map){
+    try{ map.removeLayer(raIcdHandleLayer); }catch(_){}
+  }
+  raIcdHandleLayer=null;
+  raIcdTool.sizing=false;
+  raIcdTool.moving=false;
+  try{ document.body.classList.remove('ra-icd-sizing'); }catch(_){}
+}
+function updateRaIcdHandlePositions(fit){
+  if(!raIcdHandleLayer||!fit||fit.lat==null||fit.lon==null) return;
+  const outerFt=clampRaIcdSizeFt(fit.schematicFt!=null?fit.schematicFt:(fit.suggestedFt||RA_ICD_SINGLE_FT));
+  const mPerFt=0.3048;
+  const h=raIcdHandleLayer._raHandles;
+  if(!h) return;
+  try{
+    if(h.rim){ h.rim.setRadius(outerFt*mPerFt); h.rim.setLatLng([+fit.lat, +fit.lon]); }
+    if(h.guide){ h.guide.setRadius(outerFt*mPerFt); h.guide.setLatLng([+fit.lat, +fit.lon]); }
+    if(h.moveMk) h.moveMk.setLatLng([+fit.lat, +fit.lon]);
+    const sizeLL=offsetLatLonByFt(+fit.lat, +fit.lon, outerFt, Math.PI/4);
+    if(h.sizeMk) h.sizeMk.setLatLng([sizeLL[0], sizeLL[1]]);
+    if(h.spoke) h.spoke.setLatLngs([[+fit.lat, +fit.lon], [sizeLL[0], sizeLL[1]]]);
+    if(h.sizeMk&&h.sizeMk.getElement){
+      const el=h.sizeMk.getElement();
+      const badge=el&&el.querySelector?el.querySelector('.ra-icd-handle-ft'):null;
+      if(badge) badge.textContent=Math.round(outerFt)+'′';
+    }
+  }catch(_){}
+  syncRaIcdSizeControls(outerFt);
+}
+function paintRaIcdInteractiveHandles(fit){
+  clearRaIcdHandleOverlay();
+  if(!fit||fit.lat==null||fit.lon==null||typeof L==='undefined'||typeof map==='undefined') return;
+  if(typeof offsetLatLonByFt!=='function') return;
+  ensureCalmingMapPanes();
+  /* Handles must live on calmingRaPane (pointer-events:auto). Schematic stays non-interactive. */
+  const paneName='calmingRaPane';
+  const group=L.layerGroup();
+  const outerFt=clampRaIcdSizeFt(fit.schematicFt!=null?fit.schematicFt:(fit.suggestedFt||RA_ICD_SINGLE_FT));
+  const mPerFt=0.3048;
+  /* Visible ICD guide (to-scale measure ring) + fat invisible grab rim */
+  const guide=L.circle([fit.lat, fit.lon], {
+    pane:paneName,
+    radius:outerFt*mPerFt,
+    color:'#38bdf8',
+    weight:2,
+    dashArray:'6 5',
+    opacity:0.85,
+    fillOpacity:0,
+    interactive:false,
+    bubblingMouseEvents:false
+  });
+  group.addLayer(guide);
+  const rim=L.circle([fit.lat, fit.lon], {
+    pane:paneName,
+    radius:outerFt*mPerFt,
+    color:'#38bdf8',
+    weight:18,
+    opacity:0.02,
+    fillOpacity:0,
+    interactive:true,
+    bubblingMouseEvents:false
+  });
+  group.addLayer(rim);
+  const sizeLL=offsetLatLonByFt(+fit.lat, +fit.lon, outerFt, Math.PI/4); /* NE rim */
+  const spoke=L.polyline([[+fit.lat, +fit.lon], [sizeLL[0], sizeLL[1]]], {
+    pane:paneName,
+    color:'#7dd3fc',
+    weight:1.5,
+    dashArray:'4 4',
+    opacity:0.9,
+    interactive:false,
+    bubblingMouseEvents:false
+  });
+  group.addLayer(spoke);
+  const sizeMk=L.marker([sizeLL[0], sizeLL[1]], {
+    pane:paneName,
+    interactive:true,
+    keyboard:false,
+    zIndexOffset:900,
+    draggable:false,
+    icon:L.divIcon({
+      className:'ra-icd-handle-wrap',
+      html:'<div class="ra-icd-handle-stack"><div class="ra-icd-handle" title="Drag to size ICD (to scale)"></div><span class="ra-icd-handle-ft">'+Math.round(outerFt)+'′</span></div>',
+      iconSize:[22,22],
+      iconAnchor:[11,11]
+    })
+  });
+  const moveMk=L.marker([+fit.lat, +fit.lon], {
+    pane:paneName,
+    interactive:true,
+    keyboard:false,
+    zIndexOffset:950,
+    draggable:false,
+    icon:L.divIcon({
+      className:'ra-icd-handle-wrap',
+      html:'<div class="ra-icd-handle-stack"><div class="ra-icd-handle move" title="Drag to move overlay center"></div></div>',
+      iconSize:[22,22],
+      iconAnchor:[11,11]
+    })
+  });
+  group.addLayer(sizeMk);
+  group.addLayer(moveMk);
+  function bindSizeDrag(target){
+    let dragging=false;
+    const onMove=(e)=>{
+      if(!dragging) return;
+      L.DomEvent.stop(e);
+      const ll=e.latlng||(e.touches?map.mouseEventToLatLng(e.touches[0]):null);
+      if(!ll) return;
+      const f=raIcdTool.lastFit||fit;
+      if(!f||f.lat==null||f.lon==null) return;
+      const d=calmingDistFt(+f.lat, +f.lon, +ll.lat, +ll.lng);
+      if(!(d>0)) return;
+      /* Diameter = 2 × radius from center to handle — map feet, to scale */
+      setRaIcdOverlaySize(d*2, {live:true, quiet:true});
+    };
+    const onUp=()=>{
+      if(!dragging) return;
+      dragging=false;
+      raIcdTool.sizing=false;
+      map.dragging.enable();
+      map.off('mousemove', onMove);
+      map.off('mouseup', onUp);
+      map.off('touchmove', onMove);
+      map.off('touchend', onUp);
+      try{ document.body.classList.remove('ra-icd-sizing'); }catch(_){}
+      const f=raIcdTool.lastFit;
+      if(f){
+        paintRaFeasibilityOverlay(f);
+        if(raIcdTool.lastCenter) paintRaIcdExtraOverlay(raIcdTool.lastCenter, raIcdTool.lastCtx);
+      }
+    };
+    const onDown=(e)=>{
+      L.DomEvent.stop(e);
+      dragging=true;
+      raIcdTool.sizing=true;
+      map.dragging.disable();
+      map.on('mousemove', onMove);
+      map.on('mouseup', onUp);
+      map.on('touchmove', onMove);
+      map.on('touchend', onUp);
+      try{ document.body.classList.add('ra-icd-sizing'); }catch(_){}
+    };
+    target.on('mousedown', onDown);
+    target.on('touchstart', onDown);
+  }
+  function bindMoveDrag(target){
+    let dragging=false;
+    const onMove=(e)=>{
+      if(!dragging) return;
+      L.DomEvent.stop(e);
+      const ll=e.latlng||(e.touches?map.mouseEventToLatLng(e.touches[0]):null);
+      if(!ll) return;
+      setRaIcdOverlayCenter(+ll.lat, +ll.lng, {live:true, quiet:true});
+    };
+    const onUp=()=>{
+      if(!dragging) return;
+      dragging=false;
+      raIcdTool.moving=false;
+      map.dragging.enable();
+      map.off('mousemove', onMove);
+      map.off('mouseup', onUp);
+      map.off('touchmove', onMove);
+      map.off('touchend', onUp);
+      const f=raIcdTool.lastFit;
+      if(f){
+        paintRaFeasibilityOverlay(f);
+        paintRaIcdExtraOverlay({lat:+f.lat, lon:+f.lon}, raIcdTool.lastCtx);
+      }
+    };
+    const onDown=(e)=>{
+      L.DomEvent.stop(e);
+      dragging=true;
+      raIcdTool.moving=true;
+      map.dragging.disable();
+      map.on('mousemove', onMove);
+      map.on('mouseup', onUp);
+      map.on('touchmove', onMove);
+      map.on('touchend', onUp);
+    };
+    target.on('mousedown', onDown);
+    target.on('touchstart', onDown);
+  }
+  bindSizeDrag(rim);
+  bindSizeDrag(sizeMk);
+  bindMoveDrag(moveMk);
+  try{
+    [rim, sizeMk, moveMk].forEach(ly=>{
+      if(L.DomEvent&&ly.getElement&&ly.getElement()){
+        L.DomEvent.disableClickPropagation(ly.getElement());
+        L.DomEvent.disableScrollPropagation(ly.getElement());
+      }
+    });
+  }catch(_){}
+  group._raHandles={rim, guide, spoke, sizeMk, moveMk};
+  raIcdHandleLayer=group.addTo(map);
+  syncRaIcdSizeControls(outerFt);
+}
+
+function paintRaFeasibilityOverlay(fit, opts){
+  opts=opts||{};
   clearStatewideCalmingRaFitOverlay();
+  if(!opts.keepHandles) clearRaIcdHandleOverlay();
   if(!fit||typeof L==='undefined'||typeof map==='undefined') return;
   if(fit.lat==null||fit.lon==null) return;
   ensureCalmingMapPanes();
@@ -36978,33 +37286,49 @@ function paintRaFeasibilityOverlay(fit){
     : (fit.suggestedFt!=null
       ? {id:'best', ft:+fit.suggestedFt, color:'#34d399'}
       : (trafficPreferId?RA_ICD_RINGS.find(r=>r.id===trafficPreferId):null));
-  /* Optional faint ghost if traffic-typical size differs a lot from the patterned best */
+  const drawFt=clampRaIcdSizeFt(fit.schematicFt!=null?fit.schematicFt:(fit.suggestedFt||RA_ICD_SINGLE_FT));
+  fit.schematicFt=drawFt;
+  /* Ghost the original screen pick when the user has resized away from it */
   try{
-    const bestFt=bestRing&&bestRing.ft!=null?+bestRing.ft:(fit.suggestedFt!=null?+fit.suggestedFt:null);
+    const screenFt=fit.schematicScreenFt!=null?+fit.schematicScreenFt:(bestRing&&bestRing.ft!=null?+bestRing.ft:null);
+    if(screenFt!=null&&Math.abs(screenFt-drawFt)>8){
+      group.addLayer(L.circle([fit.lat, fit.lon], {
+        pane:paneName,
+        radius:screenFt*mPerFt,
+        color:'#34d399',
+        weight:1.5,
+        dashArray:'5 5',
+        fillColor:'transparent',
+        fillOpacity:0,
+        opacity:0.55,
+        interactive:false,
+        bubblingMouseEvents:false
+      }));
+    }
     const trafficFt=(fit.traffic&&fit.traffic.preferFt!=null)?+fit.traffic.preferFt:null;
-    if(bestFt!=null&&trafficFt!=null&&Math.abs(trafficFt-bestFt)>12){
+    if(trafficFt!=null&&Math.abs(trafficFt-drawFt)>12&&(screenFt==null||Math.abs(trafficFt-screenFt)>8)){
       group.addLayer(L.circle([fit.lat, fit.lon], {
         pane:paneName,
         radius:trafficFt*mPerFt,
         color:'#fbbf24',
-        weight:1.5,
+        weight:1.4,
         dashArray:'4 6',
         fillColor:'transparent',
         fillOpacity:0,
-        opacity:0.5,
+        opacity:0.45,
         interactive:false,
         bubblingMouseEvents:false
       }));
     }
   }catch(_){}
-  /* Patterned best-pick schematic is the map overlay (not a second hollow ring stack) */
   try{
     paintRaSchematicBuildout(group, fit, paneName, mPerFt);
   }catch(_){}
-  const bestFtForHits=(bestRing&&bestRing.ft!=null)?+bestRing.ft:(fit.suggestedFt||RA_ICD_SINGLE_FT);
+  /* Building hits vs current drawn ICD (to-scale check while sizing) */
+  const hitFt=drawFt;
   (fit.buildings||[]).forEach(b=>{
     if(!b.ring||b.ring.length<3) return;
-    if(b.clearanceFt==null||b.clearanceFt>bestFtForHits+RA_ICD_TOUCH_FT) return;
+    if(b.clearanceFt==null||b.clearanceFt>hitFt+RA_ICD_TOUCH_FT) return;
     const latlngs=b.ring.map(p=>[p.lat, p.lon]);
     group.addLayer(L.polygon(latlngs, {
       pane:paneName,
@@ -37017,11 +37341,12 @@ function paintRaFeasibilityOverlay(fit){
     }));
   });
   statewideCalmingRaFitLayer=group.addTo(map);
-  try{
-    if(typeof syncMapLegend==='function'){
-      /* reuse calmRa key when fit overlay is up */
-    }
-  }catch(_){}
+  if(opts.keepHandles){
+    try{ updateRaIcdHandlePositions(fit); }catch(_){}
+  } else {
+    try{ paintRaIcdInteractiveHandles(fit); }catch(e){ console.warn('RA handles', e); }
+  }
+  syncRaIcdSizeControls(drawFt);
 }
 function clearStatewideCalmingRaFitOverlay(){
   if(statewideCalmingRaFitLayer&&typeof map!=='undefined'&&map){
@@ -37058,6 +37383,7 @@ function clearRaIcdExtraOverlay(){
 function clearRaIcdOverlay(){
   clearStatewideCalmingRaFitOverlay();
   clearRaIcdExtraOverlay();
+  clearRaIcdHandleOverlay();
 }
 function openRaIcdDock(){
   try{
@@ -37424,21 +37750,26 @@ async function runRaIcdScreenAt(lat, lon, opts){
     fit.splitterLegsN=ctx&&ctx.intersection&&ctx.intersection.legs!=null?ctx.intersection.legs:null;
     fit.existingRaNear=!!(ctx&&ctx.existingRa&&ctx.existingRa.distFt!=null&&ctx.existingRa.distFt<=320);
     fit.ctxExistingRa=fit.existingRaNear;
-    /* Pattern schematic at the screen pick (best) — other sizes stay in the panel */
+    /* Pattern schematic at the screen pick (best) — user can resize to scale afterward */
     if(fit.suggestedFt!=null){
       fit.schematicFt=+fit.suggestedFt;
       fit.schematicLabel=fit.suggestedLabel||(Math.round(fit.schematicFt)+' ft');
     } else if(fit.traffic&&fit.traffic.preferFt!=null){
       fit.schematicFt=+fit.traffic.preferFt;
       fit.schematicLabel=fit.traffic.preferLabel||(Math.round(fit.schematicFt)+' ft');
+    } else if(fit.schematicFt==null){
+      fit.schematicFt=RA_ICD_SINGLE_FT;
+      fit.schematicLabel=RA_ICD_SINGLE_FT+' ft single-lane';
     }
+    fit.schematicScreenFt=+fit.schematicFt;
+    fit.schematicUserSized=false;
     raIcdTool.lastFit=fit;
     raIcdTool.lastCtx=ctx;
     paintRaFeasibilityOverlay(fit);
     paintRaIcdExtraOverlay(center, ctx);
     renderRaIcdDock(fit, ctx, center, click);
     const label=(fit&&(fit.suggestedLabel||fit.label))||'Unknown';
-    let hint=(fit&&fit.label?fit.label:'')+(fit&&fit.suggestedLabel?(' · '+fit.suggestedLabel):'')+' · click another spot or Clear.';
+    let hint=(fit&&fit.label?fit.label:'')+(fit&&fit.suggestedLabel?(' · '+fit.suggestedLabel):'')+' · drag blue handle / slider to size (to scale) · Measure to verify.';
     if(fit&&fit.osmSkip) hint+=' (OSM buildings skipped — '+fit.osmSkip+')';
     setRaIcdHint(hint,'good');
     toast('RA screen: '+label);
@@ -37468,6 +37799,7 @@ async function runRaIcdScreenAt(lat, lon, opts){
 }
 function onRaIcdMapClick(ll){
   if(!raIcdTool.active||!ll) return false;
+  if(raIcdTool.sizing||raIcdTool.moving) return true;
   /* Always accept a new click — token cancels any in-flight screen */
   runRaIcdScreenAt(+ll.lat, +ll.lng);
   return true;
@@ -37489,6 +37821,7 @@ function wireRaIcdUI(){
     const body=$('raIcdBody');
     if(body) body.innerHTML='<div class="empty-state"><b>Overlay cleared.</b> Click the map to screen another spot.</div>';
     setRaIcdHint(raIcdTool.active?'Overlay cleared — click the map.':'Overlay cleared.');
+    syncRaIcdSizeControls(RA_ICD_SINGLE_FT);
     updateRaIcdButtons();
   };
   if($('raIcdRescreenBtn')) $('raIcdRescreenBtn').onclick=()=>{
@@ -37499,6 +37832,30 @@ function wireRaIcdUI(){
   if($('raIcdSnapIx')) $('raIcdSnapIx').onchange=function(){
     raIcdTool.snapIntersect=!!this.checked;
   };
+  if($('raIcdSizeRange')){
+    $('raIcdSizeRange').oninput=function(){ setRaIcdOverlaySize(this.value, {quiet:true}); };
+    $('raIcdSizeRange').onchange=function(){ setRaIcdOverlaySize(this.value); };
+  }
+  if($('raIcdSizeFt')){
+    $('raIcdSizeFt').onchange=function(){ setRaIcdOverlaySize(this.value); };
+    $('raIcdSizeFt').onkeydown=function(e){
+      if(e.key==='Enter'){ e.preventDefault(); setRaIcdOverlaySize(this.value); }
+    };
+  }
+  if($('raIcdSizeReset')) $('raIcdSizeReset').onclick=()=>{
+    const fit=raIcdTool.lastFit;
+    if(!fit||fit.schematicScreenFt==null) return;
+    setRaIcdOverlaySize(fit.schematicScreenFt, {fromScreen:true});
+  };
+  try{
+    document.querySelectorAll('#raIcdSizePresets [data-icd]').forEach(btn=>{
+      btn.onclick=()=>{
+        const ft=+btn.getAttribute('data-icd');
+        if(!(ft>0)) return;
+        setRaIcdOverlaySize(ft);
+      };
+    });
+  }catch(_){}
   document.addEventListener('keydown',e=>{
     if(e.key!=='Escape') return;
     if(!raIcdTool.active) return;
