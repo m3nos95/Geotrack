@@ -6,8 +6,8 @@
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<meta name="geotrak-build" content="0.99.35-ra-roads">
-<meta name="geotrak-version" content="0.99.35">
+<meta name="geotrak-build" content="0.99.36-ra-analyze">
+<meta name="geotrak-version" content="0.99.36">
 <meta name="geotrak-pages-rev" content="2026-08-27T17:25Z">
 <title>DelDOT GeoTrak</title>
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=Press+Start+2P&family=Syne:wght@500;600;700;800&display=swap" rel="stylesheet">
@@ -20946,6 +20946,16 @@ button,input,select,textarea{font-family:inherit}
 #raIcdDock .ra-icd-size-presets{display:flex;gap:4px;flex-wrap:wrap;margin:4px 0 2px}
 #raIcdDock .ra-icd-size-presets .btn{padding:3px 8px;font:700 11px/1.1 var(--mono);min-width:36px}
 #raIcdDock .ra-icd-size-presets .btn.on{border-color:#38bdf8;color:#7dd3fc;background:rgba(56,189,248,.12)}
+#raIcdDock .ra-icd-analyze{flex:0 0 auto;margin-top:10px;padding:10px 12px;border:1px solid rgba(52,211,153,.4);border-radius:6px;background:rgba(6,78,59,.22)}
+#raIcdDock .ra-icd-analyze[hidden]{display:none !important}
+#raIcdDock .ra-icd-analyze .ra-an-hd{font:700 10px/1.2 var(--mono);letter-spacing:.06em;text-transform:uppercase;color:#6ee7b7;margin-bottom:6px;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+#raIcdDock .ra-icd-analyze .ra-an-list{margin:8px 0 0;padding:0;list-style:none}
+#raIcdDock .ra-icd-analyze .ra-an-list li{display:grid;grid-template-columns:72px 1fr;gap:8px;padding:5px 0;border-top:1px solid rgba(148,163,184,.15);font-size:12px;line-height:1.35}
+#raIcdDock .ra-icd-analyze .ra-an-tag{font:700 10px/1.2 var(--mono);letter-spacing:.04em;text-transform:uppercase}
+#raIcdDock .ra-icd-analyze .ra-an-tag.pass{color:#6ee7b7}
+#raIcdDock .ra-icd-analyze .ra-an-tag.warn{color:#fbbf24}
+#raIcdDock .ra-icd-analyze .ra-an-tag.fail{color:#f87171}
+#raIcdDock .ra-icd-analyze .ra-an-tag.info{color:#7dd3fc}
 .ra-icd-handle-wrap.leaflet-div-icon{background:transparent !important;border:none !important;width:auto !important;height:auto !important;margin:0 !important}
 .ra-icd-handle-stack{position:relative;width:22px;height:22px}
 .ra-icd-handle{width:18px;height:18px;border-radius:3px;background:#0ea5e9;border:2px solid #e0f2fe;box-shadow:0 2px 8px rgba(0,0,0,.55);cursor:nwse-resize;position:absolute;left:2px;top:2px}
@@ -21898,7 +21908,7 @@ table.list td{padding:5px 8px;border-bottom:1px solid rgba(46,58,72,.5);font-fam
 <div id="hdr">
   <div class="brand" title="Delaware Department of Transportation">
     <img src="data:image/png;base64,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" width="28" height="28" alt="DelDOT">
-    <h1><b>DelDOT</b> GeoTrak<span class="badge">v0.99.35</span></h1>
+    <h1><b>DelDOT</b> GeoTrak<span class="badge">v0.99.36</span></h1>
   </div>
   <button class="tab on" data-p="map">Map</button>
   <button class="tab" data-p="refs">Reference data</button>
@@ -22051,7 +22061,7 @@ table.list td{padding:5px 8px;border-bottom:1px solid rgba(46,58,72,.5);font-fam
   <h3 id="raIcdDockTitle" title="Drag to move · drag bottom-right corner to resize · double-click corner to reset">Roundabout ICD screen<span class="sp"></span>
     <button type="button" class="hdr-pop-close" id="raIcdDockClose" title="Exit RA screen mode">✕</button>
   </h3>
-  <div class="hint">Click any map spot. Map shows a <b>to-scale</b> roundabout overlay. <b>Size</b> with the blue □ / slider · <b>rotate approaches</b> with the amber handles on each leg to align with existing roads · Measure to verify. Not a warrant · not DelDOT ROW.</div>
+  <div class="hint">Click any map spot. Size &amp; rotate the to-scale overlay to fit the aerial, then hit <b>Analyze sized ICD</b> to screen speed / AADT / buildings / signals. Screening only — not a warrant · not DelDOT ROW.</div>
   <label class="layerRow" style="margin:8px 0 0;padding:0;border:none;background:transparent;gap:8px;align-items:center;max-width:none">
     <input type="checkbox" id="raIcdSnapIx" checked style="margin:0">
     <span class="nm" style="font-size:11px;color:var(--dim)">Snap to nearest FirstMap intersection (≤120 ft)</span>
@@ -22074,11 +22084,13 @@ table.list td{padding:5px 8px;border-bottom:1px solid rgba(46,58,72,.5);font-fam
       <button type="button" class="btn" id="raIcdSizeReset" title="Back to screen-pick size">Reset size</button>
       <button type="button" class="btn" id="raIcdApproachReset" title="Back to screen-detected approach bearings">Reset legs</button>
     </div>
-    <div class="hint" style="margin-top:4px">Blue □ = size · <b>amber ◇</b> on each leg = rotate around the circle · center = nudge · Measure to verify.</div>
+    <div class="hint" style="margin-top:4px">Blue □ = size · <b>amber ◇</b> on each leg = rotate around the circle · center = nudge · then <b>Analyze sized ICD</b>.</div>
   </div>
+  <div class="ra-icd-analyze" id="raIcdAnalyzeBox" hidden></div>
   <div class="hint" id="raIcdHint" style="margin-top:8px">RA screen mode on — click the map.</div>
   <div class="ra-icd-body" id="raIcdBody"><div class="empty-state"><b>No point yet.</b> Click an intersection or any spot to screen space.</div></div>
   <div class="ra-icd-actions">
+    <button type="button" class="btn" id="raIcdAnalyzeBtn" disabled style="border-color:#34d399;color:#6ee7b7;font-weight:600">Analyze sized ICD</button>
     <button type="button" class="btn" id="raIcdClearBtn" disabled>Clear overlay</button>
     <button type="button" class="btn" id="raIcdRescreenBtn" disabled style="border-color:#38bdf8;color:#7dd3fc">Rescreen last</button>
   </div>
@@ -37507,9 +37519,217 @@ function setRaIcdHint(msg, cls){
   el.className='hint'+(cls?' '+cls:'');
   el.textContent=msg||'';
 }
+function raIcdFamilyFromFt(ft){
+  const v=+ft||0;
+  if(v<=90) return 'mini';
+  if(v<=125) return 'compact';
+  return 'single';
+}
+function raIcdTrafficInputsFromCtx(ctx){
+  /* Prefer multi-road context: governing volume = max AADT, governing speed = max posted. */
+  const roads=(ctx&&ctx.roads&&ctx.roads.length)?ctx.roads:(ctx&&ctx.road?[ctx.road]:[]);
+  let aadt=null, mph=null, names=[];
+  roads.forEach(r=>{
+    if(!r) return;
+    if(r.road) names.push(r.road);
+    if(r.aadt!=null&&Number.isFinite(+r.aadt)) aadt=aadt==null?+r.aadt:Math.max(aadt,+r.aadt);
+    if(r.postedMph!=null&&Number.isFinite(+r.postedMph)) mph=mph==null?+r.postedMph:Math.max(mph,+r.postedMph);
+  });
+  if(aadt==null&&ctx&&ctx.road&&ctx.road.aadt!=null) aadt=+ctx.road.aadt;
+  if(mph==null&&ctx&&ctx.road&&ctx.road.postedMph!=null) mph=+ctx.road.postedMph;
+  return {aadt, postedMph:mph, roadNames:names};
+}
+function analyzeRaSizedCompliance(fit, ctx){
+  /* Screen the USER-SIZED ICD against traffic/speed/buildings/control — not a warrant. */
+  const sized=clampRaIcdSizeFt(fit&&fit.schematicFt!=null?fit.schematicFt:(fit&&fit.suggestedFt)||RA_ICD_SINGLE_FT);
+  const family=raIcdFamilyFromFt(sized);
+  const trafficIn=raIcdTrafficInputsFromCtx(ctx);
+  const traffic=raTrafficIcdAdvice(trafficIn.aadt, trafficIn.postedMph);
+  const famRow=(traffic.likelihood||[]).find(L=>L.family===family)||null;
+  const checks=[];
+  function add(id, status, title, detail){
+    checks.push({id, status, title, detail});
+  }
+  /* 1) Size vs AADT / speed */
+  const preferFt=traffic.preferFt!=null?+traffic.preferFt:null;
+  const delta=preferFt!=null?(sized-preferFt):null;
+  let sizeStatus='info', sizeDetail='Traffic inputs limited — size bias incomplete.';
+  if(famRow){
+    if(famRow.tier==='more_likely'){
+      sizeStatus='pass';
+      sizeDetail=sized+' ft ('+family+') fits traffic bias'+(preferFt!=null?(' · typical '+traffic.preferLabel):'')+'.';
+    } else if(famRow.tier==='possible'){
+      sizeStatus='warn';
+      sizeDetail=sized+' ft ('+family+') is only possible for this AADT/speed'
+        +(preferFt!=null?(' — traffic leans '+traffic.preferLabel):'')+'.';
+    } else {
+      sizeStatus='fail';
+      sizeDetail=sized+' ft ('+family+') is unlikely for this AADT/speed'
+        +(preferFt!=null?(' — traffic leans '+traffic.preferLabel):'')+'. Enlarge toward a more suitable ICD.';
+    }
+    if(preferFt!=null&&delta!=null&&delta<=-35&&sizeStatus!=='fail'){
+      sizeStatus='warn';
+      sizeDetail=sized+' ft is ≥35 ft under the traffic-typical '+preferFt+' ft ICD. Consider upsizing.';
+    }
+  }
+  if(trafficIn.postedMph!=null&&trafficIn.postedMph>35&&sized<=90){
+    sizeStatus='fail';
+    sizeDetail=sized+' ft mini is too small for '+trafficIn.postedMph+' mph — need larger ICD + approach speed control.';
+  }
+  if(trafficIn.aadt!=null&&trafficIn.aadt>12000&&sized<=90){
+    sizeStatus='fail';
+    sizeDetail=sized+' ft mini is unlikely at AADT '+Math.round(trafficIn.aadt).toLocaleString()+'.';
+  }
+  add('size', sizeStatus, 'Size vs speed / AADT', sizeDetail
+    +(trafficIn.aadt!=null||trafficIn.postedMph!=null
+      ?(' (AADT '+(trafficIn.aadt!=null?Math.round(trafficIn.aadt).toLocaleString():'—')
+        +' · '+(trafficIn.postedMph!=null?trafficIn.postedMph+' mph':'spd —')+')')
+      :''));
+  /* 2) Posted speed study flag */
+  if(trafficIn.postedMph!=null&&trafficIn.postedMph>35){
+    add('speed', 'warn', 'Posted speed',
+      trafficIn.postedMph+' mph > 35 — careful planning / engineering study required before calming or RA conversion.');
+  } else if(trafficIn.postedMph!=null){
+    add('speed', 'pass', 'Posted speed', trafficIn.postedMph+' mph is in a discussable calming / RA speed band (still design-dependent).');
+  } else {
+    add('speed', 'info', 'Posted speed', 'Posted speed unknown near this click.');
+  }
+  /* 3) Buildings at SIZED ICD */
+  const touch=RA_ICD_TOUCH_FT;
+  const buildings=(fit&&fit.buildings)||[];
+  let hitN=0, closest=null;
+  if(fit&&fit.ok===false){
+    add('space', 'info', 'Buildings / space', 'Building footprints unavailable — space not cleared at '+sized+' ft.');
+  } else {
+    buildings.forEach(b=>{
+      const d=b.clearanceFt!=null?+b.clearanceFt:null;
+      if(d==null||!Number.isFinite(d)) return;
+      if(d<=sized+touch){
+        hitN++;
+        if(closest==null||d<closest) closest=d;
+      }
+    });
+    if(hitN<=0){
+      add('space', 'pass', 'Buildings / space', 'No footprints inside / nicking the sized '+sized+' ft ICD (MS/OSM). Not a ROW determination.');
+    } else if(hitN===1){
+      add('space', 'warn', 'Buildings / space',
+        '1 building nicks the sized '+sized+' ft ICD'+(closest!=null?(' (closest @ '+Math.round(closest)+' ft)'):'')+' — take / redesign likely.');
+    } else {
+      add('space', 'fail', 'Buildings / space',
+        hitN+' buildings inside / nicking the sized '+sized+' ft ICD'+(closest!=null?(' (closest @ '+Math.round(closest)+' ft)'):'')+' — multiple property takes likely.');
+    }
+  }
+  /* 4) Signal proximity */
+  if(ctx&&ctx.signal&&ctx.signal.distFt!=null){
+    const d=+ctx.signal.distFt;
+    if(d<=CALMING_RA_SIGNAL_EXCL_FT){
+      add('signal', 'fail', 'Traffic signal',
+        'Signal @ '+d+' ft (≤'+CALMING_RA_SIGNAL_EXCL_FT+' ft) — RA conversion is often excluded / needs major redesign.');
+    } else if(d<=RA_ICD_CTX_FT){
+      add('signal', 'warn', 'Traffic signal', 'Signal @ '+d+' ft — nearby signalized control; confirm RA is still on the table.');
+    } else {
+      add('signal', 'pass', 'Traffic signal', 'Nearest mapped signal @ '+d+' ft.');
+    }
+  } else {
+    add('signal', 'pass', 'Traffic signal', 'No FirstMap signal within '+RA_ICD_CTX_FT+' ft.');
+  }
+  /* 5) All-way / stop context */
+  if(ctx&&ctx.allWay&&ctx.allWay.distFt!=null){
+    add('stop', 'pass', 'All-way stop',
+      'OSM all-way stop @ '+ctx.allWay.distFt+' ft — common RA conversion context (still needs study).');
+  } else {
+    add('stop', 'info', 'All-way stop', 'No OSM all-way stop within '+RA_ICD_CTX_FT+' ft.');
+  }
+  /* 6) Existing RA */
+  if(ctx&&ctx.existingRa&&ctx.existingRa.distFt!=null){
+    const d=+ctx.existingRa.distFt;
+    if(d<=CALMING_RA_EXISTING_EXCL_FT){
+      add('existing', 'fail', 'Existing roundabout',
+        'FirstMap roundabout @ '+d+' ft — site already has / is next to an RA.');
+    } else {
+      add('existing', 'info', 'Existing roundabout', 'Nearest FirstMap RA @ '+d+' ft.');
+    }
+  } else {
+    add('existing', 'pass', 'Existing roundabout', 'No FirstMap roundabout within '+RA_ICD_CTX_FT+' ft.');
+  }
+  /* 7) Approaches */
+  const approaches=((fit&&fit.approachBearingsDeg)||(ctx&&ctx.approachBearingsDeg)||[]).filter(b=>Number.isFinite(+b));
+  const legsN=fit&&fit.splitterLegsN!=null?+fit.splitterLegsN:(ctx&&ctx.intersection&&ctx.intersection.legs!=null?+ctx.intersection.legs:null);
+  const nApp=approaches.length||legsN||0;
+  if(nApp>=3){
+    add('approaches', 'pass', 'Approaches', nApp+'-leg / approach layout on the overlay'+(legsN!=null&&!approaches.length?(' (FirstMap est. '+legsN+'-leg)'):'')+'.');
+  } else if(nApp===2){
+    add('approaches', 'warn', 'Approaches', 'Only 2 approaches detected — classic RA usually needs 3+ legs. Rotate / confirm on aerial.');
+  } else {
+    add('approaches', 'info', 'Approaches', 'Approach count unclear — rotate amber handles to match roads, then re-analyze.');
+  }
+  let fail=0, warn=0, pass=0;
+  checks.forEach(c=>{
+    if(c.status==='fail') fail++;
+    else if(c.status==='warn') warn++;
+    else if(c.status==='pass') pass++;
+  });
+  let verdict='discussable', verdictLabel='Discussable', verdictCls='candidate';
+  if(fail>0){ verdict='unlikely'; verdictLabel='Unlikely as sized'; verdictCls='out'; }
+  else if(warn>0){ verdict='study'; verdictLabel='Needs study / caution'; verdictCls='study'; }
+  else { verdict='more_likely'; verdictLabel='Looks discussable as sized'; verdictCls='candidate'; }
+  return {
+    sizedFt:sized, family, traffic, trafficIn, checks,
+    fail, warn, pass, verdict, verdictLabel, verdictCls,
+    preferFt, preferLabel:traffic.preferLabel,
+    disclaimer:'Screening only against sized ICD + nearby FirstMap/OSM context. Not a warrant, capacity check, or DelDOT ROW determination. DGM 1-26 / design vehicle still govern.'
+  };
+}
+function raIcdAnalyzeHtml(result){
+  if(!result) return '';
+  let h=`<div class="ra-an-hd">Sized ICD analysis <span class="calm-band ${esc(result.verdictCls)}">${esc(result.verdictLabel)}</span>`
+    +`<span class="hint" style="text-transform:none;letter-spacing:0;font-weight:500">${result.sizedFt} ft · ${esc(result.family)}</span></div>`;
+  if(result.preferLabel){
+    h+=`<div class="hint">Traffic-typical size: <b>${esc(result.preferLabel)}</b>`
+      +(result.trafficIn&&result.trafficIn.roadNames&&result.trafficIn.roadNames.length
+        ?(' · '+esc(result.trafficIn.roadNames.slice(0,3).join(' / ')))
+        :'')
+      +`</div>`;
+  }
+  h+=`<ul class="ra-an-list">`;
+  (result.checks||[]).forEach(c=>{
+    h+=`<li><span class="ra-an-tag ${esc(c.status)}">${esc(c.status)}</span><span><b>${esc(c.title)}</b> — ${esc(c.detail)}</span></li>`;
+  });
+  h+=`</ul>`;
+  h+=`<div class="hint" style="margin-top:8px">${esc(result.disclaimer)}</div>`;
+  h+=`<div class="hint" style="margin-top:4px"><a href="${ROUNDABOUT_INFO_URL}" target="_blank" rel="noopener" style="color:#6ee7b7">de.gov/roundabouts</a></div>`;
+  return h;
+}
+function clearRaIcdAnalyzeBox(){
+  const box=$('raIcdAnalyzeBox');
+  if(box){ box.hidden=true; box.innerHTML=''; }
+}
+function runRaIcdAnalyze(){
+  const fit=raIcdTool.lastFit;
+  const ctx=raIcdTool.lastCtx;
+  if(!fit||fit.lat==null){
+    setRaIcdHint('Screen a point and size the overlay first, then Analyze.','warn');
+    return null;
+  }
+  const result=analyzeRaSizedCompliance(fit, ctx);
+  raIcdTool.lastAnalyze=result;
+  const box=$('raIcdAnalyzeBox');
+  if(box){
+    box.hidden=false;
+    box.innerHTML=raIcdAnalyzeHtml(result);
+    try{ box.scrollIntoView({block:'nearest', behavior:'smooth'}); }catch(_){}
+  }
+  const cls=result.verdict==='unlikely'?'warn':(result.verdict==='study'?'':'good');
+  setRaIcdHint('Analyzed '+result.sizedFt+' ft ICD — '+result.verdictLabel
+    +(result.fail?(' · '+result.fail+' fail'):'')
+    +(result.warn?(' · '+result.warn+' caution'):'')+'.', cls);
+  toast('RA analyze: '+result.verdictLabel);
+  return result;
+}
 function updateRaIcdButtons(){
   if($('hdrBtnRaIcd')) $('hdrBtnRaIcd').classList.toggle('on', !!raIcdTool.active);
   if($('raIcdClearBtn')) $('raIcdClearBtn').disabled=!(raIcdTool.lastFit||raIcdExtraLayer);
+  if($('raIcdAnalyzeBtn')) $('raIcdAnalyzeBtn').disabled=!raIcdTool.lastFit||!!raIcdTool.busy;
   if($('raIcdRescreenBtn')) $('raIcdRescreenBtn').disabled=!raIcdTool.lastCenter||!!raIcdTool.busy;
   if($('raIcdSnapIx')) $('raIcdSnapIx').checked=!!raIcdTool.snapIntersect;
 }
@@ -37530,6 +37750,8 @@ function clearRaIcdOverlay(){
   clearStatewideCalmingRaFitOverlay();
   clearRaIcdExtraOverlay();
   clearRaIcdHandleOverlay();
+  clearRaIcdAnalyzeBox();
+  raIcdTool.lastAnalyze=null;
 }
 function openRaIcdDock(){
   try{
@@ -37875,6 +38097,8 @@ async function runRaIcdScreenAt(lat, lon, opts){
   const signal=ac?ac.signal:undefined;
   const token=++raIcdTool.token;
   raIcdTool.busy=true;
+  clearRaIcdAnalyzeBox();
+  raIcdTool.lastAnalyze=null;
   updateRaIcdButtons();
   const click={lat:+lat, lon:+lon};
   raIcdTool.lastClick=click;
@@ -37995,6 +38219,7 @@ function wireRaIcdUI(){
     startRaIcdMode();
   };
   if($('raIcdDockClose')) $('raIcdDockClose').onclick=()=>stopRaIcdMode({keepOverlay:!!raIcdTool.lastFit});
+  if($('raIcdAnalyzeBtn')) $('raIcdAnalyzeBtn').onclick=()=>runRaIcdAnalyze();
   if($('raIcdClearBtn')) $('raIcdClearBtn').onclick=()=>{
     clearRaIcdOverlay();
     raIcdTool.lastFit=null;
