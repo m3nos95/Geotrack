@@ -43,7 +43,7 @@ function renderLetterHtml(result, opts) {
     sourceLine: Engine.sourceLine,
     actionHtml,
   });
-  const ccHtml = cc.map(c => `${esc(c.name)}, ${esc(c.org || 'DelDOT')}`).join('<br>');
+  const ccHtml = Export.letterCcHtml(cc, esc);
   const title = [project.contract, project.title, project.contractor].filter(Boolean).join(' · ') || 'SOS letter';
   const seed = DATA.CONTACTS.letterAuthor || {};
   const author = Object.assign({}, seed, o.author || project.author || {});
@@ -72,7 +72,7 @@ ${sections}
   </div>
   <div class="letter-sig-name">${esc(author.name)}<br>${esc(author.title)}</div>
 </div>
-<div class="letter-cc">cc: ${ccHtml || '(none)'}</div>
+<div class="letter-cc">${ccHtml}</div>
 </div>`;
   return `<!DOCTYPE html><html><head><meta charset="utf-8"><title>${esc(title)}</title>
 <style>${letterCss()}</style></head><body>

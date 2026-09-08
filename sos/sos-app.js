@@ -1022,7 +1022,14 @@
       actionHtml,
     });
 
-    const ccHtml = ccList.map(cc => `${esc(cc.name)}, ${esc(cc.org)}`).join('<br>');
+    const ccHtml = (window.SOSLetterExport && SOSLetterExport.letterCcHtml)
+      ? SOSLetterExport.letterCcHtml(ccList, esc, {
+        emptyHtml: '<em style="color:#aaa;">(none)</em>',
+        editAttr: letterEditAttr('cc'),
+      })
+      : ('<div class="letter-cc" ' + letterEditAttr('cc') + '>cc: '
+        + (ccList.map(cc => `${esc(cc.name)}, ${esc(cc.org)}`).join('<br>') || '<em style="color:#aaa;">(none)</em>')
+        + '</div>');
     const empty = !items.length
       ? '<p style="color:#888;font-style:italic;">Drop a contractor SOS spreadsheet or form PDF on the Import tab to generate this letter.</p>' : '';
 
@@ -1050,7 +1057,7 @@
         </div>
         <div class="letter-sig-name">${esc(author.name)}<br>${esc(author.title)}</div>
       </div>
-      <div class="letter-cc" ${letterEditAttr('cc')}>cc: ${ccHtml || '<em style="color:#aaa;">(none)</em>'}</div>
+      <div class="letter-cc">${ccHtml}</div>
       </div>
     `;
     const wrap = window.SOSLetterExport && SOSLetterExport.wrapLetterPages;

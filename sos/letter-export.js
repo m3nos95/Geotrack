@@ -100,6 +100,10 @@ hr, hr.letter-divider { border: none; border-top: 1px solid #ccc; margin: 14pt 0
 .letter-sig-name { font-weight: 400; margin-top: 4pt; }
 .letter-sig:not(.has-image) .letter-sig-name { margin-top: 8pt; }
 .letter-cc { margin-top: 14pt; font-size: 12pt; line-height: 1.15; page-break-inside: avoid; }
+table.letter-cc-table { width: auto; border: none; border-collapse: collapse; margin: 0; }
+table.letter-cc-table td { border: none; padding: 0; vertical-align: top; font-family: 'Times New Roman', Times, serif; font-size: 12pt; line-height: 1.15; }
+td.letter-cc-label { width: 1%; white-space: nowrap; padding-right: 0.4em; }
+td.letter-cc-names { width: auto; }
 .letter-edit, [contenteditable] { outline: none !important; box-shadow: none !important; background: transparent !important; caret-color: transparent; }
 ${footer}
 `;
@@ -182,6 +186,20 @@ function letterExportFilename(contract, ext) {
   return slug + '_SOS_letter.' + (ext || 'doc');
 }
 
+function letterCcHtml(cc, esc, opts) {
+  opts = opts || {};
+  const escape = typeof esc === 'function' ? esc : function (s) { return String(s == null ? '' : s); };
+  const list = cc || [];
+  const names = list.length
+    ? list.map((c) => escape(c.name) + ', ' + escape(c.org || 'DelDOT')).join('<br>')
+    : (opts.emptyHtml || '(none)');
+  const edit = opts.editAttr ? ' ' + String(opts.editAttr).trim() : '';
+  return '<table class="letter-cc-table"><tr>'
+    + '<td class="letter-cc-label">cc:</td>'
+    + '<td class="letter-cc-names"' + edit + '>' + names + '</td>'
+    + '</tr></table>';
+}
+
 function rewriteHighlightsForWord(html) {
   return String(html || '').replace(
     /<mark([^>]*class=["'][^"']*user-highlight[^"']*["'][^>]*)>([\s\S]*?)<\/mark>/gi,
@@ -197,6 +215,7 @@ var SOSLetterExport = {
   wrapLetterPages,
   wrapWordHtml,
   letterItemsHtml,
+  letterCcHtml,
   letterExportFilename,
   rewriteHighlightsForWord,
 };

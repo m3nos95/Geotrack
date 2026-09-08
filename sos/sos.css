@@ -700,6 +700,10 @@
   .letter-sig-name { font-weight: 400; margin-top: 4px; }
   .letter-sig:not(.has-image) .letter-sig-name { margin-top: 8px; }
   .letter-cc { margin-top: 16px; font-size: 12pt; line-height: 1.15; }
+  table.letter-cc-table { width: auto; border: none; border-collapse: collapse; margin: 0; }
+  table.letter-cc-table td { border: none; padding: 0; vertical-align: top; font-size: 12pt; line-height: 1.15; }
+  td.letter-cc-label { width: 1%; white-space: nowrap; padding-right: 0.4em; }
+  td.letter-cc-names { width: auto; }
   .letter-print-pages {
     width: 100%;
     border: none;
