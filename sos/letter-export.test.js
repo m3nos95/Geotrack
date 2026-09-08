@@ -69,12 +69,12 @@ const ccBlock = Export.letterCcHtml([
   { name: 'Mark Schafer', org: 'DelDOT' },
 ], (s) => String(s));
 assert.ok(/letter-cc-table/.test(ccBlock), 'cc uses a two-column table');
-assert.ok(/letter-cc-label">cc:</.test(ccBlock), 'cc: stays in the label column');
+assert.ok(/letter-cc-label">cc:/.test(ccBlock), 'cc: stays in the label column');
 assert.ok(/John Mastrobuono, DelDOT<br>Aaron Wieczorek, DelDOT<br>Mark Schafer, DelDOT/.test(ccBlock), 'names stack in the second column');
 assert.ok(!/>cc: John/.test(ccBlock), 'names are not on the same line as cc:');
 assert.ok(/letter-cc-table/.test(Export.printLetterCss()), 'print CSS aligns stacked cc names');
 assert.ok(/letter-cc-table/.test(Export.wordCss()), 'Word CSS aligns stacked cc names');
-assert.strictEqual(Export.letterCcHtml([], (s) => s), '<table class="letter-cc-table"><tr><td class="letter-cc-label">cc:</td><td class="letter-cc-names">(none)</td></tr></table>');
+assert.strictEqual(Export.letterCcHtml([], (s) => s), '<table class="letter-cc-table"><tr><td class="letter-cc-label">cc:&nbsp;</td><td class="letter-cc-names">(none)</td></tr></table>');
 
 const { renderLetterHtml } = require('./letter-render.js');
 const rendered = renderLetterHtml({

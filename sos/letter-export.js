@@ -195,7 +195,7 @@ function letterCcHtml(cc, esc, opts) {
     : (opts.emptyHtml || '(none)');
   const edit = opts.editAttr ? ' ' + String(opts.editAttr).trim() : '';
   return '<table class="letter-cc-table"><tr>'
-    + '<td class="letter-cc-label">cc:</td>'
+    + '<td class="letter-cc-label">cc:&nbsp;</td>'
     + '<td class="letter-cc-names"' + edit + '>' + names + '</td>'
     + '</tr></table>';
 }
