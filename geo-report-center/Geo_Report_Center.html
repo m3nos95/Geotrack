@@ -38282,8 +38282,11 @@ function wireRaIcdUI(){
     raIcdTool.snapIntersect=!!this.checked;
   };
   if($('raIcdSizeRange')){
-    $('raIcdSizeRange').oninput=function(){ setRaIcdOverlaySize(this.value, {quiet:true}); };
+    /* Live while dragging; Analyze refreshes on change/release so prior results never stick */
+    $('raIcdSizeRange').oninput=function(){ setRaIcdOverlaySize(this.value, {quiet:true, live:true}); };
     $('raIcdSizeRange').onchange=function(){ setRaIcdOverlaySize(this.value); };
+    $('raIcdSizeRange').onmouseup=function(){ setRaIcdOverlaySize(this.value, {quiet:true}); };
+    $('raIcdSizeRange').ontouchend=function(){ setRaIcdOverlaySize(this.value, {quiet:true}); };
   }
   if($('raIcdSizeFt')){
     $('raIcdSizeFt').onchange=function(){ setRaIcdOverlaySize(this.value); };
