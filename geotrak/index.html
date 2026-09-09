@@ -36232,6 +36232,8 @@ const RA_ICD_FHWA={
   single:{min:90, max:180, label:'Single-lane (90–180 ft)'},
   multilane:{min:135, max:200, label:'Multilane (~135–200 ft)'}
 };
+/* Ch. 6 planning footprint often includes ~20–35 ft outside ICD for curb/landscaping/ped — not ROW. */
+const RA_ICD_PLAN_BUF_FT=25;
 const RA_ICD_RINGS=[
   {id:'mini45', ft:45, family:'mini', label:'45 ft mini (tight)', short:'45 mini', color:'#a5f3fc', weight:1.5, dash:'4 4'},
   {id:'mini90', ft:90, family:'mini', label:'90 ft mini', short:'90 mini', color:'#7dd3fc', weight:2.5, dash:null},
@@ -37900,6 +37902,25 @@ function analyzeRaSizedCompliance(fit, ctx){
       ?(' (AADT '+(trafficIn.aadt!=null?Math.round(trafficIn.aadt).toLocaleString():'—')
         +' · '+(trafficIn.postedMph!=null?trafficIn.postedMph+' mph':'spd —')+')')
       :''));
+  /* Soft planning volume envelope (agency-style AADT bands — not Ex. 8.2 OCR; not a warrant) */
+  if(trafficIn.aadt!=null){
+    const a=+trafficIn.aadt;
+    if(a<=15000){
+      add('volume', 'pass', 'Planning volume',
+        'AADT '+Math.round(a).toLocaleString()+' ≤ 15k — soft single-lane / mini-compact planning envelope (peak TM still needed for ops).');
+    } else if(a<=25000){
+      add('volume', family==='mini'?'warn':'pass', 'Planning volume',
+        'AADT '+Math.round(a).toLocaleString()+' — single-lane still discussable; confirm with peak enter+conflict (Guide Ex. 8.6), not AADT alone.');
+    } else if(a<=45000){
+      add('volume', sized<135?'warn':'info', 'Planning volume',
+        'AADT '+Math.round(a).toLocaleString()+' — multilane / detailed turning-movement analysis likely; do not treat as capacity proof.');
+    } else {
+      add('volume', 'warn', 'Planning volume',
+        'AADT '+Math.round(a).toLocaleString()+' ≫ 45k soft ceiling used by some agencies — escalate with peak-hour analysis; not an automatic FAIL.');
+    }
+  } else {
+    add('volume', 'info', 'Planning volume', 'Approach AADT unknown — volume envelope not scored.');
+  }
   /* 2) FHWA / NCHRP category range (descriptive) */
   if(fhwaHits.length){
     const inPreferred=famRow&&famRow.tier!=='unlikely';
@@ -37926,10 +37947,11 @@ function analyzeRaSizedCompliance(fit, ctx){
   } else {
     add('speed', 'info', 'Posted speed', 'Posted speed unknown near this click.');
   }
-  /* 4) Buildings at SIZED ICD + constrained-retrofit hint */
+  /* 4) Buildings at SIZED ICD + planning buffer + constrained-retrofit hint */
   const touch=RA_ICD_TOUCH_FT;
+  const planBuf=RA_ICD_PLAN_BUF_FT;
   const buildings=(fit&&fit.buildings)||[];
-  let hitN=0, closest=null, hitMini=0, hitSingle=0;
+  let hitN=0, closest=null, hitMini=0, hitSingle=0, hitBuf=0, closestBuf=null;
   if(fit&&fit.ok===false){
     add('space', 'info', 'Buildings / space', 'Building footprints unavailable — space not cleared at '+sized+' ft.');
   } else {
@@ -37939,6 +37961,9 @@ function analyzeRaSizedCompliance(fit, ctx){
       if(d<=sized+touch){
         hitN++;
         if(closest==null||d<closest) closest=d;
+      } else if(d<=sized+planBuf){
+        hitBuf++;
+        if(closestBuf==null||d<closestBuf) closestBuf=d;
       }
       if(d<=RA_ICD_MINI_FT+touch) hitMini++;
       if(d<=RA_ICD_SINGLE_FT+touch) hitSingle++;
@@ -37946,6 +37971,15 @@ function analyzeRaSizedCompliance(fit, ctx){
     if(hitN<=0){
       add('space', 'pass', 'Buildings / space',
         'No footprints inside / nicking the sized '+sized+' ft ICD (MS/OSM). Not a ROW determination — splitter islands, apron, and fee ROW can still control.');
+      if(hitBuf>0){
+        add('buffer', 'warn', 'Planning buffer',
+          hitBuf+' building(s) within ~'+planBuf+' ft outside the ICD'
+          +(closestBuf!=null?(' (closest @ '+Math.round(closestBuf)+' ft)'):'')
+          +' — Guide Ch. 6 often reserves ~20–35 ft beyond ICD for curb/landscape/ped; confirm takes / shift.');
+      } else {
+        add('buffer', 'pass', 'Planning buffer',
+          'No footprints in the ~'+planBuf+' ft planning ring outside the ICD (still not a ROW determination).');
+      }
       if(hitMini<=0&&hitSingle>0&&sized<=90){
         add('retrofit', 'info', 'Constrained retrofit',
           'Sized mini/compact clears buildings while a '+RA_ICD_SINGLE_FT+' ft single-lane ICD would nick footprints — NCHRP notes traversable mini/compact for constrained retrofits.');
