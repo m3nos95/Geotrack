@@ -7,7 +7,8 @@ const html = fs.readFileSync(path.join(__dirname, '..', 'deldot-sos.html'), 'utf
 assert.ok(!/pdf\.min\.js/.test(html), 'pdf.js must not load on page open');
 assert.ok(!/xlsx\.full\.min\.js/.test(html), 'SheetJS must not load on page open');
 assert.ok(!/cdn\.jsdelivr\.net/.test(html), 'no jsDelivr scripts on page open');
-assert.ok(/sos-app\.js\?v=20260908a/.test(html), 'cache-bust sos-app.js');
+assert.ok(/sos-app\.js\?v=20260909a/.test(html), 'cache-bust sos-app.js');
+assert.ok(/sos-engine\.js\?v=20260909a/.test(html), 'cache-bust sos-engine.js');
 assert.ok(/letter-export\.js\?v=20260908a/.test(html), 'cache-bust letter-export.js');
 assert.ok(/sos\.css\?v=20260908a/.test(html), 'cache-bust sos.css');
 assert.ok(/id="letter-save-status"/.test(html), 'Save training pack status is next to the letter, not only on Import');
@@ -29,6 +30,10 @@ const loadSpec = app.slice(app.indexOf('function loadSpecLib()'), app.indexOf('f
 assert.ok(!/cleanSpecLibraryDesc/.test(loadSpec), 'do not clean every spec against every plant on open');
 assert.ok(/window.handleImportFiles =/.test(app), 'drop zone can take several files');
 assert.ok(/SOSLetterExport\.letterCcHtml/.test(app), 'letter preview hangs cc names in a second column');
+assert.ok(/function syncContractManagerCcList\(/.test(app), 'header DelDOT Contact is merged onto letter cc');
+assert.ok(/function patchLetterCcBlock\(/.test(app), 'dirty preview still gets the contract manager on cc');
+assert.ok(/isContractManagerOnLetter/.test(app), 'contract manager cannot be removed from this letter');
+assert.ok(/Contract manager/.test(html), 'DelDOT Contact field is the contract manager');
 const pdfFn = app.slice(app.indexOf('async function parseImportFileToSheets'), app.indexOf('window.handleImportFile'));
 assert.ok(pdfFn.indexOf('copyFileBytes') < pdfFn.indexOf('parsePdf'), 'copy PDF bytes before pdf.js can detach them');
 assert.ok(/submittal-/.test(app), 'training pack keeps extra contractor files as submittal-2');

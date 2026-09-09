@@ -2204,7 +2204,28 @@
     assignments.forEach(a => {
       if (assignmentMatchesItems(a, items, project)) add(a.name, a.org || 'DelDOT', a.role || '');
     });
-    return filterRetiredCcPeople(people, lists && (lists.retiredCc || lists.retiredNames));
+    return ensureContractManagerOnCc(
+      filterRetiredCcPeople(people, lists && (lists.retiredCc || lists.retiredNames)),
+      project && project.contact
+    );
+  }
+
+  /** Keep the header DelDOT Contact (contract manager) first on cc. Used after import,
+   *  header edits, harvest overwrite, and dirty-letter reload so they cannot fall off. */
+  function ensureContractManagerOnCc(people, contactName) {
+    const n = cellStr(contactName);
+    const list = Array.isArray(people) ? people.slice() : [];
+    if (!n) return list;
+    const key = n.toLowerCase();
+    const existing = list.find(p => cellStr(p && p.name).toLowerCase() === key);
+    const rest = list.filter(p => cellStr(p && p.name).toLowerCase() !== key);
+    rest.unshift({
+      id: existing && existing.id != null ? existing.id : 1,
+      name: n,
+      org: (existing && existing.org) || 'DelDOT',
+      role: (existing && existing.role) || 'contract-manager',
+    });
+    return rest;
   }
 
   function processGrid(rows, meta) {
@@ -2471,6 +2492,7 @@
     familyFromSpec,
     shouldOmitItem,
     buildCcList,
+    ensureContractManagerOnCc,
     samplerName,
     isCompanyName,
     isStreet,

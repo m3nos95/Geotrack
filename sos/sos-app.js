@@ -239,8 +239,12 @@
         persistProject();
         updateContractWarn();
         if (id === 'ph-contract') refreshSpecYearFromContract();
-        if (id === 'ph-district' || id === 'ph-contact') {
+        if (id === 'ph-district') {
           if (items.length) applyCcRulesToLetter();
+        }
+        if (id === 'ph-contact') {
+          if (items.length) applyCcRulesToLetter();
+          else syncContractManagerToLetter();
         }
         if (id === 'ph-contract' && items.length && !letterPreviewDirty) applyListsToOpenLetter();
         if (!letterPreviewDirty) renderLetter();
@@ -406,12 +410,63 @@
     };
   }
 
-  window.applyCcRulesToLetter = function () {
-    ccList = SOSEngine.buildCcList(currentProjectForCc(), listsForEngine(), items);
+  function contractManagerName() {
+    return (val('ph-contact') || '').trim();
+  }
+
+  function isContractManagerOnLetter(person) {
+    const name = contractManagerName();
+    return !!(name && person && ccNameKey(person.name) === ccNameKey(name));
+  }
+
+  function syncContractManagerCcList() {
+    const before = (ccList || []).map(c => ccNameKey(c && c.name)).join('\n');
+    if (typeof SOSEngine !== 'undefined' && SOSEngine.ensureContractManagerOnCc) {
+      ccList = SOSEngine.ensureContractManagerOnCc(ccList, contractManagerName());
+    }
+    return (ccList || []).map(c => ccNameKey(c && c.name)).join('\n') !== before;
+  }
+
+  function patchLetterCcBlock() {
+    const doc = document.getElementById('letter-doc');
+    if (!doc) return;
+    const wrap = doc.querySelector('.letter-cc');
+    if (!wrap) return;
+    const html = (window.SOSLetterExport && SOSLetterExport.letterCcHtml)
+      ? SOSLetterExport.letterCcHtml(ccList, esc, {
+        emptyHtml: '<em style="color:#aaa;">(none)</em>',
+        editAttr: letterEditAttr('cc'),
+      })
+      : ('cc: ' + (ccList.map(cc => `${esc(cc.name)}, ${esc(cc.org)}`).join('<br>') || '<em style="color:#aaa;">(none)</em>'));
+    wrap.innerHTML = html;
+    if (letterPreviewDirty) persistLetterHtml();
+  }
+
+  function syncContractManagerToLetter() {
+    syncContractManagerCcList();
     persistAll();
     renderCC();
     renderCCLib();
-    renderLetter();
+    if (letterPreviewDirty) {
+      patchLetterCcBlock();
+      updateLetterEditBanner();
+    } else {
+      renderLetter();
+    }
+  }
+
+  window.applyCcRulesToLetter = function () {
+    ccList = SOSEngine.buildCcList(currentProjectForCc(), listsForEngine(), items);
+    syncContractManagerCcList();
+    persistAll();
+    renderCC();
+    renderCCLib();
+    if (letterPreviewDirty) {
+      patchLetterCcBlock();
+      updateLetterEditBanner();
+    } else {
+      renderLetter();
+    }
   };
 
   window.renderCcRules = function () {
@@ -658,17 +713,22 @@
 
   window.renderCC = function () {
     const tbody = document.getElementById('cc-tbody');
-    tbody.innerHTML = ccList.map(cc => `
+    tbody.innerHTML = ccList.map(cc => {
+      const locked = isContractManagerOnLetter(cc);
+      return `
       <tr>
-        <td style="font-weight:500;">${esc(cc.name)}</td>
+        <td style="font-weight:500;">${esc(cc.name)}${locked ? ' <span style="font-family:var(--mono);font-size:10px;color:var(--text-mid);">contract manager</span>' : ''}</td>
         <td><span style="font-family:var(--mono);font-size:10px;background:var(--blue-bg);color:var(--deldot);border:1px solid #b0c4e0;border-radius:2px;padding:2px 5px;">${esc(cc.org)}</span></td>
         <td>
           <div style="display:flex;align-items:center;gap:4px;">
             <button class="btn btn-ghost btn-sm btn-icon" onclick="openCCModal('', '${esc(String(cc.id))}')" title="Edit name / org">✎</button>
-            <button class="btn btn-ghost btn-sm btn-icon" onclick="deleteCC(${cc.id})" style="color:var(--red);" title="Remove from this letter">✕</button>
+            ${locked
+              ? '<span style="font-size:10px;color:var(--text-mid);" title="DelDOT Contact stays on cc">locked</span>'
+              : `<button class="btn btn-ghost btn-sm btn-icon" onclick="deleteCC(${cc.id})" style="color:var(--red);" title="Remove from this letter">✕</button>`}
           </div>
         </td>
-      </tr>`).join('');
+      </tr>`;
+    }).join('');
     document.getElementById('cc-count').textContent = ccList.length;
     const activeEl = document.getElementById('cc-active-count');
     if (activeEl) activeEl.textContent = `(${ccList.length})`;
@@ -717,6 +777,8 @@
     persistAll(); renderCC(); renderCCLib(); renderLetter();
   };
   window.deleteCC = function (id) {
+    const row = ccList.find(c => c.id === id);
+    if (row && isContractManagerOnLetter(row)) return;
     ccList = ccList.filter(c => c.id !== id);
     persistAll(); renderCC(); renderCCLib(); renderLetter();
   };
@@ -985,7 +1047,12 @@
 
   window.renderLetter = function (force) {
     const rebuild = force === true || (force && force.force);
+    if (syncContractManagerCcList()) {
+      persistAll();
+      renderCC();
+    }
     if (letterPreviewDirty && !rebuild) {
+      patchLetterCcBlock();
       updateLetterEditBanner();
       return;
     }
@@ -1679,6 +1746,7 @@
     applyListsToOpenLetter();
     if (parsedImport && parsedImport.cc) {
       ccList = parsedImport.cc;
+      syncContractManagerCcList();
       persistAll();
       renderCC();
       renderLetter();
@@ -1773,6 +1841,7 @@
     if (parsedImport && parsedImport.parsed) parsedImport = { parsed: parsedImport.parsed, ...result };
     items = (result.items || []).map((it, i) => ({ ...it, id: it.id || Date.now() + i }));
     warnings = result.warnings || [];
+    syncContractManagerCcList();
     persistAll();
     renderImportPreview();
     renderItems();
@@ -2268,6 +2337,7 @@
     applyProjectToHeader(parsedImport.project, true);
     items = (parsedImport.items || []).map((it, i) => ({ ...it, id: Date.now() + i }));
     ccList = parsedImport.cc || [];
+    syncContractManagerCcList();
     warnings = parsedImport.warnings || [];
     revisions = [{ num: 1, date: val('ph-date') || headerToday(), notes: 'Initial issue from contractor SOS spreadsheet.', items: [] }];
     currentRev = 1;
@@ -2916,6 +2986,7 @@
     renderLetter();
     renderWarnings();
     loadLetterEdits();
+    syncContractManagerToLetter();
     setTimeout(function () {
       loadSourceLib();
       loadSpecLib();

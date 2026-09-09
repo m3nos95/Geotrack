@@ -339,6 +339,30 @@ assert.strictEqual(withAlways.cc[0].name, 'James Smith');
 assert.ok(withAlways.cc.some(c => c.name === 'Hunter McCabe'));
 assert.ok(withAlways.cc.filter(c => c.name === 'James Smith').length === 1);
 
+const azaleaCc = Engine.ensureContractManagerOnCc([
+  { id: 1, name: 'Aaron Wieczorek', org: 'DelDOT' },
+  { id: 2, name: 'Mark Schafer', org: 'DelDOT' },
+  { id: 3, name: 'Ray Glanden', org: 'DelDOT' },
+  { id: 4, name: 'Dave Bunting', org: 'DelDOT' },
+  { id: 5, name: 'Ray Morris', org: 'DelDOT' },
+], 'Les Mannering');
+assert.strictEqual(azaleaCc[0].name, 'Les Mannering', 'contract manager is first on cc');
+assert.strictEqual(azaleaCc.length, 6);
+assert.strictEqual(Engine.ensureContractManagerOnCc(azaleaCc, 'Les Mannering').filter(c => c.name === 'Les Mannering').length, 1);
+const movedManager = Engine.ensureContractManagerOnCc([
+  { id: 1, name: 'Aaron Wieczorek', org: 'DelDOT' },
+  { id: 2, name: 'Les Mannering', org: 'DelDOT' },
+], 'Les Mannering');
+assert.strictEqual(movedManager[0].name, 'Les Mannering');
+assert.strictEqual(movedManager.length, 2);
+const rebuiltAzalea = Engine.buildCcList(
+  { contact: 'Les Mannering', district: 'South' },
+  { retiredCc: ['Les Mannering'], ccAssignments: [{ name: 'Aaron Wieczorek', org: 'DelDOT', always: true }] },
+  [{ family: 'aggregate' }]
+);
+assert.strictEqual(rebuiltAzalea[0].name, 'Les Mannering', 'header contact stays on cc even if that name was retired');
+assert.ok(rebuiltAzalea.some(c => c.name === 'Aaron Wieczorek'));
+
 // Russell Standard Chambersburg tack is not on APL
 const chambersburgGrid = gridFromObjects(FREY_HEADER, [[
   ['', 401501.0, 'Tack Coat', '', 'CRS-1H', 'Tri County', '', 'Russell Standard', ''],
