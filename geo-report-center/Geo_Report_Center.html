@@ -20921,23 +20921,25 @@ button,input,select,textarea{font-family:inherit}
 #measureDock .meas-actions{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}
 .map-measure{cursor:crosshair !important}
 /* Roundabout ICD overlay tool dock — overflow:hidden so max-height clips;
-   .ra-icd-body scrolls; corner grip stays on the visible panel (not buried under spill). */
+   .ra-icd-scroll carries size + analyze + results (tall Analyze no longer freezes the panel);
+   title stays draggable; corner grip stays on the visible panel. */
 #raIcdDock{display:none;position:absolute;top:52px;left:max(12px,min(28vw,320px));z-index:1700;width:min(420px,calc(100vw - 24px));
   max-height:min(72vh,720px);overflow:hidden;background:var(--panel);border:1px solid rgba(56,189,248,.5);border-radius:8px;
   box-shadow:0 16px 48px rgba(0,0,0,.55);padding:12px 14px 16px;box-sizing:border-box}
 #raIcdDock.open{display:flex;flex-direction:column}
-#raIcdDock h3{font-size:11px;text-transform:uppercase;letter-spacing:.07em;color:#7dd3fc;margin:0 0 8px;display:flex;align-items:center;gap:8px;cursor:move;user-select:none;flex:0 0 auto}
+#raIcdDock h3{font-size:11px;text-transform:uppercase;letter-spacing:.07em;color:#7dd3fc;margin:0 0 8px;display:flex;align-items:center;gap:8px;cursor:move;user-select:none;flex:0 0 auto;touch-action:none}
 #raIcdDock h3 .sp{flex:1}
-#raIcdDock .hdr-pop-close{background:transparent;border:1px solid var(--line);color:var(--dim);border-radius:4px;padding:3px 8px;cursor:pointer;font-size:11px}
+#raIcdDock .hdr-pop-close{background:transparent;border:1px solid var(--line);color:var(--dim);border-radius:4px;padding:3px 8px;cursor:pointer;font-size:11px;touch-action:manipulation}
 #raIcdDock .hdr-pop-close:hover{border-color:#38bdf8;color:#7dd3fc}
 #raIcdDock > .hint,
 #raIcdDock > label.layerRow{flex:0 0 auto}
-#raIcdDock .ra-icd-body{
-  flex:1 1 0%;min-height:0;overflow-x:hidden;overflow-y:auto;margin-top:6px;border-radius:4px;
+#raIcdDock .ra-icd-scroll{
+  flex:1 1 0%;min-height:0;overflow-x:hidden;overflow-y:auto;margin-top:6px;padding-right:2px;border-radius:4px;
   -webkit-overflow-scrolling:touch;overscroll-behavior:contain;
 }
+#raIcdDock .ra-icd-body{margin-top:6px;border-radius:4px}
 #raIcdDock .ra-icd-actions{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px;padding-right:22px;flex:0 0 auto}
-#raIcdDock .ra-icd-size{flex:0 0 auto;margin-top:10px;padding:8px 10px;border:1px solid rgba(56,189,248,.35);border-radius:6px;background:rgba(14,22,34,.55)}
+#raIcdDock .ra-icd-size{margin-top:4px;padding:8px 10px;border:1px solid rgba(56,189,248,.35);border-radius:6px;background:rgba(14,22,34,.55)}
 #raIcdDock .ra-icd-size-hd{font:700 10px/1.2 var(--mono);letter-spacing:.06em;text-transform:uppercase;color:#7dd3fc;margin-bottom:6px}
 #raIcdDock .ra-icd-size-hd .hint{font-weight:500;text-transform:none;letter-spacing:0;color:var(--dim)}
 #raIcdDock .ra-icd-size-row{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:6px;font-size:11px;color:var(--dim)}
@@ -20953,7 +20955,7 @@ button,input,select,textarea{font-family:inherit}
 #raIcdDock .ra-icd-look-presets{display:flex;gap:4px;flex-wrap:wrap}
 #raIcdDock .ra-icd-look-presets .btn{padding:3px 9px;font:700 11px/1.1 var(--mono)}
 #raIcdDock .ra-icd-look-presets .btn.on{border-color:#34d399;color:#6ee7b7;background:rgba(52,211,153,.12)}
-#raIcdDock .ra-icd-analyze{flex:0 0 auto;margin-top:10px;padding:10px 12px;border:1px solid rgba(52,211,153,.4);border-radius:6px;background:rgba(6,78,59,.22)}
+#raIcdDock .ra-icd-analyze{margin-top:10px;padding:10px 12px;border:1px solid rgba(52,211,153,.4);border-radius:6px;background:rgba(6,78,59,.22)}
 #raIcdDock .ra-icd-analyze[hidden]{display:none !important}
 #raIcdDock .ra-icd-analyze .ra-an-hd{font:700 10px/1.2 var(--mono);letter-spacing:.06em;text-transform:uppercase;color:#6ee7b7;margin-bottom:6px;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
 #raIcdDock .ra-icd-analyze .ra-an-list{margin:8px 0 0;padding:0;list-style:none}
@@ -22074,41 +22076,43 @@ table.list td{padding:5px 8px;border-bottom:1px solid rgba(46,58,72,.5);font-fam
     <input type="checkbox" id="raIcdSnapIx" checked style="margin:0">
     <span class="nm" style="font-size:11px;color:var(--dim)">Snap to nearest FirstMap intersection (≤120 ft)</span>
   </label>
-  <div class="ra-icd-size" id="raIcdSizeBox" hidden>
-    <div class="ra-icd-size-hd">Resize overlay <span class="hint">(to scale · map feet)</span></div>
-    <div class="ra-icd-size-presets" id="raIcdSizePresets" role="group" aria-label="ICD size presets">
-      <button type="button" class="btn" data-icd="45" title="45 ft mini (tight) — NCHRP mini range low end">45</button>
-      <button type="button" class="btn" data-icd="65" title="65 ft compact low / mini high">65</button>
-      <button type="button" class="btn" data-icd="90" title="90 ft mini high / single low">90</button>
-      <button type="button" class="btn" data-icd="120" title="120 ft compact high / single mid">120</button>
-      <button type="button" class="btn" data-icd="130" title="130 ft single-lane (BUS/WB mid)">130</button>
-      <button type="button" class="btn" data-icd="150" title="150 ft single / multilane overlap">150</button>
-      <button type="button" class="btn" data-icd="180" title="180 ft truck-class single / multilane">180</button>
-    </div>
-    <label class="ra-icd-size-row">ICD diameter
-      <input type="range" id="raIcdSizeRange" min="45" max="240" step="5" value="120" aria-label="ICD diameter feet">
-    </label>
-    <div class="ra-icd-size-row">
-      <input type="number" id="raIcdSizeFt" min="45" max="240" step="1" value="120" inputmode="numeric" aria-label="ICD diameter feet number">
-      <span class="hint" id="raIcdSizeReadout">120 ft ICD · 60 ft radius</span>
-      <button type="button" class="btn" id="raIcdSizeReset" title="Back to screen-pick size">Reset size</button>
-      <button type="button" class="btn" id="raIcdApproachReset" title="Back to screen-detected approach bearings">Reset legs</button>
-    </div>
-    <div class="hint" style="margin-top:4px">Blue □ = size · <b>amber ◇</b> on each leg = rotate around the circle · center = nudge · then <b>Analyze sized ICD</b>.</div>
-    <div class="ra-icd-look" id="raIcdLookBox">
-      <div class="ra-icd-look-hd">Overlay look <span class="hint">(preview only · not design)</span></div>
-      <div class="ra-icd-look-presets" id="raIcdLookPresets" role="group" aria-label="Roundabout overlay look">
-        <button type="button" class="btn" data-ra-look="ring" title="ICD ring only — clearest while sizing">Ring</button>
-        <button type="button" class="btn" data-ra-look="built" title="Asphalt circulating road + brick island + approach stubs">Built</button>
-        <button type="button" class="btn on" data-ra-look="grass" title="Landscaped grass center island">Grass</button>
-        <button type="button" class="btn" data-ra-look="detailed" title="Flared new pavement + concrete splitter islands directing traffic">Detailed</button>
-        <button type="button" class="btn" data-ra-look="diagram" title="Guide-style diagram: light grey pavement, green islands, lane marks &amp; crosswalks — no flow arrows">Diagram</button>
+  <div class="ra-icd-scroll" id="raIcdScroll">
+    <div class="ra-icd-size" id="raIcdSizeBox" hidden>
+      <div class="ra-icd-size-hd">Resize overlay <span class="hint">(to scale · map feet)</span></div>
+      <div class="ra-icd-size-presets" id="raIcdSizePresets" role="group" aria-label="ICD size presets">
+        <button type="button" class="btn" data-icd="45" title="45 ft mini (tight) — NCHRP mini range low end">45</button>
+        <button type="button" class="btn" data-icd="65" title="65 ft compact low / mini high">65</button>
+        <button type="button" class="btn" data-icd="90" title="90 ft mini high / single low">90</button>
+        <button type="button" class="btn" data-icd="120" title="120 ft compact high / single mid">120</button>
+        <button type="button" class="btn" data-icd="130" title="130 ft single-lane (BUS/WB mid)">130</button>
+        <button type="button" class="btn" data-icd="150" title="150 ft single / multilane overlap">150</button>
+        <button type="button" class="btn" data-icd="180" title="180 ft truck-class single / multilane">180</button>
+      </div>
+      <label class="ra-icd-size-row">ICD diameter
+        <input type="range" id="raIcdSizeRange" min="45" max="240" step="5" value="120" aria-label="ICD diameter feet">
+      </label>
+      <div class="ra-icd-size-row">
+        <input type="number" id="raIcdSizeFt" min="45" max="240" step="1" value="120" inputmode="numeric" aria-label="ICD diameter feet number">
+        <span class="hint" id="raIcdSizeReadout">120 ft ICD · 60 ft radius</span>
+        <button type="button" class="btn" id="raIcdSizeReset" title="Back to screen-pick size">Reset size</button>
+        <button type="button" class="btn" id="raIcdApproachReset" title="Back to screen-detected approach bearings">Reset legs</button>
+      </div>
+      <div class="hint" style="margin-top:4px">Blue □ = size · <b>amber ◇</b> on each leg = rotate around the circle · center = nudge · then <b>Analyze sized ICD</b>.</div>
+      <div class="ra-icd-look" id="raIcdLookBox">
+        <div class="ra-icd-look-hd">Overlay look <span class="hint">(preview only · not design)</span></div>
+        <div class="ra-icd-look-presets" id="raIcdLookPresets" role="group" aria-label="Roundabout overlay look">
+          <button type="button" class="btn" data-ra-look="ring" title="ICD ring only — clearest while sizing">Ring</button>
+          <button type="button" class="btn" data-ra-look="built" title="Asphalt circulating road + brick island + approach stubs">Built</button>
+          <button type="button" class="btn on" data-ra-look="grass" title="Landscaped grass center island">Grass</button>
+          <button type="button" class="btn" data-ra-look="detailed" title="Flared new pavement + concrete splitter islands directing traffic">Detailed</button>
+          <button type="button" class="btn" data-ra-look="diagram" title="Guide-style diagram: light grey pavement, green islands, lane marks &amp; crosswalks — no flow arrows">Diagram</button>
+        </div>
       </div>
     </div>
+    <div class="ra-icd-analyze" id="raIcdAnalyzeBox" hidden></div>
+    <div class="hint" id="raIcdHint" style="margin-top:8px">RA screen mode on — click the map.</div>
+    <div class="ra-icd-body" id="raIcdBody"><div class="empty-state"><b>No point yet.</b> Click an intersection or any spot to screen space.</div></div>
   </div>
-  <div class="ra-icd-analyze" id="raIcdAnalyzeBox" hidden></div>
-  <div class="hint" id="raIcdHint" style="margin-top:8px">RA screen mode on — click the map.</div>
-  <div class="ra-icd-body" id="raIcdBody"><div class="empty-state"><b>No point yet.</b> Click an intersection or any spot to screen space.</div></div>
   <div class="ra-icd-actions">
     <button type="button" class="btn" id="raIcdAnalyzeBtn" disabled style="border-color:#34d399;color:#6ee7b7;font-weight:600">Analyze sized ICD</button>
     <button type="button" class="btn" id="raIcdClearBtn" disabled>Clear overlay</button>
@@ -24044,7 +24048,7 @@ function wireMapLegendDrag(){
 
 /* ---------- Shared float panels: drag + resize (localStorage) ---------- */
 const FLOAT_PANEL_REGISTRY=[];
-const FLOAT_PANEL_LAYOUT_EPOCH=2;
+const FLOAT_PANEL_LAYOUT_EPOCH=3;
 function floatPanelStorageKey(id, kind){ return 'geotrak_float_'+id+'_'+kind; }
 function defaultHdrPopPanelHeight(){
   return Math.min(Math.round((window.innerHeight||800)*0.7), 640);
@@ -24065,6 +24069,11 @@ function migrateFloatPanelLayout(){
       const size=readFloatPanelJSON(id,'size');
       if(!size||!Number.isFinite(+size.h)||+size.h>maxH) clearFloatPanelJSON(id,'size');
     });
+    /* v3: Analyze + size moved into RA scroll region — reset stuck tiny/huge dock layouts */
+    if(v<3){
+      clearFloatPanelJSON('raIcdDock','size');
+      clearFloatPanelJSON('raIcdDock','pos');
+    }
     localStorage.setItem('geotrak_float_epoch', String(FLOAT_PANEL_LAYOUT_EPOCH));
   }catch(_){}
 }
@@ -38125,7 +38134,11 @@ function runRaIcdAnalyze(opts){
   if(box){
     box.hidden=false;
     box.innerHTML=raIcdAnalyzeHtml(result);
-    try{ box.scrollIntoView({block:'nearest', behavior:'smooth'}); }catch(_){}
+    try{
+      const sc=$('raIcdScroll');
+      if(sc) sc.scrollTop=Math.max(0, box.offsetTop-8);
+      else box.scrollIntoView({block:'nearest', behavior:'smooth'});
+    }catch(_){}
   }
   const cls=result.verdict==='unlikely'?'warn':(result.verdict==='study'?'':'good');
   setRaIcdHint('Analyzed '+result.sizedFt+' ft ICD — '+result.verdictLabel
@@ -38172,7 +38185,22 @@ function openRaIcdDock(){
   const dock=$('raIcdDock');
   if(dock){
     dock.classList.add('open');
-    try{ applyFloatPanelLayout({el:dock, id:'raIcdDock', minW:300, minH:260, clearAnchors:true}); }catch(_){}
+    try{
+      /* Re-wire if an earlier boot skipped float panels (script error / late DOM). */
+      if(!dock._floatWired && typeof wireFloatPanel==='function'){
+        wireFloatPanel({el:dock, handle:'raIcdDockTitle', resize:'raIcdDockResize', minW:300, minH:260, clearAnchors:true});
+      }else{
+        applyFloatPanelLayout({el:dock, id:'raIcdDock', minW:300, minH:260, clearAnchors:true});
+      }
+      /* Keep a bounded height so .ra-icd-scroll can actually scroll after Analyze. */
+      const maxH=Math.min(Math.round((window.innerHeight||800)*0.72), 720);
+      const h=dock.offsetHeight||0;
+      if(!dock.style.height || h>maxH+8 || h<220){
+        dock.style.height=maxH+'px';
+        dock.classList.add('float-custom');
+        try{ writeFloatPanelJSON('raIcdDock','size',{w:dock.offsetWidth, h:maxH}); }catch(_){}
+      }
+    }catch(_){}
   }
 }
 function closeRaIcdDock(){
