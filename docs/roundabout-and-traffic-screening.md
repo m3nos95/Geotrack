@@ -68,7 +68,8 @@ Points near the segment geometry (sampled along the line) are counted once withi
 If the segment is **candidate or study** and a nearby control/geometry flag fires (see §3), a boost is added:
 
 ```
-+ (hitCount × 4)                 # all-way stop hits weighted higher than FM ix-only
++ (all-way stop hits × 4)        # preferred pool when present
+  or (FirstMap 3+ leg ix hits × 2)  # used only when no all-way stop hits
 + (4+ legs → 6; 3 legs → 3)
 + (band === candidate → 2)
 ```
