@@ -96,7 +96,7 @@ OSM coverage is incomplete — verify control in the field. Public link: [de.gov
 
 ## 4. Roundabout ICD screen (RA screen tool)
 
-**User flow:** click map → optional snap to FirstMap intersection → size/rotate to-scale ICD overlay → **Analyze sized ICD**.
+**User flow:** click map → optional snap to FirstMap intersection → size/rotate to-scale ICD overlay → **Add approach** if a leg was missed → **Analyze sized ICD**.
 
 ### Guidance sources
 
@@ -149,7 +149,7 @@ Each check is **PASS / WARN / FAIL / INFO**. Verdict:
 8. **Traffic signal** — active FirstMap only (OFFLINE/retired ignored). Very close → FAIL; nearby → WARN (mixed signal/RA corridors need judgment).
 9. **All-way stop** — OSM all-way nearby → PASS (common stop→RA conversion context); else INFO.
 10. **Existing roundabout** — FirstMap RA too close → FAIL; else PASS/INFO.
-11. **Approaches** — ≥3 legs PASS; 2 WARN; unclear INFO (rotate amber handles).
+11. **Approaches** — ≥3 legs PASS; 2 WARN; unclear INFO. Use **Add approach** when auto-detect missed a road (common on T-intersections), or rotate amber ◇ handles.
 
 ### Overlay looks
 
