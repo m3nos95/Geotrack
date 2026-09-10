@@ -21978,7 +21978,7 @@ table.list td{padding:5px 8px;border-bottom:1px solid rgba(46,58,72,.5);font-fam
       <div class="hint" style="margin:6px 0 0 2px">When on, Site Intel → <b>Calming</b> repeats this definition, scores segments, and paints the map (teal / amber / grey).</div>
       <div style="margin-top:10px;padding-top:10px;border-top:1px dashed rgba(46,58,72,.7)">
         <div class="hint" style="margin:0 0 6px;color:var(--cyan);font-family:var(--mono);letter-spacing:.06em;text-transform:uppercase;font-size:10px">Statewide screen</div>
-        <div class="hint" style="margin:0 0 8px">Scores <b>all</b> FirstMap traffic-count segments (~4k) × posted speed × functional class, then overlays public <b>injury/fatal &amp; ped/bike crashes</b> (since 2021), <b>school</b> proximity (public + private — not childcare), and <b>potential roundabouts</b>. Use <b>Load / refresh schools</b> or <b>Show DE schools on map</b> for purple markers. Still screening only — not warrants.</div>
+        <div class="hint" style="margin:0 0 8px">Scores <b>all</b> FirstMap traffic-count segments (~4k) × posted speed × functional class, then overlays public <b>injury/fatal &amp; ped/bike crashes</b> (since 2021), <b>school</b> proximity (public + private — not childcare), and <b>potential roundabouts</b> (OSM all-way / FirstMap 3+ legs — <b>not</b> on freeways, principal arterials, or SR&nbsp;1 / US&nbsp;13-class corridors). Use <b>Load / refresh schools</b> or <b>Show DE schools on map</b> for purple markers. Still screening only — not warrants.</div>
         <div class="btnrow" style="display:flex;gap:6px;flex-wrap:wrap">
           <button type="button" class="btn" id="statewideCalmingRunBtn" style="border-color:var(--cyan);color:var(--cyan)">Run statewide screen</button>
           <button type="button" class="btn" id="statewideCalmingOpenBtn" disabled>Open ranked list</button>
@@ -22151,7 +22151,7 @@ table.list td{padding:5px 8px;border-bottom:1px solid rgba(46,58,72,.5);font-fam
     </div>
     <label class="sc-check"><input type="checkbox" id="scPostedHigh"> Posted 25–35 mph only (higher-risk band among candidates)</label>
     <label class="sc-check"><input type="checkbox" id="scNearSchool"> Near school only (≤ 0.25 mi)</label>
-    <label class="sc-check"><input type="checkbox" id="scRoundabout"> Potential roundabout (all-way stop <b>or</b> FirstMap 3+ leg intersection · candidate/study)</label>
+    <label class="sc-check"><input type="checkbox" id="scRoundabout"> Potential roundabout (all-way stop <b>or</b> FirstMap 3+ leg · candidate/study · excl. SR&nbsp;1 / US&nbsp;13-class majors)</label>
     <label class="sc-check"><input type="checkbox" id="scFourLeg"> Prefer 4+ legs (FirstMap intersection join)</label>
     <label>Min injury/fatal crashes nearby (since 2021)
       <input type="number" id="scMinCrashes" min="0" step="1" placeholder="0" inputmode="numeric">
@@ -35946,7 +35946,7 @@ async function screenTrafficCalmingStatewide(opts){
       stopBufFt:calmingRoundaboutCtx.stopBufFt,
       ixBufFt:calmingRoundaboutCtx.ixBufFt
     }:null,
-    disclaimer:'Statewide screening only — DelDOT Traffic Calming Design Manual (2025). Crash/school overlays are public FirstMap screening aids. Potential roundabouts = candidate/study segments near OSM all-way stops OR FirstMap 3+ leg intersections (excl. signals & existing FirstMap roundabouts) — not warrants; verify control in the field. See de.gov/roundabouts.'
+    disclaimer:'Statewide screening only — DelDOT Traffic Calming Design Manual (2025). Crash/school overlays are public FirstMap screening aids. Potential roundabouts = candidate/study segments near OSM all-way stops OR FirstMap 3+ leg intersections (excl. signals, existing FirstMap roundabouts, and major corridors such as freeways / principal arterials / SR 1 · US 13-class) — not warrants; verify control in the field. See de.gov/roundabouts.'
   };
 }
 
@@ -38882,17 +38882,18 @@ function calmingFeatureLatLon(f){
 async function fetchOsmAllWayStops(opts){
   opts=opts||{};
   const progress=msg=>{ if(opts.onStatus) opts.onStatus(msg); };
-  const q='[out:json][timeout:55];node["highway"="stop"]["stop"="all"](38.45,-75.80,39.85,-74.95);out body;';
+  const q='[out:json][timeout:45];node["highway"="stop"]["stop"="all"](38.45,-75.80,39.85,-74.95);out body;';
+  const OVERPASS_MS=opts.timeoutMs!=null?+opts.timeoutMs:48000;
   let lastErr=null;
   for(let i=0;i<CALMING_RA_OVERPASS_URLS.length;i++){
     const url=CALMING_RA_OVERPASS_URLS[i];
     progress('Roundabouts: OSM all-way stops ('+(i+1)+'/'+CALMING_RA_OVERPASS_URLS.length+')…');
     try{
-      const res=await fetch(url,{
+      const res=await raFetch(url,{
         method:'POST',
         headers:{'Content-Type':'application/x-www-form-urlencoded;charset=UTF-8'},
         body:'data='+encodeURIComponent(q)
-      });
+      }, OVERPASS_MS);
       if(!res.ok) throw new Error('Overpass HTTP '+res.status);
       const data=await res.json();
       const stops=[];
@@ -38911,17 +38912,26 @@ async function fetchOsmAllWayStops(opts){
       return stops;
     }catch(e){
       lastErr=e;
-      console.warn('overpass all-way', url, e);
+      console.warn('overpass all-way', url, e&&e.message?e.message:e);
     }
   }
-  throw lastErr||new Error('Could not load OSM all-way stops');
+  /* Soft-fail: FirstMap 3+ leg intersections still drive potential-RA flags. */
+  progress('Roundabouts: OSM all-way unavailable'+(lastErr?(' ('+(lastErr.message||lastErr)+')'):'')+' — using FirstMap intersections…');
+  return [];
 }
 async function loadCalmingRoundaboutContext(opts){
   opts=opts||{};
   if(calmingRoundaboutCtx&&calmingRoundaboutCtx.ok&&!opts.force) return calmingRoundaboutCtx;
   const progress=msg=>{ if(opts.onStatus) opts.onStatus(msg); };
 
-  const stopsRaw=await fetchOsmAllWayStops({ onStatus:progress });
+  let stopsRaw=[];
+  try{
+    stopsRaw=await fetchOsmAllWayStops({ onStatus:progress });
+  }catch(e){
+    console.warn('calming OSM all-way', e);
+    stopsRaw=[];
+    progress('Roundabouts: OSM skipped — using FirstMap intersections…');
+  }
 
   progress('Roundabouts: DelDOT traffic signals…');
   const signalFeats=await fetchFirstmapQueryPaged('Transportation/DE_Boundary_and_Point/FeatureServer', 29, {
@@ -39024,11 +39034,29 @@ async function loadCalmingRoundaboutContext(opts){
     intersectionsN:intersections.length,
     osmN:stopsRaw.length,
     keptN:stops.length,
+    osmSkipped:!stopsRaw.length,
     stopBufFt:CALMING_RA_STOP_BUF_FT,
     ixBufFt:CALMING_RA_INT_JOIN_FT
   };
   calmingRoundaboutCtx.ixGrid=buildCalmingPointGrid(calmingRoundaboutCtx.intersections||[], 0.01);
   return calmingRoundaboutCtx;
+}
+/* Skip potential-RA flags on freeways / principal arterials and named DE majors (SR 1, US 13, …). */
+function isCalmingRaExcludedCorridor(seg){
+  if(!seg) return false;
+  const fc=String(seg.funcClass||'').toLowerCase();
+  if(/interstate|freeway|expressway|principal arterial|other principal|major arterial/.test(fc)) return true;
+  const r=String(seg.road||'').toUpperCase().replace(/\./g,'').replace(/\s+/g,' ').trim();
+  if(!r) return false;
+  if(/\b(I|INTERSTATE)\s*-?\s*95\b/.test(r)) return true;
+  /* US / DE / SR route numbers that are not local calming RA candidates */
+  if(/\b(US|U S)\s*-?\s*(13|40|113|301)\b/.test(r)) return true;
+  if(/\b(SR|DE|DEL|ROUTE|RT|HWY|HIGHWAY)\s*-?\s*(1|13|40|113|141|896|301)\b/.test(r)) return true;
+  if(/^1\b|^13\b/.test(r) && /\b(ROUTE|RT|SR|DE|US|HWY|HIGHWAY)\b/.test(r)) return true;
+  if(/\bKOREAN WAR VETERANS\b|\bCOASTAL HIGHWAY\b|\bDUPONT HIGHWAY\b|\bPULASKI HIGHWAY\b|\bLIMESTONE ROAD\b/.test(r)) return true;
+  if(seg.postedMph!=null&&+seg.postedMph>=45) return true;
+  if(seg.aadt!=null&&+seg.aadt>=25000&&/arterial/.test(fc)) return true;
+  return false;
 }
 function enrichCalmingSegmentsWithRoundabouts(segments){
   if(!calmingRoundaboutCtx||!calmingRoundaboutCtx.ok||!segments) return segments;
@@ -39073,12 +39101,15 @@ function enrichCalmingSegmentsWithRoundabouts(segments){
       }
     });
     /* Candidate or study — RA conversions happen on both (posted >35 / arterial often = study).
-       Signalized / existing-RA sites already stripped from stop + ix pools. */
-    const screenBand=s.band==='candidate'||s.band==='study';
+       Signalized / existing-RA sites already stripped from stop + ix pools.
+       Major corridors (SR 1 / US 13 / freeways / principal arterials) are excluded. */
+    const major=isCalmingRaExcludedCorridor(s);
+    const screenBand=!major&&(s.band==='candidate'||s.band==='study');
     const hits=stopHits.length?stopHits:ixHits;
     s.roundaboutStops=hits;
     s.roundaboutN=hits.length;
     s.roundaboutMaxLegs=maxLegs||null;
+    s.roundaboutMajorExcluded=!!major;
     s.roundaboutPotential=!!(screenBand&&hits.length);
     if(s.roundaboutPotential){
       const legBit=maxLegs>=4?(' · '+maxLegs+'-leg'):(maxLegs>=3?(' · '+maxLegs+'-leg'):'');
@@ -39090,7 +39121,7 @@ function enrichCalmingSegmentsWithRoundabouts(segments){
       const base=stopHits.length?hits.length*4:hits.length*2;
       s.riskScore=(s.riskScore||0) + base + (maxLegs>=4?6:(maxLegs>=3?3:0)) + (s.band==='candidate'?2:0);
     } else {
-      s.roundaboutHint='';
+      s.roundaboutHint=major?'Major corridor (freeway / principal arterial / SR 1·US 13-class) — potential roundabout flag suppressed':'';
     }
   });
   return segments;
