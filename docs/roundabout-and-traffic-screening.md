@@ -160,7 +160,7 @@ Ring / Built / Grass / Detailed / Diagram change **preview graphics only**. They
 ## 5. What we deliberately do **not** claim
 
 - Not a **MUTCD warrant** or DelDOT **approval**
-- Not **HCM / SIDRA capacity** certainty (no peak enter+conflict TM in the map screen)
+- Not **HCM / SIDRA / Cap-X capacity** certainty (no peak enter+conflict turning movements in the map screen)
 - Not **ROW / fee ownership** or utility clearance
 - Not **design vehicle / fastest-path** compliance (DGM 1-26 / TORUS territory)
 - Not proof that **speeding** is occurring (no 85th %ile)
@@ -168,20 +168,49 @@ Ring / Built / Grass / Detailed / Diagram change **preview graphics only**. They
 
 ---
 
-## 6. Where to click in the app
+## 6. Cap-X next step (NCHRP 17-98)
+
+After a site looks discussable in GeoTrak, run **CAP-X Tool (NCHRP Project 17-98)** for planning-level **volume-to-capacity** of junction alternatives.
+
+| GeoTrak | Cap-X |
+|---------|--------|
+| Click → size ICD → buildings / speed / AADT bias | Enter **AM/PM peak turning movements** |
+| “Does this footprint / context look discussable?” | “Does this junction form work on capacity (v/c)?” |
+| No peak TMs | Requires peak TMs on tab **1 - Volume Input** |
+
+**Workbook in repo:** [`Cap-X_Tool_NCHRP_17-98.xlsm`](../Cap-X_Tool_NCHRP_17-98.xlsm) (build 2023-07).
+
+### ICD → Cap-X roundabout sheets (suggestion only)
+
+| Sized ICD (GeoTrak) | Cap-X sheets to try first |
+|---------------------|---------------------------|
+| ≤55 ft | 50 Mini-Rndabt · 75 Mini-Rndabt |
+| ≤85 ft | 75 Mini-Rndabt · 50 Mini · 1×1 |
+| ≤110 ft | 1×1 Rndabt · 75 Mini |
+| ≤145 ft | 1×1 · 1NS×2EW / 2NS×1EW (→ 2×2 if AADT high) |
+| ≤190 ft | 2×2 · 1×1 / hybrid |
+| >190 ft | 2×2 · 3×3 |
+
+Analyze sized ICD adds an **INFO** row with these suggestions and a link to the workbook. Cap-X is **not** run inside GeoTrak.
+
+---
+
+## 7. Where to click in the app
 
 | Goal | Control |
 |------|---------|
 | Calming context on map click | **Traffic calming** (header) or Layers → calming screen |
 | Ranked statewide list | Calming screen → **Run statewide screen** |
 | Size & analyze a roundabout footprint | **RA screen** → size/rotate → **Analyze sized ICD** |
+| Capacity / v/c of junction alts | Open **Cap-X** workbook → peak TMs → select RA alt |
 
 Manuals / portals:
 
 - [Delaware Traffic Calming Design Manual (PDF)](https://deldot.gov/Publications/manuals/traffic_calming/pdfs/Delaware_TrafficCalmingDesignManual.pdf)
 - [de.gov/roundabouts](https://de.gov/roundabouts)
 - NCHRP *Guide for Roundabouts* (Report **1043**) — local research copies under `docs/fhwa-roundabout/` (gitignored; not shipped in the repo)
+- [CAP-X Tool (NCHRP 17-98)](https://github.com/m3nos95/Geotrack/blob/main/Cap-X_Tool_NCHRP_17-98.xlsm) — planning junction v/c
 
 ---
 
-*Document version tracks GeoTrak screening behavior as of **v0.99.44**.*
+*Document version tracks GeoTrak screening behavior as of **v0.99.48**.*
