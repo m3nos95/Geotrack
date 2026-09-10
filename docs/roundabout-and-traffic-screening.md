@@ -96,7 +96,7 @@ OSM coverage is incomplete — verify control in the field. Public link: [de.gov
 
 ## 4. Roundabout ICD screen (RA screen tool)
 
-**User flow:** click map → optional snap to FirstMap intersection → size/rotate to-scale ICD overlay → **Add approach** if a leg was missed → **Analyze sized ICD**.
+**User flow:** click map → optional snap to FirstMap intersection → size ICD → **Add approach** if a leg was missed → drag amber ◇ to **extend/aim** along the road and pale □ to **contour** entry → **Analyze sized ICD**.
 
 ### Guidance sources
 
