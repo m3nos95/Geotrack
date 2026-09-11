@@ -38014,7 +38014,7 @@ function bindRaIcdHandleDrag(target, kind, onDrag, onEnd){
     try{
       L.DomEvent.on(document, 'mousemove', onMove);
       L.DomEvent.on(document, 'mouseup', onUp);
-      L.DomEvent.on(document, 'touchmove', onMove, {passive:false});
+      L.DomEvent.on(document, 'touchmove', onMove);
       L.DomEvent.on(document, 'touchend', onUp);
     }catch(_){}
     try{
