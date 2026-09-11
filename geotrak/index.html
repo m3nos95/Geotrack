@@ -6,8 +6,8 @@
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<meta name="geotrak-build" content="0.99.51-fix-ra-move">
-<meta name="geotrak-version" content="0.99.51">
+<meta name="geotrak-build" content="0.99.52-ra-handles-alive">
+<meta name="geotrak-version" content="0.99.52">
 <meta name="geotrak-pages-rev" content="2026-08-27T17:25Z">
 <title>DelDOT GeoTrak</title>
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=Press+Start+2P&family=Syne:wght@500;600;700;800&display=swap" rel="stylesheet">
@@ -20966,8 +20966,13 @@ button,input,select,textarea{font-family:inherit}
 #raIcdDock .ra-icd-analyze .ra-an-tag.fail{color:#f87171}
 #raIcdDock .ra-icd-analyze .ra-an-tag.info{color:#7dd3fc}
 #raIcdDock .ra-icd-analyze .ra-an-stale{margin:0 0 8px;padding:6px 8px;border:1px solid rgba(251,191,36,.45);border-radius:4px;background:rgba(251,191,36,.1);color:#fbbf24}
-.ra-icd-handle-wrap.leaflet-div-icon{background:transparent !important;border:none !important;width:auto !important;height:auto !important;margin:0 !important}
-.ra-icd-handle-stack{position:relative;width:22px;height:22px}
+.leaflet-raIcdHandlePane-pane{z-index:680;pointer-events:auto !important}
+.ra-icd-handle-wrap.leaflet-div-icon{
+  background:transparent !important;border:none !important;width:28px !important;height:28px !important;margin:0 !important;
+  pointer-events:auto !important;cursor:grab !important;
+}
+.ra-icd-handle-wrap.leaflet-div-icon *{pointer-events:none !important} /* events hit wrap, not children */
+.ra-icd-handle-stack{position:relative;width:28px;height:28px;pointer-events:none !important}
 .ra-icd-handle{width:18px;height:18px;border-radius:3px;background:#0ea5e9;border:2px solid #e0f2fe;box-shadow:0 2px 8px rgba(0,0,0,.55);cursor:nwse-resize;position:absolute;left:2px;top:2px}
 .ra-icd-handle.move{border-radius:50%;cursor:move;background:#38bdf8;position:absolute;left:1px;top:1px;width:20px;height:20px;z-index:2}
 body.ra-icd-moving, body.ra-icd-moving .leaflet-container{cursor:move !important}
@@ -21928,7 +21933,7 @@ table.list td{padding:5px 8px;border-bottom:1px solid rgba(46,58,72,.5);font-fam
 <div id="hdr">
   <div class="brand" title="Delaware Department of Transportation">
     <img src="data:image/png;base64,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" width="28" height="28" alt="DelDOT">
-    <h1><b>DelDOT</b> GeoTrak<span class="badge">v0.99.51</span></h1>
+    <h1><b>DelDOT</b> GeoTrak<span class="badge">v0.99.52</span></h1>
   </div>
   <button class="tab on" data-p="map">Map</button>
   <button class="tab" data-p="refs">Reference data</button>
@@ -22675,6 +22680,7 @@ const raIcdTool={
   moving:false,
   rotating:false,
   contouring:false,
+  suppressMapClickUntil:0,
   look:'grass' /* ring | built | grass | detailed — preview styles only */
 };
 const RA_ICD_LOOKS=['ring','built','grass','detailed','diagram'];
@@ -37674,7 +37680,7 @@ function setRaIcdApproachTip(idx, lat, lon, opts){
   fit.approachUserRotated=true;
   const live=!!(opts.live||raIcdTool.rotating||raIcdTool.sizing||raIcdTool.moving);
   if(!opts.skipPaint){
-    paintRaFeasibilityOverlay(fit, {keepHandles:live});
+    paintRaFeasibilityOverlay(fit, {keepHandles:live, handlesOnly:!!(opts.handlesOnly||live)});
     if(!live&&raIcdTool.lastCenter) paintRaIcdExtraOverlay(raIcdTool.lastCenter, raIcdTool.lastCtx);
   }
   invalidateRaIcdAnalyze({live:live});
@@ -37703,7 +37709,7 @@ function setRaIcdApproachEntry(idx, deg, opts){
   fit.approachUserRotated=true;
   const live=!!(opts.live||raIcdTool.contouring||raIcdTool.rotating);
   if(!opts.skipPaint){
-    paintRaFeasibilityOverlay(fit, {keepHandles:live});
+    paintRaFeasibilityOverlay(fit, {keepHandles:live, handlesOnly:!!(opts.handlesOnly||live)});
     if(!live&&raIcdTool.lastCenter) paintRaIcdExtraOverlay(raIcdTool.lastCenter, raIcdTool.lastCtx);
   }
   invalidateRaIcdAnalyze({live:live});
@@ -37868,7 +37874,7 @@ function setRaIcdOverlaySize(ft, opts){
   syncRaIcdSizeControls(v);
   const live=!!(opts.live||raIcdTool.sizing||raIcdTool.moving||raIcdTool.rotating);
   if(!opts.skipPaint){
-    paintRaFeasibilityOverlay(fit, {keepHandles:live});
+    paintRaFeasibilityOverlay(fit, {keepHandles:live, handlesOnly:!!(opts.handlesOnly||live)});
     if(!live&&raIcdTool.lastCenter) paintRaIcdExtraOverlay(raIcdTool.lastCenter, raIcdTool.lastCtx);
   }
   invalidateRaIcdAnalyze({live:live});
@@ -37886,7 +37892,7 @@ function setRaIcdOverlayCenter(lat, lon, opts){
   if(raIcdTool.lastCenter){ raIcdTool.lastCenter.lat=+lat; raIcdTool.lastCenter.lon=+lon; }
   const live=!!(opts.live||raIcdTool.sizing||raIcdTool.moving||raIcdTool.rotating);
   if(!opts.skipPaint){
-    paintRaFeasibilityOverlay(fit, {keepHandles:live});
+    paintRaFeasibilityOverlay(fit, {keepHandles:live, handlesOnly:!!(opts.handlesOnly||live)});
     if(!live) paintRaIcdExtraOverlay({lat:+lat, lon:+lon}, raIcdTool.lastCtx);
   }
   invalidateRaIcdAnalyze({live:live});
@@ -37954,90 +37960,136 @@ function updateRaIcdHandlePositions(fit){
   }catch(_){}
   syncRaIcdSizeControls(outerFt);
 }
+function raIcdPointerLatLng(ev){
+  try{
+    const oe=ev&&(ev.originalEvent||ev);
+    if(!oe||typeof map==='undefined'||!map) return null;
+    if(oe.touches&&oe.touches[0]) return map.mouseEventToLatLng(oe.touches[0]);
+    if(oe.changedTouches&&oe.changedTouches[0]) return map.mouseEventToLatLng(oe.changedTouches[0]);
+    if(typeof oe.clientX==='number') return map.mouseEventToLatLng(oe);
+    if(ev.latlng) return ev.latlng;
+  }catch(_){}
+  return null;
+}
+/** Document-level pointer drag — survives marker-under-cursor + map click suppression. */
+function bindRaIcdHandleDrag(target, kind, onDrag, onEnd){
+  if(!target) return;
+  let dragging=false;
+  const onMove=(e)=>{
+    if(!dragging) return;
+    try{ L.DomEvent.stop(e); }catch(_){}
+    const ll=raIcdPointerLatLng(e);
+    if(!ll) return;
+    try{ onDrag(ll, e); }catch(err){ console.warn('RA handle drag', kind, err); }
+  };
+  const onUp=(e)=>{
+    if(!dragging) return;
+    dragging=false;
+    raIcdTool.sizing=false;
+    raIcdTool.moving=false;
+    raIcdTool.rotating=false;
+    raIcdTool.contouring=false;
+    raIcdTool.suppressMapClickUntil=Date.now()+450;
+    try{ map.dragging.enable(); }catch(_){}
+    try{
+      L.DomEvent.off(document, 'mousemove', onMove);
+      L.DomEvent.off(document, 'mouseup', onUp);
+      L.DomEvent.off(document, 'touchmove', onMove);
+      L.DomEvent.off(document, 'touchend', onUp);
+    }catch(_){}
+    try{
+      document.body.classList.remove('ra-icd-sizing','ra-icd-moving','ra-icd-rotating','ra-icd-contouring');
+    }catch(_){}
+    try{ if(onEnd) onEnd(e); }catch(err){ console.warn('RA handle end', kind, err); }
+  };
+  const onDown=(e)=>{
+    try{ L.DomEvent.stop(e); }catch(_){}
+    dragging=true;
+    raIcdTool.sizing=kind==='size';
+    raIcdTool.moving=kind==='move';
+    raIcdTool.rotating=kind==='tip';
+    raIcdTool.contouring=kind==='entry';
+    raIcdTool.suppressMapClickUntil=Date.now()+450;
+    try{ map.dragging.disable(); }catch(_){}
+    try{
+      L.DomEvent.on(document, 'mousemove', onMove);
+      L.DomEvent.on(document, 'mouseup', onUp);
+      L.DomEvent.on(document, 'touchmove', onMove);
+      L.DomEvent.on(document, 'touchend', onUp);
+    }catch(_){}
+    try{
+      document.body.classList.add(
+        kind==='size'?'ra-icd-sizing':
+        kind==='move'?'ra-icd-moving':
+        kind==='entry'?'ra-icd-contouring':'ra-icd-rotating'
+      );
+    }catch(_){}
+  };
+  target.on('mousedown', onDown);
+  target.on('touchstart', onDown);
+  /* Also bind DOM element after add — belt & suspenders for custom panes */
+  target._raIcdBindDom=()=>{
+    try{
+      const el=target.getElement?target.getElement():(target._path||null);
+      if(!el||el._raIcdBound) return;
+      el._raIcdBound=true;
+      L.DomEvent.on(el, 'mousedown', onDown);
+      L.DomEvent.on(el, 'touchstart', onDown);
+      L.DomEvent.disableClickPropagation(el);
+      L.DomEvent.disableScrollPropagation(el);
+      L.DomEvent.on(el, 'click', L.DomEvent.stop);
+      L.DomEvent.on(el, 'dblclick', L.DomEvent.stop);
+    }catch(_){}
+  };
+}
 function paintRaIcdInteractiveHandles(fit){
   clearRaIcdHandleOverlay();
   if(!fit||fit.lat==null||fit.lon==null||typeof L==='undefined'||typeof map==='undefined') return;
   if(typeof offsetLatLonByFt!=='function') return;
   ensureCalmingMapPanes();
-  /* Dedicated handle pane (above schematic + calming RA dots) so move/size always receive events. */
   const paneName=(map.getPane&&map.getPane('raIcdHandlePane'))?'raIcdHandlePane':'calmingRaPane';
+  try{
+    const p=map.getPane(paneName);
+    if(p){ p.style.pointerEvents='auto'; p.style.zIndex=paneName==='raIcdHandlePane'?'680':(p.style.zIndex||'660'); }
+  }catch(_){}
   const group=L.layerGroup();
   const outerFt=clampRaIcdSizeFt(fit.schematicFt!=null?fit.schematicFt:(fit.suggestedFt||RA_ICD_SINGLE_FT));
   const mPerFt=0.3048;
-  /* Visible ICD guide + stroke-only sizing rim (no fill hit-test over the center move handle). */
   const guide=L.circle([fit.lat, fit.lon], {
-    pane:paneName,
-    radius:outerFt*mPerFt,
-    color:'#38bdf8',
-    weight:2,
-    dashArray:'6 5',
-    opacity:0.85,
-    fill:false,
-    fillOpacity:0,
-    interactive:false,
-    bubblingMouseEvents:false
+    pane:paneName, radius:outerFt*mPerFt, color:'#38bdf8', weight:2, dashArray:'6 5',
+    opacity:0.85, fill:false, interactive:false, bubblingMouseEvents:false
   });
   group.addLayer(guide);
   const rim=L.circle([fit.lat, fit.lon], {
-    pane:paneName,
-    radius:outerFt*mPerFt,
-    color:'#38bdf8',
-    weight:18,
-    opacity:0.02,
-    fill:false,
-    fillOpacity:0,
-    interactive:true,
-    bubblingMouseEvents:false
+    pane:paneName, radius:outerFt*mPerFt, color:'#38bdf8', weight:22, opacity:0.03,
+    fill:false, interactive:true, bubblingMouseEvents:false
   });
   group.addLayer(rim);
-  const sizeLL=offsetLatLonByFt(+fit.lat, +fit.lon, outerFt, Math.PI/4); /* NE rim */
+  const sizeLL=offsetLatLonByFt(+fit.lat, +fit.lon, outerFt, Math.PI/4);
   const spoke=L.polyline([[+fit.lat, +fit.lon], [sizeLL[0], sizeLL[1]]], {
-    pane:paneName,
-    color:'#7dd3fc',
-    weight:1.5,
-    dashArray:'4 4',
-    opacity:0.9,
-    interactive:false,
-    bubblingMouseEvents:false
+    pane:paneName, color:'#7dd3fc', weight:1.5, dashArray:'4 4', opacity:0.9,
+    interactive:false, bubblingMouseEvents:false
   });
   group.addLayer(spoke);
   const sizeMk=L.marker([sizeLL[0], sizeLL[1]], {
-    pane:paneName,
-    interactive:true,
-    keyboard:false,
-    zIndexOffset:900,
-    draggable:false,
+    pane:paneName, interactive:true, keyboard:false, zIndexOffset:900, draggable:false,
     icon:L.divIcon({
       className:'ra-icd-handle-wrap',
       html:'<div class="ra-icd-handle-stack"><div class="ra-icd-handle" title="Drag to size ICD (to scale)"></div><span class="ra-icd-handle-ft">'+Math.round(outerFt)+'′</span></div>',
-      iconSize:[22,22],
-      iconAnchor:[11,11]
+      iconSize:[28,28], iconAnchor:[14,14]
     })
   });
   const moveMk=L.marker([+fit.lat, +fit.lon], {
-    pane:paneName,
-    interactive:true,
-    keyboard:false,
-    zIndexOffset:1400,
-    draggable:false,
+    pane:paneName, interactive:true, keyboard:false, zIndexOffset:1500, draggable:false,
     icon:L.divIcon({
       className:'ra-icd-handle-wrap',
       html:'<div class="ra-icd-handle-stack"><div class="ra-icd-handle move" title="Drag to move overlay center"></div></div>',
-      iconSize:[24,24],
-      iconAnchor:[12,12]
+      iconSize:[28,28], iconAnchor:[14,14]
     })
   });
-  /* Invisible fat center hit target — easier grab than the 20px dot alone */
   const moveHit=L.circleMarker([+fit.lat, +fit.lon], {
-    pane:paneName,
-    radius:14,
-    color:'transparent',
-    weight:0,
-    fillColor:'#38bdf8',
-    fillOpacity:0.01,
-    opacity:0,
-    interactive:true,
-    bubblingMouseEvents:false
+    pane:paneName, radius:16, color:'#38bdf8', weight:2, opacity:0.35,
+    fillColor:'#38bdf8', fillOpacity:0.12, interactive:true, bubblingMouseEvents:false
   });
   group.addLayer(moveHit);
   group.addLayer(sizeMk);
@@ -38054,250 +38106,96 @@ function paintRaIcdInteractiveHandles(fit){
       const tipLL=offsetLatLonByFt(+fit.lat, +fit.lon, tipFt, tipBr);
       const entryLL=offsetLatLonByFt(+fit.lat, +fit.lon, outerFt, entryBr);
       const guideLine=L.polyline([[entryLL[0], entryLL[1]], [tipLL[0], tipLL[1]]], {
-        pane:paneName,
-        color:geom.contoured[idx]?'#fbbf24':'#f59e0b',
-        weight:1.4,
-        dashArray:'5 5',
-        opacity:0.85,
-        interactive:false,
-        bubblingMouseEvents:false
+        pane:paneName, color:geom.contoured[idx]?'#fbbf24':'#f59e0b', weight:1.4, dashArray:'5 5',
+        opacity:0.85, interactive:false, bubblingMouseEvents:false
       });
       group.addLayer(guideLine);
       approachGuides.push(guideLine);
       const mk=L.marker([tipLL[0], tipLL[1]], {
-        pane:paneName,
-        interactive:true,
-        keyboard:false,
-        zIndexOffset:880,
-        draggable:false,
+        pane:paneName, interactive:true, keyboard:false, zIndexOffset:880, draggable:false,
         icon:L.divIcon({
           className:'ra-icd-handle-wrap',
-          html:'<div class="ra-icd-handle-stack"><div class="ra-icd-handle approach" title="Drag to extend &amp; aim tip along the existing road"></div><span class="ra-icd-handle-ft approach-ft">'+Math.round(tipFt)+'′</span></div>',
-          iconSize:[22,22],
-          iconAnchor:[11,11]
+          html:'<div class="ra-icd-handle-stack"><div class="ra-icd-handle approach" title="Drag to extend &amp; aim tip along the road"></div><span class="ra-icd-handle-ft approach-ft">'+Math.round(tipFt)+'′</span></div>',
+          iconSize:[28,28], iconAnchor:[14,14]
         })
       });
       group.addLayer(mk);
       approachMks.push(mk);
       const entryMk=L.marker([entryLL[0], entryLL[1]], {
-        pane:paneName,
-        interactive:true,
-        keyboard:false,
-        zIndexOffset:870,
-        draggable:false,
+        pane:paneName, interactive:true, keyboard:false, zIndexOffset:870, draggable:false,
         icon:L.divIcon({
           className:'ra-icd-handle-wrap',
-          html:'<div class="ra-icd-handle-stack"><div class="ra-icd-handle approach-entry" title="Drag to contour entry angle to match curb / road profile"></div></div>',
-          iconSize:[22,22],
-          iconAnchor:[11,11]
+          html:'<div class="ra-icd-handle-stack"><div class="ra-icd-handle approach-entry" title="Drag to contour entry angle to match curb / road"></div></div>',
+          iconSize:[28,28], iconAnchor:[14,14]
         })
       });
       group.addLayer(entryMk);
       entryMks.push(entryMk);
     });
-  }catch(err){
-    console.warn('RA approach handles', err);
+  }catch(err){ console.warn('RA approach handles', err); }
+
+  function finishEdit(msg){
+    const f=raIcdTool.lastFit;
+    if(f){
+      paintRaFeasibilityOverlay(f); /* full rebuild after drag */
+      if(raIcdTool.lastCenter||(f.lat!=null)) paintRaIcdExtraOverlay({lat:+f.lat, lon:+f.lon}, raIcdTool.lastCtx);
+    }
+    try{ refreshRaIcdAnalyzeAfterEdit(); }catch(_){}
+    if(msg&&f&&!raIcdTool.lastAnalyze) setRaIcdHint(msg,'good');
   }
-  function bindApproachDrag(target, idx){
-    let dragging=false;
-    const onMove=(e)=>{
-      if(!dragging) return;
-      L.DomEvent.stop(e);
-      const ll=e.latlng||(e.touches?map.mouseEventToLatLng(e.touches[0]):null);
-      if(!ll) return;
-      const f=raIcdTool.lastFit||fit;
-      if(!f||f.lat==null||f.lon==null) return;
-      setRaIcdApproachTip(idx, +ll.lat, +ll.lng, {live:true, quiet:true});
-    };
-    const onUp=()=>{
-      if(!dragging) return;
-      dragging=false;
-      raIcdTool.rotating=false;
-      map.dragging.enable();
-      map.off('mousemove', onMove);
-      map.off('mouseup', onUp);
-      map.off('touchmove', onMove);
-      map.off('touchend', onUp);
-      try{ document.body.classList.remove('ra-icd-rotating'); }catch(_){}
+
+  bindRaIcdHandleDrag(rim, 'size', (ll)=>{
+    const f=raIcdTool.lastFit||fit;
+    if(!f||f.lat==null) return;
+    const d=calmingDistFt(+f.lat, +f.lon, +ll.lat, +ll.lng);
+    if(d>0) setRaIcdOverlaySize(d*2, {live:true, quiet:true, handlesOnly:true});
+  }, ()=>finishEdit(null));
+
+  bindRaIcdHandleDrag(sizeMk, 'size', (ll)=>{
+    const f=raIcdTool.lastFit||fit;
+    if(!f||f.lat==null) return;
+    const d=calmingDistFt(+f.lat, +f.lon, +ll.lat, +ll.lng);
+    if(d>0) setRaIcdOverlaySize(d*2, {live:true, quiet:true, handlesOnly:true});
+  }, ()=>finishEdit(null));
+
+  const moveDrag=(ll)=>{
+    setRaIcdOverlayCenter(+ll.lat, +ll.lng, {live:true, quiet:true, handlesOnly:true});
+  };
+  bindRaIcdHandleDrag(moveHit, 'move', moveDrag, ()=>finishEdit('Overlay moved — drag amber ◇ / pale □ to align approaches, then Analyze.'));
+  bindRaIcdHandleDrag(moveMk, 'move', moveDrag, ()=>finishEdit('Overlay moved — drag amber ◇ / pale □ to align approaches, then Analyze.'));
+
+  approachMks.forEach((mk, idx)=>{
+    bindRaIcdHandleDrag(mk, 'tip', (ll)=>{
+      setRaIcdApproachTip(idx, +ll.lat, +ll.lng, {live:true, quiet:true, handlesOnly:true});
+    }, ()=>{
       const f=raIcdTool.lastFit;
-      if(f){
-        paintRaFeasibilityOverlay(f);
-        if(raIcdTool.lastCenter) paintRaIcdExtraOverlay(raIcdTool.lastCenter, raIcdTool.lastCtx);
-      }
-      refreshRaIcdAnalyzeAfterEdit();
-      if(f&&!raIcdTool.lastAnalyze){
-        const len=(f.approachLengthsFt||[])[idx];
-        const b=(f.approachTipBearingsDeg||f.approachBearingsDeg||[])[idx];
-        if(b!=null) setRaIcdHint('Approach '+(idx+1)+': '+Math.round(+len||0)+' ft @ '+Math.round(+b)+'° — pale □ contours entry to the curb.','good');
-      }
-    };
-    const onDown=(e)=>{
-      L.DomEvent.stop(e);
-      dragging=true;
-      raIcdTool.rotating=true;
-      map.dragging.disable();
-      map.on('mousemove', onMove);
-      map.on('mouseup', onUp);
-      map.on('touchmove', onMove);
-      map.on('touchend', onUp);
-      try{ document.body.classList.add('ra-icd-rotating'); }catch(_){}
-    };
-    target.on('mousedown', onDown);
-    target.on('touchstart', onDown);
-  }
-  function bindEntryDrag(target, idx){
-    let dragging=false;
-    const onMove=(e)=>{
-      if(!dragging) return;
-      L.DomEvent.stop(e);
-      const ll=e.latlng||(e.touches?map.mouseEventToLatLng(e.touches[0]):null);
-      if(!ll) return;
+      const len=f&&(f.approachLengthsFt||[])[idx];
+      const b=f&&(f.approachTipBearingsDeg||f.approachBearingsDeg||[])[idx];
+      finishEdit(b!=null?('Approach '+(idx+1)+': '+Math.round(+len||0)+' ft @ '+Math.round(+b)+'° — pale □ contours entry.'):null);
+    });
+  });
+  entryMks.forEach((mk, idx)=>{
+    bindRaIcdHandleDrag(mk, 'entry', (ll)=>{
       const f=raIcdTool.lastFit||fit;
-      if(!f||f.lat==null||f.lon==null) return;
+      if(!f||f.lat==null) return;
       const deg=raBearingDeg(+f.lat, +f.lon, +ll.lat, +ll.lng);
-      setRaIcdApproachEntry(idx, deg, {live:true, quiet:true});
-    };
-    const onUp=()=>{
-      if(!dragging) return;
-      dragging=false;
-      raIcdTool.contouring=false;
-      map.dragging.enable();
-      map.off('mousemove', onMove);
-      map.off('mouseup', onUp);
-      map.off('touchmove', onMove);
-      map.off('touchend', onUp);
-      try{ document.body.classList.remove('ra-icd-contouring'); }catch(_){}
+      setRaIcdApproachEntry(idx, deg, {live:true, quiet:true, handlesOnly:true});
+    }, ()=>{
       const f=raIcdTool.lastFit;
-      if(f){
-        paintRaFeasibilityOverlay(f);
-        if(raIcdTool.lastCenter) paintRaIcdExtraOverlay(raIcdTool.lastCenter, raIcdTool.lastCtx);
-      }
-      refreshRaIcdAnalyzeAfterEdit();
-      if(f&&!raIcdTool.lastAnalyze){
-        const eDeg=(f.approachEntryBearingsDeg||[])[idx];
-        const tDeg=(f.approachTipBearingsDeg||[])[idx];
-        if(eDeg!=null) setRaIcdHint('Approach '+(idx+1)+' entry '+Math.round(+eDeg)+'° → tip '+Math.round(+tDeg)+'° — match the road profile.','good');
-      }
-    };
-    const onDown=(e)=>{
-      L.DomEvent.stop(e);
-      dragging=true;
-      raIcdTool.contouring=true;
-      map.dragging.disable();
-      map.on('mousemove', onMove);
-      map.on('mouseup', onUp);
-      map.on('touchmove', onMove);
-      map.on('touchend', onUp);
-      try{ document.body.classList.add('ra-icd-contouring'); }catch(_){}
-    };
-    target.on('mousedown', onDown);
-    target.on('touchstart', onDown);
-  }
-  function bindSizeDrag(target){
-    let dragging=false;
-    const onMove=(e)=>{
-      if(!dragging) return;
-      L.DomEvent.stop(e);
-      const ll=e.latlng||(e.touches?map.mouseEventToLatLng(e.touches[0]):null);
-      if(!ll) return;
-      const f=raIcdTool.lastFit||fit;
-      if(!f||f.lat==null||f.lon==null) return;
-      const d=calmingDistFt(+f.lat, +f.lon, +ll.lat, +ll.lng);
-      if(!(d>0)) return;
-      setRaIcdOverlaySize(d*2, {live:true, quiet:true});
-    };
-    const onUp=()=>{
-      if(!dragging) return;
-      dragging=false;
-      raIcdTool.sizing=false;
-      map.dragging.enable();
-      map.off('mousemove', onMove);
-      map.off('mouseup', onUp);
-      map.off('touchmove', onMove);
-      map.off('touchend', onUp);
-      try{ document.body.classList.remove('ra-icd-sizing'); }catch(_){}
-      const f=raIcdTool.lastFit;
-      if(f){
-        paintRaFeasibilityOverlay(f);
-        if(raIcdTool.lastCenter) paintRaIcdExtraOverlay(raIcdTool.lastCenter, raIcdTool.lastCtx);
-      }
-      refreshRaIcdAnalyzeAfterEdit();
-    };
-    const onDown=(e)=>{
-      L.DomEvent.stop(e);
-      dragging=true;
-      raIcdTool.sizing=true;
-      map.dragging.disable();
-      map.on('mousemove', onMove);
-      map.on('mouseup', onUp);
-      map.on('touchmove', onMove);
-      map.on('touchend', onUp);
-      try{ document.body.classList.add('ra-icd-sizing'); }catch(_){}
-    };
-    target.on('mousedown', onDown);
-    target.on('touchstart', onDown);
-  }
-  function bindMoveDrag(target){
-    let dragging=false;
-    const onMove=(e)=>{
-      if(!dragging) return;
-      L.DomEvent.stop(e);
-      const ll=e.latlng||(e.originalEvent?map.mouseEventToLatLng(e.originalEvent):(e.touches?map.mouseEventToLatLng(e.touches[0]):null));
-      if(!ll) return;
-      setRaIcdOverlayCenter(+ll.lat, +ll.lng, {live:true, quiet:true});
-    };
-    const onUp=()=>{
-      if(!dragging) return;
-      dragging=false;
-      raIcdTool.moving=false;
-      map.dragging.enable();
-      map.off('mousemove', onMove);
-      map.off('mouseup', onUp);
-      map.off('touchmove', onMove);
-      map.off('touchend', onUp);
-      try{ document.body.classList.remove('ra-icd-moving'); }catch(_){}
-      const f=raIcdTool.lastFit;
-      if(f){
-        paintRaFeasibilityOverlay(f);
-        paintRaIcdExtraOverlay({lat:+f.lat, lon:+f.lon}, raIcdTool.lastCtx);
-      }
-      refreshRaIcdAnalyzeAfterEdit();
-      if(f&&!raIcdTool.lastAnalyze){
-        setRaIcdHint('Overlay moved — drag amber ◇ / pale □ to re-align approaches, then Analyze.','good');
-      }
-    };
-    const onDown=(e)=>{
-      L.DomEvent.stop(e);
-      dragging=true;
-      raIcdTool.moving=true;
-      map.dragging.disable();
-      map.on('mousemove', onMove);
-      map.on('mouseup', onUp);
-      map.on('touchmove', onMove);
-      map.on('touchend', onUp);
-      try{ document.body.classList.add('ra-icd-moving'); }catch(_){}
-    };
-    target.on('mousedown', onDown);
-    target.on('touchstart', onDown);
-  }
-  bindSizeDrag(rim);
-  bindSizeDrag(sizeMk);
-  bindMoveDrag(moveHit);
-  bindMoveDrag(moveMk);
-  approachMks.forEach((mk,i)=>bindApproachDrag(mk,i));
-  entryMks.forEach((mk,i)=>bindEntryDrag(mk,i));
+      const eDeg=f&&(f.approachEntryBearingsDeg||[])[idx];
+      const tDeg=f&&(f.approachTipBearingsDeg||[])[idx];
+      finishEdit(eDeg!=null?('Approach '+(idx+1)+' entry '+Math.round(+eDeg)+'° → tip '+Math.round(+tDeg)+'°.'):null);
+    });
+  });
+
   group._raHandles={rim, guide, spoke, sizeMk, moveMk, moveHit, approachMks, entryMks, approachGuides};
   raIcdHandleLayer=group.addTo(map);
   try{ if(moveMk.bringToFront) moveMk.bringToFront(); }catch(_){}
   try{ if(moveHit.bringToFront) moveHit.bringToFront(); }catch(_){}
+  /* Wire DOM listeners now that icons exist in the pane */
   try{
     [rim, sizeMk, moveMk, moveHit].concat(approachMks).concat(entryMks).forEach(ly=>{
-      if(!L.DomEvent||!ly) return;
-      const el=ly.getElement?ly.getElement():(ly._path||null);
-      if(el){
-        L.DomEvent.disableClickPropagation(el);
-        L.DomEvent.disableScrollPropagation(el);
-      }
+      if(ly&&ly._raIcdBindDom) ly._raIcdBindDom();
     });
   }catch(_){}
   syncRaIcdSizeControls(outerFt);
@@ -38305,6 +38203,11 @@ function paintRaIcdInteractiveHandles(fit){
 
 function paintRaFeasibilityOverlay(fit, opts){
   opts=opts||{};
+  /* Live drag: only nudge handles — full schematic rebuilds on pointer-up (keeps handles responsive). */
+  if(opts.handlesOnly){
+    if(fit) try{ updateRaIcdHandlePositions(fit); }catch(_){}
+    return;
+  }
   clearStatewideCalmingRaFitOverlay();
   if(!opts.keepHandles) clearRaIcdHandleOverlay();
   if(!fit||typeof L==='undefined'||typeof map==='undefined') return;
@@ -39261,6 +39164,8 @@ async function runRaIcdScreenAt(lat, lon, opts){
 function onRaIcdMapClick(ll){
   if(!raIcdTool.active||!ll) return false;
   if(raIcdTool.sizing||raIcdTool.moving||raIcdTool.rotating||raIcdTool.contouring) return true;
+  /* Handle drag ends fire a map click — don't re-screen and wipe the overlay. */
+  if(raIcdTool.suppressMapClickUntil && Date.now()<raIcdTool.suppressMapClickUntil) return true;
   /* Always accept a new click — token cancels any in-flight screen */
   runRaIcdScreenAt(+ll.lat, +ll.lng);
   return true;
