@@ -236,3 +236,77 @@ If material requirements are not provided in the Standard Specifications or a Sp
   console.log('OK chapel-creek form pdf');
 })();
 
+(function excelPrintPdfWithoutSpecHeader() {
+  const text = `Agreement /Permit/Contract/Application #: 646461613
+Title of Contract: Project 301 Business Park North EVY1
+Source of Supply
+Materials & Research Contractor: DIAMOND MATERIALS
+Address: 242 N. James Street, Suite 102 Newport, DE 19804
+E-Mail dkuhn@diamondmaterials.com
+Delaware Department of Transportation Sub-Contractor:
+Date: 7/15/2026
+District: Canal
+DelDOT Contact:
+Manufacturer Alternate Manufacturer
+Address & Contact Address & Contact
+908010 TOPSOIL TOPSOIL HARRINGTON PLANT
+1069 Killens Pond Rd. Harrington, DE 19952
+301003 GRADED AGGREGATE BASE COURSE TYPE B GABC (Crusher Run Quarry Stone) PRINCIPIO QUARRY ALLAN MYERS - ELK MILLS QUARRY
+401014 BITUMINOUS CONCRETE SUPERPAVE SUPER PAVE TYPE B 64-22 PRINCIPIO ASPHALT TRI-COUNTY MATERIALS
+401501 TACK COAT CSS-1H RUSSEL STANDARD (CHAMBERSBURG PA) 118 Siloam Rd, Chambersburg, PA 17201
+701013 PCC CURB TYPE 1-8 CONCRETE BEAR MATERIALS 595 WALTHER ROAD NEWARK, DE 19702
+Item Description Material Supplier
+2-2019`;
+  assert.ok(FormPdf.looksLikeContractorForm(text), 'Excel print PDF is still a contractor SOS form without Specification #');
+  const parsed = FormPdf.parseFormText(text, { filename: 'D26-081_SOS_-_Entrance_Plans_SOS_REV_7.27.26.pdf' });
+  assert.strictEqual(parsed.kind, 'contractor-form', parsed.error || parsed.kind);
+  assert.strictEqual(parsed.project.contract, '646461613');
+  assert.ok(/Project 301 Business Park North EVY1/i.test(parsed.project.title), parsed.project.title);
+  assert.ok(/Diamond Materials/i.test(parsed.project.contractor), parsed.project.contractor);
+  assert.ok(!parsed.project.contact, 'blank DelDOT Contact must not become Manufacturer / Regional Manager: ' + parsed.project.contact);
+  const specs = parsed.items.map(it => String(it.spec));
+  ['908010', '301003', '401014', '401501', '701013'].forEach((s) => {
+    assert.ok(specs.includes(s), 'missing ' + s + ' in ' + specs.join(','));
+  });
+  const tack = parsed.items.find(it => String(it.spec) === '401501');
+  assert.ok(/Russell Standard/i.test(tack.supplier || tack.manufacturer || ''), tack.supplier + ' ' + tack.manufacturer);
+  const letter = Engine.processGrid(FormPdf.gridFromForm(parsed), { filename: 'd26-081.pdf' });
+  assert.ok(letter.items.length >= 4, 'letter items ' + letter.items.length);
+  console.log('OK excel-print SOS pdf without Specification header');
+})();
+
+(function excelPdfJsSplitDigits() {
+  const spaced = `Agreement /Permit/Contract/Application #: 6 4 6 4 6 1 6 1 3
+Title of Contract: Project 301 Business Park North EVY1
+Source of Supply
+Materials & Research Contractor: DIAMOND MATERIALS
+Address: 242 N. James Street, Suite 102 Newport, DE 19804
+Delaware Department of Transportation
+Date: 7/15/2026
+District: Canal
+DelDOT Contact: Regional Manager
+9080 10 TOPSOIL HARRINGTON PLANT
+301003 GABC PRINCIPIO QUARRY ALLAN MYERS
+4015 0 1 TACK COAT CSS-1H RUSSEL STANDARD Chambersburg, PA 17201
+Item Description Material Supplier`;
+  const parsed = FormPdf.parseFormText(spaced, { filename: 'excel-print.pdf' });
+  assert.strictEqual(parsed.kind, 'contractor-form', parsed.error || parsed.kind);
+  assert.strictEqual(parsed.project.contract, '646461613', parsed.project.contract);
+  assert.ok(!parsed.project.contact, parsed.project.contact);
+  const specs = parsed.items.map(it => String(it.spec));
+  assert.ok(specs.includes('908010'), specs.join(','));
+  assert.ok(specs.includes('401501'), specs.join(','));
+  const glued = FormPdf.itemsToText([
+    { str: '9', transform: [1, 0, 0, 1, 0, 10], width: 5 },
+    { str: '0', transform: [1, 0, 0, 1, 5, 10], width: 5 },
+    { str: '8', transform: [1, 0, 0, 1, 10, 10], width: 5 },
+    { str: '0', transform: [1, 0, 0, 1, 15, 10], width: 5 },
+    { str: '1', transform: [1, 0, 0, 1, 20, 10], width: 5 },
+    { str: '0', transform: [1, 0, 0, 1, 25, 10], width: 5 },
+    { str: 'TOPSOIL', transform: [1, 0, 0, 1, 40, 10], width: 40 },
+  ]);
+  assert.ok(/908010/.test(glued), glued);
+  assert.ok(/TOPSOIL/.test(glued), glued);
+  console.log('OK excel pdf.js split application # and spec digits');
+})();
+

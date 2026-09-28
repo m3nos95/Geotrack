@@ -212,9 +212,7 @@ function squeeze(s) {
 }
 
 function looksLikeContractorForm(text) {
-  const t = text.replace(/\s+/g, ' ');
-  if (/The following material sources have been reviewed/i.test(t)) return false;
-  return /Spec\w{0,6}cation/i.test(t) && /Item Description/i.test(t);
+  return require('./sos-formpdf.js').looksLikeContractorForm(text);
 }
 
 function stripPageBanners(text) {

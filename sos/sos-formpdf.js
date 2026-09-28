@@ -33,6 +33,10 @@
     /Delaware Department/,
     /Specification\s*#/,
     /Item Description/,
+    /Manufacturer/,
+    /Material Supplier/,
+    /Address\s*&\s*Contact/,
+    /Regional Manager/,
   ];
 
   function squeeze(s) {
@@ -104,6 +108,7 @@
     { name: 'Martin Marietta', tags: ['GABC', 'Stone'], pattern: /martin\s+marietta/i },
     { name: 'Allan Myers', tags: ['GABC', 'Stone', 'Asphalt'], pattern: /allan\s+myers/i },
     { name: 'Contractors Materials', tags: ['Borrow', 'GABC', 'Topsoil'], pattern: /contractors?\s+materials/i },
+    { name: 'Russell Standard', tags: ['Tack Coat', 'Asphalt', 'APL'], pattern: /russel{1,2}\s+standard/i },
   ];
 
   function plantCatalog() {
@@ -134,7 +139,41 @@
   function looksLikeContractorForm(text) {
     const t = String(text || '').replace(/\s+/g, ' ');
     if (looksLikeIssuedLetter(t)) return false;
-    return /spec\w{0,6}cation/i.test(t) && /item description/i.test(t);
+    const hasItemDesc = /item description/i.test(t);
+    const hasSpecHeader = /spec\w{0,6}cation/i.test(t);
+    if (hasSpecHeader && hasItemDesc) return true;
+    const hasSosBanner = /source of supply/i.test(t)
+      && /materials\s*&\s*research|delaware department of transportation/i.test(t);
+    const hasAgreement = /agreement\s*\/?\s*permit\s*\/?\s*contract/i.test(t);
+    // Excel Print-to-PDF often drops the shaded "Specification #" header while
+    // keeping Source of Supply, Item Description, and 6-digit pay items.
+    return hasItemDesc && (hasSosBanner || hasAgreement) && findSpecs(t).length >= 2;
+  }
+
+  function collapseSpacedDigits(text) {
+    let s = String(text || '');
+    s = s.replace(/\b(\d(?:\s+\d){2,})\b/g, (m) => {
+      const compact = m.replace(/\s+/g, '');
+      if (compact.length >= 6 && compact.length <= 10 && /^\d+$/.test(compact)) return compact;
+      return m;
+    });
+    s = s.replace(/\b([2-9]\d{3})\s+(\d)\s+(\d)\b/g, (m, a, b, c) => {
+      const compact = a + b + c;
+      return compact.length === 6 && isLikelySpec(compact, '') ? compact : m;
+    });
+    s = s.replace(/\b([2-9]\d{3})\s+(\d{2})\b/g, (m, a, b) => {
+      const compact = a + b;
+      return compact.length === 6 && isLikelySpec(compact, '') ? compact : m;
+    });
+    return s;
+  }
+
+  function cleanContact(name) {
+    const t = squeeze(name).replace(/^DelDOT Contact:\s*/i, '');
+    if (!t) return '';
+    if (/manufacturer|alternate|item description|address|specification|regional manager|materials\s*&\s*research|source of supply/i.test(t)) return '';
+    if (t.length > 60) return '';
+    return t;
   }
 
   function grab(text, labelRe) {
@@ -189,9 +228,12 @@
     const contract = parseContractValue(contractRaw) || parseContractValue(text.slice(0, 400));
     let title = grab(text, /Title of Contract/);
     title = title.replace(/\s*Source of Supply.*$/i, '').trim();
-    const contractor = grab(text, /(?<!Sub-)Contractor/).replace(/^Contractor:\s*/i, '');
+    const contractor = grab(text, /(?<!Sub-)Contractor/)
+      .replace(/^Contractor:\s*/i, '')
+      .replace(/\s+\d{1,5}\s+[A-Za-z].*$/, '')
+      .trim();
     const address = grab(text, /Address/).replace(/^Address:\s*/i, '');
-    const contact = grab(text, /DelDOT Contact/).replace(/^DelDOT Contact:\s*/i, '');
+    const contact = cleanContact(grab(text, /DelDOT Contact/));
     const district = mapDistrict(grab(text, /District/).replace(/^District:\s*/i, ''));
     const docKind = ENGINE && ENGINE.detectDocKind ? ENGINE.detectDocKind(contract) : 'application';
     const ids = contractIds(contract + ' ' + text.slice(0, 800));
@@ -620,7 +662,7 @@
   }
 
   function parseFormText(text, meta) {
-    const raw = String(text || '');
+    const raw = collapseSpacedDigits(String(text || ''));
     const filename = (meta && meta.filename) || '';
     if (looksLikeIssuedLetter(raw)) {
       return {
@@ -726,17 +768,30 @@
       const tr = item.transform || [1, 0, 0, 1, 0, 0];
       const y = Math.round((tr[5] || 0) / 2) * 2;
       const x = tr[4] || 0;
+      const w = typeof item.width === 'number' ? item.width : 0;
       let row = rows.find((r) => Math.abs(r.y - y) <= 4);
       if (!row) {
         row = { y, bits: [] };
         rows.push(row);
       }
-      row.bits.push({ x, str });
+      row.bits.push({ x, w, str });
     });
     rows.sort((a, b) => b.y - a.y);
     return rows.map((r) => {
       r.bits.sort((a, b) => a.x - b.x);
-      return r.bits.map((b) => b.str).join(' ');
+      let line = '';
+      r.bits.forEach((b, i) => {
+        if (i === 0) {
+          line = b.str;
+          return;
+        }
+        const prev = r.bits[i - 1];
+        const gap = b.x - (prev.x + (prev.w || 0));
+        const bothDigits = /^\d+$/.test(prev.str) && /^\d+$/.test(b.str);
+        if (bothDigits && gap < 3) line += b.str;
+        else line += ' ' + b.str;
+      });
+      return line;
     }).join('\n');
   }
 

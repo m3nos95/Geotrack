@@ -8,7 +8,7 @@ assert.ok(!/pdf\.min\.js/.test(html), 'pdf.js must not load on page open');
 assert.ok(!/xlsx\.full\.min\.js/.test(html), 'SheetJS must not load on page open');
 assert.ok(!/cdn\.jsdelivr\.net/.test(html), 'no jsDelivr scripts on page open');
 assert.ok(/sos-app\.js\?v=20260909a/.test(html), 'cache-bust sos-app.js');
-assert.ok(/sos-engine\.js\?v=20260909a/.test(html), 'cache-bust sos-engine.js');
+assert.ok(/sos-formpdf\.js\?v=20260928a/.test(html), 'cache-bust sos-formpdf.js');
 assert.ok(/letter-export\.js\?v=20260908a/.test(html), 'cache-bust letter-export.js');
 assert.ok(/sos\.css\?v=20260908a/.test(html), 'cache-bust sos.css');
 assert.ok(/id="letter-save-status"/.test(html), 'Save training pack status is next to the letter, not only on Import');
