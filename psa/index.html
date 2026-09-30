@@ -432,6 +432,22 @@
     }
     .pdf-drop-zone small { display: block; font-weight: 500; color: var(--muted); margin-top: 6px; }
     .pdf-drop-zone.drag { background: #2a2418; border-color: var(--gold); color: var(--gold); }
+    .az-rank {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+      gap: 12px;
+      margin-bottom: 12px;
+    }
+    .az-card { margin-bottom: 0; }
+    .az-card.win { border-color: var(--green2); box-shadow: 0 0 0 1px var(--green2); }
+    .az-card-top { display: flex; justify-content: space-between; gap: 12px; align-items: flex-start; }
+    .az-total { font-family: var(--mono); font-size: 26px; color: var(--green2); white-space: nowrap; }
+    .az-card:not(.win) .az-total { color: var(--accent2); }
+    .az-habits { margin: 8px 0 12px; padding-left: 18px; color: var(--text); font-size: 13px; }
+    .az-habits li { margin: 3px 0; }
+    .az-lines { margin-top: 8px; }
+    .az-skip td { color: var(--mute2); }
+    .az-headline div { margin-top: 4px; }
     .letter-page.ntp-proposal-scan {
       padding: 0;
       min-height: 0;
@@ -509,7 +525,8 @@
   <script src="psa-catalog.js"></script>
   <script src="psa-templates.js"></script>
   <script src="psa-seed.js"></script>
+  <script src="psa-analyzer.js?v=analyzer"></script>
   <script src="psa-pdf.js?v=qp20-font"></script>
-  <script src="psa-app.js?v=checklist-inv-no"></script>
+  <script src="psa-app.js?v=analyzer"></script>
 </body>
 </html>
