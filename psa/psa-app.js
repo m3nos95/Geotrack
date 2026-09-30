@@ -2189,6 +2189,7 @@
       payCheckField("Consultant Name:", c.contractor || "") +
       payCheckField("Project No:", projectNo) +
       payCheckField("Invoice dollar amount", amount) +
+      payCheckField("Invoice No:", inv.number || "") +
       "</div></div>" +
       items +
       '<p class="pay-check-cert">I certify that I have read and understand the terms and conditions set forth in agreement number <span class="pay-check-agr">' +
