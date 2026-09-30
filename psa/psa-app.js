@@ -562,7 +562,9 @@
       .join("");
     var org = state.orgName || "DelDOT Materials & Research";
     var payBtn = wf(c).payItems
-      ? '<button class="btn" data-act="view" data-view="payitems">Pay items</button>'
+      ? '<button class="btn' +
+        (ui.view === "payitems" ? " on" : "") +
+        '" data-act="view" data-view="payitems">Pay items</button>'
       : "";
     return (
       '<header class="top no-print">' +
@@ -585,11 +587,19 @@
       '" data-act="set-role" data-role="finance">Finance</button>' +
       "</div>" +
       '<div class="top-actions">' +
-      '<button class="btn" data-act="view" data-view="ledger">Ledger</button>' +
-      '<button class="btn" data-act="view" data-view="analyzer">Analyzer</button>' +
+      '<button class="btn' +
+      (ui.view === "ledger" ? " on" : "") +
+      '" data-act="view" data-view="ledger">Ledger</button>' +
+      '<button class="btn' +
+      (ui.view === "analyzer" ? " on" : "") +
+      '" data-act="view" data-view="analyzer">Analyzer</button>' +
       payBtn +
-      '<button class="btn" data-act="view" data-view="finance">Setup</button>' +
-      '<button class="btn" data-act="view" data-view="settings">Backup</button>' +
+      '<button class="btn' +
+      (ui.view === "finance" ? " on" : "") +
+      '" data-act="view" data-view="finance">Setup</button>' +
+      '<button class="btn' +
+      (ui.view === "settings" ? " on" : "") +
+      '" data-act="view" data-view="settings">Backup</button>' +
       "</div></header>"
     );
   }

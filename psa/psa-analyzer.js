@@ -564,10 +564,8 @@
           if (presenceRate(gps) < 0.5) return 0;
           return Math.max(1, Math.round(median(gps.filter(function (x) { return x > 0; })) || 1));
         },
-        dnrecQty: function (scope) {
-          if (scope.dnrec === false && presenceRate(dnrec) < 0.5) return 0;
-          if (presenceRate(dnrec) < 0.5 && !scope.dnrec) return 0;
-          if (presenceRate(dnrec) < 0.5) return scope.dnrec ? 1 : 0;
+        dnrecQty: function () {
+          if (presenceRate(dnrec) < 0.5) return 0;
           return Math.max(1, Math.round(median(dnrec.filter(function (x) { return x > 0; })) || 1));
         },
       },
@@ -717,7 +715,7 @@
 
     var gpsQ = profile.predict.gpsQty();
     if (gpsQ && scope.gps !== false) addLine(lines, profile, "GPS", gpsQ, profile.gpsLs ? "Habit: GPS as a lump sum" : "Habit: GPS locate");
-    var dnQ = profile.predict.dnrecQty(scope);
+      var dnQ = profile.predict.dnrecQty();
     if (dnQ) addLine(lines, profile, "DNREC", dnQ, "Habit: DNREC boring permit");
 
     var priced = lines.filter(function (l) { return !l.skipped; });

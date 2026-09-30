@@ -122,6 +122,10 @@ assert(
   cgcEst.lines.every(function (l) { return l.itemCode !== "763587"; }),
   JSON.stringify(cgcEst.lines.map(function (l) { return l.itemCode + ":" + l.qty; }))
 );
+assert(
+  "HCEA estimate omits DNREC when they do not bill it",
+  hceaEst.lines.every(function (l) { return l.itemCode !== "DNREC"; })
+);
 assert("CGC estimate is in the ballpark of QP19", cgcEst.total > 2500 && cgcEst.total < 6000, cgcEst.total);
 
 var bridge = A.parseBoringRequest([
