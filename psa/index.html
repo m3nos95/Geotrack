@@ -368,7 +368,7 @@
       user-select: none;
     }
     .pay-check-init.on { color: #111; }
-    .pay-check-cert { margin: 28px 0 48px !important; text-align: left; }
+    .pay-check-cert { margin: 22px 0 22px !important; text-align: left; }
     .pay-check-agr {
       display: inline-block;
       min-width: 2.4in;
@@ -376,7 +376,11 @@
       padding: 0 6px;
       text-align: center;
     }
-    .pay-check-sign { margin-top: 12px; }
+    .pay-check-sign {
+      margin-top: 12px;
+      page-break-inside: avoid;
+      break-inside: avoid;
+    }
     .pay-check-sign-row {
       display: flex;
       align-items: baseline;
@@ -409,6 +413,8 @@
       width: 62%;
       text-align: center;
       margin-top: 6px;
+      page-break-before: avoid;
+      break-before: avoid;
     }
     .prop-foot { display: flex; justify-content: space-between; align-items: flex-end; margin-top: 18px; }
     .prop-total { font-size: 15px; }
@@ -452,6 +458,21 @@
         page-break-after: always;
       }
       .letter-page:last-child { page-break-after: auto; }
+      .letter-page.pay-checklist {
+        min-height: 0;
+        padding: 0.35in 0.6in 0.3in;
+      }
+      .pay-check-item { margin: 0 0 12px !important; }
+      .pay-check-top { margin-bottom: 20px; }
+      .pay-check-cert { margin: 14px 0 16px !important; }
+      .pay-check-sign {
+        page-break-inside: avoid;
+        break-inside: avoid;
+      }
+      .pay-check-pm {
+        page-break-before: avoid;
+        break-before: avoid;
+      }
       .letter-page.ntp-proposal-scan {
         padding: 0;
         width: auto;
@@ -489,6 +510,6 @@
   <script src="psa-templates.js"></script>
   <script src="psa-seed.js"></script>
   <script src="psa-pdf.js?v=qp20-font"></script>
-  <script src="psa-app.js?v=qp-sort-date"></script>
+  <script src="psa-app.js?v=checklist-pm-page"></script>
 </body>
 </html>
