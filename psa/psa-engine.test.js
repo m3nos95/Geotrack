@@ -720,6 +720,7 @@ var beforeCount = (portQp.invoices || []).length;
 var marked = E.applyConsultantInvoice(port, portQp, cgcCheck);
 assert("Checklist drop can mark final invoice", marked.finalInvoice === true);
 assert("Final flag reuses or adds one invoice", (portQp.invoices || []).length >= beforeCount);
+assert("Dropped invoice keeps Invoice # for the checklist", marked.number === "5889", marked.number);
 var ledgerOrder = E.sortQpsByNumber([
   { qpNumber: "11A" },
   { qpNumber: "12" },
