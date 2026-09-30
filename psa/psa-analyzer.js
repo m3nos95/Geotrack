@@ -792,14 +792,20 @@
         amount: l.amount,
       };
     });
+    var fromProp = scopeFromProposal(lines);
+    var used = scope && (Number(scope.boringCount) || Number(scope.soilLf)) ? scope : fromProp;
+    if (!used.projectName && parsed.projectName) used.projectName = parsed.projectName;
+    if (!used.contractNo && parsed.designNo) used.contractNo = parsed.designNo;
+    if (!used.county && fromProp.county) used.county = fromProp.county;
+    if (!used.access && fromProp.access) used.access = fromProp.access;
     return {
       id: engine().uid("az"),
       date: engine().todayISO(),
       contractorId: contract && contract.id,
       contractorName: (contract && contract.contractor) || parsed.agreementCode || "",
       agreementCode: (contract && contract.code) || parsed.agreementCode || "",
-      project: (scope && scope.projectName) || parsed.projectName || "",
-      scope: scope,
+      project: used.projectName || parsed.projectName || "",
+      scope: used,
       lines: lines,
       total: parsed.total || engine().proposalTotal({ lines: lines }),
       source: "trained",

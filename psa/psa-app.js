@@ -27,6 +27,8 @@
     azRequestText: "",
     azScope: null,
     azResult: null,
+    azContractorId: "",
+    azPendingProposal: null,
   };
 
   var state = null;
@@ -761,22 +763,45 @@
           esc(ex.project || "untitled") +
           " · " +
           E.fmtMoney(ex.total) +
-          '</div><button class="btn small danger" data-act="az-del-ex" data-id="' +
+          ' <span class="muted">taught</span></div><button class="btn small danger" data-act="az-del-ex" data-id="' +
           esc(ex.id) +
           '">Remove</button></div>'
         );
       })
       .join("");
+    var ledgerJobs = A ? A.collectJobs(state.contracts, []) : [];
+    var ledgerList = ledgerJobs
+      .map(function (j) {
+        return (
+          '<div class="admin-row" style="align-items:center"><div style="flex:1">' +
+          esc(j.contractorName || j.agreementCode) +
+          " · QP " +
+          esc(j.qpNumber || "") +
+          " · " +
+          esc(j.project || "") +
+          " · " +
+          E.fmtMoney(j.total) +
+          ' <span class="muted">ledger</span></div></div>'
+        );
+      })
+      .join("");
+    var contractorOpts =
+      azOpt(ui.azContractorId, "", "Use AGR on the proposal") +
+      (state.contracts || [])
+        .map(function (c) {
+          return azOpt(ui.azContractorId, c.id, (c.code || "") + " · " + (c.contractor || ""));
+        })
+        .join("");
     var fileBit = ui.azRequestName
       ? '<div class="banner info">Reading <b>' + esc(ui.azRequestName) + "</b></div>"
       : "";
     return (
       '<div class="card"><h2>Project analyzer</h2>' +
-      "<p>Drop a soil boring request. ConTrak reads the program (count, depth, county, access, MOT) and estimates each contractor from how they billed similar jobs — including extras one firm routinely adds and the other does not.</p>" +
+      "<p>Drop a soil boring request to estimate who is likely cheapest. To teach a past job, drop that request <b>and</b> the contractor’s proposal together — two files at once — or drop them one after the other on the packet box below.</p>" +
       '<div class="pdf-drop no-print" id="azDrop">' +
-      '<label class="pdf-drop-zone" id="azDropZone">Drop the boring request here' +
-      "<small>PDF, GeoTrak sheet, or a text export. You can also paste below. Historical CGC 2019F and HCEA 2018F packets already train the first estimates.</small>" +
-      '<input type="file" id="azFile" accept=".pdf,.txt,.html,text/plain,application/pdf" hidden></label></div>' +
+      '<label class="pdf-drop-zone" id="azDropZone">Drop a request, or a request + proposal together' +
+      "<small>PDF, GeoTrak sheet, or text. Two files at once records how that firm billed this program.</small>" +
+      '<input type="file" id="azFile" accept=".pdf,.txt,.html,text/plain,application/pdf" multiple hidden></label></div>' +
       fileBit +
       '<label class="f">Or paste the request<textarea id="azPaste" placeholder="Soil boring request — 7 ATV borings at 10 ft, Kent County, shoulder MOT, infiltration at each hole">' +
       esc(ui.azRequestText || "") +
@@ -846,13 +871,26 @@
       '<button class="btn primary" data-act="az-run">Estimate contractors</button></div></div></div>' +
       headline +
       (cards ? '<div class="az-rank">' + cards + "</div>" : "") +
-      '<div class="card"><h3>Teach a contractor</h3>' +
-      "<p class='muted'>After a request is loaded, drop that job’s proposal. ConTrak records how that firm billed this program — miscellaneous man-hours, PM hours, GPS lump vs each, DNREC, logger, and the rest — and uses it the next time a similar request comes in.</p>" +
+      '<div class="card"><h3>Add a past request / proposal packet</h3>' +
+      "<p>For each old job: drop the boring request and that contractor’s proposal <b>together</b> (two PDFs). Repeat for the next job. If the proposal has no AGR line, pick the contractor first.</p>" +
+      '<div class="fields" style="margin-bottom:10px"><label class="f">Contractor for this packet<select id="azContractor">' +
+      contractorOpts +
+      "</select></label></div>" +
+      (ui.azPendingProposal
+        ? '<div class="banner">Have <b>' +
+          esc(ui.azPendingProposal.fileName) +
+          "</b> — pick the contractor above to save it.</div>"
+        : "") +
       '<div class="pdf-drop no-print" id="azTeach">' +
-      '<label class="pdf-drop-zone" id="azTeachZone">Drop the matching proposal here' +
-      "<small>Needs a request on the desk first. AGR on the proposal picks the contractor.</small>" +
-      '<input type="file" id="azTeachFile" accept=".pdf,.txt,application/pdf" hidden></label></div>' +
-      (exList ? '<div class="admin-list">' + exList + "</div>" : "<p class='muted'>No extra packets taught yet. Ledger packets (CGC QP 13/18/19, HCEA QP 4) already count.</p>") +
+      '<label class="pdf-drop-zone" id="azTeachZone">Drop the request + proposal here' +
+      "<small>Two files = one packet. Proposal-only still works if the request is already on the desk, or ConTrak will learn the billed quantities from the proposal lines.</small>" +
+      '<input type="file" id="azTeachFile" accept=".pdf,.txt,application/pdf" multiple hidden></label></div>' +
+      "<h3>Packets on the ledger</h3>" +
+      (ledgerList
+        ? '<div class="admin-list">' + ledgerList + "</div>"
+        : "<p class='muted'>No proposal lines on the ledger yet. Dropping a proposal onto a QP also trains the analyzer.</p>") +
+      "<h3 style=\"margin-top:14px\">Packets you taught</h3>" +
+      (exList ? '<div class="admin-list">' + exList + "</div>" : "<p class='muted'>None yet — drop a request and proposal together above. They stay in this browser.</p>") +
       "</div>"
     );
   }
@@ -3165,7 +3203,8 @@
       var input = document.getElementById(inputId);
       if (input) {
         input.onchange = function () {
-          if (input.files && input.files[0]) ingestAnalyzerFile(input.files[0], teach);
+          if (input.files && input.files.length) ingestAnalyzerFiles(input.files, teach);
+          input.value = "";
         };
       }
       var zone = document.getElementById(zoneId);
@@ -3183,13 +3222,20 @@
         ev.stopPropagation();
         zone.classList.remove("drag");
         var files = ev.dataTransfer && ev.dataTransfer.files;
-        if (!files || !files.length) return;
-        var i;
-        for (i = 0; i < files.length; i++) ingestAnalyzerFile(files[i], teach || i > 0);
+        if (files && files.length) ingestAnalyzerFiles(files, teach);
       };
     }
     bindZone("azDropZone", "azFile", false);
     bindZone("azTeachZone", "azTeachFile", true);
+    var sel = document.getElementById("azContractor");
+    if (sel) {
+      sel.onchange = function () {
+        ui.azContractorId = sel.value;
+        if (ui.azPendingProposal && sel.value) {
+          applyAnalyzerProposal(ui.azPendingProposal.text, ui.azPendingProposal.fileName);
+        }
+      };
+    }
   }
 
   function readDroppedText(file) {
@@ -3215,36 +3261,65 @@
     });
   }
 
-  function applyAnalyzerProposal(text, fileName) {
-    var parsed = E.parseConsultantProposal(text);
-    if (!(parsed.lines || []).length) {
-      toast("No proposal item lines in " + (fileName || "that file"));
-      return;
+  function classifyAnalyzerText(text) {
+    var asProp = A.looksLikeProposal(text);
+    var asReq = A.looksLikeRequest(text);
+    if (asProp && !asReq) return "proposal";
+    if (asReq && !asProp) return "request";
+    if (asProp) return "proposal";
+    return "request";
+  }
+
+  function findAnalyzerContract(parsed) {
+    var picked = ui.azContractorId || "";
+    var agrCode = String((parsed && parsed.agreementCode) || "").toUpperCase();
+    var list = state.contracts || [];
+    var agr = null;
+    if (picked) {
+      agr = list.find(function (c) {
+        return c.id === picked || String(c.code).toUpperCase() === String(picked).toUpperCase();
+      });
     }
-    if (!ui.azScope || !(ui.azScope.boringCount || ui.azScope.soilLf)) {
-      toast("Drop the boring request first, then the proposal");
-      return;
-    }
-    var agrCode = String(parsed.agreementCode || "").toUpperCase();
-    var agr =
-      (state.contracts || []).find(function (c) {
-        return String(c.code).toUpperCase() === agrCode || String(c.id).toUpperCase() === agrCode;
-      }) || null;
     if (!agr && agrCode) {
-      toast("No agreement " + agrCode + " on the ledger to attach this proposal to");
-      return;
+      agr = list.find(function (c) {
+        return String(c.code).toUpperCase() === agrCode || String(c.id).toUpperCase() === agrCode;
+      });
     }
-    if (!agr) {
-      toast("Proposal has no AGR — open the contractor on the ledger or check the PDF header");
-      return;
-    }
-    var ex = A.exampleFromPair(ui.azScope, parsed, agr);
+    return agr || null;
+  }
+
+  function saveTaughtPacket(scope, parsed, agr) {
+    var ex = A.exampleFromPair(scope, parsed, agr);
     state.analyzer = state.analyzer || { examples: [] };
     state.analyzer.examples = state.analyzer.examples || [];
     state.analyzer.examples.push(ex);
     save();
-    runAnalyzer(ui.azScope);
-    toast("Learned how " + (ex.contractorName || agr.code) + " billed this program · " + E.fmtMoney(ex.total));
+    return ex;
+  }
+
+  function applyAnalyzerProposal(text, fileName) {
+    var parsed = E.parseConsultantProposal(text);
+    if (!(parsed.lines || []).length) {
+      toast("No proposal item lines in " + (fileName || "that file"));
+      return null;
+    }
+    var agr = findAnalyzerContract(parsed);
+    if (!agr) {
+      ui.azPendingProposal = { text: text, fileName: fileName || "proposal" };
+      toast("Pick the contractor for " + (fileName || "this proposal") + ", then it will save");
+      render();
+      return null;
+    }
+    var scope = ui.azScope;
+    if (!scope || !(scope.boringCount || scope.soilLf)) {
+      scope = A.scopeFromProposal(parsed.lines);
+      if (parsed.projectName) scope.projectName = parsed.projectName;
+    }
+    var ex = saveTaughtPacket(scope, parsed, agr);
+    ui.azPendingProposal = null;
+    runAnalyzer(scope);
+    toast("Saved packet · " + (ex.contractorName || agr.code) + " · " + E.fmtMoney(ex.total));
+    return ex;
   }
 
   function applyAnalyzerRequest(text, fileName) {
@@ -3259,23 +3334,82 @@
         (n ? " · " + n + " boring" + (n === 1 ? "" : "s") : "") +
         (parsedReq.soilLf ? " · " + parsedReq.soilLf + " LF" : "")
     );
+    return parsedReq;
+  }
+
+  function ingestAnalyzerFiles(fileList, forceTeach) {
+    var files = [].slice.call(fileList || []).filter(Boolean);
+    if (!files.length) return;
+    toast("Reading " + files.length + " file" + (files.length === 1 ? "" : "s") + "…");
+    Promise.all(
+      files.map(function (file) {
+        return readDroppedText(file).then(function (text) {
+          if (!String(text || "").trim()) throw new Error(file.name + " had no text");
+          return { file: file, text: text, kind: classifyAnalyzerText(text) };
+        });
+      })
+    )
+      .then(function (rows) {
+        var reqs = [];
+        var props = [];
+        rows.forEach(function (row) {
+          if (forceTeach && row.kind !== "request") props.push(row);
+          else if (row.kind === "proposal") props.push(row);
+          else reqs.push(row);
+        });
+        if (forceTeach && !props.length && reqs.length && rows.length === 1 && rows[0].kind === "request") {
+          reqs = rows;
+        }
+        var scope = null;
+        if (reqs.length) {
+          scope = applyAnalyzerRequest(reqs[0].text, reqs[0].file.name);
+        }
+        var saved = [];
+        props.forEach(function (row) {
+          var parsed = E.parseConsultantProposal(row.text);
+          if (!(parsed.lines || []).length) return;
+          var agr = findAnalyzerContract(parsed);
+          if (!agr) {
+            ui.azPendingProposal = { text: row.text, fileName: row.file.name };
+            return;
+          }
+          var used = scope || ui.azScope;
+          if (!used || !(used.boringCount || used.soilLf)) {
+            used = A.scopeFromProposal(parsed.lines);
+            if (parsed.projectName) used.projectName = parsed.projectName;
+          }
+          saved.push(saveTaughtPacket(used, parsed, agr));
+        });
+        if (saved.length) {
+          ui.azPendingProposal = null;
+          runAnalyzer(scope || ui.azScope || saved[0].scope);
+          toast(
+            "Saved " +
+              saved.length +
+              " packet" +
+              (saved.length === 1 ? "" : "s") +
+              " · " +
+              saved
+                .map(function (ex) {
+                  return (ex.contractorName || ex.agreementCode) + " " + E.fmtMoney(ex.total);
+                })
+                .join(" · ")
+          );
+        } else if (ui.azPendingProposal) {
+          render();
+          toast("Pick the contractor for " + ui.azPendingProposal.fileName + ", then it will save");
+        } else if (!reqs.length) {
+          toast("Could not tell a request from a proposal in those files");
+        }
+      })
+      .catch(function (err) {
+        toast("Could not read packet: " + (err && err.message ? err.message : err));
+      });
   }
 
   function ingestAnalyzerFile(file, teach) {
     if (!file) return;
-    toast("Reading " + file.name + "…");
-    readDroppedText(file)
-      .then(function (text) {
-        if (!String(text || "").trim()) throw new Error("No text in that file");
-        if (teach || (A.looksLikeProposal(text) && !A.looksLikeRequest(text))) {
-          applyAnalyzerProposal(text, file.name);
-          return;
-        }
-        applyAnalyzerRequest(text, file.name);
-      })
-      .catch(function (err) {
-        toast("Could not read " + (file.name || "file") + ": " + (err && err.message ? err.message : err));
-      });
+    ingestAnalyzerFiles([file], teach);
   }
 
   function onKey(ev) {
@@ -3339,6 +3473,7 @@
       ui.azRequestText = "";
       ui.azScope = null;
       ui.azResult = null;
+      ui.azPendingProposal = null;
       render();
       return;
     }

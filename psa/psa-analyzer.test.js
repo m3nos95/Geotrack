@@ -155,6 +155,17 @@ var taught = A.exampleFromPair(small, {
 var afterTeach = A.analyze(small, contracts, [taught]);
 var taughtHcea = afterTeach.estimates.find(function (e) { return e.agreementCode === "2018F"; });
 assert("Teaching a second HCEA packet keeps misc hours in the estimate", taughtHcea.lines.some(function (l) { return l.itemCode === "763587"; }));
+var onlyProp = A.exampleFromPair(null, {
+  lines: [
+    { itemNo: "7", qty: 80, unitPrice: 15, amount: 1200, unit: "LF" },
+    { itemNo: "9", qty: 40, unitPrice: 32, amount: 1280, unit: "HR" },
+  ],
+  total: 2480,
+  agreementCode: "2018F",
+  projectName: "Proposal only packet",
+}, hcea);
+assert("Proposal-only packet still learns 80 LF", nearly(onlyProp.scope.soilLf, 80), onlyProp.scope && onlyProp.scope.soilLf);
+assert("Proposal-only packet still learns 40 misc hours", nearly(A.extrasFromLines(onlyProp.lines, onlyProp.scope).miscHours, 40));
 assert("Looks like a request sheet", A.looksLikeRequest(sheet) === true);
 assert("Looks like a proposal when item lines are present", A.looksLikeProposal("Item No Description Units\n2 ADDITIONAL 9.00 Each X 18.00 162.00\nTotal Amount Due: $162.00") === true);
 
