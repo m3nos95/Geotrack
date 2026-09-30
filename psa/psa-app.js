@@ -3,6 +3,7 @@
   "use strict";
   var E = window.PsaEngine;
   var T = window.ConTrakTemplates;
+  var A = window.PsaAnalyzer;
   var STORE = "psatrak_v1";
 
   var ui = {
@@ -22,6 +23,12 @@
     bulkDate: "",
     bulkNotes: "",
     bulkCc: null,
+    azRequestName: "",
+    azRequestText: "",
+    azScope: null,
+    azResult: null,
+    azContractorId: "",
+    azPendingProposal: null,
   };
 
   var state = null;
@@ -317,6 +324,9 @@
       state = defaultState();
     }
     restoreUi();
+    if (!state.analyzer || !Array.isArray(state.analyzer.examples)) {
+      state.analyzer = { examples: (state.analyzer && state.analyzer.examples) || [] };
+    }
     if (!ui.contractId || !contract()) ui.contractId = state.contracts[0].id;
     var c = contract();
     if (!ui.taskId || !task()) ui.taskId = (c.tasks[0] && c.tasks[0].id) || null;
@@ -503,6 +513,12 @@
       afterRender();
       return;
     }
+    if (ui.view === "analyzer") {
+      app.innerHTML = renderHeader(c) + '<div class="setup-wrap">' + renderAnalyzer() + "</div>";
+      bind();
+      afterRender();
+      return;
+    }
     if (ui.view === "settings") {
       app.innerHTML =
         renderHeader(c) +
@@ -548,7 +564,9 @@
       .join("");
     var org = state.orgName || "DelDOT Materials & Research";
     var payBtn = wf(c).payItems
-      ? '<button class="btn" data-act="view" data-view="payitems">Pay items</button>'
+      ? '<button class="btn' +
+        (ui.view === "payitems" ? " on" : "") +
+        '" data-act="view" data-view="payitems">Pay items</button>'
       : "";
     return (
       '<header class="top no-print">' +
@@ -571,11 +589,309 @@
       '" data-act="set-role" data-role="finance">Finance</button>' +
       "</div>" +
       '<div class="top-actions">' +
-      '<button class="btn" data-act="view" data-view="ledger">Ledger</button>' +
+      '<button class="btn' +
+      (ui.view === "ledger" ? " on" : "") +
+      '" data-act="view" data-view="ledger">Ledger</button>' +
+      '<button class="btn' +
+      (ui.view === "analyzer" ? " on" : "") +
+      '" data-act="view" data-view="analyzer">Analyzer</button>' +
       payBtn +
-      '<button class="btn" data-act="view" data-view="finance">Setup</button>' +
-      '<button class="btn" data-act="view" data-view="settings">Backup</button>' +
+      '<button class="btn' +
+      (ui.view === "finance" ? " on" : "") +
+      '" data-act="view" data-view="finance">Setup</button>' +
+      '<button class="btn' +
+      (ui.view === "settings" ? " on" : "") +
+      '" data-act="view" data-view="settings">Backup</button>' +
       "</div></header>"
+    );
+  }
+
+  function azOpt(cur, value, label) {
+    return (
+      '<option value="' +
+      esc(value) +
+      '"' +
+      (String(cur || "") === String(value) ? " selected" : "") +
+      ">" +
+      esc(label) +
+      "</option>"
+    );
+  }
+
+  function readAnalyzerScope() {
+    var s = (A && A.emptyScope()) || {};
+    s.projectName = val("azProject");
+    s.contractNo = val("azContractNo");
+    s.county = val("azCounty");
+    s.access = val("azAccess");
+    s.boringCount = Number(val("azBorings") || 0);
+    s.soilLf = Number(val("azSoilLf") || 0);
+    s.rockLf = Number(val("azRockLf") || 0);
+    s.extraSpt = val("azSpt") === "" ? null : Number(val("azSpt") || 0);
+    s.shelby = Number(val("azShelby") || 0);
+    s.infilCount = Number(val("azInfil") || 0);
+    s.pavementLf = Number(val("azPave") || 0);
+    s.mot = val("azMot");
+    s.motCount = val("azMotCount") === "" ? null : Number(val("azMotCount") || 0);
+    s.dnrec = !!(document.getElementById("azDnrec") && document.getElementById("azDnrec").checked);
+    s.gps = !(document.getElementById("azGps") && !document.getElementById("azGps").checked);
+    if (s.access === "atv") s.atvLf = s.soilLf;
+    else s.landLf = s.soilLf;
+    s.warnings = (ui.azScope && ui.azScope.warnings) || [];
+    s.borings = (ui.azScope && ui.azScope.borings) || [];
+    return s;
+  }
+
+  function runAnalyzer(scope) {
+    if (!A) {
+      toast("Analyzer did not load — refresh");
+      return;
+    }
+    ui.azScope = scope;
+    ui.azResult = A.analyze(scope, state.contracts, (state.analyzer && state.analyzer.examples) || []);
+    render();
+  }
+
+  function renderAnalyzer() {
+    var s = ui.azScope || (A && A.emptyScope()) || {};
+    var res = ui.azResult;
+    var examples = (state.analyzer && state.analyzer.examples) || [];
+    var warn = ((s.warnings || []).concat((res && res.warnings) || []))
+      .filter(Boolean)
+      .map(function (w) {
+        return '<div class="banner">' + esc(w) + "</div>";
+      })
+      .join("");
+    var pick = res && res.cheapest;
+    var runner = res && res.estimates && res.estimates[1];
+    var headline = "";
+    if (pick) {
+      headline =
+        '<div class="banner info az-headline"><b>Likely cheapest: ' +
+        esc(pick.contractorName) +
+        " · " +
+        E.fmtMoney(pick.total) +
+        "</b>";
+      if (runner && runner.total > pick.total) {
+        var gap = E.money(runner.total - pick.total);
+        headline +=
+          "<div>Next is " +
+          esc(runner.contractorName) +
+          " at " +
+          E.fmtMoney(runner.total) +
+          " (" +
+          E.fmtMoney(gap) +
+          " more)";
+        if ((runner.notes || [])[0]) headline += " — " + esc(runner.notes[0]);
+        headline += "</div>";
+      }
+      headline += "<div>Learned from past request/proposal packets on the ledger" +
+        (examples.length ? " plus " + examples.length + " job" + (examples.length === 1 ? "" : "s") + " you taught" : "") +
+        ". Edit the program if the parse missed something, then Estimate again.</div></div>";
+    }
+    var cards = ((res && res.estimates) || [])
+      .map(function (est) {
+        var lines = (est.lines || [])
+          .map(function (l) {
+            return (
+              "<tr class='" +
+              (l.skipped ? "az-skip" : "") +
+              "'><td>" +
+              esc(l.itemNo || l.itemCode) +
+              "</td><td>" +
+              esc(l.description) +
+              (l.note ? '<div class="muted">' + esc(l.note) + "</div>" : "") +
+              '</td><td class="num">' +
+              esc(l.qty) +
+              " " +
+              esc(l.unit || "") +
+              '</td><td class="num">' +
+              (l.skipped ? "—" : E.fmtMoney(l.unitPrice)) +
+              '</td><td class="num">' +
+              (l.skipped ? "—" : E.fmtMoney(l.amount)) +
+              "</td></tr>"
+            );
+          })
+          .join("");
+        var habits = (est.habits || [])
+          .map(function (h) {
+            return "<li>" + esc(h) + "</li>";
+          })
+          .join("");
+        var similar = (est.similar || [])
+          .map(function (j) {
+            return (
+              "<li>" +
+              esc(j.project || ("QP " + j.qpNumber)) +
+              (j.qpNumber ? " · QP " + esc(j.qpNumber) : "") +
+              " · " +
+              E.fmtMoney(j.total) +
+              (j.miscHours ? " · " + j.miscHours + " misc hr" : "") +
+              "</li>"
+            );
+          })
+          .join("");
+        return (
+          '<div class="card az-card' +
+          (est.cheapest ? " win" : "") +
+          '"><div class="az-card-top"><div><h3>' +
+          (est.cheapest ? "Cheapest · " : "") +
+          esc(est.contractorName) +
+          "</h3><div class='muted'>" +
+          esc(est.agreementCode) +
+          " · " +
+          est.jobCount +
+          " learned job" +
+          (est.jobCount === 1 ? "" : "s") +
+          "</div></div><div class='az-total'>" +
+          E.fmtMoney(est.total) +
+          "</div></div>" +
+          (habits ? "<ul class='az-habits'>" + habits + "</ul>" : "") +
+          (similar ? "<div class='muted'>Closest past jobs</div><ul class='az-habits'>" + similar + "</ul>" : "") +
+          '<table class="grid az-lines"><thead><tr><th>Item</th><th>Description</th><th class="num">Qty</th><th class="num">Price</th><th class="num">Amount</th></tr></thead><tbody>' +
+          (lines || "<tr><td colspan='5' class='muted'>No priced lines — this contractor has no unit prices yet.</td></tr>") +
+          "</tbody></table></div>"
+        );
+      })
+      .join("");
+    var exList = examples
+      .map(function (ex) {
+        return (
+          '<div class="admin-row" style="align-items:center"><div style="flex:1">' +
+          esc(ex.contractorName || ex.agreementCode) +
+          " · " +
+          esc(ex.project || "untitled") +
+          " · " +
+          E.fmtMoney(ex.total) +
+          ' <span class="muted">taught</span></div><button class="btn small danger" data-act="az-del-ex" data-id="' +
+          esc(ex.id) +
+          '">Remove</button></div>'
+        );
+      })
+      .join("");
+    var ledgerJobs = A ? A.collectJobs(state.contracts, []) : [];
+    var ledgerList = ledgerJobs
+      .map(function (j) {
+        return (
+          '<div class="admin-row" style="align-items:center"><div style="flex:1">' +
+          esc(j.contractorName || j.agreementCode) +
+          " · QP " +
+          esc(j.qpNumber || "") +
+          " · " +
+          esc(j.project || "") +
+          " · " +
+          E.fmtMoney(j.total) +
+          ' <span class="muted">ledger</span></div></div>'
+        );
+      })
+      .join("");
+    var contractorOpts =
+      azOpt(ui.azContractorId, "", "Use AGR on the proposal") +
+      (state.contracts || [])
+        .map(function (c) {
+          return azOpt(ui.azContractorId, c.id, (c.code || "") + " · " + (c.contractor || ""));
+        })
+        .join("");
+    var fileBit = ui.azRequestName
+      ? '<div class="banner info">Reading <b>' + esc(ui.azRequestName) + "</b></div>"
+      : "";
+    return (
+      '<div class="card"><h2>Project analyzer</h2>' +
+      "<p>Drop a soil boring request to estimate who is likely cheapest. To teach a past job, drop that request <b>and</b> the contractor’s proposal together — two files at once — or drop them one after the other on the packet box below.</p>" +
+      '<div class="pdf-drop no-print" id="azDrop">' +
+      '<label class="pdf-drop-zone" id="azDropZone">Drop a request, or a request + proposal together' +
+      "<small>PDF, GeoTrak sheet, or text. Two files at once records how that firm billed this program.</small>" +
+      '<input type="file" id="azFile" accept=".pdf,.txt,.html,text/plain,application/pdf" multiple hidden></label></div>' +
+      fileBit +
+      '<label class="f">Or paste the request<textarea id="azPaste" placeholder="Soil boring request — 7 ATV borings at 10 ft, Kent County, shoulder MOT, infiltration at each hole">' +
+      esc(ui.azRequestText || "") +
+      "</textarea></label>" +
+      '<div class="row-between" style="margin-top:10px"><div>' +
+      '<button class="btn primary" data-act="az-paste">Read pasted request</button> ' +
+      '<button class="btn" data-act="az-clear">Clear</button></div></div></div>' +
+      '<div class="card"><h3>Program</h3>' +
+      warn +
+      '<div class="fields">' +
+      '<label class="f">Project<input id="azProject" value="' +
+      esc(s.projectName || "") +
+      '"></label>' +
+      '<label class="f">Contract / T#<input id="azContractNo" value="' +
+      esc(s.contractNo || "") +
+      '"></label>' +
+      '<label class="f">County<select id="azCounty">' +
+      azOpt(s.county, "", "—") +
+      azOpt(s.county, "N", "New Castle") +
+      azOpt(s.county, "K", "Kent") +
+      azOpt(s.county, "S", "Sussex") +
+      "</select></label>" +
+      '<label class="f">Access<select id="azAccess">' +
+      azOpt(s.access, "", "—") +
+      azOpt(s.access, "truck", "Truck / land") +
+      azOpt(s.access, "atv", "ATV / off-road") +
+      azOpt(s.access, "barge", "Barge") +
+      "</select></label>" +
+      '<label class="f">Borings<input id="azBorings" type="number" min="0" value="' +
+      esc(s.boringCount || "") +
+      '"></label>' +
+      '<label class="f">Soil footage (LF)<input id="azSoilLf" type="number" min="0" step="0.1" value="' +
+      esc(s.soilLf || "") +
+      '"></label>' +
+      '<label class="f">Rock core (LF)<input id="azRockLf" type="number" min="0" step="0.1" value="' +
+      esc(s.rockLf || "") +
+      '"></label>' +
+      '<label class="f">Additional SPT<input id="azSpt" type="number" min="0" value="' +
+      esc(s.extraSpt == null ? "" : s.extraSpt) +
+      '" placeholder="auto ~ LF/5"></label>' +
+      '<label class="f">Shelby / undisturbed<input id="azShelby" type="number" min="0" value="' +
+      esc(s.shelby || "") +
+      '"></label>' +
+      '<label class="f">Infiltration tests<input id="azInfil" type="number" min="0" value="' +
+      esc(s.infilCount || "") +
+      '"></label>' +
+      '<label class="f">Pavement coring (LF)<input id="azPave" type="number" min="0" value="' +
+      esc(s.pavementLf || "") +
+      '"></label>' +
+      '<label class="f">MOT<select id="azMot">' +
+      azOpt(s.mot, "", "—") +
+      azOpt(s.mot, "shoulder", "Shoulder (TA-3)") +
+      azOpt(s.mot, "lane", "Lane closure (TA-10)") +
+      azOpt(s.mot, "none", "None") +
+      "</select></label>" +
+      '<label class="f">MOT quantity<input id="azMotCount" type="number" min="0" value="' +
+      esc(s.motCount == null ? "" : s.motCount) +
+      '"></label></div>' +
+      '<div class="chk-grid" style="margin-top:10px">' +
+      '<label class="chk"><input type="checkbox" id="azDnrec"' +
+      (s.dnrec ? " checked" : "") +
+      "> DNREC permit likely</label>" +
+      '<label class="chk"><input type="checkbox" id="azGps"' +
+      (s.gps !== false ? " checked" : "") +
+      "> GPS locate</label></div>" +
+      '<div class="row-between" style="margin-top:12px"><div>' +
+      '<button class="btn primary" data-act="az-run">Estimate contractors</button></div></div></div>' +
+      headline +
+      (cards ? '<div class="az-rank">' + cards + "</div>" : "") +
+      '<div class="card"><h3>Add a past request / proposal packet</h3>' +
+      "<p>For each old job: drop the boring request and that contractor’s proposal <b>together</b> (two PDFs). Repeat for the next job. If the proposal has no AGR line, pick the contractor first.</p>" +
+      '<div class="fields" style="margin-bottom:10px"><label class="f">Contractor for this packet<select id="azContractor">' +
+      contractorOpts +
+      "</select></label></div>" +
+      (ui.azPendingProposal
+        ? '<div class="banner">Have <b>' +
+          esc(ui.azPendingProposal.fileName) +
+          "</b> — pick the contractor above to save it.</div>"
+        : "") +
+      '<div class="pdf-drop no-print" id="azTeach">' +
+      '<label class="pdf-drop-zone" id="azTeachZone">Drop the request + proposal here' +
+      "<small>Two files = one packet. Proposal-only still works if the request is already on the desk, or ConTrak will learn the billed quantities from the proposal lines.</small>" +
+      '<input type="file" id="azTeachFile" accept=".pdf,.txt,application/pdf" multiple hidden></label></div>' +
+      "<h3>Packets on the ledger</h3>" +
+      (ledgerList
+        ? '<div class="admin-list">' + ledgerList + "</div>"
+        : "<p class='muted'>No proposal lines on the ledger yet. Dropping a proposal onto a QP also trains the analyzer.</p>") +
+      "<h3 style=\"margin-top:14px\">Packets you taught</h3>" +
+      (exList ? '<div class="admin-list">' + exList + "</div>" : "<p class='muted'>None yet — drop a request and proposal together above. They stay in this browser.</p>") +
+      "</div>"
     );
   }
 
@@ -2670,6 +2986,7 @@
 
   function afterRender() {
     wirePdfDrop();
+    wireAnalyzerDrop();
     var host = document.getElementById("ntpProposalScan");
     var q = qp();
     if (host && q && window.ConTrakPdf) {
@@ -2881,6 +3198,220 @@
       });
   }
 
+  function wireAnalyzerDrop() {
+    function bindZone(zoneId, inputId, teach) {
+      var input = document.getElementById(inputId);
+      if (input) {
+        input.onchange = function () {
+          if (input.files && input.files.length) ingestAnalyzerFiles(input.files, teach);
+          input.value = "";
+        };
+      }
+      var zone = document.getElementById(zoneId);
+      if (!zone) return;
+      zone.ondragover = function (ev) {
+        ev.preventDefault();
+        ev.stopPropagation();
+        zone.classList.add("drag");
+      };
+      zone.ondragleave = function () {
+        zone.classList.remove("drag");
+      };
+      zone.ondrop = function (ev) {
+        ev.preventDefault();
+        ev.stopPropagation();
+        zone.classList.remove("drag");
+        var files = ev.dataTransfer && ev.dataTransfer.files;
+        if (files && files.length) ingestAnalyzerFiles(files, teach);
+      };
+    }
+    bindZone("azDropZone", "azFile", false);
+    bindZone("azTeachZone", "azTeachFile", true);
+    var sel = document.getElementById("azContractor");
+    if (sel) {
+      sel.onchange = function () {
+        ui.azContractorId = sel.value;
+        if (ui.azPendingProposal && sel.value) {
+          applyAnalyzerProposal(ui.azPendingProposal.text, ui.azPendingProposal.fileName);
+        }
+      };
+    }
+  }
+
+  function readDroppedText(file) {
+    if (/pdf/i.test(file.type || "") || /\.pdf$/i.test(file.name || "")) {
+      if (!window.ConTrakPdf || !window.pdfjsLib) {
+        return Promise.reject(new Error("PDF library did not load — check your network and refresh"));
+      }
+      return file.arrayBuffer().then(function (buf) {
+        return window.ConTrakPdf.extractText(buf).then(function (extracted) {
+          return extracted && extracted.text ? extracted.text : "";
+        });
+      });
+    }
+    return new Promise(function (resolve, reject) {
+      var r = new FileReader();
+      r.onload = function () {
+        resolve(String(r.result || ""));
+      };
+      r.onerror = function () {
+        reject(r.error || new Error("Could not read file"));
+      };
+      r.readAsText(file);
+    });
+  }
+
+  function classifyAnalyzerText(text) {
+    var asProp = A.looksLikeProposal(text);
+    var asReq = A.looksLikeRequest(text);
+    if (asProp && !asReq) return "proposal";
+    if (asReq && !asProp) return "request";
+    if (asProp) return "proposal";
+    return "request";
+  }
+
+  function findAnalyzerContract(parsed) {
+    var picked = ui.azContractorId || "";
+    var agrCode = String((parsed && parsed.agreementCode) || "").toUpperCase();
+    var list = state.contracts || [];
+    var agr = null;
+    if (picked) {
+      agr = list.find(function (c) {
+        return c.id === picked || String(c.code).toUpperCase() === String(picked).toUpperCase();
+      });
+    }
+    if (!agr && agrCode) {
+      agr = list.find(function (c) {
+        return String(c.code).toUpperCase() === agrCode || String(c.id).toUpperCase() === agrCode;
+      });
+    }
+    return agr || null;
+  }
+
+  function saveTaughtPacket(scope, parsed, agr) {
+    var ex = A.exampleFromPair(scope, parsed, agr);
+    state.analyzer = state.analyzer || { examples: [] };
+    state.analyzer.examples = state.analyzer.examples || [];
+    state.analyzer.examples.push(ex);
+    save();
+    return ex;
+  }
+
+  function applyAnalyzerProposal(text, fileName) {
+    var parsed = E.parseConsultantProposal(text);
+    if (!(parsed.lines || []).length) {
+      toast("No proposal item lines in " + (fileName || "that file"));
+      return null;
+    }
+    var agr = findAnalyzerContract(parsed);
+    if (!agr) {
+      ui.azPendingProposal = { text: text, fileName: fileName || "proposal" };
+      toast("Pick the contractor for " + (fileName || "this proposal") + ", then it will save");
+      render();
+      return null;
+    }
+    var scope = ui.azScope;
+    if (!scope || !(scope.boringCount || scope.soilLf)) {
+      scope = A.scopeFromProposal(parsed.lines);
+      if (parsed.projectName) scope.projectName = parsed.projectName;
+    }
+    var ex = saveTaughtPacket(scope, parsed, agr);
+    ui.azPendingProposal = null;
+    runAnalyzer(scope);
+    toast("Saved packet · " + (ex.contractorName || agr.code) + " · " + E.fmtMoney(ex.total));
+    return ex;
+  }
+
+  function applyAnalyzerRequest(text, fileName) {
+    ui.azRequestName = fileName || "request";
+    ui.azRequestText = text;
+    var parsedReq = A.parseBoringRequest(text);
+    runAnalyzer(parsedReq);
+    var n = parsedReq.boringCount;
+    toast(
+      "Read " +
+        (fileName || "request") +
+        (n ? " · " + n + " boring" + (n === 1 ? "" : "s") : "") +
+        (parsedReq.soilLf ? " · " + parsedReq.soilLf + " LF" : "")
+    );
+    return parsedReq;
+  }
+
+  function ingestAnalyzerFiles(fileList, forceTeach) {
+    var files = [].slice.call(fileList || []).filter(Boolean);
+    if (!files.length) return;
+    toast("Reading " + files.length + " file" + (files.length === 1 ? "" : "s") + "…");
+    Promise.all(
+      files.map(function (file) {
+        return readDroppedText(file).then(function (text) {
+          if (!String(text || "").trim()) throw new Error(file.name + " had no text");
+          return { file: file, text: text, kind: classifyAnalyzerText(text) };
+        });
+      })
+    )
+      .then(function (rows) {
+        var reqs = [];
+        var props = [];
+        rows.forEach(function (row) {
+          if (forceTeach && row.kind !== "request") props.push(row);
+          else if (row.kind === "proposal") props.push(row);
+          else reqs.push(row);
+        });
+        if (forceTeach && !props.length && reqs.length && rows.length === 1 && rows[0].kind === "request") {
+          reqs = rows;
+        }
+        var scope = null;
+        if (reqs.length) {
+          scope = applyAnalyzerRequest(reqs[0].text, reqs[0].file.name);
+        }
+        var saved = [];
+        props.forEach(function (row) {
+          var parsed = E.parseConsultantProposal(row.text);
+          if (!(parsed.lines || []).length) return;
+          var agr = findAnalyzerContract(parsed);
+          if (!agr) {
+            ui.azPendingProposal = { text: row.text, fileName: row.file.name };
+            return;
+          }
+          var used = scope || ui.azScope;
+          if (!used || !(used.boringCount || used.soilLf)) {
+            used = A.scopeFromProposal(parsed.lines);
+            if (parsed.projectName) used.projectName = parsed.projectName;
+          }
+          saved.push(saveTaughtPacket(used, parsed, agr));
+        });
+        if (saved.length) {
+          ui.azPendingProposal = null;
+          runAnalyzer(scope || ui.azScope || saved[0].scope);
+          toast(
+            "Saved " +
+              saved.length +
+              " packet" +
+              (saved.length === 1 ? "" : "s") +
+              " · " +
+              saved
+                .map(function (ex) {
+                  return (ex.contractorName || ex.agreementCode) + " " + E.fmtMoney(ex.total);
+                })
+                .join(" · ")
+          );
+        } else if (ui.azPendingProposal) {
+          render();
+          toast("Pick the contractor for " + ui.azPendingProposal.fileName + ", then it will save");
+        } else if (!reqs.length) {
+          toast("Could not tell a request from a proposal in those files");
+        }
+      })
+      .catch(function (err) {
+        toast("Could not read packet: " + (err && err.message ? err.message : err));
+      });
+  }
+
+  function ingestAnalyzerFile(file, teach) {
+    if (!file) return;
+    ingestAnalyzerFiles([file], teach);
+  }
+
   function onKey(ev) {
     if (ev.key === "Enter" && ev.target && ev.target.id === "filter") {
       ev.preventDefault();
@@ -2898,9 +3429,11 @@
 
     if (act === "switch-contract") {
       ui.contractId = el.getAttribute("data-id");
-      ui.qpId = null;
-      ui.view = "ledger";
-      clearBulkUi();
+      if (ui.view !== "analyzer") {
+        ui.qpId = null;
+        ui.view = "ledger";
+        clearBulkUi();
+      }
       var nc = contract();
       ui.taskId = nc.tasks[0] && nc.tasks[0].id;
       render();
@@ -2919,6 +3452,40 @@
       ui.qpId = null;
       if (ui.view === "finance") ui.editTemplateId = tpl(c).id;
       render();
+      return;
+    }
+    if (act === "az-run") {
+      runAnalyzer(readAnalyzerScope());
+      toast("Estimate updated from the program fields");
+      return;
+    }
+    if (act === "az-paste") {
+      var pasted = val("azPaste");
+      ui.azRequestText = pasted;
+      ui.azRequestName = ui.azRequestName || "pasted request";
+      var parsedReq = A.parseBoringRequest(pasted);
+      runAnalyzer(parsedReq);
+      toast(parsedReq.boringCount ? "Read " + parsedReq.boringCount + " boring" + (parsedReq.boringCount === 1 ? "" : "s") : "Could not find a boring count — fill the program");
+      return;
+    }
+    if (act === "az-clear") {
+      ui.azRequestName = "";
+      ui.azRequestText = "";
+      ui.azScope = null;
+      ui.azResult = null;
+      ui.azPendingProposal = null;
+      render();
+      return;
+    }
+    if (act === "az-del-ex") {
+      var xid = el.getAttribute("data-id");
+      state.analyzer.examples = (state.analyzer.examples || []).filter(function (ex) {
+        return ex.id !== xid;
+      });
+      save();
+      if (ui.azScope) runAnalyzer(ui.azScope);
+      else render();
+      toast("Removed taught packet");
       return;
     }
     if (act === "set-role") {
