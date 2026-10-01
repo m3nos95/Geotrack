@@ -81,6 +81,7 @@ var parsedNar = A.parseBoringRequest(narrative);
 assert("Narrative boring count 1", parsedNar.boringCount === 1, parsedNar.boringCount);
 assert("Narrative 40 LF", nearly(parsedNar.soilLf, 40), parsedNar.soilLf);
 assert("Narrative Kent ATV shoulder", parsedNar.county === "K" && parsedNar.access === "atv" && parsedNar.mot === "shoulder");
+assert("Narrative project is just the project name", parsedNar.projectName === "DE42 at SR1", parsedNar.projectName);
 
 var t3h = hcea.tasks.find(function (t) { return String(t.number) === "3"; });
 var qp4 = t3h.qps.find(function (q) { return q.qpNumber === "4"; });
@@ -244,6 +245,7 @@ assert(
   report.program.some(function (r) { return r.label === "Borings" && r.value === "1"; })
 );
 assert("Report recommendation names the cheapest contractor", /likely cheapest/i.test(report.recommendation), report.recommendation);
+assert("Report recommendation does not stack periods", !/\.\./.test(report.recommendation), report.recommendation);
 assert("Report method says this is not a bid", /Internal estimate, not a bid/i.test(report.method), report.method);
 var reportCgc = report.contractors.find(function (e) { return e.agreementCode === "2019F"; });
 var reportHcea = report.contractors.find(function (e) { return e.agreementCode === "2018F"; });

@@ -109,7 +109,7 @@
     var rest = src.slice(start).replace(re, "");
     rest = rest.replace(/\s+/g, " ").trim();
     var cut = rest.search(
-      /\s(?:Contract\s+Name|Contract\s+Number|Funding|M&R|PD\/Bridge|Boring\s+No|Total\s+Depth|County|Access|MOT|Notes)\b/i
+      /\s(?:Contract(?:\s+Name|\s+Number)?|Funding|M&R|PD\/Bridge|Boring\s+No|Total\s+Depth|County|Access|MOT|Notes)\b/i
     );
     if (cut >= 0) rest = rest.slice(0, cut);
     return rest.replace(/\s+/g, " ").trim().slice(0, 160);
@@ -979,7 +979,9 @@
           " ($" +
           Number(money(runner.total - cheapest.total)).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) +
           " more)";
-        if ((runner.notes || [])[0]) recommendation += " — " + runner.notes[0];
+        if ((runner.notes || [])[0]) {
+          recommendation += " — " + String(runner.notes[0]).replace(/[. ]+$/, "");
+        }
         recommendation += ".";
       }
     }
