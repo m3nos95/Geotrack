@@ -271,6 +271,76 @@ var emptyReport = A.buildReport({ estimates: [] }, { date: "2026-09-30" });
 assert("Empty report has no ranking rows", emptyReport.ranking.length === 0);
 assert("Empty report explains there are no estimates", /No priced contractor estimates/i.test(emptyReport.recommendation), emptyReport.recommendation);
 
+var cgcPm = cgcEst.lines.find(function (l) { return l.itemCode === "18" && !l.skipped; });
+var hceaPm = hceaEst.lines.find(function (l) { return l.itemCode === "18" && !l.skipped; });
+assert("CGC estimate infers project management hours", cgcPm && cgcPm.qty >= 10 && cgcPm.qty <= 16, cgcPm && cgcPm.qty);
+assert("HCEA estimate infers project management hours", hceaPm && hceaPm.qty >= 8 && hceaPm.qty <= 50, hceaPm && hceaPm.qty);
+var hceaLog = hceaEst.lines.find(function (l) { return l.itemCode === "LOGGER" && !l.skipped; });
+assert("HCEA logger hours on a 1-hole job stay modest", !hceaLog || hceaLog.qty <= 8, hceaLog && hceaLog.qty);
+
+var liveHcea = {
+  id: "2217F",
+  code: "2217F",
+  contractor: "HCEA",
+  payItems: global.PsaCatalog.cloneCatalog(),
+  tasks: [],
+};
+var coolspring = {
+  id: "taught-coolspring-full",
+  contractorId: "2217F",
+  contractorName: "HCEA",
+  agreementCode: "2217F",
+  project: "US9 @ Cool Spring Rd",
+  lines: [
+    { itemNo: "9", description: "MAN-HOUR OF MISCELLANEOUS WORK", proposedQty: 90, unitPrice: 32 },
+    { itemNo: "19", description: "MAN-HOUR OF PROJECT MANAGEMENT", proposedQty: 30, unitPrice: 85 },
+    { itemNo: "46", description: "QUALIFIED LOGGER", proposedQty: 20, unitPrice: 75 },
+    { itemNo: "7", description: "SOIL BORINGS, LAND", proposedQty: 40, unitPrice: 15 },
+  ],
+  source: "trained",
+};
+var liveEst = A.analyze(small, [liveHcea], [coolspring]);
+var liveH = liveEst.estimates.find(function (e) { return e.agreementCode === "2217F"; });
+function liveLine(code) {
+  return liveH && liveH.lines.find(function (l) { return l.itemCode === code && !l.skipped && l.qty > 0; });
+}
+assert("Blank IDIQ prices still pick up misc hours from the taught packet", liveLine("763587"), liveH && JSON.stringify(liveH.lines.map(function (l) { return l.itemCode + ":" + l.qty + (l.skipped ? "s" : ""); })));
+assert("Blank IDIQ prices still pick up PM hours from the taught packet", liveLine("18"));
+assert("Taught item 9 prices miscellaneous work at $32", liveLine("763587") && nearly(liveLine("763587").unitPrice, 32), liveLine("763587") && liveLine("763587").unitPrice);
+assert("Taught item 19 prices project management", liveLine("18") && nearly(liveLine("18").unitPrice, 85));
+
+var nolf = {
+  id: "taught-nolf",
+  contractorId: "2018F",
+  contractorName: "HCEA",
+  agreementCode: "2018F",
+  project: "Logger only packet",
+  lines: [
+    { itemNo: "46", description: "QUALIFIED LOGGER", proposedQty: 20, unitPrice: 75 },
+    { itemNo: "9", description: "MAN-HOUR OF MISCELLANEOUS WORK", proposedQty: 90, unitPrice: 32 },
+  ],
+  source: "trained",
+};
+var nolfEst = A.analyze(small, [cgc, hcea], [nolf]);
+var nolfHcea = nolfEst.estimates.find(function (e) { return e.agreementCode === "2018F"; });
+var nolfLog = nolfHcea && nolfHcea.lines.find(function (l) { return l.itemCode === "LOGGER" && !l.skipped; });
+assert(
+  "A taught packet with no footage does not dump 800 logger hours on HCEA",
+  !nolfLog || nolfLog.qty <= 8,
+  nolfLog && nolfLog.qty
+);
+assert(
+  "HCEA still gets misc hours when a no-footage packet is in the mix",
+  nolfHcea && nolfHcea.lines.some(function (l) { return l.itemCode === "763587" && l.qty > 0 && !l.skipped; })
+);
+
+var itemNoScope = A.scopeFromProposal([
+  { itemNo: "7", proposedQty: 40, description: "SOIL BORINGS, LAND" },
+  { itemNo: "14", proposedQty: 1, description: "MOBILIZATION OF ATV OR SKID BORING RIG - Kent County" },
+]);
+assert("Proposal item 7 still counts as land footage", nearly(itemNoScope.soilLf, 40), itemNoScope.soilLf);
+assert("Proposal item 14 still counts as a boring", itemNoScope.boringCount === 1, itemNoScope.boringCount);
+
 if (fails) {
   console.error("\n" + fails + " failed");
   process.exit(1);
