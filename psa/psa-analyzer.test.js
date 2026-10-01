@@ -219,6 +219,56 @@ assert(
 assert("Looks like a request sheet", A.looksLikeRequest(sheet) === true);
 assert("Looks like a proposal when item lines are present", A.looksLikeProposal("Item No Description Units\n2 ADDITIONAL 9.00 Each X 18.00 162.00\nTotal Amount Due: $162.00") === true);
 
+var report = A.buildReport(result, { date: "2026-09-30", taughtCount: 0 });
+assert("Report title", report.title === "Contractor Analysis Report");
+assert("Report date is the one passed in", report.dateISO === "2026-09-30");
+assert("Report ranks CGC first as cheapest", report.ranking[0] && report.ranking[0].agreementCode === "2019F" && report.ranking[0].cheapest);
+assert("Report ranks HCEA second", report.ranking[1] && report.ranking[1].agreementCode === "2018F" && !report.ranking[1].cheapest);
+assert("Report savings is HCEA minus CGC", nearly(report.savings, hceaEst.total - cgcEst.total), report.savings);
+assert("Report names CGC as cheapest", report.cheapestName === cgcEst.contractorName);
+assert(
+  "Report program includes the project",
+  report.program.some(function (r) { return r.label === "Project" && /DE42 at SR1/i.test(r.value); }),
+  JSON.stringify(report.program)
+);
+assert(
+  "Report program includes Kent County",
+  report.program.some(function (r) { return r.label === "County" && r.value === "Kent"; })
+);
+assert(
+  "Report program includes ATV access",
+  report.program.some(function (r) { return r.label === "Access" && /ATV/i.test(r.value); })
+);
+assert(
+  "Report program includes 1 boring",
+  report.program.some(function (r) { return r.label === "Borings" && r.value === "1"; })
+);
+assert("Report recommendation names the cheapest contractor", /likely cheapest/i.test(report.recommendation), report.recommendation);
+assert("Report method says this is not a bid", /Internal estimate, not a bid/i.test(report.method), report.method);
+var reportCgc = report.contractors.find(function (e) { return e.agreementCode === "2019F"; });
+var reportHcea = report.contractors.find(function (e) { return e.agreementCode === "2018F"; });
+assert(
+  "Report CGC habit says they do not bill misc hours",
+  reportCgc && reportCgc.habits.some(function (h) { return /Does not bill miscellaneous man-hours/i.test(h); }),
+  reportCgc && reportCgc.habits.join(" | ")
+);
+assert(
+  "Report HCEA habit says they add misc hours",
+  reportHcea && reportHcea.habits.some(function (h) { return /Adds miscellaneous man-hours/i.test(h); }),
+  reportHcea && reportHcea.habits.join(" | ")
+);
+assert(
+  "Report HCEA page still has a misc-hours pay item",
+  reportHcea && reportHcea.lines.some(function (l) { return l.itemCode === "763587" && l.qty > 0 && !l.skipped; })
+);
+assert(
+  "Report CGC page has no misc-hours pay item",
+  reportCgc && reportCgc.lines.every(function (l) { return l.itemCode !== "763587"; })
+);
+var emptyReport = A.buildReport({ estimates: [] }, { date: "2026-09-30" });
+assert("Empty report has no ranking rows", emptyReport.ranking.length === 0);
+assert("Empty report explains there are no estimates", /No priced contractor estimates/i.test(emptyReport.recommendation), emptyReport.recommendation);
+
 if (fails) {
   console.error("\n" + fails + " failed");
   process.exit(1);

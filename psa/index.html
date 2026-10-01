@@ -449,6 +449,38 @@
     .az-lines { margin-top: 8px; }
     .az-skip td { color: var(--mute2); }
     .az-headline div { margin-top: 4px; }
+    .az-report-bar { margin-top: 8px; }
+    .az-report-kicker {
+      text-align: center;
+      font-size: 9pt;
+      letter-spacing: .06em;
+      text-transform: uppercase;
+      color: #17365D;
+      margin: 0 0 4px;
+    }
+    .letter-page.az-report h1.az-report-title {
+      text-align: center;
+      font-size: 16pt;
+      letter-spacing: .04em;
+      text-transform: uppercase;
+      margin: 0 0 4px;
+    }
+    .letter-page.az-report .az-report-sub {
+      text-align: center;
+      margin: 0 0 16px;
+    }
+    .letter-page.az-report h2 {
+      font-size: 12pt;
+      margin: 16px 0 8px;
+    }
+    .az-report-rec {
+      border: 1px solid #333;
+      padding: 10px 12px;
+      margin: 0 0 16px;
+    }
+    .az-report-list { margin: 0 0 12px; padding-left: 20px; }
+    .az-report-list li { margin: 3px 0; }
+    .letter-page.az-report .az-skip td { color: #666; }
     .letter-page.ntp-proposal-scan {
       padding: 0;
       min-height: 0;
@@ -466,6 +498,7 @@
       .workspace { display: block; }
       main.stage { padding: 0; }
       .print-only { display: block; }
+      .setup-wrap { padding: 0; max-width: none; }
       .card, table.grid th { background: #fff; color: #111; border-color: #ccc; }
       a { color: #111; text-decoration: none; }
       .paper-stack { padding: 0; }
@@ -526,8 +559,8 @@
   <script src="psa-catalog.js"></script>
   <script src="psa-templates.js"></script>
   <script src="psa-seed.js"></script>
-  <script src="psa-analyzer.js?v=analyzer-misc"></script>
+  <script src="psa-analyzer.js?v=analyzer-report"></script>
   <script src="psa-pdf.js?v=qp20-font"></script>
-  <script src="psa-app.js?v=analyzer-packets"></script>
+  <script src="psa-app.js?v=analyzer-report"></script>
 </body>
 </html>

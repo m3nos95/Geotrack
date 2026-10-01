@@ -887,6 +887,131 @@
     };
   }
 
+  function countyLabel(code) {
+    if (code === "N") return "New Castle";
+    if (code === "K") return "Kent";
+    if (code === "S") return "Sussex";
+    return String(code || "");
+  }
+
+  function accessLabel(access) {
+    if (access === "atv") return "ATV / off-road";
+    if (access === "barge") return "Barge";
+    if (access === "truck") return "Truck / land";
+    return String(access || "");
+  }
+
+  function motLabel(scope) {
+    var qty = scope && scope.motCount != null && scope.motCount !== "" ? " × " + scope.motCount : "";
+    if (scope && scope.mot === "lane") return "Lane closure (TA-10)" + qty;
+    if (scope && scope.mot === "shoulder") return "Shoulder (TA-3)" + qty;
+    if (scope && scope.mot === "none") return "None";
+    return "—";
+  }
+
+  function programRows(scope) {
+    scope = scope || emptyScope();
+    var sptQty = extraSptQty(scope);
+    var spt =
+      scope.extraSpt != null && scope.extraSpt !== ""
+        ? String(scope.extraSpt)
+        : sptQty
+          ? sptQty + " (auto ~ LF/5)"
+          : "—";
+    var rows = [
+      { label: "Project", value: scope.projectName || "—" },
+      { label: "Contract / T#", value: scope.contractNo || "—" },
+      { label: "County", value: countyLabel(scope.county) || "—" },
+      { label: "Access", value: accessLabel(scope.access) || "—" },
+      { label: "Borings", value: String(scope.boringCount || 0) },
+      { label: "Soil footage", value: (Number(scope.soilLf) || 0) + " LF" },
+    ];
+    if (Number(scope.rockLf) > 0) rows.push({ label: "Rock core", value: Number(scope.rockLf) + " LF" });
+    rows.push({ label: "Additional SPT", value: spt });
+    if (Number(scope.shelby) > 0) rows.push({ label: "Shelby / undisturbed", value: String(scope.shelby) });
+    if (Number(scope.infilCount) > 0) rows.push({ label: "Infiltration tests", value: String(scope.infilCount) });
+    if (Number(scope.pavementLf) > 0) rows.push({ label: "Pavement coring", value: Number(scope.pavementLf) + " LF" });
+    rows.push({ label: "MOT", value: motLabel(scope) });
+    rows.push({ label: "DNREC permit", value: scope.dnrec ? "Likely" : "Not indicated" });
+    rows.push({ label: "GPS locate", value: scope.gps === false ? "No" : "Yes" });
+    return rows;
+  }
+
+  function buildReport(result, opts) {
+    result = result || {};
+    opts = opts || {};
+    var estimates = (result.estimates || []).slice();
+    var cheapest = result.cheapest || (estimates[0] && estimates[0].cheapest ? estimates[0] : null);
+    var runner = estimates[1] || null;
+    var taughtCount = Number(opts.taughtCount || 0);
+    var jobCount = estimates.reduce(function (n, e) {
+      return n + Number(e.jobCount || 0);
+    }, 0);
+    var ranking = estimates.map(function (est, i) {
+      var more = cheapest && Number(est.total) > Number(cheapest.total)
+        ? money(est.total - cheapest.total)
+        : 0;
+      return {
+        rank: i + 1,
+        contractorName: est.contractorName || "",
+        agreementCode: est.agreementCode || "",
+        total: money(est.total),
+        jobCount: est.jobCount || 0,
+        cheapest: !!est.cheapest,
+        moreThanCheapest: more,
+      };
+    });
+    var recommendation = "No priced contractor estimates yet.";
+    if (cheapest) {
+      recommendation =
+        cheapest.contractorName +
+        " (" +
+        (cheapest.agreementCode || "") +
+        ") is likely cheapest at $" +
+        Number(cheapest.total).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) +
+        ".";
+      if (runner && Number(runner.total) > Number(cheapest.total)) {
+        recommendation +=
+          " Next is " +
+          runner.contractorName +
+          " at $" +
+          Number(runner.total).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) +
+          " ($" +
+          Number(money(runner.total - cheapest.total)).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) +
+          " more)";
+        if ((runner.notes || [])[0]) recommendation += " — " + runner.notes[0];
+        recommendation += ".";
+      }
+    }
+    var learned =
+      "Learned from " +
+      jobCount +
+      " past request/proposal packet" +
+      (jobCount === 1 ? "" : "s") +
+      (taughtCount ? " including " + taughtCount + " taught in this browser" : " on the ledger") +
+      ".";
+    return {
+      title: "Contractor Analysis Report",
+      subtitle: "Materials & Research · IDIQ soil boring program",
+      dateISO: opts.date || engine().todayISO(),
+      program: programRows(result.scope),
+      ranking: ranking,
+      contractors: estimates,
+      cheapestName: cheapest ? cheapest.contractorName : "",
+      cheapestCode: cheapest ? cheapest.agreementCode : "",
+      cheapestTotal: cheapest ? money(cheapest.total) : 0,
+      runnerName: runner ? runner.contractorName : "",
+      savings: runner && cheapest && Number(runner.total) > Number(cheapest.total)
+        ? money(runner.total - cheapest.total)
+        : 0,
+      recommendation: recommendation,
+      learned: learned,
+      warnings: (result.warnings || []).slice(),
+      method:
+        "Internal estimate, not a bid. Unit prices and extras (miscellaneous man-hours, project management, GPS, DNREC) follow how each firm billed similar jobs. A line is omitted when that contractor does not bill it.",
+    };
+  }
+
   global.PsaAnalyzer = {
     parseBoringRequest: parseBoringRequest,
     looksLikeProposal: looksLikeProposal,
@@ -903,5 +1028,9 @@
     detectAccess: detectAccess,
     detectMot: detectMot,
     jobDistance: jobDistance,
+    countyLabel: countyLabel,
+    accessLabel: accessLabel,
+    motLabel: motLabel,
+    buildReport: buildReport,
   };
 })(typeof window !== "undefined" ? window : global);
