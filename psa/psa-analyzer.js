@@ -51,6 +51,29 @@
     return null;
   }
 
+  function catalogByItemNo(itemNo) {
+    var list = (catalog() && catalog().ITEMS) || [];
+    var want = String(itemNo || "").trim().toUpperCase();
+    if (!want) return null;
+    var i;
+    for (i = 0; i < list.length; i++) {
+      if (String(list[i].itemNo || "").trim().toUpperCase() === want) return list[i];
+    }
+    return null;
+  }
+
+  function catalogCodeForLine(line) {
+    var byCode = catalogByCode(codeOf(line));
+    if (byCode) return byCode.code;
+    var byNo = catalogByItemNo(itemNoOf(line));
+    if (byNo) return byNo.code;
+    var desc = String((line && line.description) || "");
+    if (/misc(?:ellaneous)?/i.test(desc) && /man[-\s]?hour|\bwork\b/i.test(desc)) return "763587";
+    if (/project management/i.test(desc)) return "18";
+    if (/qualified logger|\blogger\b/i.test(desc)) return "LOGGER";
+    return codeOf(line);
+  }
+
   function emptyScope() {
     return {
       projectName: "",
@@ -109,7 +132,7 @@
     var rest = src.slice(start).replace(re, "");
     rest = rest.replace(/\s+/g, " ").trim();
     var cut = rest.search(
-      /\s(?:Contract\s+Name|Contract\s+Number|Funding|M&R|PD\/Bridge|Boring\s+No|Total\s+Depth|County|Access|MOT|Notes)\b/i
+      /\s(?:Contract(?:\s+Name|\s+Number)?|Funding|M&R|PD\/Bridge|Boring\s+No|Total\s+Depth|County|Access|MOT|Notes)\b/i
     );
     if (cut >= 0) rest = rest.slice(0, cut);
     return rest.replace(/\s+/g, " ").trim().slice(0, 160);
@@ -332,27 +355,27 @@
 
   function scopeFromProposal(lines) {
     var scope = emptyScope();
-    scope.landLf = lineQtyByCode(lines, ["605545"]);
-    scope.atvLf = lineQtyByCode(lines, ["605539"]);
+    scope.landLf = lineQtyByCode(lines, ["605545", "7"]);
+    scope.atvLf = lineQtyByCode(lines, ["605539", "8"]);
     scope.soilLf = money(scope.landLf + scope.atvLf);
-    scope.rockLf = lineQtyByCode(lines, ["605543"]);
-    scope.extraSpt = lineQtyByCode(lines, ["605540"]);
-    scope.shelby = lineQtyByCode(lines, ["605541"]);
-    scope.infilCount = lineQtyByCode(lines, ["41", "42", "43", "27", "28", "29"]);
-    scope.pavementLf = lineQtyByCode(lines, ["PAVECORE"]);
-    var truck = lineQtyByCode(lines, ["763589N", "763589K", "763589S"]);
-    var atv = lineQtyByCode(lines, ["763590N", "763590K", "763590S"]);
+    scope.rockLf = lineQtyByCode(lines, ["605543", "5"]);
+    scope.extraSpt = lineQtyByCode(lines, ["605540", "2"]);
+    scope.shelby = lineQtyByCode(lines, ["605541", "3"]);
+    scope.infilCount = lineQtyByCode(lines, ["41", "42", "43", "27", "28", "29", "52"]);
+    scope.pavementLf = lineQtyByCode(lines, ["PAVECORE", "58"]);
+    var truck = lineQtyByCode(lines, ["763589N", "763589K", "763589S", "10", "11", "12"]);
+    var atv = lineQtyByCode(lines, ["763590N", "763590K", "763590S", "13", "14", "15"]);
     scope.boringCount = Math.max(truck, atv, 0);
     if (!scope.boringCount && scope.soilLf) {
       scope.boringCount = Math.max(1, Math.round(scope.soilLf / 20));
     }
     if (scope.atvLf && !scope.landLf) scope.access = "atv";
     else if (scope.landLf) scope.access = "truck";
-    if (lineQtyByCode(lines, ["763589N", "763590N"])) scope.county = "N";
-    else if (lineQtyByCode(lines, ["763589K", "763590K"])) scope.county = "K";
-    else if (lineQtyByCode(lines, ["763589S", "763590S"])) scope.county = "S";
-    var lane = lineQtyByCode(lines, ["763606"]);
-    var shoulder = lineQtyByCode(lines, ["763605"]);
+    if (lineQtyByCode(lines, ["763589N", "763590N", "10", "13"])) scope.county = "N";
+    else if (lineQtyByCode(lines, ["763589K", "763590K", "11", "14"])) scope.county = "K";
+    else if (lineQtyByCode(lines, ["763589S", "763590S", "12", "15"])) scope.county = "S";
+    var lane = lineQtyByCode(lines, ["763606", "21"]);
+    var shoulder = lineQtyByCode(lines, ["763605", "20"]);
     if (lane) {
       scope.mot = "lane";
       scope.motCount = lane;
@@ -361,27 +384,59 @@
       scope.motCount = shoulder;
     }
     scope.dnrec = lineQtyByCode(lines, ["DNREC"]) > 0;
-    scope.gps = lineQtyByCode(lines, ["GPS"]) > 0;
+    scope.gps = lineQtyByCode(lines, ["GPS", "59"]) > 0;
     return scope;
+  }
+
+  function lineQtyMatch(lines, opts) {
+    opts = opts || {};
+    var codes = {};
+    (opts.codes || []).forEach(function (c) {
+      codes[String(c).toUpperCase()] = true;
+    });
+    var itemNos = {};
+    (opts.itemNos || []).forEach(function (c) {
+      itemNos[String(c).toUpperCase()] = true;
+    });
+    var sum = 0;
+    (lines || []).forEach(function (l) {
+      var desc = String((l && l.description) || "");
+      if (codes[codeOf(l)] || itemNos[itemNoOf(l)] || (opts.desc && opts.desc.test(desc))) {
+        sum += qtyOf(l);
+      }
+    });
+    return sum;
   }
 
   function extrasFromLines(lines, scope) {
     scope = scope || scopeFromProposal(lines);
-    var borings = scope.boringCount || 1;
-    var lf = scope.soilLf || 1;
+    var borings = Number(scope.boringCount || 0);
+    var lf = Number(scope.soilLf || 0);
     return {
-      miscHours: lineQtyByCode(lines, ["763587"]),
-      pmHours: lineQtyByCode(lines, ["18"]),
-      loggerHours: lineQtyByCode(lines, ["LOGGER"]),
-      gpsQty: lineQtyByCode(lines, ["GPS"]),
+      miscHours: lineQtyMatch(lines, {
+        codes: ["763587"],
+        itemNos: ["9"],
+        desc: /misc(?:ellaneous)?(?:\s+man[-\s]?hour|\s+work)|\bman[-\s]?hour of misc/i,
+      }),
+      pmHours: lineQtyMatch(lines, {
+        codes: ["18"],
+        itemNos: ["19"],
+        desc: /project management/i,
+      }),
+      loggerHours: lineQtyMatch(lines, {
+        codes: ["LOGGER"],
+        itemNos: ["46"],
+        desc: /qualified logger|\blogger\b/i,
+      }),
+      gpsQty: lineQtyByCode(lines, ["GPS", "59"]),
       gpsLs: (function () {
-        var g = firstLine(lines, ["GPS"]);
+        var g = firstLine(lines, ["GPS", "59"]);
         return !!(g && String(g.unit || g.unitMeasure || "").toUpperCase().indexOf("LS") >= 0);
       })(),
       dnrecQty: lineQtyByCode(lines, ["DNREC"]),
-      abandonLf: lineQtyByCode(lines, ["34"]),
-      motLane: lineQtyByCode(lines, ["763606"]),
-      motShoulder: lineQtyByCode(lines, ["763605"]),
+      abandonLf: lineQtyByCode(lines, ["34", "43"]),
+      motLane: lineQtyByCode(lines, ["763606", "21"]),
+      motShoulder: lineQtyByCode(lines, ["763605", "20"]),
       boringCount: borings,
       soilLf: lf,
     };
@@ -445,11 +500,26 @@
   function pricesFromLines(lines) {
     var out = {};
     (lines || []).forEach(function (l) {
-      var code = codeOf(l);
+      var code = catalogCodeForLine(l);
       var p = Number(l.unitPrice || 0);
-      if (code && p > 0) out[code] = p;
+      if (code && p > 0) out[String(code).toUpperCase()] = p;
     });
     return out;
+  }
+
+  function learnedPrice(profile, code) {
+    var want = String(code || "").toUpperCase();
+    var p = Number((profile && profile.prices && profile.prices[want]) || 0);
+    if (p > 0) return p;
+    ((profile && profile.jobs) || []).forEach(function (j) {
+      (j.lines || []).forEach(function (l) {
+        if (p) return;
+        if (String(catalogCodeForLine(l) || "").toUpperCase() !== want) return;
+        var u = Number(l.unitPrice || 0);
+        if (u > 0) p = u;
+      });
+    });
+    return p;
   }
 
   function jobDistance(scope, jobScope) {
@@ -492,6 +562,77 @@
     return n / values.length;
   }
 
+  function jobsWithExtra(jobs, getVal) {
+    return (jobs || []).filter(function (j) {
+      return Number(getVal(j) || 0) > 0;
+    });
+  }
+
+  function extraHoursFromJobs(jobs, scope, getVal, getSize, newSize, caps) {
+    caps = caps || {};
+    var ranked = (jobs || []).slice().sort(function (a, b) {
+      return jobDistance(scope, a.scope) - jobDistance(scope, b.scope);
+    });
+    var allHit = jobsWithExtra(ranked, getVal);
+    if (!allHit.length) return 0;
+    var near = ranked.slice(0, Math.min(5, ranked.length));
+    var nearHit = jobsWithExtra(near, getVal);
+    var use = nearHit.length ? nearHit : allHit;
+    var maxObs = 0;
+    allHit.forEach(function (j) {
+      var v = Number(getVal(j) || 0);
+      if (v > maxObs) maxObs = v;
+    });
+    var sized = use.filter(function (j) {
+      return Number(getSize(j) || 0) > 0;
+    });
+    var pred = 0;
+    if (sized.length && Number(newSize || 0) > 0) {
+      pred = predictHours(
+        sized.map(getVal),
+        sized.map(function (j) {
+          return getSize(j);
+        }),
+        newSize
+      );
+    } else if (!caps.requireSize) {
+      pred = median(use.map(getVal));
+    }
+    if (caps.perBoring && Number(scope.boringCount || 0) > 0) {
+      pred = Math.min(pred, caps.perBoring * Number(scope.boringCount));
+    }
+    if (caps.perLf && Number(scope.soilLf || 0) > 1) {
+      pred = Math.min(pred, caps.perLf * Number(scope.soilLf));
+    }
+    if (maxObs > 0) pred = Math.min(pred, maxObs);
+    return pred;
+  }
+
+  function habitHoursLine(label, jobs, getVal, getSize) {
+    var hit = jobsWithExtra(jobs, getVal);
+    if (!hit.length) return "Does not bill " + label + " on learned jobs.";
+    var per = Math.round(
+      predictHours(
+        hit.map(getVal),
+        hit.map(function (j) {
+          return getSize(j) || 1;
+        }),
+        1
+      )
+    );
+    return (
+      "Adds " +
+      label +
+      " on " +
+      hit.length +
+      " of " +
+      jobs.length +
+      " jobs (about " +
+      per +
+      " hr per boring when they do)."
+    );
+  }
+
   function buildProfile(contractorId, name, code, jobs, catalogPrices) {
     jobs = jobs || [];
     var prices = Object.assign({}, catalogPrices || {});
@@ -499,34 +640,47 @@
       Object.assign(prices, j.prices || {}, pricesFromLines(j.lines));
     });
     var misc = jobs.map(function (j) { return j.extras.miscHours; });
-    var pm = jobs.map(function (j) { return j.extras.pmHours; });
-    var logger = jobs.map(function (j) { return j.extras.loggerHours; });
     var dnrec = jobs.map(function (j) { return j.extras.dnrecQty; });
     var gps = jobs.map(function (j) { return j.extras.gpsQty; });
     var gpsLs = jobs.filter(function (j) { return j.extras.gpsLs; }).length;
-    var borings = jobs.map(function (j) { return j.extras.boringCount || 1; });
-    var lfs = jobs.map(function (j) { return j.extras.soilLf || 1; });
+    var getMisc = function (j) { return j.extras.miscHours; };
+    var getPm = function (j) { return j.extras.pmHours; };
+    var getLog = function (j) { return j.extras.loggerHours; };
+    var getBorings = function (j) {
+      return Number((j.scope && j.scope.boringCount) || (j.extras && j.extras.boringCount) || 0);
+    };
+    var getLoggerSize = function (j) {
+      var hrs = Number((j.extras && j.extras.loggerHours) || 0);
+      var lf = Number((j.scope && j.scope.soilLf) || (j.extras && j.extras.soilLf) || 0);
+      var holes = getBorings(j);
+      if (lf > 1) {
+        if (hrs / lf > 0.3) return 0;
+        return lf;
+      }
+      if (holes > 0 && hrs / holes <= 10) return holes;
+      return 0;
+    };
     var habits = [];
     var miscRate = presenceRate(misc);
-    if (miscRate >= 0.5) {
-      habits.push(
-        "Routinely adds miscellaneous man-hours (" +
-          Math.round(miscRate * 100) +
-          "% of jobs; about " +
-          Math.round(predictHours(misc.filter(function (x) { return x > 0; }), borings, 1)) +
-          " hr per boring)."
-      );
+    if (jobsWithExtra(jobs, getMisc).length) {
+      habits.push(habitHoursLine("miscellaneous man-hours", jobs, getMisc, getBorings));
     } else {
       habits.push("Does not bill miscellaneous man-hours on learned jobs.");
     }
-    if (presenceRate(pm) >= 0.5) {
-      var lump = jobs.length >= 2 && Math.max.apply(null, pm) / Math.max(Math.min.apply(null, pm.filter(Boolean)), 1) < 1.6;
+    if (jobsWithExtra(jobs, getPm).length) {
+      var pmHit = jobsWithExtra(jobs, getPm);
+      var lump =
+        pmHit.length >= 2 &&
+        Math.max.apply(
+          null,
+          pmHit.map(getPm)
+        ) /
+          Math.max(Math.min.apply(null, pmHit.map(getPm)), 1) <
+          1.6;
       habits.push(
         lump
-          ? "Project management stays near " + Math.round(median(pm)) + " hr even when the job is small."
-          : "Project management runs about " +
-            Math.round(predictHours(pm, borings, 1)) +
-            " hr per boring."
+          ? "Project management stays near " + Math.round(median(pmHit.map(getPm))) + " hr even when the job is small."
+          : habitHoursLine("project management hours", jobs, getPm, getBorings)
       );
     }
     if (gpsLs > jobs.length / 2) habits.push("GPS is a lump sum, not per-hole.");
@@ -545,20 +699,18 @@
       habits: habits,
       predict: {
         miscHours: function (scope) {
-          if (miscRate < 0.5) return 0;
-          return predictHours(
-            misc.filter(function (x) { return x > 0; }),
-            jobs.filter(function (j) { return j.extras.miscHours > 0; }).map(function (j) { return j.extras.boringCount || 1; }),
-            scope.boringCount || 1
-          );
+          return extraHoursFromJobs(jobs, scope, getMisc, getBorings, scope.boringCount || 0);
         },
         pmHours: function (scope) {
-          if (presenceRate(pm) < 0.5) return 0;
-          return predictHours(pm, borings, scope.boringCount || 1);
+          return extraHoursFromJobs(jobs, scope, getPm, getBorings, scope.boringCount || 0);
         },
         loggerHours: function (scope) {
-          if (presenceRate(logger) < 0.5) return 0;
-          return predictHours(logger, lfs, scope.soilLf || 1);
+          var newSize = Number(scope.soilLf || 0) > 1 ? Number(scope.soilLf) : Number(scope.boringCount || 0);
+          return extraHoursFromJobs(jobs, scope, getLog, getLoggerSize, newSize, {
+            perBoring: 8,
+            perLf: 0.25,
+            requireSize: true,
+          });
         },
         gpsQty: function () {
           if (presenceRate(gps) < 0.5) return 0;
@@ -619,7 +771,7 @@
     qty = Number(qty || 0);
     if (!qty || qty < 0.009) return;
     var cat = catalogByCode(code) || { code: code, description: code, unit: "", itemNo: "" };
-    var price = Number(profile.prices[String(code).toUpperCase()] || 0);
+    var price = learnedPrice(profile, cat.code || code);
     if (!price) {
       lines.push({
         itemCode: cat.code,
@@ -781,13 +933,17 @@
   function exampleFromPair(scope, parsed, contract) {
     parsed = parsed || {};
     var lines = (parsed.lines || []).map(function (l) {
-      var cat = engine().catalogItemByNo(contract, l.itemNo) || catalogByCode(l.itemNo) || {};
+      var cat =
+        engine().catalogItemByNo(contract, l.itemNo) ||
+        catalogByItemNo(l.itemNo) ||
+        catalogByCode(l.itemCode || l.itemNo) ||
+        {};
       return {
-        itemCode: cat.code || String(l.itemNo || ""),
+        itemCode: cat.code || catalogCodeForLine(l) || String(l.itemNo || ""),
         itemNo: l.itemNo || cat.itemNo || "",
         description: cat.description || l.description || "",
         unit: cat.unit || l.unit || "",
-        proposedQty: l.qty,
+        proposedQty: l.qty != null && l.qty !== "" ? l.qty : l.proposedQty,
         unitPrice: l.unitPrice,
         amount: l.amount,
       };
@@ -812,6 +968,133 @@
     };
   }
 
+  function countyLabel(code) {
+    if (code === "N") return "New Castle";
+    if (code === "K") return "Kent";
+    if (code === "S") return "Sussex";
+    return String(code || "");
+  }
+
+  function accessLabel(access) {
+    if (access === "atv") return "ATV / off-road";
+    if (access === "barge") return "Barge";
+    if (access === "truck") return "Truck / land";
+    return String(access || "");
+  }
+
+  function motLabel(scope) {
+    var qty = scope && scope.motCount != null && scope.motCount !== "" ? " × " + scope.motCount : "";
+    if (scope && scope.mot === "lane") return "Lane closure (TA-10)" + qty;
+    if (scope && scope.mot === "shoulder") return "Shoulder (TA-3)" + qty;
+    if (scope && scope.mot === "none") return "None";
+    return "—";
+  }
+
+  function programRows(scope) {
+    scope = scope || emptyScope();
+    var sptQty = extraSptQty(scope);
+    var spt =
+      scope.extraSpt != null && scope.extraSpt !== ""
+        ? String(scope.extraSpt)
+        : sptQty
+          ? sptQty + " (auto ~ LF/5)"
+          : "—";
+    var rows = [
+      { label: "Project", value: scope.projectName || "—" },
+      { label: "Contract / T#", value: scope.contractNo || "—" },
+      { label: "County", value: countyLabel(scope.county) || "—" },
+      { label: "Access", value: accessLabel(scope.access) || "—" },
+      { label: "Borings", value: String(scope.boringCount || 0) },
+      { label: "Soil footage", value: (Number(scope.soilLf) || 0) + " LF" },
+    ];
+    if (Number(scope.rockLf) > 0) rows.push({ label: "Rock core", value: Number(scope.rockLf) + " LF" });
+    rows.push({ label: "Additional SPT", value: spt });
+    if (Number(scope.shelby) > 0) rows.push({ label: "Shelby / undisturbed", value: String(scope.shelby) });
+    if (Number(scope.infilCount) > 0) rows.push({ label: "Infiltration tests", value: String(scope.infilCount) });
+    if (Number(scope.pavementLf) > 0) rows.push({ label: "Pavement coring", value: Number(scope.pavementLf) + " LF" });
+    rows.push({ label: "MOT", value: motLabel(scope) });
+    rows.push({ label: "DNREC permit", value: scope.dnrec ? "Likely" : "Not indicated" });
+    rows.push({ label: "GPS locate", value: scope.gps === false ? "No" : "Yes" });
+    return rows;
+  }
+
+  function buildReport(result, opts) {
+    result = result || {};
+    opts = opts || {};
+    var estimates = (result.estimates || []).slice();
+    var cheapest = result.cheapest || (estimates[0] && estimates[0].cheapest ? estimates[0] : null);
+    var runner = estimates[1] || null;
+    var taughtCount = Number(opts.taughtCount || 0);
+    var jobCount = estimates.reduce(function (n, e) {
+      return n + Number(e.jobCount || 0);
+    }, 0);
+    var ranking = estimates.map(function (est, i) {
+      var more = cheapest && Number(est.total) > Number(cheapest.total)
+        ? money(est.total - cheapest.total)
+        : 0;
+      return {
+        rank: i + 1,
+        contractorName: est.contractorName || "",
+        agreementCode: est.agreementCode || "",
+        total: money(est.total),
+        jobCount: est.jobCount || 0,
+        cheapest: !!est.cheapest,
+        moreThanCheapest: more,
+      };
+    });
+    var recommendation = "No priced contractor estimates yet.";
+    if (cheapest) {
+      recommendation =
+        cheapest.contractorName +
+        " (" +
+        (cheapest.agreementCode || "") +
+        ") is likely cheapest at $" +
+        Number(cheapest.total).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) +
+        ".";
+      if (runner && Number(runner.total) > Number(cheapest.total)) {
+        recommendation +=
+          " Next is " +
+          runner.contractorName +
+          " at $" +
+          Number(runner.total).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) +
+          " ($" +
+          Number(money(runner.total - cheapest.total)).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) +
+          " more)";
+        if ((runner.notes || [])[0]) {
+          recommendation += " — " + String(runner.notes[0]).replace(/[. ]+$/, "");
+        }
+        recommendation += ".";
+      }
+    }
+    var learned =
+      "Learned from " +
+      jobCount +
+      " past request/proposal packet" +
+      (jobCount === 1 ? "" : "s") +
+      (taughtCount ? " including " + taughtCount + " taught in this browser" : " on the ledger") +
+      ".";
+    return {
+      title: "Contractor Analysis Report",
+      subtitle: "Materials & Research · IDIQ soil boring program",
+      dateISO: opts.date || engine().todayISO(),
+      program: programRows(result.scope),
+      ranking: ranking,
+      contractors: estimates,
+      cheapestName: cheapest ? cheapest.contractorName : "",
+      cheapestCode: cheapest ? cheapest.agreementCode : "",
+      cheapestTotal: cheapest ? money(cheapest.total) : 0,
+      runnerName: runner ? runner.contractorName : "",
+      savings: runner && cheapest && Number(runner.total) > Number(cheapest.total)
+        ? money(runner.total - cheapest.total)
+        : 0,
+      recommendation: recommendation,
+      learned: learned,
+      warnings: (result.warnings || []).slice(),
+      method:
+        "Internal estimate, not a bid. Unit prices and extras (miscellaneous man-hours, project management, GPS, DNREC) follow how each firm billed similar jobs. A line is omitted when that contractor does not bill it.",
+    };
+  }
+
   global.PsaAnalyzer = {
     parseBoringRequest: parseBoringRequest,
     looksLikeProposal: looksLikeProposal,
@@ -828,5 +1111,9 @@
     detectAccess: detectAccess,
     detectMot: detectMot,
     jobDistance: jobDistance,
+    countyLabel: countyLabel,
+    accessLabel: accessLabel,
+    motLabel: motLabel,
+    buildReport: buildReport,
   };
 })(typeof window !== "undefined" ? window : global);
