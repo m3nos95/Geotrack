@@ -166,6 +166,56 @@ var onlyProp = A.exampleFromPair(null, {
 }, hcea);
 assert("Proposal-only packet still learns 80 LF", nearly(onlyProp.scope.soilLf, 80), onlyProp.scope && onlyProp.scope.soilLf);
 assert("Proposal-only packet still learns 40 misc hours", nearly(A.extrasFromLines(onlyProp.lines, onlyProp.scope).miscHours, 40));
+var unmappedMisc = A.extrasFromLines([
+  { itemNo: "9", description: "MAN-HOUR OF MISCELLANEOUS WORK", proposedQty: 90, unitPrice: 32 },
+  { itemNo: "19", description: "MAN-HOUR OF PROJECT MANAGEMENT", proposedQty: 30, unitPrice: 85 },
+  { itemNo: "7", description: "SOIL BORINGS, LAND", proposedQty: 40, unitPrice: 15 },
+]);
+assert("Item 9 without catalog code still counts as misc hours", nearly(unmappedMisc.miscHours, 90), unmappedMisc.miscHours);
+assert("Item 19 without catalog code still counts as PM hours", nearly(unmappedMisc.pmHours, 30), unmappedMisc.pmHours);
+
+var stubHcea = {
+  id: "2018F",
+  code: "2018F",
+  contractor: "HCEA",
+  payItems: hcea.payItems,
+  tasks: [],
+};
+var sparse = [];
+var si;
+for (si = 0; si < 7; si++) {
+  sparse.push({
+    id: "taught-empty-" + si,
+    contractorId: "2018F",
+    contractorName: "HCEA",
+    agreementCode: "2018F",
+    project: "No misc parsed " + si,
+    lines: [{ itemCode: "605545", itemNo: "7", proposedQty: 40, unitPrice: 15 }],
+    source: "trained",
+  });
+}
+sparse.push({
+  id: "taught-coolspring",
+  contractorId: "2018F",
+  contractorName: "HCEA",
+  agreementCode: "2018F",
+  project: "US9 @ Cool Spring Rd",
+  lines: [
+    { itemNo: "9", description: "MAN-HOUR OF MISCELLANEOUS WORK", proposedQty: 90, unitPrice: 32 },
+    { itemCode: "605545", itemNo: "7", proposedQty: 40, unitPrice: 15 },
+  ],
+  source: "trained",
+});
+var sparseProfiles = A.buildProfiles([stubHcea], sparse);
+var sparseHcea = sparseProfiles.find(function (p) { return p.agreementCode === "2018F"; });
+assert("One misc packet in eight is still an HCEA habit", sparseHcea && sparseHcea.miscRate > 0 && sparseHcea.habits.some(function (h) { return /Adds miscellaneous man-hours/i.test(h); }), sparseHcea && sparseHcea.habits.join(" | "));
+var sparseEst = A.analyze(small, [cgc, stubHcea], sparse);
+var sparseHceaEst = sparseEst.estimates.find(function (e) { return e.agreementCode === "2018F"; });
+assert(
+  "HCEA estimate still adds misc hours when only some packets parsed item 9",
+  sparseHceaEst && sparseHceaEst.lines.some(function (l) { return l.itemCode === "763587" && l.qty > 0 && !l.skipped; }),
+  sparseHceaEst && JSON.stringify(sparseHceaEst.lines.map(function (l) { return l.itemCode + ":" + l.qty; }))
+);
 assert("Looks like a request sheet", A.looksLikeRequest(sheet) === true);
 assert("Looks like a proposal when item lines are present", A.looksLikeProposal("Item No Description Units\n2 ADDITIONAL 9.00 Each X 18.00 162.00\nTotal Amount Due: $162.00") === true);
 

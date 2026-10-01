@@ -365,23 +365,55 @@
     return scope;
   }
 
+  function lineQtyMatch(lines, opts) {
+    opts = opts || {};
+    var codes = {};
+    (opts.codes || []).forEach(function (c) {
+      codes[String(c).toUpperCase()] = true;
+    });
+    var itemNos = {};
+    (opts.itemNos || []).forEach(function (c) {
+      itemNos[String(c).toUpperCase()] = true;
+    });
+    var sum = 0;
+    (lines || []).forEach(function (l) {
+      var desc = String((l && l.description) || "");
+      if (codes[codeOf(l)] || itemNos[itemNoOf(l)] || (opts.desc && opts.desc.test(desc))) {
+        sum += qtyOf(l);
+      }
+    });
+    return sum;
+  }
+
   function extrasFromLines(lines, scope) {
     scope = scope || scopeFromProposal(lines);
     var borings = scope.boringCount || 1;
     var lf = scope.soilLf || 1;
     return {
-      miscHours: lineQtyByCode(lines, ["763587"]),
-      pmHours: lineQtyByCode(lines, ["18"]),
-      loggerHours: lineQtyByCode(lines, ["LOGGER"]),
-      gpsQty: lineQtyByCode(lines, ["GPS"]),
+      miscHours: lineQtyMatch(lines, {
+        codes: ["763587"],
+        itemNos: ["9"],
+        desc: /misc(?:ellaneous)?(?:\s+man[-\s]?hour|\s+work)|\bman[-\s]?hour of misc/i,
+      }),
+      pmHours: lineQtyMatch(lines, {
+        codes: ["18"],
+        itemNos: ["19"],
+        desc: /project management/i,
+      }),
+      loggerHours: lineQtyMatch(lines, {
+        codes: ["LOGGER"],
+        itemNos: ["46"],
+        desc: /qualified logger|\blogger\b/i,
+      }),
+      gpsQty: lineQtyByCode(lines, ["GPS", "59"]),
       gpsLs: (function () {
-        var g = firstLine(lines, ["GPS"]);
+        var g = firstLine(lines, ["GPS", "59"]);
         return !!(g && String(g.unit || g.unitMeasure || "").toUpperCase().indexOf("LS") >= 0);
       })(),
       dnrecQty: lineQtyByCode(lines, ["DNREC"]),
-      abandonLf: lineQtyByCode(lines, ["34"]),
-      motLane: lineQtyByCode(lines, ["763606"]),
-      motShoulder: lineQtyByCode(lines, ["763605"]),
+      abandonLf: lineQtyByCode(lines, ["34", "43"]),
+      motLane: lineQtyByCode(lines, ["763606", "21"]),
+      motShoulder: lineQtyByCode(lines, ["763605", "20"]),
       boringCount: borings,
       soilLf: lf,
     };
@@ -492,6 +524,55 @@
     return n / values.length;
   }
 
+  function jobsWithExtra(jobs, getVal) {
+    return (jobs || []).filter(function (j) {
+      return Number(getVal(j) || 0) > 0;
+    });
+  }
+
+  function extraHoursFromJobs(jobs, scope, getVal, getSize, newSize) {
+    var ranked = (jobs || []).slice().sort(function (a, b) {
+      return jobDistance(scope, a.scope) - jobDistance(scope, b.scope);
+    });
+    var near = ranked.slice(0, Math.min(5, ranked.length));
+    var nearHit = jobsWithExtra(near, getVal);
+    var allHit = jobsWithExtra(ranked, getVal);
+    var use = nearHit.length ? nearHit : allHit;
+    if (!use.length) return 0;
+    return predictHours(
+      use.map(getVal),
+      use.map(function (j) {
+        return getSize(j) || 1;
+      }),
+      newSize
+    );
+  }
+
+  function habitHoursLine(label, jobs, getVal, getSize) {
+    var hit = jobsWithExtra(jobs, getVal);
+    if (!hit.length) return "Does not bill " + label + " on learned jobs.";
+    var per = Math.round(
+      predictHours(
+        hit.map(getVal),
+        hit.map(function (j) {
+          return getSize(j) || 1;
+        }),
+        1
+      )
+    );
+    return (
+      "Adds " +
+      label +
+      " on " +
+      hit.length +
+      " of " +
+      jobs.length +
+      " jobs (about " +
+      per +
+      " hr per boring when they do)."
+    );
+  }
+
   function buildProfile(contractorId, name, code, jobs, catalogPrices) {
     jobs = jobs || [];
     var prices = Object.assign({}, catalogPrices || {});
@@ -499,34 +580,35 @@
       Object.assign(prices, j.prices || {}, pricesFromLines(j.lines));
     });
     var misc = jobs.map(function (j) { return j.extras.miscHours; });
-    var pm = jobs.map(function (j) { return j.extras.pmHours; });
-    var logger = jobs.map(function (j) { return j.extras.loggerHours; });
     var dnrec = jobs.map(function (j) { return j.extras.dnrecQty; });
     var gps = jobs.map(function (j) { return j.extras.gpsQty; });
     var gpsLs = jobs.filter(function (j) { return j.extras.gpsLs; }).length;
-    var borings = jobs.map(function (j) { return j.extras.boringCount || 1; });
-    var lfs = jobs.map(function (j) { return j.extras.soilLf || 1; });
+    var getMisc = function (j) { return j.extras.miscHours; };
+    var getPm = function (j) { return j.extras.pmHours; };
+    var getLog = function (j) { return j.extras.loggerHours; };
+    var getBorings = function (j) { return j.extras.boringCount || 1; };
+    var getLf = function (j) { return j.extras.soilLf || 1; };
     var habits = [];
     var miscRate = presenceRate(misc);
-    if (miscRate >= 0.5) {
-      habits.push(
-        "Routinely adds miscellaneous man-hours (" +
-          Math.round(miscRate * 100) +
-          "% of jobs; about " +
-          Math.round(predictHours(misc.filter(function (x) { return x > 0; }), borings, 1)) +
-          " hr per boring)."
-      );
+    if (jobsWithExtra(jobs, getMisc).length) {
+      habits.push(habitHoursLine("miscellaneous man-hours", jobs, getMisc, getBorings));
     } else {
       habits.push("Does not bill miscellaneous man-hours on learned jobs.");
     }
-    if (presenceRate(pm) >= 0.5) {
-      var lump = jobs.length >= 2 && Math.max.apply(null, pm) / Math.max(Math.min.apply(null, pm.filter(Boolean)), 1) < 1.6;
+    if (jobsWithExtra(jobs, getPm).length) {
+      var pmHit = jobsWithExtra(jobs, getPm);
+      var lump =
+        pmHit.length >= 2 &&
+        Math.max.apply(
+          null,
+          pmHit.map(getPm)
+        ) /
+          Math.max(Math.min.apply(null, pmHit.map(getPm)), 1) <
+          1.6;
       habits.push(
         lump
-          ? "Project management stays near " + Math.round(median(pm)) + " hr even when the job is small."
-          : "Project management runs about " +
-            Math.round(predictHours(pm, borings, 1)) +
-            " hr per boring."
+          ? "Project management stays near " + Math.round(median(pmHit.map(getPm))) + " hr even when the job is small."
+          : habitHoursLine("project management hours", jobs, getPm, getBorings)
       );
     }
     if (gpsLs > jobs.length / 2) habits.push("GPS is a lump sum, not per-hole.");
@@ -545,20 +627,13 @@
       habits: habits,
       predict: {
         miscHours: function (scope) {
-          if (miscRate < 0.5) return 0;
-          return predictHours(
-            misc.filter(function (x) { return x > 0; }),
-            jobs.filter(function (j) { return j.extras.miscHours > 0; }).map(function (j) { return j.extras.boringCount || 1; }),
-            scope.boringCount || 1
-          );
+          return extraHoursFromJobs(jobs, scope, getMisc, getBorings, scope.boringCount || 1);
         },
         pmHours: function (scope) {
-          if (presenceRate(pm) < 0.5) return 0;
-          return predictHours(pm, borings, scope.boringCount || 1);
+          return extraHoursFromJobs(jobs, scope, getPm, getBorings, scope.boringCount || 1);
         },
         loggerHours: function (scope) {
-          if (presenceRate(logger) < 0.5) return 0;
-          return predictHours(logger, lfs, scope.soilLf || 1);
+          return extraHoursFromJobs(jobs, scope, getLog, getLf, scope.soilLf || 1);
         },
         gpsQty: function () {
           if (presenceRate(gps) < 0.5) return 0;
