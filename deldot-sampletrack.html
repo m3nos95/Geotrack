@@ -7117,7 +7117,57 @@ function scrollActiveViewTop() {
 // ══════════════════════════════════════════════
 // NAVIGATION
 // ══════════════════════════════════════════════
+const PLANNED_MODULES = {
+  hotmix: {
+    title: 'Hot Mix Asphalt',
+    subtitle: 'AC mix design, field density, extraction/gradation, Rice specific gravity, and QA summary reports.',
+    owner: 'Asphalt workflow'
+  },
+  precast: {
+    title: 'Pre-Cast Concrete',
+    subtitle: 'RCP/box culvert inspection, dimensional checks, bearing tests, absorption, and acceptance tracking.',
+    owner: 'Precast inspection workflow'
+  },
+  chemlab: {
+    title: 'Chemistry Lab',
+    subtitle: 'Chloride, sulfate, pH, organic verification, and chemistry-specific report forms.',
+    owner: 'Chemistry workflow'
+  }
+};
+
+function showPlannedModule(name) {
+  const mod = PLANNED_MODULES[name] || { title: 'Planned Module', subtitle: 'This workflow is not production-ready yet.', owner: 'Planned workflow' };
+  let overlay = document.getElementById('plannedModuleOverlay');
+  if (!overlay) {
+    overlay = document.createElement('div');
+    overlay.className = 'edit-overlay';
+    overlay.id = 'plannedModuleOverlay';
+    overlay.innerHTML = `
+      <div class="edit-panel" style="max-width:620px;">
+        <h2 id="plannedModuleTitle">PLANNED MODULE</h2>
+        <p id="plannedModuleSubtitle"></p>
+        <div style="border:1px dashed rgba(240,168,78,0.32);border-radius:12px;padding:18px;background:rgba(240,168,78,0.06);margin:14px 0 18px;">
+          <div style="font-family:var(--mono);font-size:10px;letter-spacing:2px;color:var(--accent3);text-transform:uppercase;margin-bottom:8px;">Not active in production yet</div>
+          <div id="plannedModuleOwner" style="font-family:var(--mono);font-size:12px;color:var(--text);line-height:1.6;"></div>
+        </div>
+        <div class="btn-row">
+          <button class="btn btn-primary" onclick="switchView('home');document.getElementById('plannedModuleOverlay').classList.remove('open')">BACK TO DASHBOARD</button>
+          <button class="btn btn-ghost" onclick="document.getElementById('plannedModuleOverlay').classList.remove('open')">CLOSE</button>
+        </div>
+      </div>`;
+    document.body.appendChild(overlay);
+  }
+  document.getElementById('plannedModuleTitle').textContent = mod.title;
+  document.getElementById('plannedModuleSubtitle').textContent = mod.subtitle;
+  document.getElementById('plannedModuleOwner').textContent = mod.owner + ' will stay labeled PLANNED until data fields, calculations, reports, and approval rules are built.';
+  overlay.classList.add('open');
+}
+
 function switchView(name) {
+  if (PLANNED_MODULES[name]) {
+    showPlannedModule(name);
+    return;
+  }
   document.querySelectorAll('.nav-tab').forEach(t => t.classList.toggle('active', t.dataset.view === name));
   document.querySelectorAll('.rail-item').forEach(r => r.classList.toggle('active', r.dataset.view === name));
   const _sectionMap = {home:'',projects:'PROJECTS',dashboard:'ALL SAMPLES',fieldcontrol:'FIELD CONTROL',scan:'SCAN QR',soillab:'SOIL & AGGREGATE',concrete:'CONCRETE',fieldhub:'FIELD CONTROL',labhub:'SOIL LAB',conchub:'CONCRETE HUB',lab:'LAB ENTRY',report:'REPORT',hotmix:'HOT MIX ASPHALT',precast:'PRE-CAST CONCRETE',chemlab:'CHEMISTRY LAB',r18:'R-18 COMPLIANCE'};
