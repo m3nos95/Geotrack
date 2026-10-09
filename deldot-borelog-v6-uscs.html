@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>DelDOT BoreLog</title>
+  <style>
+    :root {
+      --bg: #080e1a;
+      --surface: #0f1825;
+      --panel: #161f2e;
+      --border: #26385a;
+      --accent: #4a90e2;
+      --gold: #f0a84e;
+      --text: #dce8f5;
+      --muted: #7890aa;
+      --mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+      --sans: Inter, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      background:
+        radial-gradient(circle at 20% 20%, rgba(74,144,226,0.12), transparent 32%),
+        radial-gradient(circle at 80% 80%, rgba(240,168,78,0.08), transparent 30%),
+        var(--bg);
+      color: var(--text);
+      font-family: var(--sans);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+    }
+    .card {
+      width: min(720px, 100%);
+      background: rgba(15,24,37,0.94);
+      border: 1px solid var(--border);
+      border-radius: 18px;
+      box-shadow: 0 24px 80px rgba(0,0,0,0.55), inset 0 1px 0 rgba(255,255,255,0.06);
+      padding: 30px;
+    }
+    .eyebrow {
+      font-family: var(--mono);
+      color: var(--gold);
+      font-size: 11px;
+      letter-spacing: 2.5px;
+      text-transform: uppercase;
+      margin-bottom: 10px;
+    }
+    h1 {
+      margin: 0 0 8px;
+      font-size: clamp(30px, 6vw, 48px);
+      letter-spacing: -0.03em;
+    }
+    p {
+      color: var(--muted);
+      line-height: 1.7;
+      margin: 0 0 16px;
+    }
+    .notice {
+      border: 1px dashed rgba(240,168,78,0.35);
+      background: rgba(240,168,78,0.07);
+      border-radius: 12px;
+      padding: 16px;
+      font-family: var(--mono);
+      font-size: 12px;
+      line-height: 1.6;
+      margin-top: 18px;
+    }
+    code {
+      background: var(--panel);
+      border: 1px solid rgba(255,255,255,0.08);
+      border-radius: 6px;
+      padding: 2px 6px;
+      color: #bfdbfe;
+    }
+    .actions {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      margin-top: 22px;
+    }
+    button {
+      background: linear-gradient(135deg, #2560a8, #4a90e2);
+      border: 0;
+      color: white;
+      border-radius: 9px;
+      padding: 10px 16px;
+      font-family: var(--mono);
+      font-size: 11px;
+      letter-spacing: 1px;
+      cursor: pointer;
+      text-transform: uppercase;
+    }
+    button.secondary {
+      background: rgba(255,255,255,0.06);
+      border: 1px solid var(--border);
+      color: var(--text);
+    }
+  </style>
+</head>
+<body>
+  <main class="card">
+    <div class="eyebrow">DelDOT Materials &amp; Research</div>
+    <h1>BoreLog module placeholder</h1>
+    <p>
+      LabTrak opened the expected BoreLog route successfully. The full BoreLog
+      application is not bundled in this repository yet, so this placeholder
+      prevents the previous 404.
+    </p>
+    <div class="notice">
+      To activate the real BoreLog app, replace this file with the full build at
+      <code>deldot-borelog-v6-uscs.html</code> in the same folder as
+      <code>deldot-sampletrack.html</code>.
+    </div>
+    <div class="actions">
+      <button onclick="window.close()">Close</button>
+      <button class="secondary" onclick="location.href='deldot-sampletrack.html'">Back to LabTrak</button>
+    </div>
+  </main>
+</body>
+</html>
