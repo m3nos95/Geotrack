@@ -796,7 +796,7 @@
       ? '<div class="banner info">Reading <b>' + esc(ui.azRequestName) + "</b></div>"
       : "";
     return (
-      '<div class="card"><h2>Project analyzer</h2>' +
+      '<div class="az-desk no-print"><div class="card"><h2>Project analyzer</h2>' +
       "<p>Drop a soil boring request to estimate who is likely cheapest. To teach a past job, drop that request <b>and</b> the contractor’s proposal together — two files at once — or drop them one after the other on the packet box below.</p>" +
       '<div class="pdf-drop no-print" id="azDrop">' +
       '<label class="pdf-drop-zone" id="azDropZone">Drop a request, or a request + proposal together' +
@@ -868,7 +868,11 @@
       (s.gps !== false ? " checked" : "") +
       "> GPS locate</label></div>" +
       '<div class="row-between" style="margin-top:12px"><div>' +
-      '<button class="btn primary" data-act="az-run">Estimate contractors</button></div></div></div>' +
+      '<button class="btn primary" data-act="az-run">Estimate contractors</button>' +
+      (pick
+        ? ' <button class="btn" data-act="az-print">Print / Save PDF</button>'
+        : "") +
+      "</div></div></div>" +
       headline +
       (cards ? '<div class="az-rank">' + cards + "</div>" : "") +
       '<div class="card"><h3>Add a past request / proposal packet</h3>' +
@@ -891,6 +895,171 @@
         : "<p class='muted'>No proposal lines on the ledger yet. Dropping a proposal onto a QP also trains the analyzer.</p>") +
       "<h3 style=\"margin-top:14px\">Packets you taught</h3>" +
       (exList ? '<div class="admin-list">' + exList + "</div>" : "<p class='muted'>None yet — drop a request and proposal together above. They stay in this browser.</p>") +
+      "</div></div>" +
+      renderAnalyzerReport(contract(), res)
+    );
+  }
+
+  function renderAnalyzerReport(c, result) {
+    if (!A || !result || !(result.estimates || []).length) return "";
+    var report = A.buildReport(result, {
+      date: E.todayISO(),
+      taughtCount: ((state.analyzer && state.analyzer.examples) || []).length,
+    });
+    var dateLong = E.fmtDateLong(report.dateISO);
+    var programRows = (report.program || [])
+      .map(function (row) {
+        return (
+          "<tr><th>" +
+          esc(row.label) +
+          "</th><td>" +
+          esc(row.value) +
+          "</td></tr>"
+        );
+      })
+      .join("");
+    var rankRows = (report.ranking || [])
+      .map(function (row) {
+        return (
+          "<tr>" +
+          '<td class="num">' +
+          row.rank +
+          "</td><td>" +
+          esc(row.contractorName) +
+          (row.cheapest ? " · likely cheapest" : "") +
+          "</td><td>" +
+          esc(row.agreementCode) +
+          '</td><td class="num">' +
+          row.jobCount +
+          '</td><td class="num">' +
+          E.fmtMoney(row.total) +
+          '</td><td class="num">' +
+          (row.moreThanCheapest ? "+" + E.fmtMoney(row.moreThanCheapest) : "—") +
+          "</td></tr>"
+        );
+      })
+      .join("");
+    var cover =
+      '<article class="letter-page az-report">' +
+      officialLetterheadHtml(c, dateLong) +
+      '<p class="az-report-kicker">Delaware Department of Transportation · Materials &amp; Research</p>' +
+      '<h1 class="az-report-title">' +
+      esc(report.title) +
+      "</h1>" +
+      '<p class="az-report-sub">' +
+      esc(report.subtitle) +
+      "</p>" +
+      '<table class="prop-meta">' +
+      programRows +
+      "</table>" +
+      '<div class="az-report-rec"><b>Recommendation. </b>' +
+      esc(report.recommendation) +
+      " " +
+      esc(report.learned) +
+      "</div>" +
+      "<h2>Ranking</h2>" +
+      '<table class="prop-items"><thead><tr><th>#</th><th>Contractor</th><th>Agreement</th><th class="num">Jobs</th><th class="num">Estimate</th><th class="num">Vs cheapest</th></tr></thead><tbody>' +
+      (rankRows || "<tr><td colspan='6'>No estimates.</td></tr>") +
+      "</tbody></table>" +
+      (report.warnings.length
+        ? "<p>" +
+          report.warnings
+            .map(function (w) {
+              return esc(w);
+            })
+            .join(" ") +
+          "</p>"
+        : "") +
+      "<p>" +
+      esc(report.method) +
+      "</p>" +
+      officialLetterFooterHtml() +
+      "</article>";
+    var pages = (report.contractors || [])
+      .map(function (est) {
+        var lineRows = (est.lines || [])
+          .map(function (l) {
+            return (
+              "<tr" +
+              (l.skipped ? ' class="az-skip"' : "") +
+              "><td>" +
+              esc(l.itemNo || l.itemCode) +
+              "</td><td>" +
+              esc(l.description) +
+              (l.note ? "<div>" + esc(l.note) + "</div>" : "") +
+              '</td><td class="num">' +
+              esc(l.qty) +
+              " " +
+              esc(l.unit || "") +
+              '</td><td class="num">' +
+              (l.skipped ? "—" : E.fmtMoney(l.unitPrice)) +
+              '</td><td class="num">' +
+              (l.skipped ? "—" : E.fmtMoney(l.amount)) +
+              "</td></tr>"
+            );
+          })
+          .join("");
+        var habits = (est.habits || [])
+          .map(function (h) {
+            return "<li>" + esc(h) + "</li>";
+          })
+          .join("");
+        var similar = (est.similar || [])
+          .map(function (j) {
+            return (
+              "<li>" +
+              esc(j.project || ("QP " + j.qpNumber)) +
+              (j.qpNumber ? " · QP " + esc(j.qpNumber) : "") +
+              " · " +
+              E.fmtMoney(j.total) +
+              (j.miscHours ? " · " + j.miscHours + " misc hr" : "") +
+              (j.source === "trained" ? " · taught" : "") +
+              "</li>"
+            );
+          })
+          .join("");
+        var notes = (est.notes || [])
+          .map(function (n) {
+            return "<li>" + esc(n) + "</li>";
+          })
+          .join("");
+        return (
+          '<article class="letter-page az-report">' +
+          officialLetterheadHtml(c, dateLong) +
+          '<h1 class="az-report-title">' +
+          esc(est.contractorName) +
+          (est.cheapest ? " · likely cheapest" : "") +
+          "</h1>" +
+          '<p class="az-report-sub">Agreement ' +
+          esc(est.agreementCode) +
+          " · " +
+          est.jobCount +
+          " learned job" +
+          (est.jobCount === 1 ? "" : "s") +
+          " · estimated total " +
+          E.fmtMoney(est.total) +
+          "</p>" +
+          (habits ? "<h2>Billing habits</h2><ul class='az-report-list'>" + habits + "</ul>" : "") +
+          (similar ? "<h2>Closest past jobs</h2><ul class='az-report-list'>" + similar + "</ul>" : "") +
+          "<h2>Estimated pay items</h2>" +
+          '<table class="prop-items"><thead><tr><th>Item</th><th>Description</th><th class="num">Qty</th><th class="num">Price</th><th class="num">Amount</th></tr></thead><tbody>' +
+          (lineRows || "<tr><td colspan='5'>No priced lines.</td></tr>") +
+          '</tbody><tfoot><tr><th colspan="4">Estimated total</th><td class="num">' +
+          E.fmtMoney(est.total) +
+          "</td></tr></tfoot></table>" +
+          (notes ? "<h2>Notes</h2><ul class='az-report-list'>" + notes + "</ul>" : "") +
+          officialLetterFooterHtml() +
+          "</article>"
+        );
+      })
+      .join("");
+    return (
+      '<div class="card no-print az-report-bar"><div class="row-between"><div><h3 style="margin:0">Contractor analysis report</h3>' +
+      "<p style='margin:6px 0 0'>Print opens the browser dialog — choose <b>Save as PDF</b> for a file you can email or file with the request.</p></div>" +
+      '<button class="btn primary" data-act="az-print">Print / Save PDF</button></div></div>' +
+      '<div class="paper-stack" id="azReport">' +
+      cover +
+      pages +
       "</div>"
     );
   }
@@ -3457,6 +3626,18 @@
     if (act === "az-run") {
       runAnalyzer(readAnalyzerScope());
       toast("Estimate updated from the program fields");
+      return;
+    }
+    if (act === "az-print") {
+      if (!ui.azResult || !(ui.azResult.estimates || []).length) {
+        toast("Estimate contractors first");
+        return;
+      }
+      var prevTitle = document.title;
+      var proj = (ui.azScope && ui.azScope.projectName) || "";
+      document.title = "Contractor Analysis" + (proj ? " — " + proj : "");
+      window.print();
+      document.title = prevTitle;
       return;
     }
     if (act === "az-paste") {
