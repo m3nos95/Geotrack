@@ -678,9 +678,13 @@
           '</td><td class="num">' +
           c.invoiceCount +
           '</td><td class="num">' +
-          (c.enough ? E.fmtMoney(c.perMonth) + "/mo" : "—") +
+          (c.perDay > 0 ? E.fmtMoney(c.perMonth) + "/mo" : "—") +
           '</td><td class="num">' +
-          (c.enough ? E.fmtMoney(c.need) : "not enough history") +
+          E.fmtMoney(c.remainingNtp) +
+          '</td><td class="num">' +
+          (c.perDay > 0 ? E.fmtMoney(c.paceNeed) : "—") +
+          '</td><td class="num">' +
+          E.fmtMoney(c.need) +
           "</td></tr>"
         );
       })
@@ -694,19 +698,19 @@
         E.fmtDate(n.from) +
         " through " +
         E.fmtDate(n.through) +
-        "</b><div>" +
-        n.days +
-        " days at the posted-invoice pace (" +
-        E.fmtMoney(n.perMonth) +
-        " / month across " +
-        n.invoiceCount +
-        " invoices). Open NTP still on the ledger is " +
+        "</b><div>Issued NTP not yet billed: " +
         E.fmtMoney(n.remainingNtp) +
-        " — some of that will likely be billed in this window.</div></div>";
+        ". Additional invoicing at the posted-invoice pace: " +
+        E.fmtMoney(n.paceNeed) +
+        " (" +
+        n.days +
+        " days at " +
+        E.fmtMoney(n.perMonth) +
+        " / month). Need is those two added together.</div></div>";
     }
     return (
       '<div class="card"><h2>Need through a date</h2>' +
-      "<p>Estimate how much contractors will invoice from today through a date you pick, using posted invoice history on the ledger (historical agreements included).</p>" +
+      "<p>Need through a date is issued NTP that has not been billed yet, plus additional invoicing at the posted-invoice pace from today through the date you pick (historical agreements included).</p>" +
       warn +
       '<div class="fields"><label class="f">Through date<input id="azNeedThrough" value="' +
       esc(ui.azNeedThrough || "") +
@@ -715,11 +719,15 @@
       '<button class="btn primary" data-act="az-need">Estimate need</button></div></div>' +
       headline +
       (rows
-        ? '<table class="grid" style="margin-top:12px"><thead><tr><th>Contractor</th><th>Agreement</th><th class="num">Invoices</th><th class="num">Pace</th><th class="num">Need through date</th></tr></thead><tbody>' +
+        ? '<table class="grid" style="margin-top:12px"><thead><tr><th>Contractor</th><th>Agreement</th><th class="num">Invoices</th><th class="num">Pace</th><th class="num">Unbilled NTP</th><th class="num">Additional</th><th class="num">Need</th></tr></thead><tbody>' +
           rows +
           "</tbody>" +
           (n && n.enough
             ? "<tfoot><tr><th colspan=\"4\">Program total</th><td class=\"num\">" +
+              E.fmtMoney(n.remainingNtp) +
+              '</td><td class="num">' +
+              E.fmtMoney(n.paceNeed) +
+              '</td><td class="num">' +
               E.fmtMoney(n.need) +
               "</td></tr></tfoot>"
             : "") +

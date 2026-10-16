@@ -554,22 +554,40 @@
     );
   }
 
+  function remainingNtpByContract(contracts) {
+    var byId = {};
+    (contracts || []).forEach(function (c) {
+      var id = c.id || c.code || "";
+      if (!id) return;
+      byId[id] = {
+        contractorId: c.id,
+        contractorName: c.contractor || c.code || "",
+        agreementCode: c.code || "",
+        remainingNtp: remainingNtp([c]),
+      };
+    });
+    return byId;
+  }
+
   function forecastNeed(contracts, throughISO, opts) {
     opts = opts || {};
     var throughMs = parseISODate(throughISO);
     var fromISO = opts.from || todayISO();
     var fromMs = parseISODate(fromISO);
     var warnings = [];
+    var ntpMap = remainingNtpByContract(contracts);
+    var ntpLeft = remainingNtp(contracts);
     if (throughMs == null) {
       return {
         through: "",
         from: fromISO,
         days: 0,
-        need: 0,
+        need: ntpLeft,
+        paceNeed: 0,
         perDay: 0,
         perMonth: 0,
         contractors: [],
-        remainingNtp: remainingNtp(contracts),
+        remainingNtp: ntpLeft,
         invoiceCount: 0,
         warnings: ["Enter a through date (June 1, 2027 or 2027-06-01)."],
         enough: false,
@@ -595,6 +613,16 @@
       }
       byId[id].rows.push(r);
     });
+    Object.keys(ntpMap).forEach(function (id) {
+      if (byId[id]) return;
+      byId[id] = {
+        contractorId: ntpMap[id].contractorId,
+        contractorName: ntpMap[id].contractorName,
+        agreementCode: ntpMap[id].agreementCode,
+        rows: [],
+      };
+    });
+    var addNtp = through >= from;
     var contractors = Object.keys(byId)
       .map(function (id) {
         var g = byId[id];
@@ -605,7 +633,9 @@
         var trailRows = trailFrom ? invoicesInWindow(g.rows, trailFrom, allPace.last) : g.rows;
         var trail = paceFromInvoices(trailRows);
         var use = trail.enough && trail.count >= 3 ? trail : allPace;
-        var need = use.enough ? money(use.perDay * days) : 0;
+        var paceNeed = use.enough && days > 0 ? money(use.perDay * days) : 0;
+        var remaining = ntpMap[id] ? ntpMap[id].remainingNtp : 0;
+        var ntpPart = addNtp ? remaining : 0;
         return {
           contractorId: g.contractorId,
           contractorName: g.contractorName,
@@ -617,14 +647,24 @@
           historyDays: use.days,
           perDay: use.perDay,
           perMonth: use.perMonth,
-          need: need,
-          enough: use.enough,
-          usedTrailingYear: !!(trail.enough && trail.count >= 3 && trail !== allPace && use === trail),
+          paceNeed: paceNeed,
+          remainingNtp: remaining,
+          need: money(paceNeed + ntpPart),
+          enough: use.enough || remaining > 0,
+          usedTrailingYear: !!(trail.enough && trail.count >= 3 && use === trail),
         };
+      })
+      .filter(function (c) {
+        return c.invoiceCount || c.remainingNtp > 0 || c.need > 0;
       })
       .sort(function (a, b) {
         return b.need - a.need;
       });
+    var paceNeed = money(
+      contractors.reduce(function (s, c) {
+        return s + Number(c.paceNeed || 0);
+      }, 0)
+    );
     var need = money(
       contractors.reduce(function (s, c) {
         return s + Number(c.need || 0);
@@ -635,9 +675,9 @@
         return s + Number(c.perDay || 0);
       }, 0)
     );
-    if (!all.length) {
+    if (!all.length && ntpLeft <= 0) {
       warnings.push("No posted invoices on the ledger yet. Drop or post invoices so the pace can be learned.");
-    } else if (!contractors.some(function (c) { return c.enough; })) {
+    } else if (!contractors.some(function (c) { return c.perDay > 0; }) && ntpLeft <= 0) {
       warnings.push("Need at least two posted invoices spanning two weeks to estimate a pace.");
     }
     return {
@@ -645,13 +685,14 @@
       from: from,
       days: days,
       need: need,
+      paceNeed: paceNeed,
       perDay: perDay,
       perMonth: money(perDay * 30.437),
       contractors: contractors,
-      remainingNtp: remainingNtp(contracts),
+      remainingNtp: ntpLeft,
       invoiceCount: all.length,
       warnings: warnings,
-      enough: contractors.some(function (c) { return c.enough; }),
+      enough: contractors.some(function (c) { return c.enough; }) || ntpLeft > 0,
     };
   }
 
