@@ -734,6 +734,32 @@ var ledgerOrder = E.sortQpsByNumber([
 assert("Ledger sorts QP 14 before 15 and 20", ledgerOrder.join(",") === "11A,12,13,14,15,20", ledgerOrder.join(","));
 assert("Signing date formats as MM/DD/YYYY", /^\d{2}\/\d{2}\/\d{4}$/.test(E.fmtDate(E.todayISO())));
 
+function isoFromMs(ms) {
+  var d = new Date(ms);
+  return d.getUTCFullYear() + "-" + String(d.getUTCMonth() + 1).padStart(2, "0") + "-" + String(d.getUTCDate()).padStart(2, "0");
+}
+assert("Parses 6/1/27", isoFromMs(E.parseISODate("6/1/27")) === "2027-06-01", isoFromMs(E.parseISODate("6/1/27")));
+assert("Days from Oct 16 2026 to Jun 1 2027", E.daysBetween("2026-10-16", "2027-06-01") === 228, E.daysBetween("2026-10-16", "2027-06-01"));
+
+var needContracts = [hist.cgc2019, hist.hcea2018];
+var posted = E.collectPostedInvoices(needContracts);
+assert("Seed ledger has posted CGC invoices", posted.filter(function (r) { return r.agreementCode === "2019F"; }).length >= 20);
+assert("Seed ledger has posted HCEA invoices", posted.filter(function (r) { return r.agreementCode === "2018F"; }).length >= 3);
+var need = E.forecastNeed(needContracts, "6/1/27", { from: "2026-10-16" });
+assert("Need-through parses 6/1/27", need.through === "2027-06-01", need.through);
+assert("Need-through spans 228 days", need.days === 228, need.days);
+assert("Need-through has a program total", need.need > 50000 && need.need < 2000000, need.need);
+var needCgc = need.contractors.find(function (c) { return c.agreementCode === "2019F"; });
+var needHcea = need.contractors.find(function (c) { return c.agreementCode === "2018F"; });
+assert("CGC has enough invoice history to forecast", needCgc && needCgc.enough && needCgc.need > 0);
+assert("HCEA has enough invoice history to forecast", needHcea && needHcea.enough && needHcea.need > 0);
+assert("CGC need is larger than HCEA (they invoice more)", needCgc.need > needHcea.need, needCgc.need + " vs " + needHcea.need);
+assert("Program need is the sum of contractors", nearly(need.need, needCgc.need + needHcea.need), need.need);
+assert("Empty through date warns", E.forecastNeed(needContracts, "").warnings.length > 0);
+assert("No invoices cannot estimate", E.forecastNeed([{ id: "x", code: "x", contractor: "x", tasks: [] }], "2027-06-01", { from: "2026-10-16" }).enough === false);
+var past = E.forecastNeed(needContracts, "2020-01-01", { from: "2026-10-16" });
+assert("Past through date estimates zero days", past.days === 0 && past.need === 0);
+
 if (fails) {
   console.error("\n" + fails + " failed");
   process.exit(1);
