@@ -429,6 +429,232 @@
     };
   }
 
+  function parseISODate(iso) {
+    var s = String(iso || "").trim();
+    var m = s.match(/^(\d{4})-(\d{1,2})-(\d{1,2})$/);
+    if (m) {
+      return Date.UTC(Number(m[1]), Number(m[2]) - 1, Number(m[3]));
+    }
+    var us = s.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{2,4})$/);
+    if (us) {
+      var y = Number(us[3]);
+      if (y < 100) y += 2000;
+      return Date.UTC(y, Number(us[1]) - 1, Number(us[2]));
+    }
+    return null;
+  }
+
+  function isoFromUtc(ms) {
+    var d = new Date(ms);
+    return (
+      d.getUTCFullYear() +
+      "-" +
+      String(d.getUTCMonth() + 1).padStart(2, "0") +
+      "-" +
+      String(d.getUTCDate()).padStart(2, "0")
+    );
+  }
+
+  function daysBetween(fromISO, toISO) {
+    var a = parseISODate(fromISO);
+    var b = parseISODate(toISO);
+    if (a == null || b == null) return 0;
+    return Math.round((b - a) / 86400000);
+  }
+
+  function collectPostedInvoices(contracts) {
+    var rows = [];
+    (contracts || []).forEach(function (c) {
+      (c.tasks || []).forEach(function (t) {
+        (t.qps || []).forEach(function (q) {
+          (q.invoices || []).forEach(function (inv) {
+            if (!inv || inv.status === "void" || inv.status === "draft") return;
+            var amt = Number(inv.amount || 0);
+            if (!(amt > 0) || !inv.date) return;
+            if (inv.status && inv.status !== "posted") return;
+            rows.push({
+              date: String(inv.date).slice(0, 10),
+              amount: money(amt),
+              contractorId: c.id,
+              contractorName: c.contractor || c.code || "",
+              agreementCode: c.code || "",
+              qpNumber: q.qpNumber || "",
+              number: inv.number || "",
+            });
+          });
+        });
+      });
+    });
+    rows.sort(function (a, b) {
+      if (a.date < b.date) return -1;
+      if (a.date > b.date) return 1;
+      return 0;
+    });
+    return rows;
+  }
+
+  function invoicesInWindow(rows, fromISO, toISO) {
+    return (rows || []).filter(function (r) {
+      return r.date >= fromISO && r.date <= toISO;
+    });
+  }
+
+  function paceFromInvoices(rows) {
+    rows = rows || [];
+    if (rows.length < 2) {
+      return {
+        count: rows.length,
+        total: money(rows.reduce(function (s, r) {
+          return s + Number(r.amount || 0);
+        }, 0)),
+        days: 0,
+        perDay: 0,
+        perMonth: 0,
+        first: rows[0] ? rows[0].date : "",
+        last: rows[0] ? rows[0].date : "",
+        enough: false,
+      };
+    }
+    var first = rows[0].date;
+    var last = rows[rows.length - 1].date;
+    var days = Math.max(1, daysBetween(first, last));
+    var total = money(
+      rows.reduce(function (s, r) {
+        return s + Number(r.amount || 0);
+      }, 0)
+    );
+    var perDay = money(total / days);
+    return {
+      count: rows.length,
+      total: total,
+      days: days,
+      perDay: perDay,
+      perMonth: money(perDay * 30.437),
+      first: first,
+      last: last,
+      enough: days >= 14,
+    };
+  }
+
+  function remainingNtp(contracts) {
+    return money(
+      (contracts || []).reduce(function (s, c) {
+        return (
+          s +
+          (c.tasks || []).reduce(function (ss, t) {
+            return (
+              ss +
+              (t.qps || []).reduce(function (sss, q) {
+                return sss + qpRemaining(q);
+              }, 0)
+            );
+          }, 0)
+        );
+      }, 0)
+    );
+  }
+
+  function forecastNeed(contracts, throughISO, opts) {
+    opts = opts || {};
+    var throughMs = parseISODate(throughISO);
+    var fromISO = opts.from || todayISO();
+    var fromMs = parseISODate(fromISO);
+    var warnings = [];
+    if (throughMs == null) {
+      return {
+        through: "",
+        from: fromISO,
+        days: 0,
+        need: 0,
+        perDay: 0,
+        perMonth: 0,
+        contractors: [],
+        remainingNtp: remainingNtp(contracts),
+        invoiceCount: 0,
+        warnings: ["Enter a through date (June 1, 2027 or 2027-06-01)."],
+        enough: false,
+      };
+    }
+    var through = isoFromUtc(throughMs);
+    var from = fromMs != null ? isoFromUtc(fromMs) : todayISO();
+    var days = Math.max(0, daysBetween(from, through));
+    if (through < from) {
+      warnings.push("Through date is before " + from + " — nothing left to estimate.");
+    }
+    var all = collectPostedInvoices(contracts);
+    var byId = {};
+    all.forEach(function (r) {
+      var id = r.contractorId || r.agreementCode || "unknown";
+      if (!byId[id]) {
+        byId[id] = {
+          contractorId: r.contractorId,
+          contractorName: r.contractorName,
+          agreementCode: r.agreementCode,
+          rows: [],
+        };
+      }
+      byId[id].rows.push(r);
+    });
+    var contractors = Object.keys(byId)
+      .map(function (id) {
+        var g = byId[id];
+        var allPace = paceFromInvoices(g.rows);
+        var trailFrom = allPace.last
+          ? isoFromUtc(parseISODate(allPace.last) - 365 * 86400000)
+          : "";
+        var trailRows = trailFrom ? invoicesInWindow(g.rows, trailFrom, allPace.last) : g.rows;
+        var trail = paceFromInvoices(trailRows);
+        var use = trail.enough && trail.count >= 3 ? trail : allPace;
+        var need = use.enough ? money(use.perDay * days) : 0;
+        return {
+          contractorId: g.contractorId,
+          contractorName: g.contractorName,
+          agreementCode: g.agreementCode,
+          invoiceCount: use.count,
+          historyTotal: use.total,
+          first: use.first,
+          last: use.last,
+          historyDays: use.days,
+          perDay: use.perDay,
+          perMonth: use.perMonth,
+          need: need,
+          enough: use.enough,
+          usedTrailingYear: !!(trail.enough && trail.count >= 3 && trail !== allPace && use === trail),
+        };
+      })
+      .sort(function (a, b) {
+        return b.need - a.need;
+      });
+    var need = money(
+      contractors.reduce(function (s, c) {
+        return s + Number(c.need || 0);
+      }, 0)
+    );
+    var perDay = money(
+      contractors.reduce(function (s, c) {
+        return s + Number(c.perDay || 0);
+      }, 0)
+    );
+    if (!all.length) {
+      warnings.push("No posted invoices on the ledger yet. Drop or post invoices so the pace can be learned.");
+    } else if (!contractors.some(function (c) { return c.enough; })) {
+      warnings.push("Need at least two posted invoices spanning two weeks to estimate a pace.");
+    }
+    return {
+      through: through,
+      from: from,
+      days: days,
+      need: need,
+      perDay: perDay,
+      perMonth: money(perDay * 30.437),
+      contractors: contractors,
+      remainingNtp: remainingNtp(contracts),
+      invoiceCount: all.length,
+      warnings: warnings,
+      enough: contractors.some(function (c) { return c.enough; }),
+    };
+  }
+
   function catalogPrice(contract, itemCode) {
     var items = contract.payItems || [];
     for (var i = 0; i < items.length; i++) {
@@ -2084,6 +2310,10 @@
     contractAvailable: contractAvailable,
     qpCounts: qpCounts,
     contractRollup: contractRollup,
+    parseISODate: parseISODate,
+    collectPostedInvoices: collectPostedInvoices,
+    forecastNeed: forecastNeed,
+    daysBetween: daysBetween,
     catalogPrice: catalogPrice,
     catalogItem: catalogItem,
     proposalTotal: proposalTotal,

@@ -29,6 +29,8 @@
     azResult: null,
     azContractorId: "",
     azPendingProposal: null,
+    azNeedThrough: "",
+    azNeedResult: null,
   };
 
   var state = null;
@@ -652,6 +654,81 @@
     render();
   }
 
+  function runNeedThrough() {
+    var raw = val("azNeedThrough") || ui.azNeedThrough;
+    ui.azNeedThrough = raw;
+    ui.azNeedResult = E.forecastNeed(state.contracts || [], raw, { from: E.todayISO() });
+    render();
+  }
+
+  function renderNeedThrough() {
+    var n = ui.azNeedResult;
+    var warn = ((n && n.warnings) || [])
+      .map(function (w) {
+        return '<div class="banner">' + esc(w) + "</div>";
+      })
+      .join("");
+    var rows = ((n && n.contractors) || [])
+      .map(function (c) {
+        return (
+          "<tr><td>" +
+          esc(c.contractorName) +
+          "</td><td>" +
+          esc(c.agreementCode) +
+          '</td><td class="num">' +
+          c.invoiceCount +
+          '</td><td class="num">' +
+          (c.enough ? E.fmtMoney(c.perMonth) + "/mo" : "—") +
+          '</td><td class="num">' +
+          (c.enough ? E.fmtMoney(c.need) : "not enough history") +
+          "</td></tr>"
+        );
+      })
+      .join("");
+    var headline = "";
+    if (n && n.enough) {
+      headline =
+        '<div class="banner info az-headline"><b>About ' +
+        E.fmtMoney(n.need) +
+        " from " +
+        E.fmtDate(n.from) +
+        " through " +
+        E.fmtDate(n.through) +
+        "</b><div>" +
+        n.days +
+        " days at the posted-invoice pace (" +
+        E.fmtMoney(n.perMonth) +
+        " / month across " +
+        n.invoiceCount +
+        " invoices). Open NTP still on the ledger is " +
+        E.fmtMoney(n.remainingNtp) +
+        " — some of that will likely be billed in this window.</div></div>";
+    }
+    return (
+      '<div class="card"><h2>Need through a date</h2>' +
+      "<p>Estimate how much contractors will invoice from today through a date you pick, using posted invoice history on the ledger (historical agreements included).</p>" +
+      warn +
+      '<div class="fields"><label class="f">Through date<input id="azNeedThrough" value="' +
+      esc(ui.azNeedThrough || "") +
+      '" placeholder="6/1/27 or 2027-06-01"></label></div>' +
+      '<div class="row-between" style="margin-top:12px"><div>' +
+      '<button class="btn primary" data-act="az-need">Estimate need</button></div></div>' +
+      headline +
+      (rows
+        ? '<table class="grid" style="margin-top:12px"><thead><tr><th>Contractor</th><th>Agreement</th><th class="num">Invoices</th><th class="num">Pace</th><th class="num">Need through date</th></tr></thead><tbody>' +
+          rows +
+          "</tbody>" +
+          (n && n.enough
+            ? "<tfoot><tr><th colspan=\"4\">Program total</th><td class=\"num\">" +
+              E.fmtMoney(n.need) +
+              "</td></tr></tfoot>"
+            : "") +
+          "</table>"
+        : "") +
+      "</div>"
+    );
+  }
+
   function renderAnalyzer() {
     var s = ui.azScope || (A && A.emptyScope()) || {};
     var res = ui.azResult;
@@ -796,7 +873,9 @@
       ? '<div class="banner info">Reading <b>' + esc(ui.azRequestName) + "</b></div>"
       : "";
     return (
-      '<div class="az-desk no-print"><div class="card"><h2>Project analyzer</h2>' +
+      '<div class="az-desk no-print">' +
+      renderNeedThrough() +
+      '<div class="card"><h2>Project analyzer</h2>' +
       "<p>Drop a soil boring request to estimate who is likely cheapest. To teach a past job, drop that request <b>and</b> the contractor’s proposal together — two files at once — or drop them one after the other on the packet box below.</p>" +
       '<div class="pdf-drop no-print" id="azDrop">' +
       '<label class="pdf-drop-zone" id="azDropZone">Drop a request, or a request + proposal together' +
@@ -3586,6 +3665,10 @@
       ev.preventDefault();
       render();
     }
+    if (ev.key === "Enter" && ev.target && ev.target.id === "azNeedThrough") {
+      ev.preventDefault();
+      runNeedThrough();
+    }
   }
 
   function onClick(ev) {
@@ -3626,6 +3709,15 @@
     if (act === "az-run") {
       runAnalyzer(readAnalyzerScope());
       toast("Estimate updated from the program fields");
+      return;
+    }
+    if (act === "az-need") {
+      runNeedThrough();
+      if (ui.azNeedResult && ui.azNeedResult.enough) {
+        toast("Need through " + E.fmtDate(ui.azNeedResult.through) + ": " + E.fmtMoney(ui.azNeedResult.need));
+      } else {
+        toast((ui.azNeedResult && ui.azNeedResult.warnings && ui.azNeedResult.warnings[0]) || "Could not estimate need");
+      }
       return;
     }
     if (act === "az-print") {
