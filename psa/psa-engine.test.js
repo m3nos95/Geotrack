@@ -755,6 +755,47 @@ assert("CGC has enough invoice history to forecast", needCgc && needCgc.enough &
 assert("HCEA has enough invoice history to forecast", needHcea && needHcea.enough && needHcea.need > 0);
 assert("CGC need is larger than HCEA (they invoice more)", needCgc.need > needHcea.need, needCgc.need + " vs " + needHcea.need);
 assert("Program need is the sum of contractors", nearly(need.need, needCgc.need + needHcea.need), need.need);
+assert("Need includes unbilled NTP plus pace", nearly(need.need, need.remainingNtp + need.paceNeed), need.need + " vs NTP " + need.remainingNtp + " + pace " + need.paceNeed);
+assert("Contractor need includes that contractor's unbilled NTP", nearly(needCgc.need, needCgc.paceNeed + needCgc.remainingNtp));
+var ntpOnly = E.forecastNeed(
+  [
+    {
+      id: "ntp-only",
+      code: "NTP1",
+      contractor: "Open NTP Co",
+      tasks: [{ id: "t", qps: [{ ntpAmount: 40000, invoices: [] }] }],
+    },
+  ],
+  "2027-06-01",
+  { from: "2026-10-16" }
+);
+assert("Unbilled NTP with no invoices still counts as need", ntpOnly.enough && nearly(ntpOnly.need, 40000), ntpOnly.need);
+var mixedNeed = E.forecastNeed(
+  [
+    {
+      id: "mix",
+      code: "MIX1",
+      contractor: "Mix Co",
+      tasks: [
+        {
+          id: "t",
+          qps: [
+            {
+              ntpAmount: 25000,
+              invoices: [
+                { status: "posted", amount: 2000, date: "2026-01-01" },
+                { status: "posted", amount: 3000, date: "2026-03-01" },
+              ],
+            },
+          ],
+        },
+      ],
+    },
+  ],
+  "2027-06-01",
+  { from: "2026-10-16" }
+);
+assert("Mixed need is unbilled NTP plus pace", nearly(mixedNeed.need, mixedNeed.remainingNtp + mixedNeed.paceNeed) && mixedNeed.remainingNtp === 20000, mixedNeed);
 assert("Empty through date warns", E.forecastNeed(needContracts, "").warnings.length > 0);
 assert("No invoices cannot estimate", E.forecastNeed([{ id: "x", code: "x", contractor: "x", tasks: [] }], "2027-06-01", { from: "2026-10-16" }).enough === false);
 var past = E.forecastNeed(needContracts, "2020-01-01", { from: "2026-10-16" });
