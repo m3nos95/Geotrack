@@ -4317,9 +4317,23 @@ table.fc-borrow-tbl tr.fc-borrow-detail-row td{background:var(--surface);border-
           <option value="none_on_site">⚫ None on Site</option>
           <option value="untested">⬜ Untested</option>
         </select>
+        <button class="btn btn-primary" style="padding:6px 14px;font-size:11px;" onclick="openSourceOfSupply()">OPEN SOURCE OF SUPPLY APP</button>
         <button class="btn btn-success" style="padding:6px 14px;font-size:11px;" onclick="srcOpenAddStockpile()">+ Add Source</button>
         <button class="btn" style="padding:6px 14px;font-size:11px;background:rgba(99,102,241,0.15);border-color:rgba(99,102,241,0.4);color:#818cf8;" onclick="srcManageMaterials()">⚙ Materials</button>
       </div>
+    </div>
+
+    <div onclick="openSourceOfSupply()"
+         style="cursor:pointer;background:linear-gradient(135deg,rgba(15,29,48,0.95),rgba(10,20,36,0.98));border:1px solid rgba(240,168,78,0.28);border-radius:14px;padding:16px 20px;margin-bottom:18px;display:flex;align-items:center;gap:18px;transition:border-color 0.2s,box-shadow 0.2s;"
+         onmouseover="this.style.borderColor='rgba(240,168,78,0.65)';this.style.boxShadow='0 4px 24px rgba(240,168,78,0.15)'"
+         onmouseout="this.style.borderColor='rgba(240,168,78,0.28)';this.style.boxShadow=''">
+      <div style="width:54px;height:54px;border-radius:14px;display:flex;align-items:center;justify-content:center;flex-shrink:0;background:linear-gradient(135deg,rgba(240,168,78,0.22),rgba(74,144,226,0.14));border:1px solid rgba(240,168,78,0.45);color:#fed7aa;font-family:var(--mono);font-size:15px;font-weight:800;letter-spacing:1px;">SOS</div>
+      <div>
+        <div style="font-family:var(--display);font-size:16px;font-weight:700;color:var(--text);letter-spacing:0.5px;">Source of Supply Letter App</div>
+        <div style="font-family:var(--mono);font-size:9px;color:var(--accent2);letter-spacing:2px;margin-top:3px;">IMPORT · REVIEW · LETTER</div>
+        <div style="font-family:var(--mono);font-size:9px;color:var(--muted);margin-top:6px;">Open the full contractor Source of Supply letter automation tool</div>
+      </div>
+      <div style="margin-left:auto;font-size:18px;color:var(--muted);opacity:0.5;">&#8599;</div>
     </div>
 
     <!-- Legend -->
@@ -28080,6 +28094,19 @@ function openBoreLog(opts) {
   const w = window.open(BORELOG_URL, BORELOG_WIN_NAME);
   if (!w) window.open(BORELOG_URL, '_blank');
   else window._borelogWindow = w;
+}
+
+function openSourceOfSupply() {
+  const url = 'deldot-sos.html';
+  const existing = window._sosWindow;
+  if (existing && !existing.closed) {
+    existing.focus();
+    try { existing.location.href = url; } catch (e) {}
+    return;
+  }
+  const w = window.open(url, 'deldot-source-of-supply');
+  if (!w) window.open(url, '_blank');
+  else window._sosWindow = w;
 }
 
 function openBoreLogFromMapId(boringId) {

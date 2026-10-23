@@ -1,0 +1,55 @@
+'use strict';
+const assert = require('assert');
+const fs = require('fs');
+const path = require('path');
+
+const html = fs.readFileSync(path.join(__dirname, '..', 'deldot-sos.html'), 'utf8');
+assert.ok(!/pdf\.min\.js/.test(html), 'pdf.js must not load on page open');
+assert.ok(!/xlsx\.full\.min\.js/.test(html), 'SheetJS must not load on page open');
+assert.ok(!/cdn\.jsdelivr\.net/.test(html), 'no jsDelivr scripts on page open');
+assert.ok(/sos-app\.js\?v=20260909a/.test(html), 'cache-bust sos-app.js');
+assert.ok(/sos-formpdf\.js\?v=20260928a/.test(html), 'cache-bust sos-formpdf.js');
+assert.ok(/letter-export\.js\?v=20260908a/.test(html), 'cache-bust letter-export.js');
+assert.ok(/sos\.css\?v=20260908a/.test(html), 'cache-bust sos.css');
+assert.ok(/id="letter-save-status"/.test(html), 'Save training pack status is next to the letter, not only on Import');
+assert.ok(/id="file-input"[^>]*multiple/.test(html.replace(/\s+/g, ' ')), 'Import file picker accepts several SOS forms');
+assert.ok(/several files at once/.test(html), 'drop box tells Aaron he can drop more than one file');
+
+const app = fs.readFileSync(path.join(__dirname, 'sos-app.js'), 'utf8');
+assert.ok(!/After you send the letter/.test(app), 'training copy is for already-issued letters, not a live send');
+assert.ok(/function fetchWithTimeout\(/.test(app), 'do not wait forever for start-sos.bat');
+assert.ok(/AbortController/.test(app), 'abort helper fetch if it hangs');
+assert.ok(/setLetterActionStatus/.test(app));
+assert.ok(/function trainingSaveUrls\(/.test(app));
+assert.ok(/function loadPdfJs\(/.test(app));
+assert.ok(/function loadXlsx\(/.test(app));
+assert.ok(/xlsx@0\.18\.5\/dist\/xlsx\.full\.min\.js/.test(app));
+assert.ok(/pdfjs-dist@3\.11\.174\/build\/pdf\.min\.js/.test(app));
+assert.ok(!/renderSourceLib\(\);/.test(app.slice(app.indexOf('function initApp()'), app.indexOf('function initApp()') + 1800)));
+const loadSpec = app.slice(app.indexOf('function loadSpecLib()'), app.indexOf('function saveSpecLib()'));
+assert.ok(!/cleanSpecLibraryDesc/.test(loadSpec), 'do not clean every spec against every plant on open');
+assert.ok(/window.handleImportFiles =/.test(app), 'drop zone can take several files');
+assert.ok(/SOSLetterExport\.letterCcHtml/.test(app), 'letter preview hangs cc names in a second column');
+assert.ok(/function syncContractManagerCcList\(/.test(app), 'header DelDOT Contact is merged onto letter cc');
+assert.ok(/function patchLetterCcBlock\(/.test(app), 'dirty preview still gets the contract manager on cc');
+assert.ok(/isContractManagerOnLetter/.test(app), 'contract manager cannot be removed from this letter');
+assert.ok(/Contract manager/.test(html), 'DelDOT Contact field is the contract manager');
+const pdfFn = app.slice(app.indexOf('async function parseImportFileToSheets'), app.indexOf('window.handleImportFile'));
+assert.ok(pdfFn.indexOf('copyFileBytes') < pdfFn.indexOf('parsePdf'), 'copy PDF bytes before pdf.js can detach them');
+assert.ok(/submittal-/.test(app), 'training pack keeps extra contractor files as submittal-2');
+
+function copyFileBytes(buf) {
+  const view = buf instanceof Uint8Array ? buf : new Uint8Array(buf);
+  const out = new Uint8Array(view.byteLength);
+  out.set(view);
+  return out;
+}
+const buf = new ArrayBuffer(8);
+new Uint8Array(buf).fill(9);
+const kept = copyFileBytes(buf);
+structuredClone(buf, { transfer: [buf] });
+assert.throws(() => { buf.slice(0); }, /detached|Cannot perform ArrayBuffer/i);
+assert.strictEqual(kept[0], 9);
+assert.strictEqual(kept.length, 8);
+
+console.log('OK sos-boot: page open does not load pdf.js or SheetJS');
