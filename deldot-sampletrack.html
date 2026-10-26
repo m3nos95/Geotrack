@@ -3788,7 +3788,7 @@ table.fc-borrow-tbl tr.fc-borrow-detail-row td{background:var(--surface);border-
 
     <div class="topbar-right">
       <button type="button" class="btn-settings" id="btnTourHelp" data-tour="help" onclick="startContextHelp()"
-              title="Screen help — explains this page and every field" aria-label="Help for this screen">?</button>
+              title="Screen help — explains this page and every field" aria-label="Help for this screen">Help</button>
       <button type="button" class="btn-comfort-mode" id="btnComfortMode" data-tour="comfort" onclick="toggleComfortMode()"
               title="Comfort mode — softer visuals for long sessions" aria-pressed="false" aria-label="Comfort mode">☾</button>
       <button type="button" class="sync-status-chip offline" id="syncStatusChip" data-tour="sync" onclick="onSyncChipClick()" title="Database status">
@@ -4044,19 +4044,21 @@ table.fc-borrow-tbl tr.fc-borrow-detail-row td{background:var(--surface);border-
           <div class="dash-greet-main" id="dashGreeting">Good morning</div>
           <div class="dash-greet-sub"  id="dashDate">Loading…</div>
         </div>
+        <div class="dash-header-actions">
+          <button type="button" class="dash-quiet-btn" id="dashWeatherToggle" onclick="toggleDashWeather()" aria-expanded="false">
+            Weather <span id="dashWeatherToggleTemp"></span>
+          </button>
+        </div>
       </div>
 
       <!-- ── APPROVAL ALERT BANNER ── -->
-      <div id="approvalAlertBanner" style="display:none;margin-bottom:16px;cursor:pointer;" onclick="slGoToApprovalQueue()" title="Click to go to Approval Queue">
-        <div style="background:linear-gradient(135deg,#1a0f00 0%,#2d1a00 100%);border:1.5px solid #f59e0b;border-radius:10px;padding:14px 20px;display:flex;align-items:center;gap:16px;box-shadow:0 0 24px rgba(245,158,11,0.2);">
-          <div style="font-size:28px;animation:approvePulse 1.4s ease-in-out infinite;display:inline-block;">⚠️</div>
-          <div style="flex:1;">
-            <div style="color:#f59e0b;font-family:var(--mono);font-size:12px;font-weight:800;letter-spacing:2px;margin-bottom:2px;">REPORTS PENDING APPROVAL</div>
-            <div style="color:#fde68a;font-family:var(--mono);font-size:11px;" id="approvalAlertText">Reports are awaiting your review before email distribution.</div>
+      <div id="approvalAlertBanner" class="approval-alert" style="display:none;" onclick="slGoToApprovalQueue()" title="Open the approval queue">
+        <div class="approval-alert-card">
+          <div>
+            <div class="approval-alert-title">Reports waiting for approval</div>
+            <div class="approval-alert-text" id="approvalAlertText">Reports are awaiting your review before email distribution.</div>
           </div>
-          <div style="background:#f59e0b;color:#0a1628;font-family:var(--mono);font-size:10px;font-weight:800;letter-spacing:1.5px;padding:8px 16px;border-radius:6px;white-space:nowrap;">
-            REVIEW NOW →
-          </div>
+          <div class="approval-alert-action">Review</div>
         </div>
       </div>
 
@@ -4071,7 +4073,7 @@ table.fc-borrow-tbl tr.fc-borrow-detail-row td{background:var(--surface);border-
 
 
       <!-- Module shortcuts grid -->
-      <div style="font-family:var(--mono);font-size:8px;letter-spacing:2px;color:var(--muted);margin-bottom:10px;text-transform:uppercase;">Lab Modules</div>
+      <div class="dash-section-title">Labs</div>
       <div class="dash-module-grid" data-tour="dash-modules">
 
         <div class="dash-mod-card" onclick="switchView('labhub')">
@@ -4151,7 +4153,7 @@ table.fc-borrow-tbl tr.fc-borrow-detail-row td{background:var(--surface);border-
             <option value="samples">Lab Samples</option>
             <option value="notes">Notes Only</option>
           </select>
-          <button class="dash-cal-today-btn" onclick="dashCalToday()">TODAY</button>
+          <button class="dash-cal-today-btn" onclick="dashCalToday()">Today</button>
         </div>
         <div class="dash-cal-legend">
           <div class="cal-legend-item"><div class="cal-legend-dot cal-legend-break"></div>Cylinder Break Due</div>
@@ -4172,21 +4174,17 @@ table.fc-borrow-tbl tr.fc-borrow-detail-row td{background:var(--surface);border-
       </div>
 
 
-      <!-- ── RADAR PANEL ── -->
-      <div style="margin-top:20px;">
-        <div style="font-family:var(--mono);font-size:8px;letter-spacing:2px;color:var(--muted);margin-bottom:10px;text-transform:uppercase;">Live Radar &mdash; KDOX Dover, DE</div>
-        <div style="background:var(--panel);border:1px solid var(--border);border-radius:var(--radius);display:flex;align-items:flex-start;gap:0;overflow:hidden;">
-          <div style="position:relative;flex-shrink:0;">
-            <img id="wx-radar-img"
-              src="https://radar.weather.gov/ridge/standard/KDOX_loop.gif"
-              style="width:660px;height:495px;display:block;"
-              onerror="this.src=&apos;https://radar.weather.gov/lite/N0R/DOX_loop.gif&apos;;">
-            <a href="https://radar.weather.gov/station/KDOX" target="_blank"
-              style="position:absolute;bottom:8px;right:10px;font-family:var(--mono);font-size:8px;color:rgba(255,255,255,0.55);text-decoration:none;letter-spacing:1px;">NWS KDOX ↗</a>
+      <!-- Weather stays closed until someone asks for it -->
+      <div id="dashWeatherPanel" class="dash-weather-panel" hidden>
+        <div class="dash-section-title">Dover weather</div>
+        <div class="dash-weather-layout">
+          <div class="dash-weather-radar">
+            <img id="wx-radar-img" alt="Dover radar">
+            <a href="https://radar.weather.gov/station/KDOX" target="_blank" class="dash-weather-radar-link">NWS KDOX</a>
           </div>
           <div style="flex:1;padding:20px;display:flex;flex-direction:column;gap:14px;border-left:1px solid var(--border);overflow-y:auto;max-height:495px;">
             <div>
-              <div style="font-family:var(--mono);font-size:8px;letter-spacing:2px;color:var(--muted);margin-bottom:16px;">DOVER, DE CONDITIONS</div>
+              <div class="dash-weather-kicker">Current conditions</div>
               <div style="display:flex;align-items:center;gap:14px;margin-bottom:20px;">
                 <div id="dash-wx-icon" style="font-size:42px;">⏳</div>
                 <div>
@@ -4208,19 +4206,19 @@ table.fc-borrow-tbl tr.fc-borrow-detail-row td{background:var(--surface);border-
             </div>
             <!-- Hourly forecast strip -->
             <div>
-              <div style="font-family:var(--mono);font-size:8px;letter-spacing:2px;color:var(--muted);margin-bottom:8px;border-top:1px solid var(--border);padding-top:14px;">NEXT 9 HOURS</div>
+              <div class="dash-weather-kicker dash-weather-kicker-split">Next 9 hours</div>
               <div id="dash-wx-hourly" style="display:flex;gap:5px;overflow-x:auto;padding-bottom:2px;scrollbar-width:none;-ms-overflow-style:none;">
                 <div style="font-family:var(--mono);font-size:9px;color:var(--muted);">Loading...</div>
               </div>
             </div>
             <!-- 7-day outlook -->
             <div>
-              <div style="font-family:var(--mono);font-size:8px;letter-spacing:2px;color:var(--muted);margin-bottom:8px;border-top:1px solid var(--border);padding-top:14px;">7-DAY OUTLOOK</div>
+              <div class="dash-weather-kicker dash-weather-kicker-split">7-day outlook</div>
               <div id="dash-wx-forecast" style="display:flex;flex-direction:column;gap:5px;">
                 <div style="font-family:var(--mono);font-size:9px;color:var(--muted);">Loading forecast…</div>
               </div>
             </div>
-            <div style="font-family:var(--mono);font-size:8px;color:var(--muted);letter-spacing:1px;">Open-Meteo · Updates every 10 min</div>
+            <div class="dash-weather-note">Open-Meteo · Updates every 10 min</div>
           </div>
         </div>
       </div>
@@ -13271,14 +13269,9 @@ function refreshSessionActionsUI() {
     who.textContent = getDisplayFullName() + (role ? ' · ' + role.toUpperCase() : '');
   }
   if (mobileBtn) {
-    mobileBtn.classList.toggle('is-signed-in', !!signedIn);
-    const showTopOut = signedIn && isMobileShell();
-    mobileBtn.hidden = !showTopOut;
-    if (showTopOut) {
-      mobileBtn.style.setProperty('display', 'inline-flex', 'important');
-    } else {
-      mobileBtn.style.removeProperty('display');
-    }
+    mobileBtn.classList.remove('is-signed-in');
+    mobileBtn.hidden = true;
+    mobileBtn.style.setProperty('display', 'none', 'important');
   }
 
   syncMobileNav();
@@ -13299,7 +13292,7 @@ function refreshSessionActionsUI() {
   document.getElementById('ubadgeAv').textContent = currentUser?.initialials || (displayName !== 'Signed in' ? displayName[0].toUpperCase() : '?');
   document.getElementById('ubadgeAv').style.background = currentUser?.color || rd.color;
   document.getElementById('ubadgeName').textContent = displayName;
-  document.getElementById('ubadgeRole').textContent = rd.label.toUpperCase();
+  document.getElementById('ubadgeRole').textContent = rd.label;
   refreshProjectAdminUI();
 }
 
@@ -21090,6 +21083,31 @@ function slRenderQueue() {
 
 // ── Load sample into right panel ───────────────────────────────
 
+function toggleDashWeather() {
+  const panel = document.getElementById('dashWeatherPanel');
+  const btn = document.getElementById('dashWeatherToggle');
+  if (!panel) return;
+  const willOpen = panel.hasAttribute('hidden');
+  if (willOpen) {
+    panel.removeAttribute('hidden');
+    const img = document.getElementById('wx-radar-img');
+    if (img && !img.getAttribute('src')) {
+      img.onerror = function () {
+        if (this.dataset.fallback) return;
+        this.dataset.fallback = '1';
+        this.src = 'https://radar.weather.gov/lite/N0R/DOX_loop.gif';
+      };
+      img.src = 'https://radar.weather.gov/ridge/standard/KDOX_loop.gif';
+    }
+  } else {
+    panel.setAttribute('hidden', '');
+  }
+  if (btn) {
+    btn.setAttribute('aria-expanded', willOpen ? 'true' : 'false');
+    btn.classList.toggle('is-open', willOpen);
+  }
+}
+
 // ── WEATHER / CLOCK WIDGET ─────────────────────────────────────
 (function() {
   function setEl(id, val) { const e = document.getElementById(id); if (e) e.textContent = val; }
@@ -21144,6 +21162,7 @@ function slRenderQueue() {
       setEl('tb-wx-desc', desc); setEl('tb-wx-hum', humVal); setEl('tb-wx-wind', windVal);
       // Dashboard radar panel — current conditions
       setEl('dash-wx-icon', ico); setEl('dash-wx-temp', tempVal);
+      setEl('dashWeatherToggleTemp', tempVal);
       setEl('dash-wx-desc', desc); setEl('dash-wx-hum', humVal);
       setEl('dash-wx-wind', windVal); setEl('dash-wx-precip', precVal);
       // Field Control weather panel
@@ -31603,6 +31622,190 @@ body.tour-active .tour-highlight-target {
 html.comfort-mode .tour-title,
 html.comfort-mode .tour-body,
 html.comfort-mode .tour-step-badge { font-family: var(--sans) !important; }
+
+/* ══ Quieter shell — keep the lab in front of the instruments ══ */
+@media (min-width: 769px) {
+  #app { grid-template-columns: 112px 1fr; }
+  .topbar-logo { width: 112px; }
+  #navRail { width: 112px; }
+  .rail-item { width: 112px; height: auto; min-height: 64px; padding-top: 6px; padding-bottom: 6px; }
+}
+.rail-item::before { box-shadow: none; }
+#topbar {
+  background: var(--surface);
+  box-shadow: none;
+}
+.topbar-status,
+.topbar-wx,
+#connDot,
+#btnComfortMode,
+#syncStatusChip.connected {
+  display: none !important;
+}
+.sync-status-chip,
+.sync-status-chip.offline,
+.sync-status-chip.syncing,
+.sync-status-chip.pending {
+  background: transparent;
+  box-shadow: none;
+  color: var(--muted);
+  border-color: var(--border);
+  font-family: var(--sans);
+  font-size: 13px;
+  letter-spacing: 0;
+}
+.sync-status-dot { box-shadow: none !important; animation: none !important; }
+.approval-badge,
+.topbar-stat-val.popped,
+.dkpi-val.popped { animation: none !important; }
+.ubadge-name { font-family: var(--sans); font-size: 13px; font-weight: 600; }
+.ubadge-role { font-family: var(--sans); font-size: 11px; letter-spacing: 0; text-transform: none; }
+.btn-cmd-search,
+.btn-settings,
+#btnTourHelp {
+  font-family: var(--sans);
+  font-size: 13px;
+  letter-spacing: 0;
+  font-weight: 500;
+}
+.rail-label,
+html.comfort-mode .rail-label {
+  font-family: var(--sans) !important;
+  font-size: 11px !important;
+  letter-spacing: 0 !important;
+  text-transform: none !important;
+  max-width: 104px;
+  font-weight: 500;
+}
+.rail-item:hover .rail-icon-wrap,
+.rail-item.active .rail-icon-wrap { box-shadow: none; }
+.dash-greet-main {
+  font-family: var(--sans);
+  font-size: 28px;
+  font-weight: 600;
+  letter-spacing: 0;
+}
+.dash-greet-sub { font-family: var(--sans); font-size: 14px; letter-spacing: 0; }
+.dash-header-actions { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+.dash-quiet-btn {
+  background: transparent;
+  border: 1px solid var(--border);
+  color: var(--text);
+  font-family: var(--sans);
+  font-size: 13px;
+  font-weight: 500;
+  padding: 8px 12px;
+  border-radius: 8px;
+  cursor: pointer;
+}
+.dash-quiet-btn:hover,
+.dash-quiet-btn.is-open { border-color: var(--accent2); color: var(--text); }
+.dash-section-title {
+  font-family: var(--sans);
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--text);
+  letter-spacing: 0;
+  text-transform: none;
+  margin: 8px 0 12px;
+}
+.dkpi-lbl,
+.stat-card .s-lbl,
+.section-label,
+.eyebrow {
+  font-family: var(--sans);
+  font-size: 13px;
+  letter-spacing: 0;
+  text-transform: none;
+  font-weight: 500;
+}
+.dkpi-val { font-size: 32px; }
+.dash-kpi-card::before,
+.dash-kpi-card::after,
+.stat-card::before { display: none; }
+.dash-kpi-card:hover,
+.stat-card:hover,
+.dash-mod-card:hover {
+  transform: none;
+  box-shadow: none;
+}
+.dash-mod-label {
+  font-family: var(--sans);
+  font-size: 15px;
+  letter-spacing: 0;
+  text-transform: none;
+  font-weight: 600;
+}
+.dash-mod-sub { font-family: var(--sans); font-size: 12px; }
+.dash-cal-title,
+.dash-cal-today-btn {
+  font-family: var(--sans);
+  letter-spacing: 0;
+  text-transform: none;
+}
+.dash-cal-today-btn { font-size: 13px; }
+.approval-alert { margin-bottom: 16px; cursor: pointer; }
+.approval-alert-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 14px 16px;
+}
+.approval-alert-title { font-family: var(--sans); font-size: 15px; font-weight: 600; color: var(--text); }
+.approval-alert-text { font-family: var(--sans); font-size: 13px; color: var(--muted); margin-top: 3px; }
+.approval-alert-action {
+  font-family: var(--sans);
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 8px 12px;
+  white-space: nowrap;
+}
+.dash-weather-panel { margin-top: 8px; }
+.dash-weather-layout {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  display: flex;
+  align-items: flex-start;
+  overflow: hidden;
+}
+.dash-weather-radar { position: relative; flex: 1 1 58%; min-width: 0; }
+.dash-weather-radar img { width: 100%; height: auto; display: block; background: var(--bg); }
+.dash-weather-radar-link {
+  position: absolute;
+  bottom: 8px;
+  right: 10px;
+  font-family: var(--sans);
+  font-size: 12px;
+  color: rgba(255,255,255,0.8);
+  text-decoration: none;
+}
+.dash-weather-kicker {
+  font-family: var(--sans);
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text);
+  margin-bottom: 12px;
+}
+.dash-weather-kicker-split { border-top: 1px solid var(--border); padding-top: 14px; }
+.dash-weather-note { font-family: var(--sans); font-size: 12px; color: var(--muted); }
+@media (max-width: 900px) {
+  .dash-weather-layout { flex-direction: column; }
+  .dash-weather-layout > div[style] { max-height: none !important; border-left: none !important; border-top: 1px solid var(--border); }
+}
+@media (max-width: 768px) {
+  .topbar-right:has(#btnSignOutMobile.is-signed-in) .user-badge { display: flex !important; }
+  .user-badge .ubadge-name { display: block; max-width: 92px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .ubadge-role { display: none; }
+  #btnTourHelp { padding: 5px 8px; }
+}
 
 </style>
 
