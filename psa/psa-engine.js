@@ -1874,15 +1874,32 @@
           );
         }
         if (autoWanted(template, "quantities")) {
-          checks.push(
-            checkResult(
-              "quantities",
-              "Billed quantities do not exceed remaining NTP quantities",
-              qtyFail.length ? "fail" : "pass",
-              qtyFail.length ? qtyFail.join("; ") : "Quantities within NTP.",
-              true
-            )
+          var qtyOver = qtyFail.length > 0;
+          var qtyOverridden = qtyOver && withinNtp && !!invoice.qtyOverride;
+          var qtyStatus = !qtyOver ? "pass" : qtyOverridden ? "warn" : "fail";
+          var qtyDetail;
+          if (!qtyOver) {
+            qtyDetail = "Quantities within NTP.";
+          } else if (qtyOverridden) {
+            qtyDetail =
+              qtyFail.join("; ") +
+              " — overridden. Invoice total is within remaining NTP dollars, so posting is allowed.";
+          } else if (withinNtp) {
+            qtyDetail =
+              qtyFail.join("; ") +
+              " — over NTP qty. Check override to post: invoice total is still within remaining NTP dollars.";
+          } else {
+            qtyDetail = qtyFail.join("; ");
+          }
+          var qtyCheck = checkResult(
+            "quantities",
+            "Billed quantities do not exceed remaining NTP quantities",
+            qtyStatus,
+            qtyDetail,
+            qtyOver && !qtyOverridden
           );
+          qtyCheck.overridable = qtyOver && withinNtp;
+          checks.push(qtyCheck);
         }
         if (autoWanted(template, "no_unknown_items")) {
           checks.push(
@@ -2320,6 +2337,7 @@
       adminChecks: {},
       finalInvoice: false,
       formChecks: [false, false, false, false, false],
+      qtyOverride: false,
     };
   }
 
