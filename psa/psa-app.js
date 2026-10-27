@@ -77,6 +77,43 @@
     }
   }
 
+  function deleteAgreement(id) {
+    var list = state.contracts || [];
+    if (list.length < 2) {
+      toast("Keep at least one agreement");
+      return;
+    }
+    var target = null;
+    list.forEach(function (x) {
+      if (x.id === id) target = x;
+    });
+    if (!target) return;
+    if (
+      !confirm(
+        "Delete agreement " +
+          target.code +
+          " and all of its tasks, QPs, NTPs, and invoices from this browser? This cannot be undone."
+      )
+    ) {
+      return;
+    }
+    state.contracts = list.filter(function (x) {
+      return x.id !== id;
+    });
+    if (ui.contractId === id) {
+      var next = state.contracts[0];
+      ui.contractId = next.id;
+      ui.taskId = next.tasks && next.tasks[0] && next.tasks[0].id;
+      ui.qpId = null;
+      ui.invoiceId = null;
+      ui.view = "ledger";
+      clearBulkUi();
+    }
+    save();
+    toast("Deleted " + target.code);
+    render();
+  }
+
   function isFinance() {
     return state && state.role === "finance";
   }
@@ -548,6 +585,7 @@
   }
 
   function renderHeader(c) {
+    var canDelete = (state.contracts || []).length > 1;
     var btns = state.contracts
       .map(function (x) {
         var on = x.id === c.id ? " on" : "";
@@ -560,6 +598,13 @@
           esc(x.id) +
           '">' +
           esc(x.code) +
+          (canDelete
+            ? '<span class="cbtn-x" data-act="delete-contract" data-id="' +
+              esc(x.id) +
+              '" title="Delete ' +
+              esc(x.code) +
+              '">×</span>'
+            : "") +
           "</button>"
         );
       })
@@ -2903,6 +2948,11 @@
       "</div>" +
       '<div style="margin:10px 0;display:flex;gap:8px;flex-wrap:wrap"><button class="btn primary" data-act="save-contract-meta">Save agreement header</button>' +
       (canEditItems ? '<button class="btn" data-act="add-payitem">+ Pay item</button>' : "") +
+      ((state.contracts || []).length > 1
+        ? '<button class="btn danger" data-act="delete-contract" data-id="' +
+          esc(c.id) +
+          '">Delete this IDIQ</button>'
+        : "") +
       "</div>" +
       '<table class="grid"><thead><tr><th>Item No.</th>' +
       (canEditItems ? "<th>Code</th>" : "") +
@@ -3743,6 +3793,11 @@
       var nc = contract();
       ui.taskId = nc.tasks[0] && nc.tasks[0].id;
       render();
+      return;
+    }
+    if (act === "delete-contract") {
+      ev.stopPropagation();
+      deleteAgreement(el.getAttribute("data-id"));
       return;
     }
     if (act === "switch-task") {
