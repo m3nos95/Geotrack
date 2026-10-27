@@ -2625,7 +2625,7 @@
               "> Confirmed</label>"
             : "") +
           (x.id === "quantities" && x.overridable
-            ? '<label><input type="checkbox" data-act="qty-override"' +
+            ? '<label class="btn primary" style="display:inline-flex;align-items:center;gap:8px;margin-top:8px;cursor:pointer"><input type="checkbox" data-act="qty-override"' +
               (inv.qtyOverride ? " checked" : "") +
               "> Override — billed qty may exceed NTP qty because the invoice total is within the NTP amount</label>"
             : "") +
