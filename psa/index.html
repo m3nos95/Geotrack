@@ -332,6 +332,7 @@
       font-weight: 700;
       vertical-align: middle;
       margin-right: 4px;
+      cursor: pointer;
     }
     .pay-check-fields {
       width: 58%;
@@ -346,9 +347,27 @@
     .pay-check-lbl { white-space: nowrap; }
     .pay-check-uline {
       flex: 1;
+      min-width: 0;
       min-height: 1.15em;
+      border: none;
       border-bottom: 1px solid #111;
+      border-radius: 0;
       padding: 0 4px 1px;
+      background: transparent;
+      font: inherit;
+      color: inherit;
+      outline: none;
+    }
+    .pay-check-uline:focus,
+    .pay-check-agr:focus,
+    .pay-check-date:focus,
+    .pay-check-edit:focus {
+      background: #fff6c8;
+    }
+    .pay-check-edit {
+      flex: 1;
+      min-width: 0;
+      outline: none;
     }
     .pay-check-item {
       display: flex;
@@ -373,9 +392,16 @@
     .pay-check-agr {
       display: inline-block;
       min-width: 2.4in;
+      width: 2.6in;
+      border: none;
       border-bottom: 1px solid #111;
+      border-radius: 0;
       padding: 0 6px;
       text-align: center;
+      background: transparent;
+      font: inherit;
+      color: inherit;
+      outline: none;
     }
     .pay-check-sign {
       margin-top: 12px;
@@ -407,8 +433,14 @@
     }
     .pay-check-date {
       width: 2.3in;
+      border: none;
       border-bottom: 1px solid #111;
+      border-radius: 0;
       min-height: 1.2em;
+      background: transparent;
+      font: inherit;
+      color: inherit;
+      outline: none;
     }
     .pay-check-pm {
       width: 62%;
@@ -523,6 +555,12 @@
         page-break-before: avoid;
         break-before: avoid;
       }
+      .pay-check-uline:focus,
+      .pay-check-agr:focus,
+      .pay-check-date:focus,
+      .pay-check-edit:focus {
+        background: transparent;
+      }
       .letter-page.ntp-proposal-scan {
         padding: 0;
         width: auto;
@@ -561,6 +599,6 @@
   <script src="psa-seed.js"></script>
   <script src="psa-analyzer.js?v=analyzer-labor"></script>
   <script src="psa-pdf.js?v=qp20-font"></script>
-  <script src="psa-app.js?v=checklist-project-blank"></script>
+  <script src="psa-app.js?v=checklist-edit"></script>
 </body>
 </html>

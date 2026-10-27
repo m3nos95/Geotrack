@@ -2714,13 +2714,30 @@
     "Communicated with fiscal staff or preparer of payment request as to how the invoice is to be funded (ie Federal/State/J etc) especially if different from how the project or activity (phase) was initially set up. For example – Must notify preparer if certain payments are ineligible for federal funds (Non-participating) even though project was set up as federally participating.",
   ];
 
-  function payCheckField(label, value) {
+  function checklistOf(inv, c) {
+    var d = (inv && inv.checklist) || {};
+    var agr = c.agreementNo || c.code || "";
+    return {
+      agreementNo: d.agreementNo != null ? d.agreementNo : agr,
+      consultantName: d.consultantName != null ? d.consultantName : (c.contractor || ""),
+      projectNo: d.projectNo != null ? d.projectNo : "",
+      amount: d.amount != null ? d.amount : E.fmtMoney((inv && inv.amount) || 0),
+      invoiceNo: d.invoiceNo != null ? d.invoiceNo : ((inv && inv.number) || ""),
+      date: d.date != null ? d.date : E.fmtDate(E.todayISO()),
+      certAgreement: d.certAgreement != null ? d.certAgreement : agr,
+      items: Array.isArray(d.items) ? d.items.slice() : [],
+    };
+  }
+
+  function payCheckField(label, field, value) {
     return (
       '<div class="pay-check-field"><span class="pay-check-lbl">' +
       esc(label) +
-      '</span><span class="pay-check-uline">' +
+      '</span><input class="pay-check-uline" data-act="pay-check-field" data-field="' +
+      esc(field) +
+      '" value="' +
       esc(value || "") +
-      "</span></div>"
+      '"></div>'
     );
   }
 
@@ -2732,45 +2749,48 @@
       i +
       '" title="Mark this item">' +
       (on ? "X" : "") +
-      "</span><span>" +
+      '</span><span class="pay-check-edit" contenteditable="true" data-act="pay-check-item-text" data-i="' +
+      i +
+      '">' +
       esc(text) +
       "</span></p>"
     );
   }
 
   function renderInvoiceReview(c, t, q, inv) {
-    var agr = c.agreementNo || c.code || "";
-    var amount = E.fmtMoney(inv.amount || 0);
+    var form = checklistOf(inv, c);
     var marks = formChecksOf(inv);
     var lh = E.ensureLetterhead(c);
     var items = PAY_CHECK_ITEMS.map(function (text, i) {
-      return payCheckItem(i, text, !!marks[i]);
+      var custom = form.items[i];
+      return payCheckItem(i, custom != null && custom !== "" ? custom : text, !!marks[i]);
     }).join("");
     return (
       '<div class="paper-stack" id="invoiceReview">' +
+      '<p class="muted no-print">Click any line on the form to edit it, then Print checklist.</p>' +
       '<article class="letter-page pay-checklist">' +
       '<h1 class="pay-check-title">Department of Transportation Consultant Agreement Payment Approval</h1>' +
       '<h2 class="pay-check-sub">Check List Form</h2>' +
       '<div class="pay-check-top">' +
       '<div class="pay-check-final">' +
       "<div>FINAL INVOICE</div>" +
-      '<div class="pay-check-yn"><span class="pay-check-box">' +
+      '<div class="pay-check-yn"><span class="pay-check-box" data-act="inv-final-yes">' +
       (inv.finalInvoice ? "X" : "") +
-      "</span> YES &nbsp;&nbsp;<span class=\"pay-check-box\">" +
+      "</span> YES &nbsp;&nbsp;<span class=\"pay-check-box\" data-act=\"inv-final-no\">" +
       (inv.finalInvoice ? "" : "X") +
       "</span> NO</div>" +
       "</div>" +
       '<div class="pay-check-fields">' +
-      payCheckField("Agreement No:", agr) +
-      payCheckField("Consultant Name:", c.contractor || "") +
-      payCheckField("Project No:", "") +
-      payCheckField("Invoice dollar amount", amount) +
-      payCheckField("Invoice No:", inv.number || "") +
+      payCheckField("Agreement No:", "agreementNo", form.agreementNo) +
+      payCheckField("Consultant Name:", "consultantName", form.consultantName) +
+      payCheckField("Project No:", "projectNo", form.projectNo) +
+      payCheckField("Invoice dollar amount", "amount", form.amount) +
+      payCheckField("Invoice No:", "invoiceNo", form.invoiceNo) +
       "</div></div>" +
       items +
-      '<p class="pay-check-cert">I certify that I have read and understand the terms and conditions set forth in agreement number <span class="pay-check-agr">' +
-      esc(agr) +
-      "</span>, and that all work itemized in the attached billing from the consultant is in conformance with said terms and conditions of the signed agreement, DelDOT policies/procedures, and established funding authorization dates and limits.</p>" +
+      '<p class="pay-check-cert">I certify that I have read and understand the terms and conditions set forth in agreement number <input class="pay-check-agr" data-act="pay-check-field" data-field="certAgreement" value="' +
+      esc(form.certAgreement) +
+      '">, and that all work itemized in the attached billing from the consultant is in conformance with said terms and conditions of the signed agreement, DelDOT policies/procedures, and established funding authorization dates and limits.</p>' +
       '<div class="pay-check-sign">' +
       '<div class="pay-check-sign-row"><span>Signed</span><span class="pay-check-sig">' +
       (lh.signatureDataUrl
@@ -2778,15 +2798,29 @@
           String(lh.signatureDataUrl).replace(/"/g, "") +
           '">'
         : "") +
-      '</span><span>Date</span><span class="pay-check-date">' +
-      esc(E.fmtDate(E.todayISO())) +
-      "</span></div>" +
+      '</span><span>Date</span><input class="pay-check-date" data-act="pay-check-field" data-field="date" value="' +
+      esc(form.date) +
+      '"></div>' +
       '<div class="pay-check-pm">Project Manager</div>' +
       "</div>" +
       "</article>" +
       (inv.pdf ? '<div id="invoiceScan"></div>' : "") +
       "</div>"
     );
+  }
+
+  function flushChecklistEdits(q) {
+    var inv = findInv(q);
+    if (!inv) return;
+    if (!inv.checklist) inv.checklist = {};
+    Array.prototype.forEach.call(document.querySelectorAll("[data-act='pay-check-field']"), function (el) {
+      inv.checklist[el.getAttribute("data-field")] = el.value;
+    });
+    Array.prototype.forEach.call(document.querySelectorAll("[data-act='pay-check-item-text']"), function (el) {
+      if (!inv.checklist.items) inv.checklist.items = [];
+      inv.checklist.items[Number(el.getAttribute("data-i"))] = el.innerText;
+    });
+    save();
   }
 
   function renderPayItems(c) {
@@ -3264,6 +3298,14 @@
       window.ConTrakPdf.paintQp("inv-" + inv.id, invHost).catch(function (err) {
         toast("Could not show the invoice PDF: " + err.message);
       });
+    }
+    var review = document.getElementById("invoiceReview");
+    if (review) {
+      review.oninput = function (ev) {
+        var el = ev.target.closest("[data-act='pay-check-field'], [data-act='pay-check-item-text']");
+        if (!el) return;
+        flushChecklistEdits(qp());
+      };
     }
   }
 
@@ -4417,6 +4459,7 @@
       return;
     }
     if (act === "print-invoice-review") {
+      flushChecklistEdits(q);
       var invPrint = findInv(q);
       var invHost = document.getElementById("invoiceScan");
       if (invHost && invPrint && invPrint.pdf && window.ConTrakPdf) {
@@ -4496,6 +4539,22 @@
       if (mi < 0 || mi > 4 || !isFinite(mi)) return;
       invMark.formChecks = formChecksOf(invMark);
       invMark.formChecks[mi] = !invMark.formChecks[mi];
+      save();
+      render();
+      return;
+    }
+    if (act === "inv-final-yes") {
+      var invYes = findInv(q);
+      if (!invYes) return;
+      invYes.finalInvoice = true;
+      save();
+      render();
+      return;
+    }
+    if (act === "inv-final-no") {
+      var invNo = findInv(q);
+      if (!invNo) return;
+      invNo.finalInvoice = false;
       save();
       render();
       return;
@@ -4672,6 +4731,10 @@
       findInv(q).finalInvoice = !!el.checked;
       save();
       render();
+      return;
+    }
+    if (act === "pay-check-field") {
+      flushChecklistEdits(q);
       return;
     }
     if (act === "pay-check-all") {
