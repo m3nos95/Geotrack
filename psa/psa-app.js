@@ -78,6 +78,10 @@
   }
 
   function deleteAgreement(id) {
+    if (!isFinance()) {
+      toast("Finance deletes IDIQ agreements");
+      return;
+    }
     var list = state.contracts || [];
     if (list.length < 2) {
       toast("Keep at least one agreement");
@@ -585,7 +589,7 @@
   }
 
   function renderHeader(c) {
-    var canDelete = (state.contracts || []).length > 1;
+    var canDelete = isFinance() && (state.contracts || []).length > 1;
     var btns = state.contracts
       .map(function (x) {
         var on = x.id === c.id ? " on" : "";
@@ -2948,7 +2952,7 @@
       "</div>" +
       '<div style="margin:10px 0;display:flex;gap:8px;flex-wrap:wrap"><button class="btn primary" data-act="save-contract-meta">Save agreement header</button>' +
       (canEditItems ? '<button class="btn" data-act="add-payitem">+ Pay item</button>' : "") +
-      ((state.contracts || []).length > 1
+      (isFinance() && (state.contracts || []).length > 1
         ? '<button class="btn danger" data-act="delete-contract" data-id="' +
           esc(c.id) +
           '">Delete this IDIQ</button>'
