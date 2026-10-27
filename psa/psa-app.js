@@ -621,7 +621,7 @@
       : "";
     return (
       '<header class="top no-print">' +
-      '<div class="topbar-logo" title="Delaware Department of Transportation"><img src="assets/deldot-logo.png" alt="DelDOT"></div>' +
+      '<div class="topbar-logo" title="Delaware Department of Transportation"><img src="assets/deldot-hex-logo.png" alt="DelDOT"></div>' +
       '<div class="brand"><span class="brand-title"><b>DelDOT</b> ConTrak</span><small>' +
       esc(org) +
       " · IDIQ</small></div>" +
