@@ -2740,7 +2740,6 @@
 
   function renderInvoiceReview(c, t, q, inv) {
     var agr = c.agreementNo || c.code || "";
-    var projectNo = q.contractNo || q.billingNo || "";
     var amount = E.fmtMoney(inv.amount || 0);
     var marks = formChecksOf(inv);
     var lh = E.ensureLetterhead(c);
@@ -2764,7 +2763,7 @@
       '<div class="pay-check-fields">' +
       payCheckField("Agreement No:", agr) +
       payCheckField("Consultant Name:", c.contractor || "") +
-      payCheckField("Project No:", projectNo) +
+      payCheckField("Project No:", "") +
       payCheckField("Invoice dollar amount", amount) +
       payCheckField("Invoice No:", inv.number || "") +
       "</div></div>" +
