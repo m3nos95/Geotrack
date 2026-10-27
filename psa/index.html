@@ -65,7 +65,14 @@
     .cbtn {
       border: 1px solid var(--border); background: var(--panel);
       border-radius: 999px; padding: 6px 12px; color: var(--muted);
+      display: inline-flex; align-items: center; gap: 6px;
     }
+    .cbtn-x {
+      display: inline-flex; align-items: center; justify-content: center;
+      width: 16px; height: 16px; border-radius: 50%;
+      font-size: 13px; line-height: 1; color: var(--muted);
+    }
+    .cbtn-x:hover { color: #ffc4c4; background: #3a2020; }
     .cbtn.on { background: #2a3d22; border-color: var(--green2); color: #d8ffe8; }
     .cbtn.hist { opacity: .9; }
     .cbtn.hist.on { background: #3a2e16; border-color: var(--accent2); color: #ffe9c4; }
@@ -599,6 +606,6 @@
   <script src="psa-seed.js"></script>
   <script src="psa-analyzer.js?v=analyzer-labor"></script>
   <script src="psa-pdf.js?v=qp20-font"></script>
-  <script src="psa-app.js?v=checklist-edit"></script>
+  <script src="psa-app.js?v=delete-agreement"></script>
 </body>
 </html>
