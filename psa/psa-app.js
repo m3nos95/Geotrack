@@ -2624,6 +2624,11 @@
               (inv.adminChecks[x.id] ? " checked" : "") +
               "> Confirmed</label>"
             : "") +
+          (x.id === "quantities" && x.overridable
+            ? '<label class="btn primary" style="display:inline-flex;align-items:center;gap:8px;margin-top:8px;cursor:pointer"><input type="checkbox" data-act="qty-override"' +
+              (inv.qtyOverride ? " checked" : "") +
+              "> Override — billed qty may exceed NTP qty because the invoice total is within the NTP amount</label>"
+            : "") +
           "</div></div>"
         );
       })
@@ -2650,7 +2655,7 @@
       '"></label></div>' +
       '<div class="row-between" style="margin-top:10px"><div class="muted">' +
       (wf(c).payItems
-        ? "Line items vs NTP remaining quantities. Leave blank for a lump-sum check (dollar cap only)."
+        ? "Line items vs NTP remaining quantities. Qty over NTP does not block posting if the invoice total is within NTP dollars — check Override on that row. Leave blank for a lump-sum check (dollar cap only)."
         : "Dollar check against NTP and the task PO. Finance turned unit prices off on this template.") +
       "</div>" +
       (wf(c).payItems
@@ -4387,7 +4392,14 @@
       if (act === "post-inv") {
         var ck = E.buildInvoiceChecklist(c, t, q, cur, tpl(c));
         if (ck.requiredFailCount) {
-          toast("Checklist failed — not posted");
+          var qtyBlock = ck.checks.filter(function (x) {
+            return x.id === "quantities" && x.status === "fail" && x.overridable;
+          })[0];
+          toast(
+            qtyBlock && ck.requiredFailCount === 1
+              ? "Billed qty is over NTP — check the override to post. Invoice total is still within NTP dollars."
+              : "Checklist failed — not posted"
+          );
           save();
           render();
           return;
@@ -4674,6 +4686,12 @@
     }
     if (act === "admin-check") {
       findInv(q).adminChecks[el.getAttribute("data-id")] = el.checked;
+      save();
+      render();
+      return;
+    }
+    if (act === "qty-override") {
+      findInv(q).qtyOverride = !!el.checked;
       save();
       render();
       return;

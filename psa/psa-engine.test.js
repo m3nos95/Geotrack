@@ -113,6 +113,33 @@ var ck2 = E.buildInvoiceChecklist(contract, task, qp, inv2);
 var qtyCheck = ck2.checks.find(function (c) { return c.id === "quantities"; });
 assert("Over remaining qty fails", qtyCheck.status === "fail", qtyCheck.detail);
 
+/* Qty over NTP, but invoice dollars still under remaining NTP — override lets you post */
+var invQtyOver = E.emptyInvoice("INV-Q");
+invQtyOver.date = "2026-09-01";
+invQtyOver.lines = [
+  { itemCode: "605545", description: "SPT", unit: "LF", qty: 21, unitPrice: 42 },
+];
+invQtyOver.amount = E.sumLines(invQtyOver.lines);
+var ckQtyOver = E.buildInvoiceChecklist(contract, task, qp, invQtyOver);
+var qtyOverCheck = ckQtyOver.checks.find(function (c) { return c.id === "quantities"; });
+var ntpOk = ckQtyOver.checks.find(function (c) { return c.id === "within_ntp_balance"; });
+assert("Qty over with dollars under still fails until override", qtyOverCheck.status === "fail" && qtyOverCheck.required && qtyOverCheck.overridable && ckQtyOver.requiredFailCount > 0);
+assert("Dollar cap still passes when only qty is over", ntpOk && ntpOk.status === "pass");
+invQtyOver.qtyOverride = true;
+var ckQtyOk = E.buildInvoiceChecklist(contract, task, qp, invQtyOver);
+var qtyOkCheck = ckQtyOk.checks.find(function (c) { return c.id === "quantities"; });
+assert("Qty override is a warning, not a block", qtyOkCheck.status === "warn" && !qtyOkCheck.required && ckQtyOk.requiredFailCount === 0, qtyOkCheck);
+assert("Override does not skip an over-NTP dollar fail", (function () {
+  var overDollars = E.emptyInvoice("INV-D");
+  overDollars.date = "2026-09-01";
+  overDollars.lines = [{ itemCode: "605545", qty: 40, unitPrice: 42, unit: "LF" }];
+  overDollars.amount = 99999;
+  overDollars.qtyOverride = true;
+  var ckD = E.buildInvoiceChecklist(contract, task, qp, overDollars);
+  var dol = ckD.checks.find(function (c) { return c.id === "within_ntp_balance"; });
+  return dol.status === "fail" && ckD.requiredFailCount > 0;
+})());
+
 /* Over NTP dollars */
 var inv3 = E.emptyInvoice("INV-3");
 inv3.date = "2026-09-01";
