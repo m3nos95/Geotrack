@@ -31,6 +31,8 @@
     azPendingProposal: null,
     azNeedThrough: "",
     azNeedResult: null,
+    closeoutReturnLeftover: true,
+    bulkReturnLeftover: true,
   };
 
   var state = null;
@@ -1582,7 +1584,9 @@
           E.fmtMoney(E.qpSpent(q)) +
           '</td><td class="num">' +
           (st === "closed" || st === "canceled"
-            ? E.fmtMoney(E.qpReturned(q)) + '<div class="muted">returned</div>'
+            ? E.qpKeptAllocated(q)
+              ? E.fmtMoney(E.qpKeptAllocated(q)) + '<div class="muted">kept on QP</div>'
+              : E.fmtMoney(E.qpReturned(q)) + '<div class="muted">returned</div>'
             : E.fmtMoney(E.qpRemaining(q))) +
           '</td><td class="muted">' +
           (invs || "—") +
@@ -1846,6 +1850,11 @@
     return E.qpLeftover(q);
   }
 
+  function willReturnLeftover(q) {
+    if (q && q.qpClosed) return E.qpReturned(q) > 0.009 || E.qpLeftover(q) < 0.009;
+    return ui.closeoutReturnLeftover !== false;
+  }
+
   function confirmDeleteQp(c, t, q) {
     var n = noun(c);
     var tn = taskNoun(c);
@@ -1912,7 +1921,9 @@
   function previewBulkBatch(t) {
     var stored = ui.bulkCloseoutId ? E.findBulkCloseout(t, ui.bulkCloseoutId) : null;
     if (stored) return stored;
-    var rows = selectedCloseableQps(t).map(E.closeoutSnapshot);
+    var rows = selectedCloseableQps(t).map(function (q) {
+      return E.closeoutSnapshot(q, { returnLeftover: ui.bulkReturnLeftover !== false });
+    });
     return {
       date: ui.bulkDate || E.todayISO(),
       notes: ui.bulkNotes || "",
@@ -1934,15 +1945,28 @@
 
   function renderCloseout(c, t, q) {
     var leftover = leftoverToTask(q);
-    var afterTask = E.money(E.taskUnallocated(t) + (q.qpClosed ? 0 : leftover));
+    var returning = willReturnLeftover(q);
+    var extra = !q.qpClosed && returning ? leftover : 0;
+    var afterTask = E.money(E.taskUnallocated(t) + extra);
     var n = noun(c);
     var tn = taskNoun(c);
     var letter = renderQpCloseoutLetter(c, t, q, leftover);
-    return (
-      letter +
-      '<div class="card no-print"><h2>Close-out letter</h2>' +
-      (q.qpClosed
+    var closedKept = q.qpClosed && E.qpKeptAllocated(q) > 0.009;
+    var banner;
+    if (q.qpClosed) {
+      banner = closedKept
         ? '<div class="banner info">Closed ' +
+          E.fmtDate(q.closeoutDate) +
+          ". Unspent " +
+          E.fmtMoney(E.qpKeptAllocated(q)) +
+          " stays allocated on this " +
+          esc(n) +
+          " — Available on " +
+          esc(tn) +
+          " " +
+          esc(t.number) +
+          " does not go up.</div>"
+        : '<div class="banner info">Closed ' +
           E.fmtDate(q.closeoutDate) +
           ". Unspent " +
           E.fmtMoney(E.qpReturned(q)) +
@@ -1952,18 +1976,45 @@
           esc(t.number) +
           " and is available for the next " +
           esc(n) +
-          ".</div>"
-        : "<p>After the work is performed, issue a close-out letter. Unspent NTP returns to <b>" +
-          esc(tn) +
-          " " +
-          esc(t.number) +
-          "</b> so you can issue another " +
-          esc(n) +
-          " under this funded task. It does not leave agreement " +
-          esc(c.code) +
-          " until you close the " +
-          esc(tn).toLowerCase() +
-          " itself. Closing the consultant agreement is a Finance and Audit action (PSPM §3 / 2 CFR 200.343).</p>") +
+          ".</div>";
+    } else {
+      banner =
+        "<p>After the work is performed, issue a close-out letter. Leave <b>Return unspent NTP</b> checked if leftover should be available for another " +
+        esc(n) +
+        " on this " +
+        esc(tn).toLowerCase() +
+        ". Uncheck it if leftover stays charged to this " +
+        esc(n) +
+        " (Available on the " +
+        esc(tn).toLowerCase() +
+        " does not change). Leftover does not leave agreement " +
+        esc(c.code) +
+        " until you close the " +
+        esc(tn).toLowerCase() +
+        " itself.</p>";
+    }
+    var returnBox = q.qpClosed
+      ? ""
+      : '<label class="chk" style="margin:10px 0 4px"><input type="checkbox" id="returnLeftover" data-act="toggle-return-leftover"' +
+        (returning ? " checked" : "") +
+        "> Return unspent NTP to " +
+        esc(tn) +
+        " " +
+        esc(t.number) +
+        " (available for another " +
+        esc(n) +
+        ")</label>";
+    var unspentLabel = returning
+      ? "Unspent returning to " + tn + " " + t.number
+      : "Unspent staying on this " + n;
+    var issueLabel = returning
+      ? "Issue close-out · return " + E.fmtMoney(leftover)
+      : "Issue close-out · keep " + E.fmtMoney(leftover) + " allocated";
+    return (
+      letter +
+      '<div class="card no-print"><h2>Close-out letter</h2>' +
+      banner +
+      returnBox +
       '<div class="fields">' +
       '<label class="f">Close-out date<input id="closeoutDate" type="date" value="' +
       esc(q.closeoutDate || E.todayISO()) +
@@ -1976,10 +2027,8 @@
       '<label class="f">Invoiced / spent<input value="' +
       esc(E.fmtMoney(E.qpSpent(q))) +
       '" disabled></label>' +
-      '<label class="f">Unspent returning to ' +
-      esc(tn) +
-      " " +
-      esc(t.number) +
+      '<label class="f">' +
+      esc(unspentLabel) +
       '<input value="' +
       esc(E.fmtMoney(leftover)) +
       '" disabled></label>' +
@@ -1997,11 +2046,9 @@
       '<div style="margin-top:12px;display:flex;gap:8px;flex-wrap:wrap">' +
       (q.qpClosed
         ? '<button class="btn primary" data-act="print-closeout">Print close-out letter</button>' +
-          '<button class="btn" data-act="reopen-qp">Undo close-out · put leftover back on this ' +
-          esc(n) +
-          "</button>"
-        : '<button class="btn good" data-act="issue-closeout">Issue close-out · return ' +
-          E.fmtMoney(leftover) +
+          '<button class="btn" data-act="reopen-qp">Undo close-out</button>'
+        : '<button class="btn good" data-act="issue-closeout">' +
+          issueLabel +
           "</button>" +
           '<button class="btn" data-act="print-closeout">Preview / print letter</button>') +
       "</div></div>"
@@ -2010,7 +2057,9 @@
 
   function renderQpCloseoutLetter(c, t, q, leftover) {
     leftover = leftover != null ? leftover : leftoverToTask(q);
-    var returned = q.qpClosed ? E.qpReturned(q) : leftover;
+    var returned = q.qpClosed ? E.qpReturned(q) : willReturnLeftover(q) ? leftover : 0;
+    var kept = leftoverToTask(q);
+    var keepOnQp = (q.qpClosed ? E.qpKeptAllocated(q) > 0.009 : !willReturnLeftover(q)) && kept > 0.009;
     var lh = E.ensureLetterhead(c);
     var cc = workingCc("closeout", c, t, q);
     var dateLong = E.fmtDateLong(q.closeoutDate || E.todayISO());
@@ -2046,11 +2095,17 @@
       esc(E.fmtMoneyLetter(E.qpNtp(q))) +
       ". Invoiced / spent is " +
       esc(E.fmtMoneyLetter(E.qpSpent(q))) +
-      ". Unspent funds of " +
-      esc(E.fmtMoneyLetter(returned)) +
-      " are returned to Task " +
-      esc(t.number) +
-      " for additional Quick Proposals.</p>" +
+      (keepOnQp
+        ? ". Unspent funds of " +
+          esc(E.fmtMoneyLetter(kept)) +
+          " remain allocated to this Quick Proposal on Task " +
+          esc(t.number) +
+          " and are not available for additional Quick Proposals.</p>"
+        : ". Unspent funds of " +
+          esc(E.fmtMoneyLetter(returned)) +
+          " are returned to Task " +
+          esc(t.number) +
+          " for additional Quick Proposals.</p>") +
       (notes ? "<p>" + nl(notes) + "</p>" : "") +
       "<p>Should you have any questions, please contact me at " +
       esc(lh.signerPhone || "") +
@@ -2105,22 +2160,31 @@
           E.fmtDate(batch.date) +
           ". Unspent " +
           E.fmtMoney(totals.returned) +
-          " returned to " +
-          esc(tn) +
-          " " +
-          esc(t.number) +
-          " for the next " +
-          esc(n) +
-          ".</div>"
+          (batch.returnLeftover === false
+            ? " stays allocated on those " +
+              esc(ns) +
+              " — Available on " +
+              esc(tn) +
+              " " +
+              esc(t.number) +
+              " does not go up."
+            : " returned to " +
+              esc(tn) +
+              " " +
+              esc(t.number) +
+              " for the next " +
+              esc(n) +
+              ".") +
+          "</div>"
         : "<p>Select open " +
           esc(ns) +
           " on this " +
           esc(tn).toLowerCase() +
-          ". One letter lists every closed assignment and the unspent NTP returned to <b>" +
-          esc(tn) +
-          " " +
-          esc(t.number) +
-          "</b>. Leftover does not leave agreement " +
+          ". One letter lists every closed assignment. Leave <b>Return unspent NTP</b> checked to free leftover for another " +
+          esc(n) +
+          ". Uncheck it if leftover stays charged to those " +
+          esc(ns) +
+          ". Leftover does not leave agreement " +
           esc(c.code) +
           " until you close the " +
           esc(tn).toLowerCase() +
@@ -2146,16 +2210,25 @@
         : '<div class="banner">Check two or more ' +
           esc(ns) +
           " in the ledger, then issue the close-out.</div>") +
+      (issued
+        ? ""
+        : '<label class="chk" style="margin:10px 0 4px"><input type="checkbox" id="bulkReturnLeftover" data-act="toggle-bulk-return-leftover"' +
+          (ui.bulkReturnLeftover !== false ? " checked" : "") +
+          "> Return unspent NTP to " +
+          esc(tn) +
+          " " +
+          esc(t.number) +
+          " (available for another " +
+          esc(n) +
+          ")</label>") +
       '<div class="fields" style="margin-top:12px">' +
       '<label class="f">Close-out date<input id="bulkCloseoutDate" data-act="bulk-date" type="date" value="' +
       esc(batch.date || E.todayISO()) +
       '"' +
       (issued ? " disabled" : "") +
       "></label>" +
-      '<label class="f">Unspent returning to ' +
-      esc(tn) +
-      " " +
-      esc(t.number) +
+      '<label class="f">' +
+      (ui.bulkReturnLeftover !== false ? "Unspent returning to " + tn + " " + t.number : "Unspent staying on these " + ns) +
       '<input value="' +
       esc(E.fmtMoney(totals.returned)) +
       '" disabled></label>' +
@@ -2178,12 +2251,10 @@
           "</button>"
         : '<button class="btn good" data-act="issue-bulk-closeout"' +
           (totals.count ? "" : " disabled") +
-          ">Issue close-out · return " +
-          E.fmtMoney(totals.returned) +
-          " to " +
-          esc(tn) +
-          " " +
-          esc(t.number) +
+          ">" +
+          (ui.bulkReturnLeftover !== false
+            ? "Issue close-out · return " + E.fmtMoney(totals.returned) + " to " + tn + " " + t.number
+            : "Issue close-out · keep leftover allocated") +
           "</button>" +
           '<button class="btn" data-act="print-bulk-closeout"' +
           (totals.count ? "" : " disabled") +
@@ -2237,11 +2308,17 @@
       ".</p>" +
       "<p>Please consider this letter as official notice that work under the following Quick Proposals on Task " +
       esc(t.number) +
-      " is complete. Unspent funds of " +
-      esc(E.fmtMoneyLetter(totals.returned)) +
-      " are returned to Task " +
-      esc(t.number) +
-      " for additional Quick Proposals.</p>" +
+      " is complete. " +
+      (batch.returnLeftover === false || (batch.preview && ui.bulkReturnLeftover === false)
+        ? "Unspent NTP remains allocated to those Quick Proposals and is not available for additional Quick Proposals on Task " +
+          esc(t.number) +
+          "."
+        : "Unspent funds of " +
+          esc(E.fmtMoneyLetter(totals.returned)) +
+          " are returned to Task " +
+          esc(t.number) +
+          " for additional Quick Proposals.") +
+      "</p>" +
       '<div class="closeout-chart-wrap"><table class="prop-items closeout-chart" style="text-align:center"><thead><tr>' +
       '<th style="text-align:center">' +
       esc(n) +
@@ -4397,19 +4474,27 @@
     }
     if (act === "close-qp" || act === "issue-closeout") {
       q.closeoutCc = workingCc("closeout", c, t, q);
+      var returnEl = document.getElementById("returnLeftover");
+      var returnLeftover = returnEl ? !!returnEl.checked : ui.closeoutReturnLeftover !== false;
       E.closeQp(q, {
         date: val("closeoutDate") || E.todayISO(),
         notes: val("closeoutNotes"),
+        returnLeftover: returnLeftover,
       });
       save();
       toast(
-        noun(c) +
-          " closed · " +
-          E.fmtMoney(E.qpReturned(q)) +
-          " returned to " +
-          taskNoun(c) +
-          " " +
-          t.number
+        returnLeftover
+          ? noun(c) +
+              " closed · " +
+              E.fmtMoney(E.qpReturned(q)) +
+              " returned to " +
+              taskNoun(c) +
+              " " +
+              t.number
+          : noun(c) +
+              " closed · " +
+              E.fmtMoney(E.qpKeptAllocated(q)) +
+              " stays allocated (task available unchanged)"
       );
       ui.qpTab = "closeout";
       render();
@@ -4462,10 +4547,13 @@
         toast("Check open " + nouns(c) + " on this " + taskNoun(c).toLowerCase());
         return;
       }
+      var bulkReturnEl = document.getElementById("bulkReturnLeftover");
+      var bulkReturn = bulkReturnEl ? !!bulkReturnEl.checked : ui.bulkReturnLeftover !== false;
       var batch = E.bulkCloseQps(t, ids, {
         date: val("bulkCloseoutDate") || ui.bulkDate || E.todayISO(),
         notes: val("bulkCloseoutNotes") || ui.bulkNotes || "",
         cc: workingCc("bulk", c, t, null),
+        returnLeftover: bulkReturn,
       });
       if (!batch) {
         toast("Nothing to close");
@@ -4480,12 +4568,14 @@
           batch.totals.count +
           " " +
           (batch.totals.count === 1 ? noun(c) : nouns(c)) +
-          " · " +
-          E.fmtMoney(batch.totals.returned) +
-          " returned to " +
-          taskNoun(c) +
-          " " +
-          t.number
+          (batch.returnLeftover === false
+            ? " · leftover stays allocated (task available unchanged)"
+            : " · " +
+              E.fmtMoney(batch.totals.returned) +
+              " returned to " +
+              taskNoun(c) +
+              " " +
+              t.number)
       );
       render();
       return;
@@ -5003,6 +5093,16 @@
     }
     if (act === "bulk-date") {
       ui.bulkDate = el.value;
+      render();
+      return;
+    }
+    if (act === "toggle-return-leftover") {
+      ui.closeoutReturnLeftover = !!el.checked;
+      render();
+      return;
+    }
+    if (act === "toggle-bulk-return-leftover") {
+      ui.bulkReturnLeftover = !!el.checked;
       render();
       return;
     }

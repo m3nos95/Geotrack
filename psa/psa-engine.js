@@ -2002,8 +2002,14 @@
     );
   }
 
-  function closeoutSnapshot(qp) {
+  function closeoutSnapshot(qp, opts) {
     qp = qp || {};
+    opts = opts || {};
+    var leftover = qpLeftover(qp);
+    var returned;
+    if (qp.qpClosed) returned = qpReturned(qp);
+    else if (opts.returnLeftover === false) returned = 0;
+    else returned = leftover;
     return {
       id: qp.id,
       qpNumber: qp.qpNumber,
@@ -2012,7 +2018,7 @@
       billingNo: qp.billingNo || "",
       ntpAmount: qpNtp(qp),
       spent: qpSpent(qp),
-      returned: qp.qpClosed ? qpReturned(qp) : qpLeftover(qp),
+      returned: returned,
     };
   }
 
@@ -2035,11 +2041,12 @@
 
   function closeQp(qp, opts) {
     opts = opts || {};
+    var leftover = qpLeftover(qp);
     qp.qpClosed = true;
     qp.status = "closed";
     qp.closeoutDate = opts.date || qp.closeoutDate || todayISO();
     if (opts.notes != null) qp.closeoutNotes = opts.notes;
-    qp.returnedRemainder = qpLeftover(qp);
+    qp.returnedRemainder = opts.returnLeftover === false ? 0 : leftover;
     return qp;
   }
 
@@ -2097,7 +2104,7 @@
     var closed = [];
     qpsByIds(task, qpIds).forEach(function (q) {
       if (!isQpCloseable(q)) return;
-      closeQp(q, { date: date, notes: notes });
+      closeQp(q, { date: date, notes: notes, returnLeftover: opts.returnLeftover });
       closed.push(q);
     });
     if (!closed.length) return null;
@@ -2105,6 +2112,7 @@
       id: opts.id || uid("bulk"),
       date: date,
       notes: notes,
+      returnLeftover: opts.returnLeftover !== false,
       cc: Array.isArray(opts.cc) ? opts.cc.slice() : null,
       qpIds: closed.map(function (q) {
         return q.id;
@@ -2385,6 +2393,10 @@
     ADMIN_CHECKS: ADMIN_CHECKS,
     nextQpNumber: nextQpNumber,
     qpLeftover: qpLeftover,
+    qpKeptAllocated: function (qp) {
+      if (!qp || !qp.qpClosed) return 0;
+      return money(Math.max(qpLeftover(qp) - qpReturned(qp), 0));
+    },
     isQpCloseable: isQpCloseable,
     closeableQps: closeableQps,
     sortQpsByNumber: sortQpsByNumber,
