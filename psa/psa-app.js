@@ -1585,7 +1585,7 @@
           '</td><td class="num">' +
           (st === "closed" || st === "canceled"
             ? E.qpKeptAllocated(q)
-              ? E.fmtMoney(E.qpKeptAllocated(q)) + '<div class="muted">kept on QP</div>'
+              ? E.fmtMoney(E.qpKeptAllocated(q)) + '<div class="muted">unspent</div>'
               : E.fmtMoney(E.qpReturned(q)) + '<div class="muted">returned</div>'
             : E.fmtMoney(E.qpRemaining(q))) +
           '</td><td class="muted">' +
@@ -1959,9 +1959,9 @@
           E.fmtDate(q.closeoutDate) +
           ". Unspent " +
           E.fmtMoney(E.qpKeptAllocated(q)) +
-          " stays allocated on this " +
+          " stays on this " +
           esc(n) +
-          " — Available on " +
+          ". Available on " +
           esc(tn) +
           " " +
           esc(t.number) +
