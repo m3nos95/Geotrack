@@ -734,6 +734,22 @@
     return null;
   }
 
+  function payItemLabel(contract, line) {
+    if (!line) return "(blank)";
+    var cat =
+      catalogItem(contract, line.itemCode) || catalogItemByNo(contract, line.itemNo);
+    var no = String(line.itemNo || (cat && cat.itemNo) || "").trim();
+    var desc = String(line.description || (cat && cat.description) || "")
+      .replace(/\s*[—*]\s*incl(?:uding)?\.?\s*permit if needed/gi, "")
+      .replace(/\*including permit if needed/gi, "")
+      .replace(/\s+/g, " ")
+      .trim();
+    if (no && desc) return "item " + no + " " + desc;
+    if (no) return "item " + no;
+    if (desc) return desc;
+    return String(line.itemCode || "(blank)");
+  }
+
   var UNIT_WORDS = {
     each: { unit: "EA", unitMeasure: "Each" },
     ea: { unit: "EA", unitMeasure: "Each" },
@@ -1829,11 +1845,11 @@
         lines.forEach(function (l) {
           var nLine = ntpLine(qp, l.itemCode);
           if (!nLine && !l.extraWork) {
-            unknown.push(l.itemCode || l.description || "(blank)");
+            unknown.push(payItemLabel(contract, l));
           }
           if (nLine && money(l.unitPrice || 0) && money(l.unitPrice) !== money(nLine.unitPrice)) {
             priceFail.push(
-              (l.itemCode || "") +
+              payItemLabel(contract, l) +
                 " billed " +
                 fmtMoney(l.unitPrice) +
                 " vs NTP " +
@@ -1846,13 +1862,13 @@
             catalogItem(contract, l.itemCode).unitPrice &&
             money(l.unitPrice) !== money(catalogItem(contract, l.itemCode).unitPrice)
           ) {
-            priceFail.push((l.itemCode || "") + " billed unit price does not match catalog.");
+            priceFail.push(payItemLabel(contract, l) + " billed unit price does not match catalog.");
           }
           if (nLine) {
             var remainQty = nLine.qty - billedQty(qp, l.itemCode, invoice.id);
             if (Number(l.qty || 0) - remainQty > 0.0001) {
               qtyFail.push(
-                (l.itemCode || "") +
+                payItemLabel(contract, l) +
                   " billed " +
                   l.qty +
                   " " +
