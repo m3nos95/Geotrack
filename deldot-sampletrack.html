@@ -13440,6 +13440,7 @@ async function connectSupabase(silent = false) {
     offlineUpdateBanner();
     updateSupabaseStatus();
     if (!url || !key) showToast('Working offline — limited functionality', 'info');
+    markLabtrakBootDone();
     return;
   }
   // ── End offline fast-path ──────────────────────────────────────
@@ -13529,10 +13530,11 @@ async function connectSupabase(silent = false) {
     offlineUpdateBanner();
     updateSupabaseStatus();
     showToast('Working offline — data will sync when connected', 'info');
-  } finally {
+    } finally {
     setSyncInProgress(false);
     refreshSessionActionsUI();
     if (typeof renderDashboard === 'function') renderDashboard();
+    markLabtrakBootDone();
   }
 }
 
@@ -19250,8 +19252,22 @@ async function slPersistSample(id, updates) {
   return data;
 }
 
+function markLabtrakBootDone() {
+  window._labtrakBootDone = true;
+}
+
+function clearSampleQueryParam() {
+  try {
+    const url = new URL(window.location.href);
+    if (!url.searchParams.has('sample')) return;
+    url.searchParams.delete('sample');
+    history.replaceState({}, '', url.pathname + url.search + url.hash);
+  } catch (e) {}
+}
+
 async function fetchSample(id, opts) {
   opts = opts || {};
+  if (!id) return null;
   const cached = (allSamples || []).find(s => s.id === id);
   const cacheHasLab = sampleHasLabData(cached);
   const useCache = cached && !opts.forceFresh && (!opts.requireLabData || cacheHasLab);
@@ -19259,13 +19275,14 @@ async function fetchSample(id, opts) {
 
   if (!navigator.onLine || !db) {
     if (cached) return cached;
-    showToast('Sample not available offline', 'info');
+    if (!opts.quiet) showToast('Sample not available offline', 'info');
     return null;
   }
   const { data, error } = await db.from('samples').select('*').eq('id', id).single();
   if (error) {
     if (cached) return cached;
-    showToast('Sample not found', 'error');
+    if (!opts.quiet) showToast('Sample not found', 'error');
+    else console.warn('Sample lookup missed', id, error.code || error.message || error);
     return null;
   }
   if (data) {
@@ -19696,23 +19713,25 @@ window.addEventListener('load', async () => {
   const params = new URLSearchParams(window.location.search);
   const sampleId = params.get('sample');
   if (!sampleId) return;
-  // Skip QR deep-link when offline — can't fetch sample from DB
+  // A saved QR link stays in the address bar. Looking it up before sign-in
+  // finishes reads zero rows and used to paint "Sample not found" on home.
   if (!navigator.onLine) {
-    // Clear the param from URL silently so it doesn't interfere
-    try { window.history.replaceState({}, '', window.location.pathname); } catch(e) {}
+    clearSampleQueryParam();
     return;
   }
-  // db may still be initializing — wait briefly (up to ~6s)
-  for (let i = 0; i < 30; i++) {
-    if (db) break;
+  // Sign-in flushes queues before the shell is ready. Give that path
+  // time to finish so a real QR id is not looked up as an anonymous miss.
+  for (let i = 0; i < 200; i++) {
+    if (window._labtrakBootDone) break;
     await new Promise(r => setTimeout(r, 200));
   }
-  if (!db) return;
+  if (!db || !window._labtrakBootDone) return;
   try {
-    await openSample(sampleId);
+    await openSample(sampleId, { quiet: true });
   } catch (e) {
     console.warn('openSample from QR failed:', e);
   }
+  clearSampleQueryParam();
 });
 
 
@@ -25717,10 +25736,18 @@ function fcApplyCategoryToTabs(category) {
 // viewReport / slLoadSample / fcResumeSessionById / loadIntoLab
 // directly — this function is for ambient/clickthrough navigation.
 // ══════════════════════════════════════════════════════════════
-async function openSample(id) {
-  if (!db) { showToast('Not connected to database', 'error'); return; }
-  const sample = await fetchSample(id);
-  if (!sample) { showToast('Sample not found', 'error'); return; }
+async function openSample(id, opts) {
+  opts = opts || {};
+  if (!id) return;
+  if (!db) {
+    if (!opts.quiet) showToast('Not connected to database', 'error');
+    return;
+  }
+  const sample = await fetchSample(id, { quiet: !!opts.quiet });
+  if (!sample) {
+    if (!opts.quiet) showToast('Sample not found', 'error');
+    return;
+  }
   const status = sample.status || 'pending';
 
   // COMPLETE — show the rendered report, never the overwrite-warning form
