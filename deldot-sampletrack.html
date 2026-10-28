@@ -4141,6 +4141,25 @@ table.fc-borrow-tbl tr.fc-borrow-detail-row td{background:var(--surface);border-
             </span>
             <span class="home-app-name">Scan</span>
           </button>
+          <button type="button" class="home-app" id="home-app-map" data-view="labmap" onclick="switchView('labmap')">
+            <span class="home-app-icon" aria-hidden="true">
+              <svg viewBox="0 0 64 64" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round" stroke-linecap="round">
+                <path d="M10 18l14-6 16 6 14-6v34l-14 6-16-6-14 6V18z"/>
+                <path d="M24 12v34M40 18v34"/>
+              </svg>
+            </span>
+            <span class="home-app-name">Map</span>
+          </button>
+          <button type="button" class="home-app" id="home-app-r18" data-view="r18" onclick="switchView('r18')">
+            <span class="home-app-icon" aria-hidden="true">
+              <svg viewBox="0 0 64 64" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
+                <rect x="16" y="12" width="32" height="42" rx="4"/>
+                <path d="M26 12v-1a6 6 0 0112 0v1"/>
+                <path d="M24 28h16M24 36h16M24 44h10"/>
+              </svg>
+            </span>
+            <span class="home-app-name">R-18</span>
+          </button>
         </div>
       </div>
 
@@ -6707,9 +6726,8 @@ table.fc-borrow-tbl tr.fc-borrow-detail-row td{background:var(--surface);border-
       <div class="hub-header" data-tour="conchub-header" data-guide="conchub-home">
         <div>
           <div class="hub-greet" id="chub_greet">Good morning</div>
-          <div class="hub-date-line" id="chub_date">—</div>
+          <div class="hub-date-line" id="chub_date">Materials &amp; Research Laboratory</div>
         </div>
-        <span class="hub-role-badge" style="background:rgba(167,139,250,0.12);color:#a78bfa;border:1px solid rgba(167,139,250,0.3);">🟦 CONCRETE TECHNICIAN</span>
       </div>
 
       <div class="hub-kpi-row" data-tour="conchub-kpis">
@@ -6740,28 +6758,29 @@ table.fc-borrow-tbl tr.fc-borrow-detail-row td{background:var(--surface);border-
       </div>
 
       <div class="hub-actions" data-guide="conchub-actions">
-        <button class="hub-action-btn primary" data-guide="new-pour" onclick="switchView('concrete');switchConcreteTab('intake')">＋ NEW POUR</button>
-        <button class="hub-action-btn" onclick="switchView('concrete');switchConcreteTab('schedule')">📅 BREAK SCHEDULE</button>
-        <button class="hub-action-btn" onclick="switchView('concrete');switchConcreteTab('break')">✏️ BREAK ENTRY</button>
+        <button class="hub-action-btn primary" data-guide="new-pour" onclick="switchView('concrete');switchConcreteTab('intake')">New pour</button>
+        <button class="hub-action-btn" onclick="switchView('concrete');switchConcreteTab('schedule')">Break schedule</button>
+        <button class="hub-action-btn" onclick="switchView('concrete');switchConcreteTab('break')">Break entry</button>
         <button type="button" class="concrete-guide-toggle" id="btnConcreteGuidedHub" onclick="toggleConcreteGuidedMode()"
                 title="Turn Guided Mode on or off">
           <span class="guide-dot" aria-hidden="true"></span>
-          <span class="guide-toggle-label">Guided Mode</span>
+          <span class="guide-toggle-label">Guided mode</span>
         </button>
+        <button type="button" class="hub-action-btn" id="btnConcreteWeather" onclick="toggleConcreteHubWeather()">Weather</button>
       </div>
 
       <div class="hub-two-col">
         <div class="hub-panel">
           <div class="hub-panel-hdr">
             <span class="hub-panel-title">Upcoming Breaks</span>
-            <button class="hub-panel-link" onclick="switchView('concrete');switchConcreteTab('schedule')">Full Schedule →</button>
+            <button class="hub-panel-link" onclick="switchView('concrete');switchConcreteTab('schedule')">Schedule</button>
           </div>
           <div id="chub_breaks"><div class="hub-empty">Loading…</div></div>
         </div>
         <div class="hub-panel">
           <div class="hub-panel-hdr">
             <span class="hub-panel-title">Recent Sets</span>
-            <button class="hub-panel-link" onclick="switchView('concrete');switchConcreteTab('log')">Cylinder Log →</button>
+            <button class="hub-panel-link" onclick="switchView('concrete');switchConcreteTab('log')">Log</button>
           </div>
           <div id="chub_sets"><div class="hub-empty">Loading…</div></div>
         </div>
@@ -6775,7 +6794,7 @@ table.fc-borrow-tbl tr.fc-borrow-detail-row td{background:var(--surface);border-
             <button class="hub-cal-nav" onclick="hubCalNext('concrete')">›</button>
             <span class="hub-cal-title" id="hcal-label-concrete">Loading...</span>
           </div>
-          <span style="font-family:var(--mono);font-size:8px;color:#a78bfa;letter-spacing:1px;">CYLINDER BREAKS + NOTES</span>
+          <span style="font-family:var(--sans);font-size:13px;color:#c5d0de;">Breaks and notes</span>
         </div>
         <div class="hub-cal-legend">
           <div class="cal-legend-item"><div class="cal-legend-dot" style="background:#a78bfa"></div>Cylinder Break</div>
@@ -6786,7 +6805,7 @@ table.fc-borrow-tbl tr.fc-borrow-detail-row td{background:var(--surface);border-
       </div>
 
       <!-- Concrete Weather -->
-      <div class="hub-wx-panel" style="margin-top:18px;">
+      <div class="hub-wx-panel" style="margin-top:18px;" hidden>
         <div style="font-family:var(--mono);font-size:8px;letter-spacing:2px;color:var(--muted);margin-bottom:10px;">DOVER, DE — CURING CONDITIONS</div>
         <div style="position:relative;border-radius:8px;overflow:hidden;margin-bottom:14px;background:#000;">
           <img src="https://radar.weather.gov/ridge/standard/KDOX_loop.gif" style="width:100%;height:auto;display:block;border-radius:8px;" onerror="this.src='https://radar.weather.gov/lite/N0R/DOX_loop.gif'">
@@ -20025,6 +20044,9 @@ function setActiveView(name) {
   if (appEl) {
     appEl.classList.toggle('labmap-mode', name === 'labmap');
     appEl.classList.toggle('on-home', name === 'home');
+    const role = (typeof currentUser === 'object' && currentUser && currentUser.role) || '';
+    const phoneShell = name === 'conchub' && (ROLE_HOME[role] || 'home') === 'home';
+    appEl.classList.toggle('phone-app', phoneShell);
   }
   document.querySelectorAll('.rail-item').forEach(r => r.classList.toggle('active', r.dataset.view === name));
   document.querySelectorAll('.view').forEach(v => v.classList.toggle('active', v.id === name + '-view'));
@@ -20300,6 +20322,10 @@ function applyRoleUI(role) {
     const el = document.getElementById(id);
     if (el) el.style.display = effectiveTabs.includes(view) ? '' : 'none';
   });
+  const homeMap = document.getElementById('home-app-map');
+  const homeR18 = document.getElementById('home-app-r18');
+  if (homeMap) homeMap.hidden = !effectiveTabs.includes('labmap');
+  if (homeR18) homeR18.hidden = !effectiveTabs.includes('r18');
 
   syncMobileNav();
   refreshProjectAdminUI();
@@ -20837,8 +20863,18 @@ function renderLabHub() {
 }
 
 // ── CONCRETE HUB ──────────────────────────────────────────────
+function toggleConcreteHubWeather() {
+  const panel = document.querySelector('#conchub-view .hub-wx-panel');
+  const btn = document.getElementById('btnConcreteWeather');
+  if (!panel) return;
+  panel.hidden = !panel.hidden;
+  if (btn) btn.textContent = panel.hidden ? 'Weather' : 'Hide weather';
+}
+
 function renderConcreteHub() {
-  hubGreeting('chub_greet','chub_date','Concrete Operations · Materials & Research');
+  hubGreeting('chub_greet','chub_date','');
+  const dateEl = document.getElementById('chub_date');
+  if (dateEl) dateEl.textContent = 'Materials & Research Laboratory';
   const sets  = loadConcreteSets().filter(s => !s.archived);
   const today = new Date().toISOString().split('T')[0];
   const weekEnd = new Date(Date.now() + 7*86400000).toISOString().split('T')[0];
@@ -20879,7 +20915,7 @@ function renderConcreteHub() {
       breaksEl.innerHTML = relevant.map(c => {
         const daysDiff = Math.round((new Date(c.dueDate)-new Date())/86400000);
         const label = c.st === 'overdue' ? `${Math.abs(daysDiff)}d OVERDUE` : c.st === 'due-today' ? 'TODAY' : `in ${daysDiff}d`;
-        return `<div class="hub-break-row ${c.st}">
+        return `<div class="hub-break-row ${c.st}" onclick="switchView('concrete');switchConcreteTab('schedule')">
           <div>
             <div class="hub-br-id">${c.setId} · ${c.cylId||'cyl'}</div>
             <div class="hub-br-loc">${c.location} · ${c.breakAge}-day</div>
@@ -31992,7 +32028,7 @@ html.comfort-mode .rail-label {
 .home-launcher { margin: 0 auto; }
 .home-app-grid {
   display: grid;
-  grid-template-columns: repeat(6, minmax(0, 148px));
+  grid-template-columns: repeat(4, minmax(0, 148px));
   justify-content: center;
   gap: 18px;
 }
@@ -32032,7 +32068,7 @@ html.comfort-mode .rail-label {
   color: #eef3f8;
 }
 @media (max-width: 980px) {
-  .home-app-grid { grid-template-columns: repeat(3, minmax(0, 160px)); }
+  .home-app-grid { grid-template-columns: repeat(4, minmax(0, 148px)); }
   #app.on-home .dash-greet-main { font-size: 34px; }
 }
 @media (max-width: 640px) {
@@ -32041,6 +32077,114 @@ html.comfort-mode .rail-label {
   #app.on-home .dash-greet-sub { font-size: 16px; }
   #app.on-home .topbar-wordmark { font-size: 16px; }
   #app.on-home .topbar-logo { padding: 0 12px; }
+}
+
+/* Concrete hub opens like a phone app. The side menu stays on the
+   work screens, and comes back here for roles whose home is this hub. */
+#app.phone-app {
+  grid-template-columns: 1fr !important;
+}
+#app.phone-app #navRail,
+#app.phone-app #mobileNav,
+#app.phone-app #btnTourHelp { display: none !important; }
+#app.phone-app #view-container { grid-column: 1; }
+#app.phone-app .btn-cmd-search { display: inline-flex !important; }
+#app.phone-app .user-badge,
+#app.phone-app .topbar-right:has(#btnSignOutMobile.is-signed-in) .user-badge {
+  display: flex !important;
+}
+#app.phone-app .user-badge .ubadge-name { display: block; }
+#app.phone-app .ubadge-role { display: none !important; }
+
+#conchub-view .hub-wrap { max-width: 720px; padding-top: 8px; }
+#conchub-view .hub-header { justify-content: center; text-align: center; }
+#conchub-view .hub-greet {
+  font-size: 34px;
+  font-weight: 650;
+  letter-spacing: -0.03em;
+}
+#conchub-view .hub-date-line {
+  font-family: var(--sans);
+  font-size: 16px;
+  letter-spacing: 0;
+  color: #c5d0de;
+  margin-top: 6px;
+}
+#conchub-view .hub-kpi-card {
+  background: #121b2c;
+  border-radius: 16px;
+  text-align: center;
+  padding: 16px 8px 14px;
+}
+#conchub-view .hub-kpi-card::before,
+#conchub-view .hub-kpi-icon,
+#conchub-view .hub-kpi-card > div[style*="position:absolute"] { display: none; }
+#conchub-view .hub-kpi-alert {
+  background: #121b2c;
+  border-color: #8f3a3a;
+}
+#conchub-view .hub-kpi-val { font-size: 28px; }
+#conchub-view .hub-kpi-lbl {
+  font-family: var(--sans);
+  font-size: 12px;
+  letter-spacing: 0;
+  text-transform: none;
+  margin-top: 6px;
+}
+#conchub-view .hub-actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+#conchub-view .hub-action-btn,
+#conchub-view .concrete-guide-toggle {
+  min-height: 48px;
+  border-radius: 14px;
+  justify-content: center;
+  font-family: var(--sans);
+  font-size: 15px;
+  font-weight: 600;
+  letter-spacing: 0;
+  text-transform: none;
+  color: #eef3f8;
+  background: #121b2c;
+}
+#conchub-view .hub-action-btn.primary {
+  grid-column: 1 / -1;
+  color: #fff;
+  background: linear-gradient(135deg, var(--accent), var(--accent2));
+  border-color: transparent;
+}
+#conchub-view .concrete-guide-toggle { width: 100%; }
+#conchub-view .hub-two-col { grid-template-columns: 1fr; }
+#conchub-view .hub-panel { border-radius: 16px; background: #121b2c; }
+#conchub-view .hub-panel-title {
+  font-family: var(--sans);
+  font-size: 16px;
+  letter-spacing: 0;
+  text-transform: none;
+  color: #eef3f8;
+  font-weight: 650;
+}
+#conchub-view .hub-panel-link { font-size: 14px; }
+#conchub-view .hub-break-row,
+#conchub-view .hub-sample-row {
+  padding: 14px;
+  border-radius: 14px;
+  border-left-width: 0;
+  margin-bottom: 8px;
+}
+#conchub-view .hub-br-id,
+#conchub-view .hub-sr-id { font-family: var(--sans); font-size: 15px; }
+#conchub-view .hub-br-loc,
+#conchub-view .hub-sr-info,
+#conchub-view .hub-sr-date,
+#conchub-view .hub-br-due { font-size: 13px; }
+#conchub-view .hub-sr-info { max-width: none; }
+#conchub-view .hub-cal-title { font-family: var(--sans); font-size: 16px; letter-spacing: 0; }
+@media (max-width: 640px) {
+  #conchub-view .hub-greet { font-size: 28px; }
+  #conchub-view .hub-kpi-row { grid-template-columns: 1fr 1fr; }
 }
 
 </style>
