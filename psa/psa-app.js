@@ -35,6 +35,18 @@
 
   var state = null;
 
+  var BACKUP_FILE = "contrak-backup.json";
+  var FS_DB = "contrak_fs_v1";
+  var FS_STORE = "handles";
+  var FS_KEY = "backupDir";
+  var backupDirHandle = null;
+  var backupDirName = "";
+  var backupNeedsClick = false;
+  var backupLastOk = 0;
+  var backupLastErr = "";
+  var backupTimer = 0;
+  var backupSupported = typeof window.showDirectoryPicker === "function" && window.isSecureContext;
+
   function toast(msg) {
     var el = document.getElementById("toast");
     el.textContent = msg;
@@ -75,6 +87,216 @@
     } catch (err) {
       toast("Could not save locally: " + err.message);
     }
+    scheduleBackupWrite();
+  }
+
+  function fsDb() {
+    return new Promise(function (resolve, reject) {
+      if (!window.indexedDB) {
+        reject(new Error("No IndexedDB"));
+        return;
+      }
+      var req = indexedDB.open(FS_DB, 1);
+      req.onupgradeneeded = function () {
+        req.result.createObjectStore(FS_STORE);
+      };
+      req.onsuccess = function () {
+        resolve(req.result);
+      };
+      req.onerror = function () {
+        reject(req.error);
+      };
+    });
+  }
+
+  function fsGetHandle() {
+    return fsDb().then(function (db) {
+      return new Promise(function (resolve, reject) {
+        var req = db.transaction(FS_STORE, "readonly").objectStore(FS_STORE).get(FS_KEY);
+        req.onsuccess = function () {
+          resolve(req.result || null);
+        };
+        req.onerror = function () {
+          reject(req.error);
+        };
+      });
+    });
+  }
+
+  function fsSetHandle(handle) {
+    return fsDb().then(function (db) {
+      return new Promise(function (resolve, reject) {
+        var req = db.transaction(FS_STORE, "readwrite").objectStore(FS_STORE).put(handle, FS_KEY);
+        req.onsuccess = function () {
+          resolve();
+        };
+        req.onerror = function () {
+          reject(req.error);
+        };
+      });
+    });
+  }
+
+  function fsClearHandle() {
+    return fsDb().then(function (db) {
+      return new Promise(function (resolve, reject) {
+        var req = db.transaction(FS_STORE, "readwrite").objectStore(FS_STORE).delete(FS_KEY);
+        req.onsuccess = function () {
+          resolve();
+        };
+        req.onerror = function () {
+          reject(req.error);
+        };
+      });
+    });
+  }
+
+  function folderBackupJson() {
+    var payload = JSON.parse(JSON.stringify(state));
+    payload.exportedAt = new Date().toISOString();
+    payload.exportKind = "folder";
+    return JSON.stringify(payload, null, 2);
+  }
+
+  function backupPerm(handle, gesture) {
+    if (!handle || typeof handle.queryPermission !== "function") {
+      return Promise.resolve("denied");
+    }
+    return Promise.resolve(handle.queryPermission({ mode: "readwrite" })).then(function (perm) {
+      if (perm === "granted" || perm === "denied" || !gesture) return perm;
+      if (typeof handle.requestPermission !== "function") return perm;
+      return handle.requestPermission({ mode: "readwrite" });
+    });
+  }
+
+  function writeBackupFile(gesture) {
+    if (!backupDirHandle) return Promise.resolve(false);
+    return backupPerm(backupDirHandle, gesture)
+      .then(function (perm) {
+        if (perm !== "granted") {
+          backupNeedsClick = perm !== "denied";
+          backupLastErr = perm === "denied" ? "Folder permission denied" : "Needs a click to resume";
+          return false;
+        }
+        backupNeedsClick = false;
+        return backupDirHandle.getFileHandle(BACKUP_FILE, { create: true }).then(function (fileHandle) {
+          return fileHandle.createWritable().then(function (writable) {
+            return writable.write(folderBackupJson()).then(function () {
+              return writable.close();
+            });
+          });
+        }).then(function () {
+          backupLastOk = Date.now();
+          backupLastErr = "";
+          return true;
+        });
+      })
+      .catch(function (err) {
+        backupLastErr = (err && err.message) || String(err);
+        return false;
+      });
+  }
+
+  function scheduleBackupWrite() {
+    if (!backupDirHandle) return;
+    clearTimeout(backupTimer);
+    backupTimer = setTimeout(function () {
+      writeBackupFile(false);
+    }, 400);
+  }
+
+  function rememberHandle(handle) {
+    backupDirHandle = handle || null;
+    backupDirName = (handle && handle.name) || "";
+    backupNeedsClick = false;
+    backupLastErr = "";
+  }
+
+  function pickBackupFolder() {
+    if (!backupSupported) {
+      toast("Use Chrome or Edge on this computer to save to a folder");
+      return Promise.resolve(false);
+    }
+    return window
+      .showDirectoryPicker({ id: "contrak-backup", mode: "readwrite", startIn: "documents" })
+      .then(function (handle) {
+        rememberHandle(handle);
+        return fsSetHandle(handle)
+          .catch(function () {})
+          .then(function () {
+            return writeBackupFile(true);
+          })
+          .then(function (ok) {
+            if (ok) toast("Saving " + BACKUP_FILE + " to " + backupDirName);
+            else toast(backupLastErr || "Could not write to that folder");
+            render();
+            return ok;
+          });
+      })
+      .catch(function (err) {
+        if (err && err.name === "AbortError") return false;
+        toast("Folder pick failed: " + ((err && err.message) || err));
+        return false;
+      });
+  }
+
+  function stopBackupFolder() {
+    rememberHandle(null);
+    backupLastOk = 0;
+    return fsClearHandle()
+      .catch(function () {})
+      .then(function () {
+        toast("Stopped folder auto-save");
+        render();
+      });
+  }
+
+  function resumeBackupFolder() {
+    if (!backupDirHandle) return pickBackupFolder();
+    return writeBackupFile(true).then(function (ok) {
+      if (ok) toast("Saved " + BACKUP_FILE + " to " + backupDirName);
+      else toast(backupLastErr || "Could not write to that folder");
+      render();
+      return ok;
+    });
+  }
+
+  function restoreBackupFolder() {
+    if (!backupSupported) return Promise.resolve();
+    return fsGetHandle()
+      .then(function (handle) {
+        if (!handle) return false;
+        rememberHandle(handle);
+        return writeBackupFile(false).then(function (ok) {
+          if (ok) toast("Saved JSON to " + backupDirName);
+          render();
+          return ok;
+        });
+      })
+      .catch(function () {});
+  }
+
+  function fmtBackupWhen() {
+    if (!backupLastOk) return "";
+    try {
+      return new Date(backupLastOk).toLocaleString();
+    } catch (e) {
+      return "";
+    }
+  }
+
+  function renderBackupBanner() {
+    if (!backupDirHandle || !backupNeedsClick) return "";
+    return (
+      '<div class="backup-banner no-print">Folder backup needs a click this session. ' +
+      '<button class="btn small" data-act="backup-resume">Save JSON to ' +
+      esc(backupDirName || "your folder") +
+      "</button></div>"
+    );
+  }
+
+  function topChrome(c) {
+    return renderHeader(c) + renderBackupBanner();
   }
 
   function deleteAgreement(id) {
@@ -551,20 +773,20 @@
     var r = E.contractRollup(c);
     var app = document.getElementById("app");
     if (ui.view === "finance") {
-      app.innerHTML = renderHeader(c) + '<div class="setup-wrap">' + renderFinance(c) + "</div>";
+      app.innerHTML = topChrome(c) + '<div class="setup-wrap">' + renderFinance(c) + "</div>";
       bind();
       afterRender();
       return;
     }
     if (ui.view === "analyzer") {
-      app.innerHTML = renderHeader(c) + '<div class="setup-wrap">' + renderAnalyzer() + "</div>";
+      app.innerHTML = topChrome(c) + '<div class="setup-wrap">' + renderAnalyzer() + "</div>";
       bind();
       afterRender();
       return;
     }
     if (ui.view === "settings") {
       app.innerHTML =
-        renderHeader(c) +
+        topChrome(c) +
         '<div class="setup-wrap"><main class="stage" style="padding:16px 0">' +
         renderSettings(c) +
         "</main></div>";
@@ -577,7 +799,7 @@
     else if (ui.qpId && qp()) body = renderQpDetail(c, t, qp());
     else body = renderLedger(c, t);
     app.innerHTML =
-      renderHeader(c) +
+      topChrome(c) +
       renderKpis(c, r) +
       '<div class="workspace">' +
       renderTasks(c, t) +
@@ -3240,7 +3462,47 @@
   }
 
   function renderSettings(c) {
+    var folderCard;
+    if (!backupSupported) {
+      folderCard =
+        '<div class="card"><h2>Auto-save JSON to a folder</h2>' +
+        "<p>Automatic folder save needs Chrome or Edge on this computer (the live GitHub Pages site). This browser cannot write to a folder — use Export JSON instead.</p></div>";
+    } else {
+      var status;
+      if (backupDirHandle) {
+        status =
+          '<p>Writing <b>' +
+          esc(BACKUP_FILE) +
+          "</b> to folder <b>" +
+          esc(backupDirName || "selected folder") +
+          "</b> whenever you open ConTrak, and after ledger changes.</p>" +
+          (backupLastOk
+            ? '<p class="muted">Last wrote ' + esc(fmtBackupWhen()) + ".</p>"
+            : "") +
+          (backupLastErr && backupNeedsClick
+            ? '<p class="muted">Chrome may ask once per session — click Resume, then choose Allow on every visit.</p>'
+            : "") +
+          (backupLastErr && !backupNeedsClick
+            ? "<p>" + esc(backupLastErr) + "</p>"
+            : "") +
+          '<div style="display:flex;gap:8px;flex-wrap:wrap;margin:12px 0">' +
+          '<button class="btn primary" data-act="backup-choose">Change folder…</button>' +
+          '<button class="btn" data-act="backup-resume">Write now</button>' +
+          '<button class="btn danger" data-act="backup-stop">Stop auto-save</button>' +
+          "</div>";
+      } else {
+        status =
+          "<p>Pick a folder once (OneDrive, a shared drive, a USB stick, a project folder). ConTrak overwrites <b>" +
+          esc(BACKUP_FILE) +
+          "</b> there every time you open the app, and after you change the ledger. When Chrome asks, choose <b>Allow on every visit</b> so it can write on open — not only after a click.</p>" +
+          '<div style="display:flex;gap:8px;flex-wrap:wrap;margin:12px 0">' +
+          '<button class="btn primary" data-act="backup-choose">Choose folder…</button>' +
+          "</div>";
+      }
+      folderCard = '<div class="card"><h2>Auto-save JSON to a folder</h2>' + status + "</div>";
+    }
     return (
+      folderCard +
       '<div class="card"><h2>Backup / import</h2>' +
       "<p>Data lives in this browser (localStorage). Export a JSON backup before switching computers. You can also import a task sheet in the same layout as <b>NEW CGC 2024.xlsx</b> / <b>HCEA Task 3.xlsx</b> (assignment #, Contract, Project, NTP Amount, invoice date/amount columns).</p>" +
       '<div style="display:flex;gap:8px;flex-wrap:wrap;margin:12px 0">' +
@@ -4562,6 +4824,18 @@
       render();
       return;
     }
+    if (act === "backup-choose") {
+      pickBackupFolder();
+      return;
+    }
+    if (act === "backup-resume") {
+      resumeBackupFolder();
+      return;
+    }
+    if (act === "backup-stop") {
+      stopBackupFolder();
+      return;
+    }
     if (act === "export-json") {
       var payload = JSON.parse(JSON.stringify(state));
       var finish = function (pdfs) {
@@ -4929,6 +5203,30 @@
     reader.readAsArrayBuffer(file);
   }
 
+  window.ConTrakBackup = {
+    chooseFolder: pickBackupFolder,
+    stop: stopBackupFolder,
+    resume: resumeBackupFolder,
+    writeNow: function () {
+      return writeBackupFile(true);
+    },
+    restore: restoreBackupFolder,
+    fileName: BACKUP_FILE,
+    _setHandle: function (handle) {
+      rememberHandle(handle);
+    },
+    status: function () {
+      return {
+        supported: backupSupported,
+        folderName: backupDirName,
+        needsClick: backupNeedsClick,
+        lastOk: backupLastOk,
+        lastErr: backupLastErr,
+      };
+    },
+  };
+
   load();
   render();
+  restoreBackupFolder();
 })();
