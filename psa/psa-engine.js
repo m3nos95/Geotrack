@@ -278,6 +278,7 @@
 
   function qpReturned(qp) {
     if (!qp.qpClosed && qp.status !== "canceled") return 0;
+    if (qp.keepUnspent) return 0;
     if (qp.returnedRemainder != null && qp.returnedRemainder !== "") {
       return money(qp.returnedRemainder);
     }
@@ -2042,16 +2043,19 @@
   function closeQp(qp, opts) {
     opts = opts || {};
     var leftover = qpLeftover(qp);
+    var keep = opts.returnLeftover === false;
     qp.qpClosed = true;
     qp.status = "closed";
     qp.closeoutDate = opts.date || qp.closeoutDate || todayISO();
     if (opts.notes != null) qp.closeoutNotes = opts.notes;
-    qp.returnedRemainder = opts.returnLeftover === false ? 0 : leftover;
+    qp.keepUnspent = !!keep;
+    qp.returnedRemainder = keep ? 0 : leftover;
     return qp;
   }
 
   function reopenQp(qp, task) {
     qp.qpClosed = false;
+    qp.keepUnspent = false;
     qp.returnedRemainder = 0;
     qp.closeoutDate = null;
     qp.status = deriveQpStatus(qp);
@@ -2139,6 +2143,7 @@
     qpsByIds(task, batch.qpIds).forEach(function (q) {
       if (!q.qpClosed) return;
       q.qpClosed = false;
+      q.keepUnspent = false;
       q.returnedRemainder = 0;
       q.closeoutDate = null;
       q.status = deriveQpStatus(q);
@@ -2303,6 +2308,7 @@
       ntpDate: null,
       ntpAmount: 0,
       returnedRemainder: 0,
+      keepUnspent: false,
       invoices: [],
       proposal: { status: "draft", submittedDate: null, projectName: "", reviewNotes: "", lines: [] },
       ntpLines: [],
@@ -2347,6 +2353,53 @@
       formChecks: [false, false, false, false, false],
       qtyOverride: false,
     };
+  }
+
+  function cloneJson(value) {
+    return JSON.parse(JSON.stringify(value));
+  }
+
+  function remainderIsExplicitZero(qp) {
+    if (qp.returnedRemainder == null || qp.returnedRemainder === "") return false;
+    return money(qp.returnedRemainder) === 0;
+  }
+
+  function stampKeepUnspent(state) {
+    (state.contracts || []).forEach(function (c) {
+      (c.tasks || []).forEach(function (t) {
+        (t.qps || []).forEach(function (q) {
+          if (!q.qpClosed || q.status === "canceled") return;
+          if (q.keepUnspent) return;
+          /* Keep-leftover close-out writes remainder 0. Missing remainder on an
+             older closed QP still means leftover was returned. */
+          if (remainderIsExplicitZero(q) && qpLeftover(q) > 0.009) {
+            q.keepUnspent = true;
+          }
+        });
+      });
+    });
+    return state;
+  }
+
+  function backupSnapshot(state, opts) {
+    opts = opts || {};
+    var payload = stampKeepUnspent(cloneJson(state || {}));
+    delete payload.pdfs;
+    payload.exportedAt = opts.exportedAt || new Date().toISOString();
+    payload.exportKind = opts.kind || "download";
+    if (opts.pdfs) payload.pdfs = opts.pdfs;
+    return payload;
+  }
+
+  function parseBackup(raw) {
+    var data = typeof raw === "string" ? JSON.parse(raw) : raw;
+    if (!data || typeof data !== "object" || !Array.isArray(data.contracts) || !data.contracts.length) {
+      throw new Error("Not a ConTrak backup");
+    }
+    var pdfs = data.pdfs && typeof data.pdfs === "object" ? data.pdfs : {};
+    var next = stampKeepUnspent(cloneJson(data));
+    delete next.pdfs;
+    return { state: next, pdfs: pdfs };
   }
 
   global.PsaEngine = {
@@ -2397,6 +2450,9 @@
       if (!qp || !qp.qpClosed) return 0;
       return money(Math.max(qpLeftover(qp) - qpReturned(qp), 0));
     },
+    cloneJson: cloneJson,
+    backupSnapshot: backupSnapshot,
+    parseBackup: parseBackup,
     isQpCloseable: isQpCloseable,
     closeableQps: closeableQps,
     sortQpsByNumber: sortQpsByNumber,
