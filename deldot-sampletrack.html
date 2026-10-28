@@ -1868,6 +1868,21 @@ nav:not(#r18-nav), .nav-top-row { display: none !important; }
   outline: none; border-color: rgba(217,138,56,0.45); background: rgba(255,255,255,0.06);
 }
 .map-road-search-go { font-size: 9px !important; padding: 5px 10px !important; letter-spacing: 0.5px; flex-shrink: 0; }
+.labmap-header-actions {
+  display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+  flex: 1 1 520px; justify-content: flex-end;
+}
+.labmap-contract-filter-wrap {
+  display: flex; align-items: center; gap: 6px; flex: 0 0 auto;
+}
+.labmap-contract-filter-wrap span {
+  font-family: var(--mono); font-size: 9px; letter-spacing: 0.6px; color: var(--muted); flex-shrink: 0;
+}
+.labmap-contract-filter-wrap select {
+  width: 168px; min-width: 148px; padding: 6px 8px; border-radius: 6px;
+  border: 1px solid var(--border); background: rgba(255,255,255,0.04);
+  color: var(--text); font-family: var(--mono); font-size: 10px;
+}
 .map-road-search-results {
   position: absolute; top: calc(100% + 4px); left: 0; right: 0; z-index: 40;
   background: #06090f; border: 1px solid rgba(255,255,255,0.12); border-radius: 8px;
@@ -6875,7 +6890,13 @@ table.fc-borrow-tbl tr.fc-borrow-detail-row td{background:var(--surface);border-
             <div class="labmap-title">LabTrak Map</div>
             <div class="labmap-subtitle" id="labMapSubtitle">All stored coordinates across the program</div>
           </div>
-          <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+          <div class="labmap-header-actions">
+            <label class="labmap-contract-filter-wrap">
+              <span>CONTRACT</span>
+              <select id="labMapContractFilter" onchange="labMapSetContractFilter(this.value)" aria-label="Show pins for a contract number">
+                <option value="">All contracts</option>
+              </select>
+            </label>
             <div class="map-search-pair">
               <div class="map-road-search" id="labMapRoadSearchWrap">
                 <input type="search" id="labMapRoadSearch" placeholder="Search road or address…" autocomplete="off" aria-label="Search road or address" />
@@ -6883,7 +6904,7 @@ table.fc-borrow-tbl tr.fc-borrow-detail-row td{background:var(--surface);border-
                 <div class="map-road-search-results" id="labMapRoadSearchResults" style="display:none;" role="listbox"></div>
               </div>
               <div class="map-pin-search" id="labMapPinSearchWrap">
-                <input type="search" id="labMapPinSearch" placeholder="Boring, contract, coords…" autocomplete="off" aria-label="Search borings and pins" />
+                <input type="search" id="labMapPinSearch" placeholder="Contract, test, coords…" autocomplete="off" aria-label="Search pins" />
                 <button type="button" class="btn btn-ghost map-road-search-go" onclick="runMapPinSearch('lab')">GO</button>
                 <div class="map-road-search-results" id="labMapPinSearchResults" style="display:none;" role="listbox"></div>
               </div>
@@ -6894,7 +6915,6 @@ table.fc-borrow-tbl tr.fc-borrow-detail-row td{background:var(--surface);border-
               <button type="button" class="map-style-btn" data-map-style="dark" onclick="labMapSetStyle('dark')">Dark</button>
             </div>
             <button type="button" class="btn btn-ghost" onclick="labMapReload()" style="font-size:10px;letter-spacing:1px;">↻ REFRESH</button>
-            <button type="button" class="btn btn-ghost" onclick="clearAllBorelogMapPins()" style="font-size:10px;letter-spacing:1px;" title="Remove orphan BoreLog pins">✕ BORELOG PINS</button>
             <div class="labmap-area-tools" id="labMapAreaTools" data-tour="labmap-area">
               <button type="button" class="labmap-area-btn" id="labMapDrawBtn" onclick="labMapStartAreaDraw()" title="Draw a boundary — admin only">✏ DRAW AREA</button>
               <button type="button" class="labmap-area-btn" id="labMapClearAreaBtn" onclick="labMapClearArea()" style="display:none;">✕ CLEAR</button>
@@ -8686,34 +8706,10 @@ async function openProjectMap(contract, projectName, opts) {
     if (plotCoreDrillMarker(c, bounds)) pinCount++;
   });
 
-  // ── BoreLog borings
-  let borelogPinCount = 0;
-  let borelogBorings = [];
-  if (contract) {
-    borelogBorings = await fetchBorelogBoringsForContract(contract);
-    borelogBorings.forEach(b => {
-      const marker = addLabTrakMapMarker(projectMap, {
-        coords: b.coords,
-        color: '#22d3ee',
-        symbol: '▲',
-        isActive: false,
-        pinKey: labMapItemKey('borelog', b),
-        popupHtml: buildBorelogMapPopup(b),
-        getSiblings: () => mapMarkers,
-        popupLayer: document.getElementById('projectMapPopupLayer'),
-      });
-      mapMarkers.push(marker);
-      bounds.extend([b.coords.lng, b.coords.lat]);
-      pinCount++;
-      borelogPinCount++;
-    });
-  }
-
   const corePinCount = allCores.filter(c => parseGPS(c.gps_coordinates, true)).length;
   let subtitle = pinCount + ' location' + (pinCount !== 1 ? 's' : '') + ' plotted';
-  subtitle += ' · ' + borelogPinCount + ' BoreLog ▲';
   if (corePinCount) subtitle += ' · ' + corePinCount + ' core' + (corePinCount !== 1 ? 's' : '');
-  const samplePinCount = pinCount - borelogPinCount - corePinCount - allConc.filter(cs => {
+  const samplePinCount = pinCount - corePinCount - allConc.filter(cs => {
     const set = typeof concreteRowToSet === 'function' ? concreteRowToSet(cs) : cs;
     return set?.gps_coordinates && parseGPS(set.gps_coordinates);
   }).length;
@@ -8721,7 +8717,7 @@ async function openProjectMap(contract, projectName, opts) {
   subtitle += ' · zoom in to see pins';
   document.getElementById('mapOverlaySubtitle').textContent = subtitle;
 
-  projectMapSearchCatalog = buildProjectMapSearchCatalog(mapSamples, allCores, allConc, borelogBorings);
+  projectMapSearchCatalog = buildProjectMapSearchCatalog(mapSamples, allCores, allConc, []);
 
   // Fit map to pins
   if (pinCount > 0 && !bounds.isEmpty()) {
@@ -9883,8 +9879,9 @@ function createMarkerEl(color, symbol, isActive, dimmed) {
 // ══════════════════════════════════════════════
 let labMap = null;
 let labMapMarkers = [];
-let labMapLayers = { field_sample: true, density: true, core_drill: true, concrete: true, borelog: true };
-let labMapStore = { field_sample: [], density: [], core_drill: [], concrete: [], borelog: [] };
+let labMapLayers = { field_sample: true, density: true, core_drill: true, concrete: true };
+let labMapStore = { field_sample: [], density: [], core_drill: [], concrete: [] };
+let labMapContractFilter = '';
 let labMapDraw = null;
 let labMapAreaRing = null;
 let labMapAreaMatchKeys = null;
@@ -9895,7 +9892,6 @@ const LAB_MAP_LAYER_DEFS = {
   density:      { label: 'Density',      color: '#fbbf24', symbol: '⊕' },
   core_drill:   { label: 'Core Drill',   color: '#a855f7', symbol: '◇' },
   concrete:     { label: 'Concrete',     color: '#60a5fa', symbol: '■' },
-  borelog:      { label: 'BoreLog',      color: '#22d3ee', symbol: '▲' },
 };
 
 function isLabMapAdmin() {
@@ -9996,12 +9992,66 @@ function labMapClearMarkers() {
   labMapMarkers = [];
 }
 
+function labMapRecordContract(layer, record) {
+  if (!record) return '';
+  if (layer === 'concrete') {
+    const set = record._set || record;
+    return String(set.contract || record.contract || '').trim();
+  }
+  return String(record.contract || record._set?.contract || '').trim();
+}
+
+function labMapContractMatch(layer, record) {
+  if (!labMapContractFilter) return true;
+  return mapContractNorm(labMapRecordContract(layer, record)) === mapContractNorm(labMapContractFilter);
+}
+
+function labMapCompareContracts(a, b) {
+  return String(a).localeCompare(String(b), undefined, { numeric: true, sensitivity: 'base' });
+}
+
+function labMapFillContractFilter() {
+  const sel = document.getElementById('labMapContractFilter');
+  if (!sel) return;
+  const seen = new Set();
+  const contracts = [];
+  const add = (raw) => {
+    const label = String(raw || '').trim();
+    const key = mapContractNorm(label);
+    if (!key || seen.has(key)) return;
+    seen.add(key);
+    contracts.push(label);
+  };
+  labMapEnumerateItems({ ignoreContract: true }).forEach(item => add(labMapRecordContract(item.layer, item.record)));
+  contracts.sort(labMapCompareContracts);
+  if (labMapContractFilter && !contracts.some(c => mapContractNorm(c) === mapContractNorm(labMapContractFilter))) {
+    labMapContractFilter = '';
+  }
+  const selected = contracts.find(c => mapContractNorm(c) === mapContractNorm(labMapContractFilter)) || '';
+  labMapContractFilter = selected;
+  sel.innerHTML = '<option value="">All contracts</option>' +
+    contracts.map(c => '<option value="' + mapRoadEscape(c) + '">' + mapRoadEscape(c) + '</option>').join('');
+  sel.value = selected;
+}
+
+function labMapSetContractFilter(value) {
+  labMapContractFilter = String(value || '').trim();
+  mapSearchClear('lab');
+  const pinSearch = document.getElementById('labMapPinSearch');
+  if (pinSearch) pinSearch.value = '';
+  hideMapPinSearchResults('lab');
+  labMapRenderLayerPanel();
+  labMapPlotMarkers(false);
+}
+
 function labMapRenderLayerPanel() {
   const list = document.getElementById('labMapLayerList');
   if (!list) return;
+  const counts = {};
+  labMapEnumerateItems().forEach(item => { counts[item.layer] = (counts[item.layer] || 0) + 1; });
   list.innerHTML = Object.entries(LAB_MAP_LAYER_DEFS).map(([key, def]) => {
     const on = labMapLayers[key] !== false;
-    const count = (labMapStore[key] || []).length;
+    const count = counts[key] || 0;
     return `<button type="button" class="labmap-layer-btn ${on ? 'active' : 'off'}" onclick="labMapToggleLayer('${key}')">
       <span class="labmap-layer-swatch" style="background:${def.color};"></span>
       <span class="labmap-layer-meta">
@@ -10028,30 +10078,31 @@ function labMapPointInRing(lng, lat, ring) {
   return inside;
 }
 
-function labMapEnumerateItems() {
+function labMapEnumerateItems(opts) {
+  const ignoreContract = !!(opts && opts.ignoreContract);
   const items = [];
+  const push = (item) => {
+    if (!ignoreContract && !labMapContractMatch(item.layer, item.record)) return;
+    items.push(item);
+  };
   const addSample = (s, layer) => {
     const coords = parseGPS(s.gps_coordinates, true);
     if (!coords) return;
-    items.push({ layer, record: s, coords });
+    push({ layer, record: s, coords });
   };
   (labMapStore.field_sample || []).forEach(s => addSample(s, 'field_sample'));
   (labMapStore.density || []).forEach(s => addSample(s, 'density'));
   (labMapStore.core_drill || []).forEach(c => {
     const coords = parseGPS(c.gps_coordinates, true);
     if (!coords) return;
-    items.push({ layer: 'core_drill', record: c, coords });
+    push({ layer: 'core_drill', record: c, coords });
   });
   (labMapStore.concrete || []).forEach(row => {
     const set = typeof concreteRowToSet === 'function' ? concreteRowToSet(row) : row;
     if (!set?.gps_coordinates) return;
     const coords = parseGPS(set.gps_coordinates, true);
     if (!coords) return;
-    items.push({ layer: 'concrete', record: { ...row, _set: set }, coords });
-  });
-  (labMapStore.borelog || []).forEach(b => {
-    if (!b?.coords) return;
-    items.push({ layer: 'borelog', record: b, coords: b.coords });
+    push({ layer: 'concrete', record: { ...row, _set: set }, coords });
   });
   return items;
 }
@@ -10390,6 +10441,7 @@ function labMapPlotMarkers(preserveView) {
     const key = labMapItemKey(layer, record);
     const inArea = areaActive && labMapAreaMatchKeys.has(key);
     const layerOn = labMapLayers[layer] !== false;
+    if (!labMapContractMatch(layer, record)) return;
     if (!inArea && !layerOn) return;
     const dimmed = areaActive && !inArea;
     const marker = addLabTrakMapMarker(labMap, {
@@ -10434,10 +10486,6 @@ function labMapPlotMarkers(preserveView) {
     if (!coords) return;
     plotItem(coords, 'concrete', labMapBuildConcretePopup(set), false, { ...cs, _set: set });
   });
-  (labMapStore.borelog || []).forEach(b => {
-    if (!b?.coords) return;
-    plotItem(b.coords, 'borelog', buildBorelogMapPopup(b), false, b);
-  });
 
   const subtitle = document.getElementById('labMapSubtitle');
   if (subtitle) {
@@ -10448,6 +10496,7 @@ function labMapPlotMarkers(preserveView) {
     let text = pinCount
       ? `${pinCount} pin${pinCount === 1 ? '' : 's'} loaded`
       : 'No GPS coordinates found in the program';
+    if (labMapContractFilter) text += ' · ' + labMapContractFilter;
     if (!mapSearchState.lab?.keys?.size && labMap && labMap.getZoom() < MAP_PIN_MIN_ZOOM) {
       text += ' · zoom in to see pins';
     }
@@ -10467,11 +10516,10 @@ function labMapPlotMarkers(preserveView) {
 }
 
 async function labMapFetchData() {
-  const store = { field_sample: [], density: [], core_drill: [], concrete: [], borelog: [] };
+  const store = { field_sample: [], density: [], core_drill: [], concrete: [] };
   const sampleSeen = new Set();
   const coreSeen = new Set();
   const concSeen = new Set();
-  const borelogSeen = new Set();
 
   const addSample = (s) => {
     if (!s?.id || sampleSeen.has(s.id)) return;
@@ -10493,21 +10541,10 @@ async function labMapFetchData() {
     concSeen.add(row.id);
     store.concrete.push(row);
   };
-  const addBoring = (item) => {
-    if (!item?.id || !item?.coords || borelogSeen.has(item.id)) return;
-    borelogSeen.add(item.id);
-    store.borelog.push(item);
-  };
 
   (allSamples || []).forEach(addSample);
   (window.allCoreDrills || []).forEach(addCore);
   (activeFC_sessionCores || []).forEach(addCore);
-
-  // BoreLog — always load from local cache; merge cloud rows when connected
-  try {
-    const borings = await fetchAllBorelogMapBorings();
-    borings.forEach(addBoring);
-  } catch (e) { console.warn('labMapFetchData borelog:', e); }
 
   if (!db) return store;
 
@@ -10554,12 +10591,12 @@ async function labMapReload() {
     return;
   }
   mapSearchClear('lab');
-  const migrated = 0;
   const empty = document.getElementById('labMapEmpty');
   const subtitle = document.getElementById('labMapSubtitle');
   if (!db) {
     labMapStore = await labMapFetchData();
-    const pinTotal = Object.keys(LAB_MAP_LAYER_DEFS).reduce((n, k) => n + (labMapStore[k] || []).length, 0);
+    labMapFillContractFilter();
+    const pinTotal = labMapEnumerateItems().length;
     if (empty) empty.style.display = pinTotal ? 'none' : 'flex';
     if (subtitle) {
       subtitle.textContent = pinTotal
@@ -10573,15 +10610,11 @@ async function labMapReload() {
   if (empty) empty.style.display = 'none';
   if (subtitle) subtitle.textContent = 'Loading coordinates…';
   labMapStore = await labMapFetchData();
+  labMapFillContractFilter();
   labMapRenderLayerPanel();
   labMapPlotMarkers(false);
-  if (subtitle) {
-    const pinTotal = Object.keys(LAB_MAP_LAYER_DEFS).reduce((n, k) => n + (labMapStore[k] || []).length, 0);
-    const boreCount = (labMapStore.borelog || []).length;
-    subtitle.textContent = (pinTotal ? pinTotal + ' pins' : 'No pins')
-      + (boreCount ? ' · ' + boreCount + ' BoreLog' : '')
-      + ' · build ' + APP_BUILD
-      + (migrated ? ' · migrated ' + migrated + ' coords' : '');
+  if (subtitle && typeof APP_BUILD !== 'undefined' && APP_BUILD) {
+    subtitle.textContent += ' · build ' + APP_BUILD;
   }
 }
 
@@ -14131,10 +14164,10 @@ const CONTEXT_HELP_VIEWS = {
   },
   labmap: {
     title: 'Admin Map',
-    intro: 'Statewide map of field samples, cores, concrete, and BoreLog borings.',
+    intro: 'Statewide map of field samples, density tests, cores, and concrete.',
     sections: [
-      { tour: 'labmap-ui', title: 'Map controls', body: 'Basemap style, layer toggles, refresh, and pan/zoom. Admin role required.' },
-      { tour: 'labmap-area', title: 'Draw area (admin)', body: 'Draw a hand-drawn boundary to list every test inside — field samples, density, cores, concrete, and BoreLog borings. Export CSV or JSON with full record data.' }
+      { tour: 'labmap-ui', title: 'Map controls', body: 'Filter by contract number, change the basemap, toggle layers, refresh, and pan or zoom. Admin role required.' },
+      { tour: 'labmap-area', title: 'Draw area (admin)', body: 'Draw a hand-drawn boundary to list every test inside — field samples, density, cores, and concrete. Export CSV or JSON with full record data.' }
     ]
   },
   r18: {
@@ -28343,7 +28376,7 @@ function openR18() {
           <div class="map-road-search-results" id="projectMapRoadSearchResults" style="display:none;" role="listbox"></div>
         </div>
         <div class="map-pin-search" id="projectMapPinSearchWrap">
-          <input type="search" id="projectMapPinSearch" placeholder="Boring, contract, coords…" autocomplete="off" aria-label="Search borings and pins" />
+          <input type="search" id="projectMapPinSearch" placeholder="Test, location, coords…" autocomplete="off" aria-label="Search pins" />
           <button type="button" class="btn btn-ghost map-road-search-go" onclick="runMapPinSearch('project')">GO</button>
           <div class="map-road-search-results" id="projectMapPinSearchResults" style="display:none;" role="listbox"></div>
         </div>
@@ -28365,17 +28398,12 @@ function openR18() {
           <svg width="14" height="14" viewBox="0 0 14 14"><circle cx="7" cy="7" r="3" fill="none" stroke="#60a5fa" stroke-width="1" opacity="0.6"/><line x1="7" y1="1" x2="7" y2="4.5" stroke="#60a5fa" stroke-width="1.2" stroke-linecap="square"/><line x1="7" y1="9.5" x2="7" y2="13" stroke="#60a5fa" stroke-width="1.2" stroke-linecap="square"/><line x1="1" y1="7" x2="4.5" y2="7" stroke="#60a5fa" stroke-width="1.2" stroke-linecap="square"/><line x1="9.5" y1="7" x2="13" y2="7" stroke="#60a5fa" stroke-width="1.2" stroke-linecap="square"/><circle cx="7" cy="7" r="1.3" fill="#60a5fa"/></svg>
           Concrete
         </div>
-        <div class="map-legend-item">
-          <svg width="14" height="14" viewBox="0 0 14 14"><polygon points="7,1 13,13 1,13" fill="none" stroke="#22d3ee" stroke-width="1.2"/><polygon points="7,4 10,11 4,11" fill="#22d3ee" opacity="0.5"/></svg>
-          BoreLog ▲
-        </div>
       </div>
       <div class="map-style-toggle" id="projectMapStyleToggle">
         <button type="button" class="map-style-btn" data-map-style="streets" onclick="labMapSetStyle('streets')">Streets</button>
         <button type="button" class="map-style-btn" data-map-style="satellite" onclick="labMapSetStyle('satellite')">Satellite</button>
         <button type="button" class="map-style-btn" data-map-style="dark" onclick="labMapSetStyle('dark')">Dark</button>
       </div>
-      <button type="button" class="btn btn-ghost" onclick="clearAllBorelogMapPins()" style="flex-shrink:0;font-size:10px;letter-spacing:1px;" title="Clear all BoreLog map pins">✕ BORELOG PINS</button>
       <button class="btn btn-ghost" onclick="closeProjectMap()" style="flex-shrink:0;">✕ CLOSE</button>
     </div>
     <div class="project-map-shell">
