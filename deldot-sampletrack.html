@@ -4070,7 +4070,7 @@ table.fc-borrow-tbl tr.fc-borrow-detail-row td{background:var(--surface);border-
 
       <div class="home-launcher" data-tour="dash-modules">
         <div class="home-app-grid">
-          <button type="button" class="home-app" onclick="switchView('labhub')">
+          <button type="button" class="home-app" id="home-app-soil" data-view="labhub" onclick="switchView('labhub')">
             <span class="home-app-icon" aria-hidden="true">
               <svg viewBox="0 0 64 64" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round">
                 <path d="M8 22c8 6 12-6 18 0s12-6 18 0 10-5 12 0" stroke="#e0a15a"/>
@@ -4080,7 +4080,7 @@ table.fc-borrow-tbl tr.fc-borrow-detail-row td{background:var(--surface);border-
             </span>
             <span class="home-app-name">Soil &amp; Agg</span>
           </button>
-          <button type="button" class="home-app" onclick="switchView('conchub')">
+          <button type="button" class="home-app" id="home-app-concrete" data-view="conchub" onclick="switchView('conchub')">
             <span class="home-app-icon" aria-hidden="true">
               <svg viewBox="0 0 64 64" fill="none" stroke="currentColor" stroke-width="1.7">
                 <ellipse cx="32" cy="16" rx="16" ry="6" fill="rgba(226,236,248,0.06)"/>
@@ -4090,7 +4090,7 @@ table.fc-borrow-tbl tr.fc-borrow-detail-row td{background:var(--surface);border-
             </span>
             <span class="home-app-name">Concrete</span>
           </button>
-          <button type="button" class="home-app" onclick="switchView('fieldhub')">
+          <button type="button" class="home-app" id="home-app-field" data-view="fieldhub" onclick="switchView('fieldhub')">
             <span class="home-app-icon" aria-hidden="true">
               <svg viewBox="0 0 64 64" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round">
                 <circle cx="32" cy="26" r="16"/>
@@ -4102,7 +4102,7 @@ table.fc-borrow-tbl tr.fc-borrow-detail-row td{background:var(--surface);border-
             </span>
             <span class="home-app-name">Field</span>
           </button>
-          <button type="button" class="home-app" onclick="switchView('projects')">
+          <button type="button" class="home-app" id="home-app-projects" data-view="projects" onclick="switchView('projects')">
             <span class="home-app-icon" aria-hidden="true">
               <svg viewBox="0 0 64 64" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round">
                 <path d="M8 22a4 4 0 014-4h12l4 4h24a4 4 0 014 4v22a4 4 0 01-4 4H12a4 4 0 01-4-4V22z"/>
@@ -4110,7 +4110,7 @@ table.fc-borrow-tbl tr.fc-borrow-detail-row td{background:var(--surface);border-
             </span>
             <span class="home-app-name">Projects</span>
           </button>
-          <button type="button" class="home-app" onclick="switchView('appsources')">
+          <button type="button" class="home-app" id="home-app-sources" data-view="appsources" onclick="switchView('appsources')">
             <span class="home-app-icon" aria-hidden="true">
               <svg viewBox="0 0 64 64" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
                 <rect x="16" y="10" width="32" height="44" rx="3"/>
@@ -4124,7 +4124,7 @@ table.fc-borrow-tbl tr.fc-borrow-detail-row td{background:var(--surface);border-
             </span>
             <span class="home-app-name">Sources</span>
           </button>
-          <button type="button" class="home-app" onclick="switchView('scan')">
+          <button type="button" class="home-app" id="home-app-scan" data-view="scan" onclick="switchView('scan')">
             <span class="home-app-icon" aria-hidden="true">
               <svg viewBox="0 0 64 64" fill="none" stroke="currentColor" stroke-width="1.7">
                 <rect x="10" y="10" width="16" height="16" rx="1.5"/>
@@ -4159,6 +4159,26 @@ table.fc-borrow-tbl tr.fc-borrow-detail-row td{background:var(--surface);border-
               </svg>
             </span>
             <span class="home-app-name">R-18</span>
+          </button>
+          <button type="button" class="home-app" id="home-app-samples" data-view="dashboard" onclick="switchView('dashboard')">
+            <span class="home-app-icon" aria-hidden="true">
+              <svg viewBox="0 0 64 64" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round" stroke-linecap="round">
+                <rect x="14" y="18" width="36" height="30" rx="3"/>
+                <path d="M20 18v-6h24v6"/>
+                <path d="M22 30h20M22 38h12"/>
+              </svg>
+            </span>
+            <span class="home-app-name">All Samples</span>
+          </button>
+          <button type="button" class="home-app" id="home-app-arrival" data-view="labarrival" onclick="switchView('labarrival')">
+            <span class="home-app-icon" aria-hidden="true">
+              <svg viewBox="0 0 64 64" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round" stroke-linecap="round">
+                <path d="M10 22l22-10 22 10-22 10L10 22z"/>
+                <path d="M10 22v20l22 10 22-10V22"/>
+                <path d="M32 32v20"/>
+              </svg>
+            </span>
+            <span class="home-app-name">Lab Arrival</span>
           </button>
         </div>
       </div>
@@ -20069,7 +20089,7 @@ const ROLE_DEFS = {
   lab:           { label: 'Lab Technician',   color: '#34d399', tabs: ['projects','dashboard','labhub','labarrival','soillab','r18'] },
   concrete:      { label: 'Concrete Tech',    color: '#a78bfa', tabs: ['projects','conchub','concrete','r18'] },
 };
-const ROLE_HOME = { admin:'home', section_admin:'home', field:'fieldhub', lab:'labhub', concrete:'conchub' };
+const ROLE_HOME = { admin:'home', section_admin:'home', field:'home', lab:'home', concrete:'home' };
 
 // ── Load custom teams from localStorage and extend ROLE_DEFS ───
 function loadCustomTeams() {
@@ -20078,7 +20098,7 @@ function loadCustomTeams() {
     stored.forEach(t => {
       if (t.id && !ROLE_DEFS[t.id]) {
         ROLE_DEFS[t.id] = { label: t.name, color: t.color || '#94a3b8', tabs: t.tabs || [], custom: true };
-        ROLE_HOME[t.id] = t.home_tab || 'home';
+        ROLE_HOME[t.id] = 'home';
       }
     });
     return stored;
@@ -20322,10 +20342,27 @@ function applyRoleUI(role) {
     const el = document.getElementById(id);
     if (el) el.style.display = effectiveTabs.includes(view) ? '' : 'none';
   });
-  const homeMap = document.getElementById('home-app-map');
-  const homeR18 = document.getElementById('home-app-r18');
-  if (homeMap) homeMap.hidden = !effectiveTabs.includes('labmap');
-  if (homeR18) homeR18.hidden = !effectiveTabs.includes('r18');
+  const homeTileTabs = {
+    'home-app-soil': ['labhub', 'soillab'],
+    'home-app-concrete': ['conchub', 'concrete'],
+    'home-app-field': ['fieldhub', 'fieldcontrol'],
+    'home-app-projects': ['projects'],
+    'home-app-sources': ['appsources'],
+    'home-app-scan': ['scan'],
+    'home-app-map': ['labmap'],
+    'home-app-r18': ['r18'],
+    'home-app-samples': ['dashboard'],
+    'home-app-arrival': ['labarrival'],
+  };
+  const restricted = currentUser && currentUser.restricted_hubs && currentUser.restricted_hubs.length > 0;
+  const openHome = role === 'admin' || (role === 'section_admin' && !restricted);
+  const adminHomeViews = ['labhub', 'conchub', 'fieldhub', 'projects', 'appsources', 'scan'];
+  Object.entries(homeTileTabs).forEach(([id, tabs]) => {
+    const el = document.getElementById(id);
+    if (!el) return;
+    const allowed = tabs.some(t => effectiveTabs.includes(t)) || (openHome && adminHomeViews.includes(el.dataset.view));
+    el.hidden = !allowed;
+  });
 
   syncMobileNav();
   refreshProjectAdminUI();
@@ -20420,7 +20457,7 @@ function addCustomTeam() {
   teams.push({ id, name, color, tabs });
   localStorage.setItem('st_custom_teams', JSON.stringify(teams));
   ROLE_DEFS[id] = { label: name, color, tabs, custom: true };
-  ROLE_HOME[id] = tabs[0] || 'home';
+  ROLE_HOME[id] = 'home';
   const nameEl = document.getElementById('ct_name');
   if (nameEl) nameEl.value = '';
   document.querySelectorAll('#ct_hub_checkboxes input').forEach(cb => cb.checked = false);
@@ -31923,9 +31960,8 @@ html.comfort-mode .rail-label {
   #btnTourHelp { padding: 5px 8px; }
 }
 
-/* Home is the app screen. The side menu returns after an app opens.
-   on-home is set in the HTML, before sign-in picks a view, so the
-   sample registry must not paint inside that chrome. */
+/* Home is the app screen. on-home is set in the HTML, before sign-in
+   picks a view, so the sample registry must not paint inside that chrome. */
 #home-view .home-screen-extra { display: none !important; }
 #app.on-home #view-container > .view:not(#home-view) { display: none !important; }
 #app.on-home #home-view {
@@ -32032,6 +32068,7 @@ html.comfort-mode .rail-label {
   justify-content: center;
   gap: 18px;
 }
+.home-app[hidden] { display: none !important; }
 .home-app {
   appearance: none;
   width: 100%;
@@ -32079,8 +32116,8 @@ html.comfort-mode .rail-label {
   #app.on-home .topbar-logo { padding: 0 12px; }
 }
 
-/* Concrete hub opens like a phone app. The side menu stays on the
-   work screens, and comes back here for roles whose home is this hub. */
+/* Concrete hub opens like a phone app. The side rail is gone on every
+   screen; Back returns to the home grid. */
 #app.phone-app {
   grid-template-columns: 1fr !important;
 }
@@ -32186,6 +32223,12 @@ html.comfort-mode .rail-label {
   #conchub-view .hub-greet { font-size: 28px; }
   #conchub-view .hub-kpi-row { grid-template-columns: 1fr 1fr; }
 }
+
+/* Side rail is retired. Home launches every app, and Back returns there.
+   The rail markup stays so module photos can still be copied from it. */
+#navRail { display: none !important; }
+#app { grid-template-columns: 1fr !important; }
+#view-container { grid-column: 1 !important; }
 
 </style>
 
