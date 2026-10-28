@@ -154,10 +154,8 @@
   }
 
   function folderBackupJson() {
-    var payload = JSON.parse(JSON.stringify(state));
-    payload.exportedAt = new Date().toISOString();
-    payload.exportKind = "folder";
-    return JSON.stringify(payload, null, 2);
+    persistUi();
+    return JSON.stringify(E.backupSnapshot(state, { kind: "folder" }), null, 2);
   }
 
   function backupPerm(handle, gesture) {
@@ -580,9 +578,7 @@
     try {
       var raw = localStorage.getItem(STORE);
       if (raw) {
-        state = JSON.parse(raw);
-        if (!state.contracts || !state.contracts.length) state = defaultState();
-        else state = T.migrateState(state);
+        state = T.migrateState(E.parseBackup(raw).state);
       } else {
         state = defaultState();
         save();
@@ -590,14 +586,33 @@
     } catch (e) {
       state = defaultState();
     }
+    applyRestoredState();
+  }
+
+  function applyRestoredState() {
     restoreUi();
+    ui.modal = null;
+    ui.taskCloseout = false;
+    ui.bulkCloseout = false;
+    ui.selectedQpIds = [];
+    ui.closeoutReturnLeftover = true;
+    ui.bulkReturnLeftover = true;
     if (!state.analyzer || !Array.isArray(state.analyzer.examples)) {
       state.analyzer = { examples: (state.analyzer && state.analyzer.examples) || [] };
     }
-    if (!ui.contractId || !contract()) ui.contractId = state.contracts[0].id;
+    var contracts = state.contracts || [];
+    var hasContract = contracts.some(function (c) {
+      return c.id === ui.contractId;
+    });
+    if (!ui.contractId || !hasContract) ui.contractId = contracts[0] && contracts[0].id;
     var c = contract();
-    if (!ui.taskId || !task()) ui.taskId = (c.tasks[0] && c.tasks[0].id) || null;
-    if (!ui.editTemplateId) ui.editTemplateId = tpl(c).id;
+    var tasks = (c && c.tasks) || [];
+    var hasTask = tasks.some(function (t) {
+      return t.id === ui.taskId;
+    });
+    if (!ui.taskId || !hasTask) ui.taskId = (tasks[0] && tasks[0].id) || null;
+    if (ui.qpId && !qp()) ui.qpId = null;
+    if (!ui.editTemplateId && c) ui.editTemplateId = tpl(c).id;
     migrateLocalContracts();
   }
 
@@ -4927,9 +4942,9 @@
       return;
     }
     if (act === "export-json") {
-      var payload = JSON.parse(JSON.stringify(state));
+      persistUi();
       var finish = function (pdfs) {
-        payload.pdfs = pdfs || {};
+        var payload = E.backupSnapshot(state, { kind: "download", pdfs: pdfs || {} });
         var blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" });
         var a = document.createElement("a");
         a.href = URL.createObjectURL(blob);
@@ -5239,20 +5254,24 @@
     }
   }
 
+  function applyImportedBackup(raw) {
+    var parsed = E.parseBackup(raw);
+    state = T.migrateState(parsed.state);
+    applyRestoredState();
+    save();
+    return parsed;
+  }
+
   function importJsonFile(ev) {
     var file = ev.target.files[0];
     if (!file) return;
+    var input = ev.target;
     var reader = new FileReader();
     reader.onload = function () {
       try {
-        var data = JSON.parse(reader.result);
-        if (!data.contracts) throw new Error("Not a ConTrak backup");
-        state = T.migrateState(data);
-        var pdfs = data.pdfs || {};
+        var parsed = applyImportedBackup(reader.result);
+        var pdfs = parsed.pdfs || {};
         var go = function () {
-          save();
-          ui.contractId = state.contracts[0].id;
-          ui.qpId = null;
           toast("Imported backup");
           render();
         };
@@ -5264,6 +5283,7 @@
       } catch (err) {
         toast("Import failed: " + err.message);
       }
+      input.value = "";
     };
     reader.readAsText(file);
   }
@@ -5311,6 +5331,13 @@
       return writeBackupFile(true);
     },
     restore: restoreBackupFolder,
+    snapshot: function (kind) {
+      persistUi();
+      return E.backupSnapshot(state, { kind: kind || "download" });
+    },
+    apply: function (raw) {
+      return applyImportedBackup(raw);
+    },
     fileName: BACKUP_FILE,
     _setHandle: function (handle) {
       rememberHandle(handle);

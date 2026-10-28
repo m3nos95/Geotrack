@@ -326,8 +326,202 @@ assert("Default close still returns leftover", (function () {
   q.invoices = [{ id: "i", amount: 3790, status: "posted" }];
   t.qps = [q];
   E.closeQp(q, { date: "2026-10-28" });
-  return nearly(E.qpReturned(q), 4210) && nearly(E.taskUnallocated(t), 6210);
+  return nearly(E.qpReturned(q), 4210) && nearly(E.taskUnallocated(t), 6210) && q.keepUnspent === false;
 })());
+assert("Keep-leftover sets keepUnspent flag", keepQp.keepUnspent === true);
+
+/* JSON export/import round-trip keeps returned leftover AND unspent leftover */
+function task4Money() {
+  var t = E.emptyTask("4", 599975);
+  function add(num, ntp, spent, closeMode) {
+    var q = E.emptyQp(t, String(num));
+    q.ntpAmount = ntp;
+    if (spent) q.invoices = [{ id: "s-" + num, amount: spent, status: "posted" }];
+    t.qps.push(q);
+    if (closeMode === "return") E.closeQp(q, { date: "2026-10-01" });
+    if (closeMode === "keep") E.closeQp(q, { date: "2026-10-28", returnLeftover: false });
+    return q;
+  }
+  add("13", 46124, 41651.2, "return");
+  var q18 = add("18", 12975.5, 0, null);
+  var q21 = add("21", 9764, 8446.5, "keep");
+  var q22 = add("22", 8888.5, 8628.5, "keep");
+  var spent = E.taskSpent(t);
+  var avail = E.taskUnallocated(t);
+  return { t: t, q18: q18, q21: q21, q22: q22, spent: spent, avail: avail };
+}
+var t4m = task4Money();
+assert("T4 fixture spent", nearly(t4m.spent, 41651.2 + 8446.5 + 8628.5), t4m.spent);
+assert("T4 fixture available holds unspent 18+21+22 leftover", nearly(
+  t4m.avail,
+  599975 - (41651.2 + 12975.5 + 8446.5 + 1317.5 + 8628.5 + 260)
+), t4m.avail);
+var backupJson = JSON.stringify(E.backupSnapshot({
+  version: 2,
+  contracts: [{ id: "2019F", code: "2019F", tasks: [t4m.t] }],
+  ui: { contractId: "2019F", taskId: t4m.t.id, view: "ledger" },
+}, { kind: "folder" }));
+assert("Backup JSON keeps 0 remainder", /"returnedRemainder": 0/.test(backupJson) || /"returnedRemainder":0/.test(backupJson));
+assert("Backup JSON stamps keepUnspent", /"keepUnspent": true/.test(backupJson) || /"keepUnspent":true/.test(backupJson));
+var parsed = E.parseBackup(backupJson);
+assert("parseBackup strips pdfs key", parsed.state.pdfs == null);
+assert("parseBackup keeps ui contract", parsed.state.ui && parsed.state.ui.contractId === "2019F");
+var rt = parsed.state.contracts[0].tasks[0];
+var rt21 = rt.qps.find(function (q) { return q.qpNumber === "21"; });
+var rt22 = rt.qps.find(function (q) { return q.qpNumber === "22"; });
+var rt18 = rt.qps.find(function (q) { return q.qpNumber === "18"; });
+var rt13 = rt.qps.find(function (q) { return q.qpNumber === "13"; });
+assert("Round-trip QP 13 leftover still returned", nearly(E.qpReturned(rt13), 4472.8), E.qpReturned(rt13));
+assert("Round-trip QP 13 not stamped keepUnspent", rt13.keepUnspent === false);
+assert("Round-trip QP 18 still open", E.deriveQpStatus(rt18) !== "closed");
+assert("Round-trip QP 18 not stamped keepUnspent", rt18.keepUnspent === false);
+assert("Round-trip QP 21 leftover still unspent", rt21.keepUnspent === true && E.qpReturned(rt21) === 0);
+assert("Round-trip QP 22 leftover still unspent", rt22.keepUnspent === true && nearly(E.qpKeptAllocated(rt22), 260), E.qpKeptAllocated(rt22));
+assert("Round-trip Task 4 available unchanged", nearly(E.taskUnallocated(rt), t4m.avail), E.taskUnallocated(rt));
+assert("Folder backup stamps exportKind", parsed.state.exportKind === "folder");
+var oldKeepFile = JSON.stringify({
+  contracts: [{
+    id: "2019F",
+    tasks: [{
+      id: "t4",
+      poAmount: 10000,
+      qps: [{
+        qpNumber: "21",
+        qpClosed: true,
+        status: "closed",
+        ntpAmount: 2000,
+        returnedRemainder: 0,
+        invoices: [{ id: "i", amount: 500, status: "posted" }],
+      }],
+    }],
+  }],
+});
+var oldParsed = E.parseBackup(oldKeepFile);
+var oldQ = oldParsed.state.contracts[0].tasks[0].qps[0];
+assert("Old backup remainder 0 stamps keepUnspent", oldQ.keepUnspent === true);
+assert("Old backup unspent leftover stays allocated", E.qpReturned(oldQ) === 0 && nearly(E.qpKeptAllocated(oldQ), 1500));
+var returnedKeep = JSON.stringify({
+  contracts: [{
+    id: "2019F",
+    tasks: [{
+      id: "t4",
+      poAmount: 10000,
+      qps: [{
+        qpNumber: "13",
+        qpClosed: true,
+        status: "closed",
+        ntpAmount: 8000,
+        returnedRemainder: 4210,
+        invoices: [{ id: "i", amount: 3790, status: "posted" }],
+      }],
+    }],
+  }],
+});
+var returnedQ = E.parseBackup(returnedKeep).state.contracts[0].tasks[0].qps[0];
+assert("Returned leftover is not stamped keepUnspent", returnedQ.keepUnspent !== true);
+assert("Returned leftover still returns to the task", nearly(E.qpReturned(returnedQ), 4210), E.qpReturned(returnedQ));
+var missingRem = JSON.stringify({
+  contracts: [{
+    id: "2019F",
+    tasks: [{
+      poAmount: 10000,
+      qps: [{
+        qpNumber: "2",
+        qpClosed: true,
+        status: "closed",
+        ntpAmount: 8000,
+        invoices: [{ id: "i", amount: 3790, status: "posted" }],
+      }],
+    }],
+  }],
+});
+var missQ = E.parseBackup(missingRem).state.contracts[0].tasks[0].qps[0];
+assert("Missing remainder is not stamped keepUnspent", missQ.keepUnspent !== true);
+assert("Missing remainder still counts as leftover returned", nearly(E.qpReturned(missQ), 4210), E.qpReturned(missQ));
+var origObj = { contracts: [{ id: "a", tasks: [{ id: "t", qps: [] }] }] };
+origObj.contracts[0].title = "keep me";
+var clonedBackup = E.parseBackup(origObj);
+clonedBackup.state.contracts[0].title = "changed";
+assert("parseBackup does not mutate the original object", origObj.contracts[0].title === "keep me");
+var folderSnap = E.backupSnapshot({ contracts: [{ id: "a", tasks: [] }] }, { kind: "folder" });
+assert("Folder snapshot has no pdfs key", folderSnap.pdfs == null && folderSnap.exportKind === "folder");
+var downloadSnap = E.backupSnapshot(
+  { contracts: [{ id: "a", tasks: [] }], pdfs: { stale: true } },
+  { kind: "download", pdfs: { "qp-1": { name: "proposal.pdf", dataUrl: "data:application/pdf;base64,abc" } } }
+);
+assert("Download snapshot replaces stale pdfs", downloadSnap.pdfs["qp-1"].name === "proposal.pdf" && !downloadSnap.pdfs.stale);
+var pdfParsed = E.parseBackup(JSON.stringify(downloadSnap));
+assert("parseBackup returns pdfs beside state", pdfParsed.pdfs["qp-1"].name === "proposal.pdf" && pdfParsed.state.pdfs == null);
+var emptyErr;
+try { E.parseBackup({ contracts: [] }); } catch (err) { emptyErr = err.message; }
+assert("parseBackup rejects empty contracts", /Not a ConTrak backup/.test(emptyErr || ""));
+var bad;
+try { E.parseBackup({ nope: true }); } catch (err) { bad = err.message; }
+assert("parseBackup rejects junk", /Not a ConTrak backup/.test(bad || ""));
+
+var histState = {
+  version: 2,
+  role: "finance",
+  orgName: "DelDOT Materials & Research",
+  pm: "Aaron",
+  ui: { contractId: "2019F", taskId: t4.id, qpId: t4.qps[0].id, view: "ledger" },
+  analyzer: { examples: [{ id: "ex1", title: "sample" }] },
+  contracts: [JSON.parse(JSON.stringify(hist.cgc2019)), JSON.parse(JSON.stringify(hist.hcea2018))],
+};
+var histSnap = E.backupSnapshot(histState, { kind: "download" });
+var histParsed = E.parseBackup(JSON.stringify(histSnap));
+var histMigrated = global.ConTrakTemplates.migrateState(histParsed.state);
+global.PsaSeed.applyPackets(histMigrated.contracts[0]);
+assert("Historical UI contract survives", histMigrated.ui.contractId === "2019F");
+assert("Historical UI task survives", histMigrated.ui.taskId === t4.id);
+assert("Historical role survives", histMigrated.role === "finance");
+assert("Historical analyzer survives", histMigrated.analyzer.examples[0].id === "ex1");
+assert("Historical agreement count survives", histMigrated.contracts.length === 2);
+var ht3 = histMigrated.contracts[0].tasks[0];
+var ht4 = histMigrated.contracts[0].tasks[1];
+assert("Historical T3 spent round-trip", nearly(E.taskSpent(ht3), E.taskSpent(t3)), E.taskSpent(ht3));
+assert("Historical T3 unallocated round-trip", nearly(E.taskUnallocated(ht3), E.taskUnallocated(t3)), E.taskUnallocated(ht3));
+assert("Historical T4 spent round-trip", nearly(E.taskSpent(ht4), E.taskSpent(t4)), E.taskSpent(ht4));
+assert("Historical T4 allocated round-trip", nearly(E.taskAllocated(ht4), E.taskAllocated(t4)), E.taskAllocated(ht4));
+var seedMoneyOk = t3.qps.every(function (q) {
+  var n = ht3.qps.find(function (x) { return x.qpNumber === q.qpNumber; });
+  if (!n) return false;
+  if (q.qpClosed && q.status !== "canceled" && E.qpLeftover(q) > 0.009) {
+    if (n.keepUnspent) return false;
+    if (!nearly(E.qpReturned(n), E.qpReturned(q))) return false;
+  }
+  return nearly(E.qpSpent(n), E.qpSpent(q)) && nearly(E.qpNtp(n), E.qpNtp(q));
+});
+assert("Historical closed leftover still returned after import", seedMoneyOk);
+var qp13Hist = ht4.qps.find(function (q) { return q.qpNumber === "13"; });
+assert("applyPackets keeps NTP amount and fills proposal", qp13Hist && nearly(qp13Hist.ntpAmount, 46124) && qp13Hist.proposal && qp13Hist.proposal.lines.length >= 8);
+var againSnap = E.backupSnapshot(histMigrated, { kind: "folder" });
+var againParsed = E.parseBackup(JSON.stringify(againSnap));
+assert("Second export keeps T4 allocated", nearly(
+  E.taskAllocated(againParsed.state.contracts[0].tasks[1]),
+  E.taskAllocated(t4)
+));
+var bulkRtTask = E.emptyTask("4", 599975);
+var bulkRtA = E.emptyQp(bulkRtTask, "21");
+bulkRtA.ntpAmount = 9764;
+bulkRtA.invoices = [{ id: "k21", amount: 8446.5, status: "posted", qtyOverride: true, formChecks: [true, false, true, false, false] }];
+var bulkRtB = E.emptyQp(bulkRtTask, "22");
+bulkRtB.ntpAmount = 8888.5;
+bulkRtB.invoices = [{ id: "k22", amount: 8628.5, status: "posted" }];
+bulkRtTask.qps.push(bulkRtA, bulkRtB);
+var bulkRt = E.bulkCloseQps(bulkRtTask, [bulkRtA.id, bulkRtB.id], {
+  date: "2026-10-28",
+  notes: "Keep leftover",
+  returnLeftover: false,
+});
+var bulkParsed = E.parseBackup(JSON.stringify(E.backupSnapshot({
+  contracts: [{ id: "2019F", tasks: [bulkRtTask] }],
+}, { kind: "folder" })));
+var bulkTaskRt = bulkParsed.state.contracts[0].tasks[0];
+assert("Bulk close-out batch survives import", (bulkTaskRt.bulkCloseouts || []).length === 1 && bulkTaskRt.bulkCloseouts[0].returnLeftover === false);
+assert("Bulk invoice qty override survives import", bulkTaskRt.qps[0].invoices[0].qtyOverride === true);
+assert("Bulk keep leftover still unspent after import", nearly(E.taskUnallocated(bulkTaskRt), E.taskUnallocated(bulkRtTask)));
+assert("Bulk notes survive import", bulkTaskRt.bulkCloseouts[0].notes === "Keep leftover" && bulkRt && bulkRt.id);
 
 /* Delete a mistaken QP from the ledger — gone, not canceled */
 var delTask = E.emptyTask("1", 100000);
