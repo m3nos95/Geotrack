@@ -2989,6 +2989,11 @@
               (inv.qtyOverride ? " checked" : "") +
               "> Override — billed qty may exceed NTP qty because the invoice total is within the NTP amount</label>"
             : "") +
+          (x.id === "no_unknown_items" && x.overridable
+            ? '<label class="btn primary" style="display:inline-flex;align-items:center;gap:8px;margin-top:8px;cursor:pointer"><input type="checkbox" data-act="items-override"' +
+              (inv.itemsOverride ? " checked" : "") +
+              "> Override — billed items not on the NTP are allowed because the invoice total is within the NTP amount</label>"
+            : "") +
           "</div></div>"
         );
       })
@@ -3015,7 +3020,7 @@
       '"></label></div>' +
       '<div class="row-between" style="margin-top:10px"><div class="muted">' +
       (wf(c).payItems
-        ? "Line items vs NTP remaining quantities. Qty over NTP does not block posting if the invoice total is within NTP dollars — check Override on that row. Leave blank for a lump-sum check (dollar cap only)."
+        ? "Line items vs NTP remaining quantities. Qty over NTP, or billed items that were not on the NTP, do not block posting if the invoice total is within NTP dollars — check Override on that row. Leave blank for a lump-sum check (dollar cap only)."
         : "Dollar check against NTP and the task PO. Finance turned unit prices off on this template.") +
       "</div>" +
       (wf(c).payItems
@@ -4859,11 +4864,23 @@
           var qtyBlock = ck.checks.filter(function (x) {
             return x.id === "quantities" && x.status === "fail" && x.overridable;
           })[0];
-          toast(
-            qtyBlock && ck.requiredFailCount === 1
-              ? "Billed qty is over NTP — check the override to post. Invoice total is still within NTP dollars."
-              : "Checklist failed — not posted"
-          );
+          var itemsBlock = ck.checks.filter(function (x) {
+            return x.id === "no_unknown_items" && x.status === "fail" && x.overridable;
+          })[0];
+          var onlyOverridable =
+            ck.requiredFailCount === (qtyBlock ? 1 : 0) + (itemsBlock ? 1 : 0);
+          var toastMsg = "Checklist failed — not posted";
+          if (onlyOverridable && qtyBlock && itemsBlock) {
+            toastMsg =
+              "Qty and items are off the NTP — check both overrides to post. Invoice total is still within NTP dollars.";
+          } else if (onlyOverridable && qtyBlock) {
+            toastMsg =
+              "Billed qty is over NTP — check the override to post. Invoice total is still within NTP dollars.";
+          } else if (onlyOverridable && itemsBlock) {
+            toastMsg =
+              "Some billed items are not on the NTP — check the override to post. Invoice total is still within NTP dollars.";
+          }
+          toast(toastMsg);
           save();
           render();
           return;
@@ -5199,6 +5216,12 @@
     }
     if (act === "qty-override") {
       findInv(q).qtyOverride = !!el.checked;
+      save();
+      render();
+      return;
+    }
+    if (act === "items-override") {
+      findInv(q).itemsOverride = !!el.checked;
       save();
       render();
       return;

@@ -1903,17 +1903,34 @@
           checks.push(qtyCheck);
         }
         if (autoWanted(template, "no_unknown_items")) {
-          checks.push(
-            checkResult(
-              "no_unknown_items",
-              "All billed items appear on the NTP (or are marked extra work)",
-              unknown.length ? "fail" : "pass",
-              unknown.length
-                ? "Not on NTP: " + unknown.join(", ")
-                : "Every billed item is on the NTP.",
-              true
-            )
+          var itemsOff = unknown.length > 0;
+          var itemsOverridden = itemsOff && withinNtp && !!invoice.itemsOverride;
+          var itemsStatus = !itemsOff ? "pass" : itemsOverridden ? "warn" : "fail";
+          var itemsDetail;
+          if (!itemsOff) {
+            itemsDetail = "Every billed item is on the NTP.";
+          } else if (itemsOverridden) {
+            itemsDetail =
+              "Not on NTP: " +
+              unknown.join(", ") +
+              " — overridden. Invoice total is within remaining NTP dollars, so posting is allowed.";
+          } else if (withinNtp) {
+            itemsDetail =
+              "Not on NTP: " +
+              unknown.join(", ") +
+              " — check override to post: invoice total is still within remaining NTP dollars.";
+          } else {
+            itemsDetail = "Not on NTP: " + unknown.join(", ");
+          }
+          var itemsCheck = checkResult(
+            "no_unknown_items",
+            "All billed items appear on the NTP (or are marked extra work)",
+            itemsStatus,
+            itemsDetail,
+            itemsOff && !itemsOverridden
           );
+          itemsCheck.overridable = itemsOff && withinNtp;
+          checks.push(itemsCheck);
         }
       }
     }
@@ -2352,6 +2369,7 @@
       finalInvoice: false,
       formChecks: [false, false, false, false, false],
       qtyOverride: false,
+      itemsOverride: false,
     };
   }
 
