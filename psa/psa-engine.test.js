@@ -291,6 +291,44 @@ assert("Undo bulk reopens those QPs", E.deriveQpStatus(bKeep) === "ntp");
 assert("Undo bulk removes the batch", !E.findBulkCloseout(bulkTask, batch2.id));
 assert("Undo bulk puts leftover back on the QPs", nearly(E.taskUnallocated(bulkTask), freeBeforeUndo - 46124), E.taskUnallocated(bulkTask));
 
+/* Close-out can keep leftover NTP allocated so task available does not go up */
+var keepTask = E.emptyTask("4", 599975);
+var keepQp = E.emptyQp(keepTask, "18");
+keepQp.ntpAmount = 12975.5;
+keepQp.ntpDate = "2026-07-28";
+keepTask.qps = [keepQp];
+var keepBefore = E.taskUnallocated(keepTask);
+E.closeQp(keepQp, { date: "2026-10-28", returnLeftover: false });
+assert("Keep-leftover close marks QP closed", E.deriveQpStatus(keepQp) === "closed");
+assert("Keep-leftover close returns $0 to the task", E.qpReturned(keepQp) === 0);
+assert("Keep-leftover stays allocated on the QP", nearly(E.qpKeptAllocated(keepQp), 12975.5), E.qpKeptAllocated(keepQp));
+assert("Task available unchanged when leftover is kept", nearly(E.taskUnallocated(keepTask), keepBefore), E.taskUnallocated(keepTask));
+var keepB1 = E.emptyQp(keepTask, "21");
+keepB1.ntpAmount = 9764;
+keepB1.invoices = [{ id: "k21", amount: 8446.5, status: "posted" }];
+var keepB2 = E.emptyQp(keepTask, "22");
+keepB2.ntpAmount = 8888.5;
+keepB2.invoices = [{ id: "k22", amount: 8628.5, status: "posted" }];
+keepTask.qps.push(keepB1, keepB2);
+var keepFree = E.taskUnallocated(keepTask);
+var keepBatch = E.bulkCloseQps(keepTask, [keepB1.id, keepB2.id], {
+  date: "2026-10-28",
+  returnLeftover: false,
+});
+assert("Bulk keep-leftover returned total is 0", keepBatch && keepBatch.totals.returned === 0, keepBatch && keepBatch.totals.returned);
+assert("Bulk keep-leftover flag stored", keepBatch.returnLeftover === false);
+assert("Bulk keep-leftover does not raise task available", nearly(E.taskUnallocated(keepTask), keepFree), E.taskUnallocated(keepTask));
+assert("QP 21 leftover stays allocated", nearly(E.qpKeptAllocated(keepB1), 1317.5), E.qpKeptAllocated(keepB1));
+assert("Default close still returns leftover", (function () {
+  var t = E.emptyTask("1", 10000);
+  var q = E.emptyQp(t, "1");
+  q.ntpAmount = 8000;
+  q.invoices = [{ id: "i", amount: 3790, status: "posted" }];
+  t.qps = [q];
+  E.closeQp(q, { date: "2026-10-28" });
+  return nearly(E.qpReturned(q), 4210) && nearly(E.taskUnallocated(t), 6210);
+})());
+
 /* Delete a mistaken QP from the ledger — gone, not canceled */
 var delTask = E.emptyTask("1", 100000);
 var delOpen = E.emptyQp(delTask, "7");
