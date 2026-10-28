@@ -82,14 +82,14 @@
     if (s.view) ui.view = s.view;
   }
 
-  function save() {
+  function save(opts) {
     persistUi();
     try {
       localStorage.setItem(STORE, JSON.stringify(state));
     } catch (err) {
       toast("Could not save locally: " + err.message);
     }
-    scheduleBackupWrite();
+    if (!(opts && opts.skipFolder)) scheduleBackupWrite();
   }
 
   function fsDb() {
@@ -267,11 +267,8 @@
       .then(function (handle) {
         if (!handle) return false;
         rememberHandle(handle);
-        return writeBackupFile(false).then(function (ok) {
-          if (ok) toast("Saved JSON to " + backupDirName);
-          render();
-          return ok;
-        });
+        render();
+        return true;
       })
       .catch(function () {});
   }
@@ -581,7 +578,7 @@
         state = T.migrateState(E.parseBackup(raw).state);
       } else {
         state = defaultState();
-        save();
+        save({ skipFolder: true });
       }
     } catch (e) {
       state = defaultState();
@@ -3563,16 +3560,16 @@
       var status;
       if (backupDirHandle) {
         status =
-          '<p>Writing <b>' +
+          "<p>Writing <b>" +
           esc(BACKUP_FILE) +
           "</b> to folder <b>" +
           esc(backupDirName || "selected folder") +
-          "</b> whenever you open ConTrak, and after ledger changes.</p>" +
+          "</b> after you change the ledger. Opening ConTrak does not overwrite that file.</p>" +
           (backupLastOk
             ? '<p class="muted">Last wrote ' + esc(fmtBackupWhen()) + ".</p>"
             : "") +
           (backupLastErr && backupNeedsClick
-            ? '<p class="muted">Chrome may ask once per session — click Resume, then choose Allow on every visit.</p>'
+            ? '<p class="muted">Chrome may ask once per session — click Write now, then choose Allow.</p>'
             : "") +
           (backupLastErr && !backupNeedsClick
             ? "<p>" + esc(backupLastErr) + "</p>"
@@ -3586,7 +3583,7 @@
         status =
           "<p>Pick a folder once (OneDrive, a shared drive, a USB stick, a project folder). ConTrak overwrites <b>" +
           esc(BACKUP_FILE) +
-          "</b> there every time you open the app, and after you change the ledger. When Chrome asks, choose <b>Allow on every visit</b> so it can write on open — not only after a click.</p>" +
+          "</b> there after you change the ledger — not when you open the app. Use <b>Export JSON</b> / <b>Import JSON</b> to move a copy by hand. When Chrome asks, choose <b>Allow on every visit</b> so edits can write.</p>" +
           '<div style="display:flex;gap:8px;flex-wrap:wrap;margin:12px 0">' +
           '<button class="btn primary" data-act="backup-choose">Choose folder…</button>' +
           "</div>";
