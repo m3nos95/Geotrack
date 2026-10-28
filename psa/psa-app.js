@@ -5336,7 +5336,9 @@
       return E.backupSnapshot(state, { kind: kind || "download" });
     },
     apply: function (raw) {
-      return applyImportedBackup(raw);
+      var parsed = applyImportedBackup(raw);
+      render();
+      return parsed;
     },
     fileName: BACKUP_FILE,
     _setHandle: function (handle) {
