@@ -1647,8 +1647,9 @@ nav:not(#r18-nav), .nav-top-row { display: none !important; }
   flex-shrink: 0;
 }
 .map-overlay-header h3 {
-  font-family: var(--display);
+  font-family: var(--sans);
   font-size: 16px;
+  font-weight: 600;
   color: var(--text);
   margin: 0;
   border: none;
@@ -1666,8 +1667,8 @@ nav:not(#r18-nav), .nav-top-row { display: none !important; }
   display: flex;
   align-items: center;
   gap: 6px;
-  font-family: var(--mono);
-  font-size: 10px;
+  font-family: var(--sans);
+  font-size: 12px;
   color: var(--muted);
 }
 .legend-dot {
@@ -1677,9 +1678,14 @@ nav:not(#r18-nav), .nav-top-row { display: none !important; }
   flex-shrink: 0;
 }
 @keyframes xh-pulse {
-  0%   { transform: scale(0.5); opacity: 0.7; }
-  60%  { opacity: 0.25; }
-  100% { transform: scale(2.6); opacity: 0; }
+  0%   { transform: scale(0.75); opacity: 0.28; }
+  100% { transform: scale(1.65); opacity: 0; }
+}
+.labtrak-pin-ring {
+  position: absolute; inset: 3px; border-radius: 50%;
+  border: 1.5px solid currentColor; opacity: 0;
+  animation: xh-pulse 2.8s ease-out infinite;
+  pointer-events: none;
 }
 
 #mapOverlay .project-map-shell { position: relative; flex: 1; min-height: 0; width: 100%; }
@@ -1698,39 +1704,41 @@ nav:not(#r18-nav), .nav-top-row { display: none !important; }
   pointer-events: auto;
 }
 .mapboxgl-popup.labtrak-map-popup .mapboxgl-popup-content {
-  background: #06090f !important;
-  color: #e2e8f0 !important;
-  border: 1px solid rgba(255,255,255,0.1) !important;
-  border-radius: 6px !important;
-  padding: 12px 14px !important;
-  font-family: 'DM Mono', monospace !important;
-  font-size: 11px !important;
+  background: #1a2740 !important;
+  color: #e8eef6 !important;
+  border: 1px solid rgba(255,255,255,0.12) !important;
+  border-radius: 12px !important;
+  padding: 14px 16px !important;
+  font-family: var(--sans) !important;
+  font-size: 13px !important;
+  line-height: 1.45 !important;
   width: 280px !important;
   min-width: 280px !important;
   max-width: 320px !important;
   max-height: 70vh !important;
   overflow-y: auto !important;
   box-sizing: border-box !important;
-  box-shadow: 0 0 24px rgba(0,0,0,0.9) !important;
+  box-shadow: 0 10px 28px rgba(0,0,0,0.28) !important;
 }
 .mapboxgl-popup-content {
-  background: #06090f !important;
-  color: #e2e8f0 !important;
-  border: 1px solid rgba(255,255,255,0.1) !important;
-  border-radius: 4px !important;
-  padding: 12px 14px !important;
-  font-family: 'DM Mono', monospace !important;
-  font-size: 11px !important;
+  background: #1a2740 !important;
+  color: #e8eef6 !important;
+  border: 1px solid rgba(255,255,255,0.12) !important;
+  border-radius: 12px !important;
+  padding: 14px 16px !important;
+  font-family: var(--sans) !important;
+  font-size: 13px !important;
+  line-height: 1.45 !important;
   min-width: 280px;
   max-width: 320px;
   box-sizing: border-box;
-  box-shadow: 0 0 24px rgba(0,0,0,0.9) !important;
+  box-shadow: 0 10px 28px rgba(0,0,0,0.28) !important;
 }
-.mapboxgl-popup-tip { border-top-color: #06090f !important; }
-.map-popup-title { font-size: 13px; font-weight: 700; color: #60a5fa; margin-bottom: 6px; line-height: 1.3; }
-.map-popup-row { display: flex; justify-content: space-between; gap: 10px; margin-bottom: 3px; align-items: flex-start; }
-.map-popup-label { color: #64748b; flex-shrink: 0; }
-.map-popup-val { color: #e2e8f0; font-weight: 600; text-align: right; word-break: break-word; max-width: 170px; }
+.mapboxgl-popup-tip { border-top-color: #1a2740 !important; }
+.map-popup-title { font-family: var(--sans); font-size: 15px; font-weight: 600; color: #f4f7fb; margin-bottom: 8px; line-height: 1.3; letter-spacing: 0; }
+.map-popup-row { display: flex; justify-content: space-between; gap: 10px; margin-bottom: 4px; align-items: flex-start; }
+.map-popup-label { color: #93a3ba; flex-shrink: 0; font-weight: 500; }
+.map-popup-val { color: #f4f7fb; font-weight: 600; text-align: right; word-break: break-word; max-width: 170px; }
 .map-popup-pass { color: #34d399; font-weight: 700; }
 .map-popup-fail { color: #f87171; font-weight: 700; }
 .map-popup-pend { color: #fbbf24; font-weight: 700; }
@@ -1738,9 +1746,9 @@ nav:not(#r18-nav), .nav-top-row { display: none !important; }
 .map-popup-section-title { font-size: 9px; letter-spacing: 0.08em; text-transform: uppercase; color: #64748b; margin-bottom: 4px; }
 .map-popup-action { margin-top: 10px; }
 .map-popup-action button {
-  width: 100%; padding: 7px 10px; border-radius: 4px; border: 1px solid rgba(34, 211, 238, 0.35);
-  background: rgba(34, 211, 238, 0.12); color: #22d3ee; font-family: inherit; font-size: 10px;
-  font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; cursor: pointer;
+  width: 100%; padding: 8px 10px; border-radius: 8px; border: 1px solid rgba(96,165,250,0.35);
+  background: rgba(96,165,250,0.12); color: #dbeafe; font-family: var(--sans); font-size: 13px;
+  font-weight: 600; letter-spacing: 0; text-transform: none; cursor: pointer;
 }
 .map-popup-action button:hover { background: rgba(34, 211, 238, 0.22); }
 
@@ -1760,8 +1768,8 @@ nav:not(#r18-nav), .nav-top-row { display: none !important; }
   background: rgba(6, 9, 15, 0.9); border: 1px solid rgba(255, 255, 255, 0.1);
   backdrop-filter: blur(10px); box-shadow: 0 8px 28px rgba(0, 0, 0, 0.45);
 }
-.labmap-title { font-family: var(--display); font-size: 16px; color: var(--text); font-weight: 700; line-height: 1.2; }
-.labmap-subtitle { font-family: var(--mono); font-size: 9px; color: var(--muted); margin-top: 2px; line-height: 1.4; }
+.labmap-title { font-family: var(--sans); font-size: 16px; color: var(--text); font-weight: 600; line-height: 1.2; letter-spacing: 0; }
+.labmap-subtitle { font-family: var(--sans); font-size: 12px; color: var(--muted); margin-top: 2px; line-height: 1.4; }
 .labmap-layers-wrap {
   pointer-events: none;
   position: absolute;
@@ -1775,23 +1783,48 @@ nav:not(#r18-nav), .nav-top-row { display: none !important; }
   flex-wrap: wrap;
 }
 .labmap-layers {
-  pointer-events: auto; width: 210px; max-height: 100%; flex-shrink: 0;
+  pointer-events: auto; width: 252px; max-height: 100%; flex-shrink: 0;
   background: rgba(6, 9, 15, 0.92); border: 1px solid rgba(255, 255, 255, 0.1);
   border-radius: 10px; padding: 12px 10px; overflow-y: auto;
   backdrop-filter: blur(10px); box-shadow: 0 8px 28px rgba(0, 0, 0, 0.45);
 }
-.labmap-layers-title { font-family: var(--mono); font-size: 9px; letter-spacing: 1.5px; color: var(--muted); margin-bottom: 10px; }
+.labmap-layers-title { font-family: var(--sans); font-size: 12px; letter-spacing: 0.04em; color: var(--muted); margin-bottom: 10px; }
+.labmap-layer-row { margin-bottom: 8px; }
+.labmap-layer-main { display: flex; align-items: stretch; gap: 6px; }
 .labmap-layer-btn {
-  display: flex; align-items: center; gap: 10px; width: 100%; text-align: left;
+  display: flex; align-items: center; gap: 10px; width: auto; flex: 1; text-align: left;
   background: transparent; border: 1px solid var(--border); border-radius: 8px;
-  padding: 10px 12px; margin-bottom: 8px; cursor: pointer; transition: border-color 0.15s, background 0.15s;
+  padding: 8px 10px; margin-bottom: 0; cursor: pointer; transition: border-color 0.15s, background 0.15s;
 }
 .labmap-layer-btn.active { background: rgba(255,255,255,0.04); border-color: rgba(255,255,255,0.14); }
 .labmap-layer-btn.off { opacity: 0.45; }
-.labmap-layer-swatch { width: 12px; height: 12px; border-radius: 50%; flex-shrink: 0; }
+.labmap-layer-swatch { width: 22px; height: 22px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; background: none; }
 .labmap-layer-meta { flex: 1; min-width: 0; }
-.labmap-layer-name { font-family: var(--mono); font-size: 10px; color: var(--text); font-weight: 700; }
-.labmap-layer-count { font-family: var(--mono); font-size: 9px; color: var(--muted); margin-top: 2px; }
+.labmap-layer-name { font-family: var(--sans); font-size: 13px; color: var(--text); font-weight: 600; letter-spacing: 0; }
+.labmap-layer-count { font-family: var(--sans); font-size: 12px; color: var(--muted); margin-top: 2px; }
+.labmap-layer-edit {
+  flex-shrink: 0; border: 1px solid var(--border); background: transparent; color: var(--muted);
+  border-radius: 8px; padding: 0 8px; font-family: var(--sans); font-size: 12px; cursor: pointer;
+}
+.labmap-layer-edit:hover, .labmap-layer-edit.open { color: var(--text); border-color: rgba(255,255,255,0.28); }
+.labmap-pin-editor {
+  margin-top: 6px; padding: 8px 10px; border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 8px; background: rgba(0,0,0,0.22);
+}
+.labmap-pin-editor[hidden] { display: none !important; }
+.labmap-pin-editor-row { display: flex; align-items: center; justify-content: space-between; gap: 8px; font-family: var(--sans); font-size: 12px; color: var(--muted); }
+.labmap-pin-editor input[type="color"] { width: 36px; height: 26px; padding: 0; border: none; background: transparent; cursor: pointer; }
+.labmap-pin-shapes { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 8px; }
+.labmap-pin-shape {
+  width: 30px; height: 30px; border-radius: 6px; border: 1px solid rgba(255,255,255,0.12);
+  background: transparent; cursor: pointer; display: flex; align-items: center; justify-content: center; padding: 0;
+}
+.labmap-pin-shape.on { border-color: rgba(255,255,255,0.6); background: rgba(255,255,255,0.06); }
+.labmap-pin-reset {
+  margin-top: 8px; border: none; background: transparent; color: var(--muted);
+  font-family: var(--sans); font-size: 12px; cursor: pointer; padding: 0;
+}
+.labmap-pin-reset:hover { color: var(--text); }
 .labmap-area-tools { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
 .labmap-area-btn {
   font-family: var(--mono); font-size: 9px; letter-spacing: 1px;
@@ -1919,7 +1952,7 @@ nav:not(#r18-nav), .nav-top-row { display: none !important; }
 #mapOverlay .map-search-pair { max-width: 640px; flex: 1 1 100%; }
 @media (max-width: 768px) {
   .labmap-ui { padding: 8px; }
-  .labmap-layers { width: min(210px, calc(100vw - 24px)); max-height: 42vh; }
+  .labmap-layers { width: min(252px, calc(100vw - 24px)); max-height: 42vh; }
   .labmap-float-header { padding: 8px 12px; }
   .labmap-title { font-size: 14px; }
   #labmap-view .mapboxgl-ctrl-top-right { top: 54px; }
@@ -8478,10 +8511,11 @@ function plotCoreDrillMarker(core, bounds) {
     ? `<img src="${thumb}" style="width:100%;max-height:80px;object-fit:cover;border-radius:4px;margin-top:6px;" alt="core photo">`
     : '';
 
+  const pin = mapPinStyle('core_drill');
   const marker = addLabTrakMapMarker(projectMap, {
     coords,
-    color: '#a855f7',
-    symbol: '◇',
+    color: pin.color,
+    shape: pin.shape,
     isActive: false,
     pinKey: labMapItemKey('core_drill', core),
     popupHtml: `
@@ -8545,6 +8579,7 @@ async function openProjectMap(contract, projectName, opts) {
   window._projectMapCtx = { contract, projectName, fieldTestId };
   window._borelogMapById = {};
   document.getElementById('mapOverlay').classList.add('open');
+  renderProjectMapLegend();
   navUpdateBackButton();
   document.getElementById('mapOverlayTitle').textContent = (contract || 'Core drill') + ' — ' + (projectName || 'Map');
   document.getElementById('mapOverlaySubtitle').textContent = 'Loading locations...';
@@ -8647,12 +8682,14 @@ async function openProjectMap(contract, projectName, opts) {
       }
     }
 
+    const layer = labMapClassifySample(s) || 'field_sample';
+    const pin = mapPinStyle(layer);
     const marker = addLabTrakMapMarker(projectMap, {
       coords,
-      color,
-      symbol: s.test_category === 'aggregate' ? '◆' : '●',
+      color: pin.color,
+      shape: pin.shape,
       isActive: statusLabel === 'Pending',
-      pinKey: labMapItemKey(labMapClassifySample(s) || 'field_sample', s),
+      pinKey: labMapItemKey(layer, s),
       popupHtml: `
       <div class="map-popup-title">${s.test_no}</div>
       <div class="map-popup-row"><span class="map-popup-label">Type:</span><span class="map-popup-val">${(s.test_category||'soil').toUpperCase()}</span></div>
@@ -8679,10 +8716,11 @@ async function openProjectMap(contract, projectName, opts) {
     const coords = set.gps_coordinates ? parseGPS(set.gps_coordinates) : null;
     if (!coords) return;
 
+    const pin = mapPinStyle('concrete');
     const marker = addLabTrakMapMarker(projectMap, {
       coords,
-      color: '#60a5fa',
-      symbol: '■',
+      color: pin.color,
+      shape: pin.shape,
       isActive: false,
       pinKey: labMapItemKey('concrete', { ...cs, _set: set }),
       popupHtml: `
@@ -9757,14 +9795,81 @@ function wireMapMarkerPopup(marker, options) {
   }, { passive: false, capture: true });
 }
 
+const MAP_PIN_STYLE_KEY = 'labtrak_map_pin_styles';
+const MAP_PIN_SHAPES = [
+  { id: 'circle', label: 'Circle' },
+  { id: 'square', label: 'Square' },
+  { id: 'diamond', label: 'Diamond' },
+  { id: 'triangle', label: 'Triangle' },
+  { id: 'pin', label: 'Pin' },
+  { id: 'ring', label: 'Ring' },
+];
+
+function mapPinSafeColor(color) {
+  return /^#[0-9a-fA-F]{6}$/.test(color || '') ? color : '#94a3b8';
+}
+
+function mapSymbolToShape(symbol) {
+  if (symbol === '■') return 'square';
+  if (symbol === '◇' || symbol === '◆') return 'diamond';
+  if (symbol === '▲' || symbol === '△') return 'triangle';
+  if (symbol === '⊕' || symbol === '◎') return 'ring';
+  return 'circle';
+}
+
+function mapPinShapeMarkup(shape, color, px) {
+  const size = px || 22;
+  const c = mapPinSafeColor(color);
+  const stroke = 'rgba(8,12,20,0.45)';
+  let body = '';
+  if (shape === 'square') {
+    body = `<rect x="5.5" y="5.5" width="13" height="13" rx="1.6" fill="${c}" stroke="${stroke}" stroke-width="1"/>`;
+  } else if (shape === 'diamond') {
+    body = `<polygon points="12,3.5 20.5,12 12,20.5 3.5,12" fill="${c}" stroke="${stroke}" stroke-width="1"/>`;
+  } else if (shape === 'triangle') {
+    body = `<polygon points="12,3.5 21,20 3,20" fill="${c}" stroke="${stroke}" stroke-width="1" stroke-linejoin="round"/>`;
+  } else if (shape === 'pin') {
+    body = `<path d="M12 2.2c-3.4 0-6 2.7-6 6.1 0 4.4 6 11.5 6 11.5s6-7.1 6-11.5c0-3.4-2.6-6.1-6-6.1z" fill="${c}" stroke="${stroke}" stroke-width="1"/><circle cx="12" cy="8.2" r="2.1" fill="rgba(255,255,255,0.9)"/>`;
+  } else if (shape === 'ring') {
+    body = `<circle cx="12" cy="12" r="6.2" fill="none" stroke="${c}" stroke-width="2.4"/><circle cx="12" cy="12" r="2" fill="${c}"/>`;
+  } else {
+    body = `<circle cx="12" cy="12" r="6.4" fill="${c}" stroke="${stroke}" stroke-width="1"/>`;
+  }
+  return `<svg width="${size}" height="${size}" viewBox="0 0 24 24" aria-hidden="true">${body}</svg>`;
+}
+
+function mapPinStylesLoad() {
+  try {
+    const raw = JSON.parse(localStorage.getItem(MAP_PIN_STYLE_KEY) || '{}');
+    return raw && typeof raw === 'object' ? raw : {};
+  } catch (e) { return {}; }
+}
+
+function mapPinStyle(layer) {
+  const def = (typeof LAB_MAP_LAYER_DEFS !== 'undefined' && LAB_MAP_LAYER_DEFS[layer]) || { label: layer, color: '#94a3b8', shape: 'circle', symbol: '●' };
+  const saved = mapPinStylesLoad()[layer] || {};
+  const shape = MAP_PIN_SHAPES.some(s => s.id === saved.shape) ? saved.shape : (def.shape || mapSymbolToShape(def.symbol));
+  return { label: def.label, symbol: def.symbol, shape, color: mapPinSafeColor(saved.color || def.color) };
+}
+
+function renderProjectMapLegend() {
+  const el = document.getElementById('projectMapLegend');
+  if (!el || typeof LAB_MAP_LAYER_DEFS === 'undefined') return;
+  el.innerHTML = Object.keys(LAB_MAP_LAYER_DEFS).map(key => {
+    const style = mapPinStyle(key);
+    return `<div class="map-legend-item">${mapPinShapeMarkup(style.shape, style.color, 16)}${mapRoadEscape(style.label)}</div>`;
+  }).join('');
+}
+
 function addLabTrakMapMarker(map, options) {
   const {
-    coords, color, symbol, isActive, dimmed, popupHtml, popupOpts,
+    coords, color, symbol, shape, isActive, dimmed, popupHtml, popupOpts,
     getSiblings, popupLayer, pinKey,
   } = options;
-  const el = createMarkerEl(color, symbol, !!isActive, !!dimmed);
+  const pinShape = MAP_PIN_SHAPES.some(s => s.id === shape) ? shape : mapSymbolToShape(symbol);
+  const el = createMarkerEl(color, pinShape, !!isActive, !!dimmed);
   const popup = createMapPopup(popupHtml, popupOpts);
-  const marker = new mapboxgl.Marker({ element: el })
+  const marker = new mapboxgl.Marker({ element: el, anchor: pinShape === 'pin' ? 'bottom' : 'center' })
     .setLngLat([coords.lng, coords.lat])
     .setPopup(popup)
     .addTo(map);
@@ -9783,94 +9888,34 @@ function setupMapPopupDismiss(map, getMarkers) {
   });
 }
 
-function createMarkerEl(color, symbol, isActive, dimmed) {
+function createMarkerEl(color, shape, isActive, dimmed) {
+  const pinShape = MAP_PIN_SHAPES.some(s => s.id === shape) ? shape : mapSymbolToShape(shape);
+  const safe = mapPinSafeColor(color);
   const wrap = document.createElement('div');
+  wrap.className = 'labtrak-pin';
   wrap.style.cssText = `
     position: relative;
-    width: 36px; height: 36px;
+    width: ${pinShape === 'pin' ? 24 : 28}px;
+    height: ${pinShape === 'pin' ? 30 : 28}px;
     display: flex; align-items: center; justify-content: center;
     cursor: pointer;
-    ${dimmed ? 'opacity:0.18;' : ''}
+    ${dimmed ? 'opacity:0.28;' : ''}
   `;
   if (dimmed) wrap.dataset.dimmed = '1';
-
-  // Pulse rings (shown for active/pending markers or when isActive flag set)
-  if (isActive) {
-    for (let i = 0; i < 3; i++) {
-      const ring = document.createElement('div');
-      ring.style.cssText = `
-        position: absolute;
-        width: 100%; height: 100%;
-        border-radius: 50%;
-        border: 1px solid ${color};
-        opacity: 0;
-        animation: xh-pulse 2.4s ease-out infinite;
-        animation-delay: ${i * 0.8}s;
-        pointer-events: none;
-      `;
-      wrap.appendChild(ring);
-    }
+  if (isActive && !dimmed) {
+    const ring = document.createElement('div');
+    ring.className = 'labtrak-pin-ring';
+    ring.style.color = safe;
+    ring.style.borderColor = safe;
+    wrap.appendChild(ring);
   }
-
-  // Crosshair SVG
-  const size = 32;
-  const c = size / 2;
-  const arm = 10;    // arm half-length
-  const gap = 4;     // gap from centre
-  const dot = 2.2;   // centre dot radius
-
-  const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
-  svg.setAttribute('width', size);
-  svg.setAttribute('height', size);
-  svg.setAttribute('viewBox', `0 0 ${size} ${size}`);
-  svg.style.cssText = `
-    position: relative; z-index: 2;
-    filter: drop-shadow(0 0 4px ${color}88);
-    transition: transform 0.15s, filter 0.15s;
-  `;
-
-  // Outer circle ring
-  const circleOuter = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
-  circleOuter.setAttribute('cx', c); circleOuter.setAttribute('cy', c);
-  circleOuter.setAttribute('r', 7); circleOuter.setAttribute('fill', 'none');
-  circleOuter.setAttribute('stroke', color); circleOuter.setAttribute('stroke-width', '1');
-  circleOuter.setAttribute('opacity', '0.6');
-
-  // Four crosshair arms
-  const arms = [
-    [c, c - gap - arm, c, c - gap],   // top
-    [c, c + gap,       c, c + gap + arm], // bottom
-    [c - gap - arm, c, c - gap, c],   // left
-    [c + gap, c,       c + gap + arm, c]  // right
-  ];
-  arms.forEach(([x1,y1,x2,y2]) => {
-    const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
-    line.setAttribute('x1', x1); line.setAttribute('y1', y1);
-    line.setAttribute('x2', x2); line.setAttribute('y2', y2);
-    line.setAttribute('stroke', color); line.setAttribute('stroke-width', '1.5');
-    line.setAttribute('stroke-linecap', 'square');
-    svg.appendChild(line);
-  });
-
-  // Centre dot
-  const centre = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
-  centre.setAttribute('cx', c); centre.setAttribute('cy', c);
-  centre.setAttribute('r', dot); centre.setAttribute('fill', color);
-
-  svg.appendChild(circleOuter);
-  svg.appendChild(centre);
-
+  const holder = document.createElement('div');
+  holder.innerHTML = mapPinShapeMarkup(pinShape, safe, pinShape === 'pin' ? 24 : 22);
+  const svg = holder.firstElementChild;
+  svg.style.cssText = 'position:relative;z-index:2;display:block;filter:drop-shadow(0 1px 1px rgba(0,0,0,0.35));transition:transform 0.15s;';
   wrap.appendChild(svg);
-
-  wrap.addEventListener('mouseenter', () => {
-    svg.style.transform = 'scale(1.35)';
-    svg.style.filter = `drop-shadow(0 0 8px ${color})`;
-  });
-  wrap.addEventListener('mouseleave', () => {
-    svg.style.transform = 'scale(1)';
-    svg.style.filter = `drop-shadow(0 0 4px ${color}88)`;
-  });
-
+  wrap.addEventListener('mouseenter', () => { svg.style.transform = 'scale(1.12)'; });
+  wrap.addEventListener('mouseleave', () => { svg.style.transform = 'scale(1)'; });
   return wrap;
 }
 
@@ -9888,11 +9933,12 @@ let labMapAreaMatchKeys = null;
 let labMapAreaMatches = [];
 
 const LAB_MAP_LAYER_DEFS = {
-  field_sample: { label: 'Field Sample', color: '#34d399', symbol: '●' },
-  density:      { label: 'Density',      color: '#fbbf24', symbol: '⊕' },
-  core_drill:   { label: 'Core Drill',   color: '#a855f7', symbol: '◇' },
-  concrete:     { label: 'Concrete',     color: '#60a5fa', symbol: '■' },
+  field_sample: { label: 'Field Sample', color: '#34d399', symbol: '●', shape: 'circle' },
+  density:      { label: 'Density',      color: '#fbbf24', symbol: '⊕', shape: 'ring' },
+  core_drill:   { label: 'Core Drill',   color: '#a855f7', symbol: '◇', shape: 'diamond' },
+  concrete:     { label: 'Concrete',     color: '#60a5fa', symbol: '■', shape: 'square' },
 };
+let labMapPinEditorLayer = '';
 
 function isLabMapAdmin() {
   return currentUser?.role === 'admin';
@@ -10052,14 +10098,63 @@ function labMapRenderLayerPanel() {
   list.innerHTML = Object.entries(LAB_MAP_LAYER_DEFS).map(([key, def]) => {
     const on = labMapLayers[key] !== false;
     const count = counts[key] || 0;
-    return `<button type="button" class="labmap-layer-btn ${on ? 'active' : 'off'}" onclick="labMapToggleLayer('${key}')">
-      <span class="labmap-layer-swatch" style="background:${def.color};"></span>
-      <span class="labmap-layer-meta">
-        <div class="labmap-layer-name">${def.symbol} ${def.label}</div>
-        <div class="labmap-layer-count">${count} pin${count === 1 ? '' : 's'}</div>
-      </span>
-    </button>`;
+    const style = mapPinStyle(key);
+    const editing = labMapPinEditorLayer === key;
+    const shapes = MAP_PIN_SHAPES.map(s => {
+      return `<button type="button" class="labmap-pin-shape ${style.shape === s.id ? 'on' : ''}" title="${s.label}" aria-label="${s.label}" onclick="labMapSetPinStyle('${key}', { shape: '${s.id}' })">${mapPinShapeMarkup(s.id, style.color, 16)}</button>`;
+    }).join('');
+    return `<div class="labmap-layer-row">
+      <div class="labmap-layer-main">
+        <button type="button" class="labmap-layer-btn ${on ? 'active' : 'off'}" onclick="labMapToggleLayer('${key}')">
+          <span class="labmap-layer-swatch">${mapPinShapeMarkup(style.shape, style.color, 18)}</span>
+          <span class="labmap-layer-meta">
+            <div class="labmap-layer-name">${def.label}</div>
+            <div class="labmap-layer-count">${count} pin${count === 1 ? '' : 's'}</div>
+          </span>
+        </button>
+        <button type="button" class="labmap-layer-edit ${editing ? 'open' : ''}" aria-expanded="${editing ? 'true' : 'false'}" onclick="labMapTogglePinEditor('${key}')">Style</button>
+      </div>
+      <div class="labmap-pin-editor" ${editing ? '' : 'hidden'}>
+        <div class="labmap-pin-editor-row">
+          <label for="labMapPinColor-${key}">Color</label>
+          <input id="labMapPinColor-${key}" type="color" value="${style.color}" onchange="labMapSetPinStyle('${key}', { color: this.value })">
+        </div>
+        <div class="labmap-pin-shapes">${shapes}</div>
+        <button type="button" class="labmap-pin-reset" onclick="labMapResetPinStyle('${key}')">Reset</button>
+      </div>
+    </div>`;
   }).join('');
+}
+
+function labMapTogglePinEditor(layer) {
+  labMapPinEditorLayer = labMapPinEditorLayer === layer ? '' : layer;
+  labMapRenderLayerPanel();
+}
+
+function labMapSetPinStyle(layer, patch) {
+  if (!LAB_MAP_LAYER_DEFS[layer]) return;
+  const cur = mapPinStyle(layer);
+  const next = {
+    color: mapPinSafeColor(patch.color || cur.color),
+    shape: MAP_PIN_SHAPES.some(s => s.id === patch.shape) ? patch.shape : cur.shape,
+  };
+  const all = mapPinStylesLoad();
+  const def = LAB_MAP_LAYER_DEFS[layer];
+  if (next.color.toLowerCase() === def.color.toLowerCase() && next.shape === def.shape) delete all[layer];
+  else all[layer] = next;
+  try { localStorage.setItem(MAP_PIN_STYLE_KEY, JSON.stringify(all)); } catch (e) {}
+  labMapRenderLayerPanel();
+  labMapPlotMarkers(true);
+  renderProjectMapLegend();
+}
+
+function labMapResetPinStyle(layer) {
+  const all = mapPinStylesLoad();
+  delete all[layer];
+  try { localStorage.setItem(MAP_PIN_STYLE_KEY, JSON.stringify(all)); } catch (e) {}
+  labMapRenderLayerPanel();
+  labMapPlotMarkers(true);
+  renderProjectMapLegend();
 }
 
 function labMapItemKey(layer, record) {
@@ -10444,10 +10539,11 @@ function labMapPlotMarkers(preserveView) {
     if (!labMapContractMatch(layer, record)) return;
     if (!inArea && !layerOn) return;
     const dimmed = areaActive && !inArea;
+    const style = mapPinStyle(layer);
     const marker = addLabTrakMapMarker(labMap, {
       coords,
-      color: def.color,
-      symbol: def.symbol,
+      color: style.color,
+      shape: style.shape,
       isActive: !!isActive && !dimmed,
       dimmed,
       popupHtml,
@@ -10472,7 +10568,7 @@ function labMapPlotMarkers(preserveView) {
   (labMapStore.density || []).forEach(s => {
     const coords = parseGPS(s.gps_coordinates, true);
     if (!coords) return;
-    plotItem(coords, 'density', labMapBuildSamplePopup(s, 'density'), true, s);
+    plotItem(coords, 'density', labMapBuildSamplePopup(s, 'density'), false, s);
   });
   (labMapStore.core_drill || []).forEach(c => {
     const coords = parseGPS(c.gps_coordinates, true);
@@ -14166,7 +14262,7 @@ const CONTEXT_HELP_VIEWS = {
     title: 'Admin Map',
     intro: 'Statewide map of field samples, density tests, cores, and concrete.',
     sections: [
-      { tour: 'labmap-ui', title: 'Map controls', body: 'Filter by contract number, change the basemap, toggle layers, refresh, and pan or zoom. Admin role required.' },
+      { tour: 'labmap-ui', title: 'Map controls', body: 'Filter by contract number, restyle a layer pin, change the basemap, toggle layers, refresh, and pan or zoom. Admin role required.' },
       { tour: 'labmap-area', title: 'Draw area (admin)', body: 'Draw a hand-drawn boundary to list every test inside — field samples, density, cores, and concrete. Export CSV or JSON with full record data.' }
     ]
   },
@@ -28381,24 +28477,7 @@ function openR18() {
           <div class="map-road-search-results" id="projectMapPinSearchResults" style="display:none;" role="listbox"></div>
         </div>
       </div>
-      <div class="map-legend">
-        <div class="map-legend-item">
-          <svg width="14" height="14" viewBox="0 0 14 14"><circle cx="7" cy="7" r="3" fill="none" stroke="#34d399" stroke-width="1" opacity="0.6"/><line x1="7" y1="1" x2="7" y2="4.5" stroke="#34d399" stroke-width="1.2" stroke-linecap="square"/><line x1="7" y1="9.5" x2="7" y2="13" stroke="#34d399" stroke-width="1.2" stroke-linecap="square"/><line x1="1" y1="7" x2="4.5" y2="7" stroke="#34d399" stroke-width="1.2" stroke-linecap="square"/><line x1="9.5" y1="7" x2="13" y2="7" stroke="#34d399" stroke-width="1.2" stroke-linecap="square"/><circle cx="7" cy="7" r="1.3" fill="#34d399"/></svg>
-          Approved / Pass
-        </div>
-        <div class="map-legend-item">
-          <svg width="14" height="14" viewBox="0 0 14 14"><circle cx="7" cy="7" r="3" fill="none" stroke="#f87171" stroke-width="1" opacity="0.6"/><line x1="7" y1="1" x2="7" y2="4.5" stroke="#f87171" stroke-width="1.2" stroke-linecap="square"/><line x1="7" y1="9.5" x2="7" y2="13" stroke="#f87171" stroke-width="1.2" stroke-linecap="square"/><line x1="1" y1="7" x2="4.5" y2="7" stroke="#f87171" stroke-width="1.2" stroke-linecap="square"/><line x1="9.5" y1="7" x2="13" y2="7" stroke="#f87171" stroke-width="1.2" stroke-linecap="square"/><circle cx="7" cy="7" r="1.3" fill="#f87171"/></svg>
-          Rejected / Fail
-        </div>
-        <div class="map-legend-item">
-          <svg width="14" height="14" viewBox="0 0 14 14"><circle cx="7" cy="7" r="3" fill="none" stroke="#fbbf24" stroke-width="1" opacity="0.6"/><line x1="7" y1="1" x2="7" y2="4.5" stroke="#fbbf24" stroke-width="1.2" stroke-linecap="square"/><line x1="7" y1="9.5" x2="7" y2="13" stroke="#fbbf24" stroke-width="1.2" stroke-linecap="square"/><line x1="1" y1="7" x2="4.5" y2="7" stroke="#fbbf24" stroke-width="1.2" stroke-linecap="square"/><line x1="9.5" y1="7" x2="13" y2="7" stroke="#fbbf24" stroke-width="1.2" stroke-linecap="square"/><circle cx="7" cy="7" r="1.3" fill="#fbbf24"/></svg>
-          Pending <span style="font-size:9px;opacity:0.6;margin-left:2px;">(active pulse)</span>
-        </div>
-        <div class="map-legend-item">
-          <svg width="14" height="14" viewBox="0 0 14 14"><circle cx="7" cy="7" r="3" fill="none" stroke="#60a5fa" stroke-width="1" opacity="0.6"/><line x1="7" y1="1" x2="7" y2="4.5" stroke="#60a5fa" stroke-width="1.2" stroke-linecap="square"/><line x1="7" y1="9.5" x2="7" y2="13" stroke="#60a5fa" stroke-width="1.2" stroke-linecap="square"/><line x1="1" y1="7" x2="4.5" y2="7" stroke="#60a5fa" stroke-width="1.2" stroke-linecap="square"/><line x1="9.5" y1="7" x2="13" y2="7" stroke="#60a5fa" stroke-width="1.2" stroke-linecap="square"/><circle cx="7" cy="7" r="1.3" fill="#60a5fa"/></svg>
-          Concrete
-        </div>
-      </div>
+      <div class="map-legend" id="projectMapLegend"></div>
       <div class="map-style-toggle" id="projectMapStyleToggle">
         <button type="button" class="map-style-btn" data-map-style="streets" onclick="labMapSetStyle('streets')">Streets</button>
         <button type="button" class="map-style-btn" data-map-style="satellite" onclick="labMapSetStyle('satellite')">Satellite</button>
