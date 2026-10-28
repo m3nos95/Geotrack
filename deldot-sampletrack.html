@@ -20145,25 +20145,43 @@ async function getUsers() {
   } catch { return []; }
 }
 
+// Every row in one upsert must have the same keys. A new person only has
+// name and role, while saved people also have pin_hash and assigned_tech_ids.
+// Supabase rejects that mix (PGRST102) and the name vanishes on the next load.
+function stUserRow(u, now) {
+  return {
+    id: u.id,
+    name: (u.name || '').trim(),
+    role: u.role || 'field',
+    pin_hash: u.pin_hash ?? null,
+    recovery: u.recovery ?? '',
+    initials: u.initials ?? '',
+    color: u.color ?? null,
+    can_approve_reports: !!u.can_approve_reports,
+    restricted_hubs: u.restricted_hubs ?? null,
+    assigned_tech_ids: Array.isArray(u.assigned_tech_ids) ? u.assigned_tech_ids : [],
+    created_at: u.created_at || now,
+    updated_at: now,
+  };
+}
+
 async function saveUsers(users) {
   const now = new Date().toISOString();
-  const rows = users.map(u => {
-    const row = { ...u, updated_at: now, created_at: u.created_at || now };
-    delete row.pin;
-    return row;
-  });
-  _stUsersCache = rows;
+  const rows = users.map(u => stUserRow(u, now));
   if (db) {
     try {
       const { error } = await db.from('st_users').upsert(rows, { onConflict: 'id' });
       if (error) throw error;
     } catch (e) {
-      console.warn('saveUsers: Supabase error, falling back to localStorage:', e);
+      console.warn('saveUsers:', e);
+      return { ok: false, error: e };
     }
   }
+  _stUsersCache = _mergeHubRestrictions(rows);
   try {
     localStorage.setItem('st_users', JSON.stringify(rows.map(sanitizeUserForStorage)));
   } catch(e) {}
+  return { ok: true };
 }
 
 // ── Show login overlay ─────────────────────────────────────────
@@ -20408,9 +20426,12 @@ async function umAddUser() {
   const words = name.split(' ');
   const initials = words.length >= 2 ? (words[0][0] + words[words.length-1][0]).toUpperCase() : name.slice(0,2).toUpperCase();
   const newUser = { id: 'u_' + Date.now(), name, role, initials, color: rd.color, can_approve_reports: false };
-  const users = await getUsers();
-  users.push(newUser);
-  await saveUsers(users);
+  const users = [...await getUsers(), newUser];
+  const saved = await saveUsers(users);
+  if (!saved.ok) {
+    showToast('Could not save ' + name + '. They were not added.', 'error');
+    return;
+  }
   await umRenderUsers();
   const nameEl = document.getElementById('um_name');
   if (nameEl) nameEl.value = '';
@@ -20654,7 +20675,11 @@ async function saveTeamAssignments() {
       return u;
     });
 
-    await saveUsers(updated);
+    const saved = await saveUsers(updated);
+    if (!saved.ok) {
+      showToast('Could not save team assignments.', 'error');
+      return;
+    }
 
     // Update currentUser if their assignments changed
     if (currentUser && assignMap.hasOwnProperty(currentUser.id)) {
@@ -20704,7 +20729,12 @@ function canApproveThisReport(sample) {
 async function umToggleApprover(userId, checked) {
   const users = await getUsers();
   const updated = users.map(u => u.id === userId ? { ...u, can_approve_reports: checked } : u);
-  await saveUsers(updated);
+  const saved = await saveUsers(updated);
+  if (!saved.ok) {
+    showToast('Could not save that approval setting.', 'error');
+    await umRenderUsers();
+    return;
+  }
   // If the current user just had their own permissions changed, update live
   if (currentUser && currentUser.id === userId) {
     currentUser = { ...currentUser, can_approve_reports: checked };
