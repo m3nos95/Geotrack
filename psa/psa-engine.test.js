@@ -140,6 +140,79 @@ assert("Override does not skip an over-NTP dollar fail", (function () {
   return dol.status === "fail" && ckD.requiredFailCount > 0;
 })());
 
+/* Billed items not on the NTP, but invoice dollars still under remaining NTP — override lets you post */
+var invOffNtp = E.emptyInvoice("INV-OFF");
+invOffNtp.date = "2026-10-21";
+invOffNtp.lines = [
+  { itemCode: "763589S", itemNo: "12", description: "Truck mob Sussex", unit: "EA", qty: 1, unitPrice: 550 },
+];
+invOffNtp.amount = E.sumLines(invOffNtp.lines);
+qp.invoices = [];
+var ckOff = E.buildInvoiceChecklist(contract, task, qp, invOffNtp);
+var unknownCheck = ckOff.checks.find(function (c) { return c.id === "no_unknown_items"; });
+assert("Items not on NTP fail until override", unknownCheck.status === "fail" && unknownCheck.required && unknownCheck.overridable && ckOff.requiredFailCount > 0, unknownCheck);
+invOffNtp.itemsOverride = true;
+var ckOffOk = E.buildInvoiceChecklist(contract, task, qp, invOffNtp);
+var unknownOk = ckOffOk.checks.find(function (c) { return c.id === "no_unknown_items"; });
+assert("Items override is a warning, not a block", unknownOk.status === "warn" && !unknownOk.required && ckOffOk.requiredFailCount === 0, unknownOk);
+assert("Items override does not skip an over-NTP dollar fail", (function () {
+  var overItems = E.emptyInvoice("INV-OFF-D");
+  overItems.date = "2026-10-21";
+  overItems.lines = [{ itemCode: "763589S", itemNo: "12", qty: 1, unitPrice: 550, unit: "EA" }];
+  overItems.amount = 99999;
+  overItems.itemsOverride = true;
+  var ckI = E.buildInvoiceChecklist(contract, task, qp, overItems);
+  var dol = ckI.checks.find(function (c) { return c.id === "within_ntp_balance"; });
+  var unk = ckI.checks.find(function (c) { return c.id === "no_unknown_items"; });
+  return dol.status === "fail" && ckI.requiredFailCount > 0 && unk.status === "fail" && !unk.overridable;
+})());
+
+/* QP 21: NTP is ATV borings + ATV mob; invoice billed land borings + truck mob under the NTP dollar cap */
+var qp21 = E.emptyQp(task, "21");
+qp21.ntpAmount = 9764;
+qp21.ntpDate = "2026-10-07";
+qp21.ntpLines = [
+  { itemCode: "605540", itemNo: "2", qty: 18, unitPrice: 18, unit: "EA" },
+  { itemCode: "605539", itemNo: "8", qty: 80, unitPrice: 16, unit: "LF" },
+  { itemCode: "763590S", itemNo: "15", qty: 2, unitPrice: 600, unit: "EA" },
+  { itemCode: "18", itemNo: "19", qty: 14, unitPrice: 75, unit: "HR" },
+  { itemCode: "MOT33", itemNo: "23", qty: 2, unitPrice: 1700, unit: "EA" },
+  { itemCode: "34", itemNo: "43", qty: 80, unitPrice: 5.75, unit: "LF" },
+  { itemCode: "LOGGER", itemNo: "46", qty: 20, unitPrice: 70, unit: "HR" },
+  { itemCode: "GPS", itemNo: "59", qty: 1, unitPrice: 100, unit: "EA" },
+  { itemCode: "DNREC", itemNo: "", qty: 2, unitPrice: 275, unit: "EA" },
+];
+task.qps.push(qp21);
+var inv21 = E.emptyInvoice("6055");
+inv21.date = "2026-10-21";
+inv21.lines = [
+  { itemCode: "605540", itemNo: "2", qty: 18, unitPrice: 18, unit: "EA" },
+  { itemCode: "605545", itemNo: "7", qty: 90, unitPrice: 12, unit: "LF" },
+  { itemCode: "763589S", itemNo: "12", qty: 2, unitPrice: 550, unit: "EA" },
+  { itemCode: "18", itemNo: "19", qty: 9, unitPrice: 75, unit: "HR" },
+  { itemCode: "MOT33", itemNo: "23", qty: 2, unitPrice: 1700, unit: "EA" },
+  { itemCode: "34", itemNo: "43", qty: 90, unitPrice: 5.75, unit: "LF" },
+  { itemCode: "LOGGER", itemNo: "46", qty: 10, unitPrice: 70, unit: "HR" },
+  { itemCode: "DNREC", qty: 2, unitPrice: 275, unit: "EA" },
+  { itemCode: "GPS", qty: 1, unitPrice: 100, unit: "EA" },
+];
+inv21.amount = 8446.5;
+var agr21 = { payItems: global.PsaCatalog.cloneCatalog() };
+var ck21 = E.buildInvoiceChecklist(agr21, task, qp21, inv21);
+var unk21 = ck21.checks.find(function (c) { return c.id === "no_unknown_items"; });
+var qty21 = ck21.checks.find(function (c) { return c.id === "quantities"; });
+var dol21 = ck21.checks.find(function (c) { return c.id === "within_ntp_balance"; });
+assert("QP21 invoice is under NTP dollars", dol21 && dol21.status === "pass", dol21 && dol21.detail);
+assert("QP21 land borings and truck mob are not on the NTP", unk21 && unk21.status === "fail" && /item 7/i.test(unk21.detail) && /item 12/i.test(unk21.detail) && /Soil borings, land/i.test(unk21.detail) && /truck-mounted boring rig/i.test(unk21.detail), unk21 && unk21.detail);
+assert("QP21 fail names items, not catalog codes", unk21 && !/605545/.test(unk21.detail) && !/763589S/.test(unk21.detail), unk21 && unk21.detail);
+assert("QP21 abandonment qty is over NTP", qty21 && qty21.status === "fail" && qty21.overridable, qty21 && qty21.detail);
+inv21.qtyOverride = true;
+inv21.itemsOverride = true;
+var ck21ok = E.buildInvoiceChecklist(agr21, task, qp21, inv21);
+assert("QP21 both overrides let the invoice post", ck21ok.requiredFailCount === 0 && ck21ok.overall !== "fail", ck21ok.overall);
+task.qps = task.qps.filter(function (q) { return q !== qp21; });
+qp.invoices = [];
+
 /* Over NTP dollars */
 var inv3 = E.emptyInvoice("INV-3");
 inv3.date = "2026-09-01";

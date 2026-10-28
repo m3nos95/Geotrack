@@ -734,6 +734,22 @@
     return null;
   }
 
+  function payItemLabel(contract, line) {
+    if (!line) return "(blank)";
+    var cat =
+      catalogItem(contract, line.itemCode) || catalogItemByNo(contract, line.itemNo);
+    var no = String(line.itemNo || (cat && cat.itemNo) || "").trim();
+    var desc = String(line.description || (cat && cat.description) || "")
+      .replace(/\s*[—*]\s*incl(?:uding)?\.?\s*permit if needed/gi, "")
+      .replace(/\*including permit if needed/gi, "")
+      .replace(/\s+/g, " ")
+      .trim();
+    if (no && desc) return "item " + no + " " + desc;
+    if (no) return "item " + no;
+    if (desc) return desc;
+    return String(line.itemCode || "(blank)");
+  }
+
   var UNIT_WORDS = {
     each: { unit: "EA", unitMeasure: "Each" },
     ea: { unit: "EA", unitMeasure: "Each" },
@@ -1829,11 +1845,11 @@
         lines.forEach(function (l) {
           var nLine = ntpLine(qp, l.itemCode);
           if (!nLine && !l.extraWork) {
-            unknown.push(l.itemCode || l.description || "(blank)");
+            unknown.push(payItemLabel(contract, l));
           }
           if (nLine && money(l.unitPrice || 0) && money(l.unitPrice) !== money(nLine.unitPrice)) {
             priceFail.push(
-              (l.itemCode || "") +
+              payItemLabel(contract, l) +
                 " billed " +
                 fmtMoney(l.unitPrice) +
                 " vs NTP " +
@@ -1846,13 +1862,13 @@
             catalogItem(contract, l.itemCode).unitPrice &&
             money(l.unitPrice) !== money(catalogItem(contract, l.itemCode).unitPrice)
           ) {
-            priceFail.push((l.itemCode || "") + " billed unit price does not match catalog.");
+            priceFail.push(payItemLabel(contract, l) + " billed unit price does not match catalog.");
           }
           if (nLine) {
             var remainQty = nLine.qty - billedQty(qp, l.itemCode, invoice.id);
             if (Number(l.qty || 0) - remainQty > 0.0001) {
               qtyFail.push(
-                (l.itemCode || "") +
+                payItemLabel(contract, l) +
                   " billed " +
                   l.qty +
                   " " +
@@ -1903,17 +1919,34 @@
           checks.push(qtyCheck);
         }
         if (autoWanted(template, "no_unknown_items")) {
-          checks.push(
-            checkResult(
-              "no_unknown_items",
-              "All billed items appear on the NTP (or are marked extra work)",
-              unknown.length ? "fail" : "pass",
-              unknown.length
-                ? "Not on NTP: " + unknown.join(", ")
-                : "Every billed item is on the NTP.",
-              true
-            )
+          var itemsOff = unknown.length > 0;
+          var itemsOverridden = itemsOff && withinNtp && !!invoice.itemsOverride;
+          var itemsStatus = !itemsOff ? "pass" : itemsOverridden ? "warn" : "fail";
+          var itemsDetail;
+          if (!itemsOff) {
+            itemsDetail = "Every billed item is on the NTP.";
+          } else if (itemsOverridden) {
+            itemsDetail =
+              "Not on NTP: " +
+              unknown.join(", ") +
+              " — overridden. Invoice total is within remaining NTP dollars, so posting is allowed.";
+          } else if (withinNtp) {
+            itemsDetail =
+              "Not on NTP: " +
+              unknown.join(", ") +
+              " — check override to post: invoice total is still within remaining NTP dollars.";
+          } else {
+            itemsDetail = "Not on NTP: " + unknown.join(", ");
+          }
+          var itemsCheck = checkResult(
+            "no_unknown_items",
+            "All billed items appear on the NTP (or are marked extra work)",
+            itemsStatus,
+            itemsDetail,
+            itemsOff && !itemsOverridden
           );
+          itemsCheck.overridable = itemsOff && withinNtp;
+          checks.push(itemsCheck);
         }
       }
     }
@@ -2352,6 +2385,7 @@
       finalInvoice: false,
       formChecks: [false, false, false, false, false],
       qtyOverride: false,
+      itemsOverride: false,
     };
   }
 
