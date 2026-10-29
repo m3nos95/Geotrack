@@ -1719,7 +1719,34 @@ nav:not(#r18-nav), .nav-top-row { display: none !important; }
 }
 
 #mapOverlay .project-map-shell { position: relative; flex: 1; min-height: 0; width: 100%; }
-#mapContainer { flex: 1; width: 100%; height: 100%; }
+#mapContainer { position: absolute; inset: 0; width: 100%; height: 100%; }
+.labtrak-map-key {
+  position: absolute;
+  top: 12px;
+  left: 12px;
+  z-index: 40;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 148px;
+  max-width: 220px;
+  padding: 8px 10px;
+  border-radius: 8px;
+  background: rgba(10, 16, 22, 0.92);
+  border: 1px solid rgba(255,255,255,0.14);
+  box-shadow: 0 8px 24px rgba(0,0,0,0.35);
+  pointer-events: auto;
+}
+.labtrak-map-key-title {
+  font-family: var(--sans);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: #93a3ba;
+  margin-bottom: 2px;
+}
+.labtrak-map-key .map-legend-item { color: #e8eef6; }
 .mapboxgl-popup.labtrak-map-popup { max-width: none !important; z-index: 30; }
 .labmap-popup-layer,
 .project-map-popup-layer {
@@ -1852,11 +1879,9 @@ nav:not(#r18-nav), .nav-top-row { display: none !important; }
 .labmap-subtitle { font-family: var(--sans); font-size: 12px; color: var(--muted); margin-top: 2px; line-height: 1.4; }
 .labmap-layers-wrap {
   pointer-events: none;
-  position: absolute;
-  top: 62px;
-  left: 10px;
-  right: 10px;
-  bottom: 10px;
+  position: relative;
+  flex: 1;
+  min-height: 0;
   display: flex;
   align-items: flex-start;
   gap: 10px;
@@ -10134,10 +10159,11 @@ function mapPinStyle(layer) {
 function renderProjectMapLegend() {
   const el = document.getElementById('projectMapLegend');
   if (!el || typeof LAB_MAP_LAYER_DEFS === 'undefined') return;
-  el.innerHTML = Object.keys(LAB_MAP_LAYER_DEFS).map(key => {
+  const rows = Object.keys(LAB_MAP_LAYER_DEFS).map(key => {
     const style = mapPinStyle(key);
-    return `<div class="map-legend-item">${mapPinShapeMarkup(style.shape, style.color, 16)}${mapRoadEscape(style.label)}</div>`;
+    return `<div class="map-legend-item">${mapPinShapeMarkup(style.shape, style.color, 16)}<span>${mapRoadEscape(style.label)}</span></div>`;
   }).join('');
+  el.innerHTML = `<div class="labtrak-map-key-title">Key</div>${rows}`;
 }
 
 function addLabTrakMapMarker(map, options) {
@@ -29312,7 +29338,6 @@ function openR18() {
           <div class="map-road-search-results" id="projectMapPinSearchResults" style="display:none;" role="listbox"></div>
         </div>
       </div>
-      <div class="map-legend" id="projectMapLegend"></div>
       <div class="map-style-toggle" id="projectMapStyleToggle">
         <button type="button" class="map-style-btn" data-map-style="streets" onclick="labMapSetStyle('streets')">Streets</button>
         <button type="button" class="map-style-btn" data-map-style="satellite" onclick="labMapSetStyle('satellite')">Satellite</button>
@@ -29322,6 +29347,7 @@ function openR18() {
     <div class="project-map-shell">
       <div id="mapContainer"></div>
       <div class="project-map-popup-layer" id="projectMapPopupLayer" aria-hidden="true"></div>
+      <div id="projectMapLegend" class="labtrak-map-key" aria-label="Map marker key"></div>
     </div>
   </div>
 
