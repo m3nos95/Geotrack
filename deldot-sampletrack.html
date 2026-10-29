@@ -1763,6 +1763,56 @@ nav:not(#r18-nav), .nav-top-row { display: none !important; }
   box-shadow: 0 10px 28px rgba(0,0,0,0.28) !important;
 }
 .mapboxgl-popup-tip { border-top-color: #1a2740 !important; }
+.leaflet-container { background: #06090f; font-family: var(--sans); }
+.leaflet-marker-icon.labtrak-pin,
+.leaflet-marker-icon.labtrak-pin-icon,
+.labtrak-pin-icon {
+  background: transparent !important;
+  border: none !important;
+}
+.leaflet-popup.labtrak-map-popup .leaflet-popup-content-wrapper {
+  background: #1a2740;
+  color: #e8eef6;
+  border: 1px solid rgba(255,255,255,0.12);
+  border-radius: 12px;
+  box-shadow: 0 10px 28px rgba(0,0,0,0.28);
+}
+.leaflet-popup.labtrak-map-popup .leaflet-popup-content {
+  margin: 14px 16px;
+  width: 280px;
+  max-height: 70vh;
+  overflow-y: auto;
+  font-family: var(--sans);
+  font-size: 13px;
+  line-height: 1.45;
+}
+.leaflet-popup.labtrak-map-popup .leaflet-popup-tip { background: #1a2740; }
+.leaflet-popup.labtrak-map-popup .leaflet-popup-close-button {
+  color: #cbd5e1;
+  font-size: 18px;
+  width: 24px;
+  height: 24px;
+  padding: 4px 4px 0 0;
+}
+.leaflet-control-zoom a {
+  background: #121a2b;
+  color: #e8eef6;
+  border-color: rgba(255,255,255,0.14);
+}
+.leaflet-control-zoom a:hover { background: #1a2740; color: #fff; }
+.leaflet-control-attribution {
+  background: rgba(6,9,15,0.72) !important;
+  color: #93a3ba !important;
+  font-size: 10px !important;
+}
+.leaflet-control-attribution a { color: #cbd5e1 !important; }
+.labtrak-map-fullscreen {
+  width: 30px; height: 30px;
+  border-radius: 4px; border: 1px solid rgba(255,255,255,0.14);
+  background: #121a2b; color: #e8eef6; cursor: pointer;
+  font-size: 16px; line-height: 26px; padding: 0;
+}
+.labtrak-map-fullscreen:hover { background: #1a2740; color: #fff; }
 .map-popup-title { font-family: var(--sans); font-size: 15px; font-weight: 600; color: #f4f7fb; margin-bottom: 8px; line-height: 1.3; letter-spacing: 0; }
 .map-popup-row { display: flex; justify-content: space-between; gap: 10px; margin-bottom: 4px; align-items: flex-start; }
 .map-popup-label { color: #93a3ba; flex-shrink: 0; font-weight: 500; }
@@ -3351,10 +3401,8 @@ table.fc-borrow-tbl tr.fc-borrow-detail-row td{background:var(--surface);border-
 }
 
 </style>
-  <link href='https://api.mapbox.com/mapbox-gl-js/v3.3.0/mapbox-gl.css' rel='stylesheet'>
-  <link href='https://api.mapbox.com/mapbox-gl-js/plugins/mapbox-gl-draw/v1.4.3/mapbox-gl-draw.css' rel='stylesheet'>
-  <script src='https://api.mapbox.com/mapbox-gl-js/v3.3.0/mapbox-gl.js'></script>
-  <script src='https://api.mapbox.com/mapbox-gl-js/plugins/mapbox-gl-draw/v1.4.3/mapbox-gl-draw.js'></script>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="">
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/proj4js/2.11.0/proj4.min.js"></script>
 </head>
 <body>
@@ -7840,17 +7888,17 @@ self.addEventListener('fetch', e => {
 
 
 // ══════════════════════════════════════════════
-// MAPBOX PROJECT MAP
+// LEAFLET MAP — same raster setup as GeoTrak.
+// Markers sit in the map pane, so they stay on the coordinate while zooming.
 // ══════════════════════════════════════════════
-mapboxgl.accessToken = 'pk.eyJ1IjoibTNub3M5NSIsImEiOiJjbXBjb2hoc3kwMm8xMnFvbWpnanhzc3JkIn0.UQZqzs_NjcAN43HFGUMSvQ';
+const LABTRAK_GEOCODE_TOKEN = 'pk.eyJ1IjoibTNub3M5NSIsImEiOiJjbXBjb2hoc3kwMm8xMnFvbWpnanhzc3JkIn0.UQZqzs_NjcAN43HFGUMSvQ';
 let projectMap = null;
 let mapMarkers = [];
 const LABTRAK_MAP_STYLES = {
-  streets:   { label: 'Streets',   url: 'mapbox://styles/mapbox/streets-v12' },
-  satellite: { label: 'Satellite', url: 'mapbox://styles/mapbox/satellite-streets-v12' },
-  dark:      { label: 'Dark',      url: 'mapbox://styles/mapbox/dark-v11' },
+  streets:   { label: 'Streets' },
+  satellite: { label: 'Satellite' },
+  dark:      { label: 'Dark' },
 };
-const LABTRAK_MAP_VIEW_OPTS = { center: [-75.5, 39.15], zoom: 10, minZoom: 3, maxZoom: 20 };
 let labTrakMapStyle = localStorage.getItem('labtrak_map_style') || 'streets';
 
 function getLabTrakMapStyleKey() {
@@ -7864,17 +7912,137 @@ function syncMapStyleButtons() {
   });
 }
 
-function createLabTrakMapboxMap(containerId) {
-  return new mapboxgl.Map({
-    container: containerId,
-    style: LABTRAK_MAP_STYLES[getLabTrakMapStyleKey()].url,
-    ...LABTRAK_MAP_VIEW_OPTS,
+function LabTrakLngLatBounds() {
+  this._pairs = [];
+}
+LabTrakLngLatBounds.prototype.extend = function(ll) {
+  if (Array.isArray(ll) && ll.length >= 2) this._pairs.push(ll);
+  else if (ll && ll.lng != null && ll.lat != null) this._pairs.push([ll.lng, ll.lat]);
+  return this;
+};
+LabTrakLngLatBounds.prototype.isEmpty = function() {
+  return this._pairs.length === 0;
+};
+
+function labTrakPinIcon(el, width, height, anchor) {
+  const Icon = L.DivIcon.extend({
+    options: {
+      className: 'labtrak-pin-icon',
+      iconSize: [width, height],
+      iconAnchor: anchor,
+      pinEl: el,
+    },
+    createIcon() {
+      const node = this.options.pinEl;
+      this._setIconStyles(node, 'icon');
+      return node;
+    },
+    createShadow() { return null; },
   });
+  return new Icon();
+}
+
+function adaptLeafletMap(map) {
+  const rawFly = L.Map.prototype.flyTo;
+  const rawFit = L.Map.prototype.fitBounds;
+  map.flyTo = function(dest, zoom, options) {
+    if (dest && typeof dest === 'object' && dest.center) {
+      const dur = dest.duration != null ? dest.duration / 1000 : 0.9;
+      return rawFly.call(map, [dest.center[1], dest.center[0]], dest.zoom, { duration: dur });
+    }
+    return rawFly.call(map, dest, zoom, options);
+  };
+  map.fitBounds = function(bounds, opts) {
+    opts = opts || {};
+    let leafletBounds = bounds;
+    if (bounds && bounds._pairs) {
+      if (!bounds._pairs.length) return map;
+      leafletBounds = L.latLngBounds(bounds._pairs.map(p => [p[1], p[0]]));
+    } else if (Array.isArray(bounds)) {
+      leafletBounds = L.latLngBounds(bounds.map(p => [p[1], p[0]]));
+    }
+    const pad = opts.padding != null ? opts.padding : 40;
+    const fitOpts = { padding: [pad, pad], maxZoom: opts.maxZoom };
+    if (opts.duration != null) {
+      fitOpts.duration = opts.duration / 1000;
+      fitOpts.animate = opts.duration > 0;
+    }
+    return rawFit.call(map, leafletBounds, fitOpts);
+  };
+  map.resize = function() { this.invalidateSize(false); };
+  return map;
+}
+
+function labTrakTileLayers() {
+  return {
+    streets: L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      maxZoom: 19,
+      attribution: '&copy; OpenStreetMap',
+    }),
+    satellite: L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
+      maxZoom: 20,
+      maxNativeZoom: 19,
+      attribution: 'Tiles &copy; Esri',
+    }),
+    dark: L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+      subdomains: 'abcd',
+      maxZoom: 20,
+      attribution: '&copy; OpenStreetMap &copy; CARTO',
+    }),
+  };
+}
+
+function addLabTrakFullscreenControl(map) {
+  const Fullscreen = L.Control.extend({
+    options: { position: 'bottomleft' },
+    onAdd() {
+      const btn = L.DomUtil.create('button', 'labtrak-map-fullscreen');
+      btn.type = 'button';
+      btn.title = 'Full screen';
+      btn.setAttribute('aria-label', 'Full screen');
+      btn.textContent = '⛶';
+      L.DomEvent.disableClickPropagation(btn);
+      L.DomEvent.on(btn, 'click', (e) => {
+        L.DomEvent.stop(e);
+        const el = map.getContainer();
+        if (!document.fullscreenElement) el.requestFullscreen?.();
+        else document.exitFullscreen?.();
+      });
+      return btn;
+    },
+  });
+  map.addControl(new Fullscreen());
+}
+
+function createLabTrakMap(containerId) {
+  const key = getLabTrakMapStyleKey();
+  const map = L.map(containerId, {
+    zoomControl: false,
+    attributionControl: true,
+    closePopupOnClick: false,
+    zoomAnimation: true,
+    fadeAnimation: true,
+    markerZoomAnimation: true,
+    inertia: true,
+    minZoom: 3,
+    maxZoom: 19,
+  }).setView([39.15, -75.5], 10);
+  const tiles = labTrakTileLayers();
+  tiles[key].addTo(map);
+  map._labtrakTiles = tiles;
+  map._labtrakTileKey = key;
+  L.control.zoom({ position: 'bottomleft' }).addTo(map);
+  addLabTrakFullscreenControl(map);
+  return adaptLeafletMap(map);
 }
 
 function setLabTrakMapStyle(map, styleKey) {
-  if (!map || !LABTRAK_MAP_STYLES[styleKey]) return;
-  map.setStyle(LABTRAK_MAP_STYLES[styleKey].url);
+  if (!map || !map._labtrakTiles || !map._labtrakTiles[styleKey]) return;
+  if (map._labtrakTileKey === styleKey) return;
+  const prev = map._labtrakTiles[map._labtrakTileKey];
+  if (prev && map.hasLayer(prev)) map.removeLayer(prev);
+  map._labtrakTiles[styleKey].addTo(map);
+  map._labtrakTileKey = styleKey;
 }
 
 function labMapSetStyle(styleKey) {
@@ -7972,7 +8140,7 @@ async function geocodeRoadQuery(query) {
 
   async function fetchFeatures(text, types) {
     const params = new URLSearchParams({
-      access_token: mapboxgl.accessToken,
+      access_token: LABTRAK_GEOCODE_TOKEN,
       country: 'US',
       bbox: DE_GEO_BBOX,
       proximity: DE_GEO_PROXIMITY,
@@ -8022,10 +8190,18 @@ function flyMapToGeocode(map, feature, which) {
     map.fitBounds([[bbox[0], bbox[1]], [bbox[2], bbox[3]]], { padding: 60, maxZoom: 16, duration: 1200 });
     const lng = (bbox[0] + bbox[2]) / 2;
     const lat = (bbox[1] + bbox[3]) / 2;
-    mapRoadSearchMarker[which] = new mapboxgl.Marker(pin).setLngLat([lng, lat]).addTo(map);
+    mapRoadSearchMarker[which] = L.marker([lat, lng], {
+      icon: labTrakPinIcon(pin, 28, 28, [14, 28]),
+      interactive: false,
+      keyboard: false,
+    }).addTo(map);
   } else if (center && center.length === 2) {
     map.flyTo({ center, zoom: 15, duration: 1200 });
-    mapRoadSearchMarker[which] = new mapboxgl.Marker(pin).setLngLat(center).addTo(map);
+    mapRoadSearchMarker[which] = L.marker([center[1], center[0]], {
+      icon: labTrakPinIcon(pin, 28, 28, [14, 28]),
+      interactive: false,
+      keyboard: false,
+    }).addTo(map);
   }
 }
 
@@ -8519,7 +8695,7 @@ function applyMapSearch(which, query, hits) {
     return;
   }
   if (withCoords.length) {
-    const bounds = new mapboxgl.LngLatBounds();
+    const bounds = new LabTrakLngLatBounds();
     withCoords.forEach(h => bounds.extend([h.coords.lng, h.coords.lat]));
     if (withCoords.length === 1) {
       map.flyTo({ center: [withCoords[0].coords.lng, withCoords[0].coords.lat], zoom: Math.max(MAP_PIN_MIN_ZOOM + 1, 15), duration: 900 });
@@ -8664,10 +8840,8 @@ async function openProjectMap(contract, projectName, opts) {
 
   // Initialize map if not already done
   if (!projectMap) {
-    projectMap = createLabTrakMapboxMap('mapContainer');
+    projectMap = createLabTrakMap('mapContainer');
     syncMapStyleButtons();
-    projectMap.addControl(new mapboxgl.NavigationControl(), 'top-right');
-    projectMap.addControl(new mapboxgl.FullscreenControl(), 'top-right');
     setupMapPopupDismiss(projectMap, () => mapMarkers);
     bindMapPinZoomVisibility(projectMap, 'project');
   }
@@ -8676,7 +8850,7 @@ async function openProjectMap(contract, projectName, opts) {
   mapMarkers.forEach(m => m.remove());
   mapMarkers = [];
 
-  const bounds = new mapboxgl.LngLatBounds();
+  const bounds = new LabTrakLngLatBounds();
   let pinCount = 0;
 
   // Load samples / concrete when we have a contract
@@ -9813,14 +9987,19 @@ function formatCoreGPS(lat, lng, accuracyM) {
 }
 
 function createMapPopup(html, opts) {
-  return new mapboxgl.Popup({
-    offset: (opts && opts.offset) || 25,
-    maxWidth: 'none',
+  const extra = opts || {};
+  const popup = L.popup({
     className: 'labtrak-map-popup',
-    closeButton: true,
+    maxWidth: 320,
+    minWidth: 280,
+    closeButton: extra.closeButton !== false,
+    autoPan: true,
+    autoClose: false,
     closeOnClick: false,
-    ...(opts || {}),
-  }).setHTML(html);
+    offset: L.point(0, -18),
+  });
+  popup.setContent(html);
+  return popup;
 }
 
 function closeAllMapPopups(markers, exceptMarker) {
@@ -9833,6 +10012,7 @@ function closeAllMapPopups(markers, exceptMarker) {
 
 function mountMapPopupInLayer(popup, layerEl) {
   if (!popup || !layerEl) return;
+  if (typeof L !== 'undefined' && popup instanceof L.Popup) return;
   const move = () => {
     const el = popup.getElement();
     if (el && el.parentNode !== layerEl) layerEl.appendChild(el);
@@ -9972,11 +10152,16 @@ function addLabTrakMapMarker(map, options) {
   } = options;
   const pinShape = MAP_PIN_SHAPES.some(s => s.id === shape) ? shape : mapSymbolToShape(symbol);
   const el = createMarkerEl(color, pinShape, !!isActive, !!dimmed);
-  const popup = createMapPopup(popupHtml, popupOpts);
-  const marker = new mapboxgl.Marker({ element: el, anchor: pinShape === 'pin' ? 'bottom' : 'center' })
-    .setLngLat([coords.lng, coords.lat])
-    .setPopup(popup)
-    .addTo(map);
+  const isDropPin = pinShape === 'pin';
+  const width = isDropPin ? 24 : 28;
+  const height = isDropPin ? 30 : 28;
+  const marker = L.marker([coords.lat, coords.lng], {
+    icon: labTrakPinIcon(el, width, height, isDropPin ? [width / 2, height] : [width / 2, height / 2]),
+    keyboard: false,
+    riseOnHover: true,
+  });
+  marker.bindPopup(createMapPopup(popupHtml, popupOpts));
+  marker.addTo(map);
   marker._pinKey = pinKey || '';
   wireMapMarkerPopup(marker, { getSiblings, popupLayer });
   return marker;
@@ -9987,7 +10172,7 @@ function setupMapPopupDismiss(map, getMarkers) {
   map._labtrakPopupDismiss = true;
   map.on('click', (e) => {
     const t = e.originalEvent?.target;
-    if (t?.closest?.('.mapboxgl-marker') || t?.closest?.('.mapboxgl-popup')) return;
+    if (t?.closest?.('.labtrak-pin') || t?.closest?.('.leaflet-marker-icon') || t?.closest?.('.leaflet-popup') || t?.closest?.('.mapboxgl-marker') || t?.closest?.('.mapboxgl-popup')) return;
     closeAllMapPopups(typeof getMarkers === 'function' ? getMarkers() : []);
   });
 }
@@ -9998,7 +10183,6 @@ function createMarkerEl(color, shape, isActive, dimmed) {
   const wrap = document.createElement('div');
   wrap.className = 'labtrak-pin';
   wrap.style.cssText = `
-    position: relative;
     width: ${pinShape === 'pin' ? 24 : 28}px;
     height: ${pinShape === 'pin' ? 30 : 28}px;
     display: flex; align-items: center; justify-content: center;
@@ -10491,17 +10675,70 @@ function labMapStartAreaDraw() {
   showToast('Click corners on the map — double-click to close the boundary', 'success');
 }
 
-function labMapInitDraw() {
-  if (!labMap || labMapDraw || !isLabMapAdmin() || typeof MapboxDraw === 'undefined') return;
-  labMapDraw = new MapboxDraw({
-    displayControlsDefault: false,
-    controls: {},
-    defaultMode: 'simple_select',
+function createLabTrakAreaDraw(map) {
+  const style = { color: '#f0c14a', weight: 2, fillColor: '#f0c14a', fillOpacity: 0.16, interactive: false };
+  const draw = {
+    _mode: 'simple_select',
+    _latlngs: [],
+    _line: null,
+    _poly: null,
+    changeMode(mode) {
+      this._mode = mode;
+      if (mode === 'draw_polygon') {
+        map.doubleClickZoom.disable();
+        map.getContainer().style.cursor = 'crosshair';
+      } else {
+        map.doubleClickZoom.enable();
+        map.getContainer().style.cursor = '';
+      }
+    },
+    deleteAll() {
+      this._latlngs = [];
+      this._clearGraphics();
+    },
+    getAll() {
+      if (this._latlngs.length < 3) return { features: [] };
+      const ring = this._latlngs.map(ll => [ll.lng, ll.lat]);
+      ring.push(ring[0].slice());
+      return { features: [{ geometry: { type: 'Polygon', coordinates: [ring] } }] };
+    },
+    _clearGraphics() {
+      if (this._line) { map.removeLayer(this._line); this._line = null; }
+      if (this._poly) { map.removeLayer(this._poly); this._poly = null; }
+    },
+    _redraw(closed) {
+      this._clearGraphics();
+      if (!this._latlngs.length) return;
+      if (closed && this._latlngs.length >= 3) {
+        this._poly = L.polygon(this._latlngs, style).addTo(map);
+      } else {
+        this._line = L.polyline(this._latlngs, style).addTo(map);
+      }
+    },
+  };
+  const ignoreTarget = (e) => {
+    const t = e.originalEvent?.target;
+    return !!(t?.closest?.('.labtrak-pin') || t?.closest?.('.leaflet-marker-icon') || t?.closest?.('.leaflet-popup') || t?.closest?.('.leaflet-control'));
+  };
+  map.on('click', (e) => {
+    if (draw._mode !== 'draw_polygon' || ignoreTarget(e)) return;
+    draw._latlngs.push(e.latlng);
+    draw._redraw(false);
   });
-  labMap.addControl(labMapDraw);
-  labMap.on('draw.create', labMapOnAreaDrawChange);
-  labMap.on('draw.update', labMapOnAreaDrawChange);
-  labMap.on('draw.delete', () => labMapClearArea());
+  map.on('dblclick', (e) => {
+    if (draw._mode !== 'draw_polygon' || ignoreTarget(e)) return;
+    if (draw._latlngs.length) draw._latlngs.pop();
+    if (draw._latlngs.length < 3) return;
+    draw._redraw(true);
+    draw.changeMode('simple_select');
+    labMapOnAreaDrawChange();
+  });
+  return draw;
+}
+
+function labMapInitDraw() {
+  if (!labMap || labMapDraw || !isLabMapAdmin()) return;
+  labMapDraw = createLabTrakAreaDraw(labMap);
 }
 
 function labMapCsvEscape(val) {
@@ -10633,7 +10870,7 @@ function labMapPlotMarkers(preserveView) {
   if (!labMap) return;
   labMapClearMarkers();
   labMapMarkerByKey = {};
-  const bounds = new mapboxgl.LngLatBounds();
+  const bounds = new LabTrakLngLatBounds();
   let pinCount = 0;
   const areaActive = labMapAreaMatchKeys !== null;
   const popupLayer = document.getElementById('labMapPopupLayer');
@@ -10837,20 +11074,14 @@ function initLabMapView() {
     return;
   }
   if (!labMap) {
-    labMap = createLabTrakMapboxMap('labMapContainer');
+    labMap = createLabTrakMap('labMapContainer');
     syncMapStyleButtons();
-    labMap.addControl(new mapboxgl.NavigationControl(), 'top-right');
-    labMap.addControl(new mapboxgl.FullscreenControl(), 'top-right');
     setupMapPopupDismiss(labMap, () => labMapMarkers);
     bindMapPinZoomVisibility(labMap, 'lab');
-    labMap.on('load', () => {
+    labMap.whenReady(() => {
       labMapInitDraw();
       labMapResizeSoon();
       labMapReload();
-    });
-    labMap.on('style.load', () => {
-      if (labMapAreaRing) labMapRunAreaFilter();
-      else labMapPlotMarkers(true);
     });
   } else {
     labMapResizeSoon();
@@ -32321,7 +32552,7 @@ html[data-skin="retro"] :where(
   .btn, button, .btn-primary, .btn-secondary, .btn-settings, .btn-comfort-mode,
   input, select, textarea, .form-group input, .form-group select, .form-group textarea,
   #navRail, .topbar, .sync-status-chip, #tourCard, .skin-swatch, .toast,
-  .user-btn, .lab-tile, .pin-key, .sl-qc-card, .dash-contract-row, .mapboxgl-ctrl,
+  .user-btn, .lab-tile, .pin-key, .sl-qc-card, .dash-contract-row, .mapboxgl-ctrl, .leaflet-control,
   .r18-app .r18-card, .r18-app .r18-panel, .r18-app .r18-btn, .edit-panel, .mf input, .mf select
 ) {
   box-shadow: 4px 4px 0 #000000 !important;
@@ -33002,7 +33233,7 @@ html:not([data-skin="retro"]) #app :not(
 ),
 html:not([data-skin="retro"]) #userOverlay :not(kbd, img),
 html:not([data-skin="retro"]) #setupOverlay :not(kbd, img),
-html:not([data-skin="retro"]) #mapOverlay :not(.mapboxgl-ctrl, .mapboxgl-ctrl *, .mapboxgl-popup, .mapboxgl-popup *),
+html:not([data-skin="retro"]) #mapOverlay :not(.mapboxgl-ctrl, .mapboxgl-ctrl *, .mapboxgl-popup, .mapboxgl-popup *, .leaflet-control, .leaflet-control *, .leaflet-popup, .leaflet-popup *),
 html:not([data-skin="retro"]) #cmdPalette :not(kbd) {
   font-family: var(--sans) !important;
   letter-spacing: 0 !important;
