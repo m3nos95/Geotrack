@@ -7984,10 +7984,10 @@ function labTrakTileLayers() {
       maxNativeZoom: 19,
       attribution: 'Tiles &copy; Esri',
     }),
-    dark: L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
-      subdomains: 'abcd',
+    dark: L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}', {
       maxZoom: 20,
-      attribution: '&copy; OpenStreetMap &copy; CARTO',
+      maxNativeZoom: 19,
+      attribution: 'Tiles &copy; Esri',
     }),
   };
 }
