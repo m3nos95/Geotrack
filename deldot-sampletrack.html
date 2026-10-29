@@ -1691,10 +1691,20 @@ nav:not(#r18-nav), .nav-top-row { display: none !important; }
   position: relative; z-index: 2;
   width: 100%; height: 100%;
   display: flex; align-items: center; justify-content: center;
-  transform: scale(var(--labtrak-pin-scale, 1));
-  transform-origin: center center;
 }
-.labtrak-pin[data-anchor="bottom"] .labtrak-pin-glyph { transform-origin: center bottom; }
+.acct-security { margin-top: 14px; padding-top: 14px; border-top: 1px solid var(--border); }
+.acct-security h4 { margin: 0 0 6px; font-family: var(--sans); font-size: 13px; font-weight: 600; color: var(--text); }
+.acct-security p, .acct-security .acct-msg { margin: 0 0 10px; font-family: var(--sans); font-size: 12px; line-height: 1.45; color: var(--muted); }
+.acct-security input, .acct-security select {
+  width: 100%; box-sizing: border-box; margin-bottom: 8px;
+  background: var(--bg); color: var(--text); border: 1px solid var(--border);
+  border-radius: var(--radius-sm); padding: 8px 10px; font-family: var(--sans); font-size: 13px;
+}
+.acct-security button.save {
+  width: 100%; background: var(--gold); color: #0a1628; border: none;
+  padding: 10px; font-family: var(--sans); font-size: 13px; font-weight: 650;
+  border-radius: var(--radius); cursor: pointer;
+}
 
 #mapOverlay .project-map-shell { position: relative; flex: 1; min-height: 0; width: 100%; }
 #mapContainer { flex: 1; width: 100%; height: 100%; }
@@ -3410,6 +3420,7 @@ table.fc-borrow-tbl tr.fc-borrow-detail-row td{background:var(--surface);border-
       <div class="setup-collapse-body">
       <p style="font-family:var(--mono);font-size:10px;color:var(--muted);margin:0 0 12px;line-height:1.6;">
         Create a Supabase Auth account and link it to an existing LabTrak user tile.
+        The temporary password is changed by that person under My account. No extra Supabase table is required.
         Disable email confirmation in Supabase Auth settings for instant access, or have the user confirm their email first.
       </p>
       <div class="um-add-form" style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
@@ -3696,13 +3707,32 @@ table.fc-borrow-tbl tr.fc-borrow-detail-row td{background:var(--surface);border-
         <span class="setup-collapse-chevron" aria-hidden="true">▾</span>
       </button>
       <div class="setup-collapse-body">
-      <div id="myAccountName" style="font-family:var(--mono);font-size:11px;color:var(--accent2);margin-bottom:14px;letter-spacing:0.5px;"></div>
-      <div style="display:flex;flex-direction:column;gap:10px;">
+      <div id="myAccountName" style="font-family:var(--sans);font-size:13px;color:var(--accent2);margin-bottom:8px;"></div>
+      <div class="acct-security" id="acctPasswordBlock">
+        <h4>Change password</h4>
+        <p id="acctPasswordNote">Your password is kept by Supabase Auth for your email. No new table is required.</p>
+        <div id="acctPasswordForm">
+          <input type="password" id="acctCurrentPassword" autocomplete="current-password" placeholder="Current password">
+          <input type="password" id="acctNewPassword" autocomplete="new-password" placeholder="New password">
+          <input type="password" id="acctConfirmPassword" autocomplete="new-password" placeholder="Confirm new password">
+          <button type="button" class="save" onclick="changeMyPassword()">Update password</button>
+          <div class="acct-msg" id="acctPasswordMsg"></div>
+        </div>
+      </div>
+      <div class="acct-security" id="acctPinBlock">
+        <h4>6-character PIN</h4>
+        <p id="acctPinNote">The PIN is saved on your LabTrak user record as a hash. Your name, role, and samples stay on that same record.</p>
+        <input type="text" id="acctPin" maxlength="6" autocomplete="off" autocapitalize="characters" spellcheck="false" placeholder="New PIN (6 letters or numbers)" oninput="this.value=this.value.toUpperCase().replace(/[^A-Z0-9]/g,'').slice(0,6)">
+        <input type="text" id="acctPinConfirm" maxlength="6" autocomplete="off" autocapitalize="characters" spellcheck="false" placeholder="Confirm PIN" oninput="this.value=this.value.toUpperCase().replace(/[^A-Z0-9]/g,'').slice(0,6)">
+        <button type="button" class="save" onclick="saveMySignInPin()">Save PIN</button>
+        <div class="acct-msg" id="acctPinMsg"></div>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:10px;margin-top:14px;">
         <button type="button" onclick="signOutUser()"
                 style="background:transparent;border:1px solid var(--border);color:var(--muted);
-                       font-family:var(--mono);font-size:10px;letter-spacing:1px;
+                       font-family:var(--sans);font-size:13px;
                        padding:10px 20px;border-radius:var(--radius-sm);cursor:pointer;width:100%;">
-          SIGN OUT
+          Sign out
         </button>
       </div>
       </div>
@@ -3757,6 +3787,33 @@ table.fc-borrow-tbl tr.fc-borrow-detail-row td{background:var(--surface);border-
                     padding:12px 14px;border-radius:var(--radius-sm);font-size:14px;outline:none;font-family:var(--mono);">
     </div>
     <button class="pin-key ok" style="width:100%;padding:14px;font-size:13px;border-radius:var(--radius-sm);border:none;cursor:pointer;" onclick="submitAuthSignIn()">SIGN IN ↵</button>
+    <button type="button" onclick="showPinSignInPanel()"
+            style="width:100%;margin-top:10px;background:transparent;border:1px solid var(--border);color:var(--text);
+                   padding:12px;border-radius:var(--radius-sm);cursor:pointer;font-family:var(--sans);font-size:13px;">
+      Sign in with a 6-character PIN
+    </button>
+  </div>
+
+  <div class="user-select-wrap" id="pinSignInPanel" style="display:none;max-width:380px;">
+    <div class="user-select-title" style="text-align:center;margin-bottom:6px;">PIN sign-in</div>
+    <div style="font-family:var(--sans);font-size:13px;color:var(--muted);text-align:center;margin-bottom:14px;line-height:1.45;">
+      Pick your name. The PIN opens your user record, including your role and samples.
+    </div>
+    <div class="pin-err" id="pinSignInErr"></div>
+    <select id="pinSignInUser"
+            style="width:100%;box-sizing:border-box;margin-bottom:10px;background:var(--panel);border:2px solid var(--border);color:var(--text);
+                   padding:12px 14px;border-radius:var(--radius-sm);font-size:14px;font-family:var(--sans);"></select>
+    <input type="text" id="pinSignInValue" maxlength="6" autocomplete="off" autocapitalize="characters" spellcheck="false"
+           placeholder="6-character PIN"
+           oninput="this.value=this.value.toUpperCase().replace(/[^A-Z0-9]/g,'').slice(0,6)"
+           onkeydown="if(event.key==='Enter')submitPinSignIn()"
+           style="width:100%;box-sizing:border-box;margin-bottom:12px;background:var(--panel);border:2px solid var(--border);color:var(--text);
+                  padding:12px 14px;border-radius:var(--radius-sm);font-size:18px;letter-spacing:0.3em;text-align:center;font-family:var(--sans);">
+    <button class="pin-key ok" style="width:100%;padding:14px;font-size:13px;border-radius:var(--radius-sm);border:none;cursor:pointer;" onclick="submitPinSignIn()">SIGN IN WITH PIN</button>
+    <button type="button" onclick="showAuthSignInPanel()"
+            style="width:100%;margin-top:10px;background:transparent;border:none;color:var(--muted);cursor:pointer;font-family:var(--sans);font-size:13px;">
+      Use email and password
+    </button>
   </div>
 
   <!-- User list panel -->
@@ -8232,7 +8289,7 @@ function initMapPinSearch() {
   });
 }
 
-const MAP_PIN_MIN_ZOOM = 14;
+const MAP_PIN_MIN_ZOOM = 16;
 const mapSearchState = { lab: null, project: null };
 let projectMapMarkerByKey = {};
 let projectMapSearchCatalog = [];
@@ -8242,29 +8299,16 @@ function mapSearchClear(which) {
   syncMapPinVisibility(which);
 }
 
-const MAP_PIN_SCALE_ZOOM = 15.5;
-function mapPinZoomScale(zoom) {
-  const scale = Math.pow(2, (Number(zoom) || 0) - MAP_PIN_SCALE_ZOOM);
-  if (scale < 0.45) return 0.45;
-  if (scale > 5) return 5;
-  return scale;
-}
-function syncMapPinScale(map) {
-  if (!map || typeof map.getContainer !== 'function') return;
-  const el = map.getContainer();
-  if (!el) return;
-  el.style.setProperty('--labtrak-pin-scale', mapPinZoomScale(map.getZoom()).toFixed(3));
-}
 function bindMapPinZoomVisibility(map, which) {
   if (!map || map._pinZoomBound) return;
   map._pinZoomBound = true;
   const sync = () => {
-    syncMapPinScale(map);
     syncMapPinVisibility(which);
+    refreshMapPinZoomHint(which);
   };
   map.on('zoom', sync);
   map.on('zoomend', sync);
-  syncMapPinScale(map);
+  sync();
 }
 
 function getMapMarkersForWhich(which) {
@@ -8293,6 +8337,20 @@ function syncMapPinVisibility(which) {
     el.style.display = show ? '' : 'none';
     el.style.pointerEvents = show ? '' : 'none';
   });
+  refreshMapPinZoomHint(which);
+}
+
+function refreshMapPinZoomHint(which) {
+  const map = getMapForRoadSearch(which);
+  const el = document.getElementById(which === 'lab' ? 'labMapSubtitle' : 'mapOverlaySubtitle');
+  if (!map || !el) return;
+  const hint = ' · zoom in closer to see test locations';
+  const older = ' · zoom in to see pins';
+  let base = el.textContent || '';
+  if (base.endsWith(hint)) base = base.slice(0, -hint.length);
+  if (base.endsWith(older)) base = base.slice(0, -older.length);
+  const hidden = map.getZoom() < MAP_PIN_MIN_ZOOM && getMapMarkersForWhich(which).length > 0;
+  el.textContent = base + (hidden ? hint : '');
 }
 
 function mapSearchBuildHay(layer, record) {
@@ -11923,7 +11981,7 @@ function refreshProjectAdminUI() {
 }
 
 function hideAllLoginPanels() {
-  ['authSignInPanel', 'labPickerPanel', 'userSelectPanel'].forEach(id => {
+  ['authSignInPanel', 'pinSignInPanel', 'labPickerPanel', 'userSelectPanel'].forEach(id => {
     const el = document.getElementById(id);
     if (el) el.style.display = 'none';
   });
@@ -11974,6 +12032,229 @@ async function completeAuthLogin() {
     const errEl = document.getElementById('authSignInErr');
     if (errEl) errEl.textContent = e.message || 'Could not load your profile.';
     else showToast(e.message || 'Could not load profile', 'error');
+  }
+}
+
+const SIGN_IN_PIN_ITERATIONS = 100000;
+
+function acctEsc(value) {
+  return String(value ?? '').replace(/[&<>"']/g, ch => ({
+    '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;',
+  }[ch]));
+}
+
+function normalizeSignInPin(value) {
+  return String(value || '').trim().toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 6);
+}
+
+function pinIsValid(pin) {
+  return /^[A-Z0-9]{6}$/.test(pin);
+}
+
+function bytesToB64(bytes) {
+  let text = '';
+  bytes.forEach(b => { text += String.fromCharCode(b); });
+  return btoa(text);
+}
+
+function b64ToBytes(b64) {
+  const text = atob(b64);
+  const out = new Uint8Array(text.length);
+  for (let i = 0; i < text.length; i++) out[i] = text.charCodeAt(i);
+  return out;
+}
+
+async function hashUserPin(pin) {
+  const normalized = normalizeSignInPin(pin);
+  const salt = crypto.getRandomValues(new Uint8Array(16));
+  const key = await crypto.subtle.importKey('raw', new TextEncoder().encode(normalized), 'PBKDF2', false, ['deriveBits']);
+  const bits = await crypto.subtle.deriveBits({
+    name: 'PBKDF2', salt, iterations: SIGN_IN_PIN_ITERATIONS, hash: 'SHA-256',
+  }, key, 256);
+  return `pbkdf2$${SIGN_IN_PIN_ITERATIONS}$${bytesToB64(salt)}$${bytesToB64(new Uint8Array(bits))}`;
+}
+
+async function verifyUserPin(pin, stored) {
+  const normalized = normalizeSignInPin(pin);
+  if (!pinIsValid(normalized)) return false;
+  const parts = String(stored || '').split('$');
+  if (parts.length !== 4 || parts[0] !== 'pbkdf2') return false;
+  const iterations = Number(parts[1]);
+  if (!iterations || iterations > 500000) return false;
+  let salt;
+  let expected;
+  try {
+    salt = b64ToBytes(parts[2]);
+    expected = parts[3];
+  } catch (e) { return false; }
+  const key = await crypto.subtle.importKey('raw', new TextEncoder().encode(normalized), 'PBKDF2', false, ['deriveBits']);
+  const bits = await crypto.subtle.deriveBits({
+    name: 'PBKDF2', salt, iterations, hash: 'SHA-256',
+  }, key, 256);
+  const actual = bytesToB64(new Uint8Array(bits));
+  if (actual.length !== expected.length) return false;
+  let diff = 0;
+  for (let i = 0; i < actual.length; i++) diff |= actual.charCodeAt(i) ^ expected.charCodeAt(i);
+  return diff === 0;
+}
+
+function userHasSignInPin(user) {
+  return String(user?.pin_hash || '').startsWith('pbkdf2$');
+}
+
+function refreshMyAccountSecurity() {
+  const email = _supabaseAuthSession?.user?.email || '';
+  const passNote = document.getElementById('acctPasswordNote');
+  const passForm = document.getElementById('acctPasswordForm');
+  if (passNote && passForm) {
+    if (email) {
+      passForm.style.display = '';
+      passNote.textContent = 'Signed in as ' + email + '. This replaces the temporary password. Supabase Auth stores it for this email, so no new table is needed.';
+    } else {
+      passForm.style.display = 'none';
+      passNote.textContent = 'Sign in with email and password before changing it. A PIN does not replace that password.';
+    }
+  }
+  const pinNote = document.getElementById('acctPinNote');
+  if (pinNote) {
+    const row = (_stUsersCache || []).find(u => u.id === currentUser?.id);
+    const has = userHasSignInPin(row) || !!currentUser?.has_pin;
+    pinNote.textContent = has
+      ? 'A PIN is already saved on your user record. Enter a new 6-character PIN to replace it.'
+      : 'Choose 6 letters or numbers. The PIN is saved as a hash on your LabTrak user, with your name and role.';
+  }
+}
+
+async function changeMyPassword() {
+  const msg = document.getElementById('acctPasswordMsg');
+  if (msg) msg.textContent = '';
+  const email = _supabaseAuthSession?.user?.email || '';
+  const current = document.getElementById('acctCurrentPassword')?.value || '';
+  const next = document.getElementById('acctNewPassword')?.value || '';
+  const confirm = document.getElementById('acctConfirmPassword')?.value || '';
+  if (!email || !db?.auth) {
+    if (msg) msg.textContent = 'Sign in with email and password before changing it.';
+    return;
+  }
+  if (!current || !next) {
+    if (msg) msg.textContent = 'Enter your current password and a new one.';
+    return;
+  }
+  if (next.length < 8) {
+    if (msg) msg.textContent = 'Use at least 8 characters.';
+    return;
+  }
+  if (next !== confirm) {
+    if (msg) msg.textContent = 'The new passwords do not match.';
+    return;
+  }
+  if (next === current) {
+    if (msg) msg.textContent = 'Choose a password that is different from the current one.';
+    return;
+  }
+  try {
+    const { error: checkErr } = await db.auth.signInWithPassword({ email, password: current });
+    if (checkErr) throw new Error('Current password is wrong.');
+    const { error } = await db.auth.updateUser({ password: next });
+    if (error) throw error;
+    ['acctCurrentPassword', 'acctNewPassword', 'acctConfirmPassword'].forEach(id => {
+      const el = document.getElementById(id);
+      if (el) el.value = '';
+    });
+    if (msg) msg.textContent = 'Password updated. Use it the next time you sign in.';
+    showToast('Password updated.', 'success');
+  } catch (e) {
+    if (msg) msg.textContent = e.message || 'Could not update the password.';
+  }
+}
+
+async function saveMySignInPin() {
+  const msg = document.getElementById('acctPinMsg');
+  if (msg) msg.textContent = '';
+  const pin = normalizeSignInPin(document.getElementById('acctPin')?.value);
+  const again = normalizeSignInPin(document.getElementById('acctPinConfirm')?.value);
+  if (!currentUser?.id) {
+    if (msg) msg.textContent = 'Sign in on your own user before setting a PIN.';
+    return;
+  }
+  if (!pinIsValid(pin)) {
+    if (msg) msg.textContent = 'Use exactly 6 letters or numbers.';
+    return;
+  }
+  if (pin !== again) {
+    if (msg) msg.textContent = 'Those PINs do not match.';
+    return;
+  }
+  if (!db) {
+    if (msg) msg.textContent = 'Connect to the database so the PIN is saved on your user record.';
+    return;
+  }
+  const pin_hash = await hashUserPin(pin);
+  const now = new Date().toISOString();
+  const { error } = await db.from('st_users').update({ pin_hash, updated_at: now }).eq('id', currentUser.id);
+  if (error) {
+    if (msg) msg.textContent = 'Could not save the PIN on your user: ' + (error.message || error);
+    return;
+  }
+  if (_stUsersCache) {
+    _stUsersCache = _stUsersCache.map(u => u.id === currentUser.id ? { ...u, pin_hash, updated_at: now } : u);
+  }
+  currentUser = { ...currentUser, has_pin: true };
+  try { sessionStorage.setItem('st_current_user', JSON.stringify(sessionUserRecord(currentUser))); } catch (e) {}
+  ['acctPin', 'acctPinConfirm'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.value = '';
+  });
+  refreshMyAccountSecurity();
+  if (msg) msg.textContent = 'PIN saved on your user record.';
+  showToast('PIN saved.', 'success');
+}
+
+async function showPinSignInPanel() {
+  hideAllLoginPanels();
+  const panel = document.getElementById('pinSignInPanel');
+  if (panel) panel.style.display = 'block';
+  const err = document.getElementById('pinSignInErr');
+  if (err) err.textContent = '';
+  const sel = document.getElementById('pinSignInUser');
+  const input = document.getElementById('pinSignInValue');
+  if (input) input.value = '';
+  let users = [];
+  try { users = await getUsers(); } catch (e) { users = []; }
+  const withPin = (users || []).filter(userHasSignInPin);
+  if (!sel) return;
+  if (!withPin.length) {
+    sel.innerHTML = '<option value="">No PINs set yet</option>';
+    if (err) err.textContent = 'Sign in with email, then set a PIN under Settings → My account.';
+    return;
+  }
+  sel.innerHTML = withPin.map(u => `<option value="${acctEsc(u.id)}">${acctEsc(u.name || 'Unnamed')}</option>`).join('');
+  setTimeout(() => input?.focus(), 150);
+}
+
+async function submitPinSignIn() {
+  const errEl = document.getElementById('pinSignInErr');
+  if (errEl) errEl.textContent = '';
+  const id = document.getElementById('pinSignInUser')?.value || '';
+  const pin = normalizeSignInPin(document.getElementById('pinSignInValue')?.value);
+  if (!id || !pinIsValid(pin)) {
+    if (errEl) errEl.textContent = 'Pick your name and enter your 6-character PIN.';
+    return;
+  }
+  const users = _stUsersCache || await getUsers();
+  const user = (users || []).find(u => u.id === id);
+  const ok = user && await verifyUserPin(pin, user.pin_hash);
+  if (!ok) {
+    if (errEl) errEl.textContent = 'That PIN does not match this person.';
+    return;
+  }
+  if (_supabaseAuthSession?.user && _authProfile?.app_user_id && _authProfile.app_user_id !== user.id) {
+    if (errEl) errEl.textContent = 'This browser is signed in as someone else. Sign out, then use your PIN.';
+    return;
+  }
+  loginUser(user);
+  if (isAuthRequired() && !_supabaseAuthSession?.user) {
+    showToast('Signed in with your PIN. Sign in with email once on this computer so your work saves under your name.', 'info');
   }
 }
 
@@ -13800,6 +14081,7 @@ function showSetup() {
       const role = currentUser?.role || _authProfile?.role || '';
       nameEl.textContent = getDisplayFullName() + (role ? ' · ' + role.toUpperCase() : '');
     }
+    refreshMyAccountSecurity();
   }
 
   initSetupCollapsibles();
@@ -19967,6 +20249,14 @@ function sanitizeUserForStorage(user) {
   return u;
 }
 
+function sessionUserRecord(user) {
+  const u = sanitizeUserForStorage(user);
+  u.has_pin = !!(user?.has_pin || String(user?.pin_hash || '').startsWith('pbkdf2$'));
+  delete u.pin_hash;
+  delete u.recovery;
+  return u;
+}
+
 function showTableSkeleton(tbodyId, cols, rows) {
   const tbody = document.getElementById(tbodyId);
   if (!tbody) return;
@@ -20490,7 +20780,7 @@ async function selectUserForLogin(id) {
 
 // ── Log in a user ──────────────────────────────────────────────
 function loginUser(user, silent = false) {
-  const safeUser = sanitizeUserForStorage(user);
+  const safeUser = sessionUserRecord(user);
   currentUser = safeUser;
   _notesScope = 'mine'; // reset to personal view on each login
   // Restore last project filter for this user
