@@ -7984,9 +7984,11 @@ function labTrakTileLayers() {
       maxNativeZoom: 19,
       attribution: 'Tiles &copy; Esri',
     }),
+    // Real dark-gray tiles stop at zoom 16. Past that Esri sends "Map data not yet available".
+    // Scale the last real tiles, the same way GeoTrak's satellite does past its native zoom.
     dark: L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}', {
       maxZoom: 20,
-      maxNativeZoom: 19,
+      maxNativeZoom: 16,
       attribution: 'Tiles &copy; Esri',
     }),
   };
