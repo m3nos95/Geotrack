@@ -1655,6 +1655,7 @@ nav:not(#r18-nav), .nav-top-row { display: none !important; }
   justify-content: space-between;
   gap: 12px;
   flex-shrink: 0;
+  flex-wrap: wrap;
 }
 .map-overlay-header h3 {
   font-family: var(--sans);
@@ -1672,6 +1673,7 @@ nav:not(#r18-nav), .nav-top-row { display: none !important; }
   gap: 16px;
   align-items: center;
   flex-wrap: wrap;
+  flex-shrink: 0;
 }
 .map-legend-item {
   display: flex;
@@ -7053,7 +7055,6 @@ table.fc-borrow-tbl tr.fc-borrow-detail-row td{background:var(--surface);border-
             <div class="map-style-toggle" id="labMapStyleToggle">
               <button type="button" class="map-style-btn" data-map-style="streets" onclick="labMapSetStyle('streets')">Streets</button>
               <button type="button" class="map-style-btn" data-map-style="satellite" onclick="labMapSetStyle('satellite')">Satellite</button>
-              <button type="button" class="map-style-btn" data-map-style="dark" onclick="labMapSetStyle('dark')">Dark</button>
             </div>
             <button type="button" class="btn btn-ghost" onclick="labMapReload()" style="font-size:10px;letter-spacing:1px;">↻ REFRESH</button>
             <div class="labmap-area-tools" id="labMapAreaTools" data-tour="labmap-area">
@@ -7897,12 +7898,18 @@ let mapMarkers = [];
 const LABTRAK_MAP_STYLES = {
   streets:   { label: 'Streets' },
   satellite: { label: 'Satellite' },
-  dark:      { label: 'Dark' },
 };
 let labTrakMapStyle = localStorage.getItem('labtrak_map_style') || 'streets';
 
 function getLabTrakMapStyleKey() {
-  return LABTRAK_MAP_STYLES[labTrakMapStyle] ? labTrakMapStyle : 'streets';
+  if (labTrakMapStyle !== 'satellite') {
+    if (labTrakMapStyle !== 'streets') {
+      labTrakMapStyle = 'streets';
+      try { localStorage.setItem('labtrak_map_style', 'streets'); } catch (e) {}
+    }
+    return 'streets';
+  }
+  return 'satellite';
 }
 
 function syncMapStyleButtons() {
@@ -7977,19 +7984,12 @@ function labTrakTileLayers() {
   return {
     streets: L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
       maxZoom: 19,
-      attribution: '&copy; OpenStreetMap',
+      attribution: '© OpenStreetMap',
     }),
     satellite: L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
       maxZoom: 20,
       maxNativeZoom: 19,
-      attribution: 'Tiles &copy; Esri',
-    }),
-    // Real dark-gray tiles stop at zoom 16. Past that Esri sends "Map data not yet available".
-    // Scale the last real tiles, the same way GeoTrak's satellite does past its native zoom.
-    dark: L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}', {
-      maxZoom: 20,
-      maxNativeZoom: 16,
-      attribution: 'Tiles &copy; Esri',
+      attribution: 'Esri',
     }),
   };
 }
@@ -8019,21 +8019,15 @@ function addLabTrakFullscreenControl(map) {
 function createLabTrakMap(containerId) {
   const key = getLabTrakMapStyleKey();
   const map = L.map(containerId, {
-    zoomControl: false,
+    zoomControl: true,
     attributionControl: true,
     closePopupOnClick: false,
-    zoomAnimation: true,
-    fadeAnimation: true,
-    markerZoomAnimation: true,
-    inertia: true,
-    minZoom: 3,
-    maxZoom: 19,
   }).setView([39.15, -75.5], 10);
+  map.zoomControl.setPosition('bottomleft');
   const tiles = labTrakTileLayers();
   tiles[key].addTo(map);
   map._labtrakTiles = tiles;
   map._labtrakTileKey = key;
-  L.control.zoom({ position: 'bottomleft' }).addTo(map);
   addLabTrakFullscreenControl(map);
   return adaptLeafletMap(map);
 }
@@ -8479,7 +8473,6 @@ function bindMapPinZoomVisibility(map, which) {
     syncMapPinVisibility(which);
     refreshMapPinZoomHint(which);
   };
-  map.on('zoom', sync);
   map.on('zoomend', sync);
   sync();
 }
@@ -29323,7 +29316,6 @@ function openR18() {
       <div class="map-style-toggle" id="projectMapStyleToggle">
         <button type="button" class="map-style-btn" data-map-style="streets" onclick="labMapSetStyle('streets')">Streets</button>
         <button type="button" class="map-style-btn" data-map-style="satellite" onclick="labMapSetStyle('satellite')">Satellite</button>
-        <button type="button" class="map-style-btn" data-map-style="dark" onclick="labMapSetStyle('dark')">Dark</button>
       </div>
       <button class="btn btn-ghost" onclick="closeProjectMap()" style="flex-shrink:0;">✕ CLOSE</button>
     </div>
