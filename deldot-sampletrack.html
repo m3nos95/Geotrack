@@ -1701,10 +1701,20 @@ nav:not(#r18-nav), .nav-top-row { display: none !important; }
   position: relative; z-index: 2;
   width: 100%; height: 100%;
   display: flex; align-items: center; justify-content: center;
-  transform: scale(var(--labtrak-pin-scale, 1));
-  transform-origin: center center;
 }
-.labtrak-pin[data-anchor="bottom"] .labtrak-pin-glyph { transform-origin: center bottom; }
+.acct-security { margin-top: 14px; padding-top: 14px; border-top: 1px solid var(--border); }
+.acct-security h4 { margin: 0 0 6px; font-family: var(--sans); font-size: 13px; font-weight: 600; color: var(--text); }
+.acct-security p, .acct-security .acct-msg { margin: 0 0 10px; font-family: var(--sans); font-size: 12px; line-height: 1.45; color: var(--muted); }
+.acct-security input, .acct-security select {
+  width: 100%; box-sizing: border-box; margin-bottom: 8px;
+  background: var(--bg); color: var(--text); border: 1px solid var(--border);
+  border-radius: var(--radius-sm); padding: 8px 10px; font-family: var(--sans); font-size: 13px;
+}
+.acct-security button.save {
+  width: 100%; background: var(--gold); color: #0a1628; border: none;
+  padding: 10px; font-family: var(--sans); font-size: 13px; font-weight: 650;
+  border-radius: var(--radius); cursor: pointer;
+}
 
 #mapOverlay .project-map-shell { position: relative; flex: 1; min-height: 0; width: 100%; }
 #mapContainer { flex: 1; width: 100%; height: 100%; }
@@ -3420,6 +3430,7 @@ table.fc-borrow-tbl tr.fc-borrow-detail-row td{background:var(--surface);border-
       <div class="setup-collapse-body">
       <p style="font-family:var(--mono);font-size:10px;color:var(--muted);margin:0 0 12px;line-height:1.6;">
         Create a Supabase Auth account and link it to an existing LabTrak user tile.
+        The temporary password is changed by that person under My account. No extra Supabase table is required.
         Disable email confirmation in Supabase Auth settings for instant access, or have the user confirm their email first.
       </p>
       <div class="um-add-form" style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
@@ -3725,13 +3736,24 @@ table.fc-borrow-tbl tr.fc-borrow-detail-row td{background:var(--surface);border-
         <span class="setup-collapse-chevron" aria-hidden="true">▾</span>
       </button>
       <div class="setup-collapse-body">
-      <div id="myAccountName" style="font-family:var(--mono);font-size:11px;color:var(--accent2);margin-bottom:14px;letter-spacing:0.5px;"></div>
-      <div style="display:flex;flex-direction:column;gap:10px;">
+      <div id="myAccountName" style="font-family:var(--sans);font-size:13px;color:var(--accent2);margin-bottom:8px;"></div>
+      <div class="acct-security" id="acctPasswordBlock">
+        <h4>Change password</h4>
+        <p id="acctPasswordNote">Your password is kept by Supabase Auth for your email. No new table is required.</p>
+        <div id="acctPasswordForm">
+          <input type="password" id="acctCurrentPassword" autocomplete="current-password" placeholder="Current password">
+          <input type="password" id="acctNewPassword" autocomplete="new-password" placeholder="New password">
+          <input type="password" id="acctConfirmPassword" autocomplete="new-password" placeholder="Confirm new password">
+          <button type="button" class="save" onclick="changeMyPassword()">Update password</button>
+          <div class="acct-msg" id="acctPasswordMsg"></div>
+        </div>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:10px;margin-top:14px;">
         <button type="button" onclick="signOutUser()"
                 style="background:transparent;border:1px solid var(--border);color:var(--muted);
-                       font-family:var(--mono);font-size:10px;letter-spacing:1px;
+                       font-family:var(--sans);font-size:13px;
                        padding:10px 20px;border-radius:var(--radius-sm);cursor:pointer;width:100%;">
-          SIGN OUT
+          Sign out
         </button>
       </div>
       </div>
@@ -3776,6 +3798,7 @@ table.fc-borrow-tbl tr.fc-borrow-detail-row td{background:var(--surface);border-
              onkeydown="if(event.key==='Enter')document.getElementById('authPassword')?.focus()"
              style="width:100%;box-sizing:border-box;background:var(--panel);border:2px solid var(--border);color:var(--text);
                     padding:12px 14px;border-radius:var(--radius-sm);font-size:14px;outline:none;font-family:var(--sans);">
+      <div id="authEmailRemembered" style="display:none;font-family:var(--sans);font-size:12px;color:var(--muted);margin-top:6px;line-height:1.4;">Saved on this browser. The password is not.</div>
     </div>
     <div style="margin-bottom:14px;">
       <label style="font-family:var(--mono);font-size:9px;letter-spacing:1px;color:var(--muted);display:block;margin-bottom:4px;">Password</label>
@@ -8261,7 +8284,7 @@ function initMapPinSearch() {
   });
 }
 
-const MAP_PIN_MIN_ZOOM = 14;
+const MAP_PIN_MIN_ZOOM = 16;
 const mapSearchState = { lab: null, project: null };
 let projectMapMarkerByKey = {};
 let projectMapSearchCatalog = [];
@@ -8271,29 +8294,16 @@ function mapSearchClear(which) {
   syncMapPinVisibility(which);
 }
 
-const MAP_PIN_SCALE_ZOOM = 15.5;
-function mapPinZoomScale(zoom) {
-  const scale = Math.pow(2, (Number(zoom) || 0) - MAP_PIN_SCALE_ZOOM);
-  if (scale < 0.45) return 0.45;
-  if (scale > 5) return 5;
-  return scale;
-}
-function syncMapPinScale(map) {
-  if (!map || typeof map.getContainer !== 'function') return;
-  const el = map.getContainer();
-  if (!el) return;
-  el.style.setProperty('--labtrak-pin-scale', mapPinZoomScale(map.getZoom()).toFixed(3));
-}
 function bindMapPinZoomVisibility(map, which) {
   if (!map || map._pinZoomBound) return;
   map._pinZoomBound = true;
   const sync = () => {
-    syncMapPinScale(map);
     syncMapPinVisibility(which);
+    refreshMapPinZoomHint(which);
   };
   map.on('zoom', sync);
   map.on('zoomend', sync);
-  syncMapPinScale(map);
+  sync();
 }
 
 function getMapMarkersForWhich(which) {
@@ -8322,6 +8332,20 @@ function syncMapPinVisibility(which) {
     el.style.display = show ? '' : 'none';
     el.style.pointerEvents = show ? '' : 'none';
   });
+  refreshMapPinZoomHint(which);
+}
+
+function refreshMapPinZoomHint(which) {
+  const map = getMapForRoadSearch(which);
+  const el = document.getElementById(which === 'lab' ? 'labMapSubtitle' : 'mapOverlaySubtitle');
+  if (!map || !el) return;
+  const hint = ' · zoom in closer to see test locations';
+  const older = ' · zoom in to see pins';
+  let base = el.textContent || '';
+  if (base.endsWith(hint)) base = base.slice(0, -hint.length);
+  if (base.endsWith(older)) base = base.slice(0, -older.length);
+  const hidden = map.getZoom() < MAP_PIN_MIN_ZOOM && getMapMarkersForWhich(which).length > 0;
+  el.textContent = base + (hidden ? hint : '');
 }
 
 function mapSearchBuildHay(layer, record) {
@@ -11868,6 +11892,7 @@ async function restoreSupabaseAuthSession() {
   }
   const { data: { session } } = await db.auth.getSession();
   _supabaseAuthSession = session;
+  if (session?.user?.email) rememberSignInEmail(session.user.email);
   return session;
 }
 
@@ -12003,13 +12028,41 @@ function hideAllLoginPanels() {
   });
 }
 
+const REMEMBERED_EMAIL_KEY = 'labtrak_remembered_email';
+
+function rememberedSignInEmail() {
+  try { return (localStorage.getItem(REMEMBERED_EMAIL_KEY) || '').trim(); } catch (e) { return ''; }
+}
+
+function rememberSignInEmail(email) {
+  const value = String(email || '').trim();
+  if (!value || value.indexOf('@') < 0) return;
+  try { localStorage.setItem(REMEMBERED_EMAIL_KEY, value); } catch (e) {}
+}
+
+function fillRememberedSignInEmail() {
+  const input = document.getElementById('authEmail');
+  const note = document.getElementById('authEmailRemembered');
+  if (!input) return false;
+  if (!input.value.trim()) {
+    const saved = rememberedSignInEmail();
+    if (saved) input.value = saved;
+  }
+  const filled = !!input.value.trim();
+  if (note) note.style.display = filled && input.value.trim() === rememberedSignInEmail() ? '' : 'none';
+  return filled;
+}
+
 function showAuthSignInPanel() {
   hideAllLoginPanels();
   const panel = document.getElementById('authSignInPanel');
   if (panel) panel.style.display = 'block';
   const err = document.getElementById('authSignInErr');
   if (err) err.textContent = '';
-  setTimeout(() => document.getElementById('authEmail')?.focus(), 150);
+  const pass = document.getElementById('authPassword');
+  if (pass) pass.value = '';
+  const hasEmail = fillRememberedSignInEmail();
+  setTimeout(() => (hasEmail ? document.getElementById('authPassword') : document.getElementById('authEmail'))?.focus(), 150);
 }
 
 async function submitAuthSignIn() {
@@ -12023,6 +12076,7 @@ async function submitAuthSignIn() {
   }
   try {
     await authSignIn(email, password);
+    rememberSignInEmail(email);
     await completeAuthLogin();
   } catch (e) {
     const url = document.getElementById('sbUrl')?.value.trim() || readStoredSbUrl();
@@ -12048,6 +12102,64 @@ async function completeAuthLogin() {
     const errEl = document.getElementById('authSignInErr');
     if (errEl) errEl.textContent = e.message || 'Could not load your profile.';
     else showToast(e.message || 'Could not load profile', 'error');
+  }
+}
+
+function refreshMyAccountSecurity() {
+  const email = _supabaseAuthSession?.user?.email || '';
+  const passNote = document.getElementById('acctPasswordNote');
+  const passForm = document.getElementById('acctPasswordForm');
+  if (passNote && passForm) {
+    if (email) {
+      passForm.style.display = '';
+      passNote.textContent = 'Signed in as ' + email + '. This replaces the temporary password. Supabase Auth stores it for this email, so no new table is needed.';
+    } else {
+      passForm.style.display = 'none';
+      passNote.textContent = 'Sign in with email and password before changing it.';
+    }
+  }
+}
+
+async function changeMyPassword() {
+  const msg = document.getElementById('acctPasswordMsg');
+  if (msg) msg.textContent = '';
+  const email = _supabaseAuthSession?.user?.email || '';
+  const current = document.getElementById('acctCurrentPassword')?.value || '';
+  const next = document.getElementById('acctNewPassword')?.value || '';
+  const confirm = document.getElementById('acctConfirmPassword')?.value || '';
+  if (!email || !db?.auth) {
+    if (msg) msg.textContent = 'Sign in with email and password before changing it.';
+    return;
+  }
+  if (!current || !next) {
+    if (msg) msg.textContent = 'Enter your current password and a new one.';
+    return;
+  }
+  if (next.length < 8) {
+    if (msg) msg.textContent = 'Use at least 8 characters.';
+    return;
+  }
+  if (next !== confirm) {
+    if (msg) msg.textContent = 'The new passwords do not match.';
+    return;
+  }
+  if (next === current) {
+    if (msg) msg.textContent = 'Choose a password that is different from the current one.';
+    return;
+  }
+  try {
+    const { error: checkErr } = await db.auth.signInWithPassword({ email, password: current });
+    if (checkErr) throw new Error('Current password is wrong.');
+    const { error } = await db.auth.updateUser({ password: next });
+    if (error) throw error;
+    ['acctCurrentPassword', 'acctNewPassword', 'acctConfirmPassword'].forEach(id => {
+      const el = document.getElementById(id);
+      if (el) el.value = '';
+    });
+    if (msg) msg.textContent = 'Password updated. Use it the next time you sign in.';
+    showToast('Password updated.', 'success');
+  } catch (e) {
+    if (msg) msg.textContent = e.message || 'Could not update the password.';
   }
 }
 
@@ -13875,6 +13987,7 @@ function showSetup() {
       const role = currentUser?.role || _authProfile?.role || '';
       nameEl.textContent = getDisplayFullName() + (role ? ' · ' + role.toUpperCase() : '');
     }
+    refreshMyAccountSecurity();
   }
 
   initSetupCollapsibles();
@@ -20049,6 +20162,14 @@ function sanitizeUserForStorage(user) {
   return u;
 }
 
+function sessionUserRecord(user) {
+  const u = sanitizeUserForStorage(user);
+  u.has_pin = !!(user?.has_pin || String(user?.pin_hash || '').startsWith('pbkdf2$'));
+  delete u.pin_hash;
+  delete u.recovery;
+  return u;
+}
+
 function showTableSkeleton(tbodyId, cols, rows) {
   const tbody = document.getElementById(tbodyId);
   if (!tbody) return;
@@ -20572,7 +20693,7 @@ async function selectUserForLogin(id) {
 
 // ── Log in a user ──────────────────────────────────────────────
 function loginUser(user, silent = false) {
-  const safeUser = sanitizeUserForStorage(user);
+  const safeUser = sessionUserRecord(user);
   currentUser = safeUser;
   _notesScope = 'mine'; // reset to personal view on each login
   // Restore last project filter for this user
