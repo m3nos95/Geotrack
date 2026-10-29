@@ -591,6 +591,16 @@ nav:not(#r18-nav), .nav-top-row { display: none !important; }
 .setup-collapse.is-open .setup-collapse-chevron { transform: rotate(180deg); }
 .setup-collapse-body { display: none; padding: 0 14px 14px; }
 .setup-collapse.is-open .setup-collapse-body { display: block; }
+.approval-path-lead { margin: 0 0 12px; font-family: var(--sans); font-size: 13px; line-height: 1.5; color: var(--text); }
+.approval-path-note { margin: 0 0 12px; font-family: var(--sans); font-size: 12px; line-height: 1.45; color: var(--muted); }
+.approval-path-steps { display: flex; flex-direction: column; gap: 10px; }
+.approval-path-step { display: grid; grid-template-columns: 28px 1fr; gap: 10px; align-items: start; }
+.approval-path-num { width: 28px; height: 28px; border-radius: 50%; background: var(--surface); border: 1px solid var(--border); display: flex; align-items: center; justify-content: center; font-family: var(--sans); font-size: 12px; font-weight: 600; color: var(--accent2); }
+.approval-path-step h4 { margin: 2px 0 4px; font-family: var(--sans); font-size: 13px; font-weight: 600; color: var(--text); }
+.approval-path-step p { margin: 0; font-family: var(--sans); font-size: 12px; line-height: 1.45; color: var(--muted); }
+.approval-path-step select { width: 100%; margin-top: 6px; box-sizing: border-box; background: var(--bg); color: var(--text); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 8px 10px; font-family: var(--sans); font-size: 13px; }
+.approval-mat-row { display: flex; flex-wrap: wrap; gap: 14px; margin-top: 8px; }
+.approval-mat-row label { display: flex; align-items: center; gap: 6px; font-family: var(--sans); font-size: 13px; color: var(--text); cursor: pointer; }
 
 .um-user-row { display: flex; align-items: center; gap: 10px; background: var(--panel); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 8px 10px; margin-bottom: 6px; }
 .um-av { width: 28px; height: 28px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 10px; font-weight: 700; color: #fff; flex-shrink: 0; }
@@ -3527,6 +3537,7 @@ table.fc-borrow-tbl tr.fc-borrow-detail-row td{background:var(--surface);border-
         <span class="setup-collapse-chevron" aria-hidden="true">▾</span>
       </button>
       <div class="setup-collapse-body">
+      <p class="approval-path-note">Can approve reports lets a person be chosen on an approval path. Who reviews soil and aggregate, and who sends the email, is set under Approval paths.</p>
       <div id="umUserList"></div>
       <div class="um-add-form">
         <input type="text" id="um_name" placeholder="Full name">
@@ -3599,17 +3610,35 @@ table.fc-borrow-tbl tr.fc-borrow-detail-row td{background:var(--surface);border-
       </div>
     </div>
 
-    <!-- Team Assignments — admin only -->
+    <!-- Approval paths — admin only -->
+    <div class="user-mgmt-section setup-collapse" id="approvalPathSection" data-setup-open="true" style="display:none;">
+      <button type="button" class="setup-collapse-hdr" onclick="toggleSetupSection(this)" aria-expanded="true">
+        <span class="setup-collapse-title">Approval paths</span>
+        <span class="setup-collapse-chevron" aria-hidden="true">▾</span>
+      </button>
+      <div class="setup-collapse-body">
+        <div id="approvalPathEditor"></div>
+        <button type="button" onclick="saveApprovalPaths()"
+          style="margin-top:14px;width:100%;background:var(--gold);color:#0a1628;border:none;
+                 padding:10px;font-family:var(--sans);font-size:13px;font-weight:650;
+                 border-radius:var(--radius);cursor:pointer;">
+          Save approval path
+        </button>
+      </div>
+    </div>
+
+    <!-- Team Assignments — admin only. Does not apply to materials on an approval path. -->
     <div class="user-mgmt-section setup-collapse" id="teamAssignSection" data-setup-open="false" style="display:none;">
       <button type="button" class="setup-collapse-hdr" onclick="toggleSetupSection(this)" aria-expanded="false">
         <span class="setup-collapse-title">Team assignments</span>
         <span class="setup-collapse-chevron" aria-hidden="true">▾</span>
       </button>
       <div class="setup-collapse-body">
-      <p style="font-family:var(--mono);font-size:10px;color:var(--muted);margin:0 0 14px;line-height:1.6;">
-        Assign technicians to each approver. An approver will only see pending reports
-        from their assigned team — keeps soil, concrete, and field approvals separate.
-        <br>Leave all unchecked to allow an approver to see <em>all</em> pending reports.
+      <p class="approval-path-note">
+        Optional, and only for reports that are not on an approval path.
+        Soil and aggregate follow Approval paths, not these checkboxes.
+        For everything else, an approver sees pending reports from the technicians checked here.
+        Leave a person unchecked and they only see reports no other approver has claimed.
       </p>
       <div id="teamAssignList"></div>
       <button onclick="saveTeamAssignments()"
@@ -5715,16 +5744,16 @@ table.fc-borrow-tbl tr.fc-borrow-detail-row td{background:var(--surface);border-
         <button onclick="window.print()">🖨️ PRINT / SAVE PDF</button>
         <button id="rpt-soillab-edit-btn" onclick="slReturnToSoilLabEdit()" style="display:none;background:var(--blue2);color:#fff;border-color:var(--blue);">✏️ EDIT REPORT</button>
         <button id="rpt-email-btn" onclick="emailCurrentReport()" style="display:none;background:#064e2b;color:#fff;border-color:#16a34a;">📧 RESEND EMAIL</button>
-        <button id="rpt-approve-btn" onclick="slApproveForDistribution()" style="display:none;">✅ APPROVE &amp; SEND</button>
-        <button id="rpt-reject-btn"  onclick="slOpenRejectModal()"          style="display:none;">❌ REJECT</button>
+        <button id="rpt-approve-btn" onclick="slApproveForDistribution()" style="display:none;">Approve</button>
+        <button id="rpt-reject-btn"  onclick="slOpenRejectModal()"          style="display:none;">Reject</button>
         <button onclick="showActiveSampleHistory()">🕓 HISTORY</button>
         <button onclick="switchView('soillab')">← BACK TO SOIL LAB</button>
       </div>
-      <div id="rpt-pending-notice" style="display:none;background:#1c1300;border:1px solid #f59e0b;border-radius:6px;padding:9px 14px;margin-bottom:12px;font-family:var(--mono);font-size:11px;color:#fde68a;">
-        ⏳ Awaiting approval before email distribution.
+      <div id="rpt-pending-notice" style="display:none;background:#1c1300;border:1px solid #f59e0b;border-radius:6px;padding:9px 14px;margin:0 20px 12px;font-family:var(--sans);font-size:13px;line-height:1.45;color:#fde68a;">
+        Waiting for approval.
       </div>
-      <div id="rpt-approved-notice" style="display:none;background:#052e16;border:1px solid #16a34a;border-radius:6px;padding:9px 14px;margin-bottom:12px;font-family:var(--mono);font-size:11px;color:#4ade80;">
-        ✅ Approved &amp; distributed.
+      <div id="rpt-approved-notice" style="display:none;background:#052e16;border:1px solid #16a34a;border-radius:6px;padding:9px 14px;margin:0 20px 12px;font-family:var(--sans);font-size:13px;line-height:1.45;color:#4ade80;">
+        Approved and distributed.
       </div>
       <div id="lb44Output"></div>
     </div>
@@ -11388,25 +11417,23 @@ async function refreshApprovalBadge() {
     return;
   }
 
-  // Try in-memory first — only count reports this approver can action
-  let count = (allSamples || []).filter(s =>
-    s.dist_status === 'pending_review' && canApproveThisReport(s)
-  ).length;
+  await ensureApprovalRoutes();
 
-  // Fall back to direct DB query (handles schema cache lag)
-  if (count === 0 && db) {
+  // Only reports this person can act on right now
+  let mine = (allSamples || []).filter(reportAwaitingMyApproval);
+
+  // Fall back to a direct query when the in-memory list has not caught up
+  if (mine.length === 0 && db) {
     try {
       const { data } = await db.from('samples')
-        .select('id, dist_status, dist_submitted_by')
+        .select('id, dist_status, dist_submitted_by, test_category, dist_approved_by')
         .is('deleted_at', null);
-      count = (data || []).filter(s =>
-        s.dist_status === 'pending_review' && canApproveThisReport(s)
-      ).length;
+      mine = (data || []).filter(reportAwaitingMyApproval);
     } catch(e) { /* silent */ }
   }
 
+  const count = mine.length;
   if (count > 0) {
-    const word = count === 1 ? 'report' : 'reports';
     // Rail badge
     if (badge) {
       badge.textContent  = count > 9 ? '9+' : String(count);
@@ -11414,7 +11441,7 @@ async function refreshApprovalBadge() {
     }
     // Dashboard banner
     if (banner) banner.style.display = '';
-    if (text)   text.textContent = `${count} ${word} awaiting your review before email distribution.`;
+    if (text)   text.textContent = approvalBannerText(mine);
   } else {
     if (badge)  badge.style.display  = 'none';
     if (banner) banner.style.display = 'none';
@@ -11435,38 +11462,67 @@ function refreshReportEmailBtn(sample) {
   );
   const hasDist    = !!(proj?.email_distribution?.trim());
   const status     = sample?.dist_status;
-  const isPending  = status === 'pending_review';
+  if (!_approvalRoutes) {
+    if (appBtn) appBtn.style.display = 'none';
+    if (rejBtn) rejBtn.style.display = 'none';
+    ensureApprovalRoutes().then(() => refreshReportEmailBtn(sample));
+    return;
+  }
+  const turn       = sample ? approvalTurn(sample) : null;
+  const isPending  = !!turn;
   const isApproved = status === 'approved';
   const isApprover = canApproveReports() && canApproveThisReport(sample);
 
-  // Resend button after approval (or manual send when connected)
+  // Resend button after final approval
   if (btn) btn.style.display = (hasDist && isApproved && gmailSendReady()) ? '' : 'none';
 
-  // Approve/Reject: approvers only, only when pending
-  if (appBtn) appBtn.style.display = (isPending && isApprover) ? '' : 'none';
+  if (appBtn) {
+    appBtn.style.display = (isPending && isApprover) ? '' : 'none';
+    appBtn.textContent = turn?.kind === 'section' ? 'Approve'
+      : turn?.kind === 'final' ? 'Final approval and send'
+      : 'Approve and send';
+  }
   if (rejBtn) rejBtn.style.display = (isPending && isApprover) ? '' : 'none';
 
-  // Status notices
-  if (pendNotice) pendNotice.style.display = (isPending && !isApprover) ? '' : 'none';
-  if (appNotice)  appNotice.style.display  = isApproved ? '' : 'none';
+  if (pendNotice) {
+    pendNotice.style.display = isPending ? '' : 'none';
+    if (isPending) pendNotice.textContent = approvalNoticeText(sample);
+  }
+  if (appNotice) {
+    appNotice.style.display = isApproved ? '' : 'none';
+    if (isApproved) {
+      const who = sample?.dist_approved_by ? ` by ${sample.dist_approved_by}` : '';
+      appNotice.textContent = `Approved and distributed${who}.`;
+    }
+  }
 }
 
 // ── Approve report and fire the email ─────────────────────────────
 async function slApproveForDistribution() {
   if (!slCurrentSample && currentSample) slCurrentSample = currentSample;
   if (!slCurrentSample) return;
-  if (!canApproveReports()) { showToast('You do not have permission to approve reports', 'error'); return; }
+  await ensureApprovalRoutes();
+  const decision = approvalDecision(slCurrentSample);
+  if (!decision.ok) {
+    showToast('This report is waiting for someone else.', 'error');
+    refreshReportEmailBtn(slCurrentSample);
+    return;
+  }
   const approvedBy = currentUser?.name || 'Admin';
   const approvedAt = new Date().toISOString();
-  const { error } = await db.from('samples').update({
-    dist_status:      'approved',
-    dist_approved_by: approvedBy,
-    dist_approved_at: approvedAt,
-  }).eq('id', slCurrentSample.id);
+  const patch = decision.email
+    ? { dist_status: 'approved', dist_approved_by: approvedBy, dist_approved_at: approvedAt }
+    : { dist_status: 'pending_final', dist_approved_by: approvedBy };
+  const { error } = await db.from('samples').update(patch).eq('id', slCurrentSample.id);
   if (error) { showToast('Approval update failed: ' + error.message, 'error'); return; }
-  logSampleHistory({ sampleId: slCurrentSample.id, testNo: slCurrentSample.test_no, action: 'dist_approved', details: { approved_by: approvedBy } });
+  logSampleHistory({
+    sampleId: slCurrentSample.id,
+    testNo: slCurrentSample.test_no,
+    action: decision.email ? 'dist_approved' : 'dist_section_approved',
+    details: { approved_by: approvedBy, stage: decision.stage },
+  });
 
-  const updated = { ...slCurrentSample, dist_status: 'approved', dist_approved_by: approvedBy, dist_approved_at: approvedAt };
+  const updated = { ...slCurrentSample, ...patch };
   slCurrentSample = updated;
   currentSample   = updated;
   allSamples = allSamples.map(s => s.id === updated.id ? updated : s);
@@ -11477,12 +11533,17 @@ async function slApproveForDistribution() {
   // Stay on the completed report — do not fall back to soil lab data entry
   await slViewReport();
 
-  // Sync result to Approved Sources chart
-  // Fetch fresh from DB so we have all fields (push_to_sources, supplied_by, etc.)
+  if (!decision.email) {
+    const finalName = approverNameById(decision.finalApproverId) || 'the final approver';
+    showToast(`Reviewed. Waiting for ${finalName} for final approval and distribution.`, 'success');
+    return;
+  }
+
+  // Sync result to Approved Sources chart only after final approval
   const { data: freshSample } = await db.from('samples').select('*').eq('id', updated.id).single();
   await srcSyncFromSample(freshSample || updated);
 
-  showToast('Report approved — sending email…', 'success');
+  showToast(decision.stage === 'final' ? 'Final approval recorded — sending email…' : 'Report approved — sending email…', 'success');
   await autoEmailReport(updated);
 }
 
@@ -11588,17 +11649,30 @@ function slOpenRejectModal() {
 
 async function slSubmitRejection() {
   if (!slCurrentSample) return;
+  await ensureApprovalRoutes();
+  if (!canApproveThisReport(slCurrentSample)) {
+    showToast('This report is waiting for someone else.', 'error');
+    return;
+  }
   const comment = (document.getElementById('slRejectComment')?.value || '').trim();
   const { error } = await db.from('samples').update({
     dist_status:          'rejected',
     dist_rejected_reason: comment || '(No reason provided)',
+    dist_approved_by:     null,
+    dist_approved_at:     null,
   }).eq('id', slCurrentSample.id);
   if (error) { showToast('Rejection update failed: ' + error.message, 'error'); return; }
   logSampleHistory({ sampleId: slCurrentSample.id, testNo: slCurrentSample.test_no, action: 'dist_rejected', details: { reason: comment || '(No reason provided)' } });
 
   document.getElementById('slRejectModal').classList.remove('open');
 
-  const updated = { ...slCurrentSample, dist_status: 'rejected', dist_rejected_reason: comment || '(No reason provided)' };
+  const updated = {
+    ...slCurrentSample,
+    dist_status: 'rejected',
+    dist_rejected_reason: comment || '(No reason provided)',
+    dist_approved_by: null,
+    dist_approved_at: null,
+  };
   slCurrentSample = updated;
   currentSample   = updated;
   allSamples = allSamples.map(s => s.id === updated.id ? updated : s);
@@ -13812,6 +13886,7 @@ async function connectSupabase(silent = false) {
     persistSupabaseSettings();
     updateSupabaseStatus();
     pullLabSpecConfigFromDb().catch(() => {});
+    ensureApprovalRoutes().catch(() => {});
     refreshAuthProvisionUI();
     offlineQueuePruneDeadOps();
     await flushSampleHistoryQueue();
@@ -13897,7 +13972,7 @@ function showSetup() {
   updateComfortModeUI();
   const isAdmin = currentUser && currentUser.role === 'admin';
 
-  ['userMgmtSection','emailSettingsSection','manageTeamsSection','hubRestrictSection','teamAssignSection']
+  ['userMgmtSection','emailSettingsSection','manageTeamsSection','hubRestrictSection','approvalPathSection','teamAssignSection']
     .forEach(id => { const el = document.getElementById(id); if (el) el.style.display = 'none'; });
 
   showDataMaintenancePanel(isAdmin);
@@ -13987,6 +14062,9 @@ function applyPermissionUnlockUI() {
 
   const hubSect = document.getElementById('hubRestrictSection');
   if (hubSect && isAdmin) { hubSect.style.display = 'block'; renderHubRestrictions(); }
+
+  const pathSect = document.getElementById('approvalPathSection');
+  if (pathSect && isAdmin) { pathSect.style.display = 'block'; renderApprovalPaths(); }
 
   const teamSect = document.getElementById('teamAssignSection');
   if (teamSect && isAdmin) { teamSect.style.display = 'block'; renderTeamAssignments(); }
@@ -19490,9 +19568,12 @@ function sampleHasLabData(sample) {
 function getLabWorkflowStage(sample) {
   if (!sample) return { key: 'awaiting', label: 'AWAITING', badgeClass: 'awaiting' };
   if (sample.status === 'density') return { key: 'density', label: 'DENSITY', badgeClass: 'density' };
-  if (sample.status === 'complete') return { key: 'complete', label: 'COMPLETE', badgeClass: 'complete' };
-  if (sample.dist_status === 'pending_review') return { key: 'approval', label: 'APPROVAL', badgeClass: 'pending' };
+  if (sample.dist_status === 'pending_final') return { key: 'approval', label: 'FINAL APPROVAL', badgeClass: 'pending' };
+  if (sample.dist_status === 'pending_review') {
+    return { key: 'approval', label: routeForSample(sample) ? 'SECTION REVIEW' : 'APPROVAL', badgeClass: 'pending' };
+  }
   if (sample.dist_status === 'rejected') return { key: 'rejected', label: 'REJECTED', badgeClass: 'rejected' };
+  if (sample.status === 'complete') return { key: 'complete', label: 'COMPLETE', badgeClass: 'complete' };
 
   const hasReceived = !!(sample.date_received && String(sample.date_received).trim());
   const hasTested = !!(sample.date_tested && String(sample.date_tested).trim());
@@ -19652,7 +19733,7 @@ async function slRefreshPendingApprovalSamples() {
   if (!db) return;
   try {
     const { data, error } = await db.from('samples').select('*')
-      .eq('dist_status', 'pending_review')
+      .in('dist_status', ['pending_review', 'pending_final'])
       .is('deleted_at', null)
       .order('date_sampled', { ascending: false })
       .limit(100);
@@ -19752,7 +19833,8 @@ const HISTORY_ACTION_LABELS = {
   field_submitted: 'Field sample submitted',
   lab_complete: 'Lab work completed',
   dist_queued: 'Queued for approval',
-  dist_approved: 'Report approved',
+  dist_section_approved: 'Section review approved',
+  dist_approved: 'Final approval and distribution',
   dist_rejected: 'Report rejected',
   archived: 'Archived',
   unarchived: 'Unarchived',
@@ -19871,7 +19953,7 @@ function slCanDeleteFromQueue(s) {
 
 function slIsCorruptSample(s) {
   if (!s) return false;
-  const locked = s.status === 'complete' || s.dist_status === 'pending_review';
+  const locked = s.status === 'complete' || s.dist_status === 'pending_review' || s.dist_status === 'pending_final';
   return locked && !sampleHasLabData(s);
 }
 
@@ -20630,7 +20712,8 @@ function loginUser(user, silent = false) {
   });
   if (!silent) showToast(`Welcome, ${user.name} ✓`, 'success');
   refreshProjectAdminUI();
-  // Refresh approval badge after samples have had time to load
+  // Refresh approval badge after the path and samples have loaded
+  ensureApprovalRoutes().then(() => refreshApprovalBadge()).catch(() => {});
   setTimeout(refreshApprovalBadge, 800);
   setTimeout(refreshApprovalBadge, 2500);
 }
@@ -20716,7 +20799,7 @@ async function umRenderUsers() {
         <input type="checkbox" ${isApprover ? 'checked' : ''} ${u.role === 'admin' ? 'disabled' : ''}
           onchange="umToggleApprover('${u.id}', this.checked)"
           style="accent-color:var(--gold);width:13px;height:13px;">
-        Can Approve Reports
+        Can approve reports
       </label>
       <button class="um-del" onclick="umDeleteUser('${u.id}')" title="Delete">✕</button>
     </div>`;
@@ -20945,7 +21028,7 @@ async function renderTeamAssignments() {
         <div class="um-av" style="background:${approver.color||rdA.color};width:28px;height:28px;font-size:10px;">${approver.initials||approver.name[0]}</div>
         <div>
           <div style="font-family:var(--mono);font-size:12px;font-weight:700;color:var(--accent2);">${approver.name}</div>
-          <div style="font-family:var(--mono);font-size:9px;color:var(--muted);">${rdA.label} · ${assignedCount ? assignedCount + ' assigned' : 'No restrictions (sees all)'}</div>
+          <div style="font-family:var(--mono);font-size:9px;color:var(--muted);">${rdA.label} · ${assignedCount ? assignedCount + ' assigned' : 'No technician filter'}</div>
         </div>
       </div>
       ${techBoxes}
@@ -21001,34 +21084,378 @@ async function saveTeamAssignments() {
   }
 }
 
-// Check if current user can approve a specific sample
-function canApproveThisReport(sample) {
+// ── Approval paths ─────────────────────────────────────────────
+// Soil and aggregate can require two people: a section reviewer, then
+// a final approver who is the only one that distributes the email.
+// Stored in lab_spec_config id "approval_routes" so every browser shares it.
+const APPROVAL_ROUTE_STORAGE_KEY = 'labtrak_approval_routes';
+const APPROVAL_ROUTE_ROW_ID = 'approval_routes';
+let _approvalRoutes = null;
+let _approvalRoutesPromise = null;
+
+function approvalEsc(value) {
+  return String(value ?? '').replace(/[&<>"']/g, ch => ({
+    '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;',
+  }[ch]));
+}
+
+function findUserByName(users, fullName) {
+  const want = String(fullName || '').trim().toLowerCase();
+  if (!want) return null;
+  const list = users || [];
+  const exact = list.find(u => String(u.name || '').trim().toLowerCase() === want);
+  if (exact) return exact;
+  const parts = want.split(/\s+/);
+  if (parts.length < 2) return null;
+  const hits = list.filter(u => {
+    const name = String(u.name || '').trim().toLowerCase();
+    return name.startsWith(parts[0] + ' ') && name.endsWith(' ' + parts[parts.length - 1]);
+  });
+  return hits.length === 1 ? hits[0] : null;
+}
+
+function defaultApprovalRoute(users) {
+  const section = findUserByName(users, 'Aaron Wieczorek');
+  const finalApprover = findUserByName(users, 'Jay Evans');
+  return {
+    id: 'soil-aggregate',
+    materials: ['soil', 'aggregate'],
+    section_approver_id: section?.id || '',
+    final_approver_id: finalApprover?.id || '',
+  };
+}
+
+function normalizeApprovalRoutes(raw) {
+  const list = Array.isArray(raw?.routes) ? raw.routes : [];
+  const routes = list.map(route => ({
+    id: String(route?.id || 'soil-aggregate'),
+    materials: [...new Set((route?.materials || []).map(m => String(m || '').toLowerCase()).filter(m => m === 'soil' || m === 'aggregate'))],
+    section_approver_id: String(route?.section_approver_id || ''),
+    final_approver_id: String(route?.final_approver_id || ''),
+  })).filter(route => route.materials.length);
+  return { routes };
+}
+
+function approvalRouteReady(route) {
+  return !!(route && route.section_approver_id && route.final_approver_id && route.materials?.length);
+}
+
+function sampleApprovalMaterial(sample) {
+  const cat = String(sample?.test_category || 'soil').trim().toLowerCase();
+  if (cat === 'aggregate') return 'aggregate';
+  if (cat === 'soil' || cat === '') return 'soil';
+  return cat;
+}
+
+function routeForSample(sample) {
+  const material = sampleApprovalMaterial(sample);
+  return (_approvalRoutes?.routes || []).find(route => approvalRouteReady(route) && route.materials.includes(material)) || null;
+}
+
+function distStatusAwaitingApproval(status) {
+  return status === 'pending_review' || status === 'pending_final';
+}
+
+function approvalTurn(sample) {
+  if (!sample) return null;
+  const route = routeForSample(sample);
+  if (route) {
+    if (sample.dist_status === 'pending_review') return { kind: 'section', route };
+    if (sample.dist_status === 'pending_final') return { kind: 'final', route };
+    return null;
+  }
+  if (sample.dist_status === 'pending_review') return { kind: 'legacy', route: null };
+  return null;
+}
+
+function approverNameById(id) {
+  if (!id) return '';
+  const user = (_stUsersCache || []).find(u => u.id === id);
+  return user?.name || '';
+}
+
+function ensureApprovalRoutes() {
+  if (_approvalRoutes && (_approvalRoutes.routes || []).some(approvalRouteReady)) {
+    return Promise.resolve(_approvalRoutes);
+  }
+  if (!_approvalRoutesPromise) {
+    _approvalRoutesPromise = loadApprovalRoutes().catch(err => {
+      _approvalRoutesPromise = null;
+      throw err;
+    });
+  }
+  return _approvalRoutesPromise;
+}
+
+async function loadApprovalRoutes() {
+  let fromDb = null;
+  if (db) {
+    try {
+      const { data, error } = await db.from('lab_spec_config').select('config').eq('id', APPROVAL_ROUTE_ROW_ID).maybeSingle();
+      if (!error && data?.config) fromDb = normalizeApprovalRoutes(data.config);
+    } catch (e) { console.warn('loadApprovalRoutes:', e); }
+  }
+  if (fromDb?.routes?.some(approvalRouteReady)) {
+    _approvalRoutes = fromDb;
+    try { localStorage.setItem(APPROVAL_ROUTE_STORAGE_KEY, JSON.stringify(fromDb)); } catch (e) {}
+    return _approvalRoutes;
+  }
+  try {
+    const raw = localStorage.getItem(APPROVAL_ROUTE_STORAGE_KEY);
+    if (raw) {
+      const local = normalizeApprovalRoutes(JSON.parse(raw));
+      if (local.routes.some(approvalRouteReady)) {
+        _approvalRoutes = local;
+        return _approvalRoutes;
+      }
+    }
+  } catch (e) {}
+  const users = await getUsers();
+  const route = defaultApprovalRoute(users);
+  _approvalRoutes = { routes: [route] };
+  if (approvalRouteReady(route)) {
+    try { localStorage.setItem(APPROVAL_ROUTE_STORAGE_KEY, JSON.stringify(_approvalRoutes)); } catch (e) {}
+    if (db) await persistApprovalRoutes(_approvalRoutes, { quiet: true });
+  }
+  return _approvalRoutes;
+}
+
+async function persistApprovalRoutes(doc, opts) {
+  const norm = normalizeApprovalRoutes(doc);
+  if (!norm.routes.length) {
+    if (!opts?.quiet) showToast('Choose soil, aggregate, or both.', 'error');
+    return false;
+  }
+  _approvalRoutes = norm;
+  _approvalRoutesPromise = Promise.resolve(norm);
+  try { localStorage.setItem(APPROVAL_ROUTE_STORAGE_KEY, JSON.stringify(norm)); } catch (e) {}
+  if (!db) {
+    if (!opts?.quiet) showToast('Approval path saved on this browser. Connect to share it with everyone.', 'info');
+    return true;
+  }
+  try {
+    const { error } = await db.from('lab_spec_config').upsert({
+      id: APPROVAL_ROUTE_ROW_ID,
+      config: norm,
+      updated_at: new Date().toISOString(),
+      updated_by: currentUser?.name || currentUser?.id || '',
+    }, { onConflict: 'id' });
+    if (error) throw error;
+    return true;
+  } catch (e) {
+    console.warn('persistApprovalRoutes:', e);
+    if (!opts?.quiet) showToast('Could not save the approval path: ' + (e.message || e), 'error');
+    return false;
+  }
+}
+
+function describeApprovalRoute(route) {
+  const mats = route?.materials || [];
+  const matLabel = mats.includes('soil') && mats.includes('aggregate') ? 'Soil and aggregate'
+    : mats.includes('aggregate') ? 'Aggregate'
+    : mats.includes('soil') ? 'Soil'
+    : 'No materials selected';
+  const section = approverNameById(route?.section_approver_id) || 'the section reviewer';
+  const finalName = approverNameById(route?.final_approver_id) || 'the final approver';
+  if (!mats.length) return 'Choose soil, aggregate, or both.';
+  if (!route?.section_approver_id || !route?.final_approver_id) {
+    return `${matLabel} need both a section reviewer and a final approver. Email is sent only by the final approver.`;
+  }
+  return `${matLabel} reports go to ${section} first. ${finalName} gives final approval and sends the email. Nobody else can skip that step.`;
+}
+
+function approvalUserOptions(users, selectedId) {
+  const list = [...(users || [])].sort((a, b) => String(a.name || '').localeCompare(String(b.name || ''), undefined, { sensitivity: 'base' }));
+  const opts = ['<option value="">Choose a person</option>'];
+  let saw = !selectedId;
+  list.forEach(user => {
+    const selected = user.id === selectedId ? ' selected' : '';
+    if (user.id === selectedId) saw = true;
+    opts.push(`<option value="${approvalEsc(user.id)}"${selected}>${approvalEsc(user.name || 'Unnamed')}</option>`);
+  });
+  if (selectedId && !saw) opts.push(`<option value="${approvalEsc(selectedId)}" selected>Saved approver</option>`);
+  return opts.join('');
+}
+
+function approvalPathDraftFromForm() {
+  const materials = [];
+  if (document.getElementById('approvalMatSoil')?.checked) materials.push('soil');
+  if (document.getElementById('approvalMatAggregate')?.checked) materials.push('aggregate');
+  return {
+    id: 'soil-aggregate',
+    materials,
+    section_approver_id: document.getElementById('approvalSectionUser')?.value || '',
+    final_approver_id: document.getElementById('approvalFinalUser')?.value || '',
+  };
+}
+
+function approvalPathPreview() {
+  const el = document.getElementById('approvalPathSummary');
+  if (!el) return;
+  const draft = approvalPathDraftFromForm();
+  const section = document.getElementById('approvalSectionUser')?.selectedOptions?.[0];
+  const finalOpt = document.getElementById('approvalFinalUser')?.selectedOptions?.[0];
+  const named = {
+    ...draft,
+    section_approver_id: draft.section_approver_id,
+    final_approver_id: draft.final_approver_id,
+  };
+  const summary = describeApprovalRoute(named)
+    .replace('the section reviewer', (section && draft.section_approver_id) ? section.textContent : 'the section reviewer')
+    .replace('the final approver', (finalOpt && draft.final_approver_id) ? finalOpt.textContent : 'the final approver');
+  el.textContent = summary;
+}
+
+async function renderApprovalPaths() {
+  const container = document.getElementById('approvalPathEditor');
+  if (!container) return;
+  await loadApprovalRoutes();
+  const users = await getUsers();
+  const route = (_approvalRoutes?.routes || []).find(r => r.id === 'soil-aggregate')
+    || (_approvalRoutes?.routes || [])[0]
+    || defaultApprovalRoute(users);
+  const soilOn = !route.materials?.length || route.materials.includes('soil');
+  const aggOn = !route.materials?.length || route.materials.includes('aggregate');
+  container.innerHTML = `
+    <p class="approval-path-lead" id="approvalPathSummary">${approvalEsc(describeApprovalRoute(route))}</p>
+    <div class="approval-path-steps">
+      <div class="approval-path-step">
+        <div class="approval-path-num">1</div>
+        <div>
+          <h4>Lab finishes the report</h4>
+          <p>The report waits. It is not emailed yet.</p>
+          <div class="approval-mat-row">
+            <label><input type="checkbox" id="approvalMatSoil" ${soilOn ? 'checked' : ''} onchange="approvalPathPreview()"> Soil</label>
+            <label><input type="checkbox" id="approvalMatAggregate" ${aggOn ? 'checked' : ''} onchange="approvalPathPreview()"> Aggregate</label>
+          </div>
+        </div>
+      </div>
+      <div class="approval-path-step">
+        <div class="approval-path-num">2</div>
+        <div>
+          <h4>Section review</h4>
+          <p>This person approves the work. The email still waits.</p>
+          <select id="approvalSectionUser" onchange="approvalPathPreview()">${approvalUserOptions(users, route.section_approver_id)}</select>
+        </div>
+      </div>
+      <div class="approval-path-step">
+        <div class="approval-path-num">3</div>
+        <div>
+          <h4>Final approval and distribution</h4>
+          <p>This person is the only one who can send the email.</p>
+          <select id="approvalFinalUser" onchange="approvalPathPreview()">${approvalUserOptions(users, route.final_approver_id)}</select>
+        </div>
+      </div>
+    </div>`;
+  approvalPathPreview();
+}
+
+async function ensureApproverFlag(userIds) {
+  const ids = [...new Set((userIds || []).filter(Boolean))];
+  const users = await getUsers();
+  let changed = false;
+  const updated = users.map(user => {
+    if (!ids.includes(user.id)) return user;
+    if (user.role === 'admin' || user.can_approve_reports) return user;
+    changed = true;
+    return { ...user, can_approve_reports: true };
+  });
+  if (!changed) return true;
+  const saved = await saveUsers(updated);
+  if (!saved?.ok) return false;
+  if (currentUser && ids.includes(currentUser.id) && currentUser.role !== 'admin') {
+    currentUser = { ...currentUser, can_approve_reports: true };
+    try { sessionStorage.setItem('st_current_user', JSON.stringify(currentUser)); } catch (e) {}
+  }
+  return true;
+}
+
+async function saveApprovalPaths() {
+  const draft = approvalPathDraftFromForm();
+  if (!draft.materials.length) { showToast('Choose soil, aggregate, or both.', 'error'); return; }
+  if (!draft.section_approver_id || !draft.final_approver_id) {
+    showToast('Choose who reviews and who gives final approval.', 'error');
+    return;
+  }
+  const granted = await ensureApproverFlag([draft.section_approver_id, draft.final_approver_id]);
+  if (!granted) { showToast('Could not give those people approval access.', 'error'); return; }
+  const ok = await persistApprovalRoutes({ routes: [draft] });
+  if (!ok) return;
+  await renderApprovalPaths();
+  refreshApprovalBadge();
+  showToast('Approval path saved.', 'success');
+}
+
+function reportAwaitingMyApproval(sample) {
+  return !!(sample && distStatusAwaitingApproval(sample.dist_status) && canApproveThisReport(sample));
+}
+
+function approvalBannerText(mine) {
+  const count = mine.length;
+  const word = count === 1 ? 'report' : 'reports';
+  const finals = mine.filter(sample => approvalTurn(sample)?.kind === 'final').length;
+  const sections = mine.filter(sample => approvalTurn(sample)?.kind === 'section').length;
+  if (finals && !sections) return `${count} ${word} waiting for your final approval and distribution.`;
+  if (sections && !finals) return `${count} ${word} waiting for your review. Email is not sent until final approval.`;
+  return `${count} ${word} waiting for your approval.`;
+}
+
+function approvalNoticeText(sample) {
+  const turn = approvalTurn(sample);
+  if (!turn) return 'Waiting for approval.';
+  const mine = canApproveThisReport(sample);
+  if (turn.kind === 'legacy') {
+    return mine ? 'Your approval sends the email.' : 'Waiting for approval before the email is sent.';
+  }
+  const sectionName = approverNameById(turn.route.section_approver_id) || 'the section reviewer';
+  const finalName = approverNameById(turn.route.final_approver_id) || 'the final approver';
+  if (turn.kind === 'section') {
+    return mine
+      ? `Your review. Approving sends this to ${finalName}. The email is not sent yet.`
+      : `Waiting for ${sectionName}. The email is not sent until ${finalName} gives final approval.`;
+  }
+  const reviewed = sample.dist_approved_by ? `${sample.dist_approved_by} already reviewed it. ` : '';
+  return mine
+    ? `${reviewed}Your final approval sends the email.`
+    : `${reviewed}Waiting for ${finalName} for final approval and distribution.`;
+}
+
+function approvalDecision(sample) {
+  if (!canApproveReports() || !canApproveThisReport(sample)) return { ok: false };
+  const turn = approvalTurn(sample);
+  if (!turn) return { ok: false };
+  if (turn.kind === 'section') {
+    return { ok: true, email: false, stage: 'section', finalApproverId: turn.route.final_approver_id };
+  }
+  return { ok: true, email: true, stage: turn.kind, finalApproverId: '' };
+}
+
+// Reports that are not on an approval path still use technician assignments.
+function legacyCanApproveThisReport(sample) {
   if (!currentUser) return false;
+  const myAssignments = currentUser.assigned_tech_ids || [];
+  const submittedBy   = sample?.dist_submitted_by || '';
+  if (myAssignments.length) return myAssignments.includes(submittedBy);
+
+  const claimedByOthers = new Set();
+  (_stUsersCache || []).forEach(user => {
+    if (user.id === currentUser.id) return;
+    if (user.role !== 'admin' && !user.can_approve_reports) return;
+    (user.assigned_tech_ids || []).forEach(id => claimedByOthers.add(id));
+  });
+  if (submittedBy && claimedByOthers.has(submittedBy)) return false;
+  return true;
+}
+
+function canApproveThisReport(sample) {
+  if (!currentUser || !sample) return false;
   const isApprover = currentUser.role === 'admin' || currentUser.can_approve_reports;
   if (!isApprover) return false;
-
-  const myAssignments = currentUser.assigned_tech_ids || [];
-  const submittedBy   = sample.dist_submitted_by || '';
-
-  // If this approver has specific techs assigned, only show their reports
-  if (myAssignments.length) {
-    return myAssignments.includes(submittedBy);
-  }
-
-  // No assignments configured for this approver:
-  // Show reports from techs not claimed by ANY other approver (catch-all)
-  const allUsers = _stUsersCache || [];
-  const claimedByOthers = new Set();
-  allUsers.forEach(u => {
-    if (u.id === currentUser.id) return; // skip self
-    if (u.role !== 'admin' && !u.can_approve_reports) return; // only other approvers
-    (u.assigned_tech_ids || []).forEach(id => claimedByOthers.add(id));
-  });
-
-  // If submitter is claimed by someone else, this approver shouldn't see it
-  if (submittedBy && claimedByOthers.has(submittedBy)) return false;
-
-  return true; // unclaimed tech — catch-all approver can handle it
+  const turn = approvalTurn(sample);
+  if (!turn) return false;
+  if (turn.kind === 'section') return currentUser.id === turn.route.section_approver_id;
+  if (turn.kind === 'final') return currentUser.id === turn.route.final_approver_id;
+  return legacyCanApproveThisReport(sample);
 }
 
 async function umToggleApprover(userId, checked) {
@@ -21414,9 +21841,7 @@ function slGoToApprovalQueue() {
     const btn = document.getElementById('sl-filter-approval');
     if (btn) btn.classList.add('active');
     slRenderQueue();
-    const pending = (allSamples || []).filter(s =>
-      s.dist_status === 'pending_review' && canApproveThisReport(s)
-    );
+    const pending = (allSamples || []).filter(reportAwaitingMyApproval);
     const firstPending = pending.find(sampleHasLabData) || pending[0];
     if (firstPending) await slOpenPendingReport(firstPending.id);
   })();
@@ -21442,7 +21867,7 @@ function slRenderQueue() {
     samples = samples.filter(s => s.status === 'complete');
     samples.sort((a, b) => (b.date_sampled || '').localeCompare(a.date_sampled || ''));
   } else if (slStatusFilter === 'approval') {
-    samples = samples.filter(s => s.dist_status === 'pending_review' && canApproveThisReport(s));
+    samples = samples.filter(reportAwaitingMyApproval);
     samples.sort((a, b) => (b.date_sampled || '').localeCompare(a.date_sampled || ''));
   } else {
     samples = samples.filter(s => !s.status || s.status === 'pending');
@@ -21473,12 +21898,12 @@ function slRenderQueue() {
   const pending  = countPendingLabSamples(allSamples);
   const archived = labSamples.filter(s => s.status === 'complete').length;
   const sub = document.getElementById('sl_queue_sub');
-  const approvalCount = labSamples.filter(s => s.dist_status === 'pending_review').length;
+  const approvalCount = labSamples.filter(reportAwaitingMyApproval).length;
   if (sub) {
     if (slStatusFilter === 'archive') {
       sub.textContent = `${archived} archived · ${summarizeLabWorkflowStages(allSamples)}`;
     } else if (slStatusFilter === 'approval') {
-      sub.textContent = `${approvalCount} report${approvalCount !== 1 ? 's' : ''} awaiting approval`;
+      sub.textContent = `${approvalCount} report${approvalCount !== 1 ? 's' : ''} waiting for you`;
     } else {
       sub.textContent = summarizeLabWorkflowStages(allSamples) + ` · ${archived} archived`;
     }
@@ -21929,7 +22354,7 @@ async function slLoadSample(id, opts) {
   // Refresh queue to show active highlight
   slRenderQueue();
 
-  const isLockedComplete = sample.status === 'complete' || sample.dist_status === 'pending_review';
+  const isLockedComplete = sample.status === 'complete' || sample.dist_status === 'pending_review' || sample.dist_status === 'pending_final';
   if (!opts.edit && !opts.noAutoReport && isLockedComplete) {
     if (!sampleHasLabData(sample)) {
       sample = await fetchSample(id, { forceFresh: true, requireLabData: true }) || sample;
@@ -22248,17 +22673,25 @@ async function slHandleDistribution(sample) {
   const { data, error } = await db.from('samples').update(pickSampleRowUpdates({
     dist_status: 'pending_review',
     dist_submitted_by: currentUser?.id || '',
+    dist_approved_by: null,
+    dist_approved_at: null,
+    dist_rejected_reason: null,
   })).eq('id', sample.id).select('*').single();
   if (error) { console.error('dist_status update failed:', error.message); return; }
   logSampleHistory({ sampleId: sample.id, testNo: sample.test_no, action: 'dist_queued', details: { sync_to_chart: syncToChart } });
   const updated = data
     ? { ...data, lab_data: normalizeLabData(data.lab_data), sync_to_chart: syncToChart }
-    : { ...sample, dist_status: 'pending_review', dist_submitted_by: currentUser?.id || '', sync_to_chart: syncToChart };
+    : { ...sample, dist_status: 'pending_review', dist_submitted_by: currentUser?.id || '', dist_approved_by: null, dist_approved_at: null, dist_rejected_reason: null, sync_to_chart: syncToChart };
   slCurrentSample = updated;
   currentSample   = updated;
   upsertAllSample(updated);
+  await ensureApprovalRoutes();
   refreshApprovalBadge();
-  showToast('Report queued for admin approval ✓', 'success');
+  const route = routeForSample(updated);
+  const sectionName = route ? approverNameById(route.section_approver_id) : '';
+  showToast(sectionName
+    ? `Queued for ${sectionName} to review. Email waits for final approval.`
+    : 'Report queued for approval.', 'success');
 }
 
 // ── Shared finish: save + render + switch view ─────────────────
