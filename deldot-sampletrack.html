@@ -8007,35 +8007,48 @@ function labTrakPinIcon(el, width, height, anchor) {
   return new Icon();
 }
 
-// A project whose samples are spread out would otherwise stay zoomed out,
-// below the level where pins appear. Close clusters fit on screen. Wide ones
-// jump to the middle of the samples and zoom in until the pins show.
-function mapSampleFocusPlan(fitZoom, minZoom, maxZoom) {
-  const minZ = minZoom == null ? MAP_PIN_MIN_ZOOM : minZoom;
-  const maxZ = maxZoom == null ? 17 : maxZoom;
-  if (!(fitZoom >= minZ)) return { mode: 'center', zoom: minZ };
-  return { mode: 'fit', maxZoom: maxZ };
+// Pairs are [lng, lat]. The winner is the real test closest to the rest,
+// so the map lands on a pin instead of the empty middle of the area.
+function mapMostCentralLngLat(pairs) {
+  if (!pairs || !pairs.length) return null;
+  if (pairs.length === 1) return pairs[0];
+  let best = pairs[0];
+  let bestScore = Infinity;
+  for (let i = 0; i < pairs.length; i++) {
+    const lng = Number(pairs[i][0]);
+    const lat = Number(pairs[i][1]);
+    if (!isFinite(lng) || !isFinite(lat)) continue;
+    let score = 0;
+    for (let j = 0; j < pairs.length; j++) {
+      if (i === j) continue;
+      const dLat = lat - Number(pairs[j][1]);
+      const midLat = (lat + Number(pairs[j][1])) / 2;
+      const dLng = (lng - Number(pairs[j][0])) * Math.cos(midLat * Math.PI / 180);
+      score += Math.sqrt(dLat * dLat + dLng * dLng);
+    }
+    if (score < bestScore) {
+      bestScore = score;
+      best = pairs[i];
+    }
+  }
+  return best;
 }
 
 function mapFocusSampleBounds(map, bounds, opts) {
   if (!map || !bounds || bounds.isEmpty() || !bounds._pairs || !bounds._pairs.length) return;
   opts = opts || {};
+  const pair = mapMostCentralLngLat(bounds._pairs);
+  if (!pair) return;
   if (typeof map.invalidateSize === 'function') map.invalidateSize(false);
-  const pad = opts.padding != null ? opts.padding : 70;
-  const leafletBounds = L.latLngBounds(bounds._pairs.map(p => [p[1], p[0]]));
-  const size = typeof map.getSize === 'function' ? map.getSize() : null;
   const duration = opts.duration != null ? opts.duration : 800;
+  const zoom = opts.zoom != null ? opts.zoom : Math.max(MAP_PIN_MIN_ZOOM, 17);
+  const center = L.latLng(Number(pair[1]), Number(pair[0]));
+  const size = typeof map.getSize === 'function' ? map.getSize() : null;
   if (!size || size.x < 20 || size.y < 20) {
-    map.setView(leafletBounds.getCenter(), MAP_PIN_MIN_ZOOM);
+    map.setView(center, zoom);
     return;
   }
-  const fitZoom = map.getBoundsZoom(leafletBounds, false, L.point(pad, pad));
-  const plan = mapSampleFocusPlan(fitZoom, opts.minZoom, opts.maxZoom);
-  if (plan.mode === 'fit') {
-    map.fitBounds(bounds, { padding: pad, maxZoom: plan.maxZoom, duration: duration });
-  } else {
-    map.flyTo(leafletBounds.getCenter(), plan.zoom, { duration: duration / 1000 });
-  }
+  map.flyTo(center, zoom, { duration: duration / 1000 });
 }
 
 function adaptLeafletMap(map) {
