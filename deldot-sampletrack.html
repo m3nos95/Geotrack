@@ -1932,6 +1932,14 @@ nav:not(#r18-nav), .nav-top-row { display: none !important; }
 .labmap-layer-meta { flex: 1; min-width: 0; }
 .labmap-layer-name { font-family: var(--sans); font-size: 13px; color: var(--text); font-weight: 600; letter-spacing: 0; }
 .labmap-layer-count { font-family: var(--sans); font-size: 12px; color: var(--muted); margin-top: 2px; }
+.labmap-layer-results, .map-legend-results {
+  display: flex; align-items: center; gap: 8px; margin-top: 3px;
+  font-family: var(--sans); font-size: 11px; color: var(--muted); line-height: 1;
+}
+.labtrak-map-key .map-legend-results { color: #cbd5e1; }
+.labmap-layer-results span, .map-legend-results span {
+  display: inline-flex; align-items: center; gap: 4px;
+}
 .labmap-layer-edit {
   flex-shrink: 0; border: 1px solid var(--border); background: transparent; color: var(--muted);
   border-radius: 8px; padding: 0 8px; font-family: var(--sans); font-size: 12px; cursor: pointer;
@@ -9000,7 +9008,7 @@ async function openProjectMap(contract, projectName, opts) {
     const pin = mapPinStyle(layer);
     const marker = addLabTrakMapMarker(projectMap, {
       coords,
-      color: pin.color,
+      color: mapPinColorForResult(layer, mapSamplePinVerdict(s, layer)),
       shape: pin.shape,
       isActive: statusLabel === 'Pending',
       pinKey: labMapItemKey(layer, s),
@@ -9012,6 +9020,7 @@ async function openProjectMap(contract, projectName, opts) {
       <div class="map-popup-row"><span class="map-popup-label">Date:</span><span class="map-popup-val">${s.date_sampled||'—'}</span></div>
       <div class="map-popup-row"><span class="map-popup-label">Status:</span><span class="${color==='#34d399'?'map-popup-pass':color==='#f87171'?'map-popup-fail':'map-popup-pend'}">${statusLabel}</span></div>
       ${nucHtml}${borrowHtml}
+      ${mapSampleOpenButton(s)}
     `,
       getSiblings: () => mapMarkers,
       popupLayer: document.getElementById('projectMapPopupLayer'),
@@ -9031,9 +9040,10 @@ async function openProjectMap(contract, projectName, opts) {
     if (!coords) return;
 
     const pin = mapPinStyle('concrete');
+    const concreteResult = mapConcreteResultLabel(set);
     const marker = addLabTrakMapMarker(projectMap, {
       coords,
-      color: pin.color,
+      color: mapPinColorForResult('concrete', mapConcreteBreakResult(set).verdict),
       shape: pin.shape,
       isActive: false,
       pinKey: labMapItemKey('concrete', { ...cs, _set: set }),
@@ -9043,6 +9053,7 @@ async function openProjectMap(contract, projectName, opts) {
       <div class="map-popup-row"><span class="map-popup-label">Location:</span><span class="map-popup-val">${set.pourLocation||'—'}</span></div>
       <div class="map-popup-row"><span class="map-popup-label">Cast:</span><span class="map-popup-val">${set.castDate||'—'}</span></div>
       <div class="map-popup-row"><span class="map-popup-label">Req. f'c:</span><span class="map-popup-val">${set.requiredFc||'—'} PSI</span></div>
+      ${concreteResult ? `<div class="map-popup-row"><span class="map-popup-label">Result:</span><span class="map-popup-val">${mapEscHtml(concreteResult)}</span></div>` : ''}
     `,
       getSiblings: () => mapMarkers,
       popupLayer: document.getElementById('projectMapPopupLayer'),
@@ -9261,6 +9272,18 @@ function delawareNEToLatLng(northing, easting) {
 function mapEscHtml(s) {
   if (s == null || s === '') return '';
   return String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+}
+
+function mapSampleOpenButton(sample) {
+  if (!sample?.id) return '';
+  const complete = sample.status === 'complete';
+  const label = complete ? 'View report' : 'Open test';
+  return `<div class="map-popup-action"><button type="button" onclick="event.preventDefault(); event.stopPropagation(); openMapSample('${mapEscHtml(sample.id)}')">${label}</button></div>`;
+}
+
+async function openMapSample(id) {
+  if (document.getElementById('mapOverlay')?.classList.contains('open')) closeProjectMap();
+  await openSample(id);
 }
 
 function mapPopupRow(label, val) {
@@ -10191,11 +10214,82 @@ function mapPinStylesLoad() {
   } catch (e) { return {}; }
 }
 
+const MAP_PIN_RESULT_LAYERS = { field_sample: true, density: true, concrete: true };
+const MAP_PIN_PASS_COLOR = '#34d399';
+const MAP_PIN_FAIL_COLOR = '#f87171';
+
 function mapPinStyle(layer) {
   const def = (typeof LAB_MAP_LAYER_DEFS !== 'undefined' && LAB_MAP_LAYER_DEFS[layer]) || { label: layer, color: '#94a3b8', shape: 'circle', symbol: '●' };
   const saved = mapPinStylesLoad()[layer] || {};
   const shape = MAP_PIN_SHAPES.some(s => s.id === saved.shape) ? saved.shape : (def.shape || mapSymbolToShape(def.symbol));
-  return { label: def.label, symbol: def.symbol, shape, color: mapPinSafeColor(saved.color || def.color) };
+  const style = { label: def.label, symbol: def.symbol, shape, color: mapPinSafeColor(saved.color || def.color) };
+  if (MAP_PIN_RESULT_LAYERS[layer]) {
+    style.passColor = mapPinSafeColor(saved.passColor || MAP_PIN_PASS_COLOR);
+    style.failColor = mapPinSafeColor(saved.failColor || MAP_PIN_FAIL_COLOR);
+  }
+  return style;
+}
+
+function mapPinColorForResult(layer, verdict) {
+  const style = mapPinStyle(layer);
+  if (verdict === 'pass' && style.passColor) return style.passColor;
+  if (verdict === 'fail' && style.failColor) return style.failColor;
+  return style.color;
+}
+
+function mapDensityCompactionPct(sample) {
+  if (!sample?.nuclear_data) return null;
+  try {
+    const nuc = typeof sample.nuclear_data === 'string' ? JSON.parse(sample.nuclear_data) : sample.nuclear_data;
+    const fn = k => parseFloat(nuc[k]) || 0;
+    const ddArr = [fn('dd1'), fn('dd2'), fn('dd3')].filter(v => v > 0);
+    const C = ddArr.length ? ddArr.reduce((a, b) => a + b, 0) / ddArr.length : 0;
+    const U = fn('U');
+    if (!(C > 0 && U > 0)) return null;
+    return (C / U) * 100;
+  } catch (e) { return null; }
+}
+
+function mapSamplePinVerdict(sample, layer) {
+  if (!sample) return null;
+  if (layer === 'density') {
+    const pct = mapDensityCompactionPct(sample);
+    if (pct != null) return pct >= 95 ? 'pass' : 'fail';
+  }
+  if (typeof sampleReportConforms !== 'function') return null;
+  const judged = sampleReportConforms(sample);
+  if (judged === true) return 'pass';
+  if (judged === false) return 'fail';
+  return null;
+}
+
+// Concrete acceptance is the oldest break on the set (usually 28-day).
+// A low 7-day break does not color the pin. A low result at the final age does.
+function mapConcreteBreakResult(set) {
+  const required = Number(set && set.requiredFc);
+  const cylinders = Array.isArray(set && set.cylinders) ? set.cylinders : [];
+  const ages = cylinders.map(c => Number(c.breakAge)).filter(n => n > 0);
+  if (!(required > 0) || !ages.length) return { verdict: null, finalAge: null };
+  const finalAge = Math.max.apply(null, ages);
+  const finals = cylinders.filter(c => Number(c.breakAge) === finalAge);
+  const broken = finals.filter(c => c && c.status === 'broken' && Number(c.strength) > 0);
+  if (broken.some(c => Number(c.strength) < required)) return { verdict: 'fail', finalAge };
+  if (broken.length > 0 && broken.length === finals.length) return { verdict: 'pass', finalAge };
+  return { verdict: null, finalAge };
+}
+
+function mapConcreteResultLabel(set) {
+  const result = mapConcreteBreakResult(set);
+  if (!result.finalAge) return '';
+  if (result.verdict === 'pass') return result.finalAge + '-day passed';
+  if (result.verdict === 'fail') return result.finalAge + '-day failed';
+  return 'Waiting on ' + result.finalAge + '-day break';
+}
+
+function mapRecordPinVerdict(layer, record) {
+  if (layer === 'concrete') return mapConcreteBreakResult(record && (record._set || record)).verdict;
+  if (layer === 'field_sample' || layer === 'density') return mapSamplePinVerdict(record, layer);
+  return null;
 }
 
 function renderProjectMapLegend() {
@@ -10203,7 +10297,10 @@ function renderProjectMapLegend() {
   if (!el || typeof LAB_MAP_LAYER_DEFS === 'undefined') return;
   const rows = Object.keys(LAB_MAP_LAYER_DEFS).map(key => {
     const style = mapPinStyle(key);
-    return `<div class="map-legend-item">${mapPinShapeMarkup(style.shape, style.color, 16)}<span>${mapRoadEscape(style.label)}</span></div>`;
+    const results = style.passColor
+      ? `<div class="map-legend-results"><span>${mapPinShapeMarkup(style.shape, style.passColor, 12)} Pass</span><span>${mapPinShapeMarkup(style.shape, style.failColor, 12)} Fail</span></div>`
+      : '';
+    return `<div class="map-legend-item">${mapPinShapeMarkup(style.shape, style.color, 16)}<span>${mapRoadEscape(style.label)}</span></div>${results}`;
   }).join('');
   el.innerHTML = `<div class="labtrak-map-key-title">Key</div>${rows}`;
 }
@@ -10288,7 +10385,7 @@ let labMapAreaMatchKeys = null;
 let labMapAreaMatches = [];
 
 const LAB_MAP_LAYER_DEFS = {
-  field_sample: { label: 'Field Sample', color: '#34d399', symbol: '●', shape: 'circle' },
+  field_sample: { label: 'Field Sample', color: '#fbbf24', symbol: '●', shape: 'circle' },
   density:      { label: 'Density',      color: '#fbbf24', symbol: '⊕', shape: 'ring' },
   core_drill:   { label: 'Core Drill',   color: '#a855f7', symbol: '◇', shape: 'diamond' },
   concrete:     { label: 'Concrete',     color: '#60a5fa', symbol: '■', shape: 'square' },
@@ -10355,6 +10452,7 @@ function labMapBuildSamplePopup(s, layer) {
     <div class="map-popup-row"><span class="map-popup-label">Date:</span><span class="map-popup-val">${s.date_sampled || '—'}</span></div>
     <div class="map-popup-row"><span class="map-popup-label">Status:</span><span class="${color === '#34d399' ? 'map-popup-pass' : color === '#f87171' ? 'map-popup-fail' : 'map-popup-pend'}">${statusLabel}</span></div>
     ${nucHtml}
+    ${mapSampleOpenButton(s)}
   `;
 }
 
@@ -10377,6 +10475,9 @@ function labMapBuildCorePopup(c) {
 }
 
 function labMapBuildConcretePopup(set) {
+  const result = mapConcreteResultLabel(set);
+  const verdict = mapConcreteBreakResult(set).verdict;
+  const resultCls = verdict === 'pass' ? 'map-popup-pass' : verdict === 'fail' ? 'map-popup-fail' : 'map-popup-pend';
   return `
     <div class="map-popup-title">${set.id || '—'}</div>
     <div class="map-popup-row"><span class="map-popup-label">Layer:</span><span class="map-popup-val">Concrete</span></div>
@@ -10385,6 +10486,7 @@ function labMapBuildConcretePopup(set) {
     <div class="map-popup-row"><span class="map-popup-label">Location:</span><span class="map-popup-val">${set.pourLocation || '—'}</span></div>
     <div class="map-popup-row"><span class="map-popup-label">Cast:</span><span class="map-popup-val">${set.castDate || '—'}</span></div>
     <div class="map-popup-row"><span class="map-popup-label">Req. f'c:</span><span class="map-popup-val">${set.requiredFc || '—'} PSI</span></div>
+    ${result ? `<div class="map-popup-row"><span class="map-popup-label">Result:</span><span class="${resultCls}">${mapEscHtml(result)}</span></div>` : ''}
   `;
 }
 
@@ -10458,6 +10560,18 @@ function labMapRenderLayerPanel() {
     const shapes = MAP_PIN_SHAPES.map(s => {
       return `<button type="button" class="labmap-pin-shape ${style.shape === s.id ? 'on' : ''}" title="${s.label}" aria-label="${s.label}" onclick="labMapSetPinStyle('${key}', { shape: '${s.id}' })">${mapPinShapeMarkup(s.id, style.color, 18)}</button>`;
     }).join('');
+    const results = style.passColor
+      ? `<div class="labmap-layer-results"><span>${mapPinShapeMarkup(style.shape, style.passColor, 12)} Pass</span><span>${mapPinShapeMarkup(style.shape, style.failColor, 12)} Fail</span></div>`
+      : '';
+    const resultPickers = style.passColor ? `
+        <div class="labmap-pin-editor-row">
+          <label for="labMapPinPass-${key}">Pass</label>
+          <input id="labMapPinPass-${key}" type="color" value="${style.passColor}" onchange="labMapSetPinStyle('${key}', { passColor: this.value })">
+        </div>
+        <div class="labmap-pin-editor-row">
+          <label for="labMapPinFail-${key}">Fail</label>
+          <input id="labMapPinFail-${key}" type="color" value="${style.failColor}" onchange="labMapSetPinStyle('${key}', { failColor: this.value })">
+        </div>` : '';
     return `<div class="labmap-layer-row">
       <div class="labmap-layer-main">
         <button type="button" class="labmap-layer-btn ${on ? 'active' : 'off'}" onclick="labMapToggleLayer('${key}')">
@@ -10465,15 +10579,17 @@ function labMapRenderLayerPanel() {
           <span class="labmap-layer-meta">
             <div class="labmap-layer-name">${def.label}</div>
             <div class="labmap-layer-count">${count} pin${count === 1 ? '' : 's'}</div>
+            ${results}
           </span>
         </button>
         <button type="button" class="labmap-layer-edit ${editing ? 'open' : ''}" aria-expanded="${editing ? 'true' : 'false'}" onclick="labMapTogglePinEditor('${key}')">Style</button>
       </div>
       <div class="labmap-pin-editor" ${editing ? '' : 'hidden'}>
         <div class="labmap-pin-editor-row">
-          <label for="labMapPinColor-${key}">Color</label>
+          <label for="labMapPinColor-${key}">${style.passColor ? 'Pending' : 'Color'}</label>
           <input id="labMapPinColor-${key}" type="color" value="${style.color}" onchange="labMapSetPinStyle('${key}', { color: this.value })">
         </div>
+        ${resultPickers}
         <div class="labmap-pin-shapes">${shapes}</div>
         <button type="button" class="labmap-pin-reset" onclick="labMapResetPinStyle('${key}')">Reset</button>
       </div>
@@ -10490,13 +10606,27 @@ function labMapSetPinStyle(layer, patch) {
   if (!LAB_MAP_LAYER_DEFS[layer]) return;
   const cur = mapPinStyle(layer);
   const next = {
-    color: mapPinSafeColor(patch.color || cur.color),
+    color: mapPinSafeColor(patch.color != null ? patch.color : cur.color),
     shape: MAP_PIN_SHAPES.some(s => s.id === patch.shape) ? patch.shape : cur.shape,
   };
+  if (cur.passColor) {
+    next.passColor = mapPinSafeColor(patch.passColor != null ? patch.passColor : cur.passColor);
+    next.failColor = mapPinSafeColor(patch.failColor != null ? patch.failColor : cur.failColor);
+  }
   const all = mapPinStylesLoad();
   const def = LAB_MAP_LAYER_DEFS[layer];
-  if (next.color.toLowerCase() === def.color.toLowerCase() && next.shape === def.shape) delete all[layer];
-  else all[layer] = next;
+  const colorDefault = next.color.toLowerCase() === def.color.toLowerCase();
+  const shapeDefault = next.shape === (def.shape || mapSymbolToShape(def.symbol));
+  const passDefault = !next.passColor || next.passColor.toLowerCase() === MAP_PIN_PASS_COLOR.toLowerCase();
+  const failDefault = !next.failColor || next.failColor.toLowerCase() === MAP_PIN_FAIL_COLOR.toLowerCase();
+  if (colorDefault && shapeDefault && passDefault && failDefault) delete all[layer];
+  else {
+    const stored = { color: next.color, shape: next.shape };
+    if (next.passColor && !passDefault) stored.passColor = next.passColor;
+    if (next.failColor && !failDefault) stored.failColor = next.failColor;
+    if (!colorDefault || !shapeDefault || stored.passColor || stored.failColor) all[layer] = stored;
+    else delete all[layer];
+  }
   try { localStorage.setItem(MAP_PIN_STYLE_KEY, JSON.stringify(all)); } catch (e) {}
   labMapRenderLayerPanel();
   labMapPlotMarkers(true);
@@ -10950,7 +11080,7 @@ function labMapPlotMarkers(preserveView) {
     const style = mapPinStyle(layer);
     const marker = addLabTrakMapMarker(labMap, {
       coords,
-      color: style.color,
+      color: mapPinColorForResult(layer, mapRecordPinVerdict(layer, record)),
       shape: style.shape,
       isActive: !!isActive && !dimmed,
       dimmed,
