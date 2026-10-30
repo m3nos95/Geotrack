@@ -1644,6 +1644,7 @@ nav:not(#r18-nav), .nav-top-row { display: none !important; }
   background: #000;
   z-index: 600;
   flex-direction: column;
+  overflow: hidden;
 }
 #mapOverlay.open { display: flex; }
 .map-overlay-header {
@@ -1718,24 +1719,48 @@ nav:not(#r18-nav), .nav-top-row { display: none !important; }
   border-radius: var(--radius); cursor: pointer;
 }
 
-#mapOverlay .project-map-shell { position: relative; flex: 1; min-height: 0; width: 100%; }
-#mapContainer { position: absolute; inset: 0; width: 100%; height: 100%; }
-.labtrak-map-key {
+#mapOverlay .project-map-shell {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+  width: 100%;
+  overflow: hidden;
+}
+/* Keep Leaflet's panes inside the map box. Their z-index otherwise paints
+   the moving basemap over the key and the lab map controls. */
+#mapContainer,
+.labmap-container {
   position: absolute;
-  top: 12px;
-  left: 12px;
-  z-index: 40;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 0;
+  isolation: isolate;
+  overflow: hidden;
+  clip-path: inset(0);
+  touch-action: none;
+  overscroll-behavior: none;
+}
+.labtrak-map-key {
+  position: relative;
+  z-index: 1300;
   display: flex;
   flex-direction: column;
   gap: 4px;
+  width: max-content;
   min-width: 148px;
   max-width: 220px;
+  max-height: min(320px, calc(100vh - 160px));
+  overflow: auto;
+  margin: 12px 0 0 12px !important;
   padding: 8px 10px;
   border-radius: 8px;
-  background: rgba(10, 16, 22, 0.92);
+  background: rgba(10, 16, 22, 0.94);
   border: 1px solid rgba(255,255,255,0.14);
   box-shadow: 0 8px 24px rgba(0,0,0,0.35);
   pointer-events: auto;
+  float: left;
+  clear: both;
 }
 .labtrak-map-key-title {
   font-family: var(--sans);
@@ -1862,10 +1887,10 @@ nav:not(#r18-nav), .nav-top-row { display: none !important; }
 /* ── LabTrak admin map view ── */
 #labmap-view { overflow: hidden; }
 #labmap-view.active { display: flex; flex-direction: column; overflow: hidden; }
-.labmap-shell { position: relative; flex: 1; width: 100%; height: 100%; min-height: 0; }
-.labmap-container { position: absolute; inset: 0; width: 100%; height: 100%; background: #06090f; }
+.labmap-shell { position: relative; flex: 1; width: 100%; height: 100%; min-height: 0; overflow: hidden; }
+.labmap-container { background: #06090f; }
 .labmap-ui {
-  position: absolute; inset: 0; z-index: 2; pointer-events: none;
+  position: absolute; inset: 0; z-index: 1300; pointer-events: none;
   display: flex; flex-direction: column; padding: 10px; gap: 8px;
 }
 .labmap-float-header {
@@ -8054,7 +8079,26 @@ function createLabTrakMap(containerId) {
   map._labtrakTiles = tiles;
   map._labtrakTileKey = key;
   addLabTrakFullscreenControl(map);
+  if (containerId === 'mapContainer') mountProjectMapKey(map);
   return adaptLeafletMap(map);
+}
+
+function mountProjectMapKey(map) {
+  if (!map || map._labtrakKeyMounted) return;
+  map._labtrakKeyMounted = true;
+  const KeyControl = L.Control.extend({
+    options: { position: 'topleft' },
+    onAdd() {
+      const el = L.DomUtil.create('div', 'labtrak-map-key');
+      el.id = 'projectMapLegend';
+      el.setAttribute('aria-label', 'Map marker key');
+      L.DomEvent.disableClickPropagation(el);
+      L.DomEvent.disableScrollPropagation(el);
+      L.DomEvent.on(el, 'mousedown touchstart pointerdown wheel', L.DomEvent.stopPropagation);
+      return el;
+    },
+  });
+  map.addControl(new KeyControl());
 }
 
 function setLabTrakMapStyle(map, styleKey) {
@@ -8853,18 +8897,16 @@ async function openProjectMap(contract, projectName, opts) {
   window._projectMapCtx = { contract, projectName, fieldTestId };
   window._borelogMapById = {};
   document.getElementById('mapOverlay').classList.add('open');
-  renderProjectMapLegend();
-  navUpdateBackButton();
-  document.getElementById('mapOverlayTitle').textContent = (contract || 'Core drill') + ' — ' + (projectName || 'Map');
-  document.getElementById('mapOverlaySubtitle').textContent = 'Loading locations...';
-
-  // Initialize map if not already done
   if (!projectMap) {
     projectMap = createLabTrakMap('mapContainer');
     syncMapStyleButtons();
     setupMapPopupDismiss(projectMap, () => mapMarkers);
     bindMapPinZoomVisibility(projectMap, 'project');
   }
+  renderProjectMapLegend();
+  navUpdateBackButton();
+  document.getElementById('mapOverlayTitle').textContent = (contract || 'Core drill') + ' — ' + (projectName || 'Map');
+  document.getElementById('mapOverlaySubtitle').textContent = 'Loading locations...';
 
   // Clear existing markers
   mapMarkers.forEach(m => m.remove());
@@ -29347,7 +29389,6 @@ function openR18() {
     <div class="project-map-shell">
       <div id="mapContainer"></div>
       <div class="project-map-popup-layer" id="projectMapPopupLayer" aria-hidden="true"></div>
-      <div id="projectMapLegend" class="labtrak-map-key" aria-label="Map marker key"></div>
     </div>
   </div>
 
