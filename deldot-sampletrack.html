@@ -4285,6 +4285,10 @@ table.fc-borrow-tbl tr.fc-borrow-detail-row td{background:var(--surface);border-
 
 
       <div class="home-launcher" data-tour="dash-modules">
+        <label class="home-search">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><circle cx="11" cy="11" r="6"/><path d="M16 16l4 4"/></svg>
+          <input id="homeSearch" type="search" placeholder="Search LabTrak…" oninput="filterHomeApps(this.value)" autocomplete="off">
+        </label>
         <div class="home-app-grid">
           <button type="button" class="home-app" id="home-app-soil" data-view="labhub" onclick="switchView('labhub')">
             <span class="home-app-icon" aria-hidden="true">
@@ -4294,7 +4298,10 @@ table.fc-borrow-tbl tr.fc-borrow-detail-row td{background:var(--surface);border-
                 <path d="M8 44c8 6 12-6 18 0s12-6 18 0 10-5 12 0"/>
               </svg>
             </span>
-            <span class="home-app-name">Soil &amp; Agg</span>
+            <span class="home-app-copy">
+              <span class="home-app-name">Soil &amp; Agg</span>
+              <span class="home-app-sub">Samples, tests, and analysis</span>
+            </span>
           </button>
           <button type="button" class="home-app" id="home-app-concrete" data-view="conchub" onclick="switchView('conchub')">
             <span class="home-app-icon" aria-hidden="true">
@@ -4304,7 +4311,10 @@ table.fc-borrow-tbl tr.fc-borrow-detail-row td{background:var(--surface);border-
                 <path d="M16 30c0 3.4 7.2 6 16 6s16-2.6 16-6" opacity="0.55"/>
               </svg>
             </span>
-            <span class="home-app-name">Concrete</span>
+            <span class="home-app-copy">
+              <span class="home-app-name">Concrete</span>
+              <span class="home-app-sub">Mixes, cylinders, and strength</span>
+            </span>
           </button>
           <button type="button" class="home-app" id="home-app-field" data-view="fieldhub" onclick="switchView('fieldhub')">
             <span class="home-app-icon" aria-hidden="true">
@@ -4316,7 +4326,10 @@ table.fc-borrow-tbl tr.fc-borrow-detail-row td{background:var(--surface);border-
                 <path d="M24 48v5h16v-5"/>
               </svg>
             </span>
-            <span class="home-app-name">Field Control</span>
+            <span class="home-app-copy">
+              <span class="home-app-name">Field Control</span>
+              <span class="home-app-sub">Field reports and inspections</span>
+            </span>
           </button>
           <button type="button" class="home-app" id="home-app-projects" data-view="projects" onclick="switchView('projects')">
             <span class="home-app-icon" aria-hidden="true">
@@ -4324,7 +4337,10 @@ table.fc-borrow-tbl tr.fc-borrow-detail-row td{background:var(--surface);border-
                 <path d="M8 22a4 4 0 014-4h12l4 4h24a4 4 0 014 4v22a4 4 0 01-4 4H12a4 4 0 01-4-4V22z"/>
               </svg>
             </span>
-            <span class="home-app-name">Projects</span>
+            <span class="home-app-copy">
+              <span class="home-app-name">Projects</span>
+              <span class="home-app-sub">Manage project data</span>
+            </span>
           </button>
           <button type="button" class="home-app" id="home-app-sources" data-view="appsources" onclick="switchView('appsources')">
             <span class="home-app-icon" aria-hidden="true">
@@ -4338,7 +4354,10 @@ table.fc-borrow-tbl tr.fc-borrow-detail-row td{background:var(--surface);border-
                 <path d="M36 48h10"/>
               </svg>
             </span>
-            <span class="home-app-name">Sources</span>
+            <span class="home-app-copy">
+              <span class="home-app-name">Sources</span>
+              <span class="home-app-sub">Quarries, pits, and suppliers</span>
+            </span>
           </button>
           <button type="button" class="home-app" id="home-app-scan" data-view="scan" onclick="switchView('scan')">
             <span class="home-app-icon" aria-hidden="true">
@@ -4355,7 +4374,10 @@ table.fc-borrow-tbl tr.fc-borrow-detail-row td{background:var(--surface);border-
                 <rect x="48" y="48" width="6" height="6" fill="currentColor" stroke="none"/>
               </svg>
             </span>
-            <span class="home-app-name">Scan</span>
+            <span class="home-app-copy">
+              <span class="home-app-name">Scan</span>
+              <span class="home-app-sub">QR code sample entry</span>
+            </span>
           </button>
           <button type="button" class="home-app" id="home-app-map" data-view="labmap" onclick="switchView('labmap')">
             <span class="home-app-icon" aria-hidden="true">
@@ -4364,7 +4386,10 @@ table.fc-borrow-tbl tr.fc-borrow-detail-row td{background:var(--surface);border-
                 <path d="M24 12v34M40 18v34"/>
               </svg>
             </span>
-            <span class="home-app-name">Map</span>
+            <span class="home-app-copy">
+              <span class="home-app-name">Map</span>
+              <span class="home-app-sub">Sample locations and GIS</span>
+            </span>
           </button>
           <button type="button" class="home-app" id="home-app-r18" data-view="r18" onclick="switchView('r18')">
             <span class="home-app-icon" aria-hidden="true">
@@ -4374,7 +4399,10 @@ table.fc-borrow-tbl tr.fc-borrow-detail-row td{background:var(--surface);border-
                 <path d="M24 28h16M24 36h16M24 44h10"/>
               </svg>
             </span>
-            <span class="home-app-name">R-18</span>
+            <span class="home-app-copy">
+              <span class="home-app-name">R-18</span>
+              <span class="home-app-sub">Reports and compliance</span>
+            </span>
           </button>
           <button type="button" class="home-app" id="home-app-samples" data-view="dashboard" onclick="switchView('dashboard')">
             <span class="home-app-icon" aria-hidden="true">
@@ -4384,7 +4412,10 @@ table.fc-borrow-tbl tr.fc-borrow-detail-row td{background:var(--surface);border-
                 <path d="M22 30h20M22 38h12"/>
               </svg>
             </span>
-            <span class="home-app-name">All Samples</span>
+            <span class="home-app-copy">
+              <span class="home-app-name">All Samples</span>
+              <span class="home-app-sub">Browse and search all laboratory samples</span>
+            </span>
           </button>
           <button type="button" class="home-app" id="home-app-arrival" data-view="labarrival" onclick="switchView('labarrival')">
             <span class="home-app-icon" aria-hidden="true">
@@ -4394,7 +4425,21 @@ table.fc-borrow-tbl tr.fc-borrow-detail-row td{background:var(--surface);border-
                 <path d="M32 32v20"/>
               </svg>
             </span>
-            <span class="home-app-name">Lab Arrival</span>
+            <span class="home-app-copy">
+              <span class="home-app-name">Lab Arrival</span>
+              <span class="home-app-sub">Log samples into the lab</span>
+            </span>
+          </button>
+          <button type="button" class="home-app home-app-phone" id="home-app-dash" onclick="switchView('calendar')">
+            <span class="home-app-icon" aria-hidden="true">
+              <svg viewBox="0 0 64 64" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round">
+                <path d="M12 44V28M26 44V18M40 44V24M52 44V12"/>
+              </svg>
+            </span>
+            <span class="home-app-copy">
+              <span class="home-app-name">View Dashboard</span>
+              <span class="home-app-sub">Open the lab operations dashboard</span>
+            </span>
           </button>
         </div>
       </div>
@@ -4481,6 +4526,7 @@ table.fc-borrow-tbl tr.fc-borrow-detail-row td{background:var(--surface);border-
   <!-- ── DASHBOARD ── -->
   <div class="view" id="calendar-view">
     <div class="page-wide">
+      <div class="phone-dash-only" id="phoneDashKpis"></div>
       <div class="dash-cal-wrap">
         <div class="dash-cal-header">
           <button class="dash-cal-nav" onclick="dashCalPrev()">&#8249;</button>
@@ -4502,6 +4548,7 @@ table.fc-borrow-tbl tr.fc-borrow-detail-row td{background:var(--surface);border-
         </div>
         <div id="dash-cal-grid"></div>
       </div>
+      <div class="phone-dash-only" id="phoneDashRecent"></div>
     </div>
   </div>
 
@@ -4527,13 +4574,45 @@ table.fc-borrow-tbl tr.fc-borrow-detail-row td{background:var(--surface);border-
           <button class="btn btn-ghost" id="archiveToggleBtn" onclick="toggleArchivedView()" style="padding:8px 14px;font-size:12px;">📦 SHOW ARCHIVED</button>
           <button class="btn btn-ghost" onclick="loadSamples()" style="padding:8px 14px;font-size:12px;">↻ REFRESH</button>
         </div>
+        <div class="queue-phone-head">
+          <div class="queue-phone-count" id="queuePhoneCount">0 in queue</div>
+          <button type="button" class="queue-new" onclick="phoneNewSample()">+ New Sample</button>
+          <div class="queue-quick">
+            <button type="button" onclick="switchView('soillab')">Specs &amp; Sieves</button>
+            <button type="button" onclick="switchView('scan')">Scan QR Code</button>
+          </div>
+        </div>
         <div class="queue-phone-tools">
+          <div class="queue-chip-row">
+            <div class="queue-chip-label">Status</div>
+            <div class="queue-chip-set" id="queueStatusChips">
+              <button type="button" class="on" data-value="" onclick="queueSetFilter('status','',this)">All</button>
+              <button type="button" data-value="pending" onclick="queueSetFilter('status','pending',this)">Queue</button>
+              <button type="button" data-value="approved" onclick="queueSetFilter('status','approved',this)">Approval</button>
+              <button type="button" data-value="archive" onclick="queueSetFilter('status','archive',this)">Archive</button>
+            </div>
+          </div>
+          <div class="queue-chip-row">
+            <div class="queue-chip-label">Type</div>
+            <div class="queue-chip-set" id="queueTypeChips">
+              <button type="button" class="on" data-value="" onclick="queueSetFilter('type','',this)">All</button>
+              <button type="button" data-value="soil" onclick="queueSetFilter('type','soil',this)">Soil</button>
+              <button type="button" data-value="aggregate" onclick="queueSetFilter('type','aggregate',this)">Agg</button>
+              <button type="button" data-value="concrete" onclick="queueSetFilter('type','concrete',this)">Concrete</button>
+            </div>
+          </div>
+          <div class="queue-sort">
+            <span id="queueVisibleCount">0 samples</span>
+            <button type="button" id="queueSortBtn" onclick="queueToggleSort()">Newest</button>
+          </div>
+          <div class="queue-selects">
           <label>Status
             <select id="queueStatusFilter" onchange="renderSampleQueue(window._queueSamples)">
               <option value="">All</option>
               <option value="pending">Queue</option>
               <option value="complete">Complete</option>
               <option value="density">Field</option>
+              <option value="approved">Approval</option>
             </select>
           </label>
           <label>Type
@@ -4541,8 +4620,10 @@ table.fc-borrow-tbl tr.fc-borrow-detail-row td{background:var(--surface);border-
               <option value="">All</option>
               <option value="soil">Soil</option>
               <option value="aggregate">Aggregate</option>
+              <option value="concrete">Concrete</option>
             </select>
           </label>
+          </div>
         </div>
         <div id="sampleQueueList"></div>
         <div class="table-scroll-wrap">
@@ -7179,12 +7260,12 @@ table.fc-borrow-tbl tr.fc-borrow-detail-row td{background:var(--surface);border-
       <span>Queue</span>
     </button>
     <button type="button" class="phone-tab" data-view="calendar" onclick="switchView('calendar')">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><rect x="4" y="5" width="16" height="15" rx="2"/><path d="M8 3v4M16 3v4M4 10h16"/></svg>
-      <span>Calendar</span>
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M4 19V10M10 19V5M16 19V8M21 19V3"/></svg>
+      <span>Dashboard</span>
     </button>
-    <button type="button" class="phone-tab" data-view="more" onclick="openPhoneMore()">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><circle cx="6" cy="12" r="1.2" fill="currentColor"/><circle cx="12" cy="12" r="1.2" fill="currentColor"/><circle cx="18" cy="12" r="1.2" fill="currentColor"/></svg>
-      <span>More</span>
+    <button type="button" class="phone-tab" data-view="settings" onclick="phoneOpenSettings()">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><circle cx="12" cy="12" r="3"/><path d="M12 3v2M12 19v2M3 12h2M19 12h2M5.6 5.6l1.4 1.4M17 17l1.4 1.4M18.4 5.6 17 7M7 17l-1.4 1.4"/></svg>
+      <span>Settings</span>
     </button>
   </div>
 </div><!-- #app -->
@@ -14716,8 +14797,12 @@ function switchView(name, opts) {
     void (async () => {
       try { await ensureSamplesLoaded(); } catch (e) {}
       _renderDashCal();
+      renderPhoneDash();
       try { await refreshConcreteSetsIfConnected(); } catch (e) {}
-      if (getActiveViewName() === 'calendar') _renderDashCal();
+      if (getActiveViewName() === 'calendar') {
+        _renderDashCal();
+        renderPhoneDash();
+      }
     })();
   }
   if (name === 'projects') { loadProjects(); loadSamples(); }
@@ -16767,17 +16852,23 @@ function queueStatusMeta(status) {
   const s = status || 'pending';
   if (s === 'complete') return { label: 'Complete', cls: 'complete' };
   if (s === 'density') return { label: 'Field', cls: 'density' };
+  if (s === 'approved') return { label: 'Approval', cls: 'approved' };
   return { label: 'Queue', cls: '' };
 }
 
 function queueTypeLabel(sample) {
-  return (sample && sample.test_category) === 'aggregate' ? 'Agg' : 'Soil';
+  const cat = sample && sample.test_category;
+  if (cat === 'aggregate') return 'Agg';
+  if (cat === 'concrete') return 'Concrete';
+  return 'Soil';
 }
 
 function queueDateLabel(iso) {
   const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(iso || '');
   return m ? (m[2] + '/' + m[3] + '/' + m[1]) : (iso || '');
 }
+
+let _queueSort = 'newest';
 
 function renderSampleQueue(samples) {
   const source = Array.isArray(samples) ? samples : (window._queueSamples || []);
@@ -16789,17 +16880,34 @@ function renderSampleQueue(samples) {
   const rows = source.filter(s => {
     const status = s.status || 'pending';
     if (statusFilter === 'pending') {
-      if (status === 'complete' || status === 'density') return false;
+      if (status === 'complete' || status === 'density' || status === 'approved') return false;
     } else if (statusFilter && status !== statusFilter) {
       return false;
     }
-    const isAgg = (s.test_category || 'soil') === 'aggregate';
-    if (typeFilter === 'aggregate' && !isAgg) return false;
-    if (typeFilter === 'soil' && isAgg) return false;
+    const cat = s.test_category || 'soil';
+    if (typeFilter && cat !== typeFilter) return false;
     return true;
   });
+  rows.sort((a, b) => {
+    const da = a.date_sampled || a.created_at || '';
+    const db = b.date_sampled || b.created_at || '';
+    return _queueSort === 'oldest' ? String(da).localeCompare(String(db)) : String(db).localeCompare(String(da));
+  });
+  const countEl = document.getElementById('queuePhoneCount');
+  if (countEl) {
+    if (typeof showingArchived !== 'undefined' && showingArchived) {
+      countEl.textContent = source.length + ' archived';
+    } else {
+      const queued = source.filter(s => {
+        const status = s.status || 'pending';
+        return status !== 'complete' && status !== 'density' && status !== 'approved';
+      }).length;
+      countEl.textContent = queued + ' in queue · ' + source.length + (source.length === 1 ? ' sample' : ' samples');
+    }
+  }
   if (!rows.length) {
-    list.innerHTML = '<div class="queue-empty">No samples in this queue.</div>';
+    list.innerHTML = '<div class="queue-empty"><div class="queue-empty-mark" aria-hidden="true"><svg viewBox="0 0 64 64" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M24 8h16M22 8c-2 10-8 16-8 28a18 18 0 0036 0c0-12-6-18-8-28"/><path d="M20 40h24"/></svg></div><div class="queue-empty-title">No samples match your filter.</div><div>Try another status or type, or create a new sample.</div><button type="button" class="queue-new" onclick="phoneNewSample()">+ New Sample</button></div>';
+    syncQueueChips(0);
     return;
   }
   list.innerHTML = rows.map(s => {
@@ -16815,6 +16923,82 @@ function renderSampleQueue(samples) {
       <div class="queue-card-meta">${mapEscHtml(metaLine)}</div>
     </button>`;
   }).join('');
+  syncQueueChips(rows.length);
+}
+
+function syncQueueChips(visible) {
+  const status = (typeof showingArchived !== 'undefined' && showingArchived)
+    ? 'archive'
+    : ((document.getElementById('queueStatusFilter') || {}).value || '');
+  const type = (document.getElementById('queueTypeFilter') || {}).value || '';
+  document.querySelectorAll('#queueStatusChips button').forEach(b => b.classList.toggle('on', b.dataset.value === status));
+  document.querySelectorAll('#queueTypeChips button').forEach(b => b.classList.toggle('on', (b.dataset.value || '') === type));
+  const count = document.getElementById('queueVisibleCount');
+  if (count) count.textContent = visible + (visible === 1 ? ' sample' : ' samples');
+  const sortBtn = document.getElementById('queueSortBtn');
+  if (sortBtn) sortBtn.textContent = _queueSort === 'oldest' ? 'Oldest' : 'Newest';
+}
+
+function queueSetFilter(kind, value) {
+  if (kind === 'status' && value === 'archive') {
+    toggleArchivedView();
+    return;
+  }
+  if (kind === 'status' && showingArchived) {
+    const sel = document.getElementById('queueStatusFilter');
+    if (sel) sel.value = value;
+    toggleArchivedView();
+    return;
+  }
+  const sel = document.getElementById(kind === 'type' ? 'queueTypeFilter' : 'queueStatusFilter');
+  if (sel) sel.value = value;
+  renderSampleQueue(window._queueSamples);
+}
+
+function queueToggleSort() {
+  _queueSort = _queueSort === 'newest' ? 'oldest' : 'newest';
+  renderSampleQueue(window._queueSamples);
+}
+
+function phoneNewSample() {
+  const role = (typeof currentUser === 'object' && currentUser && currentUser.role) || '';
+  if (role === 'concrete') { switchView('concrete'); return; }
+  if (role === 'field') { switchView('fieldhub'); return; }
+  if (typeof slOpenNewSample === 'function') slOpenNewSample();
+}
+
+function filterHomeApps(q) {
+  const query = String(q || '').trim().toLowerCase();
+  document.querySelectorAll('#home-view .home-app').forEach(btn => {
+    btn.hidden = !!(query && !btn.textContent.toLowerCase().includes(query));
+  });
+}
+
+function renderPhoneDash() {
+  const samples = allSamples || [];
+  const today = new Date().toISOString().slice(0, 10);
+  const pending = samples.filter(s => !s.status || s.status === 'pending').length;
+  const complete = samples.filter(s => s.status === 'complete' || s.status === 'approved').length;
+  const todayN = samples.filter(s => (s.date_sampled || '') === today).length;
+  let breaks = 0;
+  try {
+    loadConcreteSets().forEach(set => (set.cylinders || []).forEach(c => { if (c.status === 'pending') breaks++; }));
+  } catch (e) {}
+  const kpis = document.getElementById('phoneDashKpis');
+  if (kpis) {
+    kpis.innerHTML = [
+      [pending, 'Pending'],
+      [complete, 'Complete'],
+      [todayN, 'Today'],
+      [breaks, 'Breaks due']
+    ].map(([n, label]) => `<div class="phone-kpi"><div class="phone-kpi-n">${n}</div><div class="phone-kpi-l">${label}</div></div>`).join('');
+  }
+  const recent = document.getElementById('phoneDashRecent');
+  if (!recent) return;
+  const rows = samples.slice(0, 4);
+  recent.innerHTML = '<div class="phone-dash-h">Recent activity</div>' + (rows.length
+    ? rows.map(s => `<button type="button" class="phone-activity" onclick="openSampleHub('${mapEscHtml(s.id)}')"><span>${mapEscHtml(s.test_no || 'Sample')}</span><span>${mapEscHtml([s.material_type, s.contract].filter(Boolean).join(' · '))}</span></button>`).join('')
+    : '<div class="queue-empty">No recent samples.</div>');
 }
 
 let _sampleHubId = '';
@@ -21095,15 +21279,29 @@ function closeMobileMore() {
 
 function syncPhoneChrome() {
   const name = (typeof currentView === 'string' && currentView) || 'home';
-  const primary = { home: true, dashboard: true, calendar: true };
   document.querySelectorAll('#phoneTabBar .phone-tab').forEach(btn => {
-    const v = btn.dataset.view;
-    btn.classList.toggle('active', v === 'more' ? !primary[name] : v === name);
+    btn.classList.toggle('active', btn.dataset.view === name);
   });
   const titleEl = document.getElementById('phoneModuleTitle');
   if (!titleEl) return;
-  const titles = { dashboard: 'Sample Queue', calendar: 'Calendar', home: 'LabTrak' };
+  const titles = { dashboard: 'Sample Queue', calendar: 'Dashboard', home: 'LabTrak' };
   titleEl.textContent = titles[name] || (typeof VIEW_LABELS !== 'undefined' && VIEW_LABELS[name]) || 'LabTrak';
+}
+
+function phoneOpenSettings() {
+  showSetup();
+  document.querySelectorAll('#phoneTabBar .phone-tab').forEach(btn => {
+    btn.classList.toggle('active', btn.dataset.view === 'settings');
+  });
+  const ov = document.getElementById('setupOverlay');
+  if (!ov) return;
+  const obs = new MutationObserver(() => {
+    if (ov.style.display === 'none') {
+      obs.disconnect();
+      syncPhoneChrome();
+    }
+  });
+  obs.observe(ov, { attributes: true, attributeFilter: ['style'] });
 }
 
 function phoneModuleBack() {
@@ -33587,7 +33785,15 @@ html.comfort-mode .rail-label {
 #phoneTabBar,
 #phoneModuleBar,
 .queue-phone-tools,
-#sampleQueueList { display: none; }
+#sampleQueueList,
+.home-search,
+.queue-phone-head,
+.queue-chip-row,
+.queue-sort,
+.phone-dash-only { display: none; }
+.home-app-phone { display: none !important; }
+.home-app-copy { display: flex; flex-direction: column; align-items: center; }
+.home-app-sub { display: none; }
 #sampleHub {
   display: none;
   position: fixed;
@@ -33645,24 +33851,80 @@ html.comfort-mode .rail-label {
     font: 600 11px var(--sans); cursor: pointer;
   }
   .phone-tab svg { width: 22px; height: 22px; }
-  .phone-tab.active { color: #7eb6ff; }
+  .phone-tab.active { color: #2ee0c8; }
   .view.active { top: 48px; bottom: 64px; }
   #app.on-home .view.active { top: 0; bottom: 64px; }
-  #app.on-home #home-view {
+  #app.on-home #home-view,
+  #app.on-home #home-view.active {
     align-items: flex-start;
     justify-content: flex-start;
-    padding-top: 8px;
+    padding-top: 4px;
   }
-  #app.on-home .dash-container { padding-bottom: 12px; }
-  #app.on-home .dash-header { margin-bottom: 14px; }
+  #app.on-home .dash-container { padding-bottom: 18px; }
+  #app.on-home .dash-header { margin-bottom: 16px; }
+  .home-search {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin: 0 auto 14px;
+    max-width: 420px;
+    background: #121b2c;
+    border: 1px solid #2a3a52;
+    border-radius: 14px;
+    padding: 0 12px;
+    color: #8ea0b5;
+  }
+  .home-search svg { width: 18px; height: 18px; flex: none; }
+  .home-search input {
+    flex: 1; border: none; background: transparent; color: #eef3f8;
+    font: 500 15px var(--sans); padding: 12px 0; outline: none; min-width: 0;
+  }
   #app.on-home .home-app-grid { gap: 12px; }
   #app.on-home .home-app {
     aspect-ratio: auto;
-    min-height: 108px;
-    padding: 14px 8px 12px;
+    min-height: 132px;
+    padding: 16px 14px 28px;
+    align-items: flex-start;
+    justify-content: flex-start;
+    gap: 8px;
+    text-align: left;
+    position: relative;
+  }
+  #app.on-home .home-app::after {
+    content: '›';
+    position: absolute;
+    right: 12px;
+    bottom: 8px;
+    color: #8ea0b5;
+    font-size: 22px;
+    line-height: 1;
   }
   #app.on-home .home-app-icon,
-  #app.on-home .home-app-icon svg { width: 42px; height: 42px; }
+  #app.on-home .home-app-icon svg { width: 34px; height: 34px; }
+  #app.on-home .home-app-copy { align-items: flex-start; gap: 3px; }
+  #app.on-home .home-app-sub {
+    display: block;
+    color: #8ea0b5;
+    font-size: 12px;
+    font-weight: 500;
+    line-height: 1.3;
+  }
+  #app.on-home .home-app-name { font-size: 15px; text-align: left; }
+  #app.on-home #home-app-samples,
+  #app.on-home #home-app-arrival,
+  #app.on-home #home-app-dash {
+    grid-column: 1 / -1;
+    flex-direction: row;
+    align-items: center;
+    min-height: 76px;
+    padding: 14px 36px 14px 14px;
+    gap: 12px;
+  }
+  #app.on-home #home-app-dash {
+    border-color: #1aa896;
+    background: #10262c;
+  }
+  #app.on-home .home-app-phone { display: flex !important; }
   #phoneModuleBar {
     display: flex;
     position: fixed;
@@ -33679,14 +33941,66 @@ html.comfort-mode .rail-label {
   }
   #app.on-home #phoneModuleBar,
   #app.on-home ~ #phoneModuleBar { display: none !important; }
-  #dashboard-view #searchInput { min-width: 0; width: 100%; }
+  #dashboard-view #searchInput {
+    min-width: 0; width: 100%; border-radius: 14px; background: #121b2c; padding: 12px 14px;
+  }
+  .queue-phone-head { display: block; margin: 4px 0 12px; }
+  .queue-phone-count { color: #8ea0b5; font-size: 13px; margin-bottom: 12px; }
+  .queue-new {
+    width: 100%; border: none; border-radius: 14px; background: #2ee0c8; color: #04222a;
+    font: 700 16px var(--sans); padding: 14px 16px; cursor: pointer;
+  }
+  .queue-quick { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 8px; }
+  .queue-quick button {
+    background: #121b2c; color: #eef3f8; border: 1px solid #2a3a52; border-radius: 12px;
+    padding: 12px 8px; font: 650 13px var(--sans); cursor: pointer;
+  }
+  .queue-chip-row { display: block; margin-bottom: 10px; }
+  .queue-chip-label { color: #8ea0b5; font: 600 12px var(--sans); margin-bottom: 6px; }
+  .queue-chip-set { display: flex; flex-wrap: wrap; gap: 8px; }
+  .queue-chip-set button {
+    border: 1px solid #2a3a52; background: #121b2c; color: #c5d0de;
+    border-radius: 999px; padding: 7px 12px; font: 650 13px var(--sans); cursor: pointer;
+  }
+  .queue-chip-set button.on { background: #2ee0c8; color: #04222a; border-color: #2ee0c8; }
+  .queue-sort {
+    display: flex; justify-content: space-between; align-items: center;
+    color: #8ea0b5; font-size: 13px; margin: 4px 0 10px;
+  }
+  .queue-sort button {
+    background: #121b2c; color: #eef3f8; border: 1px solid #2a3a52; border-radius: 10px;
+    padding: 6px 10px; font: 650 13px var(--sans); cursor: pointer;
+  }
+  .queue-selects { display: none !important; }
+  .queue-empty { display: flex; flex-direction: column; align-items: center; gap: 8px; padding: 28px 16px; text-align: center; }
+  .queue-empty-mark { width: 72px; height: 72px; color: #8ea0b5; }
+  .queue-empty-mark svg { width: 72px; height: 72px; }
+  .queue-empty-title { color: #eef3f8; font-weight: 700; font-size: 16px; }
+  .queue-empty .queue-new { margin-top: 8px; width: auto; padding: 12px 18px; }
+  .queue-card-status.approved { background: rgba(46, 224, 200, 0.16); color: #2ee0c8; }
+  .phone-dash-only { display: block; }
+  #phoneDashKpis { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin-bottom: 14px; }
+  .phone-kpi {
+    background: #121b2c; border: 1px solid #2a3a52; border-radius: 14px;
+    text-align: center; padding: 12px 4px;
+  }
+  .phone-kpi-n { font-size: 22px; font-weight: 700; color: #eef3f8; }
+  .phone-kpi-l { margin-top: 4px; color: #8ea0b5; font-size: 11px; font-weight: 600; }
+  .phone-dash-h { margin: 16px 0 8px; font-weight: 700; font-size: 16px; }
+  .phone-activity {
+    width: 100%; text-align: left; background: #121b2c; border: 1px solid #2a3a52;
+    border-radius: 14px; color: #eef3f8; padding: 12px 14px; margin-bottom: 8px; cursor: pointer;
+    display: flex; flex-direction: column; gap: 2px; font: 650 15px var(--sans);
+  }
+  .phone-activity span:last-child { color: #8ea0b5; font-size: 13px; font-weight: 500; }
+  #calendar-view .cal-add-note-btn { display: none; }
   #dashboard-view .stats-grid,
   #dashboard-view .table-scroll-wrap,
   #dashboard-view .card-title,
   #dashboard-view #archiveToggleBtn,
   #dashboard-view .card > div > .btn { display: none !important; }
   #dashboard-view .card { background: transparent; border: none; box-shadow: none; padding: 0; }
-  .queue-phone-tools { display: flex; gap: 8px; margin-bottom: 12px; }
+  .queue-phone-tools { display: block; margin-bottom: 12px; }
   .queue-phone-tools label {
     flex: 1; display: flex; flex-direction: column; gap: 4px;
     font: 600 11px var(--sans); color: #8ea0b5;
@@ -33711,7 +34025,7 @@ html.comfort-mode .rail-label {
   .queue-card-status.density { background: rgba(96, 165, 250, 0.16); color: #93c5fd; }
   .queue-card-sub { margin-top: 4px; color: #c5d0de; font-size: 14px; }
   .queue-card-meta { margin-top: 2px; color: #8ea0b5; font-size: 13px; }
-  .queue-empty { color: #8ea0b5; padding: 24px 8px; text-align: center; }
+  .queue-empty { color: #8ea0b5; }
   #calendar-view .dash-cal-wrap { background: transparent; border: none; box-shadow: none; padding: 0; }
 }
 @media (max-width: 768px) {
