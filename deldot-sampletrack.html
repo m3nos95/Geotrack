@@ -8007,6 +8007,37 @@ function labTrakPinIcon(el, width, height, anchor) {
   return new Icon();
 }
 
+// A project whose samples are spread out would otherwise stay zoomed out,
+// below the level where pins appear. Close clusters fit on screen. Wide ones
+// jump to the middle of the samples and zoom in until the pins show.
+function mapSampleFocusPlan(fitZoom, minZoom, maxZoom) {
+  const minZ = minZoom == null ? MAP_PIN_MIN_ZOOM : minZoom;
+  const maxZ = maxZoom == null ? 17 : maxZoom;
+  if (!(fitZoom >= minZ)) return { mode: 'center', zoom: minZ };
+  return { mode: 'fit', maxZoom: maxZ };
+}
+
+function mapFocusSampleBounds(map, bounds, opts) {
+  if (!map || !bounds || bounds.isEmpty() || !bounds._pairs || !bounds._pairs.length) return;
+  opts = opts || {};
+  if (typeof map.invalidateSize === 'function') map.invalidateSize(false);
+  const pad = opts.padding != null ? opts.padding : 70;
+  const leafletBounds = L.latLngBounds(bounds._pairs.map(p => [p[1], p[0]]));
+  const size = typeof map.getSize === 'function' ? map.getSize() : null;
+  const duration = opts.duration != null ? opts.duration : 800;
+  if (!size || size.x < 20 || size.y < 20) {
+    map.setView(leafletBounds.getCenter(), MAP_PIN_MIN_ZOOM);
+    return;
+  }
+  const fitZoom = map.getBoundsZoom(leafletBounds, false, L.point(pad, pad));
+  const plan = mapSampleFocusPlan(fitZoom, opts.minZoom, opts.maxZoom);
+  if (plan.mode === 'fit') {
+    map.fitBounds(bounds, { padding: pad, maxZoom: plan.maxZoom, duration: duration });
+  } else {
+    map.flyTo(leafletBounds.getCenter(), plan.zoom, { duration: duration / 1000 });
+  }
+}
+
 function adaptLeafletMap(map) {
   const rawFly = L.Map.prototype.flyTo;
   const rawFit = L.Map.prototype.fitBounds;
@@ -9082,9 +9113,9 @@ async function openProjectMap(contract, projectName, opts) {
 
   projectMapSearchCatalog = buildProjectMapSearchCatalog(mapSamples, allCores, allConc, []);
 
-  // Fit map to pins
+  // Jump to the middle of this project's samples and zoom in until pins show.
   if (pinCount > 0 && !bounds.isEmpty()) {
-    projectMap.fitBounds(bounds, { padding: 80, maxZoom: MAP_PIN_MIN_ZOOM - 1, duration: 1000 });
+    setTimeout(() => mapFocusSampleBounds(projectMap, bounds, { padding: 80, duration: 900 }), 80);
   } else {
     document.getElementById('mapOverlaySubtitle').textContent = 'No GPS coordinates found for this project';
   }
@@ -11144,7 +11175,11 @@ function labMapPlotMarkers(preserveView) {
   }
 
   if (!preserveView && pinCount > 0 && !bounds.isEmpty() && !mapSearchState.lab?.keys?.size) {
-    labMap.fitBounds(bounds, { padding: 70, maxZoom: MAP_PIN_MIN_ZOOM - 1, duration: 800 });
+    if (labMapContractFilter) {
+      mapFocusSampleBounds(labMap, bounds, { padding: 70, duration: 800 });
+    } else {
+      labMap.fitBounds(bounds, { padding: 70, maxZoom: MAP_PIN_MIN_ZOOM - 1, duration: 800 });
+    }
   }
   syncMapPinVisibility('lab');
 }
