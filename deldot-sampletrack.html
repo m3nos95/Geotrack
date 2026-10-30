@@ -9012,6 +9012,7 @@ async function openProjectMap(contract, projectName, opts) {
       <div class="map-popup-row"><span class="map-popup-label">Date:</span><span class="map-popup-val">${s.date_sampled||'—'}</span></div>
       <div class="map-popup-row"><span class="map-popup-label">Status:</span><span class="${color==='#34d399'?'map-popup-pass':color==='#f87171'?'map-popup-fail':'map-popup-pend'}">${statusLabel}</span></div>
       ${nucHtml}${borrowHtml}
+      ${mapSampleOpenButton(s)}
     `,
       getSiblings: () => mapMarkers,
       popupLayer: document.getElementById('projectMapPopupLayer'),
@@ -9261,6 +9262,18 @@ function delawareNEToLatLng(northing, easting) {
 function mapEscHtml(s) {
   if (s == null || s === '') return '';
   return String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+}
+
+function mapSampleOpenButton(sample) {
+  if (!sample?.id) return '';
+  const complete = sample.status === 'complete';
+  const label = complete ? 'View report' : 'Open test';
+  return `<div class="map-popup-action"><button type="button" onclick="event.preventDefault(); event.stopPropagation(); openMapSample('${mapEscHtml(sample.id)}')">${label}</button></div>`;
+}
+
+async function openMapSample(id) {
+  if (document.getElementById('mapOverlay')?.classList.contains('open')) closeProjectMap();
+  await openSample(id);
 }
 
 function mapPopupRow(label, val) {
@@ -10355,6 +10368,7 @@ function labMapBuildSamplePopup(s, layer) {
     <div class="map-popup-row"><span class="map-popup-label">Date:</span><span class="map-popup-val">${s.date_sampled || '—'}</span></div>
     <div class="map-popup-row"><span class="map-popup-label">Status:</span><span class="${color === '#34d399' ? 'map-popup-pass' : color === '#f87171' ? 'map-popup-fail' : 'map-popup-pend'}">${statusLabel}</span></div>
     ${nucHtml}
+    ${mapSampleOpenButton(s)}
   `;
 }
 
