@@ -314,23 +314,67 @@ CREATE TABLE IF NOT EXISTS st_hub_notes (
 
 CREATE INDEX IF NOT EXISTS idx_st_hub_notes_hub_user ON st_hub_notes (hub, user_id, date);
 
--- ── Concrete sets (optional cloud sync; app also uses localStorage) ──
+-- ── Concrete sets (cloud columns match the live LabTrak project) ──
+-- Pour fields are columns. Cylinders are rows in concrete_cylinders.
+-- Archived flag and the last edit time travel inside materials._labtrak.
 CREATE TABLE IF NOT EXISTS concrete_sets (
-  id            TEXT PRIMARY KEY,
-  contract      TEXT,
-  pour_location TEXT,
-  data          JSONB NOT NULL DEFAULT '{}',
-  archived      BOOLEAN DEFAULT FALSE,
-  created_at    TIMESTAMPTZ DEFAULT NOW(),
-  updated_at    TIMESTAMPTZ DEFAULT NOW()
+  id               TEXT PRIMARY KEY,
+  test_no          TEXT,
+  contract         TEXT,
+  fa_project       TEXT,
+  contractor       TEXT,
+  subcontractor    TEXT,
+  supplier         TEXT,
+  mix_design       TEXT,
+  pour_location    TEXT,
+  cast_date        DATE,
+  cast_time        TIME,
+  date_received    DATE,
+  truck_no         TEXT,
+  ticket_no        TEXT,
+  sampled_by       TEXT,
+  tech_no          TEXT,
+  section_no       TEXT,
+  concrete_class   TEXT,
+  county           TEXT,
+  cement_sks       TEXT,
+  station          TEXT,
+  precast          TEXT,
+  plant            TEXT,
+  corr_factor      TEXT,
+  gps_coordinates  TEXT,
+  slump            NUMERIC,
+  air              NUMERIC,
+  unit_weight      NUMERIC,
+  conc_temp        NUMERIC,
+  amb_temp         NUMERIC,
+  cyl_diam         NUMERIC,
+  required_fc      NUMERIC,
+  remarks          TEXT,
+  materials        JSONB,
+  created_at       TIMESTAMPTZ DEFAULT NOW()
 );
 
 CREATE INDEX IF NOT EXISTS idx_concrete_sets_contract ON concrete_sets (contract);
 
-DROP TRIGGER IF EXISTS trg_concrete_sets_updated_at ON concrete_sets;
-CREATE TRIGGER trg_concrete_sets_updated_at
-  BEFORE UPDATE ON concrete_sets
-  FOR EACH ROW EXECUTE FUNCTION set_updated_at();
+CREATE TABLE IF NOT EXISTS concrete_cylinders (
+  id            TEXT PRIMARY KEY,
+  set_id        TEXT REFERENCES concrete_sets(id) ON DELETE CASCADE,
+  break_age     INTEGER,
+  due_date      DATE,
+  status        TEXT,
+  load_lbs      NUMERIC,
+  strength_psi  NUMERIC,
+  mpa           NUMERIC,
+  actual_diam   NUMERIC,
+  area_sqin     NUMERIC,
+  fracture      TEXT,
+  tech_break    TEXT,
+  broken_date   DATE,
+  created_at    TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_concrete_cylinders_set ON concrete_cylinders (set_id);
 
 -- ── BoreLog (geotech borings — syncs with docs/r18-reference/deldot-borelog.html) ──
 CREATE TABLE IF NOT EXISTS borelog_projects (
@@ -423,7 +467,8 @@ ALTER TABLE st_users         ENABLE ROW LEVEL SECURITY;
 ALTER TABLE approved_sources ENABLE ROW LEVEL SECURITY;
 ALTER TABLE st_cal_notes     ENABLE ROW LEVEL SECURITY;
 ALTER TABLE st_hub_notes     ENABLE ROW LEVEL SECURITY;
-ALTER TABLE concrete_sets    ENABLE ROW LEVEL SECURITY;
+ALTER TABLE concrete_sets       ENABLE ROW LEVEL SECURITY;
+ALTER TABLE concrete_cylinders ENABLE ROW LEVEL SECURITY;
 ALTER TABLE field_tests      ENABLE ROW LEVEL SECURITY;
 ALTER TABLE core_drills      ENABLE ROW LEVEL SECURITY;
 ALTER TABLE sample_history   ENABLE ROW LEVEL SECURITY;
@@ -438,7 +483,8 @@ DROP POLICY IF EXISTS "labtrak_st_users_all"         ON st_users;
 DROP POLICY IF EXISTS "labtrak_approved_sources_all" ON approved_sources;
 DROP POLICY IF EXISTS "labtrak_st_cal_notes_all"     ON st_cal_notes;
 DROP POLICY IF EXISTS "labtrak_st_hub_notes_all"     ON st_hub_notes;
-DROP POLICY IF EXISTS "labtrak_concrete_sets_all"    ON concrete_sets;
+DROP POLICY IF EXISTS "labtrak_concrete_sets_all"       ON concrete_sets;
+DROP POLICY IF EXISTS "labtrak_concrete_cylinders_all" ON concrete_cylinders;
 DROP POLICY IF EXISTS "labtrak_field_tests_all"      ON field_tests;
 DROP POLICY IF EXISTS "labtrak_core_drills_all"      ON core_drills;
 DROP POLICY IF EXISTS "labtrak_sample_history_all"   ON sample_history;
@@ -457,7 +503,8 @@ CREATE POLICY "labtrak_st_users_all"         ON st_users         FOR ALL USING (
 CREATE POLICY "labtrak_approved_sources_all" ON approved_sources FOR ALL USING (true) WITH CHECK (true);
 CREATE POLICY "labtrak_st_cal_notes_all"     ON st_cal_notes     FOR ALL USING (true) WITH CHECK (true);
 CREATE POLICY "labtrak_st_hub_notes_all"     ON st_hub_notes     FOR ALL USING (true) WITH CHECK (true);
-CREATE POLICY "labtrak_concrete_sets_all"    ON concrete_sets    FOR ALL USING (true) WITH CHECK (true);
+CREATE POLICY "labtrak_concrete_sets_all"       ON concrete_sets       FOR ALL USING (true) WITH CHECK (true);
+CREATE POLICY "labtrak_concrete_cylinders_all" ON concrete_cylinders FOR ALL USING (true) WITH CHECK (true);
 CREATE POLICY "labtrak_field_tests_all"      ON field_tests      FOR ALL USING (true) WITH CHECK (true);
 CREATE POLICY "labtrak_core_drills_all"      ON core_drills      FOR ALL USING (true) WITH CHECK (true);
 CREATE POLICY "labtrak_sample_history_all"   ON sample_history   FOR ALL USING (true) WITH CHECK (true);
