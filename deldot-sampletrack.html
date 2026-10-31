@@ -311,6 +311,12 @@ nav:not(#r18-nav), .nav-top-row { display: none !important; }
 .sl-search-bar { padding: 8px 10px; flex-shrink: 0; border-bottom: 1px solid var(--border); }
 .sl-search-bar input { width: 100%; background: var(--panel); border: 1px solid var(--border); color: var(--text); padding: 7px 10px; border-radius: var(--radius-sm); font-size: 12px; outline: none; font-family: var(--sans); }
 .sl-search-bar input:focus { border-color: var(--accent2); }
+.sl-queue-actions { padding: 0 12px 8px; display: flex; flex-direction: column; gap: 6px; flex-shrink: 0; }
+.sl-queue-actions .btn { width: 100%; margin: 0; }
+.sl-qc-req {
+  background: rgba(255,80,80,0.16); color: var(--red2); font-size: 10px; font-weight: 700;
+  padding: 1px 6px; border-radius: 999px; border: 1px solid rgba(255,80,80,0.3);
+}
 .sl-filters { padding: 7px 10px; border-bottom: 1px solid var(--border); flex-shrink: 0; display: flex; flex-direction: column; gap: 5px; }
 .sl-filter-row { display: flex; gap: 4px; flex-wrap: wrap; }
 .sl-filter-btn { background: var(--panel); border: 1px solid var(--border); color: var(--muted); padding: 3px 9px; border-radius: 10px; font-family: var(--mono); font-size: 9px; cursor: pointer; transition: all 0.18s; white-space: nowrap; }
@@ -325,6 +331,8 @@ nav:not(#r18-nav), .nav-top-row { display: none !important; }
 .sl-queue-card.complete { border-left-color: var(--green2); }
 .sl-queue-card.corrupt { border-left-color: var(--red2); opacity: 1; }
 .sl-qc-top { display: flex; justify-content: space-between; align-items: center; margin-bottom: 3px; gap: 6px; }
+.sl-qc-badges { display: flex; align-items: center; gap: 5px; min-width: 0; }
+.sl-qc-empty { color: var(--red2); font-size: 11px; font-weight: 600; }
 .sl-qc-testno { font-family: var(--mono); font-size: 12px; font-weight: 700; color: var(--accent2); }
 .sl-qc-contract { font-size: 11px; color: var(--text); margin-bottom: 3px; font-family: var(--mono); opacity: 0.85; }
 .sl-qc-meta { display: flex; gap: 6px; align-items: center; margin-bottom: 2px; overflow: hidden; }
@@ -6438,32 +6446,32 @@ table.fc-borrow-tbl tr.fc-borrow-detail-row td{background:var(--surface);border-
           <input type="text" id="sl_search" placeholder="Search test no, contract, location…" oninput="slFilterQueue()">
         </div>
 
-        <div style="padding:0 12px 8px;">
-          <button class="btn btn-success" style="width:100%;font-size:10px;letter-spacing:1px;margin-bottom:6px;" onclick="slOpenNewSample()">＋ NEW SAMPLE</button>
-          <button class="btn btn-ghost" style="width:100%;font-size:10px;letter-spacing:1px;margin-bottom:6px;" onclick="openSlSpecMgmt()">⚙ SPECS &amp; SIEVES</button>
-          <button class="btn btn-ghost" style="width:100%;font-size:10px;letter-spacing:1px;" onclick="slToggleScanner()">📷 SCAN QR CODE</button>
-          <div id="sl-scanner-wrap" style="display:none;margin-top:8px;">
+        <div class="sl-queue-actions">
+          <button type="button" class="btn btn-success sl-act-primary" onclick="slOpenNewSample()">+ New sample</button>
+          <button type="button" class="btn btn-ghost" onclick="openSlSpecMgmt()">Specs &amp; Sieves</button>
+          <button type="button" class="btn btn-ghost" onclick="slToggleScanner()">Scan QR code</button>
+          <div id="sl-scanner-wrap" style="display:none;">
             <div id="sl-reader" style="width:100%;border-radius:6px;overflow:hidden;"></div>
           </div>
         </div>
 
         <div class="sl-filters">
           <div class="sl-filter-row">
-            <span class="sl-filter-label">STATUS</span>
-            <button class="sl-filter-btn active" onclick="slSetFilter('status','pending',this)">QUEUE</button>
-            <button class="sl-filter-btn" id="sl-filter-approval" onclick="slSetFilter('status','approval',this)" style="color:#f59e0b;border-color:rgba(245,158,11,0.4);">⚠️ APPROVAL</button>
-            <button class="sl-filter-btn" onclick="slSetFilter('status','archive',this)">📦 ARCHIVE</button>
+            <span class="sl-filter-label">Status</span>
+            <button type="button" class="sl-filter-btn active" onclick="slSetFilter('status','pending',this)">Queue</button>
+            <button type="button" class="sl-filter-btn" id="sl-filter-approval" onclick="slSetFilter('status','approval',this)">Approval</button>
+            <button type="button" class="sl-filter-btn" onclick="slSetFilter('status','archive',this)">Archive</button>
           </div>
           <div class="sl-filter-row">
-            <span class="sl-filter-label">TYPE</span>
-            <button class="sl-filter-btn active" onclick="slSetFilter('cat','all',this)">ALL</button>
-            <button class="sl-filter-btn" onclick="slSetFilter('cat','soil',this)">⬛ SOIL</button>
-            <button class="sl-filter-btn" onclick="slSetFilter('cat','aggregate',this)">◆ AGG</button>
+            <span class="sl-filter-label">Type</span>
+            <button type="button" class="sl-filter-btn active" onclick="slSetFilter('cat','all',this)">All</button>
+            <button type="button" class="sl-filter-btn" onclick="slSetFilter('cat','soil',this)">Soil</button>
+            <button type="button" class="sl-filter-btn" onclick="slSetFilter('cat','aggregate',this)">Agg</button>
           </div>
           <div class="sl-filter-row">
-            <span class="sl-filter-label">SCOPE</span>
-            <button class="sl-filter-btn active" id="sl-scope-all" onclick="slSetFilter('scope','all',this)">ALL</button>
-            <button class="sl-filter-btn" id="sl-scope-mine" onclick="slSetFilter('scope','mine',this)">MINE</button>
+            <span class="sl-filter-label">Scope</span>
+            <button type="button" class="sl-filter-btn active" id="sl-scope-all" onclick="slSetFilter('scope','all',this)">All</button>
+            <button type="button" class="sl-filter-btn" id="sl-scope-mine" onclick="slSetFilter('scope','mine',this)">Mine</button>
           </div>
         </div>
 
@@ -22816,8 +22824,8 @@ function slRenderQueue() {
     list.innerHTML = slStatusFilter === 'archive'
       ? '<div class="sl-empty">No archived samples.</div>'
       : slStatusFilter === 'approval'
-      ? '<div class="sl-empty">✅ No reports awaiting approval.</div>'
-      : '<div class="sl-empty">No samples match filter.</div>';
+      ? '<div class="sl-empty">No reports awaiting approval.</div>'
+      : '<div class="sl-empty">No samples match this filter.</div>';
     return;
   }
 
@@ -22828,22 +22836,24 @@ function slRenderQueue() {
     const locText  = (s.location || s.material_type || '—').substring(0, 30);
     const openFn   = slStatusFilter === 'approval' ? `slOpenPendingReport('${s.id}')` : `slLoadSample('${s.id}')`;
     const corrupt  = slIsCorruptSample(s);
+    const stage    = getLabWorkflowStage(s);
+    const stageLabel = String(stage.label || '').toLowerCase().replace(/\b[a-z]/g, ch => ch.toUpperCase());
     const delBtn   = slCanDeleteFromQueue(s)
-      ? `<button type="button" class="sl-qc-delete" title="Remove from queue" onclick="slQueueDeleteSample('${s.id}', event)">🗑</button>`
+      ? `<button type="button" class="sl-qc-delete" title="Remove from queue" aria-label="Remove from queue" onclick="slQueueDeleteSample('${s.id}', event)">×</button>`
       : '';
     return `<div class="sl-queue-card${isActive ? ' active' : ''}${isDone ? ' complete' : ''}${corrupt ? ' corrupt' : ''}"
                  onclick="${openFn}">
       <div class="sl-qc-top">
-        <span class="sl-qc-testno">${s.test_no}${corrupt ? ' <span style="color:var(--red2);font-size:9px;">(empty)</span>' : ''}</span>
-        <span style="display:flex;align-items:center;gap:5px;">
-          ${labWorkflowBadgeHtml(s)}
-          ${s.special_requests ? '<span style="background:rgba(255,80,80,0.18);color:var(--red2);font-family:var(--mono);font-size:8px;font-weight:700;padding:1px 6px;border-radius:3px;border:1px solid rgba(255,80,80,0.35);">⚠ REQ</span>' : ''}
+        <span class="sl-qc-testno">${s.test_no}${corrupt ? ' <span class="sl-qc-empty">(empty)</span>' : ''}</span>
+        <span class="sl-qc-badges">
+          <span class="badge badge-${stage.badgeClass} sl-qc-badge">${stageLabel}</span>
+          ${s.special_requests ? '<span class="sl-qc-req">Request</span>' : ''}
           ${delBtn}
         </span>
       </div>
       <div class="sl-qc-contract">${s.contract || '—'}</div>
       <div class="sl-qc-meta">
-        <span class="sl-cat-tag${isAgg ? ' agg' : ''}">${isAgg ? '◆ AGG' : '● SOIL'}</span>
+        <span class="sl-cat-tag${isAgg ? ' agg' : ''}">${isAgg ? 'Agg' : 'Soil'}</span>
         <span class="sl-qc-loc">${locText}</span>
       </div>
       <div class="sl-qc-date">${s.date_sampled || '—'}</div>
@@ -34135,6 +34145,193 @@ html.comfort-mode .rail-label {
   #fieldhub-view .cal-add-note-btn,
   #labhub-view .cal-add-note-btn,
   #conchub-view .cal-add-note-btn { display: none; }
+
+  /* Soil lab queue uses the same cards, type, and teal as the home screen. */
+  #soillab-view.active { padding-top: 52px; box-sizing: border-box; }
+  #soillab-view,
+  #soillab-view .sl-queue-panel { background: transparent !important; }
+  #soillab-view .sl-queue-header {
+    border: none;
+    padding: 8px 14px 0;
+  }
+  #soillab-view .sl-queue-title { display: none; }
+  #soillab-view .sl-queue-sub { font-size: 13px; color: #8ea0b5; margin: 0; }
+  #soillab-view .sl-search-bar { padding: 10px 14px 0; border: none; }
+  #soillab-view .sl-search-bar input {
+    background: #121b2c !important;
+    border: 1px solid #2a3a52 !important;
+    border-radius: 14px;
+    padding: 12px 14px;
+    font: 500 15px var(--sans) !important;
+    color: #eef3f8;
+  }
+  #soillab-view .sl-queue-actions {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+    padding: 12px 14px 0;
+  }
+  #soillab-view .sl-act-primary {
+    grid-column: 1 / -1;
+    width: 100% !important;
+    margin: 0 !important;
+    border: none !important;
+    border-radius: 14px !important;
+    background: #2ee0c8 !important;
+    color: #04222a !important;
+    box-shadow: none !important;
+    font: 700 16px var(--sans) !important;
+    letter-spacing: 0 !important;
+    padding: 14px 16px !important;
+    text-transform: none !important;
+  }
+  #soillab-view .sl-queue-actions .btn-ghost {
+    width: 100% !important;
+    margin: 0 !important;
+    background: #121b2c !important;
+    color: #eef3f8 !important;
+    border: 1px solid #2a3a52 !important;
+    border-radius: 12px !important;
+    box-shadow: none !important;
+    font: 650 13px var(--sans) !important;
+    letter-spacing: 0 !important;
+    padding: 12px 8px !important;
+    text-transform: none !important;
+  }
+  #soillab-view #sl-scanner-wrap { grid-column: 1 / -1; margin: 0; }
+  #soillab-view .sl-filters {
+    border: none;
+    padding: 12px 14px 2px;
+    gap: 10px;
+    background: transparent;
+  }
+  #soillab-view .sl-filter-row { gap: 8px; }
+  #soillab-view .sl-filter-label {
+    flex: 1 0 100%;
+    margin: 0;
+    color: #8ea0b5;
+    font: 600 12px var(--sans) !important;
+    letter-spacing: 0 !important;
+    text-transform: none !important;
+  }
+  #soillab-view .sl-filter-btn {
+    background: #121b2c !important;
+    background-image: none !important;
+    border: 1px solid #2a3a52 !important;
+    color: #c5d0de !important;
+    border-radius: 999px !important;
+    padding: 7px 12px !important;
+    font: 650 13px var(--sans) !important;
+    letter-spacing: 0 !important;
+    text-transform: none !important;
+    text-shadow: none !important;
+    box-shadow: none !important;
+    animation: none !important;
+  }
+  #soillab-view .sl-filter-btn.active {
+    background: #2ee0c8 !important;
+    background-image: none !important;
+    background-size: auto !important;
+    color: #04222a !important;
+    border-color: #2ee0c8 !important;
+    animation: none !important;
+  }
+  #soillab-view .sl-queue-list { padding: 8px 14px 24px; }
+  #soillab-view .sl-queue-card,
+  #soillab-view .sl-queue-card.complete,
+  #soillab-view .sl-queue-card.corrupt,
+  #soillab-view .sl-queue-card:hover,
+  #soillab-view .sl-queue-card.active {
+    background: #121b2c !important;
+    background-image: none !important;
+    border: 1px solid #2a3a52 !important;
+    border-radius: 16px !important;
+    padding: 14px !important;
+    margin: 0 0 10px !important;
+    box-shadow: none !important;
+    opacity: 1 !important;
+    transform: none !important;
+    animation: none !important;
+    color: #eef3f8;
+  }
+  #soillab-view .sl-queue-card::after { display: none !important; }
+  #soillab-view .sl-queue-card.active { border-color: #1aa896 !important; background: #10262c !important; }
+  #soillab-view .sl-qc-testno {
+    font-family: var(--sans) !important;
+    font-size: 16px;
+    font-weight: 700;
+    color: #eef3f8 !important;
+    text-shadow: none !important;
+  }
+  #soillab-view .sl-qc-contract {
+    font-family: var(--sans) !important;
+    font-size: 14px;
+    color: #c5d0de;
+    opacity: 1;
+  }
+  #soillab-view .sl-cat-tag,
+  #soillab-view .sl-cat-tag.agg {
+    font-family: var(--sans) !important;
+    font-size: 13px;
+    font-weight: 650;
+    background: transparent;
+    color: #8ea0b5;
+    padding: 0;
+    border-radius: 0;
+  }
+  #soillab-view .sl-qc-loc,
+  #soillab-view .sl-qc-date {
+    font-family: var(--sans) !important;
+    font-size: 13px;
+    color: #8ea0b5;
+  }
+  #soillab-view .sl-qc-badge {
+    font-family: var(--sans) !important;
+    font-size: 11px !important;
+    font-weight: 700;
+    letter-spacing: 0 !important;
+    text-transform: none !important;
+    border: none !important;
+    border-radius: 999px !important;
+    padding: 3px 8px !important;
+  }
+  #soillab-view .sl-qc-badge::before { display: none; }
+  #soillab-view .badge-complete,
+  #soillab-view .badge-approved { background: rgba(52, 211, 153, 0.16) !important; color: #34d399 !important; }
+  #soillab-view .badge-pending,
+  #soillab-view .badge-awaiting { background: rgba(240, 180, 90, 0.16) !important; color: #f0b45a !important; }
+  #soillab-view .sl-qc-req {
+    font: 700 11px var(--sans) !important;
+    color: #fca5a5;
+    background: rgba(248, 113, 113, 0.14);
+    border: none;
+    border-radius: 999px;
+    padding: 3px 8px;
+  }
+  #soillab-view .sl-qc-delete {
+    border: none;
+    background: transparent;
+    color: #8ea0b5;
+    opacity: 1;
+    font-size: 18px;
+    line-height: 1;
+    padding: 0 2px;
+  }
+  #soillab-view .sl-archive-month {
+    text-transform: none !important;
+    letter-spacing: 0 !important;
+    font-size: 15px;
+    font-weight: 700;
+    color: #eef3f8;
+    border: none;
+    padding: 6px 2px 8px;
+  }
+  #soillab-view .sl-archive-month span {
+    font-size: 13px;
+    font-weight: 500;
+    color: #8ea0b5;
+  }
+  #soillab-view .sl-empty { font-size: 14px; color: #8ea0b5; padding: 28px 12px; }
 }
 @media (max-width: 768px) {
   #phoneModuleBar { top: 48px; }
