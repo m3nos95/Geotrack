@@ -686,6 +686,40 @@ nav:not(#r18-nav), .nav-top-row { display: none !important; }
   background: rgba(196,124,42,0.25);
   border-color: rgba(196,124,42,0.6);
 }
+.sr-chip.on {
+  background: rgba(196,124,42,0.38);
+  border-color: var(--accent2);
+  color: #fff;
+}
+.sr-chip-x {
+  display: inline-block;
+  margin-left: 6px;
+  font-weight: 700;
+  opacity: 0.8;
+}
+.fc-request-tags { display: flex; flex-wrap: wrap; gap: 6px; margin: 0 0 8px; }
+.fc-request-add { display: flex; gap: 6px; margin-bottom: 6px; }
+.fc-request-add input { flex: 1; min-width: 0; }
+.fc-request-add button {
+  flex-shrink: 0;
+  background: rgba(255,255,255,0.05);
+  border: 1px solid var(--border);
+  color: var(--text);
+  border-radius: 4px;
+  padding: 8px 10px;
+  font-family: var(--mono);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.4px;
+  cursor: pointer;
+}
+.fc-request-hint {
+  font-family: var(--mono);
+  font-size: 9px;
+  color: var(--muted);
+  line-height: 1.4;
+  margin: 0 0 8px;
+}
 /* ── Offline Sync System ── */
 #offlineBanner {
   display: none; position: fixed; bottom: 16px; left: 50%; transform: translateX(-50%);
@@ -5380,7 +5414,14 @@ table.fc-borrow-tbl tr.fc-borrow-detail-row td{background:var(--surface);border-
                   <div class="form-group span2"><label>Remarks</label><textarea id="f_remarks" placeholder="Any additional notes..."></textarea></div>
                   <div class="form-group span2">
                     <label>Special Requests <span style="color:var(--red2);font-size:9px;">⚠ LAB ALERT</span></label>
-                    <textarea id="f_special_requests" placeholder="e.g. Please run organics — noticed leaves in sample. Expedite if possible." rows="2" style="resize:vertical;"></textarea>
+                    <div id="fcRequestTags" class="fc-request-tags"></div>
+                    <div class="fc-request-add">
+                      <input type="text" id="fc_request_tag_input" maxlength="32" placeholder="Add a tag, like proctor" autocomplete="off"
+                        onkeydown="if(event.key==='Enter'){event.preventDefault();fcAddRequestTag();}">
+                      <button type="button" onclick="fcAddRequestTag()">Add tag</button>
+                    </div>
+                    <div class="fc-request-hint">Tap a tag to request it. New tags stay in the library for the next sample.</div>
+                    <textarea id="f_special_requests" placeholder="Optional note for the lab, such as leaves in the sample." rows="2" style="resize:vertical;" oninput="renderFcRequestTags()"></textarea>
                   </div>
                 </div>
               </div>
@@ -7387,7 +7428,7 @@ table.fc-borrow-tbl tr.fc-borrow-detail-row td{background:var(--surface);border-
 // GLOBALS
 // ══════════════════════════════════════════════
 let db = null;
-const APP_BUILD = '2026.10.31-concrete-columns';
+const APP_BUILD = '2026.10.31-request-tags';
 const FC_CORE_ICON_SRC = 'docs/r18-reference/core-drill-icon-128.png';
 const BORELOG_ICON_SRC = 'docs/r18-reference/borelog-icon.webp';
 const BORELOG_PATH = 'deldot-borelog-v6-uscs.html';
@@ -14513,6 +14554,7 @@ async function connectSupabase(silent = false) {
     updateSupabaseStatus();
     pullLabSpecConfigFromDb().catch(() => {});
     ensureApprovalRoutes().catch(() => {});
+    if (typeof loadRequestTags === 'function') loadRequestTags().catch(() => {});
     refreshAuthProvisionUI();
     offlineQueuePruneDeadOps();
     await flushSampleHistoryQueue();
@@ -21700,6 +21742,7 @@ function loginUser(user, silent = false) {
   }
   // Refresh approval badge after the path and samples have loaded
   ensureApprovalRoutes().then(() => refreshApprovalBadge()).catch(() => {});
+  if (typeof loadRequestTags === 'function') loadRequestTags().catch(() => {});
   setTimeout(refreshApprovalBadge, 800);
   setTimeout(refreshApprovalBadge, 2500);
 }
@@ -27703,6 +27746,7 @@ function fcPrefillSampleForm(s) {
       }
     }, 300);
   }
+  renderFcRequestTags();
 }
 
 // ── Open LB-68 overlay for current session ────────────────────
@@ -28402,6 +28446,7 @@ document.addEventListener('DOMContentLoaded', () => {
   offlineUpdateBanner();
   renderAppBuildStamp();
   updateSyncStatusChip();
+  renderFcRequestTags();
   // If we're back online and have a queue, auto-sync after a short delay
   if (navigator.onLine) {
     const q = offlineQueueGet();
@@ -28412,11 +28457,268 @@ document.addEventListener('DOMContentLoaded', () => {
 // END OFFLINE SYNC ENGINE
 // ════════════════════════════════════════════════════════════════
 
-function fcAddSRChip(text) {
+// Soil special-request tags. Limits, Organics, and Rush start the library.
+// Added tags are kept on this browser and shared through lab_spec_config
+// so the next sample, on any signed-in device, can use them.
+const REQUEST_TAG_STORAGE_KEY = 'labtrak_request_tags';
+const REQUEST_TAG_ROW_ID = 'request_tags';
+const DEFAULT_REQUEST_TAGS = ['Limits', 'Organics', 'Rush'];
+let _requestTagDoc = null;
+
+function requestTagKey(tag) {
+  return String(tag || '').trim().toLowerCase();
+}
+
+function isDefaultRequestTag(tag) {
+  const key = requestTagKey(tag);
+  return DEFAULT_REQUEST_TAGS.some(t => requestTagKey(t) === key);
+}
+
+function normalizeRequestTag(raw) {
+  return String(raw || '').replace(/;/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 32);
+}
+
+function normalizeRequestTagList(list) {
+  const seen = new Set();
+  const out = [];
+  [...DEFAULT_REQUEST_TAGS, ...(Array.isArray(list) ? list : [])].forEach(raw => {
+    const tag = normalizeRequestTag(raw);
+    const key = requestTagKey(tag);
+    if (!tag || seen.has(key)) return;
+    seen.add(key);
+    const canonical = DEFAULT_REQUEST_TAGS.find(t => requestTagKey(t) === key);
+    out.push(canonical || tag);
+  });
+  return out;
+}
+
+function requestTagAttr(value) {
+  return String(value).replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;');
+}
+
+function requestTagText(value) {
+  return String(value).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+}
+
+function readRequestTagDoc() {
+  try {
+    const raw = JSON.parse(localStorage.getItem(REQUEST_TAG_STORAGE_KEY) || 'null');
+    if (raw && Array.isArray(raw.tags)) return raw;
+  } catch (e) {}
+  return null;
+}
+
+function writeRequestTagDoc(doc) {
+  const stored = {
+    tags: normalizeRequestTagList(doc.tags),
+    pendingAdds: (doc.pendingAdds || []).map(normalizeRequestTag).filter(tag => tag && !isDefaultRequestTag(tag)),
+    pendingRemoves: (doc.pendingRemoves || []).map(normalizeRequestTag).filter(tag => tag && !isDefaultRequestTag(tag)),
+    updatedAt: doc.updatedAt || new Date().toISOString(),
+  };
+  _requestTagDoc = stored;
+  try { localStorage.setItem(REQUEST_TAG_STORAGE_KEY, JSON.stringify(stored)); } catch (e) {}
+  return stored;
+}
+
+function ensureRequestTagDoc() {
+  if (_requestTagDoc) return _requestTagDoc;
+  const saved = readRequestTagDoc();
+  _requestTagDoc = saved
+    ? writeRequestTagDoc(saved)
+    : { tags: DEFAULT_REQUEST_TAGS.slice(), pendingAdds: [], pendingRemoves: [], updatedAt: '' };
+  _requestTagDoc.tags = normalizeRequestTagList(_requestTagDoc.tags);
+  return _requestTagDoc;
+}
+
+function requestTags() {
+  return ensureRequestTagDoc().tags;
+}
+
+function fcSplitRequests(value) {
+  const parts = String(value || '').split(/\s*;\s*/).map(part => part.trim()).filter(Boolean);
+  const selected = [];
+  const notes = [];
+  parts.forEach(part => {
+    const match = requestTags().find(tag => requestTagKey(tag) === requestTagKey(part));
+    if (match) {
+      if (!selected.some(tag => requestTagKey(tag) === requestTagKey(match))) selected.push(match);
+    } else {
+      notes.push(part);
+    }
+  });
+  return { selected, notes };
+}
+
+function fcWriteRequests(selected, notes) {
   const ta = document.getElementById('f_special_requests');
   if (!ta) return;
-  const cur = ta.value.trim();
-  ta.value = cur ? cur + '; ' + text : text;
+  ta.value = [...selected, ...notes].filter(Boolean).join('; ');
+}
+
+function fcSelectRequestTag(tag) {
+  const ta = document.getElementById('f_special_requests');
+  if (!ta) return;
+  const split = fcSplitRequests(ta.value);
+  if (!split.selected.some(item => requestTagKey(item) === requestTagKey(tag))) split.selected.push(tag);
+  fcWriteRequests(split.selected, split.notes);
+  renderFcRequestTags();
+}
+
+function fcToggleRequestTag(tag) {
+  const ta = document.getElementById('f_special_requests');
+  if (!ta) return;
+  const split = fcSplitRequests(ta.value);
+  const idx = split.selected.findIndex(item => requestTagKey(item) === requestTagKey(tag));
+  if (idx >= 0) split.selected.splice(idx, 1);
+  else split.selected.push(tag);
+  fcWriteRequests(split.selected, split.notes);
+  renderFcRequestTags();
+}
+
+function fcRequestTagClick(event) {
+  const btn = event.target.closest('.sr-chip');
+  if (!btn) return;
+  const tag = btn.getAttribute('data-tag');
+  if (!tag) return;
+  if (event.target.closest('[data-remove]')) {
+    event.preventDefault();
+    fcRemoveRequestTag(tag);
+    return;
+  }
+  fcToggleRequestTag(tag);
+}
+
+function renderFcRequestTags() {
+  const host = document.getElementById('fcRequestTags');
+  if (!host) return;
+  if (!host.dataset.bound) {
+    host.dataset.bound = '1';
+    host.addEventListener('click', fcRequestTagClick);
+  }
+  const selected = fcSplitRequests(document.getElementById('f_special_requests')?.value).selected;
+  host.innerHTML = requestTags().map(tag => {
+    const on = selected.some(item => requestTagKey(item) === requestTagKey(tag));
+    const remove = isDefaultRequestTag(tag)
+      ? ''
+      : '<span class="sr-chip-x" data-remove="1" aria-label="Remove from library">×</span>';
+    return `<button type="button" class="sr-chip${on ? ' on' : ''}" data-tag="${requestTagAttr(tag)}">${requestTagText(tag)}${remove}</button>`;
+  }).join('');
+}
+
+function sameRequestTag(a, b) {
+  return requestTagKey(a) === requestTagKey(b);
+}
+
+async function pushRequestTags() {
+  const doc = ensureRequestTagDoc();
+  if (!db) return false;
+  try {
+    const { error } = await db.from('lab_spec_config').upsert({
+      id: REQUEST_TAG_ROW_ID,
+      config: { tags: doc.tags },
+      updated_at: new Date().toISOString(),
+      updated_by: (typeof currentUser !== 'undefined' && (currentUser?.name || currentUser?.id)) || '',
+    }, { onConflict: 'id' });
+    if (error) throw error;
+    doc.pendingAdds = [];
+    doc.pendingRemoves = [];
+    writeRequestTagDoc(doc);
+    return true;
+  } catch (e) {
+    console.warn('pushRequestTags:', e);
+    return false;
+  }
+}
+
+async function loadRequestTags() {
+  const doc = ensureRequestTagDoc();
+  if (!db) {
+    renderFcRequestTags();
+    return doc.tags;
+  }
+  try {
+    const { data, error } = await db.from('lab_spec_config').select('config').eq('id', REQUEST_TAG_ROW_ID).maybeSingle();
+    if (error) throw error;
+    const remote = normalizeRequestTagList(data?.config?.tags || []);
+    const hasRemote = !!(data?.config && Array.isArray(data.config.tags));
+    let merged = hasRemote ? remote.slice() : doc.tags.slice();
+    (doc.pendingAdds || []).forEach(tag => {
+      if (!merged.some(item => sameRequestTag(item, tag))) merged.push(tag);
+    });
+    merged = merged.filter(tag => isDefaultRequestTag(tag) || !(doc.pendingRemoves || []).some(item => sameRequestTag(item, tag)));
+    merged = normalizeRequestTagList(merged);
+    const dirty = (doc.pendingAdds || []).length || (doc.pendingRemoves || []).length;
+    const changed = JSON.stringify(merged) !== JSON.stringify(remote);
+    writeRequestTagDoc({ ...doc, tags: merged, updatedAt: doc.updatedAt || new Date().toISOString() });
+    renderFcRequestTags();
+    if (!hasRemote || (dirty && changed)) await pushRequestTags();
+    return requestTags();
+  } catch (e) {
+    console.warn('loadRequestTags:', e);
+    renderFcRequestTags();
+    return doc.tags;
+  }
+}
+
+async function fcAddRequestTag() {
+  const input = document.getElementById('fc_request_tag_input');
+  const clean = normalizeRequestTag(input?.value || '');
+  if (clean.length < 2) {
+    showToast('A tag needs at least 2 characters', 'error');
+    return;
+  }
+  const doc = ensureRequestTagDoc();
+  const existing = doc.tags.find(tag => sameRequestTag(tag, clean));
+  if (existing) {
+    if (input) input.value = '';
+    fcSelectRequestTag(existing);
+    return;
+  }
+  doc.tags = normalizeRequestTagList([...doc.tags, clean]);
+  doc.pendingAdds = [...(doc.pendingAdds || []), clean];
+  doc.pendingRemoves = (doc.pendingRemoves || []).filter(tag => !sameRequestTag(tag, clean));
+  doc.updatedAt = new Date().toISOString();
+  writeRequestTagDoc(doc);
+  if (input) input.value = '';
+  fcSelectRequestTag(clean);
+  const shared = await pushRequestTags();
+  showToast(shared ? `${clean} added for the next samples` : `${clean} saved on this browser`, shared ? 'success' : 'info');
+}
+
+async function fcRemoveRequestTag(tag) {
+  if (isDefaultRequestTag(tag)) return;
+  const ta = document.getElementById('f_special_requests');
+  if (ta) {
+    const split = fcSplitRequests(ta.value);
+    fcWriteRequests(
+      split.selected.filter(item => !sameRequestTag(item, tag)),
+      split.notes
+    );
+  }
+  const doc = ensureRequestTagDoc();
+  doc.tags = normalizeRequestTagList(doc.tags.filter(item => !sameRequestTag(item, tag)));
+  doc.pendingRemoves = [...(doc.pendingRemoves || []), tag];
+  doc.pendingAdds = (doc.pendingAdds || []).filter(item => !sameRequestTag(item, tag));
+  doc.updatedAt = new Date().toISOString();
+  writeRequestTagDoc(doc);
+  renderFcRequestTags();
+  const shared = await pushRequestTags();
+  showToast(shared ? `${tag} removed from the library` : `${tag} removed on this browser`, shared ? 'success' : 'info');
+}
+
+function fcAddSRChip(text) {
+  const tag = normalizeRequestTag(text);
+  const known = requestTags().find(item => sameRequestTag(item, tag));
+  if (known) {
+    fcSelectRequestTag(known);
+    return;
+  }
+  const ta = document.getElementById('f_special_requests');
+  if (!ta || !tag) return;
+  const split = fcSplitRequests(ta.value);
+  if (!split.notes.some(note => requestTagKey(note) === requestTagKey(tag))) split.notes.push(tag);
+  fcWriteRequests(split.selected, split.notes);
+  renderFcRequestTags();
   ta.focus();
 }
 
@@ -28452,6 +28754,7 @@ function switchFCTab(tab) {
     else if (tab === 'sample') fieldGuideAdvanceTo('lab-toggle');
     else if (tab === 'core') fieldGuideAdvanceTo('core-log');
   }
+  if (tab === 'sample') renderFcRequestTags();
 }
 
 // ── Submit lab sample (upgrades the session record) ───────────
@@ -28537,6 +28840,7 @@ function fcClearSampleForm() {
     const el = document.getElementById(id); if (el) el.value = '';
   });
   document.getElementById('qrCard').style.display = 'none';
+  renderFcRequestTags();
   const sampleId = activeFC_linkedSampleId || (activeFC_table === 'samples' ? activeFC_sessionId : null);
   const s = sampleId ? (fcGetCachedLinkedSample() || allSamples.find(x => x.id === sampleId)) : null;
   if (s) fcPrefillSampleForm(s);
