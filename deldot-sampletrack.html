@@ -14516,6 +14516,7 @@ async function connectSupabase(silent = false) {
     refreshAuthProvisionUI();
     offlineQueuePruneDeadOps();
     await flushSampleHistoryQueue();
+    await flushConcreteSyncQueue();
     await pullAndMergeConcreteSets();
     await flushConcreteSyncQueue();
     await flushBorelogSyncQueueFromLabtrak().catch(e => console.warn('borelog flush:', e));
@@ -28637,12 +28638,15 @@ function saveConcreteSets(sets) {
 
 function concreteSetToRow(set) {
   if (!set || !set.id) return null;
+  const data = { ...set };
+  delete data._cloudSynced;
+  delete data._cloudUpdatedAt;
   return {
     id: set.id,
     contract: set.contract || null,
     pour_location: set.pourLocation || null,
     archived: !!set.archived,
-    data: set,
+    data,
   };
 }
 
@@ -28671,6 +28675,7 @@ async function refreshConcreteSetsIfConnected() {
   const now = Date.now();
   if (now - _lastConcretePull < 30000) return;
   _lastConcretePull = now;
+  await flushConcreteSyncQueue();
   await pullAndMergeConcreteSets();
 }
 
@@ -28699,13 +28704,15 @@ function mergeConcreteSets(localSets, cloudRows) {
   (localSets || []).forEach(s => {
     const existing = byId.get(s.id);
     if (!existing) {
-      if (pendingUpserts.has(s.id)) {
-        byId.set(s.id, { set: s, cloudTs: 0, push: true });
-      }
+      // A set this browser already confirmed, and the cloud no longer has,
+      // was deleted on another device. Anything never confirmed is still
+      // only on this computer and has to be uploaded.
+      if (s._cloudSynced && !pendingUpserts.has(s.id)) return;
+      byId.set(s.id, { set: s, cloudTs: 0, push: true });
       return;
     }
     const localTs = _concreteLocalTs(s);
-    if (localTs > existing.cloudTs) {
+    if (localTs > existing.cloudTs || pendingUpserts.has(s.id)) {
       byId.set(s.id, { set: s, cloudTs: existing.cloudTs, push: true });
     }
   });
@@ -28722,26 +28729,64 @@ function mergeConcreteSets(localSets, cloudRows) {
 
 function queueConcreteSync(entry) {
   try {
-    const q = JSON.parse(localStorage.getItem(CONCRETE_SYNC_QUEUE_KEY) || '[]');
+    let q = JSON.parse(localStorage.getItem(CONCRETE_SYNC_QUEUE_KEY) || '[]');
+    if (entry.op === 'upsert' && entry.set?.id) {
+      q = q.filter(e => !(e.op === 'upsert' && e.set?.id === entry.set.id));
+    } else if (entry.op === 'delete' && entry.id) {
+      q = q.filter(e => !(e.op === 'delete' && e.id === entry.id));
+    }
     q.push({ ...entry, queued_at: new Date().toISOString() });
     localStorage.setItem(CONCRETE_SYNC_QUEUE_KEY, JSON.stringify(q.slice(-100)));
   } catch (e) {}
   updateSyncStatusChip();
 }
 
+function unqueueConcreteUpsert(id) {
+  if (!id) return;
+  try {
+    const q = JSON.parse(localStorage.getItem(CONCRETE_SYNC_QUEUE_KEY) || '[]');
+    const next = q.filter(e => !(e.op === 'upsert' && e.set?.id === id));
+    localStorage.setItem(CONCRETE_SYNC_QUEUE_KEY, JSON.stringify(next));
+  } catch (e) {}
+}
+
+function markConcreteSetSynced(id) {
+  if (!id) return;
+  const sets = loadConcreteSets();
+  let changed = false;
+  sets.forEach(s => {
+    if (s.id === id && !s._cloudSynced) {
+      s._cloudSynced = true;
+      changed = true;
+    }
+  });
+  if (changed) saveConcreteSets(sets);
+  updateSyncStatusChip();
+}
+
+function concreteSyncFailureText(err) {
+  const msg = ((err && (err.message || err.details)) || '').toLowerCase();
+  const code = (err && err.code) || '';
+  if (code === '42501' || msg.includes('row-level security') || msg.includes('permission denied')) {
+    return 'Saved on this computer only. This sign-in cannot write concrete sets to the shared database yet, so your phone will not see them.';
+  }
+  return 'Saved on this computer. It will show on your phone when sync finishes.';
+}
+
 async function syncConcreteSetToCloud(set) {
   const row = concreteSetToRow(set);
-  if (!row) return;
-  if (!db) {
-    queueConcreteSync({ op: 'upsert', set });
-    return;
-  }
+  if (!row) return { ok: false, error: null };
+  queueConcreteSync({ op: 'upsert', set });
+  if (!db) return { ok: false, error: null };
   try {
     const { error } = await db.from('concrete_sets').upsert(row, { onConflict: 'id' });
     if (error) throw error;
+    markConcreteSetSynced(set.id);
+    unqueueConcreteUpsert(set.id);
+    return { ok: true, error: null };
   } catch (e) {
     console.warn('syncConcreteSetToCloud:', e);
-    queueConcreteSync({ op: 'upsert', set });
+    return { ok: false, error: e };
   }
 }
 
@@ -28766,28 +28811,26 @@ async function flushConcreteSyncQueue() {
   try { q = JSON.parse(localStorage.getItem(CONCRETE_SYNC_QUEUE_KEY) || '[]'); } catch { return; }
   if (!q.length) return;
   const remaining = [];
+  const syncedIds = [];
   for (const entry of q) {
     try {
       if (entry.op === 'delete') {
         const { error } = await db.from('concrete_sets').delete().eq('id', entry.id);
-        if (error) {
-          if (isPermanentDbError(error)) continue;
-          throw error;
-        }
+        if (error) throw error;
       } else if (entry.set) {
         const row = concreteSetToRow(entry.set);
         if (!row) continue;
         const { error } = await db.from('concrete_sets').upsert(row, { onConflict: 'id' });
-        if (error) {
-          if (isPermanentDbError(error)) continue;
-          throw error;
-        }
+        if (error) throw error;
+        syncedIds.push(entry.set.id);
       }
     } catch (e) {
-      if (!isPermanentDbError(e)) remaining.push(entry);
+      console.warn('flushConcreteSyncQueue:', e);
+      remaining.push(entry);
     }
   }
   try { localStorage.setItem(CONCRETE_SYNC_QUEUE_KEY, JSON.stringify(remaining)); } catch (e) {}
+  syncedIds.forEach(markConcreteSetSynced);
   updateSyncStatusChip();
 }
 
@@ -28798,6 +28841,8 @@ async function pullAndMergeConcreteSets() {
     if (error) throw error;
     const local = loadConcreteSets();
     const { merged, toPush } = mergeConcreteSets(local, data || []);
+    const pushing = new Set(toPush.map(s => s.id));
+    merged.forEach(s => { if (!pushing.has(s.id)) s._cloudSynced = true; });
     saveConcreteSets(merged);
     for (const set of toPush) {
       await syncConcreteSetToCloud(set);
@@ -28811,10 +28856,15 @@ async function pullAndMergeConcreteSets() {
 }
 function nextConcreteId(sets) {
   const yr = new Date().getFullYear().toString().slice(-2);
-  const prefix = `CON-${yr}-`;
-  const existing = sets.filter(s => s.id.startsWith(prefix)).map(s => parseInt(s.id.split('-')[2]) || 0);
-  const next = existing.length > 0 ? Math.max(...existing) + 1 : 1;
-  return prefix + String(next).padStart(3,'0');
+  const alphabet = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+  const taken = new Set((sets || []).map(s => s.id));
+  let id = '';
+  do {
+    let tail = '';
+    for (let i = 0; i < 4; i++) tail += alphabet[Math.floor(Math.random() * alphabet.length)];
+    id = `CON-${yr}-${tail}`;
+  } while (taken.has(id));
+  return id;
 }
 function cylArea(diam) { return Math.PI * Math.pow(diam / 2, 2); }
 function addDays(dateStr, days) {
@@ -28926,7 +28976,7 @@ function clearConcreteIntakeForm() {
   initConcreteIntakeForm();
 }
 
-function submitConcreteIntake() {
+async function submitConcreteIntake() {
   const gv = id => { const el = document.getElementById(id); return el ? el.value.trim() : ''; };
   const gn = id => { const v = parseFloat(document.getElementById(id)?.value); return isNaN(v) ? null : v; };
 
@@ -29027,8 +29077,12 @@ function submitConcreteIntake() {
   const sets = loadConcreteSets();
   sets.unshift(newSet);
   saveConcreteSets(sets);
-  syncConcreteSetToCloud(newSet);
-  showToast(`Set ${newSet.id} created — ${cylinders.length} cylinders logged ✓`, 'success');
+  const saved = await syncConcreteSetToCloud(newSet);
+  if (saved.ok) {
+    showToast(`Set ${newSet.id} saved — ${cylinders.length} cylinders logged`, 'success');
+  } else {
+    showToast(concreteSyncFailureText(saved.error).replace('Saved on this computer', `Set ${newSet.id} saved on this computer`), saved.error ? 'error' : 'info');
+  }
   clearConcreteIntakeForm();
   switchConcreteTab('log');
   if (typeof concreteGuideAdvanceTo === 'function') concreteGuideAdvanceTo('log');
@@ -29243,7 +29297,7 @@ function calcBreakStrength() {
   }
 }
 
-function submitBreakEntry() {
+async function submitBreakEntry() {
   const setId = document.getElementById('cb_set_select')?.value;
   const cylId = document.getElementById('cb_cyl_select')?.value;
   const load  = parseFloat(document.getElementById('cb_load')?.value);
@@ -29277,9 +29331,14 @@ function submitBreakEntry() {
   set.updatedAt = new Date().toISOString();
 
   saveConcreteSets(sets);
-  syncConcreteSetToCloud(set);
+  const saved = await syncConcreteSetToCloud(set);
   const pass = strength >= set.requiredFc;
-  showToast(`${cylId}: ${strength.toLocaleString()} psi — ${pass ? 'PASS ✓' : 'FAIL ✗'}`, pass ? 'success' : 'error');
+  const result = `${cylId}: ${strength.toLocaleString()} psi — ${pass ? 'PASS' : 'FAIL'}`;
+  if (saved.ok) {
+    showToast(result, pass ? 'success' : 'error');
+  } else {
+    showToast(result + '. ' + concreteSyncFailureText(saved.error), saved.error ? 'error' : 'info');
+  }
   clearBreakForm();
   populateBreakSetSelect();
   if (typeof concreteGuideAdvanceTo === 'function') concreteGuideAdvanceTo('report');
