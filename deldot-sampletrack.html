@@ -7287,9 +7287,7 @@ table.fc-borrow-tbl tr.fc-borrow-detail-row td{background:var(--surface);border-
     </div>
     <div class="sample-hub-rows">
       <button type="button" onclick="sampleHubAction('info')">Sample Information</button>
-      <button type="button" onclick="sampleHubAction('tests')">Tests</button>
-      <button type="button" onclick="sampleHubAction('results')">Results</button>
-      <button type="button" onclick="sampleHubAction('photos')">Photos</button>
+      <button type="button" onclick="sampleHubAction('reports')">Reports</button>
       <button type="button" onclick="sampleHubAction('documents')">Documents</button>
       <button type="button" onclick="sampleHubAction('notes')">Notes</button>
       <button type="button" onclick="sampleHubAction('history')">History</button>
@@ -17039,7 +17037,7 @@ function sampleHubAction(action) {
   if (action === 'archive') { archiveSample(id, testNo); return; }
   if (action === 'history') { showSampleHistory(id, testNo); return; }
   if (action === 'info' || action === 'notes') { openEditSample(id); return; }
-  if (action === 'results' && sample.status === 'complete') { viewReport(id); return; }
+  if (action === 'reports' && (sample.status === 'complete' || sample.status === 'approved')) { viewReport(id); return; }
   openSample(id);
 }
 
@@ -21284,7 +21282,10 @@ function syncPhoneChrome() {
   });
   const titleEl = document.getElementById('phoneModuleTitle');
   if (!titleEl) return;
-  const titles = { dashboard: 'Sample Queue', calendar: 'Dashboard', home: 'LabTrak' };
+  const titles = {
+    dashboard: 'Sample Queue', calendar: 'Dashboard', home: 'LabTrak',
+    labhub: 'Soil & Agg', fieldhub: 'Field Control', conchub: 'Concrete'
+  };
   titleEl.textContent = titles[name] || (typeof VIEW_LABELS !== 'undefined' && VIEW_LABELS[name]) || 'LabTrak';
 }
 
@@ -34027,6 +34028,113 @@ html.comfort-mode .rail-label {
   .queue-card-meta { margin-top: 2px; color: #8ea0b5; font-size: 13px; }
   .queue-empty { color: #8ea0b5; }
   #calendar-view .dash-cal-wrap { background: transparent; border: none; box-shadow: none; padding: 0; }
+
+  #fieldhub-view .hub-wrap,
+  #labhub-view .hub-wrap,
+  #conchub-view .hub-wrap { max-width: none; padding: 6px 12px 28px; }
+  #fieldhub-view .hub-greet,
+  #labhub-view .hub-greet,
+  #conchub-view .hub-greet,
+  #fieldhub-view .hub-role-badge,
+  #labhub-view .hub-role-badge,
+  #fieldhub-view .hub-wx-panel,
+  #conchub-view .hub-wx-panel,
+  #fc_borrow_report,
+  #fieldhub-view .concrete-guide-toggle,
+  #conchub-view .concrete-guide-toggle,
+  #btnConcreteWeather { display: none !important; }
+  #fieldhub-view .hub-header,
+  #labhub-view .hub-header,
+  #conchub-view .hub-header { justify-content: flex-start; text-align: left; margin-bottom: 12px; }
+  #fieldhub-view .hub-date-line,
+  #labhub-view .hub-date-line,
+  #conchub-view .hub-date-line { font-size: 14px; color: #8ea0b5; margin-top: 0; }
+  #labhub-view .borelog-launch-card {
+    padding: 12px 14px !important;
+    gap: 12px !important;
+    margin-bottom: 12px !important;
+    border-radius: 16px !important;
+    background: #121b2c !important;
+    border: 1px solid #2a3a52 !important;
+    box-shadow: none !important;
+  }
+  #labhub-view .borelog-launch-card img { width: 42px !important; height: 42px !important; border-radius: 12px !important; }
+  #fieldhub-view .hub-kpi-row,
+  #labhub-view .hub-kpi-row,
+  #conchub-view .hub-kpi-row { grid-template-columns: repeat(4, minmax(0, 1fr)) !important; gap: 8px !important; }
+  #fieldhub-view .hub-kpi-card,
+  #labhub-view .hub-kpi-card,
+  #conchub-view .hub-kpi-card {
+    background: #121b2c;
+    border-radius: 14px;
+    text-align: center;
+    padding: 12px 4px 10px;
+  }
+  #fieldhub-view .hub-kpi-icon,
+  #labhub-view .hub-kpi-icon,
+  #conchub-view .hub-kpi-icon,
+  #fieldhub-view .hub-kpi-card > div[style*="position:absolute"],
+  #labhub-view .hub-kpi-card > div[style*="position:absolute"],
+  #conchub-view .hub-kpi-card > div[style*="position:absolute"] { display: none !important; }
+  #fieldhub-view .hub-kpi-val,
+  #labhub-view .hub-kpi-val,
+  #conchub-view .hub-kpi-val { font-size: 22px; }
+  #fieldhub-view .hub-kpi-lbl,
+  #labhub-view .hub-kpi-lbl,
+  #conchub-view .hub-kpi-lbl { font-size: 11px; line-height: 1.25; margin-top: 4px; }
+  #fieldhub-view .hub-actions,
+  #labhub-view .hub-actions,
+  #conchub-view .hub-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  #fieldhub-view .hub-action-btn,
+  #labhub-view .hub-action-btn,
+  #conchub-view .hub-action-btn {
+    min-height: 46px;
+    border-radius: 12px;
+    justify-content: center;
+    background: #121b2c;
+    color: #eef3f8;
+    border: 1px solid #2a3a52;
+    font-size: 13px;
+    box-shadow: none;
+  }
+  #fieldhub-view .hub-action-btn.primary,
+  #labhub-view .hub-action-btn.primary,
+  #conchub-view .hub-action-btn.primary {
+    grid-column: 1 / -1;
+    background: #2ee0c8;
+    color: #04222a;
+    border: none;
+    border-radius: 14px;
+    min-height: 48px;
+    font-size: 16px;
+    font-weight: 700;
+  }
+  #fieldhub-view .hub-panel,
+  #labhub-view .hub-panel,
+  #conchub-view .hub-panel { background: transparent; border: none; box-shadow: none; padding: 0; }
+  #conchub-view .hub-two-col { grid-template-columns: 1fr; }
+  #fieldhub-view .hub-panel-title,
+  #labhub-view .hub-panel-title,
+  #conchub-view .hub-panel-title,
+  #fieldhub-view .hub-cal-title,
+  #labhub-view .hub-cal-title,
+  #conchub-view .hub-cal-title { font-size: 16px; font-weight: 700; color: #eef3f8; }
+  #fieldhub-view .hub-sample-row,
+  #labhub-view .hub-sample-row,
+  #fieldhub-view .hub-break-row,
+  #labhub-view .hub-break-row,
+  #conchub-view .hub-sample-row,
+  #conchub-view .hub-break-row {
+    background: #121b2c;
+    border: 1px solid #2a3a52;
+    border-left-width: 0;
+    border-radius: 14px;
+    padding: 12px 14px;
+    margin-bottom: 8px;
+  }
+  #fieldhub-view .cal-add-note-btn,
+  #labhub-view .cal-add-note-btn,
+  #conchub-view .cal-add-note-btn { display: none; }
 }
 @media (max-width: 768px) {
   #phoneModuleBar { top: 48px; }
@@ -34121,6 +34229,20 @@ html.comfort-mode .rail-label {
 @media (max-width: 640px) {
   #conchub-view .hub-greet { font-size: 28px; }
   #conchub-view .hub-kpi-row { grid-template-columns: 1fr 1fr; }
+}
+@media (max-width: 820px) {
+  #conchub-view .hub-header { justify-content: flex-start; text-align: left; }
+  #conchub-view .hub-greet { display: none !important; }
+  #conchub-view .hub-kpi-row { grid-template-columns: repeat(4, minmax(0, 1fr)) !important; }
+  #conchub-view .hub-kpi-card { padding: 12px 4px 10px; }
+  #conchub-view .hub-kpi-val { font-size: 22px; }
+  #conchub-view .hub-action-btn.primary {
+    background: #2ee0c8;
+    color: #04222a;
+    border: none;
+    box-shadow: none;
+  }
+  #conchub-view .hub-panel { background: transparent; border: none; box-shadow: none; }
 }
 
 /* Side rail is retired. Home launches every app, and Back returns there.
