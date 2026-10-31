@@ -16706,8 +16706,9 @@ function _renderDashCal() {
   const events = {};
   const addEv = function(d, ev) { if (!events[d]) events[d] = []; events[d].push(ev); };
 
-  const showBreaks  = (_calFilter === 'all' || _calFilter === 'breaks');
-  const showSamples = (_calFilter === 'all' || _calFilter === 'samples');
+  const workScope = queueRoleScope();
+  const showBreaks  = workScope.concrete && (_calFilter === 'all' || _calFilter === 'breaks');
+  const showSamples = workScope.lab && (_calFilter === 'all' || _calFilter === 'samples');
   const showNotes   = (_calFilter !== 'breaks' && _calFilter !== 'samples');
 
   // Concrete cylinder breaks
@@ -16877,6 +16878,39 @@ function queueDateLabel(iso) {
 
 let _queueSort = 'newest';
 
+function queueRoleScope() {
+  const role = (currentUser && currentUser.role) || '';
+  if (role === 'admin' || role === 'section_admin') return { concrete: true, lab: true, field: true };
+  if (role === 'concrete') return { concrete: true, lab: false, field: false };
+  if (role === 'lab') return { concrete: false, lab: true, field: false };
+  if (role === 'field') return { concrete: false, lab: false, field: true };
+  const tabs = (currentUser && currentUser.restricted_hubs && currentUser.restricted_hubs.length)
+    ? currentUser.restricted_hubs
+    : ((typeof ROLE_DEFS !== 'undefined' && ROLE_DEFS[role] && ROLE_DEFS[role].tabs) || []);
+  return {
+    concrete: tabs.indexOf('concrete') >= 0 || tabs.indexOf('conchub') >= 0,
+    lab: tabs.indexOf('labhub') >= 0 || tabs.indexOf('soillab') >= 0,
+    field: tabs.indexOf('fieldhub') >= 0 || tabs.indexOf('fieldcontrol') >= 0
+  };
+}
+
+function isFieldQueueSample(s) {
+  if (!s || s._queueKind === 'concrete') return false;
+  if (s.record_kind === 'density_test' || s.status === 'density') return true;
+  if (s.sample_type === 'nuclear_placeholder' || s.sample_type === 'aggregate_placeholder' || s.sample_type === 'density_test') return true;
+  if (s.nuclear_data || s.density_data) return true;
+  return false;
+}
+
+function sampleMatchesQueueRole(s) {
+  const scope = queueRoleScope();
+  if (!s) return false;
+  if (s._queueKind === 'concrete' || s.test_category === 'concrete') return scope.concrete;
+  if (isFieldQueueSample(s)) return scope.field;
+  if (typeof isSoilLabSample === 'function' && isSoilLabSample(s)) return scope.lab;
+  return scope.lab && scope.field && scope.concrete;
+}
+
 function concreteSetQueueStatus(set) {
   const cyls = set.cylinders || [];
   if (cyls.length && cyls.every(c => c.status === 'broken')) return 'complete';
@@ -16916,11 +16950,16 @@ function renderSampleQueue(samples) {
   const incoming = Array.isArray(samples) ? samples : (window._queueSamples || []);
   const labSource = incoming.filter(s => !s || s._queueKind !== 'concrete');
   window._queueSamples = labSource;
-  const source = labSource.concat(concreteSetsForQueue());
+  const scope = queueRoleScope();
+  const source = labSource.concat(concreteSetsForQueue()).filter(sampleMatchesQueueRole);
   const list = document.getElementById('sampleQueueList');
   if (!list) return;
   const statusFilter = (document.getElementById('queueStatusFilter') || {}).value || '';
-  const typeFilter = (document.getElementById('queueTypeFilter') || {}).value || '';
+  let typeFilter = (document.getElementById('queueTypeFilter') || {}).value || '';
+  if (typeFilter === 'concrete' && !scope.concrete) typeFilter = '';
+  if ((typeFilter === 'soil' || typeFilter === 'aggregate') && !scope.lab) typeFilter = '';
+  const typeSel = document.getElementById('queueTypeFilter');
+  if (typeSel && typeSel.value !== typeFilter) typeSel.value = typeFilter;
   const rows = source.filter(s => {
     const status = s.status || 'pending';
     if (statusFilter === 'pending') {
@@ -16991,6 +17030,19 @@ function syncQueueChips(visible) {
     ? 'archive'
     : ((document.getElementById('queueStatusFilter') || {}).value || '');
   const type = (document.getElementById('queueTypeFilter') || {}).value || '';
+  const scope = queueRoleScope();
+  document.querySelectorAll('#queueTypeChips button').forEach(b => {
+    const value = b.dataset.value || '';
+    const show = value === '' || (value === 'concrete' ? scope.concrete : scope.lab);
+    b.hidden = !show;
+  });
+  const typeRow = document.getElementById('queueTypeChips') && document.getElementById('queueTypeChips').closest('.queue-chip-row');
+  if (typeRow) typeRow.hidden = !scope.lab;
+  document.querySelectorAll('#dashboard-view .queue-quick button').forEach(b => {
+    const action = b.getAttribute('onclick') || '';
+    if (action.indexOf('soillab') >= 0) b.hidden = !scope.lab;
+    if (action.indexOf("switchView('scan')") >= 0) b.hidden = !(scope.lab || scope.field);
+  });
   document.querySelectorAll('#queueStatusChips button').forEach(b => b.classList.toggle('on', b.dataset.value === status));
   document.querySelectorAll('#queueTypeChips button').forEach(b => b.classList.toggle('on', (b.dataset.value || '') === type));
   const count = document.getElementById('queueVisibleCount');
@@ -17051,15 +17103,18 @@ function filterHomeApps(q) {
 }
 
 function renderPhoneDash() {
-  const samples = allSamples || [];
+  const scope = queueRoleScope();
+  const samples = (allSamples || []).filter(sampleMatchesQueueRole);
   const today = new Date().toISOString().slice(0, 10);
   const pending = samples.filter(s => !s.status || s.status === 'pending').length;
   const complete = samples.filter(s => s.status === 'complete' || s.status === 'approved').length;
   const todayN = samples.filter(s => (s.date_sampled || '') === today).length;
   let breaks = 0;
-  try {
-    loadConcreteSets().forEach(set => (set.cylinders || []).forEach(c => { if (c.status === 'pending') breaks++; }));
-  } catch (e) {}
+  if (scope.concrete) {
+    try {
+      loadConcreteSets().forEach(set => (set.cylinders || []).forEach(c => { if (c.status === 'pending') breaks++; }));
+    } catch (e) {}
+  }
   const kpis = document.getElementById('phoneDashKpis');
   if (kpis) {
     kpis.innerHTML = [
@@ -17120,6 +17175,7 @@ function sampleHubAction(action) {
 }
 
 function renderTable(samples) {
+  samples = (samples || []).filter(sampleMatchesQueueRole);
   renderSampleQueue(samples);
   const tbody = document.getElementById('sampleTableBody');
   if (!tbody) return;
