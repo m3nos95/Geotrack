@@ -158,7 +158,7 @@ BEGIN
     EXECUTE 'DROP POLICY IF EXISTS "concrete_sets authenticated read" ON public.concrete_sets';
     EXECUTE 'DROP POLICY IF EXISTS "concrete_sets concrete write" ON public.concrete_sets';
     EXECUTE 'CREATE POLICY "concrete_sets authenticated read" ON public.concrete_sets FOR SELECT TO authenticated USING (public.st_current_role() IS NOT NULL)';
-    EXECUTE 'CREATE POLICY "concrete_sets concrete write" ON public.concrete_sets FOR ALL TO authenticated USING (public.st_current_role() IN (''admin'', ''section_admin'', ''concrete'')) WITH CHECK (public.st_current_role() IN (''admin'', ''section_admin'', ''concrete''))';
+    EXECUTE 'CREATE POLICY "concrete_sets concrete write" ON public.concrete_sets FOR ALL TO authenticated USING (public.st_current_role() IN (''admin'', ''section_admin'', ''field'', ''lab'', ''concrete'')) WITH CHECK (public.st_current_role() IN (''admin'', ''section_admin'', ''field'', ''lab'', ''concrete''))';
   END IF;
 
   IF to_regclass('public.st_cal_notes') IS NOT NULL THEN
