@@ -7387,7 +7387,7 @@ table.fc-borrow-tbl tr.fc-borrow-detail-row td{background:var(--surface);border-
 // GLOBALS
 // ══════════════════════════════════════════════
 let db = null;
-const APP_BUILD = '2026.08.14-desc-clayey-fix';
+const APP_BUILD = '2026.10.31-concrete-columns';
 const FC_CORE_ICON_SRC = 'docs/r18-reference/core-drill-icon-128.png';
 const BORELOG_ICON_SRC = 'docs/r18-reference/borelog-icon.webp';
 const BORELOG_PATH = 'deldot-borelog-v6-uscs.html';
@@ -21693,6 +21693,11 @@ function loginUser(user, silent = false) {
   });
   if (!silent) showToast(`Welcome, ${user.name} ✓`, 'success');
   refreshProjectAdminUI();
+  if (db && typeof pullAndMergeConcreteSets === 'function') {
+    flushConcreteSyncQueue()
+      .then(() => pullAndMergeConcreteSets())
+      .catch(e => console.warn('concrete login sync:', e));
+  }
   // Refresh approval badge after the path and samples have loaded
   ensureApprovalRoutes().then(() => refreshApprovalBadge()).catch(() => {});
   setTimeout(refreshApprovalBadge, 800);
@@ -22670,8 +22675,8 @@ function renderConcreteHub() {
     });
   });
 
-  const overdue   = allPend.filter(c => c.st === 'overdue').length;
-  const dueToday  = allPend.filter(c => c.st === 'due-today').length;
+  const overdue   = allPend.filter(c => c.st && c.st.cls === 'overdue').length;
+  const dueToday  = allPend.filter(c => c.st && c.st.cls === 'due-today').length;
   const dueSoon   = allPend.filter(c => c.dueDate >= today && c.dueDate <= weekEnd).length;
 
   setText('ckpi_active',  sets.length);
@@ -22686,21 +22691,24 @@ function renderConcreteHub() {
   const breaksEl = document.getElementById('chub_breaks');
   if (breaksEl) {
     const relevant = allPend
-      .filter(c => c.st === 'overdue' || c.dueDate <= weekEnd)
+      .filter(c => (c.st && c.st.cls === 'overdue') || (c.dueDate >= today && c.dueDate <= weekEnd))
       .sort((a,b) => a.dueDate < b.dueDate ? -1 : 1)
       .slice(0, 8);
     if (!relevant.length) {
       breaksEl.innerHTML = '<div class="hub-empty">No upcoming breaks.</div>';
     } else {
       breaksEl.innerHTML = relevant.map(c => {
-        const daysDiff = Math.round((new Date(c.dueDate)-new Date())/86400000);
-        const label = c.st === 'overdue' ? `${Math.abs(daysDiff)}d OVERDUE` : c.st === 'due-today' ? 'TODAY' : `in ${daysDiff}d`;
-        return `<div class="hub-break-row ${c.st}" onclick="switchView('concrete');switchConcreteTab('schedule')">
+        const due = new Date(String(c.dueDate).slice(0, 10) + 'T12:00:00');
+        const now = new Date(); now.setHours(12, 0, 0, 0);
+        const daysDiff = Math.round((due - now) / 86400000);
+        const cls = (c.st && c.st.cls) || '';
+        const label = cls === 'overdue' ? `${Math.abs(daysDiff)}d overdue` : cls === 'due-today' ? 'Today' : `in ${daysDiff}d`;
+        return `<div class="hub-break-row ${cls}" onclick="switchView('concrete');switchConcreteTab('schedule')">
           <div>
             <div class="hub-br-id">${c.setId} · ${c.cylId||'cyl'}</div>
             <div class="hub-br-loc">${c.location} · ${c.breakAge}-day</div>
           </div>
-          <div class="hub-br-due ${c.st}">${label}</div>
+          <div class="hub-br-due ${cls}">${label}</div>
         </div>`;
       }).join('');
     }
@@ -28705,31 +28713,195 @@ function saveConcreteSets(sets) {
   }
 }
 
+function concreteText(v) {
+  if (v == null) return null;
+  const s = String(v).trim();
+  return s ? s : null;
+}
+
+function concreteNum(v) {
+  if (v == null || v === '') return null;
+  const n = typeof v === 'number' ? v : parseFloat(v);
+  return Number.isFinite(n) ? n : null;
+}
+
+function concreteDate(v) {
+  const s = concreteText(v);
+  if (!s) return null;
+  const m = /^(\d{4}-\d{2}-\d{2})/.exec(s);
+  return m ? m[1] : null;
+}
+
+function concreteTime(v) {
+  const s = concreteText(v);
+  if (!s) return null;
+  const m = /^(\d{1,2}:\d{2})/.exec(s);
+  return m ? m[1] : null;
+}
+
+function concretePourKey(set) {
+  if (!set) return '';
+  return [set.contract, set.castDate || set.cast_date, set.pourLocation || set.pour_location, set.ticketNo || set.ticket_no, set.testNo || set.test_no]
+    .map(v => String(v || '').trim().toLowerCase())
+    .join('|');
+}
+
+function retargetConcreteSetId(set, newId) {
+  const oldId = set.id;
+  const cylinders = (set.cylinders || []).map(c => {
+    const copy = { ...c };
+    if (copy.cylId && oldId && String(copy.cylId).indexOf(oldId) === 0) {
+      copy.cylId = newId + String(copy.cylId).slice(oldId.length);
+    }
+    return copy;
+  });
+  return { ...set, id: newId, cylinders, updatedAt: new Date().toISOString() };
+}
+
+function replaceLocalConcreteSet(oldId, nextSet) {
+  const sets = loadConcreteSets();
+  const idx = sets.findIndex(s => s.id === oldId);
+  if (idx >= 0) sets[idx] = nextSet;
+  else sets.unshift(nextSet);
+  saveConcreteSets(sets);
+}
+
+// The live concrete_sets table is one column per pour field, and cylinders
+// live in concrete_cylinders. There is no data/archived/updated_at column.
 function concreteSetToRow(set) {
   if (!set || !set.id) return null;
-  const data = { ...set };
-  delete data._cloudSynced;
-  delete data._cloudUpdatedAt;
+  const fresh = set.fresh || {};
+  const materials = { ...(set.materials && typeof set.materials === 'object' ? set.materials : {}) };
+  delete materials._labtrak;
+  materials._labtrak = {
+    archived: !!set.archived,
+    updatedAt: set.updatedAt || set.createdAt || null
+  };
   return {
     id: set.id,
-    contract: set.contract || null,
-    pour_location: set.pourLocation || null,
-    archived: !!set.archived,
-    data,
+    test_no: concreteText(set.testNo),
+    contract: concreteText(set.contract),
+    fa_project: concreteText(set.faProject),
+    contractor: concreteText(set.contractor),
+    subcontractor: concreteText(set.subcontractor),
+    supplier: concreteText(set.supplier),
+    mix_design: concreteText(set.mixDesign),
+    pour_location: concreteText(set.pourLocation || set.location),
+    cast_date: concreteDate(set.castDate),
+    cast_time: concreteTime(set.castTime),
+    date_received: concreteDate(set.dateReceived),
+    truck_no: concreteText(set.truckNo),
+    ticket_no: concreteText(set.ticketNo),
+    sampled_by: concreteText(set.sampledBy),
+    tech_no: concreteText(set.techNo),
+    section_no: concreteText(set.sectionNo),
+    concrete_class: concreteText(set.concreteClass),
+    county: concreteText(set.county),
+    cement_sks: concreteText(set.cementSks),
+    station: concreteText(set.station),
+    precast: concreteText(set.precast),
+    plant: concreteText(set.plant),
+    corr_factor: concreteText(set.corrFactor),
+    gps_coordinates: concreteText(set.gps_coordinates || set.gps),
+    slump: concreteNum(fresh.slump),
+    air: concreteNum(fresh.air),
+    unit_weight: concreteNum(fresh.unitWeight),
+    conc_temp: concreteNum(fresh.concTemp),
+    amb_temp: concreteNum(fresh.ambTemp),
+    cyl_diam: concreteNum(set.cylDiam),
+    required_fc: concreteNum(set.requiredFc),
+    remarks: concreteText(set.remarks),
+    materials
   };
 }
 
-function concreteRowToSet(row) {
+function concreteCylindersToRows(set) {
+  return (set.cylinders || []).filter(c => c && (c.cylId || c.id)).map(c => {
+    const strength = concreteNum(c.strength);
+    const diam = concreteNum(c.actualDiam);
+    const area = c.area != null ? concreteNum(c.area) : (diam ? Number(cylArea(diam).toFixed(2)) : null);
+    const mpa = c.mpa != null ? concreteNum(c.mpa) : (strength != null ? Number((strength * 0.00689476).toFixed(2)) : null);
+    return {
+      id: c.cylId || c.id,
+      set_id: set.id,
+      break_age: concreteNum(c.breakAge),
+      due_date: concreteDate(c.dueDate),
+      status: concreteText(c.status) || 'pending',
+      load_lbs: concreteNum(c.load),
+      strength_psi: strength,
+      mpa,
+      actual_diam: diam,
+      area_sqin: area,
+      fracture: concreteText(c.fracture),
+      tech_break: concreteText(c.techBreak),
+      broken_date: concreteDate(c.brokenDate)
+    };
+  });
+}
+
+function concreteRowToSet(row, cylinders) {
   if (!row) return null;
-  const base = row.data && typeof row.data === 'object' ? { ...row.data } : {};
+  const materials = row.materials && typeof row.materials === 'object' ? { ...row.materials } : {};
+  const meta = materials._labtrak && typeof materials._labtrak === 'object' ? materials._labtrak : {};
+  delete materials._labtrak;
+  const day = v => v ? String(v).slice(0, 10) : '';
+  const cyls = (cylinders || []).map(c => ({
+    cylId: c.id,
+    breakAge: c.break_age,
+    dueDate: day(c.due_date),
+    status: c.status || 'pending',
+    load: c.load_lbs,
+    strength: c.strength_psi,
+    mpa: c.mpa,
+    actualDiam: c.actual_diam,
+    area: c.area_sqin,
+    fracture: c.fracture,
+    techBreak: c.tech_break,
+    brokenDate: day(c.broken_date)
+  }));
   const set = {
-    ...base,
-    id: row.id || base.id,
-    contract: row.contract != null ? row.contract : base.contract,
-    pourLocation: row.pour_location != null ? row.pour_location : base.pourLocation,
-    archived: row.archived != null ? row.archived : !!base.archived,
+    id: row.id,
+    testNo: row.test_no || '',
+    contract: row.contract || '',
+    faProject: row.fa_project || '',
+    contractor: row.contractor || '',
+    subcontractor: row.subcontractor || '',
+    supplier: row.supplier || '',
+    mixDesign: row.mix_design || '',
+    pourLocation: row.pour_location || '',
+    castDate: day(row.cast_date),
+    castTime: row.cast_time ? String(row.cast_time).slice(0, 5) : '',
+    dateReceived: day(row.date_received),
+    truckNo: row.truck_no || '',
+    ticketNo: row.ticket_no || '',
+    sampledBy: row.sampled_by || '',
+    techNo: row.tech_no || '',
+    sectionNo: row.section_no || '',
+    concreteClass: row.concrete_class || '',
+    county: row.county || '',
+    cementSks: row.cement_sks || '',
+    station: row.station || '',
+    precast: row.precast || '',
+    plant: row.plant || '',
+    corrFactor: row.corr_factor || '',
+    gps_coordinates: row.gps_coordinates || '',
+    fresh: {
+      slump: row.slump,
+      air: row.air,
+      unitWeight: row.unit_weight,
+      concTemp: row.conc_temp,
+      ambTemp: row.amb_temp
+    },
+    cylDiam: row.cyl_diam,
+    requiredFc: row.required_fc,
+    remarks: row.remarks || '',
+    materials,
+    cylinders: cyls,
+    archived: !!meta.archived,
+    createdAt: row.created_at || meta.updatedAt || '',
+    updatedAt: meta.updatedAt || row.created_at || ''
   };
-  if (row.updated_at) set._cloudUpdatedAt = row.updated_at;
+  if (row.created_at || meta.updatedAt) set._cloudUpdatedAt = meta.updatedAt || row.created_at;
   return set;
 }
 
@@ -28760,8 +28932,14 @@ function getConcretePendingUpsertIds() {
   return ids;
 }
 
-function mergeConcreteSets(localSets, cloudRows) {
-  const cloudSets = (cloudRows || []).map(concreteRowToSet).filter(Boolean);
+function mergeConcreteSets(localSets, cloudRows, cylinderRows) {
+  const cylindersBySet = {};
+  (cylinderRows || []).forEach(c => {
+    if (!c || !c.set_id) return;
+    if (!cylindersBySet[c.set_id]) cylindersBySet[c.set_id] = [];
+    cylindersBySet[c.set_id].push(c);
+  });
+  const cloudSets = (cloudRows || []).map(row => concreteRowToSet(row, cylindersBySet[row.id] || [])).filter(Boolean);
   const byId = new Map();
   const pendingUpserts = getConcretePendingUpsertIds();
 
@@ -28780,6 +28958,14 @@ function mergeConcreteSets(localSets, cloudRows) {
       // only on this computer and has to be uploaded.
       if (s._cloudSynced && !pendingUpserts.has(s.id)) return;
       byId.set(s.id, { set: s, cloudTs: 0, push: true });
+      return;
+    }
+    const localKey = concretePourKey(s);
+    const cloudKey = concretePourKey(existing.set);
+    if (localKey.replace(/\|/g, '') && cloudKey.replace(/\|/g, '') && localKey !== cloudKey) {
+      // Same id was issued on two computers for two different pours.
+      const renamed = retargetConcreteSetId(s, nextConcreteId([...(localSets || []), ...cloudSets]));
+      byId.set(renamed.id, { set: renamed, cloudTs: 0, push: true });
       return;
     }
     const localTs = _concreteLocalTs(s);
@@ -28844,16 +29030,65 @@ function concreteSyncFailureText(err) {
   return 'Saved on this computer. It will show on your phone when sync finishes.';
 }
 
-async function syncConcreteSetToCloud(set) {
+async function adoptConcreteSetIdIfNeeded(set) {
+  const { data, error } = await db.from('concrete_sets')
+    .select('id,contract,pour_location,cast_date,ticket_no,test_no')
+    .eq('id', set.id)
+    .maybeSingle();
+  if (error || !data) return set;
+  const cloudKey = concretePourKey({
+    contract: data.contract,
+    pourLocation: data.pour_location,
+    castDate: data.cast_date,
+    ticketNo: data.ticket_no,
+    testNo: data.test_no
+  });
+  const localKey = concretePourKey(set);
+  if (!cloudKey.replace(/\|/g, '') || !localKey.replace(/\|/g, '') || cloudKey === localKey) return set;
+  const renamed = retargetConcreteSetId(set, nextConcreteId(loadConcreteSets().concat([{ id: data.id }])));
+  replaceLocalConcreteSet(set.id, renamed);
+  return renamed;
+}
+
+async function writeConcreteSetToCloud(set) {
   const row = concreteSetToRow(set);
-  if (!row) return { ok: false, error: null };
+  if (!row) return { ok: false, error: null, set };
+  const { error } = await db.from('concrete_sets').upsert(row, { onConflict: 'id' });
+  if (error) throw error;
+  const cylRows = concreteCylindersToRows(set);
+  if (cylRows.length) {
+    const { error: cylErr } = await db.from('concrete_cylinders').upsert(cylRows, { onConflict: 'id' });
+    if (cylErr) throw cylErr;
+  }
+  const keep = new Set(cylRows.map(c => c.id));
+  const { data: existing, error: readErr } = await db.from('concrete_cylinders').select('id').eq('set_id', set.id);
+  if (readErr) throw readErr;
+  const drop = (existing || []).map(c => c.id).filter(id => id && !keep.has(id));
+  if (drop.length) {
+    const { error: delErr } = await db.from('concrete_cylinders').delete().in('id', drop);
+    if (delErr) throw delErr;
+  }
+  return { ok: true, error: null, set };
+}
+
+async function syncConcreteSetToCloud(set) {
+  if (!set || !set.id) return { ok: false, error: null };
   queueConcreteSync({ op: 'upsert', set });
   if (!db) return { ok: false, error: null };
   try {
-    const { error } = await db.from('concrete_sets').upsert(row, { onConflict: 'id' });
-    if (error) throw error;
-    markConcreteSetSynced(set.id);
+    if (typeof ensureWritableDbSession === 'function') {
+      const session = await ensureWritableDbSession();
+      if (session && session.ok === false && session.needAuth) return { ok: false, error: null };
+    }
+    const ready = await adoptConcreteSetIdIfNeeded(set);
+    if (ready.id !== set.id) {
+      unqueueConcreteUpsert(set.id);
+      queueConcreteSync({ op: 'upsert', set: ready });
+    }
+    await writeConcreteSetToCloud(ready);
+    markConcreteSetSynced(ready.id);
     unqueueConcreteUpsert(set.id);
+    unqueueConcreteUpsert(ready.id);
     return { ok: true, error: null };
   } catch (e) {
     console.warn('syncConcreteSetToCloud:', e);
@@ -28868,6 +29103,8 @@ async function deleteConcreteSetFromCloud(id) {
     return;
   }
   try {
+    const { error: cylErr } = await db.from('concrete_cylinders').delete().eq('set_id', id);
+    if (cylErr) throw cylErr;
     const { error } = await db.from('concrete_sets').delete().eq('id', id);
     if (error) throw error;
   } catch (e) {
@@ -28886,13 +29123,13 @@ async function flushConcreteSyncQueue() {
   for (const entry of q) {
     try {
       if (entry.op === 'delete') {
+        const { error: cylErr } = await db.from('concrete_cylinders').delete().eq('set_id', entry.id);
+        if (cylErr) throw cylErr;
         const { error } = await db.from('concrete_sets').delete().eq('id', entry.id);
         if (error) throw error;
       } else if (entry.set) {
-        const row = concreteSetToRow(entry.set);
-        if (!row) continue;
-        const { error } = await db.from('concrete_sets').upsert(row, { onConflict: 'id' });
-        if (error) throw error;
+        const result = await syncConcreteSetToCloud(entry.set);
+        if (!result.ok) throw result.error || new Error('concrete sync failed');
         syncedIds.push(entry.set.id);
       }
     } catch (e) {
@@ -28908,10 +29145,12 @@ async function flushConcreteSyncQueue() {
 async function pullAndMergeConcreteSets() {
   if (!db) return;
   try {
-    const { data, error } = await db.from('concrete_sets').select('*').order('updated_at', { ascending: false });
+    const { data, error } = await db.from('concrete_sets').select('*').order('created_at', { ascending: false });
     if (error) throw error;
+    const cylRes = await db.from('concrete_cylinders').select('*');
+    if (cylRes.error) throw cylRes.error;
     const local = loadConcreteSets();
-    const { merged, toPush } = mergeConcreteSets(local, data || []);
+    const { merged, toPush } = mergeConcreteSets(local, data || [], cylRes.data || []);
     const pushing = new Set(toPush.map(s => s.id));
     merged.forEach(s => { if (!pushing.has(s.id)) s._cloudSynced = true; });
     saveConcreteSets(merged);
@@ -28921,6 +29160,9 @@ async function pullAndMergeConcreteSets() {
     if (activeConcSubTab === 'log') renderConcreteLog();
     if (activeConcSubTab === 'schedule') renderBreakSchedule();
     if (typeof renderConcreteHub === 'function') renderConcreteHub();
+    if (document.getElementById('dashboard-view')?.classList.contains('active') && typeof renderSampleQueue === 'function') {
+      renderSampleQueue(window._queueSamples);
+    }
   } catch (e) {
     console.warn('pullAndMergeConcreteSets:', e);
   }
