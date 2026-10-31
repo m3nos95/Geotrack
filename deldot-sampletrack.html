@@ -16877,9 +16877,46 @@ function queueDateLabel(iso) {
 
 let _queueSort = 'newest';
 
+function concreteSetQueueStatus(set) {
+  const cyls = set.cylinders || [];
+  if (cyls.length && cyls.every(c => c.status === 'broken')) return 'complete';
+  return 'pending';
+}
+
+function concreteSetsForQueue() {
+  if (typeof loadConcreteSets !== 'function') return [];
+  let sets = [];
+  try { sets = loadConcreteSets() || []; } catch (e) { return []; }
+  const archivedView = typeof showingArchived !== 'undefined' && showingArchived;
+  const q = (document.getElementById('searchInput')?.value || '').trim().toLowerCase();
+  return sets.filter(set => {
+    if (!set || !set.id) return false;
+    if (!!set.archived !== archivedView) return false;
+    if (!q) return true;
+    const hay = [set.id, set.testNo, set.contract, set.pourLocation, set.location, set.mixDesign, set.concreteClass, set.sampledBy, set.contractor]
+      .filter(Boolean).join(' ').toLowerCase();
+    return hay.includes(q);
+  }).map(set => ({
+    id: 'concrete:' + set.id,
+    _queueKind: 'concrete',
+    _concreteSetId: set.id,
+    test_no: set.testNo || set.id,
+    contract: set.contract || '',
+    location: set.pourLocation || set.location || '',
+    material_type: set.mixDesign || set.concreteClass || '',
+    date_sampled: set.castDate || String(set.createdAt || '').slice(0, 10),
+    created_at: set.createdAt || set.castDate || '',
+    test_category: 'concrete',
+    status: concreteSetQueueStatus(set),
+    sampled_by: set.sampledBy || ''
+  }));
+}
+
 function renderSampleQueue(samples) {
-  const source = Array.isArray(samples) ? samples : (window._queueSamples || []);
-  window._queueSamples = source;
+  const incoming = Array.isArray(samples) ? samples : (window._queueSamples || []);
+  const labSource = incoming.filter(s => !s || s._queueKind !== 'concrete');
+  window._queueSamples = labSource;
+  const source = labSource.concat(concreteSetsForQueue());
   const list = document.getElementById('sampleQueueList');
   if (!list) return;
   const statusFilter = (document.getElementById('queueStatusFilter') || {}).value || '';
@@ -16915,22 +16952,38 @@ function renderSampleQueue(samples) {
   if (!rows.length) {
     list.innerHTML = '<div class="queue-empty"><div class="queue-empty-mark" aria-hidden="true"><svg viewBox="0 0 64 64" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M24 8h16M22 8c-2 10-8 16-8 28a18 18 0 0036 0c0-12-6-18-8-28"/><path d="M20 40h24"/></svg></div><div class="queue-empty-title">No samples match your filter.</div><div>Try another status or type, or create a new sample.</div><button type="button" class="queue-new" onclick="phoneNewSample()">+ New Sample</button></div>';
     syncQueueChips(0);
-    return;
+  } else {
+    list.innerHTML = rows.map(s => {
+      const meta = queueStatusMeta(s.status);
+      const sub = [s.contract, s.location].filter(Boolean).join(' · ') || '—';
+      const metaLine = [queueTypeLabel(s), s.material_type, queueDateLabel(s.date_sampled)].filter(Boolean).join(' · ');
+      const open = s._queueKind === 'concrete'
+        ? `openConcreteFromQueue('${mapEscHtml(s._concreteSetId)}')`
+        : `openSampleHub('${mapEscHtml(s.id)}')`;
+      return `<button type="button" class="queue-card" onclick="${open}">
+        <div class="queue-card-top">
+          <div class="queue-card-no">${mapEscHtml(s.test_no || 'Sample')}</div>
+          <div class="queue-card-status ${meta.cls}">${meta.label}</div>
+        </div>
+        <div class="queue-card-sub">${mapEscHtml(sub)}</div>
+        <div class="queue-card-meta">${mapEscHtml(metaLine)}</div>
+      </button>`;
+    }).join('');
+    syncQueueChips(rows.length);
   }
-  list.innerHTML = rows.map(s => {
-    const meta = queueStatusMeta(s.status);
-    const sub = [s.contract, s.location].filter(Boolean).join(' · ') || '—';
-    const metaLine = [queueTypeLabel(s), s.material_type, queueDateLabel(s.date_sampled)].filter(Boolean).join(' · ');
-    return `<button type="button" class="queue-card" onclick="openSampleHub('${mapEscHtml(s.id)}')">
-      <div class="queue-card-top">
-        <div class="queue-card-no">${mapEscHtml(s.test_no || 'Sample')}</div>
-        <div class="queue-card-status ${meta.cls}">${meta.label}</div>
-      </div>
-      <div class="queue-card-sub">${mapEscHtml(sub)}</div>
-      <div class="queue-card-meta">${mapEscHtml(metaLine)}</div>
-    </button>`;
-  }).join('');
-  syncQueueChips(rows.length);
+  queueRefreshConcreteSets();
+}
+
+function queueRefreshConcreteSets() {
+  const pull = (typeof refreshConcreteSetsIfConnected === 'function') ? refreshConcreteSetsIfConnected() : null;
+  if (!pull || typeof pull.then !== 'function' || renderSampleQueue._waiting) return;
+  renderSampleQueue._waiting = true;
+  pull.finally(() => {
+    renderSampleQueue._waiting = false;
+    if (document.getElementById('dashboard-view')?.classList.contains('active')) {
+      renderSampleQueue(window._queueSamples);
+    }
+  });
 }
 
 function syncQueueChips(visible) {
@@ -16967,7 +17020,23 @@ function queueToggleSort() {
   renderSampleQueue(window._queueSamples);
 }
 
+function openConcreteFromQueue(setId) {
+  switchView('concrete');
+  if (typeof switchConcreteTab === 'function') switchConcreteTab('log');
+  if (!setId) return;
+  requestAnimationFrame(() => {
+    const card = [...document.querySelectorAll('#csub-log .card')].find(el => (el.textContent || '').includes(setId));
+    if (card) card.scrollIntoView({ block: 'nearest' });
+  });
+}
+
 function phoneNewSample() {
+  const type = (document.getElementById('queueTypeFilter') || {}).value || '';
+  if (type === 'concrete') {
+    switchView('concrete');
+    if (typeof switchConcreteTab === 'function') switchConcreteTab('intake');
+    return;
+  }
   const role = (typeof currentUser === 'object' && currentUser && currentUser.role) || '';
   if (role === 'concrete') { switchView('concrete'); return; }
   if (role === 'field') { switchView('fieldhub'); return; }
@@ -28670,13 +28739,15 @@ function _concreteLocalTs(set) {
 }
 
 let _lastConcretePull = 0;
-async function refreshConcreteSetsIfConnected() {
-  if (!db) return;
+function refreshConcreteSetsIfConnected() {
+  if (!db) return null;
   const now = Date.now();
-  if (now - _lastConcretePull < 30000) return;
+  if (now - _lastConcretePull < 30000) return null;
   _lastConcretePull = now;
-  await flushConcreteSyncQueue();
-  await pullAndMergeConcreteSets();
+  return (async () => {
+    await flushConcreteSyncQueue();
+    await pullAndMergeConcreteSets();
+  })();
 }
 
 function getConcretePendingUpsertIds() {
