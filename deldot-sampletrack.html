@@ -147,6 +147,11 @@ body { background: var(--bg); color: var(--text); font-family: var(--sans); font
   position: relative;
   z-index: 1;
 }
+/* These sit outside #app. Hide them here, before the body is parsed,
+   so Queue / Sample / Sample Information / Reports / Documents / Notes /
+   History / Archive Sample cannot paint before the later stylesheet. */
+#sampleHub,
+#phoneModuleBar { display: none; }
 
 /* ── TOP BAR ── */
 #topbar {
@@ -7830,7 +7835,7 @@ END $$;
 // GLOBALS
 // ══════════════════════════════════════════════
 let db = null;
-const APP_BUILD = '2026.11.02-mix-db';
+const APP_BUILD = '2026.11.02-boot-hub';
 const FC_CORE_ICON_SRC = 'docs/r18-reference/core-drill-icon-128.png';
 const BORELOG_ICON_SRC = 'docs/r18-reference/borelog-icon.webp';
 const BORELOG_PATH = 'deldot-borelog-v6-uscs.html';
