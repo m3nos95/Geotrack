@@ -631,7 +631,7 @@ nav:not(#r18-nav), .nav-top-row { display: none !important; }
 .si-action-msg.ok { color: var(--green2); font-weight: 600; }
 .si-action-msg.bad { color: var(--red2); font-weight: 600; }
 .si-action-msg.wait { color: var(--gold); font-weight: 600; }
-#siCopySqlBtn.si-copied { color: var(--green2); border-color: var(--green2); }
+#siCopySqlBtn.si-copied, #siCopyEmailBtn.si-copied { color: var(--green2); border-color: var(--green2); }
 #siRoleSql { margin-top: 8px; white-space: pre-wrap; font-size: 10px; line-height: 1.4; background: var(--panel); padding: 8px; border-radius: 4px; overflow-x: auto; }
 .um-add-form input, .um-add-form select { background: var(--panel); border: 1px solid var(--border); color: var(--text); padding: 7px 10px; border-radius: var(--radius-sm); font-size: 12px; outline: none; font-family: var(--sans); width: 100%; }
 .um-add-form input:focus, .um-add-form select:focus { border-color: var(--accent2); }
@@ -3612,11 +3612,14 @@ table.fc-borrow-tbl tr.fc-borrow-detail-row td{background:var(--surface);border-
       <p style="font-family:var(--mono);font-size:10px;color:var(--muted);margin:12px 0 0;line-height:1.6;">
         One-time: run the supplier role update in the Supabase SQL editor, deploy
         <code style="background:var(--bg);padding:1px 5px;border-radius:3px;">invite-supplier</code>,
-        and add <code style="background:var(--bg);padding:1px 5px;border-radius:3px;">https://m3nos95.github.io/Geotrack/**</code>
-        under Authentication → URL Configuration → Redirect URLs.
+        add <code style="background:var(--bg);padding:1px 5px;border-radius:3px;">https://m3nos95.github.io/Geotrack/**</code>
+        under Authentication → URL Configuration → Redirect URLs, and paste the email template into Authentication → Emails.
+        The template puts the sign-in token in the link itself, so the plant lands on Choose a password.
       </p>
       <button type="button" class="btn-um-add" id="siCopySqlBtn" onclick="copySupplierRoleSql()" style="margin-top:8px;background:transparent;border:1px solid var(--border);color:var(--muted);">Copy role SQL</button>
       <div id="siCopyMsg" class="si-action-msg" role="status" aria-live="polite"></div>
+      <button type="button" class="btn-um-add" id="siCopyEmailBtn" onclick="copySupplierEmailTemplate()" style="margin-top:8px;background:transparent;border:1px solid var(--border);color:var(--muted);">Copy email template</button>
+      <div id="siEmailMsg" class="si-action-msg" role="status" aria-live="polite"></div>
       <pre id="siRoleSql" style="display:none;">DO $$
 DECLARE cname text;
 BEGIN
@@ -3639,6 +3642,15 @@ ALTER TABLE public.st_user_profiles
     'admin', 'section_admin', 'field', 'lab', 'concrete',
     'hotmix', 'precast', 'chemlab', 'supplier'
   ));</pre>
+      <pre id="siEmailTemplate" style="display:none;">Paste the Invite user block into Supabase → Authentication → Emails → Invite user → Body. Paste the Magic link block into Authentication → Emails → Magic link → Body. Save both.
+
+--- Invite user ---
+&lt;h2&gt;Choose a password for LabTrak&lt;/h2&gt;
+&lt;p&gt;&lt;a href="{{ .RedirectTo }}?token_hash={{ .TokenHash }}&amp;type=invite"&gt;Choose a password&lt;/a&gt;&lt;/p&gt;
+
+--- Magic link ---
+&lt;h2&gt;Sign in to LabTrak&lt;/h2&gt;
+&lt;p&gt;&lt;a href="{{ .RedirectTo }}?token_hash={{ .TokenHash }}&amp;type=magiclink"&gt;Sign in&lt;/a&gt;&lt;/p&gt;</pre>
       </div>
     </div>
 
@@ -7607,13 +7619,36 @@ ALTER TABLE public.st_user_profiles
 </div>
 
 <script>
-// Catch an invite or magic-link hash before the auth client consumes it.
+// Keep invite and magic-link tokens before a build reload can drop the URL hash.
 (function captureSupplierPasswordLink() {
   try {
-    const hash = (location.hash || '').replace(/^#/, '');
-    const search = location.search || '';
-    const params = new URLSearchParams(hash || search.replace(/^\?/, ''));
-    const type = (params.get('type') || '').toLowerCase();
+    const read = (raw) => {
+      const out = {};
+      if (!raw) return out;
+      new URLSearchParams(String(raw).replace(/^[?#]/, '')).forEach((value, key) => {
+        if (value) out[key] = value;
+      });
+      return out;
+    };
+    const search = read(location.search || '');
+    const hash = read((location.hash || '').replace(/^#/, ''));
+    const params = Object.assign({}, search, hash);
+    const type = String(params.type || '').toLowerCase();
+    const tokenHash = params.token_hash || ((type === 'invite' || type === 'magiclink' || type === 'signup' || type === 'recovery' || type === 'email') ? (params.token || '') : '');
+    const record = {
+      access_token: params.access_token || '',
+      refresh_token: params.refresh_token || '',
+      token_hash: tokenHash,
+      type: type,
+      code: params.code || '',
+      error: params.error || '',
+      error_description: params.error_description || '',
+      error_code: params.error_code || '',
+    };
+    const useful = (record.access_token && record.refresh_token) || (record.token_hash && record.type) || record.code || record.error || record.error_description || record.error_code;
+    if (!useful) return;
+    record.savedAt = Date.now();
+    sessionStorage.setItem('labtrak_auth_callback', JSON.stringify(record));
     if (type === 'invite' || type === 'magiclink' || type === 'signup' || type === 'recovery') {
       sessionStorage.setItem('labtrak_set_password', '1');
     }
@@ -7623,7 +7658,7 @@ ALTER TABLE public.st_user_profiles
 // GLOBALS
 // ══════════════════════════════════════════════
 let db = null;
-const APP_BUILD = '2026.11.02-supplier-feedback';
+const APP_BUILD = '2026.11.02-supplier-link';
 const FC_CORE_ICON_SRC = 'docs/r18-reference/core-drill-icon-128.png';
 const BORELOG_ICON_SRC = 'docs/r18-reference/borelog-icon.webp';
 const BORELOG_PATH = 'deldot-borelog-v6-uscs.html';
@@ -12756,9 +12791,155 @@ function createSupabaseClient(url, key) {
       persistSession: true,
       autoRefreshToken: true,
       detectSessionInUrl: true,
+      flowType: 'implicit',
       storage: localStorage,
     },
   });
+}
+
+const AUTH_CALLBACK_KEY = 'labtrak_auth_callback';
+const AUTH_LINK_TYPES = ['invite', 'magiclink', 'signup', 'recovery', 'email'];
+
+function readAuthParamsFromString(raw) {
+  const out = {};
+  if (!raw) return out;
+  try {
+    new URLSearchParams(String(raw).replace(/^[?#]/, '')).forEach((value, key) => {
+      if (value) out[key] = value;
+    });
+  } catch (e) {}
+  return out;
+}
+
+function currentAuthCallbackParams() {
+  const search = readAuthParamsFromString(location.search || '');
+  const hash = readAuthParamsFromString((location.hash || '').replace(/^#/, ''));
+  return Object.assign({}, search, hash);
+}
+
+function authCallbackRecord(params) {
+  const type = String(params.type || '').toLowerCase();
+  const tokenHash = params.token_hash || (AUTH_LINK_TYPES.indexOf(type) >= 0 ? (params.token || '') : '');
+  return {
+    access_token: params.access_token || '',
+    refresh_token: params.refresh_token || '',
+    token_hash: tokenHash,
+    type,
+    code: params.code || '',
+    error: params.error || '',
+    error_description: params.error_description || '',
+    error_code: params.error_code || '',
+  };
+}
+
+function authCallbackIsActionable(record) {
+  if (!record) return false;
+  if (record.access_token && record.refresh_token) return true;
+  if (record.token_hash && record.type) return true;
+  if (record.code) return true;
+  if (record.error || record.error_description || record.error_code) return true;
+  return false;
+}
+
+function stashAuthCallbackFromLocation() {
+  const record = authCallbackRecord(currentAuthCallbackParams());
+  if (!authCallbackIsActionable(record)) return;
+  record.savedAt = Date.now();
+  try { sessionStorage.setItem(AUTH_CALLBACK_KEY, JSON.stringify(record)); } catch (e) {}
+  if (record.type === 'invite' || record.type === 'magiclink' || record.type === 'signup' || record.type === 'recovery') {
+    try { sessionStorage.setItem('labtrak_set_password', '1'); } catch (e) {}
+  }
+}
+
+function takeStashedAuthCallback() {
+  try {
+    const raw = sessionStorage.getItem(AUTH_CALLBACK_KEY);
+    if (!raw) return null;
+    sessionStorage.removeItem(AUTH_CALLBACK_KEY);
+    const parsed = JSON.parse(raw);
+    if (parsed.savedAt && Date.now() - parsed.savedAt > 10 * 60 * 1000) return null;
+    return authCallbackIsActionable(parsed) ? parsed : null;
+  } catch (e) {
+    return null;
+  }
+}
+
+function mergeAuthCallback(fallback, primary) {
+  const out = Object.assign({}, fallback || {});
+  Object.keys(primary || {}).forEach(key => {
+    if (primary[key]) out[key] = primary[key];
+  });
+  return out;
+}
+
+function stripAuthCallbackFromUrl() {
+  try {
+    const url = new URL(location.href);
+    ['token_hash', 'token', 'type', 'code', 'error', 'error_description', 'error_code', 'access_token', 'refresh_token', 'expires_in', 'expires_at', 'token_type'].forEach(key => {
+      url.searchParams.delete(key);
+    });
+    url.hash = '';
+    const next = url.pathname + (url.search || '') + (url.hash || '');
+    history.replaceState(history.state, '', next);
+  } catch (e) {}
+}
+
+function labtrakAuthLinkError(record, err) {
+  const raw = (err && (err.message || String(err))) || record?.error_description || record?.error || '';
+  const code = (err && (err.code || err.error_code)) || record?.error_code || '';
+  const text = (raw + ' ' + code).toLowerCase();
+  if (/expired|otp_expired|already been used|already used/.test(text)) {
+    return 'This sign-in link has expired or was already opened. Send a new sign-in link from Invite a concrete supplier.';
+  }
+  if (/pkce|code verifier/.test(text)) {
+    return 'This sign-in link could not be finished in this browser. Send a new sign-in link.';
+  }
+  if (raw) return raw;
+  return 'Could not open the sign-in link. Send a new one.';
+}
+
+async function consumeLabtrakAuthCallback() {
+  stashAuthCallbackFromLocation();
+  const live = authCallbackRecord(currentAuthCallbackParams());
+  const stashed = takeStashedAuthCallback();
+  const record = mergeAuthCallback(stashed, authCallbackIsActionable(live) ? live : null);
+  if (!authCallbackIsActionable(record) || !db?.auth) return { handled: false, error: '' };
+  stripAuthCallbackFromUrl();
+  try {
+    if (record.access_token && record.refresh_token) {
+      const { data, error } = await db.auth.setSession({
+        access_token: record.access_token,
+        refresh_token: record.refresh_token,
+      });
+      if (error || !data?.session) return { handled: true, error: labtrakAuthLinkError(record, error) };
+      _supabaseAuthSession = data.session;
+      window._authLinkConsumed = true;
+      if (data.session.user?.email) rememberSignInEmail(data.session.user.email);
+      return { handled: true, error: '', session: data.session };
+    }
+    if (record.token_hash && record.type) {
+      const { data, error } = await db.auth.verifyOtp({
+        token_hash: record.token_hash,
+        type: record.type,
+      });
+      if (error || !data?.session) return { handled: true, error: labtrakAuthLinkError(record, error) };
+      _supabaseAuthSession = data.session;
+      window._authLinkConsumed = true;
+      if (data.session.user?.email) rememberSignInEmail(data.session.user.email);
+      return { handled: true, error: '', session: data.session };
+    }
+    if (record.code) {
+      const { data, error } = await db.auth.exchangeCodeForSession(record.code);
+      if (error || !data?.session) return { handled: true, error: labtrakAuthLinkError(record, error) };
+      _supabaseAuthSession = data.session;
+      window._authLinkConsumed = true;
+      if (data.session.user?.email) rememberSignInEmail(data.session.user.email);
+      return { handled: true, error: '', session: data.session };
+    }
+    return { handled: true, error: labtrakAuthLinkError(record, null) };
+  } catch (e) {
+    return { handled: true, error: labtrakAuthLinkError(record, e) };
+  }
 }
 
 async function probeAnonAccess() {
@@ -12964,12 +13145,12 @@ function fillRememberedSignInEmail() {
   return filled;
 }
 
-function showAuthSignInPanel() {
+function showAuthSignInPanel(message) {
   hideAllLoginPanels();
   const panel = document.getElementById('authSignInPanel');
   if (panel) panel.style.display = 'block';
   const err = document.getElementById('authSignInErr');
-  if (err) err.textContent = '';
+  if (err) err.textContent = message || '';
   const pass = document.getElementById('authPassword');
   if (pass) pass.value = '';
   const hasEmail = fillRememberedSignInEmail();
@@ -12999,12 +13180,11 @@ async function completeAuthLogin() {
   try {
     const user = await resolveUserFromAuth();
     if (!user) {
-      const errEl = document.getElementById('authSignInErr');
-      const msg = 'No LabTrak profile is linked to this account. Ask an administrator to provision your sign-in in Settings.';
-      if (errEl) errEl.textContent = msg;
-      else showToast(msg, 'error');
+      const msg = window._authLinkConsumed
+        ? 'The sign-in link opened, but this email is not linked to a plant yet. Run the role SQL in Supabase, then send the sign-in link again.'
+        : 'No LabTrak profile is linked to this account. Ask an administrator to provision your sign-in in Settings.';
       await authSignOut();
-      showAuthSignInPanel();
+      showAuthSignInPanel(msg);
       return;
     }
     loginUser(user);
@@ -13256,6 +13436,47 @@ function markSupplierSqlCopy(ok, text) {
       }
     }, 5000);
   }
+}
+
+function markSupplierSetupCopy(btnId, idleLabel, msgId, ok, text) {
+  const btn = document.getElementById(btnId);
+  setSupplierActionMsg(msgId, text, ok ? 'ok' : 'bad');
+  if (btn) {
+    btn.textContent = ok ? 'Copied' : idleLabel;
+    btn.classList.toggle('si-copied', !!ok);
+  }
+  showToast(text, ok ? 'success' : 'error');
+  if (ok && btn) {
+    setTimeout(() => {
+      if (btn.textContent === 'Copied') {
+        btn.textContent = idleLabel;
+        btn.classList.remove('si-copied');
+      }
+    }, 5000);
+  }
+}
+
+function copySupplierEmailTemplate() {
+  const template = (document.getElementById('siEmailTemplate')?.textContent || '').trim();
+  if (!template || template.indexOf('{{ .TokenHash }}') < 0) {
+    markSupplierSetupCopy('siCopyEmailBtn', 'Copy email template', 'siEmailMsg', false, 'The email template is missing from this page.');
+    return;
+  }
+  const copied = () => markSupplierSetupCopy('siCopyEmailBtn', 'Copy email template', 'siEmailMsg', true, 'Copied. Paste the Invite user block and the Magic link block into Supabase Authentication → Emails, then save both.');
+  const failed = () => {
+    const pre = document.getElementById('siEmailTemplate');
+    if (pre) pre.style.display = 'block';
+    markSupplierSetupCopy('siCopyEmailBtn', 'Copy email template', 'siEmailMsg', false, 'Could not copy automatically. The template is shown below. Select it and copy it.');
+  };
+  if (navigator.clipboard?.writeText) {
+    navigator.clipboard.writeText(template).then(copied).catch(() => {
+      if (copyTextFallback(template)) copied();
+      else failed();
+    });
+    return;
+  }
+  if (copyTextFallback(template)) copied();
+  else failed();
 }
 
 function copySupplierRoleSql() {
@@ -14997,6 +15218,12 @@ async function connectSupabase(silent = false) {
     if (url && key && typeof supabase !== 'undefined') {
       try { db = createSupabaseClient(url, key); } catch(e) { db = null; }
     }
+    if (db?.auth) {
+      try {
+        const linkResult = await consumeLabtrakAuthCallback();
+        if (linkResult.error) window._authLinkError = linkResult.error;
+      } catch (e) {}
+    }
     revealAppShell();
     setDbConnected(false);
     offlineLoadCached();
@@ -15010,7 +15237,7 @@ async function connectSupabase(silent = false) {
         try { loginUser(JSON.parse(sess), true); }
         catch(ex) { showUserLogin(); }
       } else {
-        showUserLogin();
+        showUserLogin(window._authLinkError || '');
       }
     }
     offlineUpdateBanner();
@@ -15024,7 +15251,9 @@ async function connectSupabase(silent = false) {
   try {
     setSyncInProgress(true);
     db = createSupabaseClient(url, key);
-    const authSession = await restoreSupabaseAuthSession();
+    const linkResult = await consumeLabtrakAuthCallback();
+    if (linkResult.error) window._authLinkError = linkResult.error;
+    const authSession = _supabaseAuthSession || await restoreSupabaseAuthSession();
     let { error } = await db.from('samples').select('id').limit(1);
 
     if (error && error.code === '42P01') {
@@ -15038,12 +15267,11 @@ async function connectSupabase(silent = false) {
 
     if (!authSession) await probeAnonAccess();
 
+    const probeBlocked = !!(error && (isDbRlsError(error) || error.code === 'PGRST301' || /jwt|permission|not authorized/i.test(error.message || '')));
     if (error && isAuthRequired() && !authSession) {
       // Expected when production RLS blocks anonymous reads
-    } else if (error && authSession) {
-      const retry = await db.from('samples').select('id').limit(1);
-      error = retry.error;
-      if (error && error.code !== '42P01') throw error;
+    } else if (error && authSession && probeBlocked) {
+      console.warn('samples probe:', error.message || error);
     } else if (error) {
       throw error;
     }
@@ -15080,7 +15308,7 @@ async function connectSupabase(silent = false) {
         await completeAuthLogin();
         await ensureAuthUserLoaded();
       } else {
-        showUserLogin();
+        showUserLogin(window._authLinkError || '');
       }
     } else {
       const sess = sessionStorage.getItem('st_current_user');
@@ -15088,24 +15316,36 @@ async function connectSupabase(silent = false) {
         try { loginUser(JSON.parse(sess), true); }
         catch(ex) { showUserLogin(); }
       } else {
-        showUserLogin();
+        showUserLogin(window._authLinkError || '');
       }
     }
   } catch (e) {
     // ── Network failure during connect — launch offline ──
-    if (typeof supabase !== 'undefined' && url && key) {
+    if (!db && typeof supabase !== 'undefined' && url && key) {
       try { db = createSupabaseClient(url, key); } catch(ex) { db = null; }
+    }
+    const passwordOpen = document.getElementById('supplierPasswordPanel')?.style.display === 'block';
+    if (!passwordOpen && db?.auth && !_supabaseAuthSession) {
+      try {
+        const linkResult = await consumeLabtrakAuthCallback();
+        if (linkResult.error) window._authLinkError = linkResult.error;
+      } catch (ex) {}
     }
     revealAppShell();
     setDbConnected(false);
     offlineLoadCached();
     umRenderUsers();
-    const sess3 = sessionStorage.getItem('st_current_user');
-    if (sess3) {
-      try { loginUser(JSON.parse(sess3), true); }
-      catch(ex) { showUserLogin(); }
-    } else {
-      showUserLogin();
+    if (!passwordOpen && _supabaseAuthSession?.user && isAuthRequired()) {
+      try { await completeAuthLogin(); }
+      catch (ex) { showUserLogin(window._authLinkError || ''); }
+    } else if (!passwordOpen) {
+      const sess3 = sessionStorage.getItem('st_current_user');
+      if (sess3) {
+        try { loginUser(JSON.parse(sess3), true); }
+        catch(ex) { showUserLogin(); }
+      } else {
+        showUserLogin(window._authLinkError || '');
+      }
     }
     offlineUpdateBanner();
     updateSupabaseStatus();
@@ -22193,7 +22433,7 @@ async function signOutUser() {
   await showUserLogin();
 }
 
-function showUserLogin() {
+function showUserLogin(linkError) {
   navResetHistory();
   document.getElementById('userOverlay').classList.add('open');
   navUpdateBackButton();
@@ -22205,7 +22445,8 @@ function showUserLogin() {
   if (typeof renderDashboard === 'function') renderDashboard();
   refreshSessionActionsUI();
   if (isAuthRequired()) {
-    return authSignOut().then(() => showAuthSignInPanel());
+    const message = typeof linkError === 'string' ? linkError : '';
+    return authSignOut().then(() => showAuthSignInPanel(message));
   }
   showLabPicker();
 }
