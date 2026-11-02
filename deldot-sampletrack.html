@@ -624,6 +624,8 @@ nav:not(#r18-nav), .nav-top-row { display: none !important; }
 .um-add-form { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 10px; }
 .supplier-invite-form { grid-template-columns: 1fr; }
 .supplier-invite-form > * { grid-column: 1 / -1; width: 100%; box-sizing: border-box; }
+#supplierPasswordPanel { width: 100%; max-width: 380px; box-sizing: border-box; }
+#supplierPasswordPanel input { width: 100%; box-sizing: border-box; }
 .um-add-form input, .um-add-form select { background: var(--panel); border: 1px solid var(--border); color: var(--text); padding: 7px 10px; border-radius: var(--radius-sm); font-size: 12px; outline: none; font-family: var(--sans); width: 100%; }
 .um-add-form input:focus, .um-add-form select:focus { border-color: var(--accent2); }
 .btn-um-add { grid-column: span 2; background: var(--accent); border: none; color: #fff; padding: 9px; border-radius: var(--radius-sm); font-family: var(--display); font-size: 13px; letter-spacing: 1px; cursor: pointer; }
@@ -3591,8 +3593,8 @@ table.fc-borrow-tbl tr.fc-borrow-detail-row td{background:var(--surface);border-
       </button>
       <div class="setup-collapse-body">
       <p style="font-family:var(--mono);font-size:10px;color:var(--muted);margin:0 0 12px;line-height:1.6;">
-        Plant name and email. LabTrak creates their account and emails a sign-in link. You stay signed in.
-        They only see the mix designs they submit. One login per plant is enough for the whole plant.
+        Plant name and email. LabTrak creates their account and emails a one-time link. You stay signed in.
+        The first time they open that link, they choose a password. After that they sign in here with the email and password whenever they need to submit a design. They only see the mix designs they submit. One login per plant is enough for the whole plant.
       </p>
       <div class="um-add-form supplier-invite-form">
         <input type="text" id="si_name" placeholder="Plant or company name" autocomplete="off" maxlength="80">
@@ -4023,6 +4025,32 @@ ALTER TABLE public.st_user_profiles
                     padding:12px 14px;border-radius:var(--radius-sm);font-size:14px;outline:none;font-family:var(--mono);">
     </div>
     <button class="pin-key ok" style="width:100%;padding:14px;font-size:13px;border-radius:var(--radius-sm);border:none;cursor:pointer;" onclick="submitAuthSignIn()">SIGN IN ↵</button>
+  </div>
+
+  <div class="user-select-wrap" id="supplierPasswordPanel" style="display:none;max-width:380px;width:100%;box-sizing:border-box;">
+    <div class="user-select-title" style="text-align:center;margin-bottom:6px;">Choose a password</div>
+    <div style="font-family:var(--mono);font-size:10px;color:var(--muted);text-align:center;margin-bottom:14px;line-height:1.5;">
+      Pick a password for this plant. Next time, open LabTrak and sign in with this email and password. You do not need a new email link to submit mix designs.
+    </div>
+    <div id="supplierPasswordEmail" style="font-family:var(--sans);font-size:13px;text-align:center;margin-bottom:14px;word-break:break-all;"></div>
+    <div class="pin-err" id="supplierPasswordErr"></div>
+    <div style="margin-bottom:10px;">
+      <label style="font-family:var(--mono);font-size:9px;letter-spacing:1px;color:var(--muted);display:block;margin-bottom:4px;">Password</label>
+      <input type="password" id="supplierNewPassword" autocomplete="new-password"
+             placeholder="At least 8 characters"
+             onkeydown="if(event.key==='Enter')document.getElementById('supplierConfirmPassword')?.focus()"
+             style="width:100%;box-sizing:border-box;background:var(--panel);border:2px solid var(--border);color:var(--text);
+                    padding:12px 14px;border-radius:var(--radius-sm);font-size:14px;outline:none;font-family:var(--mono);">
+    </div>
+    <div style="margin-bottom:14px;">
+      <label style="font-family:var(--mono);font-size:9px;letter-spacing:1px;color:var(--muted);display:block;margin-bottom:4px;">Confirm password</label>
+      <input type="password" id="supplierConfirmPassword" autocomplete="new-password"
+             placeholder="Repeat the password"
+             onkeydown="if(event.key==='Enter')submitSupplierPassword()"
+             style="width:100%;box-sizing:border-box;background:var(--panel);border:2px solid var(--border);color:var(--text);
+                    padding:12px 14px;border-radius:var(--radius-sm);font-size:14px;outline:none;font-family:var(--mono);">
+    </div>
+    <button type="button" class="pin-key ok" id="supplierPasswordBtn" style="width:100%;padding:14px;font-size:13px;border-radius:var(--radius-sm);border:none;cursor:pointer;" onclick="submitSupplierPassword()">SAVE PASSWORD</button>
   </div>
 
   <!-- User list panel -->
@@ -7571,11 +7599,23 @@ ALTER TABLE public.st_user_profiles
 </div>
 
 <script>
+// Catch an invite or magic-link hash before the auth client consumes it.
+(function captureSupplierPasswordLink() {
+  try {
+    const hash = (location.hash || '').replace(/^#/, '');
+    const search = location.search || '';
+    const params = new URLSearchParams(hash || search.replace(/^\?/, ''));
+    const type = (params.get('type') || '').toLowerCase();
+    if (type === 'invite' || type === 'magiclink' || type === 'signup' || type === 'recovery') {
+      sessionStorage.setItem('labtrak_set_password', '1');
+    }
+  } catch (e) {}
+})();
 // ══════════════════════════════════════════════
 // GLOBALS
 // ══════════════════════════════════════════════
 let db = null;
-const APP_BUILD = '2026.11.02-supplier-invite';
+const APP_BUILD = '2026.11.02-supplier-password';
 const FC_CORE_ICON_SRC = 'docs/r18-reference/core-drill-icon-128.png';
 const BORELOG_ICON_SRC = 'docs/r18-reference/borelog-icon.webp';
 const BORELOG_PATH = 'deldot-borelog-v6-uscs.html';
@@ -12885,7 +12925,7 @@ function refreshProjectAdminUI() {
 }
 
 function hideAllLoginPanels() {
-  ['authSignInPanel', 'labPickerPanel', 'userSelectPanel'].forEach(id => {
+  ['authSignInPanel', 'supplierPasswordPanel', 'labPickerPanel', 'userSelectPanel'].forEach(id => {
     const el = document.getElementById(id);
     if (el) el.style.display = 'none';
   });
@@ -12965,6 +13005,116 @@ async function completeAuthLogin() {
     const errEl = document.getElementById('authSignInErr');
     if (errEl) errEl.textContent = e.message || 'Could not load your profile.';
     else showToast(e.message || 'Could not load profile', 'error');
+  }
+}
+
+let _pendingSupplierUser = null;
+let _supplierPasswordJustSet = '';
+let _supplierPasswordStamp = 0;
+
+function supplierPasswordSetKey(authUserId) {
+  return 'labtrak_password_set_' + authUserId;
+}
+
+function supplierHasChosenPassword(authUser) {
+  if (!authUser?.id) return false;
+  const meta = authUser.user_metadata || {};
+  if (meta.password_set === true || meta.password_set === 'true') return true;
+  if (_supplierPasswordJustSet && _supplierPasswordJustSet === authUser.id) return true;
+  try {
+    if (localStorage.getItem(supplierPasswordSetKey(authUser.id)) === '1') return true;
+  } catch (e) {}
+  return false;
+}
+
+function supplierMustSetPassword(user) {
+  if (!user || user.role !== 'supplier') return false;
+  const authUser = _supabaseAuthSession?.user;
+  if (!authUser) return false;
+  return !supplierHasChosenPassword(authUser);
+}
+
+function markSupplierPasswordSet(authUserId) {
+  _supplierPasswordJustSet = authUserId || '';
+  _supplierPasswordStamp += 1;
+  if (!authUserId) return;
+  try { localStorage.setItem(supplierPasswordSetKey(authUserId), '1'); } catch (e) {}
+  try { sessionStorage.removeItem('labtrak_set_password'); } catch (e) {}
+}
+
+function showSupplierPasswordPanel(user) {
+  _pendingSupplierUser = user || _pendingSupplierUser;
+  hideAllLoginPanels();
+  const panel = document.getElementById('supplierPasswordPanel');
+  if (panel) panel.style.display = 'block';
+  document.getElementById('userOverlay')?.classList.add('open');
+  const email = _supabaseAuthSession?.user?.email || '';
+  const emailEl = document.getElementById('supplierPasswordEmail');
+  if (emailEl) emailEl.textContent = email;
+  const err = document.getElementById('supplierPasswordErr');
+  if (err) err.textContent = '';
+  stampSupplierPasswordRequired();
+  setTimeout(() => document.getElementById('supplierNewPassword')?.focus(), 150);
+}
+
+async function stampSupplierPasswordRequired() {
+  const authUser = _supabaseAuthSession?.user;
+  if (!db?.auth || !authUser || supplierHasChosenPassword(authUser)) return;
+  const meta = authUser.user_metadata || {};
+  if (meta.must_set_password === true || meta.must_set_password === 'true') return;
+  const stamp = ++_supplierPasswordStamp;
+  try {
+    const { data, error } = await db.auth.updateUser({ data: { must_set_password: true } });
+    if (stamp !== _supplierPasswordStamp) return;
+    if (error || !data?.user || !_supabaseAuthSession) return;
+    if (supplierHasChosenPassword(data.user) || supplierHasChosenPassword(_supabaseAuthSession.user)) return;
+    _supabaseAuthSession = Object.assign({}, _supabaseAuthSession, { user: data.user });
+  } catch (e) {}
+}
+
+async function submitSupplierPassword() {
+  const errEl = document.getElementById('supplierPasswordErr');
+  if (errEl) errEl.textContent = '';
+  const next = document.getElementById('supplierNewPassword')?.value || '';
+  const confirm = document.getElementById('supplierConfirmPassword')?.value || '';
+  if (next.length < 8) {
+    if (errEl) errEl.textContent = 'Use at least 8 characters.';
+    return;
+  }
+  if (next !== confirm) {
+    if (errEl) errEl.textContent = 'The passwords do not match.';
+    return;
+  }
+  const authUser = _supabaseAuthSession?.user;
+  if (!db?.auth || !authUser) {
+    if (errEl) errEl.textContent = 'Open the sign-in link from your email, then choose a password.';
+    return;
+  }
+  const btn = document.getElementById('supplierPasswordBtn');
+  if (btn) btn.disabled = true;
+  try {
+    const { data, error } = await db.auth.updateUser({
+      password: next,
+      data: { password_set: true, must_set_password: false },
+    });
+    if (error) throw error;
+    if (data?.user) {
+      _supabaseAuthSession = Object.assign({}, _supabaseAuthSession, { user: data.user });
+    }
+    markSupplierPasswordSet(authUser.id);
+    ['supplierNewPassword', 'supplierConfirmPassword'].forEach(id => {
+      const el = document.getElementById(id);
+      if (el) el.value = '';
+    });
+    const pending = _pendingSupplierUser;
+    _pendingSupplierUser = null;
+    const panel = document.getElementById('supplierPasswordPanel');
+    if (panel) panel.style.display = 'none';
+    if (pending) loginUser(pending);
+  } catch (e) {
+    if (errEl) errEl.textContent = e.message || 'Could not save the password.';
+  } finally {
+    if (btn) btn.disabled = false;
   }
 }
 
@@ -13106,9 +13256,14 @@ async function inviteConcreteSupplier() {
     _stUsersCache = null;
     await getUsers();
     if (typeof umRenderUsers === 'function') umRenderUsers();
-    const note = data?.alreadyExisted
-      ? name + ' already had an account. A fresh sign-in link was sent to ' + email + '.'
-      : 'Sign-in link sent to ' + email + '. They set a password from that email and land on their mix designs.';
+    let note;
+    if (data?.needsPassword === false) {
+      note = name + ' already has a password. They sign in any time with ' + email + ' and that password. A sign-in link was also emailed in case they need it.';
+    } else if (data?.alreadyExisted) {
+      note = 'A sign-in link was sent to ' + email + '. The first time they open it, they choose a password. After that they sign in with this email and password.';
+    } else {
+      note = 'Sign-in link sent to ' + email + '. The first time they open it, they choose a password. After that they sign in here with that email and password. They do not need another link.';
+    }
     if (msgEl) msgEl.textContent = note;
     showToast('Supplier invite sent', 'success');
     const nameEl = document.getElementById('si_name');
@@ -21980,9 +22135,8 @@ function showUserLogin() {
 }
 
 async function showLabPicker() {
-  document.getElementById('authSignInPanel').style.display  = 'none';
+  hideAllLoginPanels();
   document.getElementById('labPickerPanel').style.display   = 'block';
-  document.getElementById('userSelectPanel').style.display  = 'none';
 
   if (!_stUsersCache) { _stUsersCache = await getUsers(); }
   const users = _stUsersCache;
@@ -22033,7 +22187,7 @@ async function showUsersForLab(role) {
   if (!_stUsersCache) _stUsersCache = await getUsers();
   const filtered = _stUsersCache.filter(u => u.role === role);
 
-  document.getElementById('labPickerPanel').style.display  = 'none';
+  hideAllLoginPanels();
   document.getElementById('userSelectPanel').style.display = 'block';
 
   const label = document.getElementById('userSelectLabLabel');
@@ -22070,6 +22224,12 @@ async function selectUserForLogin(id) {
 
 // ── Log in a user ──────────────────────────────────────────────
 function loginUser(user, silent = false) {
+  if (supplierMustSetPassword(user)) {
+    currentUser = null;
+    try { sessionStorage.removeItem('st_current_user'); } catch (e) {}
+    showSupplierPasswordPanel(user);
+    return;
+  }
   const safeUser = sessionUserRecord(user);
   currentUser = safeUser;
   _notesScope = 'mine'; // reset to personal view on each login
