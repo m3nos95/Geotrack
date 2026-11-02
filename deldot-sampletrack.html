@@ -607,8 +607,12 @@ nav:not(#r18-nav), .nav-top-row { display: none !important; }
 .approval-path-step h4 { margin: 2px 0 4px; font-family: var(--sans); font-size: 13px; font-weight: 600; color: var(--text); }
 .approval-path-step p { margin: 0; font-family: var(--sans); font-size: 12px; line-height: 1.45; color: var(--muted); }
 .approval-path-step select { width: 100%; margin-top: 6px; box-sizing: border-box; background: var(--bg); color: var(--text); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 8px 10px; font-family: var(--sans); font-size: 13px; }
-.approval-mat-row { display: flex; flex-wrap: wrap; gap: 14px; margin-top: 8px; }
+.approval-mat-row { display: flex; flex-wrap: wrap; gap: 14px; margin: 8px 0 12px; }
 .approval-mat-row label { display: flex; align-items: center; gap: 6px; font-family: var(--sans); font-size: 13px; color: var(--text); cursor: pointer; }
+.approval-path-card { border: 1px solid var(--border); border-radius: var(--radius); padding: 12px; margin: 0 0 12px; background: var(--panel); }
+.approval-path-card h3 { margin: 0 0 4px; font-family: var(--sans); font-size: 14px; font-weight: 650; color: var(--text); }
+#crpt-approve-btn { background: #052e16; color: #4ade80; border: 1px solid #16a34a; border-radius: 6px; padding: 8px 12px; font-family: var(--sans); font-size: 13px; font-weight: 650; cursor: pointer; }
+#crpt-reject-btn { background: transparent; color: #f87171; border: 1px solid #7f1d1d; border-radius: 6px; padding: 8px 12px; font-family: var(--sans); font-size: 13px; cursor: pointer; }
 
 .um-user-row { display: flex; align-items: center; gap: 10px; background: var(--panel); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 8px 10px; margin-bottom: 6px; }
 .um-av { width: 28px; height: 28px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 10px; font-weight: 700; color: #fff; flex-shrink: 0; }
@@ -3687,7 +3691,7 @@ table.fc-borrow-tbl tr.fc-borrow-detail-row td{background:var(--surface);border-
         <span class="setup-collapse-chevron" aria-hidden="true">▾</span>
       </button>
       <div class="setup-collapse-body">
-      <p class="approval-path-note">Can approve reports lets a person be chosen on an approval path. Who reviews soil and aggregate, and who sends the email, is set under Approval paths.</p>
+      <p class="approval-path-note">Can approve reports lets a person be chosen on an approval path. Soil and aggregate, concrete, and field compaction each have their own path under Approval paths.</p>
       <div id="umUserList"></div>
       <div class="um-add-form">
         <input type="text" id="um_name" placeholder="Full name">
@@ -3772,7 +3776,7 @@ table.fc-borrow-tbl tr.fc-borrow-detail-row td{background:var(--surface);border-
           style="margin-top:14px;width:100%;background:var(--gold);color:#0a1628;border:none;
                  padding:10px;font-family:var(--sans);font-size:13px;font-weight:650;
                  border-radius:var(--radius);cursor:pointer;">
-          Save approval path
+          Save approval paths
         </button>
       </div>
     </div>
@@ -3786,7 +3790,8 @@ table.fc-borrow-tbl tr.fc-borrow-detail-row td{background:var(--surface);border-
       <div class="setup-collapse-body">
       <p class="approval-path-note">
         Optional, and only for reports that are not on an approval path.
-        Soil and aggregate follow Approval paths, not these checkboxes.
+        Soil and aggregate lab reports, concrete reports, and field compaction follow Approval paths, not these checkboxes.
+        Lab bags Field Control collects still follow the soil and aggregate path.
         For everything else, an approver sees pending reports from the technicians checked here.
         Leave a person unchecked and they only see reports no other approver has claimed.
       </p>
@@ -6465,6 +6470,14 @@ table.fc-borrow-tbl tr.fc-borrow-detail-row td{background:var(--surface);border-
         </select>
         <button onclick="printConcreteReports()" style="background:var(--accent);color:#fff;border:none;padding:9px 16px;font-family:var(--mono);font-size:10px;letter-spacing:1px;cursor:pointer;border-radius:var(--radius);">🖨 PRINT BOTH FORMS</button>
       </div>
+      <div id="crpt-approval" style="display:none;margin:0 0 12px;">
+        <div id="crpt-pending-notice" style="display:none;background:#1c1300;border:1px solid #f59e0b;border-radius:6px;padding:9px 14px;margin:0 0 8px;font-family:var(--sans);font-size:13px;line-height:1.45;color:#fde68a;"></div>
+        <div id="crpt-approved-notice" style="display:none;background:#052e16;border:1px solid #16a34a;border-radius:6px;padding:9px 14px;margin:0 0 8px;font-family:var(--sans);font-size:13px;line-height:1.45;color:#4ade80;"></div>
+        <div style="display:flex;gap:8px;">
+          <button type="button" id="crpt-approve-btn" onclick="slApproveForDistribution()" style="display:none;">Approve</button>
+          <button type="button" id="crpt-reject-btn" onclick="slOpenRejectModal()" style="display:none;">Reject</button>
+        </div>
+      </div>
       <div id="crpt-output"></div>
     </div>
 
@@ -7431,7 +7444,7 @@ table.fc-borrow-tbl tr.fc-borrow-detail-row td{background:var(--surface);border-
 // GLOBALS
 // ══════════════════════════════════════════════
 let db = null;
-const APP_BUILD = '2026.10.31-field-results';
+const APP_BUILD = '2026.11.02-approval-paths';
 const FC_CORE_ICON_SRC = 'docs/r18-reference/core-drill-icon-128.png';
 const BORELOG_ICON_SRC = 'docs/r18-reference/borelog-icon.webp';
 const BORELOG_PATH = 'deldot-borelog-v6-uscs.html';
@@ -11834,7 +11847,10 @@ async function testGmailSettings() {
 
 // ── Generate PDF from the rendered report element ───────────────
 async function generateReportPdfBase64() {
-  const reportEl = document.getElementById('lb44Output');
+  const subject = typeof approvalSubject === 'function' ? approvalSubject() : null;
+  const reportEl = (subject && isConcreteApprovalRecord(subject))
+    ? document.getElementById('crpt-output')
+    : document.getElementById('lb44Output');
   if (!reportEl || !reportEl.innerHTML.trim()) return null;
   if (typeof html2pdf !== 'function') { console.warn('html2pdf not loaded'); return null; }
   await new Promise(r => requestAnimationFrame(r));
@@ -11985,6 +12001,12 @@ function sampleReportConforms(sample) {
 }
 
 function reportEmailResult(sample) {
+  if (sample && isCompactionApprovalRecord(sample)) {
+    const rows = (parseDensityData(sample.density_data).rows || []).filter(row => row && (row.pct_comp || row.comp_req));
+    if (!rows.length) return 'PENDING REVIEW';
+    const failed = rows.some(row => row.pct_comp && row.comp_req && parseFloat(row.pct_comp) < parseFloat(row.comp_req));
+    return failed ? 'DOES NOT CONFORM' : 'CONFORMS';
+  }
   const verdict = sampleReportConforms(sample);
   if (verdict === false) return 'DOES NOT CONFORM';
   if (verdict === true) return 'CONFORMS';
@@ -12000,8 +12022,11 @@ async function autoEmailReport(sample) {
   const dist = (proj?.email_distribution || '').trim();
   if (!dist) return false;  // no distribution configured — skip silently
 
-  const isAgg   = (sample.test_category || 'soil') === 'aggregate';
-  const rptType = isAgg ? 'Aggregate Sieve Analysis' : 'LB-44 Soil Analysis';
+  const mat = sampleApprovalMaterial(sample);
+  const rptType = mat === 'aggregate' ? 'Aggregate Sieve Analysis'
+    : mat === 'compaction' ? 'LB-68 Field Density'
+    : mat === 'concrete' ? 'Concrete Strength Report'
+    : 'LB-44 Soil Analysis';
   // Match the printed report. A stored value of "auto" only means the result
   // is calculated from the lab data — it is not a pass.
   const conform = reportEmailResult(sample);
@@ -12089,16 +12114,18 @@ async function refreshApprovalBadge() {
 
   await ensureApprovalRoutes();
 
-  // Only reports this person can act on right now
-  let mine = (allSamples || []).filter(reportAwaitingMyApproval);
+  // Lab reports, compaction sign-off, and concrete reports this person can act on.
+  let mine = await collectMyApprovalQueue();
 
-  // Fall back to a direct query when the in-memory list has not caught up
-  if (mine.length === 0 && db) {
+  // Fall back to a direct query when the in-memory lab list has not caught up
+  if (!mine.some(sample => isSoilLabSample(sample)) && db) {
     try {
       const { data } = await db.from('samples')
-        .select('id, dist_status, dist_submitted_by, test_category, dist_approved_by')
+        .select('id, dist_status, dist_submitted_by, test_category, dist_approved_by, record_kind, sample_type, status, deleted_at')
         .is('deleted_at', null);
-      mine = (data || []).filter(reportAwaitingMyApproval);
+      (data || []).filter(sample => isSoilLabSample(sample) && reportAwaitingMyApproval(sample)).forEach(sample => {
+        if (!mine.some(item => item.id === sample.id)) mine.push(sample);
+      });
     } catch(e) { /* silent */ }
   }
 
@@ -12142,24 +12169,50 @@ function refreshReportEmailBtn(sample) {
   const isPending  = !!turn;
   const isApproved = status === 'approved';
   const isApprover = canApproveReports() && canApproveThisReport(sample);
+  const compaction = isCompactionApprovalRecord(sample);
+  const concrete = isConcreteApprovalRecord(sample);
 
   // Resend stays with the lab. Field techs only read the finished report.
   const fieldReader = currentUser?.role === 'field';
-  if (btn) btn.style.display = (!fieldReader && hasDist && isApproved && gmailSendReady()) ? '' : 'none';
+  if (btn) btn.style.display = (!fieldReader && !concrete && hasDist && isApproved && gmailSendReady()) ? '' : 'none';
   const editBtn = document.getElementById('rpt-soillab-edit-btn');
-  if (editBtn && !roleCanUseSoilModule()) editBtn.style.display = 'none';
+  if (editBtn && (compaction || concrete || !roleCanUseSoilModule())) editBtn.style.display = 'none';
 
+  const approveLabel = turn?.kind === 'section'
+    ? (compaction ? 'Sign off' : 'Approve')
+    : turn?.kind === 'final' ? 'Final approval and send'
+    : 'Approve and send';
   if (appBtn) {
-    appBtn.style.display = (isPending && isApprover) ? '' : 'none';
-    appBtn.textContent = turn?.kind === 'section' ? 'Approve'
-      : turn?.kind === 'final' ? 'Final approval and send'
-      : 'Approve and send';
+    appBtn.style.display = (!concrete && isPending && isApprover) ? '' : 'none';
+    appBtn.textContent = approveLabel;
   }
-  if (rejBtn) rejBtn.style.display = (isPending && isApprover) ? '' : 'none';
+  if (rejBtn) rejBtn.style.display = (!concrete && isPending && isApprover) ? '' : 'none';
+  const crptWrap = document.getElementById('crpt-approval');
+  const crptApprove = document.getElementById('crpt-approve-btn');
+  const crptReject = document.getElementById('crpt-reject-btn');
+  const crptPending = document.getElementById('crpt-pending-notice');
+  const crptApproved = document.getElementById('crpt-approved-notice');
+  if (crptWrap) crptWrap.style.display = concrete && (isPending || isApproved) ? '' : 'none';
+  if (crptApprove) {
+    crptApprove.style.display = (concrete && isPending && isApprover) ? '' : 'none';
+    crptApprove.textContent = approveLabel;
+  }
+  if (crptReject) crptReject.style.display = (concrete && isPending && isApprover) ? '' : 'none';
+  if (crptPending) {
+    crptPending.style.display = concrete && isPending ? '' : 'none';
+    if (concrete && isPending) crptPending.textContent = approvalNoticeText(sample);
+  }
+  if (crptApproved) {
+    crptApproved.style.display = concrete && isApproved ? '' : 'none';
+    if (concrete && isApproved) {
+      const who = sample?.dist_approved_by ? ` by ${sample.dist_approved_by}` : '';
+      crptApproved.textContent = `Approved and distributed${who}.`;
+    }
+  }
 
   if (pendNotice) {
-    pendNotice.style.display = isPending ? '' : 'none';
-    if (isPending) pendNotice.textContent = approvalNoticeText(sample);
+    pendNotice.style.display = (!concrete && isPending) ? '' : 'none';
+    if (!concrete && isPending) pendNotice.textContent = approvalNoticeText(sample);
   }
   if (appNotice) {
     appNotice.style.display = isApproved ? '' : 'none';
@@ -12172,13 +12225,13 @@ function refreshReportEmailBtn(sample) {
 
 // ── Approve report and fire the email ─────────────────────────────
 async function slApproveForDistribution() {
-  if (!slCurrentSample && currentSample) slCurrentSample = currentSample;
-  if (!slCurrentSample) return;
+  const subject = approvalSubject();
+  if (!subject) return;
   await ensureApprovalRoutes();
-  const decision = approvalDecision(slCurrentSample);
+  const decision = approvalDecision(subject);
   if (!decision.ok) {
     showToast('This report is waiting for someone else.', 'error');
-    refreshReportEmailBtn(slCurrentSample);
+    refreshReportEmailBtn(subject);
     return;
   }
   const approvedBy = currentUser?.name || 'Admin';
@@ -12186,35 +12239,42 @@ async function slApproveForDistribution() {
   const patch = decision.email
     ? { dist_status: 'approved', dist_approved_by: approvedBy, dist_approved_at: approvedAt }
     : { dist_status: 'pending_final', dist_approved_by: approvedBy };
-  const { error } = await db.from('samples').update(patch).eq('id', slCurrentSample.id);
-  if (error) { showToast('Approval update failed: ' + error.message, 'error'); return; }
-  logSampleHistory({
-    sampleId: slCurrentSample.id,
-    testNo: slCurrentSample.test_no,
-    action: decision.email ? 'dist_approved' : 'dist_section_approved',
-    details: { approved_by: approvedBy, stage: decision.stage },
-  });
-
-  const updated = { ...slCurrentSample, ...patch };
+  const updated = await writeApprovalStatus(subject, patch);
+  if (!updated) return;
+  const kind = sampleApprovalMaterial(updated);
+  const onSamples = !updated._approvalTable || updated._approvalTable === 'samples';
+  if (onSamples) {
+    logSampleHistory({
+      sampleId: updated.id,
+      testNo: updated.test_no,
+      action: decision.email ? 'dist_approved' : 'dist_section_approved',
+      details: { approved_by: approvedBy, stage: decision.stage },
+    });
+  }
+  if (kind === 'compaction' || kind === 'concrete') _approvalTarget = updated;
+  else _approvalTarget = null;
   slCurrentSample = updated;
-  currentSample   = updated;
-  allSamples = allSamples.map(s => s.id === updated.id ? updated : s);
+  currentSample = updated;
+  if (onSamples) allSamples = allSamples.map(s => s.id === updated.id ? { ...s, ...updated } : s);
 
   refreshReportEmailBtn(updated);
   refreshApprovalBadge();
 
-  // Stay on the completed report — do not fall back to soil lab data entry
-  await slViewReport();
+  // Soil and aggregate stay on the printed report. Compaction and concrete
+  // are already on their own report, which has no lab worksheet to reload.
+  if (kind !== 'compaction' && kind !== 'concrete') await slViewReport();
 
   if (!decision.email) {
     const finalName = approverNameById(decision.finalApproverId) || 'the final approver';
-    showToast(`Reviewed. Waiting for ${finalName} for final approval and distribution.`, 'success');
+    const verb = kind === 'compaction' ? 'Signed off' : 'Reviewed';
+    showToast(`${verb}. Waiting for ${finalName} for final approval and distribution.`, 'success');
     return;
   }
 
-  // Sync result to Approved Sources chart only after final approval
-  const { data: freshSample } = await db.from('samples').select('*').eq('id', updated.id).single();
-  await srcSyncFromSample(freshSample || updated);
+  if ((kind === 'soil' || kind === 'aggregate') && db) {
+    const { data: freshSample } = await db.from('samples').select('*').eq('id', updated.id).single();
+    await srcSyncFromSample(freshSample || updated);
+  }
 
   showToast(decision.stage === 'final' ? 'Final approval recorded — sending email…' : 'Report approved — sending email…', 'success');
   await autoEmailReport(updated);
@@ -12314,45 +12374,44 @@ async function srcSyncFromSample(sample) {
 
 // ── Reject modal ───────────────────────────────────────────────────
 function slOpenRejectModal() {
-  if (!slCurrentSample) return;
+  if (!approvalSubject()) return;
   const commentEl = document.getElementById('slRejectComment');
   if (commentEl) commentEl.value = '';
   document.getElementById('slRejectModal').classList.add('open');
 }
 
 async function slSubmitRejection() {
-  if (!slCurrentSample) return;
+  const subject = approvalSubject();
+  if (!subject) return;
   await ensureApprovalRoutes();
-  if (!canApproveThisReport(slCurrentSample)) {
+  if (!canApproveThisReport(subject)) {
     showToast('This report is waiting for someone else.', 'error');
     return;
   }
   const comment = (document.getElementById('slRejectComment')?.value || '').trim();
-  const { error } = await db.from('samples').update({
-    dist_status:          'rejected',
-    dist_rejected_reason: comment || '(No reason provided)',
-    dist_approved_by:     null,
-    dist_approved_at:     null,
-  }).eq('id', slCurrentSample.id);
-  if (error) { showToast('Rejection update failed: ' + error.message, 'error'); return; }
-  logSampleHistory({ sampleId: slCurrentSample.id, testNo: slCurrentSample.test_no, action: 'dist_rejected', details: { reason: comment || '(No reason provided)' } });
-
-  document.getElementById('slRejectModal').classList.remove('open');
-
-  const updated = {
-    ...slCurrentSample,
+  const reason = comment || '(No reason provided)';
+  const updated = await writeApprovalStatus(subject, {
     dist_status: 'rejected',
-    dist_rejected_reason: comment || '(No reason provided)',
+    dist_rejected_reason: reason,
     dist_approved_by: null,
     dist_approved_at: null,
-  };
+  });
+  if (!updated) return;
+  const kind = sampleApprovalMaterial(updated);
+  const onSamples = !updated._approvalTable || updated._approvalTable === 'samples';
+  if (onSamples) {
+    logSampleHistory({ sampleId: updated.id, testNo: updated.test_no, action: 'dist_rejected', details: { reason } });
+    allSamples = allSamples.map(s => s.id === updated.id ? { ...s, ...updated } : s);
+  }
+  _approvalTarget = (kind === 'compaction' || kind === 'concrete') ? updated : null;
   slCurrentSample = updated;
-  currentSample   = updated;
-  allSamples = allSamples.map(s => s.id === updated.id ? updated : s);
+  currentSample = updated;
 
+  document.getElementById('slRejectModal').classList.remove('open');
   refreshReportEmailBtn(updated);
   refreshApprovalBadge();
-  showToast('Report rejected — lab technician will be notified on next load.', 'info');
+  showToast(kind === 'compaction' ? 'Compaction sent back.' : 'Report rejected. The technician will see it on the next load.', 'info');
+  if (kind === 'concrete' || kind === 'compaction') return;
   switchView('soillab');
 }
 
@@ -18240,6 +18299,7 @@ async function applyEditsAndRegenerate() {
 // ══════════════════════════════════════════════
 async function viewReport(id, opts) {
   opts = opts || {};
+  _approvalTarget = null;
   const sample = await fetchSample(id, { forceFresh: true, requireLabData: true });
   if (!sample || !sampleHasLabData(sample)) { showToast('No lab data for this sample', 'error'); return; }
   slCurrentSample = sample;
@@ -19541,23 +19601,38 @@ function collectDenData() {
 async function saveDensityAndGenerate() {
   if (!currentDensitySample) return;
   const data = collectDenData();
+  const prevApproval = parseDensityData(currentDensitySample.density_data).approval;
+  if (prevApproval) data.approval = prevApproval;
   const tbl = currentDensitySample._fc_table || 'samples';
   const { error } = await dbWrite(tbl, 'update', { density_data: data }, currentDensitySample.id);
   if (!error) {
     fcCacheRecord(tbl, currentDensitySample.id, { density_data: data });
     currentDensitySample.density_data = data;
+    currentDensitySample._fc_table = tbl;
     updateFCSessionBanner();
   }
   document.getElementById('densityOverlay').classList.remove('open'); scrollActiveViewTop();
+  const queued = await queueCompactionApproval({ ...currentDensitySample, _fc_table: tbl, density_data: currentDensitySample.density_data || data });
+  if (queued?.record?.density_data) currentDensitySample.density_data = queued.record.density_data;
+  if (queued?.record?.dist_status && tbl === 'samples') currentDensitySample.dist_status = queued.record.dist_status;
 
   if (activeFC_sessionId) {
     switchView('fieldcontrol');
     updateFCSessionBanner();
-    showToast('LB-68 saved ✓', 'success');
+    if (!queued?.newlyQueued) showToast('LB-68 saved ✓', 'success');
   } else {
-    renderLB68(currentDensitySample, data);
+    const reportData = parseDensityData(currentDensitySample.density_data || data);
+    renderLB68(currentDensitySample, reportData);
+    const sample = compactionApprovalSample({ ...currentDensitySample, _fc_table: tbl });
+    _approvalTarget = sample;
+    slCurrentSample = sample;
+    currentSample = sample;
     switchView('report');
-    showToast('LB-68 generated ✓', 'success');
+    const editBtn = document.getElementById('rpt-soillab-edit-btn');
+    if (editBtn) editBtn.style.display = 'none';
+    syncReportChrome();
+    refreshReportEmailBtn(sample);
+    if (!queued?.newlyQueued) showToast('LB-68 generated ✓', 'success');
   }
 }
 
@@ -20907,9 +20982,12 @@ let _slUndoTimer    = null;
 
 function syncReportChrome() {
   const back = document.getElementById('rpt-back-btn');
-  if (back) back.textContent = roleCanUseSoilModule() ? '← BACK TO SOIL LAB' : '← BACK';
+  const compaction = isCompactionApprovalRecord(_approvalTarget || slCurrentSample);
+  if (back) {
+    back.textContent = compaction ? '← BACK' : (roleCanUseSoilModule() ? '← BACK TO SOIL LAB' : '← BACK');
+  }
   const editBtn = document.getElementById('rpt-soillab-edit-btn');
-  if (editBtn && !roleCanUseSoilModule()) editBtn.style.display = 'none';
+  if (editBtn && (compaction || !roleCanUseSoilModule())) editBtn.style.display = 'none';
 }
 
 function openFoundSample(sample) {
@@ -20924,9 +21002,11 @@ function openFoundSample(sample) {
 }
 
 function leaveReport() {
+  const compaction = isCompactionApprovalRecord(_approvalTarget || slCurrentSample);
+  _approvalTarget = null;
   const btn = document.getElementById('rpt-soillab-edit-btn');
   if (btn) btn.style.display = 'none';
-  switchView(roleCanUseSoilModule() ? 'soillab' : 'fieldhub');
+  switchView(compaction ? 'fieldhub' : (roleCanUseSoilModule() ? 'soillab' : 'fieldhub'));
 }
 
 function slReturnToSoilLab() {
@@ -22169,13 +22249,39 @@ async function saveTeamAssignments() {
 }
 
 // ── Approval paths ─────────────────────────────────────────────
-// Soil and aggregate can require two people: a section reviewer, then
-// a final approver who is the only one that distributes the email.
+// Each section has its own two-step path: a section reviewer, then the
+// person who gives final approval and sends the email.
+// Soil and aggregate lab reports — including bags Field Control collects —
+// stay on the soil path. Compaction sign-off is the field path.
 // Stored in lab_spec_config id "approval_routes" so every browser shares it.
 const APPROVAL_ROUTE_STORAGE_KEY = 'labtrak_approval_routes';
 const APPROVAL_ROUTE_ROW_ID = 'approval_routes';
+const APPROVAL_PATHS = [
+  {
+    id: 'soil-aggregate',
+    materials: ['soil', 'aggregate'],
+    title: 'Soil and aggregate',
+    note: 'Lab reports, including soil and aggregate bags Field Control collects. Those lab tests still go through the soil lab.',
+    sectionHelp: 'This person approves the lab report. The email still waits.',
+  },
+  {
+    id: 'concrete',
+    materials: ['concrete'],
+    title: 'Concrete',
+    note: 'Concrete strength reports, once a cylinder has been broken.',
+    sectionHelp: 'This person approves the strength report. The email still waits.',
+  },
+  {
+    id: 'field-compaction',
+    materials: ['compaction'],
+    title: 'Field control compaction',
+    note: 'LB-68 compaction sign-off. Lab bags collected in the field stay on the soil and aggregate path.',
+    sectionHelp: 'This person signs off the compaction. The email still waits.',
+  },
+];
 let _approvalRoutes = null;
 let _approvalRoutesPromise = null;
+let _approvalTarget = null;
 
 function approvalEsc(value) {
   return String(value ?? '').replace(/[&<>"']/g, ch => ({
@@ -22209,22 +22315,75 @@ function defaultApprovalRoute(users) {
   };
 }
 
+function approvalPathDef(id) {
+  return APPROVAL_PATHS.find(path => path.id === id) || null;
+}
+
 function normalizeApprovalRoutes(raw) {
   const list = Array.isArray(raw?.routes) ? raw.routes : [];
-  const routes = list.map(route => ({
-    id: String(route?.id || 'soil-aggregate'),
-    materials: [...new Set((route?.materials || []).map(m => String(m || '').toLowerCase()).filter(m => m === 'soil' || m === 'aggregate'))],
-    section_approver_id: String(route?.section_approver_id || ''),
-    final_approver_id: String(route?.final_approver_id || ''),
-  })).filter(route => route.materials.length);
-  return { routes };
+  const byId = {};
+  list.forEach(route => {
+    const mats = [...new Set((route?.materials || []).map(m => String(m || '').toLowerCase()))];
+    let key = String(route?.id || '');
+    if (!approvalPathDef(key)) {
+      if (mats.includes('concrete')) key = 'concrete';
+      else if (mats.includes('compaction')) key = 'field-compaction';
+      else if (mats.includes('soil') || mats.includes('aggregate')) key = 'soil-aggregate';
+      else return;
+    }
+    const def = approvalPathDef(key);
+    let materials;
+    if (key === 'soil-aggregate') {
+      materials = mats.filter(m => m === 'soil' || m === 'aggregate');
+      if (!materials.length) materials = ['soil', 'aggregate'];
+    } else {
+      materials = def.materials.slice();
+    }
+    byId[key] = {
+      id: key,
+      materials,
+      section_approver_id: String(route?.section_approver_id || ''),
+      final_approver_id: String(route?.final_approver_id || ''),
+    };
+  });
+  return {
+    routes: APPROVAL_PATHS.map(def => byId[def.id] || {
+      id: def.id,
+      materials: def.materials.slice(),
+      section_approver_id: '',
+      final_approver_id: '',
+    }),
+  };
 }
 
 function approvalRouteReady(route) {
   return !!(route && route.section_approver_id && route.final_approver_id && route.materials?.length);
 }
 
+function isCompactionApprovalRecord(sample) {
+  if (!sample || sample.deleted_at) return false;
+  if (sample._approvalKind === 'compaction') return true;
+  if (sample.sample_type === 'nuclear_placeholder' || sample.sample_type === 'aggregate_placeholder') return false;
+  if (sample.record_kind === 'linked' || sample.record_kind === 'lab_sample') return false;
+  if (sample.sample_type === 'Field Control' && sample.record_kind !== 'density_test') return false;
+  if (sample.record_kind === 'density_test' || sample.sample_type === 'density_test') return true;
+  if (sample.status === 'density') return true;
+  if (sample._fc_table === 'field_tests' || sample._approvalTable === 'field_tests') return true;
+  if (sample.field_workflow === 'density_only') return true;
+  return false;
+}
+
+function isConcreteApprovalRecord(sample) {
+  if (!sample) return false;
+  if (sample._approvalKind === 'concrete' || sample._queueKind === 'concrete') return true;
+  if (String(sample.test_category || '').toLowerCase() === 'concrete') return true;
+  if (Array.isArray(sample.cylinders) && (sample.testNo || sample.pourLocation || sample.mixDesign)) return true;
+  return false;
+}
+
 function sampleApprovalMaterial(sample) {
+  if (isCompactionApprovalRecord(sample)) return 'compaction';
+  if (isConcreteApprovalRecord(sample)) return 'concrete';
   const cat = String(sample?.test_category || 'soil').trim().toLowerCase();
   if (cat === 'aggregate') return 'aggregate';
   if (cat === 'soil' || cat === '') return 'soil';
@@ -22306,7 +22465,8 @@ async function loadApprovalRoutes() {
 
 async function persistApprovalRoutes(doc, opts) {
   const norm = normalizeApprovalRoutes(doc);
-  if (!norm.routes.length) {
+  const soil = norm.routes.find(route => route.id === 'soil-aggregate');
+  if (!soil?.materials?.length) {
     if (!opts?.quiet) showToast('Choose soil, aggregate, or both.', 'error');
     return false;
   }
@@ -22314,7 +22474,7 @@ async function persistApprovalRoutes(doc, opts) {
   _approvalRoutesPromise = Promise.resolve(norm);
   try { localStorage.setItem(APPROVAL_ROUTE_STORAGE_KEY, JSON.stringify(norm)); } catch (e) {}
   if (!db) {
-    if (!opts?.quiet) showToast('Approval path saved on this browser. Connect to share it with everyone.', 'info');
+    if (!opts?.quiet) showToast('Approval paths saved on this browser. Connect to share them with everyone.', 'info');
     return true;
   }
   try {
@@ -22328,24 +22488,37 @@ async function persistApprovalRoutes(doc, opts) {
     return true;
   } catch (e) {
     console.warn('persistApprovalRoutes:', e);
-    if (!opts?.quiet) showToast('Could not save the approval path: ' + (e.message || e), 'error');
+    if (!opts?.quiet) showToast('Could not save the approval paths: ' + (e.message || e), 'error');
     return false;
   }
 }
 
 function describeApprovalRoute(route) {
   const mats = route?.materials || [];
-  const matLabel = mats.includes('soil') && mats.includes('aggregate') ? 'Soil and aggregate'
-    : mats.includes('aggregate') ? 'Aggregate'
-    : mats.includes('soil') ? 'Soil'
-    : 'No materials selected';
+  const def = approvalPathDef(route?.id);
+  let matLabel = def?.title || 'Reports';
+  if (route?.id === 'soil-aggregate') {
+    matLabel = mats.includes('soil') && mats.includes('aggregate') ? 'Soil and aggregate'
+      : mats.includes('aggregate') ? 'Aggregate'
+      : mats.includes('soil') ? 'Soil'
+      : '';
+  }
   const section = approverNameById(route?.section_approver_id) || 'the section reviewer';
   const finalName = approverNameById(route?.final_approver_id) || 'the final approver';
   if (!mats.length) return 'Choose soil, aggregate, or both.';
-  if (!route?.section_approver_id || !route?.final_approver_id) {
-    return `${matLabel} need both a section reviewer and a final approver. Email is sent only by the final approver.`;
+  if (!route?.section_approver_id && !route?.final_approver_id) {
+    return `${matLabel} has no reviewers yet. Choose both people to turn this path on.`;
   }
-  return `${matLabel} reports go to ${section} first. ${finalName} gives final approval and sends the email. Nobody else can skip that step.`;
+  if (!route?.section_approver_id || !route?.final_approver_id) {
+    return `${matLabel} needs both a section reviewer and a final approver. Email is sent only by the final approver.`;
+  }
+  if (route?.id === 'field-compaction') {
+    return `Compaction goes to ${section} first. ${finalName} signs off and sends the email. Lab samples Field Control collects stay on the soil and aggregate path.`;
+  }
+  if (route?.id === 'concrete') {
+    return `Concrete reports go to ${section} first. ${finalName} gives final approval and sends the email. Nobody else can skip that step.`;
+  }
+  return `${matLabel} reports go to ${section} first. ${finalName} gives final approval and sends the email. Bags Field Control collects for the lab stay on this path.`;
 }
 
 function approvalUserOptions(users, selectedId) {
@@ -22361,33 +22534,34 @@ function approvalUserOptions(users, selectedId) {
   return opts.join('');
 }
 
-function approvalPathDraftFromForm() {
-  const materials = [];
-  if (document.getElementById('approvalMatSoil')?.checked) materials.push('soil');
-  if (document.getElementById('approvalMatAggregate')?.checked) materials.push('aggregate');
-  return {
-    id: 'soil-aggregate',
-    materials,
-    section_approver_id: document.getElementById('approvalSectionUser')?.value || '',
-    final_approver_id: document.getElementById('approvalFinalUser')?.value || '',
-  };
+function approvalPathDraftsFromForm() {
+  return APPROVAL_PATHS.map(def => {
+    let materials = def.materials.slice();
+    if (def.id === 'soil-aggregate') {
+      materials = [];
+      if (document.getElementById('approvalMatSoil')?.checked) materials.push('soil');
+      if (document.getElementById('approvalMatAggregate')?.checked) materials.push('aggregate');
+    }
+    return {
+      id: def.id,
+      materials,
+      section_approver_id: document.getElementById('approvalSection-' + def.id)?.value || '',
+      final_approver_id: document.getElementById('approvalFinal-' + def.id)?.value || '',
+    };
+  });
 }
 
 function approvalPathPreview() {
-  const el = document.getElementById('approvalPathSummary');
-  if (!el) return;
-  const draft = approvalPathDraftFromForm();
-  const section = document.getElementById('approvalSectionUser')?.selectedOptions?.[0];
-  const finalOpt = document.getElementById('approvalFinalUser')?.selectedOptions?.[0];
-  const named = {
-    ...draft,
-    section_approver_id: draft.section_approver_id,
-    final_approver_id: draft.final_approver_id,
-  };
-  const summary = describeApprovalRoute(named)
-    .replace('the section reviewer', (section && draft.section_approver_id) ? section.textContent : 'the section reviewer')
-    .replace('the final approver', (finalOpt && draft.final_approver_id) ? finalOpt.textContent : 'the final approver');
-  el.textContent = summary;
+  approvalPathDraftsFromForm().forEach(draft => {
+    const el = document.getElementById('approvalPathSummary-' + draft.id);
+    if (!el) return;
+    const section = document.getElementById('approvalSection-' + draft.id)?.selectedOptions?.[0];
+    const finalOpt = document.getElementById('approvalFinal-' + draft.id)?.selectedOptions?.[0];
+    let summary = describeApprovalRoute(draft);
+    if (section && draft.section_approver_id) summary = summary.replaceAll('the section reviewer', section.textContent);
+    if (finalOpt && draft.final_approver_id) summary = summary.replaceAll('the final approver', finalOpt.textContent);
+    el.textContent = summary;
+  });
 }
 
 async function renderApprovalPaths() {
@@ -22395,42 +22569,46 @@ async function renderApprovalPaths() {
   if (!container) return;
   await loadApprovalRoutes();
   const users = await getUsers();
-  const route = (_approvalRoutes?.routes || []).find(r => r.id === 'soil-aggregate')
-    || (_approvalRoutes?.routes || [])[0]
-    || defaultApprovalRoute(users);
-  const soilOn = !route.materials?.length || route.materials.includes('soil');
-  const aggOn = !route.materials?.length || route.materials.includes('aggregate');
-  container.innerHTML = `
-    <p class="approval-path-lead" id="approvalPathSummary">${approvalEsc(describeApprovalRoute(route))}</p>
-    <div class="approval-path-steps">
-      <div class="approval-path-step">
-        <div class="approval-path-num">1</div>
-        <div>
-          <h4>Lab finishes the report</h4>
-          <p>The report waits. It is not emailed yet.</p>
+  const routes = _approvalRoutes?.routes || [];
+  const cards = APPROVAL_PATHS.map(def => {
+    const route = routes.find(r => r.id === def.id) || {
+      id: def.id,
+      materials: def.materials.slice(),
+      section_approver_id: '',
+      final_approver_id: '',
+    };
+    const soilBoxes = def.id !== 'soil-aggregate' ? '' : `
           <div class="approval-mat-row">
-            <label><input type="checkbox" id="approvalMatSoil" ${soilOn ? 'checked' : ''} onchange="approvalPathPreview()"> Soil</label>
-            <label><input type="checkbox" id="approvalMatAggregate" ${aggOn ? 'checked' : ''} onchange="approvalPathPreview()"> Aggregate</label>
+            <label><input type="checkbox" id="approvalMatSoil" ${route.materials.includes('soil') ? 'checked' : ''} onchange="approvalPathPreview()"> Soil</label>
+            <label><input type="checkbox" id="approvalMatAggregate" ${route.materials.includes('aggregate') ? 'checked' : ''} onchange="approvalPathPreview()"> Aggregate</label>
+          </div>`;
+    return `
+      <section class="approval-path-card">
+        <h3>${approvalEsc(def.title)}</h3>
+        <p class="approval-path-note">${approvalEsc(def.note)}</p>
+        <p class="approval-path-lead" id="approvalPathSummary-${def.id}"></p>
+        ${soilBoxes}
+        <div class="approval-path-steps">
+          <div class="approval-path-step">
+            <div class="approval-path-num">1</div>
+            <div>
+              <h4>Section review</h4>
+              <p>${approvalEsc(def.sectionHelp)}</p>
+              <select id="approvalSection-${def.id}" onchange="approvalPathPreview()">${approvalUserOptions(users, route.section_approver_id)}</select>
+            </div>
+          </div>
+          <div class="approval-path-step">
+            <div class="approval-path-num">2</div>
+            <div>
+              <h4>Final approval and distribution</h4>
+              <p>This person is the only one who can send the email.</p>
+              <select id="approvalFinal-${def.id}" onchange="approvalPathPreview()">${approvalUserOptions(users, route.final_approver_id)}</select>
+            </div>
           </div>
         </div>
-      </div>
-      <div class="approval-path-step">
-        <div class="approval-path-num">2</div>
-        <div>
-          <h4>Section review</h4>
-          <p>This person approves the work. The email still waits.</p>
-          <select id="approvalSectionUser" onchange="approvalPathPreview()">${approvalUserOptions(users, route.section_approver_id)}</select>
-        </div>
-      </div>
-      <div class="approval-path-step">
-        <div class="approval-path-num">3</div>
-        <div>
-          <h4>Final approval and distribution</h4>
-          <p>This person is the only one who can send the email.</p>
-          <select id="approvalFinalUser" onchange="approvalPathPreview()">${approvalUserOptions(users, route.final_approver_id)}</select>
-        </div>
-      </div>
-    </div>`;
+      </section>`;
+  }).join('');
+  container.innerHTML = cards;
   approvalPathPreview();
 }
 
@@ -22455,19 +22633,270 @@ async function ensureApproverFlag(userIds) {
 }
 
 async function saveApprovalPaths() {
-  const draft = approvalPathDraftFromForm();
-  if (!draft.materials.length) { showToast('Choose soil, aggregate, or both.', 'error'); return; }
-  if (!draft.section_approver_id || !draft.final_approver_id) {
-    showToast('Choose who reviews and who gives final approval.', 'error');
+  const drafts = approvalPathDraftsFromForm();
+  const soil = drafts.find(draft => draft.id === 'soil-aggregate');
+  if (!soil?.materials.length) { showToast('Choose soil, aggregate, or both.', 'error'); return; }
+  if (!soil.section_approver_id || !soil.final_approver_id) {
+    showToast('Choose who reviews soil and aggregate, and who gives final approval.', 'error');
     return;
   }
-  const granted = await ensureApproverFlag([draft.section_approver_id, draft.final_approver_id]);
+  for (const draft of drafts) {
+    if (draft.id === 'soil-aggregate') continue;
+    const hasSection = !!draft.section_approver_id;
+    const hasFinal = !!draft.final_approver_id;
+    if (hasSection !== hasFinal) {
+      const title = approvalPathDef(draft.id)?.title || 'that path';
+      showToast(`Choose both people for ${title}, or leave both blank.`, 'error');
+      return;
+    }
+  }
+  const ids = drafts.flatMap(draft => [draft.section_approver_id, draft.final_approver_id]);
+  const granted = await ensureApproverFlag(ids);
   if (!granted) { showToast('Could not give those people approval access.', 'error'); return; }
-  const ok = await persistApprovalRoutes({ routes: [draft] });
+  const ok = await persistApprovalRoutes({ routes: drafts });
   if (!ok) return;
   await renderApprovalPaths();
   refreshApprovalBadge();
-  showToast('Approval path saved.', 'success');
+  showToast('Approval paths saved.', 'success');
+}
+
+function approvalSubject() {
+  return _approvalTarget || slCurrentSample || currentSample || null;
+}
+
+function parseDensityData(value) {
+  if (!value) return {};
+  if (typeof value === 'string') {
+    try { return JSON.parse(value) || {}; } catch (e) { return {}; }
+  }
+  return (typeof value === 'object') ? { ...value } : {};
+}
+
+function compactionApprovalSample(record) {
+  if (!record) return null;
+  const onFieldTest = record._approvalTable === 'field_tests'
+    || record._fc_table === 'field_tests'
+    || !!record.field_workflow;
+  const approval = parseDensityData(record.density_data).approval || {};
+  return {
+    ...record,
+    _approvalKind: 'compaction',
+    _approvalTable: onFieldTest ? 'field_tests' : 'samples',
+    test_no: record.test_no || record.testNo || '',
+    contract: record.contract || '',
+    dist_status: onFieldTest ? (approval.status || null) : (record.dist_status || null),
+    dist_submitted_by: onFieldTest ? (approval.submitted_by || '') : (record.dist_submitted_by || ''),
+    dist_approved_by: onFieldTest ? (approval.approved_by || null) : (record.dist_approved_by || null),
+    dist_approved_at: onFieldTest ? (approval.approved_at || null) : (record.dist_approved_at || null),
+    dist_rejected_reason: onFieldTest ? (approval.rejected_reason || null) : (record.dist_rejected_reason || null),
+  };
+}
+
+function concreteResultConforms(set) {
+  const cylinders = (set?.cylinders || []).filter(cyl => cyl && cyl.strength != null && cyl.strength !== '');
+  const finals = cylinders.filter(cyl => Number(cyl.breakAge) === 28);
+  const judged = finals.length ? finals : cylinders;
+  const required = parseFloat(set?.requiredFc);
+  if (!judged.length || !required) return null;
+  return judged.every(cyl => parseFloat(cyl.strength) >= required);
+}
+
+function concreteApprovalSample(set) {
+  if (!set) return null;
+  const approval = set.approval && typeof set.approval === 'object' ? set.approval : {};
+  const verdict = concreteResultConforms(set);
+  return {
+    id: set.id,
+    conforms: verdict === true ? 'yes' : verdict === false ? 'no' : '',
+    _approvalKind: 'concrete',
+    _approvalTable: 'concrete',
+    _concreteSetId: set.id,
+    test_category: 'concrete',
+    test_no: set.testNo || set.id,
+    contract: set.contract || '',
+    location: set.pourLocation || '',
+    material_type: set.mixDesign || set.concreteClass || '',
+    date_sampled: set.castDate || '',
+    contractor: set.contractor || '',
+    dist_status: approval.status || null,
+    dist_submitted_by: approval.submitted_by || '',
+    dist_approved_by: approval.approved_by || null,
+    dist_approved_at: approval.approved_at || null,
+    dist_rejected_reason: approval.rejected_reason || null,
+  };
+}
+
+function approvalPatchToStamp(record, patch) {
+  return {
+    status: patch.dist_status,
+    submitted_by: Object.prototype.hasOwnProperty.call(patch, 'dist_submitted_by') ? patch.dist_submitted_by : (record.dist_submitted_by || ''),
+    approved_by: Object.prototype.hasOwnProperty.call(patch, 'dist_approved_by') ? patch.dist_approved_by : (record.dist_approved_by || null),
+    approved_at: Object.prototype.hasOwnProperty.call(patch, 'dist_approved_at') ? patch.dist_approved_at : (record.dist_approved_at || null),
+    rejected_reason: Object.prototype.hasOwnProperty.call(patch, 'dist_rejected_reason') ? patch.dist_rejected_reason : (record.dist_rejected_reason || null),
+  };
+}
+
+async function writeApprovalStatus(record, patch) {
+  if (!record) return null;
+  const table = record._approvalTable || 'samples';
+  if (table === 'concrete') {
+    const setId = record._concreteSetId || record.id;
+    const sets = loadConcreteSets();
+    const set = sets.find(item => item.id === setId);
+    if (!set) return null;
+    set.approval = approvalPatchToStamp(concreteApprovalSample(set), patch);
+    set.updatedAt = new Date().toISOString();
+    saveConcreteSets(sets);
+    try { await syncConcreteSetToCloud(set); } catch (e) { console.warn('concrete approval sync:', e); }
+    return concreteApprovalSample(set);
+  }
+  if (table === 'field_tests') {
+    const density = parseDensityData(record.density_data);
+    density.approval = approvalPatchToStamp(record, patch);
+    const { error } = await dbWrite('field_tests', 'update', { density_data: density }, record.id);
+    if (error) {
+      showToast('Sign-off update failed: ' + (error.message || error), 'error');
+      return null;
+    }
+    fcCacheRecord('field_tests', record.id, { density_data: density });
+    if (currentDensitySample && currentDensitySample.id === record.id) currentDensitySample.density_data = density;
+    return compactionApprovalSample({ ...record, density_data: density, _fc_table: 'field_tests', _approvalTable: 'field_tests' });
+  }
+  if (!db) { showToast('Not connected to database', 'error'); return null; }
+  const body = pickSampleRowUpdates(patch);
+  const { data, error } = await db.from('samples').update(body).eq('id', record.id).select('*').single();
+  if (error) {
+    showToast('Approval update failed: ' + error.message, 'error');
+    return null;
+  }
+  const updated = { ...record, ...data, lab_data: normalizeLabData(data.lab_data) };
+  if (isCompactionApprovalRecord(updated)) {
+    updated._approvalKind = 'compaction';
+    updated._approvalTable = 'samples';
+  }
+  upsertAllSample(updated);
+  if (currentDensitySample && currentDensitySample.id === updated.id) {
+    currentDensitySample = { ...currentDensitySample, ...updated };
+  }
+  return updated;
+}
+
+async function queueCompactionApproval(record) {
+  if (!record || typeof fcHasDensityData !== 'function' || !fcHasDensityData(record)) return null;
+  if (record.record_kind === 'linked' || record.record_kind === 'lab_sample') return null;
+  if (record.sample_type === 'Field Control' && record.record_kind !== 'density_test') return null;
+  const sample = compactionApprovalSample(record);
+  if (!sample || sampleApprovalMaterial(sample) !== 'compaction') return null;
+  await ensureApprovalRoutes();
+  const route = routeForSample(sample);
+  if (!approvalRouteReady(route)) return null;
+  if (sample.dist_status === 'pending_review' || sample.dist_status === 'pending_final' || sample.dist_status === 'approved') {
+    return { record: sample, newlyQueued: false };
+  }
+  const updated = await writeApprovalStatus(sample, {
+    dist_status: 'pending_review',
+    dist_submitted_by: currentUser?.id || '',
+    dist_approved_by: null,
+    dist_approved_at: null,
+    dist_rejected_reason: null,
+  });
+  if (!updated) return null;
+  refreshApprovalBadge();
+  const sectionName = approverNameById(route.section_approver_id);
+  showToast(sectionName ? `Compaction queued for ${sectionName} to sign off.` : 'Compaction queued for sign-off.', 'success');
+  return { record: updated, newlyQueued: true };
+}
+
+async function maybeQueueConcreteApproval(set) {
+  if (!set) return null;
+  const broken = (set.cylinders || []).some(cyl => cyl && (cyl.status === 'broken' || cyl.strength || cyl.load));
+  if (!broken) return null;
+  const sample = concreteApprovalSample(set);
+  await ensureApprovalRoutes();
+  const route = routeForSample(sample);
+  if (!approvalRouteReady(route)) return null;
+  if (sample.dist_status === 'pending_review' || sample.dist_status === 'pending_final' || sample.dist_status === 'approved') {
+    return sample;
+  }
+  const updated = await writeApprovalStatus(sample, {
+    dist_status: 'pending_review',
+    dist_submitted_by: currentUser?.id || '',
+    dist_approved_by: null,
+    dist_approved_at: null,
+    dist_rejected_reason: null,
+  });
+  if (!updated) return null;
+  refreshApprovalBadge();
+  const sectionName = approverNameById(route.section_approver_id);
+  showToast(sectionName ? `Concrete report queued for ${sectionName} to review.` : 'Concrete report queued for approval.', 'success');
+  return updated;
+}
+
+async function collectMyApprovalQueue() {
+  await ensureApprovalRoutes();
+  const mine = (allSamples || []).filter(sample => isSoilLabSample(sample) && reportAwaitingMyApproval(sample));
+  (allSamples || []).filter(isCompactionApprovalRecord).forEach(sample => {
+    const shaped = compactionApprovalSample(sample);
+    if (shaped && reportAwaitingMyApproval(shaped) && !mine.some(item => item.id === shaped.id)) mine.push(shaped);
+  });
+  if (db && approvalRouteReady((_approvalRoutes?.routes || []).find(route => route.id === 'field-compaction'))) {
+    try {
+      const { data } = await db.from('field_tests')
+        .select('id,test_no,contract,location,material_type,date_sampled,test_category,density_data,field_workflow,status,sampled_by')
+        .not('density_data', 'is', null)
+        .limit(400);
+      (data || []).forEach(row => {
+        const shaped = compactionApprovalSample({ ...row, _fc_table: 'field_tests' });
+        if (shaped && reportAwaitingMyApproval(shaped) && !mine.some(item => item.id === shaped.id)) mine.push(shaped);
+      });
+    } catch (e) { console.warn('compaction approval queue:', e); }
+  }
+  if (approvalRouteReady((_approvalRoutes?.routes || []).find(route => route.id === 'concrete'))) {
+    try {
+      const pull = refreshConcreteSetsIfConnected();
+      if (pull && typeof pull.then === 'function') await pull;
+    } catch (e) {}
+    (typeof loadConcreteSets === 'function' ? loadConcreteSets() : []).forEach(set => {
+      const shaped = concreteApprovalSample(set);
+      if (shaped && reportAwaitingMyApproval(shaped)) mine.push(shaped);
+    });
+  }
+  return mine;
+}
+
+async function openCompactionReport(record) {
+  let row = record;
+  const table = record?._approvalTable === 'field_tests' || record?._fc_table === 'field_tests' ? 'field_tests' : 'samples';
+  if (table === 'field_tests') {
+    const fresh = await fcFetchRecord(record.id, 'field_tests');
+    if (fresh) row = fresh;
+  } else {
+    const fresh = await fetchSample(record.id);
+    if (fresh) row = { ...fresh, _fc_table: 'samples' };
+  }
+  const sample = compactionApprovalSample(row);
+  currentDensitySample = { ...row, _fc_table: sample._approvalTable };
+  const data = parseDensityData(row.density_data);
+  renderLB68(row, data);
+  _approvalTarget = sample;
+  slCurrentSample = sample;
+  currentSample = sample;
+  switchView('report');
+  const editBtn = document.getElementById('rpt-soillab-edit-btn');
+  if (editBtn) editBtn.style.display = 'none';
+  syncReportChrome();
+  refreshReportEmailBtn(sample);
+}
+
+async function openConcreteApprovalReport(setId) {
+  try {
+    const pull = refreshConcreteSetsIfConnected();
+    if (pull && typeof pull.then === 'function') await pull;
+  } catch (e) {}
+  switchView('concrete');
+  const sel = document.getElementById('crpt-set-select');
+  if (sel) sel.value = setId;
+  switchConcreteTab('report');
 }
 
 function reportAwaitingMyApproval(sample) {
@@ -22494,6 +22923,11 @@ function approvalNoticeText(sample) {
   const sectionName = approverNameById(turn.route.section_approver_id) || 'the section reviewer';
   const finalName = approverNameById(turn.route.final_approver_id) || 'the final approver';
   if (turn.kind === 'section') {
+    if (sampleApprovalMaterial(sample) === 'compaction') {
+      return mine
+        ? `Your sign-off. Approving sends this to ${finalName}. The email is not sent yet.`
+        : `Waiting for ${sectionName} to sign off. The email is not sent until ${finalName} gives final approval.`;
+    }
     return mine
       ? `Your review. Approving sends this to ${finalName}. The email is not sent yet.`
       : `Waiting for ${sectionName}. The email is not sent until ${finalName} gives final approval.`;
@@ -22995,18 +23429,26 @@ function slFilterQueue() { slRenderQueue(); }
 
 // ── Jump directly to the approval queue from dashboard ─────────
 function slGoToApprovalQueue() {
-  slStatusFilter = 'approval';
-  switchView('soillab');
   void (async () => {
-    await slRefreshPendingApprovalSamples();
-    document.querySelectorAll('#soillab-view .sl-filter-row:nth-child(1) .sl-filter-btn')
-      .forEach(b => b.classList.remove('active'));
-    const btn = document.getElementById('sl-filter-approval');
-    if (btn) btn.classList.add('active');
-    slRenderQueue();
-    const pending = (allSamples || []).filter(reportAwaitingMyApproval);
-    const firstPending = pending.find(sampleHasLabData) || pending[0];
-    if (firstPending) await slOpenPendingReport(firstPending.id);
+    const mine = await collectMyApprovalQueue();
+    const lab = mine.filter(sample => isSoilLabSample(sample) && !isCompactionApprovalRecord(sample) && !isConcreteApprovalRecord(sample));
+    if (lab.length) {
+      slStatusFilter = 'approval';
+      switchView('soillab');
+      await slRefreshPendingApprovalSamples();
+      document.querySelectorAll('#soillab-view .sl-filter-row:nth-child(1) .sl-filter-btn')
+        .forEach(b => b.classList.remove('active'));
+      const btn = document.getElementById('sl-filter-approval');
+      if (btn) btn.classList.add('active');
+      slRenderQueue();
+      const firstPending = lab.find(sampleHasLabData) || lab[0];
+      if (firstPending) await slOpenPendingReport(firstPending.id);
+      return;
+    }
+    const compaction = mine.find(isCompactionApprovalRecord);
+    if (compaction) { await openCompactionReport(compaction); return; }
+    const concrete = mine.find(isConcreteApprovalRecord);
+    if (concrete) await openConcreteApprovalReport(concrete._concreteSetId || concrete.id);
   })();
 }
 
@@ -23948,6 +24390,7 @@ async function slGenerateAggReport() {
 // ── View report for loaded sample ──────────────────────────────
 async function slViewReport() {
   if (!slCurrentSample) return;
+  _approvalTarget = null;
   const fresh = await fetchSample(slCurrentSample.id, { forceFresh: true, requireLabData: true });
   if (!fresh || !sampleHasLabData(fresh)) { showToast('No lab data found', 'error'); return; }
   slCurrentSample = fresh;
@@ -29211,7 +29654,8 @@ function concreteSetToRow(set) {
   delete materials._labtrak;
   materials._labtrak = {
     archived: !!set.archived,
-    updatedAt: set.updatedAt || set.createdAt || null
+    updatedAt: set.updatedAt || set.createdAt || null,
+    approval: set.approval && typeof set.approval === 'object' ? set.approval : null
   };
   return {
     id: set.id,
@@ -29334,6 +29778,7 @@ function concreteRowToSet(row, cylinders) {
     materials,
     cylinders: cyls,
     archived: !!meta.archived,
+    approval: meta.approval && typeof meta.approval === 'object' ? meta.approval : null,
     createdAt: row.created_at || meta.updatedAt || '',
     updatedAt: meta.updatedAt || row.created_at || ''
   };
@@ -29672,6 +30117,7 @@ function switchConcreteTab(tab, opts) {
   if (tab === 'schedule') renderBreakSchedule();
   if (tab === 'break')    populateBreakSetSelect();
   if (tab === 'report')   populateReportSetSelect();
+  if (tab !== 'report' && _approvalTarget && _approvalTarget._approvalKind === 'concrete') _approvalTarget = null;
   if (typeof concreteGuideOnViewChange === 'function') concreteGuideOnViewChange();
   if (typeof isConcreteGuidedMode === 'function' && isConcreteGuidedMode() && typeof concreteGuideAdvanceTo === 'function') {
     if (tab === 'intake') concreteGuideAdvanceTo('job-info');
@@ -30171,12 +30617,25 @@ function printConcreteReports() {
   pw.document.close();
 }
 
-function renderBothConcreteReports(setId) {
+async function renderBothConcreteReports(setId) {
   const out = document.getElementById('crpt-output');
-  if (!setId) { out.innerHTML = ''; return; }
+  if (!setId) {
+    if (out) out.innerHTML = '';
+    _approvalTarget = null;
+    const wrap = document.getElementById('crpt-approval');
+    if (wrap) wrap.style.display = 'none';
+    return;
+  }
   const set = loadConcreteSets().find(s => s.id === setId);
-  if (!set) { out.innerHTML = '<p style="color:var(--muted);font-family:var(--mono);padding:16px;">Set not found.</p>'; return; }
-  out.innerHTML = renderDMF13(set) + renderDMP15(set);
+  if (!set) {
+    if (out) out.innerHTML = '<p style="color:var(--muted);font-family:var(--mono);padding:16px;">Set not found.</p>';
+    return;
+  }
+  if (out) out.innerHTML = renderDMF13(set) + renderDMP15(set);
+  await maybeQueueConcreteApproval(set);
+  const fresh = loadConcreteSets().find(s => s.id === set.id) || set;
+  _approvalTarget = concreteApprovalSample(fresh);
+  refreshReportEmailBtn(_approvalTarget);
 }
 
 // ══════════════════════════════════════════════════════════════
