@@ -64,6 +64,20 @@ function appUserId(): string {
   return "sup_" + crypto.randomUUID().replace(/-/g, "").slice(0, 12);
 }
 
+function passwordAlreadySet(user: { user_metadata?: Record<string, unknown> } | null): boolean {
+  const meta = user?.user_metadata || {};
+  return meta.password_set === true || meta.password_set === "true";
+}
+
+function supplierAuthData(name: string, passwordSet: boolean) {
+  return {
+    labtrak_role: "supplier",
+    plant_name: name,
+    must_set_password: !passwordSet,
+    password_set: passwordSet,
+  };
+}
+
 type AdminClient = ReturnType<typeof createClient>;
 
 async function findUserByEmail(admin: AdminClient, email: string) {
@@ -169,7 +183,7 @@ Deno.serve(async (req) => {
 
     if (!authUser) {
       const invited = await admin.auth.admin.inviteUserByEmail(email, {
-        data: { labtrak_role: "supplier", plant_name: name },
+        data: supplierAuthData(name, false),
         redirectTo,
       });
       if (invited.error) {
@@ -270,7 +284,19 @@ Deno.serve(async (req) => {
       return jsonResponse({ error: message }, 500);
     }
 
+    const needsPassword = createdAuth || !passwordAlreadySet(authUser);
     if (!createdAuth) {
+      const passwordSet = !needsPassword;
+      const updated = await admin.auth.admin.updateUserById(authUser.id, {
+        user_metadata: {
+          ...(authUser.user_metadata || {}),
+          ...supplierAuthData(name, passwordSet),
+        },
+      });
+      if (updated.error) {
+        return jsonResponse({ error: updated.error.message }, 500);
+      }
+      if (updated.data?.user) authUser = updated.data.user;
       const link = await admin.auth.signInWithOtp({
         email,
         options: { emailRedirectTo: redirectTo, shouldCreateUser: false },
@@ -292,6 +318,7 @@ Deno.serve(async (req) => {
       appUserId: labUserId,
       authUserId: authUser.id,
       alreadyExisted: resent,
+      needsPassword,
     });
   } catch (e) {
     const message = e instanceof Error ? e.message : String(e);
