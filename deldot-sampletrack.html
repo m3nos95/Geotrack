@@ -622,6 +622,8 @@ nav:not(#r18-nav), .nav-top-row { display: none !important; }
 .um-del { background: none; border: none; color: var(--red2); cursor: pointer; font-size: 14px; padding: 2px 6px; opacity: 0.6; }
 .um-del:hover { opacity: 1; }
 .um-add-form { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 10px; }
+.supplier-invite-form { grid-template-columns: 1fr; }
+.supplier-invite-form > * { grid-column: 1 / -1; width: 100%; box-sizing: border-box; }
 .um-add-form input, .um-add-form select { background: var(--panel); border: 1px solid var(--border); color: var(--text); padding: 7px 10px; border-radius: var(--radius-sm); font-size: 12px; outline: none; font-family: var(--sans); width: 100%; }
 .um-add-form input:focus, .um-add-form select:focus { border-color: var(--accent2); }
 .btn-um-add { grid-column: span 2; background: var(--accent); border: none; color: #fff; padding: 9px; border-radius: var(--radius-sm); font-family: var(--display); font-size: 13px; letter-spacing: 1px; cursor: pointer; }
@@ -3582,6 +3584,54 @@ table.fc-borrow-tbl tr.fc-borrow-detail-row td{background:var(--surface);border-
       </div>
     </div>
 
+    <div class="user-mgmt-section setup-collapse" id="supplierInviteSection" data-setup-open="false" style="display:none;">
+      <button type="button" class="setup-collapse-hdr" onclick="toggleSetupSection(this)" aria-expanded="false">
+        <span class="setup-collapse-title">Invite a concrete supplier</span>
+        <span class="setup-collapse-chevron" aria-hidden="true">▾</span>
+      </button>
+      <div class="setup-collapse-body">
+      <p style="font-family:var(--mono);font-size:10px;color:var(--muted);margin:0 0 12px;line-height:1.6;">
+        Plant name and email. LabTrak creates their account and emails a sign-in link. You stay signed in.
+        They only see the mix designs they submit. One login per plant is enough for the whole plant.
+      </p>
+      <div class="um-add-form supplier-invite-form">
+        <input type="text" id="si_name" placeholder="Plant or company name" autocomplete="off" maxlength="80">
+        <input type="email" id="si_email" placeholder="Email address" autocomplete="off">
+        <button type="button" class="btn-um-add" id="siInviteBtn" onclick="inviteConcreteSupplier()">Send sign-in link</button>
+      </div>
+      <div id="siInviteMsg" style="font-family:var(--mono);font-size:10px;color:var(--muted);margin-top:10px;line-height:1.5;white-space:pre-wrap;"></div>
+      <p style="font-family:var(--mono);font-size:10px;color:var(--muted);margin:12px 0 0;line-height:1.6;">
+        One-time: run the supplier role update in the Supabase SQL editor, deploy
+        <code style="background:var(--bg);padding:1px 5px;border-radius:3px;">invite-supplier</code>,
+        and add <code style="background:var(--bg);padding:1px 5px;border-radius:3px;">https://m3nos95.github.io/Geotrack/**</code>
+        under Authentication → URL Configuration → Redirect URLs.
+      </p>
+      <button type="button" class="btn-um-add" onclick="copySupplierRoleSql()" style="margin-top:8px;background:transparent;border:1px solid var(--border);color:var(--muted);">Copy role SQL</button>
+      <pre id="siRoleSql" style="display:none;">DO $$
+DECLARE cname text;
+BEGIN
+  FOR cname IN
+    SELECT con.conname
+    FROM pg_constraint con
+    JOIN pg_class rel ON rel.oid = con.conrelid
+    JOIN pg_namespace nsp ON nsp.oid = rel.relnamespace
+    WHERE nsp.nspname = 'public'
+      AND rel.relname = 'st_user_profiles'
+      AND con.contype = 'c'
+      AND pg_get_constraintdef(con.oid) ILIKE '%role%'
+  LOOP
+    EXECUTE format('ALTER TABLE public.st_user_profiles DROP CONSTRAINT %I', cname);
+  END LOOP;
+END $$;
+ALTER TABLE public.st_user_profiles
+  ADD CONSTRAINT st_user_profiles_role_check
+  CHECK (role IN (
+    'admin', 'section_admin', 'field', 'lab', 'concrete',
+    'hotmix', 'precast', 'chemlab', 'supplier'
+  ));</pre>
+      </div>
+    </div>
+
     <div class="user-mgmt-section setup-collapse" id="authProvisionSection" data-setup-open="false" style="display:none;">
       <button type="button" class="setup-collapse-hdr" onclick="toggleSetupSection(this)" aria-expanded="false">
         <span class="setup-collapse-title">Provision sign-in</span>
@@ -3589,6 +3639,7 @@ table.fc-borrow-tbl tr.fc-borrow-detail-row td{background:var(--surface);border-
       </button>
       <div class="setup-collapse-body">
       <p style="font-family:var(--mono);font-size:10px;color:var(--muted);margin:0 0 12px;line-height:1.6;">
+        For lab staff. Concrete suppliers use Invite a concrete supplier above.
         Create a Supabase Auth account and link it to an existing LabTrak user tile.
         The temporary password is changed by that person under My account. No extra Supabase table is required.
         Disable email confirmation in Supabase Auth settings for instant access, or have the user confirm their email first.
@@ -3602,6 +3653,7 @@ table.fc-borrow-tbl tr.fc-borrow-detail-row td{background:var(--surface);border-
           <option value="field">Field Technician</option>
           <option value="lab">Lab Technician</option>
           <option value="concrete">Concrete Tech</option>
+          <option value="supplier">Concrete Supplier</option>
         </select>
         <select id="ap_app_user" style="grid-column:span 2;">
           <option value="">— Link to LabTrak user (optional) —</option>
@@ -7523,7 +7575,7 @@ table.fc-borrow-tbl tr.fc-borrow-detail-row td{background:var(--surface);border-
 // GLOBALS
 // ══════════════════════════════════════════════
 let db = null;
-const APP_BUILD = '2026.11.02-mix-hub';
+const APP_BUILD = '2026.11.02-supplier-invite';
 const FC_CORE_ICON_SRC = 'docs/r18-reference/core-drill-icon-128.png';
 const BORELOG_ICON_SRC = 'docs/r18-reference/borelog-icon.webp';
 const BORELOG_PATH = 'deldot-borelog-v6-uscs.html';
@@ -12989,17 +13041,90 @@ function updateAuthStatusLine() {
 
 async function refreshAuthProvisionUI() {
   const section = document.getElementById('authProvisionSection');
+  const inviteSection = document.getElementById('supplierInviteSection');
   const sel = document.getElementById('authModeSelect');
   if (sel) sel.value = getAuthMode();
   updateAuthStatusLine();
-  if (!section) return;
   const isAdmin = currentUser?.role === 'admin';
-  section.style.display = (isAdmin && window._dbConnected) ? 'block' : 'none';
+  const showAdminCloud = isAdmin && window._dbConnected;
+  if (inviteSection) inviteSection.style.display = showAdminCloud ? 'block' : 'none';
+  if (!section) return;
+  section.style.display = showAdminCloud ? 'block' : 'none';
   const appSel = document.getElementById('ap_app_user');
   if (!appSel || !isAdmin) return;
   const users = await getUsers();
   appSel.innerHTML = '<option value="">— Link to LabTrak user (optional) —</option>' +
     users.map(u => '<option value="' + u.id + '">' + u.name + ' (' + (ROLE_DEFS[u.role]?.label || u.role) + ')</option>').join('');
+}
+
+function copySupplierRoleSql() {
+  const sql = document.getElementById('siRoleSql')?.textContent || '';
+  const done = () => showToast('Role SQL copied. Paste it in the Supabase SQL editor once.', 'success');
+  if (navigator.clipboard?.writeText) {
+    navigator.clipboard.writeText(sql.trim()).then(done).catch(() => {
+      showToast('Select the SQL from Settings and copy it manually', 'error');
+    });
+    return;
+  }
+  showToast('Clipboard is unavailable in this browser', 'error');
+}
+
+async function inviteConcreteSupplier() {
+  const msgEl = document.getElementById('siInviteMsg');
+  const btn = document.getElementById('siInviteBtn');
+  if (msgEl) msgEl.textContent = '';
+  if (currentUser?.role !== 'admin') {
+    showToast('Admin only', 'error');
+    return;
+  }
+  if (!db || !window._dbConnected) {
+    showToast('Connect to Supabase first', 'error');
+    return;
+  }
+  const name = document.getElementById('si_name')?.value.trim() || '';
+  const email = document.getElementById('si_email')?.value.trim() || '';
+  if (name.length < 2 || !email) {
+    showToast('Enter the plant name and email', 'error');
+    return;
+  }
+  if (!_supabaseAuthSession) {
+    const note = 'Sign in with your admin email first. This sends the plant a link without signing you out.';
+    if (msgEl) msgEl.textContent = note;
+    showToast(note, 'error');
+    return;
+  }
+  if (btn) btn.disabled = true;
+  try {
+    const redirectTo = (location.protocol === 'http:' || location.protocol === 'https:')
+      ? (location.origin + location.pathname)
+      : 'https://m3nos95.github.io/Geotrack/deldot-sampletrack.html';
+    const { data, error } = await db.functions.invoke('invite-supplier', {
+      body: { name, email, redirectTo },
+    });
+    if (error) throw error;
+    if (data?.error) throw new Error(data.error);
+    _stUsersCache = null;
+    await getUsers();
+    if (typeof umRenderUsers === 'function') umRenderUsers();
+    const note = data?.alreadyExisted
+      ? name + ' already had an account. A fresh sign-in link was sent to ' + email + '.'
+      : 'Sign-in link sent to ' + email + '. They set a password from that email and land on their mix designs.';
+    if (msgEl) msgEl.textContent = note;
+    showToast('Supplier invite sent', 'success');
+    const nameEl = document.getElementById('si_name');
+    const emailEl = document.getElementById('si_email');
+    if (nameEl) nameEl.value = '';
+    if (emailEl) emailEl.value = '';
+  } catch (e) {
+    let parsed = await parseInvokeError(e);
+    if (/failed to send a request|function was not found|not found|404/i.test(parsed)) {
+      parsed = 'Invite service is not deployed yet. From the project folder run: supabase functions deploy invite-supplier';
+    }
+    if (msgEl) msgEl.textContent = parsed;
+    showToast(parsed.length > 140 ? 'Invite failed. See the note under the form.' : parsed, 'error');
+  } finally {
+    if (btn) btn.disabled = false;
+  }
 }
 
 async function adminProvisionAuthUser() {

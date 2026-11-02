@@ -244,7 +244,7 @@ CREATE TABLE IF NOT EXISTS st_user_profiles (
   app_user_id         TEXT,
   display_name        TEXT,
   role                TEXT NOT NULL DEFAULT 'field' CHECK (role IN (
-    'admin', 'section_admin', 'field', 'lab', 'concrete', 'hotmix', 'precast', 'chemlab'
+    'admin', 'section_admin', 'field', 'lab', 'concrete', 'hotmix', 'precast', 'chemlab', 'supplier'
   )),
   can_approve_reports BOOLEAN NOT NULL DEFAULT FALSE,
   active              BOOLEAN NOT NULL DEFAULT TRUE,
