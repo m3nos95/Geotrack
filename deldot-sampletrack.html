@@ -626,6 +626,13 @@ nav:not(#r18-nav), .nav-top-row { display: none !important; }
 .supplier-invite-form > * { grid-column: 1 / -1; width: 100%; box-sizing: border-box; }
 #supplierPasswordPanel { width: 100%; max-width: 380px; box-sizing: border-box; }
 #supplierPasswordPanel input { width: 100%; box-sizing: border-box; }
+.si-action-msg { font-family: var(--sans); font-size: 13px; margin-top: 10px; line-height: 1.45; }
+.si-action-msg:empty { display: none; }
+.si-action-msg.ok { color: var(--green2); font-weight: 600; }
+.si-action-msg.bad { color: var(--red2); font-weight: 600; }
+.si-action-msg.wait { color: var(--gold); font-weight: 600; }
+#siCopySqlBtn.si-copied { color: var(--green2); border-color: var(--green2); }
+#siRoleSql { margin-top: 8px; white-space: pre-wrap; font-size: 10px; line-height: 1.4; background: var(--panel); padding: 8px; border-radius: 4px; overflow-x: auto; }
 .um-add-form input, .um-add-form select { background: var(--panel); border: 1px solid var(--border); color: var(--text); padding: 7px 10px; border-radius: var(--radius-sm); font-size: 12px; outline: none; font-family: var(--sans); width: 100%; }
 .um-add-form input:focus, .um-add-form select:focus { border-color: var(--accent2); }
 .btn-um-add { grid-column: span 2; background: var(--accent); border: none; color: #fff; padding: 9px; border-radius: var(--radius-sm); font-family: var(--display); font-size: 13px; letter-spacing: 1px; cursor: pointer; }
@@ -754,7 +761,7 @@ nav:not(#r18-nav), .nav-top-row { display: none !important; }
   background: var(--panel); border: 1px solid var(--border);
   color: var(--text); font-family: var(--sans); padding: 12px 18px; border-radius: var(--radius-sm);
   box-shadow: var(--shadow);
-  font-family: var(--mono); font-size: 12px; z-index: 1000;
+  font-family: var(--mono); font-size: 12px; z-index: 10060;
   transform: translateY(80px); opacity: 0; transition: all 0.3s;
   max-width: 320px;
 }
@@ -3601,14 +3608,15 @@ table.fc-borrow-tbl tr.fc-borrow-detail-row td{background:var(--surface);border-
         <input type="email" id="si_email" placeholder="Email address" autocomplete="off">
         <button type="button" class="btn-um-add" id="siInviteBtn" onclick="inviteConcreteSupplier()">Send sign-in link</button>
       </div>
-      <div id="siInviteMsg" style="font-family:var(--mono);font-size:10px;color:var(--muted);margin-top:10px;line-height:1.5;white-space:pre-wrap;"></div>
+      <div id="siInviteMsg" class="si-action-msg" role="status" aria-live="polite"></div>
       <p style="font-family:var(--mono);font-size:10px;color:var(--muted);margin:12px 0 0;line-height:1.6;">
         One-time: run the supplier role update in the Supabase SQL editor, deploy
         <code style="background:var(--bg);padding:1px 5px;border-radius:3px;">invite-supplier</code>,
         and add <code style="background:var(--bg);padding:1px 5px;border-radius:3px;">https://m3nos95.github.io/Geotrack/**</code>
         under Authentication → URL Configuration → Redirect URLs.
       </p>
-      <button type="button" class="btn-um-add" onclick="copySupplierRoleSql()" style="margin-top:8px;background:transparent;border:1px solid var(--border);color:var(--muted);">Copy role SQL</button>
+      <button type="button" class="btn-um-add" id="siCopySqlBtn" onclick="copySupplierRoleSql()" style="margin-top:8px;background:transparent;border:1px solid var(--border);color:var(--muted);">Copy role SQL</button>
+      <div id="siCopyMsg" class="si-action-msg" role="status" aria-live="polite"></div>
       <pre id="siRoleSql" style="display:none;">DO $$
 DECLARE cname text;
 BEGIN
@@ -7615,7 +7623,7 @@ ALTER TABLE public.st_user_profiles
 // GLOBALS
 // ══════════════════════════════════════════════
 let db = null;
-const APP_BUILD = '2026.11.02-supplier-password';
+const APP_BUILD = '2026.11.02-supplier-feedback';
 const FC_CORE_ICON_SRC = 'docs/r18-reference/core-drill-icon-128.png';
 const BORELOG_ICON_SRC = 'docs/r18-reference/borelog-icon.webp';
 const BORELOG_PATH = 'deldot-borelog-v6-uscs.html';
@@ -13207,43 +13215,103 @@ async function refreshAuthProvisionUI() {
     users.map(u => '<option value="' + u.id + '">' + u.name + ' (' + (ROLE_DEFS[u.role]?.label || u.role) + ')</option>').join('');
 }
 
+function setSupplierActionMsg(id, text, kind) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  el.textContent = text || '';
+  el.classList.remove('ok', 'bad', 'wait');
+  if (kind) el.classList.add(kind);
+}
+
+function copyTextFallback(text) {
+  const area = document.createElement('textarea');
+  area.value = text;
+  area.setAttribute('readonly', '');
+  area.style.position = 'fixed';
+  area.style.top = '0';
+  area.style.left = '0';
+  area.style.opacity = '0';
+  document.body.appendChild(area);
+  area.focus();
+  area.select();
+  let ok = false;
+  try { ok = document.execCommand('copy'); } catch (e) { ok = false; }
+  area.remove();
+  return ok;
+}
+
+function markSupplierSqlCopy(ok, text) {
+  const btn = document.getElementById('siCopySqlBtn');
+  setSupplierActionMsg('siCopyMsg', text, ok ? 'ok' : 'bad');
+  if (btn) {
+    btn.textContent = ok ? 'Copied' : 'Copy role SQL';
+    btn.classList.toggle('si-copied', !!ok);
+  }
+  showToast(text, ok ? 'success' : 'error');
+  if (ok && btn) {
+    setTimeout(() => {
+      if (btn.textContent === 'Copied') {
+        btn.textContent = 'Copy role SQL';
+        btn.classList.remove('si-copied');
+      }
+    }, 5000);
+  }
+}
+
 function copySupplierRoleSql() {
-  const sql = document.getElementById('siRoleSql')?.textContent || '';
-  const done = () => showToast('Role SQL copied. Paste it in the Supabase SQL editor once.', 'success');
+  const sql = (document.getElementById('siRoleSql')?.textContent || '').trim();
+  if (!sql) {
+    markSupplierSqlCopy(false, 'The role SQL is missing from this page.');
+    return;
+  }
+  const copied = () => markSupplierSqlCopy(true, 'Copied. Paste it into the Supabase SQL editor and click Run.');
+  const failed = () => {
+    const pre = document.getElementById('siRoleSql');
+    if (pre) pre.style.display = 'block';
+    markSupplierSqlCopy(false, 'Could not copy automatically. The SQL is shown below. Select it and copy it.');
+  };
   if (navigator.clipboard?.writeText) {
-    navigator.clipboard.writeText(sql.trim()).then(done).catch(() => {
-      showToast('Select the SQL from Settings and copy it manually', 'error');
+    navigator.clipboard.writeText(sql).then(copied).catch(() => {
+      if (copyTextFallback(sql)) copied();
+      else failed();
     });
     return;
   }
-  showToast('Clipboard is unavailable in this browser', 'error');
+  if (copyTextFallback(sql)) copied();
+  else failed();
 }
 
 async function inviteConcreteSupplier() {
-  const msgEl = document.getElementById('siInviteMsg');
   const btn = document.getElementById('siInviteBtn');
-  if (msgEl) msgEl.textContent = '';
+  const fail = (text) => {
+    setSupplierActionMsg('siInviteMsg', text, 'bad');
+    showToast(text.length > 140 ? 'Invite failed. See the note under the form.' : text, 'error');
+  };
+  setSupplierActionMsg('siInviteMsg', '', '');
   if (currentUser?.role !== 'admin') {
-    showToast('Admin only', 'error');
+    fail('Admin only');
     return;
   }
   if (!db || !window._dbConnected) {
-    showToast('Connect to Supabase first', 'error');
+    fail('Connect to Supabase first');
     return;
   }
   const name = document.getElementById('si_name')?.value.trim() || '';
   const email = document.getElementById('si_email')?.value.trim() || '';
   if (name.length < 2 || !email) {
-    showToast('Enter the plant name and email', 'error');
+    fail('Enter the plant name and email');
     return;
   }
   if (!_supabaseAuthSession) {
-    const note = 'Sign in with your admin email first. This sends the plant a link without signing you out.';
-    if (msgEl) msgEl.textContent = note;
-    showToast(note, 'error');
+    fail('Sign in with your admin email first. This sends the plant a link without signing you out.');
     return;
   }
-  if (btn) btn.disabled = true;
+  if (btn) {
+    btn.disabled = true;
+    btn.textContent = 'Sending…';
+  }
+  setSupplierActionMsg('siInviteMsg', 'Sending the sign-in link…', 'wait');
+  let sent = false;
   try {
     const redirectTo = (location.protocol === 'http:' || location.protocol === 'https:')
       ? (location.origin + location.pathname)
@@ -13253,32 +13321,40 @@ async function inviteConcreteSupplier() {
     });
     if (error) throw error;
     if (data?.error) throw new Error(data.error);
-    _stUsersCache = null;
-    await getUsers();
-    if (typeof umRenderUsers === 'function') umRenderUsers();
     let note;
     if (data?.needsPassword === false) {
       note = name + ' already has a password. They sign in any time with ' + email + ' and that password. A sign-in link was also emailed in case they need it.';
     } else if (data?.alreadyExisted) {
-      note = 'A sign-in link was sent to ' + email + '. The first time they open it, they choose a password. After that they sign in with this email and password.';
+      note = 'Sign-in link sent to ' + email + '. The first time they open it, they choose a password. After that they sign in with this email and password.';
     } else {
       note = 'Sign-in link sent to ' + email + '. The first time they open it, they choose a password. After that they sign in here with that email and password. They do not need another link.';
     }
-    if (msgEl) msgEl.textContent = note;
-    showToast('Supplier invite sent', 'success');
+    setSupplierActionMsg('siInviteMsg', note, 'ok');
+    showToast('Sign-in link sent to ' + email, 'success');
+    sent = true;
     const nameEl = document.getElementById('si_name');
     const emailEl = document.getElementById('si_email');
     if (nameEl) nameEl.value = '';
     if (emailEl) emailEl.value = '';
+    _stUsersCache = null;
+    await getUsers();
+    if (typeof umRenderUsers === 'function') umRenderUsers();
   } catch (e) {
     let parsed = await parseInvokeError(e);
     if (/failed to send a request|function was not found|not found|404/i.test(parsed)) {
       parsed = 'Invite service is not deployed yet. From the project folder run: supabase functions deploy invite-supplier';
     }
-    if (msgEl) msgEl.textContent = parsed;
-    showToast(parsed.length > 140 ? 'Invite failed. See the note under the form.' : parsed, 'error');
+    fail(parsed);
   } finally {
-    if (btn) btn.disabled = false;
+    if (btn) {
+      btn.disabled = false;
+      btn.textContent = sent ? 'Link sent' : 'Send sign-in link';
+      if (sent) {
+        setTimeout(() => {
+          if (btn.textContent === 'Link sent') btn.textContent = 'Send sign-in link';
+        }, 5000);
+      }
+    }
   }
 }
 
