@@ -631,7 +631,7 @@ nav:not(#r18-nav), .nav-top-row { display: none !important; }
 .si-action-msg.ok { color: var(--green2); font-weight: 600; }
 .si-action-msg.bad { color: var(--red2); font-weight: 600; }
 .si-action-msg.wait { color: var(--gold); font-weight: 600; }
-#siCopySqlBtn.si-copied, #siCopyEmailBtn.si-copied { color: var(--green2); border-color: var(--green2); }
+#siCopySqlBtn.si-copied, #siCopyEmailBtn.si-copied, #siCopyMixBtn.si-copied { color: var(--green2); border-color: var(--green2); }
 #siRoleSql { margin-top: 8px; white-space: pre-wrap; font-size: 10px; line-height: 1.4; background: var(--panel); padding: 8px; border-radius: 4px; overflow-x: auto; }
 .um-add-form input, .um-add-form select { background: var(--panel); border: 1px solid var(--border); color: var(--text); padding: 7px 10px; border-radius: var(--radius-sm); font-size: 12px; outline: none; font-family: var(--sans); width: 100%; }
 .um-add-form input:focus, .um-add-form select:focus { border-color: var(--accent2); }
@@ -3651,6 +3651,177 @@ ALTER TABLE public.st_user_profiles
 --- Magic link ---
 &lt;h2&gt;Sign in to LabTrak&lt;/h2&gt;
 &lt;p&gt;&lt;a href="{{ .RedirectTo }}?token_hash={{ .TokenHash }}&amp;type=magiclink"&gt;Sign in&lt;/a&gt;&lt;/p&gt;</pre>
+      <p style="font-family:var(--mono);font-size:10px;color:var(--muted);margin:12px 0 0;line-height:1.6;">
+        One-time: copy the mix design SQL and run it in the Supabase SQL editor. That creates the shared mix design table. Each plant keeps its own designs, and concrete staff approve them for new pours.
+      </p>
+      <button type="button" class="btn-um-add" id="siCopyMixBtn" onclick="copyMixDesignSql()" style="margin-top:8px;background:transparent;border:1px solid var(--border);color:var(--muted);">Copy mix design SQL</button>
+      <div id="siMixMsg" class="si-action-msg" role="status" aria-live="polite"></div>
+      <pre id="siMixSql" style="display:none;">-- Shared mix design table. One row per design.
+-- Safe to run once in the Supabase SQL editor. Running it again keeps existing rows.
+-- Plants can read and edit only their own designs, and they cannot approve them.
+-- Concrete staff can read every design and approve it.
+-- Approved designs stay available for a pour. The pour still keeps its own copy.
+
+CREATE OR REPLACE FUNCTION public.st_current_role()
+RETURNS TEXT
+LANGUAGE SQL STABLE SECURITY DEFINER SET search_path = public
+AS $$
+  SELECT role FROM public.st_user_profiles
+  WHERE auth_user_id = auth.uid() AND active = TRUE
+  LIMIT 1
+$$;
+
+CREATE OR REPLACE FUNCTION public.st_app_user_id()
+RETURNS TEXT
+LANGUAGE SQL STABLE SECURITY DEFINER SET search_path = public
+AS $$
+  SELECT app_user_id FROM public.st_user_profiles
+  WHERE auth_user_id = auth.uid() AND active = TRUE
+  LIMIT 1
+$$;
+
+CREATE TABLE IF NOT EXISTS public.mix_designs (
+  id              TEXT PRIMARY KEY,
+  name            TEXT NOT NULL,
+  supplier        TEXT NOT NULL DEFAULT '',
+  concrete_class  TEXT NOT NULL DEFAULT '',
+  required_fc     NUMERIC,
+  cement_sks      TEXT NOT NULL DEFAULT '',
+  plant           TEXT NOT NULL DEFAULT '',
+  corr_factor     TEXT NOT NULL DEFAULT '',
+  materials       JSONB NOT NULL DEFAULT '{}'::jsonb,
+  status          TEXT NOT NULL DEFAULT 'pending',
+  review_note     TEXT NOT NULL DEFAULT '',
+  submitted_by    TEXT NOT NULL DEFAULT '',
+  owner_id        TEXT NOT NULL DEFAULT '',
+  reviewed_by     TEXT NOT NULL DEFAULT '',
+  reviewed_at     TIMESTAMPTZ,
+  created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at      TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+ALTER TABLE public.mix_designs DROP CONSTRAINT IF EXISTS mix_designs_status_check;
+ALTER TABLE public.mix_designs
+  ADD CONSTRAINT mix_designs_status_check
+  CHECK (status IN ('pending', 'approved', 'rejected'));
+
+CREATE INDEX IF NOT EXISTS idx_mix_designs_owner ON public.mix_designs (owner_id);
+CREATE INDEX IF NOT EXISTS idx_mix_designs_status ON public.mix_designs (status);
+
+ALTER TABLE public.mix_designs ENABLE ROW LEVEL SECURITY;
+
+REVOKE ALL ON public.mix_designs FROM anon;
+GRANT SELECT, INSERT, UPDATE, DELETE ON public.mix_designs TO authenticated;
+GRANT EXECUTE ON FUNCTION public.st_current_role() TO authenticated;
+GRANT EXECUTE ON FUNCTION public.st_app_user_id() TO authenticated;
+
+DROP POLICY IF EXISTS "mix_designs_staff_all" ON public.mix_designs;
+CREATE POLICY "mix_designs_staff_all" ON public.mix_designs
+  FOR ALL TO authenticated
+  USING (public.st_current_role() IN ('admin', 'section_admin', 'concrete'))
+  WITH CHECK (public.st_current_role() IN ('admin', 'section_admin', 'concrete'));
+
+DROP POLICY IF EXISTS "mix_designs_approved_read" ON public.mix_designs;
+CREATE POLICY "mix_designs_approved_read" ON public.mix_designs
+  FOR SELECT TO authenticated
+  USING (
+    status = 'approved'
+    AND public.st_current_role() IS NOT NULL
+    AND public.st_current_role() != 'supplier'
+  );
+
+DROP POLICY IF EXISTS "mix_designs_supplier_read" ON public.mix_designs;
+CREATE POLICY "mix_designs_supplier_read" ON public.mix_designs
+  FOR SELECT TO authenticated
+  USING (
+    public.st_current_role() = 'supplier'
+    AND owner_id = public.st_app_user_id()
+  );
+
+DROP POLICY IF EXISTS "mix_designs_supplier_insert" ON public.mix_designs;
+CREATE POLICY "mix_designs_supplier_insert" ON public.mix_designs
+  FOR INSERT TO authenticated
+  WITH CHECK (
+    public.st_current_role() = 'supplier'
+    AND status = 'pending'
+    AND owner_id = public.st_app_user_id()
+  );
+
+DROP POLICY IF EXISTS "mix_designs_supplier_update" ON public.mix_designs;
+CREATE POLICY "mix_designs_supplier_update" ON public.mix_designs
+  FOR UPDATE TO authenticated
+  USING (
+    public.st_current_role() = 'supplier'
+    AND status != 'approved'
+    AND owner_id = public.st_app_user_id()
+  )
+  WITH CHECK (
+    public.st_current_role() = 'supplier'
+    AND status != 'approved'
+    AND owner_id = public.st_app_user_id()
+  );
+
+DROP POLICY IF EXISTS "mix_designs_supplier_delete" ON public.mix_designs;
+CREATE POLICY "mix_designs_supplier_delete" ON public.mix_designs
+  FOR DELETE TO authenticated
+  USING (
+    public.st_current_role() = 'supplier'
+    AND status != 'approved'
+    AND owner_id = public.st_app_user_id()
+  );
+
+-- Copy designs already saved in the old shared config row.
+DO $$
+BEGIN
+  IF to_regclass('public.lab_spec_config') IS NULL THEN
+    RETURN;
+  END IF;
+  INSERT INTO public.mix_designs (
+    id, name, supplier, concrete_class, required_fc, cement_sks, plant, corr_factor,
+    materials, status, review_note, submitted_by, owner_id, reviewed_by, reviewed_at,
+    created_at, updated_at
+  )
+  SELECT
+    d->>'id',
+    COALESCE(NULLIF(d->>'name', ''), 'Untitled'),
+    COALESCE(d->>'supplier', ''),
+    COALESCE(d->>'concreteClass', ''),
+    CASE
+      WHEN COALESCE(d->>'requiredFc', '') ~ '^-?[0-9]+(\.[0-9]+)?$' THEN (d->>'requiredFc')::numeric
+      ELSE NULL
+    END,
+    COALESCE(d->>'cementSks', ''),
+    COALESCE(d->>'plant', ''),
+    COALESCE(d->>'corrFactor', ''),
+    COALESCE(d->'materials', '{}'::jsonb),
+    CASE
+      WHEN d->>'status' IN ('approved', 'rejected') THEN d->>'status'
+      ELSE 'pending'
+    END,
+    COALESCE(d->>'reviewNote', ''),
+    COALESCE(d->>'submittedBy', ''),
+    COALESCE(d->>'ownerId', ''),
+    COALESCE(d->>'reviewedBy', ''),
+    CASE
+      WHEN COALESCE(d->>'reviewedAt', '') ~ '^[0-9]{4}-' THEN (d->>'reviewedAt')::timestamptz
+      ELSE NULL
+    END,
+    COALESCE(
+      CASE WHEN COALESCE(d->>'createdAt', '') ~ '^[0-9]{4}-' THEN (d->>'createdAt')::timestamptz END,
+      NOW()
+    ),
+    COALESCE(
+      CASE WHEN COALESCE(d->>'updatedAt', '') ~ '^[0-9]{4}-' THEN (d->>'updatedAt')::timestamptz END,
+      NOW()
+    )
+  FROM public.lab_spec_config AS cfg,
+    jsonb_array_elements(COALESCE(cfg.config->'designs', '[]'::jsonb)) AS d
+  WHERE cfg.id = 'mix_designs'
+    AND COALESCE(d->>'id', '') != ''
+    AND COALESCE(d->>'name', '') != ''
+  ON CONFLICT (id) DO NOTHING;
+END $$;
+</pre>
       </div>
     </div>
 
@@ -6343,6 +6514,7 @@ ALTER TABLE public.st_user_profiles
       <div class="card" style="margin-bottom:12px;">
         <div class="card-title" id="mixDesignFormTitle">New mix design</div>
         <p id="mixDesignFormNote" style="font-family:var(--mono);font-size:11px;color:var(--muted);line-height:1.5;margin:0 0 12px;">An approved design fills a new pour. The pour keeps its own copy, so editing the pour does not change the design.</p>
+        <div id="mixDesignDbNote" class="si-action-msg bad" style="display:none;margin-bottom:12px;">Mix designs are only on this browser until the shared table exists. In Settings, choose Copy mix design SQL, paste it into the Supabase SQL editor, and click Run.</div>
         <div id="md_review_banner" style="display:none;margin-bottom:12px;padding:8px 10px;border:1px solid var(--border);border-radius:var(--radius);font-size:12px;color:var(--text);"></div>
         <div class="form-grid three" style="margin-bottom:12px;">
           <div class="form-group"><label>Mix name</label><input type="text" id="md_name" placeholder="Class A — 4000 psi"></div>
@@ -7658,7 +7830,7 @@ ALTER TABLE public.st_user_profiles
 // GLOBALS
 // ══════════════════════════════════════════════
 let db = null;
-const APP_BUILD = '2026.11.02-supplier-link';
+const APP_BUILD = '2026.11.02-mix-db';
 const FC_CORE_ICON_SRC = 'docs/r18-reference/core-drill-icon-128.png';
 const BORELOG_ICON_SRC = 'docs/r18-reference/borelog-icon.webp';
 const BORELOG_PATH = 'deldot-borelog-v6-uscs.html';
@@ -13490,6 +13662,29 @@ function copySupplierRoleSql() {
     const pre = document.getElementById('siRoleSql');
     if (pre) pre.style.display = 'block';
     markSupplierSqlCopy(false, 'Could not copy automatically. The SQL is shown below. Select it and copy it.');
+  };
+  if (navigator.clipboard?.writeText) {
+    navigator.clipboard.writeText(sql).then(copied).catch(() => {
+      if (copyTextFallback(sql)) copied();
+      else failed();
+    });
+    return;
+  }
+  if (copyTextFallback(sql)) copied();
+  else failed();
+}
+
+function copyMixDesignSql() {
+  const sql = (document.getElementById('siMixSql')?.textContent || '').trim();
+  if (!sql || sql.indexOf('CREATE TABLE IF NOT EXISTS public.mix_designs') < 0) {
+    markSupplierSetupCopy('siCopyMixBtn', 'Copy mix design SQL', 'siMixMsg', false, 'The mix design SQL is missing from this page.');
+    return;
+  }
+  const copied = () => markSupplierSetupCopy('siCopyMixBtn', 'Copy mix design SQL', 'siMixMsg', true, 'Copied. Paste it into the Supabase SQL editor and click Run. Once is enough.');
+  const failed = () => {
+    const pre = document.getElementById('siMixSql');
+    if (pre) pre.style.display = 'block';
+    markSupplierSetupCopy('siCopyMixBtn', 'Copy mix design SQL', 'siMixMsg', false, 'Could not copy automatically. The SQL is shown below. Select it and copy it.');
   };
   if (navigator.clipboard?.writeText) {
     navigator.clipboard.writeText(sql).then(copied).catch(() => {
@@ -30834,7 +31029,8 @@ function selectFractureType(type) {
 
 // ══════════════════════════════════════════════════════════════
 // MIX DESIGNS
-// Saved locally and shared through lab_spec_config id mix_designs.
+// Saved locally and shared in the mix_designs table.
+// Until that table exists, designs stay in lab_spec_config id mix_designs.
 // A pour copies the fields. It never writes back to the design.
 // ══════════════════════════════════════════════════════════════
 const MIX_DESIGN_KEY = 'labtrak_mix_designs';
@@ -31091,32 +31287,136 @@ function editMixDesign(id) {
   document.getElementById('mixDesignFormTitle')?.scrollIntoView({ block: 'nearest' });
 }
 
+function mixDesignToRow(design) {
+  return {
+    id: design.id,
+    name: design.name,
+    supplier: design.supplier,
+    concrete_class: design.concreteClass,
+    required_fc: design.requiredFc,
+    cement_sks: design.cementSks,
+    plant: design.plant,
+    corr_factor: design.corrFactor,
+    materials: design.materials || {},
+    status: design.status,
+    review_note: design.reviewNote || '',
+    submitted_by: design.submittedBy || '',
+    owner_id: design.ownerId || '',
+    reviewed_by: design.reviewedBy || '',
+    reviewed_at: design.reviewedAt || null,
+    created_at: design.createdAt || new Date().toISOString(),
+    updated_at: design.updatedAt || new Date().toISOString()
+  };
+}
+
+function mixDesignFromRow(row) {
+  if (!row || typeof row !== 'object') return null;
+  return normalizeMixDesign({
+    id: row.id,
+    name: row.name,
+    supplier: row.supplier,
+    concreteClass: row.concrete_class,
+    requiredFc: row.required_fc,
+    cementSks: row.cement_sks,
+    plant: row.plant,
+    corrFactor: row.corr_factor,
+    materials: row.materials,
+    status: row.status,
+    reviewNote: row.review_note,
+    submittedBy: row.submitted_by,
+    ownerId: row.owner_id,
+    reviewedBy: row.reviewed_by,
+    reviewedAt: row.reviewed_at,
+    createdAt: row.created_at,
+    updatedAt: row.updated_at
+  });
+}
+
+function mixTableMissing(error) {
+  if (!error) return false;
+  const msg = (error.message || '').toLowerCase();
+  return error.code === '42P01' || error.code === 'PGRST205' || msg.includes('does not exist') || msg.includes('could not find the table') || msg.includes('schema cache');
+}
+
+function mixDesignRowsToWrite(designs) {
+  const list = (designs || []).map(normalizeMixDesign).filter(Boolean);
+  if (mixDesignCanReview()) return list;
+  if (currentUser?.role === 'supplier') {
+    return list.filter(d => d.ownerId === currentUser.id && d.status !== 'approved');
+  }
+  return [];
+}
+
+function showMixDesignDbNote() {
+  const note = document.getElementById('mixDesignDbNote');
+  if (!note) return;
+  const role = currentUser?.role || '';
+  const show = window._mixTableReady === false && (role === 'admin' || role === 'section_admin');
+  note.style.display = show ? '' : 'none';
+}
+
 async function persistMixDesigns(designs) {
-  let next = mergeMixDesigns(designs, []);
+  const previous = mixDesigns();
+  let next = (designs || []).map(normalizeMixDesign).filter(Boolean);
   writeMixDesignDoc(next);
   renderMixDesignLibrary();
   refreshApprovedMixDropdown();
   if (typeof db === 'undefined' || !db) return false;
   try {
-    const { data, error } = await db.from('lab_spec_config').select('config').eq('id', MIX_DESIGN_ROW_ID).maybeSingle();
-    if (error) throw error;
-    const remote = Array.isArray(data?.config?.designs) ? data.config.designs : [];
-    next = mergeMixDesigns(next, remote);
-    writeMixDesignDoc(next);
-    const saved = await db.from('lab_spec_config').upsert({
-      id: MIX_DESIGN_ROW_ID,
-      config: { designs: next },
-      updated_at: new Date().toISOString(),
-      updated_by: currentUser?.name || currentUser?.id || ''
-    }, { onConflict: 'id' });
-    if (saved.error) throw saved.error;
-    renderMixDesignLibrary();
-    refreshApprovedMixDropdown();
-    return true;
+    if (window._mixTableReady !== false) {
+      const saved = await saveMixDesignRows(previous, next);
+      if (saved === 'missing') {
+        window._mixTableReady = false;
+      } else {
+        window._mixTableReady = true;
+        renderMixDesignLibrary();
+        refreshApprovedMixDropdown();
+        return saved;
+      }
+    }
+    return await persistMixDesignBlob(next);
   } catch (e) {
     console.warn('persistMixDesigns:', e);
     return false;
   }
+}
+
+async function saveMixDesignRows(previous, next) {
+  const rows = mixDesignRowsToWrite(next).map(mixDesignToRow);
+  if (rows.length) {
+    const saved = await db.from('mix_designs').upsert(rows, { onConflict: 'id' });
+    if (saved.error) {
+      if (mixTableMissing(saved.error)) return 'missing';
+      throw saved.error;
+    }
+  }
+  const removed = (previous || []).filter(p => !next.some(n => n.id === p.id) && mixDesignCanEdit(p));
+  if (removed.length) {
+    const deleted = await db.from('mix_designs').delete().in('id', removed.map(d => d.id));
+    if (deleted.error) {
+      if (mixTableMissing(deleted.error)) return 'missing';
+      throw deleted.error;
+    }
+  }
+  return true;
+}
+
+async function persistMixDesignBlob(next) {
+  const { data, error } = await db.from('lab_spec_config').select('config').eq('id', MIX_DESIGN_ROW_ID).maybeSingle();
+  if (error) throw error;
+  const remote = Array.isArray(data?.config?.designs) ? data.config.designs : [];
+  const merged = mergeMixDesigns(next, remote);
+  writeMixDesignDoc(merged);
+  const saved = await db.from('lab_spec_config').upsert({
+    id: MIX_DESIGN_ROW_ID,
+    config: { designs: merged },
+    updated_at: new Date().toISOString(),
+    updated_by: currentUser?.name || currentUser?.id || ''
+  }, { onConflict: 'id' });
+  if (saved.error) throw saved.error;
+  renderMixDesignLibrary();
+  refreshApprovedMixDropdown();
+  return true;
 }
 
 async function loadMixDesigns() {
@@ -31127,6 +31427,39 @@ async function loadMixDesigns() {
     return local;
   }
   try {
+    const table = await db.from('mix_designs').select('*').order('updated_at', { ascending: false });
+    if (table.error) {
+      if (mixTableMissing(table.error)) {
+        window._mixTableReady = false;
+        return loadMixDesignsFromConfig(local);
+      }
+      throw table.error;
+    }
+    window._mixTableReady = true;
+    const remoteAll = (table.data || []).map(mixDesignFromRow).filter(Boolean);
+    const remote = currentUser?.role === 'supplier'
+      ? remoteAll.filter(d => d.ownerId === currentUser.id)
+      : remoteAll;
+    const base = currentUser?.role === 'supplier'
+      ? local.filter(d => d.ownerId && d.ownerId === currentUser.id)
+      : local;
+    const merged = mergeMixDesigns(base, remote);
+    writeMixDesignDoc(merged);
+    renderMixDesignLibrary();
+    refreshApprovedMixDropdown();
+    if (mixDesignCanReview() && !remote.length && local.length) {
+      await saveMixDesignRows([], mergeMixDesigns(local, remote));
+    }
+    return mixDesigns();
+  } catch (e) {
+    console.warn('loadMixDesigns:', e);
+    window._mixTableReady = false;
+    return loadMixDesignsFromConfig(local);
+  }
+}
+
+async function loadMixDesignsFromConfig(local) {
+  try {
     const { data, error } = await db.from('lab_spec_config').select('config').eq('id', MIX_DESIGN_ROW_ID).maybeSingle();
     if (error) throw error;
     const hasRemote = !!(data?.config && Array.isArray(data.config.designs));
@@ -31136,7 +31469,7 @@ async function loadMixDesigns() {
     renderMixDesignLibrary();
     refreshApprovedMixDropdown();
     if (!hasRemote || mixDesignStamp(merged) !== mixDesignStamp(remote.map(normalizeMixDesign).filter(Boolean))) {
-      await persistMixDesigns(merged);
+      await persistMixDesignBlob(merged);
     }
     return mixDesigns();
   } catch (e) {
@@ -31225,6 +31558,7 @@ async function deleteMixDesign(id) {
 
 function renderMixDesignLibrary() {
   applyMixDesignChrome();
+  showMixDesignDbNote();
   if (typeof renderConcreteHub === 'function') renderConcreteHub();
   const list = document.getElementById('mixDesignList');
   if (!list) return;
