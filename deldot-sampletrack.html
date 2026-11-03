@@ -3338,6 +3338,37 @@ table.fc-borrow-tbl tr.fc-borrow-detail-row td{background:var(--surface);border-
 .r18-app .r18-user-pick.selected { border-color: var(--r18-accent); background: #e8f0fa; }
 .r18-app .r18-user-pick .name { font-size: 14px; font-weight: 600; color: var(--r18-ink); margin-top: 8px; }
 .r18-app .r18-user-pick .sub { font-size: 10px; font-weight: 600; color: var(--r18-ink-3); text-transform: uppercase; letter-spacing: 0.05em; margin-top: 4px; }
+.r18-app .r18-roster-intro { font-size: 13px; color: var(--r18-ink-2); line-height: 1.5; margin: 8px 0 0; }
+.r18-app .r18-roster-note { background: #fffbeb; border: 1px solid #fcd34d; color: #92400e; border-radius: 6px; padding: 12px 14px; font-size: 13px; line-height: 1.45; margin: 14px 0; }
+.r18-app .r18-roster-note pre { display: none; white-space: pre-wrap; background: white; color: #0f1d2e; border: 1px solid #fcd34d; border-radius: 4px; padding: 8px; margin: 8px 0 0; font-size: 11px; }
+.r18-app .r18-section-pills { display: flex; gap: 6px; flex-wrap: wrap; margin: 14px 0; }
+.r18-app .r18-section-pills button { border: 1px solid var(--r18-line); background: white; color: var(--r18-ink-2); border-radius: 999px; padding: 6px 12px; font-size: 12px; font-weight: 600; cursor: pointer; }
+.r18-app .r18-section-pills button.active { background: var(--r18-accent); border-color: var(--r18-accent); color: white; }
+.r18-app .r18-roster-block { margin-bottom: 22px; }
+.r18-app .r18-roster-block h2 { font-family: 'Source Serif 4', Georgia, serif; font-size: 20px; margin: 0; color: var(--r18-ink); }
+.r18-app .r18-roster-count { font-size: 12px; color: var(--r18-ink-3); margin: 2px 0 10px; }
+.r18-app .r18-roster-grid { display: grid; grid-template-columns: 1fr; gap: 10px; }
+@media (min-width: 800px) {
+  .r18-app .r18-roster-grid { grid-template-columns: 1fr 1fr; }
+}
+.r18-app .r18-roster-card { background: white; border: 1px solid var(--r18-line); border-radius: 6px; padding: 14px; display: flex; flex-direction: column; gap: 8px; min-width: 0; }
+.r18-app .r18-roster-top { display: flex; gap: 12px; align-items: flex-start; }
+.r18-app .r18-roster-id { flex: 1; min-width: 0; }
+.r18-app .r18-roster-name { background: none; border: none; padding: 0; font-size: 16px; font-weight: 650; color: var(--r18-ink); cursor: pointer; text-align: left; }
+.r18-app .r18-roster-title { font-size: 12px; color: var(--r18-ink-2); margin-top: 2px; }
+.r18-app .r18-roster-service { font-size: 12px; color: var(--r18-ink-2); }
+.r18-app .r18-roster-service.missing { color: var(--r18-ink-3); font-style: italic; }
+.r18-app .r18-roster-card.flagged { border-color: #b91c1c; }
+.r18-app .r18-roster-flag { color: #991b1b; font-size: 12px; font-weight: 700; margin-top: 6px; }
+.r18-app .r18-person-tabs { display: flex; gap: 6px; margin: 0 0 14px; }
+.r18-app .r18-person-tabs button { border: 1px solid var(--r18-line); background: white; color: var(--r18-ink-2); border-radius: 999px; padding: 6px 12px; font-size: 12px; font-weight: 650; cursor: pointer; }
+.r18-app .r18-person-tabs button.active { background: var(--r18-accent); border-color: var(--r18-accent); color: white; }
+.r18-app .r18-gear-list { display: flex; flex-direction: column; gap: 6px; max-height: 320px; overflow: auto; }
+.r18-app .r18-gear-list label { display: flex; gap: 8px; align-items: flex-start; font-size: 13px; color: var(--r18-ink); padding: 6px 0; border-bottom: 1px solid var(--r18-line-2); }
+.r18-app .r18-cert-row { display: flex; flex-wrap: wrap; gap: 6px; }
+.r18-app .r18-cert { border: 1px solid #bbf7d0; background: #ecfdf5; color: #166534; border-radius: 999px; padding: 4px 8px; font-size: 11px; font-weight: 650; cursor: pointer; }
+.r18-app .r18-cert.expired { border-color: #fecaca; background: #fef2f2; color: #b91c1c; }
+.r18-app .r18-cert-empty { font-size: 12px; color: var(--r18-ink-3); font-style: italic; background: none; border: none; padding: 0; cursor: pointer; }
 .r18-app .r18-accordion-hd { padding: 12px 16px; background: var(--r18-paper-2); border: 1px solid var(--r18-line); border-radius: 4px; display: flex; align-items: center; justify-content: space-between; cursor: pointer; margin-bottom: 4px; }
 .r18-app .r18-accordion-hd:hover { background: var(--r18-paper-3); }
 .r18-app .r18-accordion-bd { border: 1px solid var(--r18-line); border-top: none; border-radius: 0 0 4px 4px; margin-bottom: 8px; margin-top: -4px; }
@@ -7884,7 +7915,7 @@ END $$;
 // GLOBALS
 // ══════════════════════════════════════════════
 let db = null;
-const APP_BUILD = '2026.11.03-approved-mixes';
+const APP_BUILD = '2026.11.03-roster-link';
 const FC_CORE_ICON_SRC = 'docs/r18-reference/core-drill-icon-128.png';
 const BORELOG_ICON_SRC = 'docs/r18-reference/borelog-icon.webp';
 const BORELOG_PATH = 'deldot-borelog-v6-uscs.html';
@@ -19134,7 +19165,7 @@ async function finishLabGeneration(parsed) {
   const merged = { ...currentSample, ...labData, lab_data: parsed };
   // Also update currentSample in memory so subsequent edits use fresh data
   currentSample = { ...currentSample, ...labData, lab_data: parsed };
-  renderLB44(merged, parsed, calc);
+  await renderLB44(merged, parsed, calc);
   switchView('report');
   showToast('LB-44 generated ✓', 'success');
 }
@@ -19234,10 +19265,10 @@ async function viewReport(id, opts) {
   currentSample = sample;
   if (sample.test_category === 'aggregate') {
     const aggCalc = calculateAggregate(sample.lab_data.sieve_data, sample.lab_data.agg_type || sample.agg_type);
-    renderAggregateReport(sample, aggCalc);
+    await renderAggregateReport(sample, aggCalc);
   } else {
     const calc = calculateSieve(sample.lab_data, sample.soil_sieve_nest || sample.lab_data?.soil_sieve_nest);
-    renderLB44(sample, sample.lab_data, calc);
+    await renderLB44(sample, sample.lab_data, calc);
   }
   switchView('report', opts);
   const editBtn = document.getElementById('rpt-soillab-edit-btn');
@@ -19778,7 +19809,7 @@ async function generateAggregateReport() {
   await dbWrite('samples', 'update', labData, currentSample.id);
   currentSample = { ...currentSample, ...labData };
 
-  renderAggregateReport(currentSample, calc);
+  await renderAggregateReport(currentSample, calc);
   switchView('report');
   showToast('Aggregate Report generated ✓', 'success');
 }
@@ -19886,7 +19917,116 @@ function ddRptPrintCss() {
   `;
 }
 
-function renderAggregateReport(sample, calc) {
+function r18DayKey(value) {
+  const m = String(value || '').match(/^(\d{4}-\d{2}-\d{2})/);
+  return m ? m[1] : '';
+}
+function r18TodayKey() {
+  const now = new Date();
+  return now.getFullYear() + '-' + String(now.getMonth() + 1).padStart(2, '0') + '-' + String(now.getDate()).padStart(2, '0');
+}
+function r18DayPast(value) {
+  const key = r18DayKey(value);
+  return !!key && key < r18TodayKey();
+}
+function r18DayLabel(value) {
+  const key = r18DayKey(value);
+  if (!key) return '';
+  const parts = key.split('-').map(Number);
+  return new Date(parts[0], parts[1] - 1, parts[2]).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' });
+}
+function r18Esc(value) {
+  return value == null ? '' : String(value).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+}
+function r18NormName(value) {
+  return String(value || '').trim().toLowerCase().replace(/\s+/g, ' ');
+}
+function r18NormIds(raw) {
+  if (typeof raw === 'string') {
+    try { raw = JSON.parse(raw); } catch (e) { raw = []; }
+  }
+  return Array.isArray(raw) ? raw.map(id => String(id)).filter(Boolean) : [];
+}
+function r18MatchPerson(techName, pack) {
+  const want = r18NormName(techName);
+  if (!want || !pack) return null;
+  const labtrak = (pack.labtrak || []).find(u => r18NormName(u.name) === want);
+  if (labtrak) {
+    const linked = (pack.people || []).find(p => p.labtrakUserId && String(p.labtrakUserId) === String(labtrak.id));
+    if (linked) return linked;
+  }
+  return (pack.people || []).find(p => r18NormName(p.name) === want) || null;
+}
+function r18ComplianceBlock(techName) {
+  const name = String(techName || '').trim();
+  if (!name) return '';
+  const pack = window.__r18Compliance;
+  if (!pack) return '';
+  const person = r18MatchPerson(name, pack);
+  const wrap = (inner, border) => `<div class="dd-rpt-section" style="border:1px solid ${border};margin:8px 14px;padding:8px 10px;">
+    <div style="font-size:8pt;font-weight:700;letter-spacing:.04em;margin-bottom:6px;">TECHNICIAN CERTIFICATION AND EQUIPMENT</div>
+    ${inner}
+  </div>`;
+  if (!person) {
+    return wrap(`<div style="font-size:9pt;color:#92400e;background:#fffbeb;border:1px solid #fcd34d;padding:6px 8px;">No R18 roster link for ${r18Esc(name)}. Link this LabTrak user on the R18 roster.</div>`, '#fcd34d');
+  }
+  const certs = (pack.trainings || []).filter(t => t.userId === person.id);
+  const gear = r18NormIds(person.assignedEquipment).map(id => (pack.equipment || []).find(e => String(e.id) === id)).filter(Boolean);
+  const certRows = certs.map(t => ({
+    name: t.testMethod || 'Method',
+    status: r18DayPast(t.expiresDate) ? 'OUT OF INTERVAL' : 'Current',
+    past: r18DayPast(t.expiresDate),
+    interval: t.expiresDate ? r18DayLabel(t.expiresDate) : 'No expiration',
+  }));
+  const gearRows = gear.map(eq => {
+    const label = (eq.name || 'Equipment') + (eq.refId ? ' (' + eq.refId + ')' : '');
+    const dates = [];
+    if (eq.nextCalibration) dates.push(eq.nextCalibration);
+    (pack.procedures || []).filter(p => p.equipmentId === eq.id && p.nextDueAt).forEach(p => dates.push(p.nextDueAt));
+    if (!dates.length) return { name: label, status: 'No interval', past: false, interval: 'No interval' };
+    const pastDates = dates.filter(r18DayPast).slice().sort();
+    if (pastDates.length) return { name: label, status: 'OUT OF INTERVAL', past: true, interval: r18DayLabel(pastDates[0]) };
+    const next = dates.slice().sort()[0];
+    return { name: label, status: 'Current', past: false, interval: r18DayLabel(next) };
+  });
+  const pastCount = certRows.filter(r => r.past).length + gearRows.filter(r => r.past).length;
+  let banner;
+  if (pastCount) {
+    banner = `<div style="font-size:9pt;font-weight:700;color:#991b1b;background:#fef2f2;border:1px solid #fecaca;padding:6px 8px;margin-bottom:8px;">OUT OF INTERVAL — ${pastCount} item${pastCount === 1 ? '' : 's'} for ${r18Esc(person.name)} past the certification or calibration date.</div>`;
+  } else if (!certRows.length && !gearRows.length) {
+    banner = `<div style="font-size:9pt;color:#92400e;background:#fffbeb;border:1px solid #fcd34d;padding:6px 8px;margin-bottom:8px;">Nothing on file for ${r18Esc(person.name)}. Add certifications in Training &amp; Evals and assign equipment on the roster.</div>`;
+  } else {
+    banner = `<div style="font-size:9pt;color:#166534;background:#ecfdf5;border:1px solid #bbf7d0;padding:6px 8px;margin-bottom:8px;">Inside interval for ${r18Esc(person.name)}.</div>`;
+  }
+  const table = (title, rows, empty) => {
+    const body = rows.length ? rows.map(r => {
+      const color = r.past ? '#991b1b' : (r.status === 'No interval' ? '#92400e' : '#166534');
+      return `<tr>
+        <td style="border:1px solid #ddd;padding:4px 6px;text-align:left;font-family:'DM Sans',Arial,sans-serif;">${r18Esc(r.name)}</td>
+        <td style="border:1px solid #ddd;padding:4px 6px;text-align:center;font-weight:700;color:${color};">${r18Esc(r.status)}</td>
+        <td style="border:1px solid #ddd;padding:4px 6px;text-align:center;">${r18Esc(r.interval)}</td>
+      </tr>`;
+    }).join('') : `<tr><td colspan="3" style="border:1px solid #ddd;padding:4px 6px;color:#92400e;">${empty}</td></tr>`;
+    return `<div style="font-size:8pt;font-weight:700;margin:8px 0 4px;">${title}</div>
+      <table style="width:100%;border-collapse:collapse;font-size:8.5pt;">
+        <thead><tr>
+          <th style="border:1px solid #999;padding:4px 6px;text-align:left;background:#d0d8e4;">ITEM</th>
+          <th style="border:1px solid #999;padding:4px 6px;background:#d0d8e4;">STATUS</th>
+          <th style="border:1px solid #999;padding:4px 6px;background:#d0d8e4;">INTERVAL</th>
+        </tr></thead>
+        <tbody>${body}</tbody>
+      </table>`;
+  };
+  return wrap(
+    banner + table('CERTIFICATIONS', certRows, 'No certifications on file') + table('ASSIGNED EQUIPMENT', gearRows, 'No equipment assigned'),
+    pastCount ? '#b91c1c' : '#ddd'
+  );
+}
+
+async function renderAggregateReport(sample, calc) {
+  if (typeof r18_prepareCompliance === 'function') {
+    try { await r18_prepareCompliance(); } catch (e) {}
+  }
   const aggType = sample.agg_type || sample.lab_data?.agg_type;
   const spec = AGG_TYPES[aggType] || {};
   const conforms = calc.allPass;
@@ -19943,6 +20083,7 @@ function renderAggregateReport(sample, calc) {
     ${ddRptApproval(conforms, sample.lab_remarks || '', `
       <div class="r-lbl">Reported By:</div><div class="r-val">${sample.reported_by || ''}</div>
       <div class="r-lbl">Reviewed By:</div><div class="r-val">${sample.reviewed_by || ''}</div>`)}
+    ${r18ComplianceBlock(sample.sampled_by)}
     ${ddRptSignatures(['Soils Supervisor', 'Geotechnical Engineer'])}
     ${ddRptFooter(`AASHTO T-11 / T-27 • Section ${spec.section || '1004'}`)}
   `);
@@ -20155,13 +20296,16 @@ async function saveNuclearAndGenerate() {
     updateFCSessionBanner();
     showToast('DMF-68C saved ✓', 'success');
   } else {
-    renderNuclearReport(currentNuclearSample, nucData);
+    await renderNuclearReport(currentNuclearSample, nucData);
     switchView('report');
     showToast('DMF-68C saved ✓', 'success');
   }
 }
 
-function renderNuclearReport(sample, d) {
+async function renderNuclearReport(sample, d) {
+  if (typeof r18_prepareCompliance === 'function') {
+    try { await r18_prepareCompliance(); } catch (e) {}
+  }
   const fv = v => v || '';
   const fn = (id) => parseFloat(d[id]) || 0;
 
@@ -20248,6 +20392,7 @@ function renderNuclearReport(sample, d) {
         <tr style="background:#e8f4fd;"><td class="dd-rpt-lbl" style="font-size:9pt;">W &nbsp; % of Optimum Moisture (K/T×100)</td><td class="dd-rpt-num" style="font-size:11pt;font-weight:700;">${fc(W,1)}</td></tr>
       </table>
     </div>
+    ${r18ComplianceBlock(d.operator)}
     ${ddRptFooter(`DMF-68C (REV 5/2025) • TEST NO.: ${sample.test_no}`)}
   `);
 
@@ -20550,7 +20695,7 @@ async function saveDensityAndGenerate() {
     if (!queued?.newlyQueued) showToast('LB-68 saved ✓', 'success');
   } else {
     const reportData = parseDensityData(currentDensitySample.density_data || data);
-    renderLB68(currentDensitySample, reportData);
+    await renderLB68(currentDensitySample, reportData);
     const sample = compactionApprovalSample({ ...currentDensitySample, _fc_table: tbl });
     _approvalTarget = sample;
     slCurrentSample = sample;
@@ -20564,7 +20709,10 @@ async function saveDensityAndGenerate() {
   }
 }
 
-function renderLB68(sample, d) {
+async function renderLB68(sample, d) {
+  if (typeof r18_prepareCompliance === 'function') {
+    try { await r18_prepareCompliance(); } catch (e) {}
+  }
   const fv = v2 => v2 || '';
   const today = new Date().toLocaleDateString('en-US', {year:'numeric',month:'long',day:'numeric'});
 
@@ -20628,6 +20776,7 @@ function renderLB68(sample, d) {
       <div style="border-bottom:1px solid #bbb;min-height:20px;margin-bottom:6px;"></div>
       <div style="border-bottom:1px solid #bbb;min-height:20px;"></div>
     </div>
+    ${r18ComplianceBlock(d.tested_by)}
     ${ddRptSignatures(['Construction Inspector', 'Field Control Supervisor', 'I.A. Supervisor'])}
     ${ddRptFooter(`LB-68 (6/12/2015) • TEST NO.: ${fv(sample.test_no)}`)}
   `, { wide: true });
@@ -21347,7 +21496,10 @@ function autoConforms(materialType, borrowScoreTypes) {
 // ══════════════════════════════════════════════
 // LB-44 REPORT RENDER
 // ══════════════════════════════════════════════
-function renderLB44(sample, labData, calc) {
+async function renderLB44(sample, labData, calc) {
+  if (typeof r18_prepareCompliance === 'function') {
+    try { await r18_prepareCompliance(); } catch (e) {}
+  }
   const r = calc.results;
   const fv = (val) => (val && val !== 'null') ? val : '';
   const fn = (val) => val != null ? val : '';
@@ -21502,6 +21654,7 @@ function renderLB44(sample, labData, calc) {
       </div>
     </div>
     ${approvalHtml}
+    ${r18ComplianceBlock(sample.sampled_by || sample.reported_by)}
     <div class="lb44-sigs">
       <div class="sig-block"><div class="sig-line"></div><div class="sig-lbl">Soils Supervisor</div></div>
       <div class="sig-block"><div class="sig-line"></div><div class="sig-lbl">Geotechnical Engineer</div></div>
@@ -23828,7 +23981,7 @@ async function openCompactionReport(record) {
   const sample = compactionApprovalSample(row);
   currentDensitySample = { ...row, _fc_table: sample._approvalTable };
   const data = parseDensityData(row.density_data);
-  renderLB68(row, data);
+  await renderLB68(row, data);
   _approvalTarget = sample;
   slCurrentSample = sample;
   currentSample = sample;
@@ -25311,7 +25464,7 @@ async function slFinishLab(parsed) {
   slCurrentSample = merged;
 
   const calc = calculateSieve(parsed, parsed.soil_sieve_nest || nestId);
-  renderLB44(merged, parsed, calc);
+  await renderLB44(merged, parsed, calc);
   switchView('report');
   showToast('LB-44 generated ✓', 'success');
   await slHandleDistribution(merged);
@@ -25362,7 +25515,7 @@ async function slGenerateAggReport() {
   currentSample = merged;
   slCurrentSample = merged;
 
-  renderAggregateReport(merged, aggCalc);
+  await renderAggregateReport(merged, aggCalc);
   switchView('report');
   showToast('Aggregate report generated ✓', 'success');
   // Queue for approval or email immediately
@@ -25380,10 +25533,10 @@ async function slViewReport() {
   slCurrentSample = fresh;
   if (fresh.test_category === 'aggregate') {
     const aggCalc = calculateAggregate(fresh.lab_data.sieve_data, fresh.lab_data.agg_type || fresh.agg_type);
-    renderAggregateReport(fresh, aggCalc);
+    await renderAggregateReport(fresh, aggCalc);
   } else {
     const calc = calculateSieve(fresh.lab_data, fresh.soil_sieve_nest || fresh.lab_data?.soil_sieve_nest);
-    renderLB44(fresh, fresh.lab_data, calc);
+    await renderLB44(fresh, fresh.lab_data, calc);
   }
   currentSample = fresh;
   switchView('report');
@@ -32302,11 +32455,14 @@ function getLogoSrc() {
   return img ? img.src : '';
 }
 
-function printConcreteReports() {
+async function printConcreteReports() {
   const setId = document.getElementById('crpt-set-select') && document.getElementById('crpt-set-select').value;
   if (!setId) { showToast('Select a set first to generate the report', 'error'); return; }
   const set = loadConcreteSets().find(function(s){ return s.id === setId; });
   if (!set) { showToast('Set not found', 'error'); return; }
+  if (typeof r18_prepareCompliance === 'function') {
+    try { await r18_prepareCompliance(); } catch (e) {}
+  }
 
   const pw = window.open('', '_blank', 'width=960,height=800,scrollbars=yes');
   if (!pw) { showToast('Pop-up blocked — allow pop-ups for this page and try again', 'error'); return; }
@@ -32362,6 +32518,9 @@ async function renderBothConcreteReports(setId) {
   if (!set) {
     if (out) out.innerHTML = '<p style="color:var(--muted);font-family:var(--mono);padding:16px;">Set not found.</p>';
     return;
+  }
+  if (typeof r18_prepareCompliance === 'function') {
+    try { await r18_prepareCompliance(); } catch (e) {}
   }
   if (out) out.innerHTML = renderDMF13(set) + renderDMP15(set);
   await maybeQueueConcreteApproval(set);
@@ -32465,6 +32624,7 @@ function renderDMF13(set) {
       <span><strong>Cylinder Size:</strong> ${set.cylDiam}" × ${set.cylDiam === 4 ? '8' : '12'}"</span>
     </div>
 
+    ${r18ComplianceBlock(set.sampledBy)}
     ${ddRptSignatures(['Sampled By', 'Contractor', 'Subcontractor', 'Job Inspector'], [set.sampledBy||'', '', '', ''])}
     ${ddRptFooter('DMF-13 (REV 12/2024) · Signature Acknowledges Test Results')}
   `, { concrete: 'dmf13' });
@@ -32700,6 +32860,7 @@ function renderDMP15(set) {
       </div>
     </div>
 
+    ${r18ComplianceBlock(set.sampledBy)}
     <div class="dmp15-sigs">
       <div class="sig-blk">
         <div style="font-size:7.5pt;color:#555;margin-bottom:2px;">REPORTED BY:</div>
@@ -33326,6 +33487,8 @@ const state = {
   expandedSubLabs: {},
   trainingStep: 1,
   trainingSelectedUsers: [],
+  rosterSection: 'all',
+  rosterColumns: null,
   reportStatusFilter: 'completed',
   userFilter: 'active',
   reportSubtab: 'external_assessments',
@@ -33338,6 +33501,7 @@ const TABS = [
   { id: 'inventory',         label: 'Inventory',          icon: '⊞' },
   { id: 'procedure-history', label: 'Procedure History',  icon: '≡' },
   { id: 'reports',           label: 'Reports',            icon: '⎙' },
+  { id: 'roster',            label: 'Roster',             icon: '☺' },
   { id: 'training-evals',    label: 'Training & Evals',   icon: '✓' },
 ];
 
@@ -33532,6 +33696,7 @@ function renderView() {
     case 'inventory':         return renderInventory(lab, root);
     case 'procedure-history': return renderProcedureHistory(lab, root);
     case 'reports':           return renderReports(lab, root);
+    case 'roster':            return renderRoster(lab, root);
     case 'training-evals':    return renderTrainingEvals(lab, root);
   }
 }
@@ -33608,7 +33773,7 @@ function renderManageLab(lab, root) {
     { title: 'Equipment Procedures & Lab Processes Admin', desc: 'Create and edit equipment procedures and lab processes.', action: `r18_state.currentTab='inventory';r18_state.inventorySubTab='equipment_procedures';r18_renderTabs();r18_renderView();` },
     { title: 'Test Methods & Standard Designations Admin', desc: 'Manage standard designations, test methods, and test categories for training.', action: `r18_state.currentTab='training-evals';r18_renderTabs();r18_renderView();` },
     { title: 'Measurement Standards', desc: 'View measurement standards calibration.', action: `r18_state.currentTab='inventory';r18_state.inventorySubTab='lab_equipment';r18_renderTabs();r18_renderView();` },
-    { title: 'Lab Positions', desc: 'Personnel management including job descriptions and requirements.', action: `r18_state.currentTab='training-evals';r18_renderTabs();r18_renderView();` },
+    { title: 'Section Roster', desc: 'Current staff by section, with years of service and the methods they are certified for.', action: `r18_state.currentTab='roster';r18_renderTabs();r18_renderView();` },
     { title: 'Outside Evaluators', desc: 'Identify third-party personnel who conduct lab evaluations.', action: `r18_openUserModal()`, add: true },
   ];
 
@@ -34592,6 +34757,396 @@ window.r18_deleteEquipment = async (id) => {
 };
 
 /* ====================================================================
+   SECTION ROSTER
+   People stay on the R18 user. Methods stay on Training & Evals.
+   ==================================================================== */
+const ROSTER_SECTIONS = [
+  { id: 'soil', label: 'Soil', hubs: ['soillab', 'labhub'] },
+  { id: 'concrete', label: 'Concrete', hubs: ['concrete', 'conchub'] },
+  { id: 'hotmix', label: 'Hot Mix', hubs: ['hotmix'] },
+  { id: 'chem', label: 'Chem Lab', hubs: ['chemlab'] },
+  { id: 'field', label: 'Field', hubs: ['fieldhub', 'fieldcontrol'] },
+  { id: 'precast', label: 'Pre-Cast', hubs: ['precast'] },
+];
+const ROSTER_SQL = `-- Roster fields on the R18 person. Run once.
+ALTER TABLE public.r18_users
+  ADD COLUMN IF NOT EXISTS title TEXT,
+  ADD COLUMN IF NOT EXISTS section TEXT,
+  ADD COLUMN IF NOT EXISTS hire_date DATE,
+  ADD COLUMN IF NOT EXISTS labtrak_user_id TEXT,
+  ADD COLUMN IF NOT EXISTS assigned_equipment JSONB NOT NULL DEFAULT '[]'::jsonb;
+
+NOTIFY pgrst, 'reload schema';
+`;
+
+function rosterViewerRole() {
+  return (typeof currentUser === 'object' && currentUser && currentUser.role) || '';
+}
+
+function rosterAllowedSectionIds() {
+  if (rosterViewerRole() !== 'section_admin') return null;
+  const hubs = (currentUser && currentUser.restricted_hubs) || [];
+  if (!hubs.length) return null;
+  return ROSTER_SECTIONS.filter(s => s.hubs.some(h => hubs.includes(h))).map(s => s.id);
+}
+
+function rosterCanEditPerson(user) {
+  const role = rosterViewerRole();
+  if (role === 'admin') return true;
+  if (role !== 'section_admin') return false;
+  const allowed = rosterAllowedSectionIds();
+  if (!allowed) return true;
+  if (!user) return allowed.length > 0;
+  return !!user.section && allowed.includes(user.section);
+}
+
+function rosterSectionChoices() {
+  const allowed = rosterAllowedSectionIds();
+  return ROSTER_SECTIONS.filter(s => !allowed || allowed.includes(s.id));
+}
+
+function rosterYears(value) {
+  const m = String(value || '').match(/^(\d{4})-(\d{2})-(\d{2})/);
+  if (!m) return '';
+  const start = new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]));
+  if (Number.isNaN(start.getTime())) return '';
+  const now = new Date();
+  let years = now.getFullYear() - start.getFullYear();
+  const monthDelta = now.getMonth() - start.getMonth();
+  if (monthDelta < 0 || (monthDelta === 0 && now.getDate() < start.getDate())) years--;
+  if (years >= 1) return years === 1 ? '1 year' : years + ' years';
+  let months = (now.getFullYear() - start.getFullYear()) * 12 + now.getMonth() - start.getMonth();
+  if (now.getDate() < start.getDate()) months--;
+  if (months >= 1) return months === 1 ? '1 month' : months + ' months';
+  if (start.getTime() > now.getTime()) return '';
+  return 'Less than a month';
+}
+
+function rosterHireLabel(value) {
+  const m = String(value || '').match(/^(\d{4})-(\d{2})-(\d{2})/);
+  if (!m) return '';
+  const d = new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]));
+  if (Number.isNaN(d.getTime())) return '';
+  return d.toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
+}
+
+function rosterServiceLine(user) {
+  const years = rosterYears(user.hireDate);
+  const hired = rosterHireLabel(user.hireDate);
+  if (years && hired) return years + ' · hired ' + hired;
+  if (hired) return 'Hired ' + hired;
+  return '';
+}
+
+function rosterCertState(training) {
+  return rosterDatePast(training && training.expiresDate) ? 'expired' : 'current';
+}
+
+function rosterDateKey(value) {
+  const m = String(value || '').match(/^(\d{4}-\d{2}-\d{2})/);
+  return m ? m[1] : '';
+}
+
+function rosterTodayKey() {
+  const now = new Date();
+  return now.getFullYear() + '-' + String(now.getMonth() + 1).padStart(2, '0') + '-' + String(now.getDate()).padStart(2, '0');
+}
+
+function rosterDatePast(value) {
+  const key = rosterDateKey(value);
+  return !!key && key < rosterTodayKey();
+}
+
+function rosterGearIds(user) {
+  let raw = user && user.assignedEquipment;
+  if (typeof raw === 'string') {
+    try { raw = JSON.parse(raw); } catch (e) { raw = []; }
+  }
+  return Array.isArray(raw) ? raw.map(id => String(id)).filter(Boolean) : [];
+}
+
+function rosterGearCatalog() {
+  return (state.allEquipment && state.allEquipment.length) ? state.allEquipment : (state.equipment || []);
+}
+
+function rosterGearProcedures(equipmentId) {
+  const procs = state.allProcedures || state.procedures || [];
+  return procs.filter(p => p.equipmentId === equipmentId && p.active !== false);
+}
+
+function rosterGearStatus(eq) {
+  if (!eq) return { out: false, noInterval: true, due: '' };
+  const dates = [];
+  if (eq.nextCalibration) dates.push(eq.nextCalibration);
+  rosterGearProcedures(eq.id).forEach(p => { if (p.nextDueAt) dates.push(p.nextDueAt); });
+  if (!dates.length) return { out: false, noInterval: true, due: '' };
+  const past = dates.filter(rosterDatePast).sort();
+  if (past.length) return { out: true, noInterval: false, due: past[0] };
+  return { out: false, noInterval: false, due: dates.slice().sort()[0] };
+}
+
+function rosterPersonFlagged(user) {
+  if (state.trainings.some(t => t.userId === user.id && rosterCertState(t) === 'expired')) return true;
+  const catalog = rosterGearCatalog();
+  return rosterGearIds(user).some(id => rosterGearStatus(catalog.find(e => String(e.id) === id)).out);
+}
+
+function rosterGearLine(user) {
+  const ids = rosterGearIds(user);
+  if (!ids.length) return '';
+  const catalog = rosterGearCatalog();
+  const items = ids.map(id => catalog.find(e => String(e.id) === id)).filter(Boolean);
+  const outCount = items.filter(e => rosterGearStatus(e).out).length;
+  const names = items.slice(0, 3).map(e => e.name || e.refId || 'Equipment');
+  let text = names.length ? names.join(', ') : (ids.length + ' assigned');
+  const extra = items.length - names.length;
+  if (names.length && extra > 0) text += ' +' + extra;
+  if (outCount) text += ' · ' + (outCount === 1 ? '1 out of interval' : outCount + ' out of interval');
+  return `<div class="r18-roster-service">${escapeHtml(text)}</div>`;
+}
+
+function rosterLabtrakLine(user) {
+  if (!user || !user.labtrakUserId) return '';
+  const match = (state.labtrakUsers || []).find(u => String(u.id) === String(user.labtrakUserId));
+  return `<div class="r18-roster-service">LabTrak user: ${escapeHtml(match ? (match.name || 'linked') : 'linked')}</div>`;
+}
+
+function rosterLabtrakOptions(selected) {
+  const rows = (state.labtrakUsers || []).slice().sort((a, b) => String(a.name || '').localeCompare(String(b.name || '')));
+  return '<option value="">Not linked</option>' + rows.map(u =>
+    `<option value="${escapeHtml(u.id)}" ${String(selected || '') === String(u.id) ? 'selected' : ''}>${escapeHtml(u.name || u.id)}</option>`
+  ).join('');
+}
+
+function rosterGearChecks(selectedIds) {
+  const selected = new Set((selectedIds || []).map(String));
+  const catalog = rosterGearCatalog().slice().sort((a, b) => String(a.name || '').localeCompare(String(b.name || '')));
+  if (!catalog.length) return '<div class="r18-cert-empty">No equipment is in the R18 inventory yet.</div>';
+  return catalog.map(eq => {
+    const status = rosterGearStatus(eq);
+    const note = status.out ? ' · out of interval' : (status.noInterval ? ' · no interval' : '');
+    const ref = eq.refId ? ' · ' + eq.refId : '';
+    return `<label><input type="checkbox" name="u-gear" value="${escapeHtml(eq.id)}" ${selected.has(String(eq.id)) ? 'checked' : ''} /><span>${escapeHtml((eq.name || 'Equipment') + ref + note)}</span></label>`;
+  }).join('');
+}
+
+async function rosterLabtrakUsers() {
+  if (Array.isArray(state.labtrakUsers)) return state.labtrakUsers;
+  if (typeof db !== 'undefined' && db) {
+    try {
+      const { data, error } = await db.from('st_users').select('id,name,role').order('name', { ascending: true });
+      if (!error) {
+        state.labtrakUsers = data || [];
+        return state.labtrakUsers;
+      }
+    } catch (e) {}
+  }
+  state.labtrakUsers = [];
+  return state.labtrakUsers;
+}
+
+function ensureRosterPack() {
+  if (state.rosterPack) return state.rosterPack;
+  state.rosterPack = (async () => {
+    try {
+      if (typeof repo !== 'undefined' && repo && typeof repo.getAll === 'function') {
+        const [equipment, procedures] = await Promise.all([
+          repo.getAll('equipment'),
+          repo.getAll('procedures'),
+        ]);
+        state.allEquipment = equipment || [];
+        state.allProcedures = procedures || [];
+      }
+      await rosterLabtrakUsers();
+    } catch (e) {
+      state.allEquipment = state.allEquipment || state.equipment || [];
+      state.allProcedures = state.allProcedures || state.procedures || [];
+      if (!Array.isArray(state.labtrakUsers)) state.labtrakUsers = [];
+    }
+    state.rosterPackReady = true;
+  })();
+  return state.rosterPack;
+}
+
+const rosterColumnError = /PGRST204|42703|hire_date|labtrak_user_id|assigned_equipment|schema cache|does not exist/i;
+
+function rosterHireInput(value) {
+  const m = String(value || '').match(/^(\d{4}-\d{2}-\d{2})/);
+  return m ? m[1] : '';
+}
+
+async function ensureRosterColumns() {
+  if (state.rosterColumns === true) return true;
+  if (typeof db === 'undefined' || !db) return false;
+  try {
+    const { error } = await db.from('r18_users').select('section,title,hire_date,labtrak_user_id,assigned_equipment').limit(1);
+    if (!error) {
+      state.rosterColumns = true;
+      return true;
+    }
+    const blob = JSON.stringify(error);
+    if (rosterColumnError.test(blob)) state.rosterColumns = false;
+    return false;
+  } catch (e) {
+    return false;
+  }
+}
+
+window.r18_copyRosterSql = () => {
+  const done = () => toast('Copied. Paste it into the Supabase SQL editor and click Run. Once is enough.');
+  const failed = () => {
+    const pre = document.getElementById('r18RosterSql');
+    if (pre) pre.style.display = 'block';
+    toast('Could not copy automatically. Select the SQL in the note.');
+  };
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(ROSTER_SQL).then(done).catch(() => {
+      if (typeof copyTextFallback === 'function' && copyTextFallback(ROSTER_SQL)) done();
+      else failed();
+    });
+    return;
+  }
+  if (typeof copyTextFallback === 'function' && copyTextFallback(ROSTER_SQL)) done();
+  else failed();
+};
+
+window.r18_setRosterSection = (id) => {
+  state.rosterSection = id || 'all';
+  renderView();
+};
+
+window.r18_recheckRosterColumns = () => {
+  state.rosterColumns = null;
+  renderView();
+};
+
+function renderRoster(lab, root) {
+  if (state.rosterColumns == null || state.rosterPackReady !== true) {
+    if (!state.rosterProbe) {
+      state.rosterProbe = Promise.all([ensureRosterColumns(), ensureRosterPack()]).then(([ok]) => {
+        state.rosterProbe = null;
+        if (!ok && state.rosterColumns == null) state.rosterColumns = false;
+        if (state.currentTab === 'roster') renderView();
+      });
+    }
+    root.innerHTML = '<div class="r18-roster-intro">Loading roster…</div>';
+    return;
+  }
+  const allowed = rosterAllowedSectionIds();
+  const choices = rosterSectionChoices();
+  const filter = state.rosterSection && (state.rosterSection === 'all' || choices.some(s => s.id === state.rosterSection))
+    ? state.rosterSection
+    : 'all';
+  state.rosterSection = filter;
+  const people = state.users
+    .filter(u => u.active !== false)
+    .filter(u => !allowed || allowed.includes(u.section))
+    .slice()
+    .sort((a, b) => String(a.name || '').localeCompare(String(b.name || '')));
+  const sections = choices.filter(s => filter === 'all' || s.id === filter);
+  const showUnassigned = !allowed && filter === 'all';
+  const columnsReady = state.rosterColumns === true;
+  const canAdd = rosterCanEditPerson(null);
+
+  const pills = [{ id: 'all', label: 'All' }].concat(choices).map(s =>
+    `<button type="button" class="${filter === s.id ? 'active' : ''}" onclick="r18_setRosterSection('${s.id}')">${escapeHtml(s.label)}</button>`
+  ).join('');
+
+  const banner = columnsReady ? '' : `
+    <div class="r18-roster-note">
+      Section, title, hire date, the LabTrak user link, and assigned equipment need one SQL update. Copy it, paste it into the Supabase SQL editor, and click Run. Once is enough.
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px;">
+        <button type="button" class="btn btn-primary" onclick="r18_copyRosterSql()">Copy roster SQL</button>
+        <button type="button" class="btn btn-ghost" onclick="r18_recheckRosterColumns()">Check again</button>
+      </div>
+      <pre id="r18RosterSql">${escapeHtml(ROSTER_SQL)}</pre>
+    </div>`;
+
+  const certsFor = (user) => {
+    const rows = state.trainings.filter(t => t.userId === user.id).slice().sort((a, b) => {
+      const rank = rosterCertState(a) === 'current' ? 0 : 1;
+      const rankB = rosterCertState(b) === 'current' ? 0 : 1;
+      return rank - rankB || String(a.testMethod || '').localeCompare(String(b.testMethod || ''));
+    });
+    if (!rows.length) {
+      return `<button type="button" class="r18-cert-empty" onclick="r18_openTrainingsModal('${user.id}')">No methods on file</button>`;
+    }
+    const shown = rows.slice(0, 12);
+    const more = rows.length - shown.length;
+    return `<div class="r18-cert-row">${shown.map(t => {
+      const expired = rosterCertState(t) === 'expired';
+      const label = (t.testMethod || 'Method') + (expired ? ' · expired' : '');
+      return `<button type="button" class="r18-cert${expired ? ' expired' : ''}" onclick="r18_openTrainingsModal('${user.id}')">${escapeHtml(label)}</button>`;
+    }).join('')}${more > 0 ? `<button type="button" class="r18-cert" onclick="r18_openTrainingsModal('${user.id}')">+${more} more</button>` : ''}</div>`;
+  };
+
+  const card = (user) => {
+    const service = rosterServiceLine(user);
+    const roleName = roleLabel(user.role);
+    const titleBits = user.title && user.title !== roleName ? (user.title + ' · ' + roleName) : (user.title || roleName);
+    const canEdit = rosterCanEditPerson(user);
+    const edit = canEdit
+      ? `<button type="button" class="btn btn-ghost" onclick="r18_openUserModal('${user.id}')">Edit</button>`
+      : '';
+    const gearBtn = canEdit
+      ? `<button type="button" class="btn btn-ghost" onclick="r18_openUserModal('${user.id}','','gear')">Assigned equipment</button>`
+      : '';
+    const flagged = rosterPersonFlagged(user);
+    return `<article class="r18-roster-card${flagged ? ' flagged' : ''}" data-person="${escapeHtml(user.id)}">
+      <div class="r18-roster-top">
+        <div class="user-avatar">${initials(user.name)}</div>
+        <div class="r18-roster-id">
+          <button type="button" class="r18-roster-name" onclick="r18_openTrainingsModal('${user.id}')">${escapeHtml(user.name)}</button>
+          ${titleBits ? `<div class="r18-roster-title">${escapeHtml(titleBits)}</div>` : ''}
+        </div>
+        ${edit}
+      </div>
+      <div class="r18-roster-service${service ? '' : ' missing'}">${service ? escapeHtml(service) : 'Hire date not set'}</div>
+      ${rosterLabtrakLine(user)}
+      ${rosterGearLine(user)}
+      ${flagged ? '<div class="r18-roster-flag">Out of interval</div>' : ''}
+      ${certsFor(user)}
+      ${gearBtn}
+    </article>`;
+  };
+
+  const block = (id, label, members) => `
+    <section class="r18-roster-block" data-section="${escapeHtml(id)}">
+      <h2>${escapeHtml(label)}</h2>
+      <div class="r18-roster-count">${members.length === 1 ? '1 person' : members.length + ' people'}</div>
+      ${members.length
+        ? `<div class="r18-roster-grid">${members.map(card).join('')}</div>`
+        : '<div class="r18-roster-count">No one assigned yet.</div>'}
+    </section>`;
+
+  const blocks = sections.map(s => {
+    const members = people.filter(u => u.section === s.id);
+    if (filter === 'all' && !members.length) return '';
+    return block(s.id, s.label, members);
+  }).join('');
+  const unassigned = showUnassigned ? people.filter(u => !u.section) : [];
+  const unassignedHtml = showUnassigned && unassigned.length
+    ? block('unassigned', 'Unassigned', unassigned)
+    : '';
+  const empty = !people.length
+    ? '<div class="stub-card">No one is on this roster yet. Add a person and set their section. Methods are recorded in Training &amp; Evals.</div>'
+    : '';
+
+  root.innerHTML = `
+    <div style="display:flex;justify-content:space-between;gap:12px;align-items:flex-end;flex-wrap:wrap;">
+      <div>
+        <h1 class="r18-page-title">Roster</h1>
+        <p class="r18-roster-intro">Current staff for ${escapeHtml(lab.name)}. Methods come from Training &amp; Evals. Assigned equipment is checked on the report.</p>
+      </div>
+      ${canAdd ? `<button type="button" class="btn btn-primary" onclick="r18_openUserModal('', '${filter !== 'all' ? filter : ''}')">Add person</button>` : ''}
+    </div>
+    ${banner}
+    <div class="r18-section-pills">${pills}</div>
+    ${empty || (blocks + unassignedHtml)}
+  `;
+}
+
+/* ====================================================================
    TRAINING & EVALUATIONS
    ==================================================================== */
 function renderTrainingEvals(lab, root) {
@@ -34661,16 +35216,46 @@ window.r18_toggleTrainingUser = (userId) => {
 const roleClass = (role) => role === 'primary_lab_manager' ? 'badge-primary' : (role === 'lab_manager' ? 'badge-active' : 'badge-secondary');
 const roleLabel = (role) => ({ primary_lab_manager: 'Primary Lab Manager', lab_manager: 'Lab Manager', lab_technician: 'Lab Technician' }[role] || role);
 
-window.r18_openUserModal = (id) => {
+window.r18_personTab = (tab) => {
+  const which = tab === 'gear' ? 'gear' : 'profile';
+  const profile = document.getElementById('u-profile');
+  const gear = document.getElementById('u-gear');
+  if (profile) profile.style.display = which === 'gear' ? 'none' : '';
+  if (gear) gear.style.display = which === 'gear' ? '' : 'none';
+  document.querySelectorAll('#r18-modal-root .r18-person-tabs button').forEach(btn => {
+    btn.classList.toggle('active', btn.getAttribute('data-tab') === which);
+  });
+};
+
+window.r18_openUserModal = (id, presetSection, tab) => {
   const u = id ? state.users.find(x => x.id === id) : null;
   const isEdit = !!u;
+  const choices = rosterSectionChoices();
+  const selectedSection = u?.section || presetSection || '';
+  const allowUnassigned = !rosterAllowedSectionIds();
+  const sectionOptions = (allowUnassigned ? '<option value="">Unassigned</option>' : '') + choices.map(s =>
+    `<option value="${s.id}" ${selectedSection === s.id ? 'selected' : ''}>${escapeHtml(s.label)}</option>`
+  ).join('');
+  const gearIds = rosterGearIds(u || {});
   showModal(`
     <div class="p-5">
       <h2 class="text-xl serif font-semibold mb-1 ink">${isEdit ? 'Edit' : 'New'} User</h2>
-      <div class="text-sm ink-2 mb-4">${isEdit ? '' : 'Assign to current lab.'}</div>
-      <div class="grid gap-3">
+      <div class="text-sm ink-2 mb-4">${isEdit ? 'Link the LabTrak login and the equipment this person uses. Methods stay under Trainings.' : 'Assign to the current lab. Methods are added from Trainings.'}</div>
+      <div class="r18-person-tabs">
+        <button type="button" data-tab="profile" class="active" onclick="r18_personTab('profile')">Profile</button>
+        <button type="button" data-tab="gear" onclick="r18_personTab('gear')">Assigned equipment</button>
+      </div>
+      <div id="u-profile" class="grid gap-3">
         <div><label class="label">Full Name</label><input class="input" id="u-name" value="${escapeHtml(u?.name || '')}" placeholder="e.g. Jennifer Pinkerton" /></div>
         <div><label class="label">Email</label><input class="input" id="u-email" value="${escapeHtml(u?.email || '')}" placeholder="optional" /></div>
+        <div><label class="label">Title</label><input class="input" id="u-title" value="${escapeHtml(u?.title || '')}" placeholder="Senior Lab Technician" /></div>
+        <div><label class="label">Section</label>
+          <select class="select" id="u-section">${sectionOptions}</select>
+        </div>
+        <div><label class="label">Hire date</label><input type="date" class="input" id="u-hire" value="${rosterHireInput(u?.hireDate)}" /></div>
+        <div><label class="label">LabTrak user</label>
+          <select class="select" id="u-labtrak">${rosterLabtrakOptions(u?.labtrakUserId || '')}</select>
+        </div>
         <div><label class="label">Role</label>
           <select class="select" id="u-role">
             <option value="lab_technician" ${u?.role === 'lab_technician' ? 'selected' : ''}>Lab Technician</option>
@@ -34685,6 +35270,10 @@ window.r18_openUserModal = (id) => {
           </select>
         </div>
       </div>
+      <div id="u-gear" style="display:none;">
+        <div class="text-sm ink-2 mb-2">Check the equipment this person uses. A report flags the item when its calibration or procedure date is past.</div>
+        <div class="r18-gear-list" id="u-gear-list">${rosterGearChecks(gearIds)}</div>
+      </div>
       <div class="flex justify-between gap-2 mt-5">
         <div>${isEdit ? `<button class="btn btn-danger" onclick="r18_deleteUser('${u.id}')">Delete</button>` : ''}</div>
         <div class="flex gap-2">
@@ -34694,25 +35283,72 @@ window.r18_openUserModal = (id) => {
       </div>
     </div>
   `);
+  window.r18_personTab(tab === 'gear' ? 'gear' : 'profile');
+  rosterLabtrakUsers().then(rows => {
+    const sel = document.getElementById('u-labtrak');
+    if (!sel || sel.options.length > 1 || !(rows || []).length) return;
+    sel.innerHTML = rosterLabtrakOptions(u?.labtrakUserId || '');
+  }).catch(() => {});
+  if (!(state.allEquipment || []).length && typeof repo !== 'undefined' && repo && typeof repo.getAll === 'function') {
+    repo.getAll('equipment').then(rows => {
+      state.allEquipment = rows || [];
+      const box = document.getElementById('u-gear-list');
+      if (box && !box.querySelector('input')) box.innerHTML = rosterGearChecks(gearIds);
+    }).catch(() => {});
+  }
 };
 
 window.r18_saveUser = async (id) => {
   const existing = id ? state.users.find(u => u.id === id) : null;
   const name = document.getElementById('u-name').value.trim();
   if (!name) return toast('Name required');
+  const hireRaw = document.getElementById('u-hire') ? document.getElementById('u-hire').value : '';
+  const labtrakEl = document.getElementById('u-labtrak');
+  const gearBoxes = Array.from(document.querySelectorAll('#u-gear-list input[name="u-gear"]'));
+  const assignedEquipment = gearBoxes.length
+    ? gearBoxes.filter(el => el.checked).map(el => el.value)
+    : rosterGearIds(existing || {});
   const user = {
     id: id || uuid(),
     labId: state.currentLabId,
     name,
     email: document.getElementById('u-email').value.trim(),
+    title: document.getElementById('u-title') ? document.getElementById('u-title').value.trim() : (existing?.title || ''),
+    section: document.getElementById('u-section') ? document.getElementById('u-section').value : (existing?.section || ''),
+    hireDate: hireRaw || null,
+    labtrakUserId: (labtrakEl ? labtrakEl.value : (existing?.labtrakUserId || '')) || null,
+    assignedEquipment,
     role: document.getElementById('u-role').value,
     active: document.getElementById('u-active').value === 'true',
     createdAt: existing?.createdAt,
   };
-  await repo.put('users', user);
+  const ready = await ensureRosterColumns();
+  const baseUser = Object.assign({}, user);
+  delete baseUser.title;
+  delete baseUser.section;
+  delete baseUser.hireDate;
+  delete baseUser.labtrakUserId;
+  delete baseUser.assignedEquipment;
+  try {
+    if (ready) await repo.put('users', user);
+    else await repo.put('users', baseUser);
+  } catch (err) {
+    const blob = JSON.stringify(err || {});
+    if (!rosterColumnError.test(blob)) {
+      toast('Could not save this person.');
+      return;
+    }
+    state.rosterColumns = false;
+    try { await repo.put('users', baseUser); }
+    catch (e2) { toast('Could not save this person.'); return; }
+  }
   closeModal();
   await refreshAll();
   renderView();
+  if (!ready || state.rosterColumns === false) {
+    toast('Saved the name. Run the roster SQL once, then edit this person to keep the section, LabTrak link, and equipment.');
+    return;
+  }
   toast(id ? 'User updated' : 'User added');
 };
 
@@ -34971,6 +35607,30 @@ window.r18Init = async function() {
       renderTabs();
     }
   }
+};
+
+window.r18_prepareCompliance = async () => {
+  try {
+    const [people, trainings, equipment, procedures] = await Promise.all([
+      repo.getAll('users'),
+      repo.getAll('trainings'),
+      repo.getAll('equipment'),
+      repo.getAll('procedures'),
+    ]);
+    state.allEquipment = equipment || [];
+    state.allProcedures = procedures || [];
+    const labtrakRows = await rosterLabtrakUsers();
+    window.__r18Compliance = {
+      people: people || [],
+      trainings: trainings || [],
+      equipment: equipment || [],
+      procedures: (procedures || []).filter(p => p.active !== false),
+      labtrak: (labtrakRows || []).map(u => ({ id: u.id, name: u.name })),
+    };
+  } catch (e) {
+    window.__r18Compliance = window.__r18Compliance || { people: [], trainings: [], equipment: [], procedures: [], labtrak: [] };
+  }
+  return window.__r18Compliance;
 };
 
 /* Expose state and render helpers for onclick="" handlers */
