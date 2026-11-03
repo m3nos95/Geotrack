@@ -148,10 +148,11 @@ body { background: var(--bg); color: var(--text); font-family: var(--sans); font
   z-index: 1;
 }
 /* These sit outside #app. Hide them here, before the body is parsed,
-   so Queue / Sample / Sample Information / Reports / Documents / Notes /
-   History / Archive Sample cannot paint before the later stylesheet. */
+   so the sample menu, the Modules sheet, and the empty toast cannot
+   paint before the later stylesheet. */
 #sampleHub,
-#phoneModuleBar { display: none; }
+#phoneModuleBar,
+.mobile-more-sheet { display: none; }
 
 /* ── TOP BAR ── */
 #topbar {
@@ -767,10 +768,11 @@ nav:not(#r18-nav), .nav-top-row { display: none !important; }
   color: var(--text); font-family: var(--sans); padding: 12px 18px; border-radius: var(--radius-sm);
   box-shadow: var(--shadow);
   font-family: var(--mono); font-size: 12px; z-index: 10060;
-  transform: translateY(80px); opacity: 0; transition: all 0.3s;
+  transform: translateY(80px); opacity: 0; transition: transform 0.3s, opacity 0.3s;
   max-width: 320px;
 }
-.toast.show { transform: translateY(0); opacity: 1; }
+#toast:not(.show) { visibility: hidden; }
+.toast.show { transform: translateY(0); opacity: 1; visibility: visible; }
 .toast.success { border-color: var(--green2); color: var(--green2); }
 .toast.error { border-color: var(--red2); color: var(--red2); }
 
@@ -2770,7 +2772,6 @@ h2 { font-family: var(--display); font-size: 20px; font-weight: 700; color: var(
   font-size: 13px;
   font-weight: 500;
   box-shadow: 0 8px 32px rgba(0,0,0,0.6);
-  animation: toast-in 0.22s cubic-bezier(0.34,1.56,0.64,1);
   display: flex; align-items: center; gap: 10px;
   min-width: 240px; max-width: 360px;
   border-left: 3px solid var(--border-2);
@@ -2778,7 +2779,6 @@ h2 { font-family: var(--display); font-size: 20px; font-weight: 700; color: var(
 .toast.success { border-left-color: var(--green2); }
 .toast.error   { border-left-color: var(--red2); }
 .toast.info    { border-left-color: var(--blue2); }
-@keyframes toast-in { from { opacity:0; transform: translateY(12px) scale(0.95); } to { opacity:1; transform: none; } }
 
 /* ── Overlays / modals ── */
 .project-overlay, [id$="Overlay"]:not(#setupOverlay):not(#userOverlay):not(#calNoteModal) {
@@ -7835,7 +7835,7 @@ END $$;
 // GLOBALS
 // ══════════════════════════════════════════════
 let db = null;
-const APP_BUILD = '2026.11.02-boot-hub';
+const APP_BUILD = '2026.11.02-boot-modules';
 const FC_CORE_ICON_SRC = 'docs/r18-reference/core-drill-icon-128.png';
 const BORELOG_ICON_SRC = 'docs/r18-reference/borelog-icon.webp';
 const BORELOG_PATH = 'deldot-borelog-v6-uscs.html';
