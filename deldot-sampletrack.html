@@ -3338,6 +3338,30 @@ table.fc-borrow-tbl tr.fc-borrow-detail-row td{background:var(--surface);border-
 .r18-app .r18-user-pick.selected { border-color: var(--r18-accent); background: #e8f0fa; }
 .r18-app .r18-user-pick .name { font-size: 14px; font-weight: 600; color: var(--r18-ink); margin-top: 8px; }
 .r18-app .r18-user-pick .sub { font-size: 10px; font-weight: 600; color: var(--r18-ink-3); text-transform: uppercase; letter-spacing: 0.05em; margin-top: 4px; }
+.r18-app .r18-roster-intro { font-size: 13px; color: var(--r18-ink-2); line-height: 1.5; margin: 8px 0 0; }
+.r18-app .r18-roster-note { background: #fffbeb; border: 1px solid #fcd34d; color: #92400e; border-radius: 6px; padding: 12px 14px; font-size: 13px; line-height: 1.45; margin: 14px 0; }
+.r18-app .r18-roster-note pre { display: none; white-space: pre-wrap; background: white; color: #0f1d2e; border: 1px solid #fcd34d; border-radius: 4px; padding: 8px; margin: 8px 0 0; font-size: 11px; }
+.r18-app .r18-section-pills { display: flex; gap: 6px; flex-wrap: wrap; margin: 14px 0; }
+.r18-app .r18-section-pills button { border: 1px solid var(--r18-line); background: white; color: var(--r18-ink-2); border-radius: 999px; padding: 6px 12px; font-size: 12px; font-weight: 600; cursor: pointer; }
+.r18-app .r18-section-pills button.active { background: var(--r18-accent); border-color: var(--r18-accent); color: white; }
+.r18-app .r18-roster-block { margin-bottom: 22px; }
+.r18-app .r18-roster-block h2 { font-family: 'Source Serif 4', Georgia, serif; font-size: 20px; margin: 0; color: var(--r18-ink); }
+.r18-app .r18-roster-count { font-size: 12px; color: var(--r18-ink-3); margin: 2px 0 10px; }
+.r18-app .r18-roster-grid { display: grid; grid-template-columns: 1fr; gap: 10px; }
+@media (min-width: 800px) {
+  .r18-app .r18-roster-grid { grid-template-columns: 1fr 1fr; }
+}
+.r18-app .r18-roster-card { background: white; border: 1px solid var(--r18-line); border-radius: 6px; padding: 14px; display: flex; flex-direction: column; gap: 8px; min-width: 0; }
+.r18-app .r18-roster-top { display: flex; gap: 12px; align-items: flex-start; }
+.r18-app .r18-roster-id { flex: 1; min-width: 0; }
+.r18-app .r18-roster-name { background: none; border: none; padding: 0; font-size: 16px; font-weight: 650; color: var(--r18-ink); cursor: pointer; text-align: left; }
+.r18-app .r18-roster-title { font-size: 12px; color: var(--r18-ink-2); margin-top: 2px; }
+.r18-app .r18-roster-service { font-size: 12px; color: var(--r18-ink-2); }
+.r18-app .r18-roster-service.missing { color: var(--r18-ink-3); font-style: italic; }
+.r18-app .r18-cert-row { display: flex; flex-wrap: wrap; gap: 6px; }
+.r18-app .r18-cert { border: 1px solid #bbf7d0; background: #ecfdf5; color: #166534; border-radius: 999px; padding: 4px 8px; font-size: 11px; font-weight: 650; cursor: pointer; }
+.r18-app .r18-cert.expired { border-color: #fecaca; background: #fef2f2; color: #b91c1c; }
+.r18-app .r18-cert-empty { font-size: 12px; color: var(--r18-ink-3); font-style: italic; background: none; border: none; padding: 0; cursor: pointer; }
 .r18-app .r18-accordion-hd { padding: 12px 16px; background: var(--r18-paper-2); border: 1px solid var(--r18-line); border-radius: 4px; display: flex; align-items: center; justify-content: space-between; cursor: pointer; margin-bottom: 4px; }
 .r18-app .r18-accordion-hd:hover { background: var(--r18-paper-3); }
 .r18-app .r18-accordion-bd { border: 1px solid var(--r18-line); border-top: none; border-radius: 0 0 4px 4px; margin-bottom: 8px; margin-top: -4px; }
@@ -7884,7 +7908,7 @@ END $$;
 // GLOBALS
 // ══════════════════════════════════════════════
 let db = null;
-const APP_BUILD = '2026.11.03-approved-mixes';
+const APP_BUILD = '2026.11.03-section-roster';
 const FC_CORE_ICON_SRC = 'docs/r18-reference/core-drill-icon-128.png';
 const BORELOG_ICON_SRC = 'docs/r18-reference/borelog-icon.webp';
 const BORELOG_PATH = 'deldot-borelog-v6-uscs.html';
@@ -33326,6 +33350,8 @@ const state = {
   expandedSubLabs: {},
   trainingStep: 1,
   trainingSelectedUsers: [],
+  rosterSection: 'all',
+  rosterColumns: null,
   reportStatusFilter: 'completed',
   userFilter: 'active',
   reportSubtab: 'external_assessments',
@@ -33338,6 +33364,7 @@ const TABS = [
   { id: 'inventory',         label: 'Inventory',          icon: '⊞' },
   { id: 'procedure-history', label: 'Procedure History',  icon: '≡' },
   { id: 'reports',           label: 'Reports',            icon: '⎙' },
+  { id: 'roster',            label: 'Roster',             icon: '☺' },
   { id: 'training-evals',    label: 'Training & Evals',   icon: '✓' },
 ];
 
@@ -33532,6 +33559,7 @@ function renderView() {
     case 'inventory':         return renderInventory(lab, root);
     case 'procedure-history': return renderProcedureHistory(lab, root);
     case 'reports':           return renderReports(lab, root);
+    case 'roster':            return renderRoster(lab, root);
     case 'training-evals':    return renderTrainingEvals(lab, root);
   }
 }
@@ -33608,7 +33636,7 @@ function renderManageLab(lab, root) {
     { title: 'Equipment Procedures & Lab Processes Admin', desc: 'Create and edit equipment procedures and lab processes.', action: `r18_state.currentTab='inventory';r18_state.inventorySubTab='equipment_procedures';r18_renderTabs();r18_renderView();` },
     { title: 'Test Methods & Standard Designations Admin', desc: 'Manage standard designations, test methods, and test categories for training.', action: `r18_state.currentTab='training-evals';r18_renderTabs();r18_renderView();` },
     { title: 'Measurement Standards', desc: 'View measurement standards calibration.', action: `r18_state.currentTab='inventory';r18_state.inventorySubTab='lab_equipment';r18_renderTabs();r18_renderView();` },
-    { title: 'Lab Positions', desc: 'Personnel management including job descriptions and requirements.', action: `r18_state.currentTab='training-evals';r18_renderTabs();r18_renderView();` },
+    { title: 'Section Roster', desc: 'Current staff by section, with years of service and the methods they are certified for.', action: `r18_state.currentTab='roster';r18_renderTabs();r18_renderView();` },
     { title: 'Outside Evaluators', desc: 'Identify third-party personnel who conduct lab evaluations.', action: `r18_openUserModal()`, add: true },
   ];
 
@@ -34592,6 +34620,258 @@ window.r18_deleteEquipment = async (id) => {
 };
 
 /* ====================================================================
+   SECTION ROSTER
+   People stay on the R18 user. Methods stay on Training & Evals.
+   ==================================================================== */
+const ROSTER_SECTIONS = [
+  { id: 'soil', label: 'Soil', hubs: ['soillab', 'labhub'] },
+  { id: 'concrete', label: 'Concrete', hubs: ['concrete', 'conchub'] },
+  { id: 'hotmix', label: 'Hot Mix', hubs: ['hotmix'] },
+  { id: 'chem', label: 'Chem Lab', hubs: ['chemlab'] },
+  { id: 'field', label: 'Field', hubs: ['fieldhub', 'fieldcontrol'] },
+  { id: 'precast', label: 'Pre-Cast', hubs: ['precast'] },
+];
+const ROSTER_SQL = `-- Section, title, and hire date on the R18 person. Run once.
+ALTER TABLE public.r18_users
+  ADD COLUMN IF NOT EXISTS title TEXT,
+  ADD COLUMN IF NOT EXISTS section TEXT,
+  ADD COLUMN IF NOT EXISTS hire_date DATE;
+
+NOTIFY pgrst, 'reload schema';
+`;
+
+function rosterViewerRole() {
+  return (typeof currentUser === 'object' && currentUser && currentUser.role) || '';
+}
+
+function rosterAllowedSectionIds() {
+  if (rosterViewerRole() !== 'section_admin') return null;
+  const hubs = (currentUser && currentUser.restricted_hubs) || [];
+  if (!hubs.length) return null;
+  return ROSTER_SECTIONS.filter(s => s.hubs.some(h => hubs.includes(h))).map(s => s.id);
+}
+
+function rosterCanEditPerson(user) {
+  const role = rosterViewerRole();
+  if (role === 'admin') return true;
+  if (role !== 'section_admin') return false;
+  const allowed = rosterAllowedSectionIds();
+  if (!allowed) return true;
+  if (!user) return allowed.length > 0;
+  return !!user.section && allowed.includes(user.section);
+}
+
+function rosterSectionChoices() {
+  const allowed = rosterAllowedSectionIds();
+  return ROSTER_SECTIONS.filter(s => !allowed || allowed.includes(s.id));
+}
+
+function rosterYears(value) {
+  const m = String(value || '').match(/^(\d{4})-(\d{2})-(\d{2})/);
+  if (!m) return '';
+  const start = new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]));
+  if (Number.isNaN(start.getTime())) return '';
+  const now = new Date();
+  let years = now.getFullYear() - start.getFullYear();
+  const monthDelta = now.getMonth() - start.getMonth();
+  if (monthDelta < 0 || (monthDelta === 0 && now.getDate() < start.getDate())) years--;
+  if (years >= 1) return years === 1 ? '1 year' : years + ' years';
+  let months = (now.getFullYear() - start.getFullYear()) * 12 + now.getMonth() - start.getMonth();
+  if (now.getDate() < start.getDate()) months--;
+  if (months >= 1) return months === 1 ? '1 month' : months + ' months';
+  if (start.getTime() > now.getTime()) return '';
+  return 'Less than a month';
+}
+
+function rosterHireLabel(value) {
+  const m = String(value || '').match(/^(\d{4})-(\d{2})-(\d{2})/);
+  if (!m) return '';
+  const d = new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]));
+  if (Number.isNaN(d.getTime())) return '';
+  return d.toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
+}
+
+function rosterServiceLine(user) {
+  const years = rosterYears(user.hireDate);
+  const hired = rosterHireLabel(user.hireDate);
+  if (years && hired) return years + ' · hired ' + hired;
+  if (hired) return 'Hired ' + hired;
+  return '';
+}
+
+function rosterCertState(training) {
+  const days = daysFromNow(training && training.expiresDate);
+  return days != null && days < 0 ? 'expired' : 'current';
+}
+
+function rosterHireInput(value) {
+  const m = String(value || '').match(/^(\d{4}-\d{2}-\d{2})/);
+  return m ? m[1] : '';
+}
+
+async function ensureRosterColumns() {
+  if (state.rosterColumns === true) return true;
+  if (typeof db === 'undefined' || !db) return false;
+  try {
+    const { error } = await db.from('r18_users').select('section,title,hire_date').limit(1);
+    if (!error) {
+      state.rosterColumns = true;
+      return true;
+    }
+    const blob = JSON.stringify(error);
+    if (/PGRST204|42703|hire_date|schema cache|does not exist/i.test(blob)) state.rosterColumns = false;
+    return false;
+  } catch (e) {
+    return false;
+  }
+}
+
+window.r18_copyRosterSql = () => {
+  const done = () => toast('Copied. Paste it into the Supabase SQL editor and click Run. Once is enough.');
+  const failed = () => {
+    const pre = document.getElementById('r18RosterSql');
+    if (pre) pre.style.display = 'block';
+    toast('Could not copy automatically. Select the SQL in the note.');
+  };
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(ROSTER_SQL).then(done).catch(() => {
+      if (typeof copyTextFallback === 'function' && copyTextFallback(ROSTER_SQL)) done();
+      else failed();
+    });
+    return;
+  }
+  if (typeof copyTextFallback === 'function' && copyTextFallback(ROSTER_SQL)) done();
+  else failed();
+};
+
+window.r18_setRosterSection = (id) => {
+  state.rosterSection = id || 'all';
+  renderView();
+};
+
+window.r18_recheckRosterColumns = () => {
+  state.rosterColumns = null;
+  renderView();
+};
+
+function renderRoster(lab, root) {
+  if (state.rosterColumns == null) {
+    if (!state.rosterProbe) {
+      state.rosterProbe = ensureRosterColumns().then((ok) => {
+        state.rosterProbe = null;
+        if (!ok && state.rosterColumns == null) state.rosterColumns = false;
+        if (state.currentTab === 'roster') renderView();
+      });
+    }
+    root.innerHTML = '<div class="r18-roster-intro">Loading roster…</div>';
+    return;
+  }
+  const allowed = rosterAllowedSectionIds();
+  const choices = rosterSectionChoices();
+  const filter = state.rosterSection && (state.rosterSection === 'all' || choices.some(s => s.id === state.rosterSection))
+    ? state.rosterSection
+    : 'all';
+  state.rosterSection = filter;
+  const people = state.users
+    .filter(u => u.active !== false)
+    .filter(u => !allowed || allowed.includes(u.section))
+    .slice()
+    .sort((a, b) => String(a.name || '').localeCompare(String(b.name || '')));
+  const sections = choices.filter(s => filter === 'all' || s.id === filter);
+  const showUnassigned = !allowed && filter === 'all';
+  const columnsReady = state.rosterColumns === true;
+  const canAdd = rosterCanEditPerson(null);
+
+  const pills = [{ id: 'all', label: 'All' }].concat(choices).map(s =>
+    `<button type="button" class="${filter === s.id ? 'active' : ''}" onclick="r18_setRosterSection('${s.id}')">${escapeHtml(s.label)}</button>`
+  ).join('');
+
+  const banner = columnsReady ? '' : `
+    <div class="r18-roster-note">
+      Section, title, and hire date need one SQL update. Copy it, paste it into the Supabase SQL editor, and click Run. Once is enough.
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px;">
+        <button type="button" class="btn btn-primary" onclick="r18_copyRosterSql()">Copy roster SQL</button>
+        <button type="button" class="btn btn-ghost" onclick="r18_recheckRosterColumns()">Check again</button>
+      </div>
+      <pre id="r18RosterSql">${escapeHtml(ROSTER_SQL)}</pre>
+    </div>`;
+
+  const certsFor = (user) => {
+    const rows = state.trainings.filter(t => t.userId === user.id).slice().sort((a, b) => {
+      const rank = rosterCertState(a) === 'current' ? 0 : 1;
+      const rankB = rosterCertState(b) === 'current' ? 0 : 1;
+      return rank - rankB || String(a.testMethod || '').localeCompare(String(b.testMethod || ''));
+    });
+    if (!rows.length) {
+      return `<button type="button" class="r18-cert-empty" onclick="r18_openTrainingsModal('${user.id}')">No methods on file</button>`;
+    }
+    const shown = rows.slice(0, 12);
+    const more = rows.length - shown.length;
+    return `<div class="r18-cert-row">${shown.map(t => {
+      const expired = rosterCertState(t) === 'expired';
+      const label = (t.testMethod || 'Method') + (expired ? ' · expired' : '');
+      return `<button type="button" class="r18-cert${expired ? ' expired' : ''}" onclick="r18_openTrainingsModal('${user.id}')">${escapeHtml(label)}</button>`;
+    }).join('')}${more > 0 ? `<button type="button" class="r18-cert" onclick="r18_openTrainingsModal('${user.id}')">+${more} more</button>` : ''}</div>`;
+  };
+
+  const card = (user) => {
+    const service = rosterServiceLine(user);
+    const roleName = roleLabel(user.role);
+    const titleBits = user.title && user.title !== roleName ? (user.title + ' · ' + roleName) : (user.title || roleName);
+    const edit = rosterCanEditPerson(user)
+      ? `<button type="button" class="btn btn-ghost" onclick="r18_openUserModal('${user.id}')">Edit</button>`
+      : '';
+    return `<article class="r18-roster-card" data-person="${escapeHtml(user.id)}">
+      <div class="r18-roster-top">
+        <div class="user-avatar">${initials(user.name)}</div>
+        <div class="r18-roster-id">
+          <button type="button" class="r18-roster-name" onclick="r18_openTrainingsModal('${user.id}')">${escapeHtml(user.name)}</button>
+          ${titleBits ? `<div class="r18-roster-title">${escapeHtml(titleBits)}</div>` : ''}
+        </div>
+        ${edit}
+      </div>
+      <div class="r18-roster-service${service ? '' : ' missing'}">${service ? escapeHtml(service) : 'Hire date not set'}</div>
+      ${certsFor(user)}
+    </article>`;
+  };
+
+  const block = (id, label, members) => `
+    <section class="r18-roster-block" data-section="${escapeHtml(id)}">
+      <h2>${escapeHtml(label)}</h2>
+      <div class="r18-roster-count">${members.length === 1 ? '1 person' : members.length + ' people'}</div>
+      ${members.length
+        ? `<div class="r18-roster-grid">${members.map(card).join('')}</div>`
+        : '<div class="r18-roster-count">No one assigned yet.</div>'}
+    </section>`;
+
+  const blocks = sections.map(s => {
+    const members = people.filter(u => u.section === s.id);
+    if (filter === 'all' && !members.length) return '';
+    return block(s.id, s.label, members);
+  }).join('');
+  const unassigned = showUnassigned ? people.filter(u => !u.section) : [];
+  const unassignedHtml = showUnassigned && unassigned.length
+    ? block('unassigned', 'Unassigned', unassigned)
+    : '';
+  const empty = !people.length
+    ? '<div class="stub-card">No one is on this roster yet. Add a person and set their section. Methods are recorded in Training &amp; Evals.</div>'
+    : '';
+
+  root.innerHTML = `
+    <div style="display:flex;justify-content:space-between;gap:12px;align-items:flex-end;flex-wrap:wrap;">
+      <div>
+        <h1 class="r18-page-title">Roster</h1>
+        <p class="r18-roster-intro">Current staff for ${escapeHtml(lab.name)}. Open a method to see that person’s training file.</p>
+      </div>
+      ${canAdd ? `<button type="button" class="btn btn-primary" onclick="r18_openUserModal('', '${filter !== 'all' ? filter : ''}')">Add person</button>` : ''}
+    </div>
+    ${banner}
+    <div class="r18-section-pills">${pills}</div>
+    ${empty || (blocks + unassignedHtml)}
+  `;
+}
+
+/* ====================================================================
    TRAINING & EVALUATIONS
    ==================================================================== */
 function renderTrainingEvals(lab, root) {
@@ -34661,16 +34941,27 @@ window.r18_toggleTrainingUser = (userId) => {
 const roleClass = (role) => role === 'primary_lab_manager' ? 'badge-primary' : (role === 'lab_manager' ? 'badge-active' : 'badge-secondary');
 const roleLabel = (role) => ({ primary_lab_manager: 'Primary Lab Manager', lab_manager: 'Lab Manager', lab_technician: 'Lab Technician' }[role] || role);
 
-window.r18_openUserModal = (id) => {
+window.r18_openUserModal = (id, presetSection) => {
   const u = id ? state.users.find(x => x.id === id) : null;
   const isEdit = !!u;
+  const choices = rosterSectionChoices();
+  const selectedSection = u?.section || presetSection || '';
+  const allowUnassigned = !rosterAllowedSectionIds();
+  const sectionOptions = (allowUnassigned ? '<option value="">Unassigned</option>' : '') + choices.map(s =>
+    `<option value="${s.id}" ${selectedSection === s.id ? 'selected' : ''}>${escapeHtml(s.label)}</option>`
+  ).join('');
   showModal(`
     <div class="p-5">
       <h2 class="text-xl serif font-semibold mb-1 ink">${isEdit ? 'Edit' : 'New'} User</h2>
-      <div class="text-sm ink-2 mb-4">${isEdit ? '' : 'Assign to current lab.'}</div>
+      <div class="text-sm ink-2 mb-4">${isEdit ? 'Section, title, and hire date show on the roster. Methods stay under Trainings.' : 'Assign to the current lab. Methods are added from Trainings.'}</div>
       <div class="grid gap-3">
         <div><label class="label">Full Name</label><input class="input" id="u-name" value="${escapeHtml(u?.name || '')}" placeholder="e.g. Jennifer Pinkerton" /></div>
         <div><label class="label">Email</label><input class="input" id="u-email" value="${escapeHtml(u?.email || '')}" placeholder="optional" /></div>
+        <div><label class="label">Title</label><input class="input" id="u-title" value="${escapeHtml(u?.title || '')}" placeholder="Senior Lab Technician" /></div>
+        <div><label class="label">Section</label>
+          <select class="select" id="u-section">${sectionOptions}</select>
+        </div>
+        <div><label class="label">Hire date</label><input type="date" class="input" id="u-hire" value="${rosterHireInput(u?.hireDate)}" /></div>
         <div><label class="label">Role</label>
           <select class="select" id="u-role">
             <option value="lab_technician" ${u?.role === 'lab_technician' ? 'selected' : ''}>Lab Technician</option>
@@ -34700,19 +34991,44 @@ window.r18_saveUser = async (id) => {
   const existing = id ? state.users.find(u => u.id === id) : null;
   const name = document.getElementById('u-name').value.trim();
   if (!name) return toast('Name required');
+  const hireRaw = document.getElementById('u-hire') ? document.getElementById('u-hire').value : '';
   const user = {
     id: id || uuid(),
     labId: state.currentLabId,
     name,
     email: document.getElementById('u-email').value.trim(),
+    title: document.getElementById('u-title') ? document.getElementById('u-title').value.trim() : (existing?.title || ''),
+    section: document.getElementById('u-section') ? document.getElementById('u-section').value : (existing?.section || ''),
+    hireDate: hireRaw || null,
     role: document.getElementById('u-role').value,
     active: document.getElementById('u-active').value === 'true',
     createdAt: existing?.createdAt,
   };
-  await repo.put('users', user);
+  const ready = await ensureRosterColumns();
+  const baseUser = Object.assign({}, user);
+  delete baseUser.title;
+  delete baseUser.section;
+  delete baseUser.hireDate;
+  try {
+    if (ready) await repo.put('users', user);
+    else await repo.put('users', baseUser);
+  } catch (err) {
+    const blob = JSON.stringify(err || {});
+    if (!/PGRST204|42703|hire_date|schema cache|does not exist/i.test(blob)) {
+      toast('Could not save this person.');
+      return;
+    }
+    state.rosterColumns = false;
+    try { await repo.put('users', baseUser); }
+    catch (e2) { toast('Could not save this person.'); return; }
+  }
   closeModal();
   await refreshAll();
   renderView();
+  if (!ready || state.rosterColumns === false) {
+    toast('Saved the name. Run the roster SQL once, then edit this person to keep the section and hire date.');
+    return;
+  }
   toast(id ? 'User updated' : 'User added');
 };
 
