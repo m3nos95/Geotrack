@@ -1527,6 +1527,41 @@ nav:not(#r18-nav), .nav-top-row { display: none !important; }
 @media (max-width: 820px) {
   .mix-mat-grid { grid-template-columns: 1fr 72px; }
 }
+#mixApprovalView {
+  display: none;
+  position: absolute;
+  inset: 0;
+  z-index: 40;
+  overflow: auto;
+  background: var(--bg);
+  padding: 12px 12px 28px;
+}
+#mixApprovalSheet .dd-rpt { max-width: 820px; }
+.mix-approval-stamp {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  border: 3px solid #166534;
+  color: #166534;
+  padding: 10px 12px;
+  margin-bottom: 10px;
+}
+.mix-approval-mark {
+  font-weight: 800;
+  letter-spacing: 2px;
+  font-size: 16pt;
+  border: 2px solid #166534;
+  padding: 6px 10px;
+}
+@media (max-width: 640px) {
+  #mixApprovalSheet .dd-rpt-banner { grid-template-columns: 1fr; justify-items: center; text-align: center; }
+  #mixApprovalSheet .dd-rpt-banner .br,
+  #mixApprovalSheet .dd-rpt-banner .bl { text-align: center; }
+  #mixApprovalSheet .dd-rpt-info-grid,
+  #mixApprovalSheet .dd-rpt-info-grid.cols-3,
+  #mixApprovalSheet .dd-rpt-sigs { grid-template-columns: 1fr !important; }
+  .mix-approval-stamp { flex-direction: column; align-items: flex-start; }
+}
 .lab-mode-tab:hover:not(.active) { background:var(--border); color:var(--text); }
 .fc-core-icon { display:inline-flex; align-items:center; justify-content:center; vertical-align:-0.12em; line-height:0; flex-shrink:0; }
 .fc-core-icon img { display:block; object-fit:contain; border-radius:5px; }
@@ -6316,6 +6351,7 @@ END $$;
       <div class="lab-mode-tabs" data-tour="concrete-tabs" data-guide="concrete-tabs" style="margin-bottom:0;flex:1;min-width:240px;">
         <button class="lab-mode-tab active" id="ctab-intake"   onclick="switchConcreteTab('intake')">⊕ INTAKE</button>
         <button class="lab-mode-tab"        id="ctab-mixes"    onclick="switchConcreteTab('mixes')">MIXES</button>
+        <button class="lab-mode-tab"        id="ctab-approved" onclick="switchConcreteTab('approved')" style="display:none;">APPROVED MIXES</button>
         <button class="lab-mode-tab"        id="ctab-log"      onclick="switchConcreteTab('log')">📋 CYLINDER LOG</button>
         <button class="lab-mode-tab"        id="ctab-schedule" onclick="switchConcreteTab('schedule')">📅 BREAK SCHEDULE</button>
         <button class="lab-mode-tab"        id="ctab-break"    onclick="switchConcreteTab('break')">🔨 BREAK ENTRY</button>
@@ -6570,6 +6606,12 @@ END $$;
         </div>
       </div>
       <div id="mixDesignList"></div>
+    </div>
+
+    <!-- ── APPROVED MIXES (supplier) ── -->
+    <div id="csub-approved" style="display:none;">
+      <p style="font-family:var(--mono);font-size:11px;color:var(--muted);line-height:1.5;margin:0 0 12px;">Designs DelDOT has approved. Open one to view the official approval, or print and save it as a PDF.</p>
+      <div id="approvedMixList"></div>
     </div>
 
     <!-- ── CYLINDER LOG ── -->
@@ -6829,6 +6871,13 @@ END $$;
     </div>
 
   </div><!-- end page-wide -->
+  <div id="mixApprovalView">
+    <div class="btn-row" style="margin-bottom:12px;">
+      <button class="btn btn-ghost" type="button" onclick="closeMixApproval()">Back</button>
+      <button class="btn btn-primary" type="button" onclick="printMixApproval()">Print / Save PDF</button>
+    </div>
+    <div id="mixApprovalSheet"></div>
+  </div>
 </div><!-- end concrete-view -->
   <!-- ── SOIL / LAB MODULE ── -->
   <div class="view" id="soillab-view">
@@ -7835,7 +7884,7 @@ END $$;
 // GLOBALS
 // ══════════════════════════════════════════════
 let db = null;
-const APP_BUILD = '2026.11.02-boot-modules';
+const APP_BUILD = '2026.11.03-approved-mixes';
 const FC_CORE_ICON_SRC = 'docs/r18-reference/core-drill-icon-128.png';
 const BORELOG_ICON_SRC = 'docs/r18-reference/borelog-icon.webp';
 const BORELOG_PATH = 'deldot-borelog-v6-uscs.html';
@@ -15808,7 +15857,9 @@ function switchView(name, opts) {
   }
   if (name === 'concrete') {
     refreshConcreteSetsIfConnected();
-    switchConcreteTab(currentUser?.role === 'supplier' ? 'mixes' : (activeConcSubTab || 'intake'));
+    switchConcreteTab(currentUser?.role === 'supplier'
+      ? (activeConcSubTab === 'approved' ? 'approved' : 'mixes')
+      : (activeConcSubTab || 'intake'));
     if (currentProjectFilter) {
       const el = document.getElementById('ci_contract');
       if (el && !el.value) { el.value = currentProjectFilter; autoFillFromProject(currentProjectFilter); }
@@ -31189,10 +31240,18 @@ function applyMixDesignChrome() {
     const btn = document.getElementById('ctab-' + tab);
     if (btn) btn.style.display = supplier ? 'none' : '';
   });
+  const approvedTab = document.getElementById('ctab-approved');
+  if (approvedTab) approvedTab.style.display = supplier ? '' : 'none';
   const guide = document.getElementById('btnConcreteGuidedTabs');
   if (guide) guide.style.display = supplier ? 'none' : '';
   const approveNow = document.getElementById('md_approve_now');
   if (approveNow) approveNow.style.display = mixDesignCanReview() ? '' : 'none';
+  const note = document.getElementById('mixDesignFormNote');
+  if (note) {
+    note.textContent = supplier
+      ? 'Submit a design here. After DelDOT approves it, the official sheet is on Approved Mixes.'
+      : 'An approved design fills a new pour. The pour keeps its own copy, so editing the pour does not change the design.';
+  }
   const app = document.getElementById('app');
   if (app) app.classList.toggle('supplier-mode', supplier);
 }
@@ -31570,6 +31629,7 @@ function renderMixDesignLibrary() {
   const rank = { pending: 0, rejected: 1, approved: 2 };
   const designs = mixDesigns()
     .filter(mixDesignVisible)
+    .filter(d => !(currentUser?.role === 'supplier' && d.status === 'approved'))
     .sort((a, b) => (rank[a.status] - rank[b.status]) || String(b.updatedAt).localeCompare(String(a.updatedAt)));
   if (!designs.length) {
     list.innerHTML = '<div class="card" style="text-align:center;padding:28px;color:var(--muted);font-family:var(--mono);font-size:12px;">No mix designs yet.</div>';
@@ -31584,6 +31644,9 @@ function renderMixDesignLibrary() {
     if (mixDesignCanEdit(d)) {
       actions.push('<button class="btn btn-ghost" type="button" onclick="editMixDesign(\'' + safeId + '\')">Edit</button>');
       actions.push('<button class="btn btn-ghost" type="button" onclick="deleteMixDesign(\'' + safeId + '\')">Remove</button>');
+    }
+    if (d.status === 'approved') {
+      actions.push('<button class="btn btn-primary" type="button" onclick="openMixApproval(\'' + safeId + '\')">View approval</button>');
     }
     if (mixDesignCanReview() && d.status !== 'approved') {
       actions.push('<button class="btn btn-success" type="button" onclick="reviewMixDesign(\'' + safeId + '\',\'approved\')">Approve</button>');
@@ -31606,15 +31669,166 @@ function renderMixDesignLibrary() {
   }).join('');
 }
 
+function supplierApprovedMixes() {
+  return mixDesigns()
+    .filter(d => d.status === 'approved' && mixDesignVisible(d))
+    .sort((a, b) => String(b.reviewedAt || b.updatedAt).localeCompare(String(a.reviewedAt || a.updatedAt)));
+}
+
+function renderApprovedMixes() {
+  applyMixDesignChrome();
+  const list = document.getElementById('approvedMixList');
+  if (!list) return;
+  const designs = supplierApprovedMixes();
+  if (!designs.length) {
+    list.innerHTML = '<div class="card" style="text-align:center;padding:28px;color:var(--muted);font-family:var(--mono);font-size:12px;">No approved mix designs yet. Submit one on Mixes. It shows up here after DelDOT approves it.</div>';
+    return;
+  }
+  list.innerHTML = designs.map(d => {
+    const safeId = mixEsc(d.id);
+    const meta = [d.supplier, d.concreteClass ? ('Class ' + d.concreteClass) : '', d.requiredFc ? (Number(d.requiredFc).toLocaleString() + ' psi') : '', d.plant, d.reviewedAt ? ('Approved ' + mixReportDate(d.reviewedAt)) : ''].filter(Boolean).join(' · ');
+    return '<button type="button" class="card" onclick="openMixApproval(\'' + safeId + '\')" style="display:block;width:100%;text-align:left;margin-bottom:10px;cursor:pointer;color:inherit;font:inherit;">' +
+      '<div style="display:flex;justify-content:space-between;gap:10px;align-items:flex-start;">' +
+        '<div><div style="font-weight:700;">' + mixEsc(d.name) + '</div>' +
+        '<div style="font-family:var(--mono);font-size:11px;color:var(--muted);margin-top:3px;">' + mixEsc(meta) + '</div></div>' +
+        '<span class="badge badge-complete">APPROVED</span></div>' +
+      '<div style="margin-top:8px;font-size:12px;color:var(--accent2);">View approval</div>' +
+      '</button>';
+  }).join('');
+}
+
+function mixReportDate(value) {
+  if (!value) return '';
+  const d = new Date(value);
+  if (Number.isNaN(d.getTime())) return String(value);
+  return d.toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
+}
+
+function mixApprovalLines(design) {
+  const materials = design.materials || {};
+  const rows = [
+    ['Cement 1', 'cement1', 'cement1Pct', '%'],
+    ['Cement 2', 'cement2', 'cement2Pct', '%'],
+    ['Cement 3', 'cement3', 'cement3Pct', '%'],
+    ['Admix 1', 'admix1', 'admix1Oz', 'oz/sk'],
+    ['Admix 2', 'admix2', 'admix2Oz', 'oz/sk'],
+    ['Admix 3', 'admix3', 'admix3Oz', 'oz/sk'],
+    ['Admix 4', 'admix4', 'admix4Oz', 'oz/sk'],
+    ['AEA', 'aea', 'aeaOz', 'oz/sk'],
+    ['Water source', 'water'],
+    ['Fine aggregate', 'fineAgg'],
+    ['Coarse aggregate', 'coarseAgg'],
+    ['Fibers (lbs/cy)', 'fibers']
+  ];
+  return rows.map(([label, key, amountKey, unit]) => {
+    const brand = materials[key];
+    const amount = amountKey ? materials[amountKey] : null;
+    const hasBrand = brand != null && String(brand).trim() !== '';
+    const hasAmount = amount != null && amount !== '' && Number.isFinite(Number(amount));
+    if (!hasBrand && !hasAmount) return '';
+    let value = hasBrand ? String(brand) : '';
+    if (hasAmount) value = (value ? value + ' · ' : '') + amount + (unit ? ' ' + unit : '');
+    return '<tr><td class="dd-rpt-lbl">' + mixEsc(label) + '</td><td>' + mixEsc(value) + '</td></tr>';
+  }).filter(Boolean);
+}
+
+function mixApprovalHtml(design) {
+  const klass = design.concreteClass ? ('Class ' + design.concreteClass) : '';
+  const psi = design.requiredFc ? (Number(design.requiredFc).toLocaleString() + ' psi') : '';
+  const approvedBy = design.reviewedBy || 'DelDOT Materials & Research';
+  const approvedOn = mixReportDate(design.reviewedAt || design.updatedAt) || '—';
+  const lines = mixApprovalLines(design);
+  const materialTable = '<table class="dd-rpt-table"><thead><tr><th style="text-align:left;">MATERIAL</th><th>VALUE</th></tr></thead><tbody>' +
+    (lines.length ? lines.join('') : '<tr><td class="dd-rpt-lbl" colspan="2">No materials recorded</td></tr>') +
+    '</tbody></table>';
+  const inner = ddRptBanner('MIX DESIGN APPROVAL', 'APPROVED<br>' + mixEsc(design.id), {
+    subtitle: 'MATERIALS AND RESEARCH LABORATORY<br>DELAWARE DEPARTMENT OF TRANSPORTATION'
+  }) +
+    ddRptSubbar([mixEsc(design.supplier || ''), mixEsc(klass), mixEsc(design.plant || '')].filter(Boolean)) +
+    ddRptKvGrid([
+      ['Mix name:', mixEsc(design.name)],
+      ['Supplier:', mixEsc(design.supplier || '—')],
+      ['Class:', mixEsc(klass || '—')],
+      ["Required f'c:", mixEsc(psi || '—')],
+      ['Cement (SKS/CY):', mixEsc(design.cementSks || '—')],
+      ['Plant:', mixEsc(design.plant || '—')],
+      ['GGBFS corr. factor:', mixEsc(design.corrFactor || '—')],
+      ['Submitted by:', mixEsc(design.submittedBy || design.supplier || '—')]
+    ]) +
+    '<div class="dd-rpt-section"><div class="dd-rpt-section-head">MATERIALS</div>' + materialTable + '</div>' +
+    '<div class="dd-rpt-section"><div class="dd-rpt-section-head">OFFICIAL APPROVAL</div>' +
+      '<div class="mix-approval-stamp"><div class="mix-approval-mark">APPROVED</div>' +
+      '<div><strong>Delaware Department of Transportation</strong><br>Materials &amp; Research Laboratory<br>Approved for use on DelDOT projects</div></div>' +
+      (design.reviewNote ? '<div style="font-size:9pt;margin-top:4px;"><strong>Note:</strong> ' + mixEsc(design.reviewNote) + '</div>' : '') +
+    '</div>' +
+    ddRptSignatures(
+      ['Submitted by', 'Approved by', 'Approval date'],
+      [mixEsc(design.submittedBy || design.supplier || ''), mixEsc(approvedBy), mixEsc(approvedOn)]
+    ) +
+    ddRptFooter('Mix design ' + mixEsc(design.id) + ' · ' + mixEsc(design.name));
+  return ddRptWrap('mix-approval', inner);
+}
+
+function openMixApproval(id) {
+  const design = mixDesigns().find(d => d.id === id);
+  if (!design || design.status !== 'approved') return;
+  if (!mixDesignCanReview() && !mixDesignVisible(design)) return;
+  const view = document.getElementById('mixApprovalView');
+  const sheet = document.getElementById('mixApprovalSheet');
+  if (!view || !sheet) return;
+  sheet.innerHTML = mixApprovalHtml(design);
+  view.style.display = 'block';
+  view.scrollTop = 0;
+  const concrete = document.getElementById('concrete-view');
+  if (concrete) concrete.scrollTop = 0;
+}
+
+function closeMixApproval() {
+  const view = document.getElementById('mixApprovalView');
+  if (view) view.style.display = 'none';
+}
+
+function mixApprovalPrintCss() {
+  return ddRptPrintCss() + `
+    .dd-rpt-info{padding:8px 14px;border-bottom:1px solid #999;font-size:9pt;}
+    .dd-rpt-info-grid{display:grid;grid-template-columns:1fr 1fr;gap:4px 16px;}
+    .dd-rpt-kv .k{color:#444;}
+    .dd-rpt-kv .v{font-weight:700;}
+    .dd-rpt-section-head{background:#d0d8e4;border:1px solid #999;padding:5px 10px;font-size:8pt;font-weight:700;letter-spacing:0.5px;margin-bottom:8px;-webkit-print-color-adjust:exact;print-color-adjust:exact;}
+    .dd-rpt-sigs{border-top:1px solid #999;display:grid;grid-template-columns:repeat(3,1fr);padding:8px 14px;gap:8px;}
+    .sig-block{text-align:center;}
+    .sig-line{border-bottom:1px solid #555;min-height:28px;margin-bottom:3px;display:flex;align-items:flex-end;justify-content:center;font-size:9pt;}
+    .sig-lbl{font-size:7pt;text-transform:uppercase;}
+    .mix-approval-stamp{display:flex;align-items:center;gap:14px;border:3px solid #166534;color:#166534;padding:10px 12px;margin-bottom:10px;}
+    .mix-approval-mark{font-weight:800;letter-spacing:2px;font-size:16pt;border:2px solid #166534;padding:6px 10px;}
+    @media print{.dd-rpt-banner,.dd-rpt-section-head,.dd-rpt-subbar,.dd-rpt-footer,.mix-approval-stamp{-webkit-print-color-adjust:exact;print-color-adjust:exact;}}
+  `;
+}
+
+function printMixApproval() {
+  const sheet = document.getElementById('mixApprovalSheet');
+  if (!sheet || !sheet.innerHTML.trim()) return;
+  const pw = window.open('', '_blank', 'width=900,height=800');
+  if (!pw) {
+    showToast('Pop-up blocked. Allow pop-ups to print or save a PDF.', 'error');
+    return;
+  }
+  pw.document.write('<!DOCTYPE html><html><head><title>Mix Design Approval — DelDOT</title><style>' + mixApprovalPrintCss() + '</style></head><body>' + sheet.innerHTML + '</body></html>');
+  pw.document.close();
+  pw.focus();
+  setTimeout(function() { try { pw.print(); } catch (e) {} }, 400);
+}
+
 // ══════════════════════════════════════════════════════════════
 // TAB SWITCHING
 // ══════════════════════════════════════════════════════════════
 function switchConcreteTab(tab, opts) {
   opts = opts || {};
-  if (currentUser?.role === 'supplier') tab = 'mixes';
+  if (currentUser?.role === 'supplier' && tab !== 'approved') tab = 'mixes';
   if (!opts.skipHistory && tab !== activeConcSubTab) navPushCurrent();
   activeConcSubTab = tab;
-  ['intake','log','schedule','break','report','mixes'].forEach(t => {
+  closeMixApproval();
+  ['intake','log','schedule','break','report','mixes','approved'].forEach(t => {
     const btn = document.getElementById('ctab-' + t);
     const sub = document.getElementById('csub-' + t);
     if (btn) btn.classList.toggle('active', t === tab);
@@ -31628,6 +31842,11 @@ function switchConcreteTab(tab, opts) {
   if (tab === 'break')    populateBreakSetSelect();
   if (tab === 'report')   populateReportSetSelect();
   if (tab === 'mixes')    renderMixDesignLibrary();
+  if (tab === 'approved') renderApprovedMixes();
+  if (currentUser?.role === 'supplier') {
+    const titleEl = document.getElementById('phoneModuleTitle');
+    if (titleEl) titleEl.textContent = tab === 'approved' ? 'Approved mixes' : 'Mix designs';
+  }
   if (tab !== 'report' && _approvalTarget && _approvalTarget._approvalKind === 'concrete') _approvalTarget = null;
   if (typeof concreteGuideOnViewChange === 'function') concreteGuideOnViewChange();
   if (typeof isConcreteGuidedMode === 'function' && isConcreteGuidedMode() && typeof concreteGuideAdvanceTo === 'function') {
