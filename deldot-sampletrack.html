@@ -6629,7 +6629,22 @@ END $$;
 
     <!-- ── MIX DESIGNS ── -->
     <div id="csub-mixes" style="display:none;">
-      <div class="card" style="margin-bottom:12px;">
+      <div class="card" style="margin-bottom:10px;">
+        <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
+          <input type="search" id="md-search" placeholder="Search supplier, product, class, plant, or mix name…" oninput="renderMixDesignLibrary()"
+            style="flex:1;background:var(--panel);border:1px solid var(--border);color:var(--text);padding:8px 12px;border-radius:var(--radius);font-size:13px;outline:none;min-width:0;">
+          <select id="md-status" onchange="renderMixDesignLibrary()"
+            style="background:var(--panel);border:1px solid var(--border);color:var(--text);padding:8px 12px;border-radius:var(--radius);font-size:13px;outline:none;">
+            <option value="all">All designs</option>
+            <option value="pending">Pending</option>
+            <option value="approved">Approved</option>
+            <option value="rejected">Sent back</option>
+          </select>
+          <div id="md-search-count" style="font-family:var(--mono);font-size:11px;color:var(--muted);"></div>
+        </div>
+      </div>
+      <div id="mixDesignList"></div>
+      <div class="card" id="mixDesignFormCard" style="margin:12px 0;">
         <div class="card-title" id="mixDesignFormTitle">New mix design</div>
         <p id="mixDesignFormNote" style="font-family:var(--mono);font-size:11px;color:var(--muted);line-height:1.5;margin:0 0 12px;">An approved design fills a new pour. The pour keeps its own copy, so editing the pour does not change the design.</p>
         <div id="mixDesignDbNote" class="si-action-msg bad" style="display:none;margin-bottom:12px;">Mix designs are only on this browser until the shared table exists. In Settings, choose Copy mix design SQL, paste it into the Supabase SQL editor, and click Run.</div>
@@ -6682,12 +6697,15 @@ END $$;
           <button class="btn btn-ghost" type="button" onclick="clearMixDesignForm()">Clear</button>
         </div>
       </div>
-      <div id="mixDesignList"></div>
     </div>
 
     <!-- ── APPROVED MIXES (supplier) ── -->
     <div id="csub-approved" style="display:none;">
       <p style="font-family:var(--mono);font-size:11px;color:var(--muted);line-height:1.5;margin:0 0 12px;">Designs DelDOT has approved. Open one to view the official approval, or print and save it as a PDF.</p>
+      <div class="card" style="margin-bottom:10px;">
+        <input type="search" id="approved-mix-search" placeholder="Search supplier, product, class, plant, or mix name…" oninput="renderApprovedMixes()"
+          style="width:100%;box-sizing:border-box;background:var(--panel);border:1px solid var(--border);color:var(--text);padding:8px 12px;border-radius:var(--radius);font-size:13px;outline:none;">
+      </div>
       <div id="approvedMixList"></div>
     </div>
 
@@ -7961,7 +7979,7 @@ END $$;
 // GLOBALS
 // ══════════════════════════════════════════════
 let db = null;
-const APP_BUILD = '2026.11.05-r18-dashboard';
+const APP_BUILD = '2026.11.05-mix-search';
 const FC_CORE_ICON_SRC = 'docs/r18-reference/core-drill-icon-128.png';
 const BORELOG_ICON_SRC = 'docs/r18-reference/borelog-icon.webp';
 const BORELOG_PATH = 'deldot-borelog-v6-uscs.html';
@@ -32137,7 +32155,7 @@ function editMixDesign(id) {
       banner.textContent = '';
     }
   }
-  document.getElementById('mixDesignFormTitle')?.scrollIntoView({ block: 'nearest' });
+  document.getElementById('mixDesignFormCard')?.scrollIntoView({ block: 'start' });
 }
 
 function mixDesignToRow(design) {
@@ -32409,6 +32427,33 @@ async function deleteMixDesign(id) {
   showToast(shared ? 'Mix design removed' : 'Removed on this browser', shared ? 'success' : 'info');
 }
 
+function mixDesignSearchText(design) {
+  const materials = design.materials || {};
+  const bits = [
+    design.id, design.name, design.supplier, design.concreteClass, design.requiredFc,
+    design.cementSks, design.plant, design.corrFactor, design.status,
+    design.status === 'rejected' ? 'sent back' : '',
+    design.submittedBy, design.reviewedBy, design.reviewNote
+  ];
+  Object.keys(materials).forEach(key => bits.push(materials[key]));
+  return bits.filter(value => value != null && String(value).trim() !== '').join(' ').toLowerCase();
+}
+
+function mixDesignQueryMatch(design, query) {
+  const parts = String(query || '').trim().toLowerCase().split(/\s+/).filter(Boolean);
+  if (!parts.length) return true;
+  const hay = mixDesignSearchText(design);
+  return parts.every(part => hay.includes(part));
+}
+
+function mixProductLine(design) {
+  const materials = design.materials || {};
+  return ['cement1', 'cement2', 'cement3', 'admix1', 'admix2', 'admix3', 'admix4', 'aea', 'fineAgg', 'coarseAgg', 'water', 'fibers']
+    .map(key => materials[key])
+    .filter(value => value != null && String(value).trim() !== '')
+    .join(' · ');
+}
+
 function renderMixDesignLibrary() {
   applyMixDesignChrome();
   showMixDesignDbNote();
@@ -32416,12 +32461,21 @@ function renderMixDesignLibrary() {
   const list = document.getElementById('mixDesignList');
   if (!list) return;
   const rank = { pending: 0, rejected: 1, approved: 2 };
-  const designs = mixDesigns()
+  const query = document.getElementById('md-search')?.value || '';
+  const status = document.getElementById('md-status')?.value || 'all';
+  const library = mixDesigns()
     .filter(mixDesignVisible)
     .filter(d => !(currentUser?.role === 'supplier' && d.status === 'approved'))
     .sort((a, b) => (rank[a.status] - rank[b.status]) || String(b.updatedAt).localeCompare(String(a.updatedAt)));
-  if (!designs.length) {
+  const designs = library.filter(d => (status === 'all' || d.status === status) && mixDesignQueryMatch(d, query));
+  const count = document.getElementById('md-search-count');
+  if (count) count.textContent = library.length ? (designs.length + ' of ' + library.length) : '';
+  if (!library.length) {
     list.innerHTML = '<div class="card" style="text-align:center;padding:28px;color:var(--muted);font-family:var(--mono);font-size:12px;">No mix designs yet.</div>';
+    return;
+  }
+  if (!designs.length) {
+    list.innerHTML = '<div class="card" style="text-align:center;padding:28px;color:var(--muted);font-family:var(--mono);font-size:12px;">No mix designs match that search.</div>';
     return;
   }
   const badge = { pending: 'badge-pending', approved: 'badge-complete', rejected: 'badge-rejected' };
@@ -32429,6 +32483,7 @@ function renderMixDesignLibrary() {
   list.innerHTML = designs.map(d => {
     const safeId = mixEsc(d.id);
     const meta = [d.supplier, d.concreteClass ? ('Class ' + d.concreteClass) : '', d.requiredFc ? (Number(d.requiredFc).toLocaleString() + ' psi') : '', d.plant].filter(Boolean).join(' · ');
+    const products = mixProductLine(d);
     const actions = [];
     if (mixDesignCanEdit(d)) {
       actions.push('<button class="btn btn-ghost" type="button" onclick="editMixDesign(\'' + safeId + '\')">Edit</button>');
@@ -32449,7 +32504,9 @@ function renderMixDesignLibrary() {
     return '<div class="card" style="margin-bottom:10px;">' +
       '<div style="display:flex;justify-content:space-between;gap:10px;align-items:flex-start;">' +
         '<div><div style="font-weight:700;">' + mixEsc(d.name) + '</div>' +
-        '<div style="font-family:var(--mono);font-size:11px;color:var(--muted);margin-top:3px;">' + mixEsc(meta) + '</div></div>' +
+        '<div style="font-family:var(--mono);font-size:11px;color:var(--muted);margin-top:3px;">' + mixEsc(meta) + '</div>' +
+        (products ? '<div style="font-size:12px;color:var(--text);margin-top:4px;">' + mixEsc(products) + '</div>' : '') +
+        '</div>' +
         '<span class="badge ' + (badge[d.status] || 'badge-pending') + '">' + (label[d.status] || 'PENDING') + '</span></div>' +
       (d.submittedBy ? '<div style="font-size:11px;color:var(--muted);margin-top:6px;">Submitted by ' + mixEsc(d.submittedBy) + '</div>' : '') +
       noteBox +
@@ -32468,18 +32525,27 @@ function renderApprovedMixes() {
   applyMixDesignChrome();
   const list = document.getElementById('approvedMixList');
   if (!list) return;
-  const designs = supplierApprovedMixes();
-  if (!designs.length) {
+  const library = supplierApprovedMixes();
+  const query = document.getElementById('approved-mix-search')?.value || '';
+  const designs = library.filter(d => mixDesignQueryMatch(d, query));
+  if (!library.length) {
     list.innerHTML = '<div class="card" style="text-align:center;padding:28px;color:var(--muted);font-family:var(--mono);font-size:12px;">No approved mix designs yet. Submit one on Mixes. It shows up here after DelDOT approves it.</div>';
+    return;
+  }
+  if (!designs.length) {
+    list.innerHTML = '<div class="card" style="text-align:center;padding:28px;color:var(--muted);font-family:var(--mono);font-size:12px;">No approved mixes match that search.</div>';
     return;
   }
   list.innerHTML = designs.map(d => {
     const safeId = mixEsc(d.id);
     const meta = [d.supplier, d.concreteClass ? ('Class ' + d.concreteClass) : '', d.requiredFc ? (Number(d.requiredFc).toLocaleString() + ' psi') : '', d.plant, d.reviewedAt ? ('Approved ' + mixReportDate(d.reviewedAt)) : ''].filter(Boolean).join(' · ');
+    const products = mixProductLine(d);
     return '<button type="button" class="card" onclick="openMixApproval(\'' + safeId + '\')" style="display:block;width:100%;text-align:left;margin-bottom:10px;cursor:pointer;color:inherit;font:inherit;">' +
       '<div style="display:flex;justify-content:space-between;gap:10px;align-items:flex-start;">' +
         '<div><div style="font-weight:700;">' + mixEsc(d.name) + '</div>' +
-        '<div style="font-family:var(--mono);font-size:11px;color:var(--muted);margin-top:3px;">' + mixEsc(meta) + '</div></div>' +
+        '<div style="font-family:var(--mono);font-size:11px;color:var(--muted);margin-top:3px;">' + mixEsc(meta) + '</div>' +
+        (products ? '<div style="font-size:12px;margin-top:4px;">' + mixEsc(products) + '</div>' : '') +
+        '</div>' +
         '<span class="badge badge-complete">APPROVED</span></div>' +
       '<div style="margin-top:8px;font-size:12px;color:var(--accent2);">View approval</div>' +
       '</button>';
