@@ -7961,7 +7961,7 @@ END $$;
 // GLOBALS
 // ══════════════════════════════════════════════
 let db = null;
-const APP_BUILD = '2026.11.04-historical-family';
+const APP_BUILD = '2026.11.05-r18-dashboard';
 const FC_CORE_ICON_SRC = 'docs/r18-reference/core-drill-icon-128.png';
 const BORELOG_ICON_SRC = 'docs/r18-reference/borelog-icon.webp';
 const BORELOG_PATH = 'deldot-borelog-v6-uscs.html';
@@ -34350,7 +34350,7 @@ function renderDashboard(lab, root) {
 
   root.innerHTML = `
     <h1 class="r18-page-title mb-6">Dashboard</h1>
-    <div class="grid md:grid-cols-2 xl:grid-cols-3 gap-4">
+    <div class="grid md:grid-cols-2 gap-4">
       <div class="r18-widget">
         <div class="r18-widget-hd danger"><span>Past Due</span><span>${pastDue.length}</span></div>
         <div class="r18-widget-bd">
@@ -34387,14 +34387,6 @@ function renderDashboard(lab, root) {
           }).join('')}
         </div>
       </div>
-      <div class="r18-widget">
-        <div class="r18-widget-hd neutral"><span>Invoices</span><span>0</span></div>
-        <div class="r18-widget-bd"><div class="r18-widget-empty">No items matched all selected filter criteria.</div></div>
-      </div>
-      <div class="r18-widget">
-        <div class="r18-widget-hd neutral"><span>Lab Processes</span><span>0</span></div>
-        <div class="r18-widget-bd"><div class="r18-widget-empty">No items matched all selected filter criteria.</div></div>
-      </div>
     </div>
   `;
 }
@@ -34407,7 +34399,7 @@ function renderManageLab(lab, root) {
   const activeCount = state.users.filter(u => u.active).length;
   const adminCards = [
     { title: 'Organizational Chart', desc: 'Edit and organize users, roles, and resumes.', action: `r18_state.currentTab='training-evals';r18_renderTabs();r18_renderView();` },
-    { title: 'Equipment Procedures & Lab Processes Admin', desc: 'Create and edit equipment procedures and lab processes.', action: `r18_state.currentTab='inventory';r18_state.inventorySubTab='equipment_procedures';r18_renderTabs();r18_renderView();` },
+    { title: 'Equipment Procedures Admin', desc: 'Create and edit equipment procedures.', action: `r18_state.currentTab='inventory';r18_state.inventorySubTab='equipment_procedures';r18_renderTabs();r18_renderView();` },
     { title: 'Test Methods & Standard Designations Admin', desc: 'Manage standard designations, test methods, and test categories for training.', action: `r18_state.currentTab='training-evals';r18_renderTabs();r18_renderView();` },
     { title: 'Measurement Standards', desc: 'View measurement standards calibration.', action: `r18_state.currentTab='inventory';r18_state.inventorySubTab='lab_equipment';r18_renderTabs();r18_renderView();` },
     { title: 'Section Roster', desc: 'Current staff by section, with years of service and the methods they are certified for.', action: `r18_state.currentTab='roster';r18_renderTabs();r18_renderView();` },
@@ -34879,6 +34871,7 @@ window.r18_exportQualityManualPDF = () => {
    INVENTORY — measurement standards + lab equipment (R18LabQMS style)
    ==================================================================== */
 function renderInventory(lab, root) {
+  if (state.inventorySubTab !== 'equipment_procedures') state.inventorySubTab = 'lab_equipment';
   const sub = state.inventorySubTab;
   const q = state.inventorySearch.toLowerCase();
   const inService = state.equipment.filter(e => e.status === 'in_service');
@@ -34904,14 +34897,6 @@ function renderInventory(lab, root) {
           </div>`;
         }).join('')}
       </div>`;
-    return;
-  }
-
-  if (sub === 'lab_processes') {
-    root.innerHTML = `
-      <h1 class="r18-page-title mb-4">Inventory</h1>
-      ${renderInventorySubTabs(sub)}
-      <div class="stub-card mt-4">Lab Processes admin — coming soon. Use Equipment Procedures for calibrations and checks.</div>`;
     return;
   }
 
@@ -34970,7 +34955,6 @@ function renderInventorySubTabs(active) {
   const tabs = [
     { id: 'lab_equipment', label: 'Lab Equipment' },
     { id: 'equipment_procedures', label: 'Equipment Procedures' },
-    { id: 'lab_processes', label: 'Lab Processes' },
   ];
   return `<div class="border-b border-line flex gap-1">${tabs.map(t => `
     <button class="px-4 py-2 text-sm font-medium border-b-2 ${active === t.id ? 'tab-active' : 'border-transparent ink-2'}"
