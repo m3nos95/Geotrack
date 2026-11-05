@@ -1223,7 +1223,9 @@
     var app = document.getElementById("app");
     if (who.locked) {
       app.innerHTML =
-        '<div class="setup-wrap"><h2>ConTrak is not assigned to you</h2>' +
+        '<div class="setup-wrap">' +
+        labtrakHomeLink() +
+        '<h2 style="margin-top:14px">ConTrak is not assigned to you</h2>' +
         '<p class="muted">A ConTrak admin turns it on under LabTrak settings, ConTrak access. ' +
         "Field control does not get ConTrak unless someone assigns it.</p></div>";
       return;
@@ -1274,6 +1276,10 @@
     afterRender();
   }
 
+  function labtrakHomeLink() {
+    return '<a class="labtrak-back" href="../deldot-sampletrack.html">← LabTrak</a>';
+  }
+
   function renderHeader(c) {
     var canDelete = isFinance() && (state.contracts || []).length > 1;
     var btns = state.contracts
@@ -1308,6 +1314,7 @@
     return (
       '<header class="top no-print">' +
       '<div class="topbar-logo" title="Delaware Department of Transportation"><img src="assets/deldot-logo.png" alt="DelDOT"></div>' +
+      labtrakHomeLink() +
       '<div class="brand"><span class="brand-title"><b>DelDOT</b> ConTrak</span><small>' +
       esc(org) +
       " · IDIQ</small></div>" +

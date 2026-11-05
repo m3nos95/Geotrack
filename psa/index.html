@@ -58,6 +58,15 @@
       background: #10182a;
     }
     .topbar-logo img { height: 40px; width: auto; display: block; }
+    a.labtrak-back {
+      display: inline-flex; align-items: center; gap: 6px; flex-shrink: 0;
+      text-decoration: none;
+      background: var(--panel); border: 1px solid var(--border);
+      border-radius: 8px; padding: 6px 10px;
+      color: var(--text); font-size: 12px; font-weight: 600;
+    }
+    header.top a.labtrak-back { margin-left: 12px; }
+    a.labtrak-back:hover { border-color: var(--accent2); color: #ffe9c4; }
     .brand { font-family: var(--display); letter-spacing: .04em; color: var(--text); font-size: 20px; font-weight: 700; line-height: 1.15; }
     .brand-title b { color: var(--accent2); letter-spacing: .06em; }
     .brand small { display: block; font-family: var(--sans); letter-spacing: 0; color: var(--muted); font-size: 11px; font-weight: 500; }
