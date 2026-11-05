@@ -5409,7 +5409,7 @@ END $$;
           <button type="button" class="btn btn-primary" onclick="fcFocNewFamily()">+ NEW FAMILY</button>
         </div>
         <p style="font-family:var(--sans);font-size:13px;color:var(--muted);margin:-4px 0 14px;line-height:1.45;">
-          Families are built from your completed proctors. Charts show only the <strong>80%–100%</strong> portion of each curve (dry of optimum to optimum).
+          <strong>DelDOT Historical Family</strong> is the built-in STA 12+25 chart. Add a completed proctor when a one-point does not land on a curve. Charts show only the <strong>80%–100%</strong> portion of each curve (dry of optimum through optimum).
         </p>
         <div class="fc-proctor-layout">
           <div class="card fc-proctor-list" id="fcFocFamilyList"><div class="hub-empty">No families yet.</div></div>
@@ -5434,7 +5434,7 @@ END $$;
                 <button type="button" class="btn btn-primary" onclick="fcFocAddSelectedProctor()">Add curve to family</button>
               </div>
               <div style="margin-top:14px;">
-                <button type="button" class="btn btn-ghost" onclick="fcFocDeleteFamily()" style="color:var(--red2);font-size:11px;">Delete this family…</button>
+                <button type="button" id="fcFocDeleteBtn" class="btn btn-ghost" onclick="fcFocDeleteFamily()" style="color:var(--red2);font-size:11px;">Delete this family…</button>
               </div>
             </div>
             <div id="fcFocEmptyHint" class="hub-empty" style="padding:28px;">Create a family, then add completed proctors. Each proctor becomes one curve on the spine chart.</div>
@@ -7905,7 +7905,7 @@ END $$;
   <div class="fc-curve-panel" role="dialog" aria-label="Family of Curves">
     <div class="fc-curve-hdr">
       <div>
-        <h3>Family of Curves — T-99</h3>
+        <h3 id="fcCurvePickerTitle">Family of Curves</h3>
         <p id="fcCurvePickerHint">Each curve shows only the valid one-point range: 80% to 100% of optimum moisture (the chart “spine”). Plot wet density vs moisture, then pick the matching curve.</p>
       </div>
       <button type="button" class="fc-curve-close" onclick="closeFcCurvePicker()" aria-label="Close">✕</button>
@@ -7961,7 +7961,7 @@ END $$;
 // GLOBALS
 // ══════════════════════════════════════════════
 let db = null;
-const APP_BUILD = '2026.11.04-contrak-access';
+const APP_BUILD = '2026.11.04-historical-family';
 const FC_CORE_ICON_SRC = 'docs/r18-reference/core-drill-icon-128.png';
 const BORELOG_ICON_SRC = 'docs/r18-reference/borelog-icon.webp';
 const BORELOG_PATH = 'deldot-borelog-v6-uscs.html';
@@ -20443,7 +20443,7 @@ async function openNuclearDensity(id, tableHint) {
   const fields = ['nuc_wd1','nuc_wd2','nuc_wd3','nuc_dd1','nuc_dd2','nuc_dd3',
     'nuc_m1','nuc_m2','nuc_m3','nuc_pmy1','nuc_pmy2','nuc_pmy3',
     'nuc_D','nuc_E','nuc_G','nuc_H','nuc_N','nuc_O','nuc_S','nuc_T','nuc_U',
-    'nuc_contract','nuc_fa','nuc_material','nuc_family','nuc_serial',
+    'nuc_contract','nuc_fa','nuc_material','nuc_family','nuc_curve_family','nuc_serial',
     'nuc_density_no','nuc_agg_sg','nuc_test_type','nuc_standard_cm',
     'nuc_operator','nuc_road','nuc_station','nuc_offset','nuc_elevation'];
   fields.forEach(id => { const el=document.getElementById(id); if(el) el.value=''; });
@@ -20459,22 +20459,33 @@ async function openNuclearDensity(id, tableHint) {
   sv('nuc_E',         '0');
 
   document.getElementById('nuc_testno').textContent = sample.test_no;
+  const famNote = document.getElementById('nuc_family_note');
+  if (famNote) famNote.innerHTML = '';
 
-  // Load existing nuclear data
+  let loadedNuclear = null;
   if (sample.nuclear_data) {
-    const d = typeof sample.nuclear_data === 'string' ? JSON.parse(sample.nuclear_data) : sample.nuclear_data;
-    Object.entries(d).forEach(([k, v]) => {
+    loadedNuclear = typeof sample.nuclear_data === 'string' ? JSON.parse(sample.nuclear_data) : sample.nuclear_data;
+    Object.entries(loadedNuclear).forEach(([k, v]) => {
       const el = document.getElementById('nuc_' + k);
       if (el && v != null) el.value = v;
     });
     const k2El = document.getElementById('nuc_K2');
-    if (k2El && d.K2) k2El.value = d.K2;
-    const famEl = document.getElementById('nuc_family');
-    if (famEl) famEl.value = fcNormalizeCurveNo(d.family || famEl.value);
-    calcNuclear();
+    if (k2El && loadedNuclear.K2) k2El.value = loadedNuclear.K2;
   }
 
   fcInitFamilyCurves();
+  if (loadedNuclear) {
+    const famSet = document.getElementById('nuc_curve_family');
+    if (famSet) {
+      if (loadedNuclear.curveFamily && fcFamilyById(loadedNuclear.curveFamily)) famSet.value = loadedNuclear.curveFamily;
+      else if (loadedNuclear.family && fcNormalizeCurveNo(loadedNuclear.family, FC_T99_FAMILY_ID)) famSet.value = FC_T99_FAMILY_ID;
+      else famSet.value = FC_HISTORICAL_FAMILY_ID;
+    }
+    fcFillCurveSelect('nuclear');
+    const famEl = document.getElementById('nuc_family');
+    if (famEl) famEl.value = fcNormalizeCurveNo(loadedNuclear.family, fcActiveFamilyId('nuclear')) || '';
+    calcNuclear();
+  }
   document.getElementById('nuclearOverlay').classList.add('open');
 }
 
@@ -20589,7 +20600,7 @@ async function saveNuclearAndGenerate() {
   const gv = id => document.getElementById(id)?.value?.trim() || null;
   const nucData = {
     contract: gv('nuc_contract'), fa: gv('nuc_fa'), date: gv('nuc_date'),
-    material: gv('nuc_material'), family: gv('nuc_family'), serial: gv('nuc_serial'),
+    material: gv('nuc_material'), family: gv('nuc_family'), curveFamily: gv('nuc_curve_family'), serial: gv('nuc_serial'),
     density_no: gv('nuc_density_no'), agg_sg: gv('nuc_agg_sg'), test_type: gv('nuc_test_type'),
     standard_cm: gv('nuc_standard_cm'), operator: gv('nuc_operator'), road: gv('nuc_road'),
     station: gv('nuc_station'), offset: gv('nuc_offset'), elevation: gv('nuc_elevation'),
@@ -26149,7 +26160,13 @@ function slClearEntry() {
         <div class="mf"><label>F.A. #</label><input type="text" id="nuc_fa"></div>
         <div class="mf"><label>Date</label><input type="date" id="nuc_date"></div>
         <div class="mf"><label>Type &amp; Use of Material</label><input type="text" id="nuc_material"></div>
-        <div class="mf"><label>Family of Curves</label>
+        <div class="mf" style="grid-column:span 2;"><label>Curve family</label>
+          <select id="nuc_curve_family" onchange="fcOnFamilySetChange('nuclear')"
+                  style="background:var(--panel);border:1px solid var(--border);color:var(--text);padding:9px 11px;border-radius:var(--radius);outline:none;font-size:13px;width:100%;">
+            <option value="deldot-historical">DelDOT Historical Family</option>
+          </select>
+        </div>
+        <div class="mf"><label>Curve</label>
           <div class="fc-curve-picker-row">
             <select id="nuc_family" onchange="fcOnCurveSelect('nuclear')"
                     style="background:var(--panel);border:1px solid var(--border);color:var(--text);padding:9px 11px;border-radius:var(--radius);outline:none;font-size:13px;">
@@ -26158,6 +26175,7 @@ function slClearEntry() {
             <button type="button" class="fc-curve-mini-btn" onclick="openFcCurvePicker('nuclear')">Chart</button>
             <button type="button" class="fc-curve-mini-btn" onclick="fcAutoPickFromOnePoint()">Auto</button>
           </div>
+          <div id="nuc_family_note" style="font-family:var(--sans);font-size:12px;color:var(--red2);margin-top:6px;line-height:1.4;"></div>
         </div>
         <div class="mf"><label>Serial No. Gauge</label><input type="text" id="nuc_serial" placeholder="16363"></div>
         <div class="mf"><label>Density #</label><input type="text" id="nuc_density_no" placeholder="145"></div>
@@ -26438,14 +26456,22 @@ function slClearEntry() {
             <option value="T-180D">T-180D</option>
           </select>
         </div>
-        <div class="mf"><label>Family of Curves</label>
+        <div class="mf" style="grid-column:span 2;"><label>Curve family</label>
+          <select id="den_curve_family" onchange="fcOnFamilySetChange('density')"
+                  style="background:var(--panel);border:1px solid var(--border);color:var(--text);padding:9px 11px;border-radius:var(--radius);outline:none;font-size:13px;width:100%;">
+            <option value="deldot-historical">DelDOT Historical Family</option>
+          </select>
+        </div>
+        <div class="mf"><label>Curve</label>
           <div class="fc-curve-picker-row">
             <select id="den_family" onchange="fcOnCurveSelect('density')"
                     style="background:var(--panel);border:1px solid var(--border);color:var(--text);padding:9px 11px;border-radius:var(--radius);outline:none;font-size:13px;">
               <option value="">— Select curve —</option>
             </select>
             <button type="button" class="fc-curve-mini-btn" onclick="openFcCurvePicker('density')">Chart</button>
+            <button type="button" class="fc-curve-mini-btn" onclick="fcAutoPickFromOnePoint()">Auto</button>
           </div>
+          <div id="den_family_note" style="font-family:var(--sans);font-size:12px;color:var(--red2);margin-top:6px;line-height:1.4;"></div>
         </div>
         <div class="mf"><label>Test Hole Depth</label><input type="text" id="den_hole_depth" placeholder='e.g. 6"'></div>
         <div class="mf"><label>Type of Test</label><input type="text" id="den_test_type" placeholder="F/C"></div>
@@ -26546,34 +26572,183 @@ const FC_FAMILY_CURVES_T99 = [
   { no: 18, maxDry: 132.6, optMoist: 8.3 },
 ];
 
+// Digitized from the STA 12+25 family chart. slope is pcf of dry density per 1% moisture
+// on the straight spine. One-point charts draw only 80% of optimum through optimum.
+const FC_HISTORICAL_FAMILY_ID = 'deldot-historical';
+const FC_T99_FAMILY_ID = 't99-reference';
+const FC_HISTORICAL_VERSION = 1;
+const FC_ONE_POINT_FIT_PCF = 2.5;
+const FC_DELDOT_HISTORICAL_CURVES = [
+  { no: 34, maxDry: 132.4, optMoist: 8.0, slope: 3.27 },
+  { no: 33, maxDry: 131.0, optMoist: 8.5, slope: 3.03 },
+  { no: 32, maxDry: 130.2, optMoist: 8.8, slope: 3.21 },
+  { no: 31, maxDry: 129.5, optMoist: 9.0, slope: 2.83 },
+  { no: 30, maxDry: 128.7, optMoist: 9.3, slope: 2.66 },
+  { no: 29, maxDry: 127.9, optMoist: 9.5, slope: 2.43 },
+  { no: 28, maxDry: 127.1, optMoist: 9.8, slope: 2.18 },
+  { no: 27, maxDry: 126.2, optMoist: 10.1, slope: 2.01 },
+  { no: 26, maxDry: 125.4, optMoist: 10.4, slope: 1.96 },
+  { no: 25, maxDry: 124.5, optMoist: 10.7, slope: 1.81 },
+  { no: 24, maxDry: 123.6, optMoist: 11.0, slope: 1.72 },
+  { no: 23, maxDry: 122.6, optMoist: 11.3, slope: 1.58 },
+  { no: 22, maxDry: 121.7, optMoist: 11.6, slope: 1.58 },
+  { no: 21, maxDry: 120.9, optMoist: 11.9, slope: 1.49 },
+  { no: 20, maxDry: 119.8, optMoist: 12.3, slope: 1.51 },
+  { no: 19, maxDry: 117.4, optMoist: 12.7, slope: 2.20 },
+  { no: 18, maxDry: 115.4, optMoist: 13.4, slope: 2.20 },
+  { no: 17, maxDry: 114.2, optMoist: 13.8, slope: 2.20 },
+  { no: 16, maxDry: 113.2, optMoist: 14.1, slope: 2.20 },
+  { no: 15, maxDry: 111.9, optMoist: 14.6, slope: 2.20 },
+  { no: 14, maxDry: 110.5, optMoist: 15.1, slope: 2.20 },
+  { no: 13, maxDry: 109.5, optMoist: 15.4, slope: 2.20 },
+];
+
 let _fcCurvePickerContext = 'nuclear';
 let _fcCurvePickerSelected = null;
+let _fcSuggestedFamilyId = FC_HISTORICAL_FAMILY_ID;
 
-function fcNormalizeCurveNo(val) {
+function fcCurveKey(c) {
+  if (!c) return '';
+  return String(c.no != null ? c.no : c.id);
+}
+
+function fcStraightSpinePoints(maxDry, optMoist, slope) {
+  const m0 = optMoist * 0.8;
+  const m1 = optMoist;
+  const pts = [];
+  const steps = 8;
+  for (let i = 0; i <= steps; i++) {
+    const m = m0 + (m1 - m0) * (i / steps);
+    const d = maxDry + slope * (m - optMoist);
+    const mr = Math.round(m * 100) / 100;
+    const dr = Math.round(d * 10) / 10;
+    pts.push({ m: mr, d: dr, moisture: mr, dryDensity: dr });
+  }
+  return pts;
+}
+
+function fcHistoricalCurveRecords() {
+  return FC_DELDOT_HISTORICAL_CURVES.map(c => ({
+    id: 'hist-' + c.no,
+    builtin: true,
+    no: c.no,
+    label: 'Curve ' + c.no,
+    maxDry: c.maxDry,
+    optMoist: c.optMoist,
+    slope: c.slope,
+    points: fcStraightSpinePoints(c.maxDry, c.optMoist, c.slope),
+  }));
+}
+
+function fcMergeBuiltinFamily(list) {
+  const existing = (list || []).find(f => f && f.id === FC_HISTORICAL_FAMILY_ID);
+  const added = ((existing && existing.curves) || []).filter(c => c && c.proctorId && !c.builtin);
+  const rec = {
+    id: FC_HISTORICAL_FAMILY_ID,
+    name: 'DelDOT Historical Family',
+    builtin: true,
+    builtinVersion: FC_HISTORICAL_VERSION,
+    locked: true,
+    contract: (existing && existing.contract) || 'STA 12+25',
+    material: (existing && existing.material) || '',
+    notes: (existing && existing.notes) || 'Historical family from the STA 12+25 chart. Each line is the straight spine from 80% of optimum moisture to optimum. Nothing is drawn dry of 80% or wet of optimum.',
+    curves: fcHistoricalCurveRecords().concat(added),
+    createdAt: (existing && existing.createdAt) || '2026-11-04T00:00:00.000Z',
+    updatedAt: (existing && existing.updatedAt) || '2026-11-04T00:00:00.000Z',
+  };
+  return [rec].concat((list || []).filter(f => f && f.id !== FC_HISTORICAL_FAMILY_ID));
+}
+
+function fcOnePointFamilies() {
+  const stored = fcLoadFamilies();
+  const hist = stored.find(f => f.id === FC_HISTORICAL_FAMILY_ID);
+  const users = stored.filter(f => f && !f.builtin);
+  const t99 = {
+    id: FC_T99_FAMILY_ID,
+    name: 'AASHTO T 99 reference',
+    builtin: true,
+    curves: FC_FAMILY_CURVES_T99.map(c => ({ ...c, id: 't99-' + c.no, label: 'Curve ' + c.no })),
+  };
+  return [hist, t99].concat(users).filter(Boolean);
+}
+
+function fcFamilyById(id) {
+  return fcOnePointFamilies().find(f => f.id === id) || null;
+}
+
+function fcFamilySelectId(context) {
+  return context === 'density' ? 'den_curve_family' : 'nuc_curve_family';
+}
+
+function fcCurveSelectId(context) {
+  return context === 'density' ? 'den_family' : 'nuc_family';
+}
+
+function fcActiveFamilyId(context) {
+  const el = document.getElementById(fcFamilySelectId(context || 'nuclear'));
+  const id = el && el.value;
+  if (id && fcFamilyById(id)) return id;
+  return FC_HISTORICAL_FAMILY_ID;
+}
+
+function fcCurvesForFamily(familyId) {
+  const fam = fcFamilyById(familyId);
+  return (fam && fam.curves) || [];
+}
+
+function fcNormalizeCurveNo(val, familyId) {
   if (val == null || val === '') return '';
-  const m = String(val).match(/(\d{1,2})/);
+  const curves = fcCurvesForFamily(familyId || FC_T99_FAMILY_ID);
+  const s = String(val);
+  const exact = curves.find(c => fcCurveKey(c) === s);
+  if (exact) return fcCurveKey(exact);
+  const m = s.match(/(\d{1,2})/);
   if (!m) return '';
   const n = parseInt(m[1], 10);
-  return (n >= 1 && n <= 18) ? String(n) : '';
+  const byNo = curves.find(c => c.no === n);
+  return byNo ? String(n) : '';
+}
+
+function fcFillFamilySelect(context) {
+  const el = document.getElementById(fcFamilySelectId(context));
+  if (!el) return;
+  const prev = el.value || FC_HISTORICAL_FAMILY_ID;
+  const fams = fcOnePointFamilies();
+  el.innerHTML = fams.map(f => `<option value="${f.id}">${String(f.name || 'Family').replace(/</g, '&lt;')}</option>`).join('');
+  el.value = fams.some(f => f.id === prev) ? prev : FC_HISTORICAL_FAMILY_ID;
+}
+
+function fcFillCurveSelect(context) {
+  const el = document.getElementById(fcCurveSelectId(context));
+  if (!el || el.tagName !== 'SELECT') return;
+  const famId = fcActiveFamilyId(context);
+  const curves = fcCurvesForFamily(famId);
+  const prev = el.value;
+  el.innerHTML = '<option value="">— Select curve —</option>' + curves.map(c => {
+    const v = fcCurveKey(c);
+    const md = (c.maxDry != null && c.optMoist != null) ? ` — ${c.maxDry} pcf @ ${c.optMoist}%` : '';
+    const label = (c.label || ('Curve ' + v)).replace(/</g, '&lt;');
+    return `<option value="${v}">${label}${md}</option>`;
+  }).join('');
+  if (prev && fcNormalizeCurveNo(prev, famId)) el.value = fcNormalizeCurveNo(prev, famId);
 }
 
 function fcInitFamilyCurves() {
-  const optHtml = '<option value="">— Select curve —</option>' +
-    FC_FAMILY_CURVES_T99.map(c =>
-      `<option value="${c.no}">Curve ${c.no} — ${c.maxDry} pcf @ ${c.optMoist}%</option>`
-    ).join('');
-  ['nuc_family', 'den_family'].forEach(id => {
-    const el = document.getElementById(id);
-    if (!el || el.tagName !== 'SELECT') return;
-    const prev = fcNormalizeCurveNo(el.value);
-    el.innerHTML = optHtml;
-    if (prev) el.value = prev;
+  ['nuclear', 'density'].forEach(ctx => {
+    fcFillFamilySelect(ctx);
+    fcFillCurveSelect(ctx);
   });
 }
 
-function fcGetCurve(no) {
-  const n = parseInt(no, 10);
-  return FC_FAMILY_CURVES_T99.find(c => c.no === n) || null;
+function fcOnFamilySetChange(context) {
+  fcFillCurveSelect(context);
+  const note = document.getElementById(context === 'density' ? 'den_family_note' : 'nuc_family_note');
+  if (note) note.innerHTML = '';
+}
+
+function fcGetCurve(no, familyId) {
+  const curves = fcCurvesForFamily(familyId || fcActiveFamilyId('nuclear'));
+  return curves.find(c => fcCurveKey(c) === String(no)) || null;
 }
 
 function fcHilfCorrectedMaxDry(maxDry, pctGravel) {
@@ -26609,7 +26784,7 @@ function fcCubicSplineFit(xs, ys) {
   if (n < 2) return null;
   if (n === 2) {
     const b0 = (ys[1] - ys[0]) / (xs[1] - xs[0]);
-    return { xs, ys, a: ys.slice(), b: [b0], c: [0], d: [0] };
+    return { xs, ys, a: [ys[0]], b: [b0], c: [0], d: [0] };
   }
   const h = [];
   for (let i = 0; i < n - 1; i++) h.push(xs[i + 1] - xs[i]);
@@ -26720,36 +26895,64 @@ function fcDryDensityAtMoisture(points, maxDry, optMoist, moisture) {
   return null;
 }
 
+function fcPredictedWet(curve, moist) {
+  if (!curve) return null;
+  if (curve.slope != null && curve.maxDry != null && curve.optMoist != null) {
+    const dry = curve.maxDry + curve.slope * (moist - curve.optMoist);
+    return dry * (1 + moist / 100);
+  }
+  if (curve.points && curve.points.length >= 2) {
+    const dry = fcDryDensityAtMoisture(curve.points, curve.maxDry, curve.optMoist, moist);
+    if (dry != null && !isNaN(dry)) return dry * (1 + moist / 100);
+  }
+  if (curve.maxDry != null && curve.optMoist != null) {
+    return fcWetDensityAtMoisture(curve.maxDry, curve.optMoist, moist);
+  }
+  return null;
+}
+
 function fcScoreCurveForPoint(curve, wet, moist) {
   if (!fcIsMoistureOnSpine(moist, curve.optMoist)) return Infinity;
-  const predicted = fcWetDensityAtMoisture(curve.maxDry, curve.optMoist, moist);
+  const predicted = fcPredictedWet(curve, moist);
+  if (predicted == null || isNaN(predicted)) return Infinity;
   return Math.abs(wet - predicted);
 }
 
-function fcPickCurveFromOnePoint(wetDensity, moisture) {
+function fcPickCurveFromOnePoint(wetDensity, moisture, familyId) {
   if (!wetDensity || !moisture) return null;
-  const eligible = FC_FAMILY_CURVES_T99.filter(c => fcIsMoistureOnSpine(moisture, c.optMoist));
-  if (!eligible.length) return null;
+  const famId = familyId || fcActiveFamilyId('nuclear');
+  const curves = fcCurvesForFamily(famId);
+  const eligible = curves.filter(c => fcIsMoistureOnSpine(moisture, c.optMoist));
+  if (!eligible.length) return { fit: false, reason: 'moisture', familyId: famId };
   const scored = eligible
     .map(c => ({ ...c, score: fcScoreCurveForPoint(c, wetDensity, moisture) }))
     .sort((a, b) => a.score - b.score);
   const best = scored[0];
+  if (!best || best.score > FC_ONE_POINT_FIT_PCF) {
+    return { fit: false, reason: 'distance', familyId: famId, best: best || null };
+  }
   const second = scored[1];
-  if (second && (second.score - best.score) < 1.8) {
+  if (second && (second.score - best.score) < 1.0 && second.score <= FC_ONE_POINT_FIT_PCF) {
     return {
-      curveNo: best.no,
+      fit: true,
+      familyId: famId,
+      curveNo: fcCurveKey(best),
       blended: true,
       maxDry: Math.round(((best.maxDry + second.maxDry) / 2) * 10) / 10,
       optMoist: Math.round(((best.optMoist + second.optMoist) / 2) * 10) / 10,
-      between: [best.no, second.no],
+      between: [fcCurveKey(best), fcCurveKey(second)],
+      score: best.score,
     };
   }
   return {
-    curveNo: best.no,
+    fit: true,
+    familyId: famId,
+    curveNo: fcCurveKey(best),
     blended: false,
     maxDry: best.maxDry,
     optMoist: best.optMoist,
-    between: [best.no],
+    between: [fcCurveKey(best)],
+    score: best.score,
   };
 }
 
@@ -26760,7 +26963,7 @@ function fcReadNuclearGravelPct() {
 }
 
 function fcApplyCurveToNuclear(curveNo, overrides) {
-  const curve = fcGetCurve(curveNo);
+  const curve = fcGetCurve(curveNo, fcActiveFamilyId('nuclear'));
   if (!curve && !overrides) return;
   const maxDry = overrides?.maxDry ?? curve.maxDry;
   const optMoist = overrides?.optMoist ?? curve.optMoist;
@@ -26773,11 +26976,13 @@ function fcApplyCurveToNuclear(curveNo, overrides) {
   if (sEl) sEl.value = maxDry.toFixed(1);
   if (tEl) tEl.value = optMoist.toFixed(1);
   if (uEl) uEl.value = corr.toFixed(1);
+  const note = document.getElementById('nuc_family_note');
+  if (note) note.innerHTML = '';
   if (typeof calcNuclear === 'function') calcNuclear();
 }
 
 function fcApplyCurveToDensity(curveNo, overrides) {
-  const curve = fcGetCurve(curveNo);
+  const curve = fcGetCurve(curveNo, fcActiveFamilyId('density'));
   if (!curve && !overrides) return;
   const maxDry = overrides?.maxDry ?? curve.maxDry;
   const optMoist = overrides?.optMoist ?? curve.optMoist;
@@ -26790,6 +26995,8 @@ function fcApplyCurveToDensity(curveNo, overrides) {
     if (md) md.value = maxDry.toFixed(1);
     if (typeof calcDenRow === 'function') calcDenRow(i);
   }
+  const note = document.getElementById('den_family_note');
+  if (note) note.innerHTML = '';
 }
 
 function fcOnCurveSelect(context) {
@@ -26800,23 +27007,68 @@ function fcOnCurveSelect(context) {
   else fcApplyCurveToNuclear(no);
 }
 
-function fcAutoPickFromOnePoint() {
+function fcReadOnePoint(context) {
+  if (context === 'density') {
+    const wet = parseFloat(document.getElementById('nuc_Q')?.textContent);
+    const k2 = parseFloat(document.getElementById('nuc_K2')?.value);
+    if (wet > 0 && k2 > 0) return { wet, moist: k2 };
+    return null;
+  }
   const q = parseFloat(document.getElementById('nuc_Q')?.textContent);
   const k2 = parseFloat(document.getElementById('nuc_K2')?.value);
   const k = parseFloat(document.getElementById('nuc_K')?.textContent);
   const wet = !isNaN(q) && q > 0 ? q : null;
   const moist = !isNaN(k2) && k2 > 0 ? k2 : (!isNaN(k) && k > 0 ? k : null);
-  if (!wet || !moist) {
+  if (!wet || !moist) return null;
+  return { wet, moist };
+}
+
+function fcMissMessage(familyId) {
+  const fam = fcFamilyById(familyId);
+  const name = fam ? fam.name : 'this family';
+  return `No curve in ${name} fits this one-point. Run a full proctor and add that curve to the family.`;
+}
+
+function fcShowOnePointMiss(context, familyId) {
+  _fcSuggestedFamilyId = familyId || fcActiveFamilyId(context || 'nuclear');
+  const msg = fcMissMessage(_fcSuggestedFamilyId);
+  showToast(msg, 'error');
+  const note = document.getElementById(context === 'density' ? 'den_family_note' : 'nuc_family_note');
+  if (note) {
+    note.innerHTML = `${msg} <button type="button" class="fc-curve-mini-btn" onclick="fcStartProctorForFamily()">Run proctor</button>`;
+  }
+  const info = document.getElementById('fcCurvePointInfo');
+  if (info) {
+    info.style.color = 'var(--red2)';
+    info.textContent = msg;
+  }
+  return msg;
+}
+
+function fcStartProctorForFamily() {
+  closeFcCurvePicker();
+  document.getElementById('nuclearOverlay')?.classList.remove('open');
+  document.getElementById('densityOverlay')?.classList.remove('open');
+  if (typeof switchView === 'function') switchView('fieldcontrol');
+  setTimeout(() => fcSetModuleMode('proctor'), 80);
+}
+
+function fcAutoPickFromOnePoint() {
+  const context = _fcCurvePickerContext || 'nuclear';
+  const point = fcReadOnePoint(context);
+  if (!point) {
     showToast('Enter one-point wet density (Q) and specimen moisture (K₂) first', 'error');
     return null;
   }
-  const pick = fcPickCurveFromOnePoint(wet, moist);
-  if (!pick) {
-    showToast('One-point moisture must be 80–100% of optimum for a curve on the chart spine — adjust specimen moisture and re-run', 'error');
+  const famId = fcActiveFamilyId(context);
+  const pick = fcPickCurveFromOnePoint(point.wet, point.moist, famId);
+  if (!pick || pick.fit === false) {
+    fcShowOnePointMiss(context, famId);
     return null;
   }
   _fcCurvePickerSelected = String(pick.curveNo);
-  fcApplyCurveToNuclear(pick.curveNo, pick.blended ? { maxDry: pick.maxDry, optMoist: pick.optMoist } : null);
+  const apply = context === 'density' ? fcApplyCurveToDensity : fcApplyCurveToNuclear;
+  apply(pick.curveNo, pick.blended ? { maxDry: pick.maxDry, optMoist: pick.optMoist } : null);
   const msg = pick.blended
     ? `Between curves ${pick.between.join(' & ')} — averaged ${pick.maxDry} pcf @ ${pick.optMoist}%`
     : `Curve ${pick.curveNo} — ${pick.maxDry} pcf @ ${pick.optMoist}%`;
@@ -26861,25 +27113,47 @@ function fcRenderCurveChart() {
   const pointInfo = document.getElementById('fcCurvePointInfo');
   if (!svg) return;
 
+  const context = _fcCurvePickerContext || 'nuclear';
+  const famId = fcActiveFamilyId(context);
+  const fam = fcFamilyById(famId);
+  const famCurves = fcCurvesForFamily(famId);
+  const title = document.getElementById('fcCurvePickerTitle');
+  if (title) title.textContent = fam ? fam.name : 'Family of Curves';
+
   const W = 640, H = 440, ml = 54, mr = 16, mt = 22, mb = 42;
   const plotW = W - ml - mr, plotH = H - mt - mb;
-  const xMin = 2, xMax = 34, yMin = 100, yMax = 144;
+
+  const samples = [];
+  famCurves.forEach(c => {
+    if (c.optMoist == null) return;
+    const spine = fcCurveSpineRange(c.optMoist);
+    samples.push({ m: spine.min, w: fcPredictedWet(c, spine.min) });
+    samples.push({ m: spine.max, w: fcPredictedWet(c, spine.max) });
+  });
+  const ms = samples.map(s => s.m).filter(v => v != null && !isNaN(v));
+  const ws = samples.map(s => s.w).filter(v => v != null && !isNaN(v));
+  let xMin = ms.length ? Math.floor(Math.min(...ms) - 0.6) : 4;
+  let xMax = ms.length ? Math.ceil(Math.max(...ms) + 0.6) : 24;
+  let yMin = ws.length ? Math.floor((Math.min(...ws) - 3) / 2) * 2 : 100;
+  let yMax = ws.length ? Math.ceil((Math.max(...ws) + 3) / 2) * 2 : 150;
+  if (xMax - xMin < 4) xMax = xMin + 4;
+  if (yMax - yMin < 8) yMax = yMin + 8;
+
   const xScale = m => ml + ((m - xMin) / (xMax - xMin)) * plotW;
   const yScale = w => mt + plotH - ((w - yMin) / (yMax - yMin)) * plotH;
 
   let point = null;
-  if (_fcCurvePickerContext === 'nuclear') {
-    const q = parseFloat(document.getElementById('nuc_Q')?.textContent);
-    const k2 = parseFloat(document.getElementById('nuc_K2')?.value);
-    if (q > 0 && k2 > 0) point = { wet: q, moist: k2 };
-  }
+  const read = fcReadOnePoint('nuclear');
+  if (read) point = read;
 
+  const xStep = (xMax - xMin) > 16 ? 4 : 2;
+  const yStep = (yMax - yMin) > 30 ? 8 : 4;
   let grid = '';
-  for (let m = 4; m <= 32; m += 4) {
+  for (let m = Math.ceil(xMin / xStep) * xStep; m <= xMax; m += xStep) {
     grid += `<line x1="${xScale(m)}" y1="${mt}" x2="${xScale(m)}" y2="${mt + plotH}" stroke="#e2e8f0" stroke-width="1"/>`;
     grid += `<text x="${xScale(m)}" y="${H - 8}" font-size="9" fill="#64748b" text-anchor="middle">${m}</text>`;
   }
-  for (let w = 104; w <= 140; w += 8) {
+  for (let w = Math.ceil(yMin / yStep) * yStep; w <= yMax; w += yStep) {
     grid += `<line x1="${ml}" y1="${yScale(w)}" x2="${ml + plotW}" y2="${yScale(w)}" stroke="#e2e8f0" stroke-width="1"/>`;
     grid += `<text x="${ml - 6}" y="${yScale(w) + 3}" font-size="9" fill="#64748b" text-anchor="end">${w}</text>`;
   }
@@ -26887,30 +27161,34 @@ function fcRenderCurveChart() {
   grid += `<text x="14" y="${mt + plotH / 2}" font-size="10" fill="#334155" text-anchor="middle" transform="rotate(-90 14 ${mt + plotH / 2})">Wet Density (pcf)</text>`;
 
   let curves = '';
-  FC_FAMILY_CURVES_T99.forEach(c => {
+  famCurves.forEach(c => {
+    if (c.optMoist == null) return;
+    const key = fcCurveKey(c);
     const spine = fcCurveSpineRange(c.optMoist);
     const pts = [];
-    for (let m = spine.min; m <= spine.max; m += 0.15) {
-      const w = fcWetDensityAtMoisture(c.maxDry, c.optMoist, m);
-      if (w >= yMin - 2 && w <= yMax + 2) pts.push(`${xScale(m).toFixed(1)},${yScale(w).toFixed(1)}`);
+    for (let m = spine.min; m <= spine.max + 1e-9; m += 0.15) {
+      const w = fcPredictedWet(c, m);
+      if (w == null || isNaN(w)) continue;
+      pts.push(`${xScale(m).toFixed(1)},${yScale(w).toFixed(1)}`);
     }
     if (pts.length < 2) return;
-    const sel = String(c.no) === String(_fcCurvePickerSelected);
-    curves += `<path d="M ${pts.join(' L ')}" fill="none" stroke="${sel ? '#c47c2a' : '#94a3b8'}" stroke-width="${sel ? 2.8 : 1.4}" stroke-linecap="round" data-curve="${c.no}" style="cursor:pointer" onclick="fcSelectCurveInPicker(${c.no})"/>`;
+    const sel = key === String(_fcCurvePickerSelected);
+    curves += `<path d="M ${pts.join(' L ')}" fill="none" stroke="${sel ? '#c47c2a' : '#94a3b8'}" stroke-width="${sel ? 2.8 : 1.4}" stroke-linecap="round" data-curve="${key}" style="cursor:pointer" onclick="fcSelectCurveInPicker('${key}')"/>`;
     const px = xScale(c.optMoist);
-    const py = yScale(c.maxDry * (1 + c.optMoist / 100));
-    curves += `<text x="${px}" y="${py - 5}" font-size="8" font-weight="${sel ? 700 : 400}" fill="${sel ? '#c47c2a' : '#64748b'}" text-anchor="middle" style="cursor:pointer" onclick="fcSelectCurveInPicker(${c.no})">${c.no}</text>`;
+    const py = yScale(fcPredictedWet(c, c.optMoist));
+    curves += `<text x="${px}" y="${py - 5}" font-size="8" font-weight="${sel ? 700 : 400}" fill="${sel ? '#c47c2a' : '#64748b'}" text-anchor="middle" style="cursor:pointer" onclick="fcSelectCurveInPicker('${key}')">${key}</text>`;
   });
 
   let marker = '';
   if (point) {
-    const onAnySpine = FC_FAMILY_CURVES_T99.some(c => fcIsMoistureOnSpine(point.moist, c.optMoist));
-    marker = `<circle cx="${xScale(point.moist)}" cy="${yScale(point.wet)}" r="6" fill="${onAnySpine ? '#2563eb' : '#dc2626'}" stroke="#fff" stroke-width="2"/>`;
+    const pick = fcPickCurveFromOnePoint(point.wet, point.moist, famId);
+    const fits = pick && pick.fit !== false;
+    marker = `<circle cx="${xScale(point.moist)}" cy="${yScale(point.wet)}" r="6" fill="${fits ? '#2563eb' : '#dc2626'}" stroke="#fff" stroke-width="2"/>`;
     if (pointInfo) {
-      pointInfo.style.color = onAnySpine ? 'var(--accent2)' : 'var(--red2)';
-      pointInfo.textContent = onAnySpine
-        ? `One-point: ${point.wet.toFixed(1)} pcf wet @ ${point.moist.toFixed(1)}% moisture`
-        : `One-point @ ${point.moist.toFixed(1)}% is outside the 80–100% optimum spine — adjust moisture`;
+      pointInfo.style.color = fits ? 'var(--accent2)' : 'var(--red2)';
+      pointInfo.textContent = fits
+        ? `One-point: ${point.wet.toFixed(1)} pcf wet @ ${point.moist.toFixed(1)}% — curve ${pick.curveNo}`
+        : fcMissMessage(famId);
     }
   } else if (pointInfo) {
     pointInfo.style.color = 'var(--accent2)';
@@ -26920,10 +27198,12 @@ function fcRenderCurveChart() {
   svg.innerHTML = `${grid}${curves}${marker}`;
 
   if (table) {
-    table.innerHTML = FC_FAMILY_CURVES_T99.map(c => {
-      const active = String(c.no) === String(_fcCurvePickerSelected) ? ' active' : '';
-      return `<button type="button" class="${active.trim()}" onclick="fcSelectCurveInPicker(${c.no})">` +
-        `<strong>Curve ${c.no}</strong><br>${c.maxDry} pcf · ${c.optMoist}%` +
+    table.innerHTML = famCurves.map(c => {
+      const key = fcCurveKey(c);
+      const active = key === String(_fcCurvePickerSelected) ? ' active' : '';
+      const label = (c.label || ('Curve ' + key)).replace(/</g, '&lt;');
+      return `<button type="button" class="${active.trim()}" onclick="fcSelectCurveInPicker('${key}')">` +
+        `<strong>${label}</strong><br>${c.maxDry != null ? c.maxDry : '—'} pcf · ${c.optMoist != null ? c.optMoist : '—'}%` +
         `</button>`;
     }).join('');
   }
@@ -26955,7 +27235,9 @@ function fcSaveProctors(list) {
   localStorage.setItem(FC_PROCTORS_KEY, JSON.stringify(list || []));
 }
 function fcLoadFamilies() {
-  try { return JSON.parse(localStorage.getItem(FC_FOC_FAMILIES_KEY) || '[]'); } catch { return []; }
+  try {
+    return fcMergeBuiltinFamily(JSON.parse(localStorage.getItem(FC_FOC_FAMILIES_KEY) || '[]'));
+  } catch { return fcMergeBuiltinFamily([]); }
 }
 function fcSaveFamilies(list) {
   localStorage.setItem(FC_FOC_FAMILIES_KEY, JSON.stringify(list || []));
@@ -27012,6 +27294,7 @@ function fcSetModuleMode(mode) {
     else fcProctorLoad(_fcProctorEditId);
   }
   if (_fcModuleMode === 'foc') {
+    if (!_fcFocEditId) _fcFocEditId = FC_HISTORICAL_FAMILY_ID;
     fcRenderFocFamilyList();
     fcRenderFocDetail();
   }
@@ -27662,11 +27945,15 @@ function fcPromptAddToFamily(proctorId) {
   if (msg && p) {
     msg.textContent = `“${p.name}” is complete (${p.maxDry} pcf @ ${p.optMoist}%). Add it to a Family of Curves?`;
   }
-  const families = fcLoadFamilies().slice().sort((a, b) => (b.updatedAt || '').localeCompare(a.updatedAt || ''));
+  const families = fcLoadFamilies();
+  const suggested = families.find(f => f.id === _fcSuggestedFamilyId);
+  const ordered = suggested
+    ? [suggested].concat(families.filter(f => f.id !== suggested.id))
+    : families;
   const sel = document.getElementById('fcAddFamilySelect');
   if (sel) {
     sel.innerHTML = '<option value="">— Select family —</option>' +
-      families.map(f => {
+      ordered.map(f => {
         const n = (f.curves || []).length;
         return `<option value="${f.id}">${(f.name || 'Untitled').replace(/</g,'&lt;')} (${n} curve${n === 1 ? '' : 's'})</option>`;
       }).join('');
@@ -27674,8 +27961,8 @@ function fcPromptAddToFamily(proctorId) {
   const nn = document.getElementById('fcAddFamilyNewName');
   // If families already exist, pre-select the newest so a second proctor APPENDS
   // instead of silently creating another one-curve family.
-  if (families.length) {
-    if (sel) sel.value = families[0].id;
+  if (ordered.length) {
+    if (sel) sel.value = ordered[0].id;
     if (nn) nn.value = '';
   } else if (nn) {
     nn.value = p ? `${p.contract || 'Family'} — ${p.material || p.name}` : '';
@@ -27764,7 +28051,10 @@ function fcFocNewFamily() {
 function fcRenderFocFamilyList() {
   const el = document.getElementById('fcFocFamilyList');
   if (!el) return;
-  const list = fcLoadFamilies().slice().sort((a, b) => (b.updatedAt || '').localeCompare(a.updatedAt || ''));
+  const all = fcLoadFamilies();
+  const list = all.filter(f => f.builtin).concat(
+    all.filter(f => !f.builtin).sort((a, b) => (b.updatedAt || '').localeCompare(a.updatedAt || ''))
+  );
   if (!list.length) {
     el.innerHTML = '<div class="hub-empty">No families yet. Create one, or complete a proctor and add it.</div>';
     return;
@@ -27806,6 +28096,10 @@ function fcRenderFocDetail() {
   set('foc_contract', family.contract);
   set('foc_material', family.material);
   set('foc_notes', family.notes);
+  const nameEl = document.getElementById('foc_name');
+  if (nameEl) nameEl.readOnly = !!family.locked;
+  const delBtn = document.getElementById('fcFocDeleteBtn');
+  if (delBtn) delBtn.style.display = family.locked ? 'none' : '';
   // available proctors
   const sel = document.getElementById('foc_add_proctor');
   if (sel) {
@@ -27828,7 +28122,7 @@ function fcRenderFocDetail() {
             : '';
           return `<div style="display:flex;justify-content:space-between;gap:10px;align-items:center;padding:8px 0;border-bottom:1px solid var(--border);font-family:var(--mono);font-size:11px;">` +
             `<div><strong>${idx + 1}. ${(c.label || 'Curve').replace(/</g,'&lt;')}</strong><div style="color:var(--muted);margin-top:2px;">${c.maxDry != null ? c.maxDry : '—'} pcf @ ${c.optMoist != null ? c.optMoist : '—'}%${spineTxt}</div></div>` +
-            `<button type="button" class="btn btn-ghost" style="color:var(--red2);font-size:10px;" onclick="fcFocRemoveCurve('${c.id}')">Remove</button></div>`;
+            `<button type="button" class="btn btn-ghost" style="color:var(--red2);font-size:10px;${c.builtin ? 'display:none;' : ''}" onclick="fcFocRemoveCurve('${c.id}')">Remove</button></div>`;
         }).join('');
     }
   }
@@ -27839,7 +28133,12 @@ function fcFocSaveMeta() {
   const families = fcLoadFamilies();
   const family = families.find(f => f.id === _fcFocEditId);
   if (!family) return;
-  family.name = (document.getElementById('foc_name')?.value || '').trim() || family.name;
+  if (family.locked) {
+    const nameEl = document.getElementById('foc_name');
+    if (nameEl) nameEl.value = family.name;
+  } else {
+    family.name = (document.getElementById('foc_name')?.value || '').trim() || family.name;
+  }
   family.contract = (document.getElementById('foc_contract')?.value || '').trim();
   family.material = (document.getElementById('foc_material')?.value || '').trim();
   family.notes = (document.getElementById('foc_notes')?.value || '').trim();
@@ -27881,6 +28180,10 @@ function fcFocRemoveCurve(curveId) {
   const family = families.find(f => f.id === _fcFocEditId);
   if (!family) return;
   const removed = (family.curves || []).find(c => c.id === curveId);
+  if (removed && removed.builtin) {
+    showToast('Historical curves stay on DelDOT Historical Family', 'info');
+    return;
+  }
   family.curves = (family.curves || []).filter(c => c.id !== curveId);
   family.updatedAt = new Date().toISOString();
   if (removed?.proctorId) {
@@ -27896,6 +28199,11 @@ function fcFocRemoveCurve(curveId) {
 
 function fcFocDeleteFamily() {
   if (!_fcFocEditId) return;
+  const current = fcLoadFamilies().find(f => f.id === _fcFocEditId);
+  if (current && current.locked) {
+    showToast('DelDOT Historical Family stays in the library', 'info');
+    return;
+  }
   if (!confirm('Delete this family of curves? Proctors are kept.')) return;
   const id = _fcFocEditId;
   fcSaveFamilies(fcLoadFamilies().filter(f => f.id !== id));
@@ -27964,7 +28272,7 @@ function fcFocDrawFamilyChart(family) {
     if (pts.length > 1) {
       g += `<path d="M ${pts.join(' L ')}" fill="none" stroke="${s.color}" stroke-width="2.4" stroke-linecap="round"/>`;
       const peakY = s.c.maxDry != null ? yScale(s.c.maxDry) : yScale(s.samples[s.samples.length-1].d);
-      g += `<text x="${xScale(s.c.optMoist)}" y="${peakY - 6}" font-size="9" fill="${s.color}" text-anchor="middle">${s.idx + 1}</text>`;
+      g += `<text x="${xScale(s.c.optMoist)}" y="${peakY - 6}" font-size="9" fill="${s.color}" text-anchor="middle">${s.c.no != null ? s.c.no : (s.idx + 1)}</text>`;
     }
   });
   if (!curves.length) {
