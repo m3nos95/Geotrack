@@ -8179,7 +8179,7 @@ END $$;
 // GLOBALS
 // ══════════════════════════════════════════════
 let db = null;
-const APP_BUILD = '2026.11.05-appearance';
+const APP_BUILD = '2026.11.05-strength';
 const FC_CORE_ICON_SRC = 'docs/r18-reference/core-drill-icon-128.png';
 const BORELOG_ICON_SRC = 'docs/r18-reference/borelog-icon.webp';
 const BORELOG_PATH = 'deldot-borelog-v6-uscs.html';
@@ -24462,13 +24462,33 @@ function compactionApprovalSample(record) {
   };
 }
 
+// The oldest age on the set is the acceptance break, usually 28 days.
+// A low 7-day result does not fail the set. Once a later break meets f'c, the
+// report checks Meets, including when the first break failed. An earlier break
+// that already meets f'c also checks Meets while the final age is still waiting.
+function concreteStrengthVerdict(set) {
+  const required = Number(set && set.requiredFc);
+  const cylinders = Array.isArray(set && set.cylinders) ? set.cylinders : [];
+  if (!(required > 0)) return null;
+  const broken = cylinders.filter(c => c && c.status === 'broken' && c.strength != null && c.strength !== '' && !isNaN(Number(c.strength)));
+  if (!broken.length) return null;
+  const ages = cylinders.map(c => Number(c.breakAge)).filter(n => n > 0);
+  const finalAge = ages.length ? Math.max.apply(null, ages) : null;
+  const meets = c => Number(c.strength) >= required;
+  if (finalAge != null) {
+    const finalBroken = broken.filter(c => Number(c.breakAge) === finalAge);
+    if (finalBroken.length) return finalBroken.some(c => !meets(c)) ? 'fail' : 'pass';
+  }
+  if (broken.some(meets)) return 'pass';
+  if (finalAge != null && broken.every(c => Number(c.breakAge) < finalAge)) return null;
+  return 'fail';
+}
+
 function concreteResultConforms(set) {
-  const cylinders = (set?.cylinders || []).filter(cyl => cyl && cyl.strength != null && cyl.strength !== '');
-  const finals = cylinders.filter(cyl => Number(cyl.breakAge) === 28);
-  const judged = finals.length ? finals : cylinders;
-  const required = parseFloat(set?.requiredFc);
-  if (!judged.length || !required) return null;
-  return judged.every(cyl => parseFloat(cyl.strength) >= required);
+  const verdict = concreteStrengthVerdict(set);
+  if (verdict === 'pass') return true;
+  if (verdict === 'fail') return false;
+  return null;
 }
 
 function concreteApprovalSample(set) {
@@ -33883,18 +33903,12 @@ function renderDMP15(set) {
   const fcBlank = v => v != null && v !== '' ? v : '';
   const m = set.materials || {};
 
-  // Determine overall pass/fail
-  // "Meets" = has broken cylinders AND all meet f'c
-  // "Does Not Meet" = has at least one broken cylinder that failed
-  // Both can be unchecked (no breaks yet). Both cannot be checked simultaneously.
-  const brokenCyls = set.cylinders.filter(c => c.status === 'broken');
-  const hasBroken  = brokenCyls.length > 0;
-  const allPass    = hasBroken && brokenCyls.every(c => (c.strength||0) >= set.requiredFc);
-  const anyFail    = hasBroken && brokenCyls.some(c => (c.strength||0) < set.requiredFc);
-  // meetsFc: true only when ALL broken meet requirement (and at least one broken)
-  // failsFc: true only when at least one broken cylinder failed
-  const meetsFc = allPass && !anyFail;
-  const failsFc = anyFail;
+  // Meets follows the acceptance age. A 7-day miss stays unchecked while a
+  // later age is still waiting, and a later break that meets f'c checks Meets.
+  const brokenCyls = (set.cylinders || []).filter(c => c.status === 'broken');
+  const strengthVerdict = concreteStrengthVerdict(set);
+  const meetsFc = strengthVerdict === 'pass';
+  const failsFc = strengthVerdict === 'fail';
 
   // dotted leader helper
   const dr = (lbl, val) => `<div class="dmp15-row"><span class="dr-lbl">${lbl}</span><span class="dr-val">${val||''}</span></div>`;
