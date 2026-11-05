@@ -1527,6 +1527,147 @@ nav:not(#r18-nav), .nav-top-row { display: none !important; }
 @media (max-width: 820px) {
   .mix-mat-grid { grid-template-columns: 1fr 72px; }
 }
+#concrete-view .lab-mode-tabs {
+  border: none; background: transparent; gap: 8px; overflow-x: auto;
+  border-radius: 0; padding-bottom: 2px;
+}
+#concrete-view .lab-mode-tab {
+  flex: 0 0 auto; border-radius: 999px; background: #121b2c; color: #c5d0de;
+  font-family: var(--sans); font-size: 14px; font-weight: 650; letter-spacing: 0;
+  text-transform: none; text-shadow: none; box-shadow: none;
+  padding: 8px 14px; border: 1px solid #2a3a52;
+}
+#concrete-view .lab-mode-tab.active {
+  background: #2ee0c8; color: #04222a; border-color: #2ee0c8;
+}
+#concrete-view .concrete-guide-toggle {
+  border-radius: 999px; font-family: var(--sans); letter-spacing: 0; text-transform: none;
+}
+.mix-phone { max-width: 480px; margin: 0 auto; }
+.concrete-phone-nav { max-width: 760px; margin-left: auto; margin-right: auto; justify-content: center; overflow-x: auto; }
+@media (max-width: 820px) {
+  .concrete-phone-nav { justify-content: flex-start; }
+}
+.mix-phone-head { display: flex; align-items: flex-end; justify-content: space-between; gap: 12px; margin: 4px 2px 12px; }
+.mix-phone-title { font: 700 28px/1.1 var(--sans); letter-spacing: -0.03em; color: var(--text); }
+.mix-phone-count { margin-top: 4px; color: #8ea0b5; font: 500 13px var(--sans); }
+.mix-phone-add {
+  width: 44px; height: 44px; border-radius: 50%; border: none; cursor: pointer;
+  background: #2ee0c8; color: #04222a; font: 500 30px/1 var(--sans); flex-shrink: 0;
+}
+.mix-phone-search {
+  width: 100%; box-sizing: border-box; background: #121b2c; border: 1px solid #2a3a52;
+  color: var(--text); border-radius: 14px; padding: 12px 14px; font: 500 15px var(--sans); outline: none;
+}
+.mix-phone-chips { display: flex; gap: 8px; overflow-x: auto; margin: 12px 0; padding-bottom: 2px; }
+.mix-phone-chips button {
+  border: 1px solid #2a3a52; background: #121b2c; color: #c5d0de;
+  border-radius: 999px; padding: 7px 12px; font: 650 13px var(--sans);
+  cursor: pointer; white-space: nowrap;
+}
+.mix-phone-chips button.on { background: #2ee0c8; color: #04222a; border-color: #2ee0c8; }
+.mix-row {
+  width: 100%; text-align: left; cursor: pointer; color: inherit; font: inherit;
+  background: #121b2c; border: 1px solid #2a3a52; border-radius: 16px;
+  padding: 14px 14px 14px 16px; margin-bottom: 10px;
+  display: flex; gap: 10px; align-items: center;
+}
+.mix-row-main { flex: 1; min-width: 0; }
+.mix-row-name { font: 700 16px/1.25 var(--sans); color: var(--text); }
+.mix-row-sub { margin-top: 2px; color: #8ea0b5; font: 500 13px var(--sans); }
+.mix-row-products {
+  margin-top: 4px; color: #c5d0de; font: 500 13px var(--sans);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.mix-pill {
+  flex-shrink: 0; font: 700 11px var(--sans); border-radius: 999px; padding: 4px 8px;
+  background: rgba(240, 180, 90, 0.16); color: #f0b45a;
+}
+.mix-pill.approved { background: rgba(46, 224, 200, 0.16); color: #2ee0c8; }
+.mix-pill.rejected { background: rgba(248, 113, 113, 0.16); color: #fca5a5; }
+.mix-chevron { color: #8ea0b5; font-size: 22px; line-height: 1; }
+.mix-empty {
+  text-align: center; color: #8ea0b5; font: 500 14px var(--sans); padding: 28px 12px;
+}
+.mix-sheet { display: none; position: fixed; inset: 0; z-index: 940; overflow: auto; background: #0d1524; padding: 12px 16px 40px; }
+.mix-sheet.open { display: block; }
+.mix-sheet-inner { max-width: 480px; margin: 0 auto; }
+.mix-sheet-back {
+  background: transparent; border: none; color: #2ee0c8; cursor: pointer;
+  font: 650 16px var(--sans); padding: 8px 0 14px;
+}
+.mix-detail-title { font: 700 26px/1.15 var(--sans); letter-spacing: -0.03em; margin: 0 0 4px; }
+.mix-detail-row { display: flex; justify-content: space-between; gap: 12px; padding: 12px 0; border-bottom: 1px solid #243246; font-size: 15px; }
+.mix-detail-row strong { text-align: right; min-width: 0; overflow-wrap: anywhere; }
+.mix-detail-row span { color: #8ea0b5; }
+.mix-detail-actions { display: flex; flex-direction: column; gap: 8px; margin-top: 18px; }
+.mix-detail-actions .btn { width: 100%; justify-content: center; min-height: 44px; border-radius: 12px; }
+.mix-sheet .form-grid.three { grid-template-columns: 1fr 1fr; }
+.mix-sheet .mix-mat-grid { grid-template-columns: 1fr 72px; }
+@media (max-width: 420px) {
+  .mix-sheet .form-grid.three { grid-template-columns: 1fr; }
+}
+.concrete-phone { max-width: 480px; margin: 0 auto; }
+#concrete-view .concrete-phone > .card,
+#concrete-view .concrete-form {
+  background: transparent; border: none; box-shadow: none; padding: 0;
+}
+#concrete-view .concrete-phone .form-grid,
+#concrete-view .concrete-phone .form-grid.three,
+#breakSheet .form-grid,
+#breakSheet .form-grid.three {
+  grid-template-columns: 1fr 1fr;
+}
+#concrete-view .concrete-phone .form-group.span2 { grid-column: 1 / -1; }
+.concrete-pair, .concrete-ages { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 12px; }
+#csub-intake .mix-mat-grid { grid-template-columns: 1fr 72px; }
+#concrete-view .concrete-phone .btn-row,
+#breakSheet .btn-row { flex-direction: column; }
+#concrete-view .concrete-phone .btn-row .btn,
+#breakSheet .btn-row .btn { width: 100%; justify-content: center; min-height: 48px; border-radius: 12px; }
+.concrete-disclose {
+  display: flex; justify-content: space-between; align-items: center; gap: 12px;
+  background: #121b2c; border: 1px solid #2a3a52; border-radius: 16px;
+  padding: 14px 16px; margin-bottom: 14px; color: #eef3f8; cursor: pointer;
+  font: 650 15px var(--sans); letter-spacing: 0; text-transform: none;
+}
+.concrete-disclose .toggle-arrow { color: #8ea0b5; font-size: 18px; }
+.concrete-text-btn {
+  background: none; border: none; color: #2ee0c8; cursor: pointer;
+  font: 650 14px var(--sans); padding: 8px 0 14px;
+}
+.concrete-stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin: 0 0 14px; }
+.concrete-stat { background: #121b2c; border: 1px solid #2a3a52; border-radius: 16px; padding: 12px 8px; text-align: center; }
+.concrete-stat b { display: block; font: 700 22px/1 var(--sans); color: var(--text); }
+.concrete-stat span { display: block; margin-top: 4px; color: #8ea0b5; font: 600 12px var(--sans); }
+.concrete-stat.overdue b { color: #fca5a5; }
+.concrete-stat.today b { color: #f0b45a; }
+.concrete-stat.soon b { color: #2ee0c8; }
+.mix-pill.overdue { background: rgba(248, 113, 113, 0.16); color: #fca5a5; }
+.mix-pill.due-today { background: rgba(240, 180, 90, 0.16); color: #f0b45a; }
+.mix-pill.upcoming { background: rgba(46, 224, 200, 0.12); color: #9eece0; }
+#breakSheet .lab-sample-banner {
+  grid-template-columns: 1fr 1fr; background: #121b2c; border: 1px solid #2a3a52; border-radius: 16px;
+}
+#breakSheet .fracture-picker { flex-wrap: nowrap; overflow-x: auto; padding-bottom: 8px; }
+#breakSheet .fracture-card {
+  flex: 0 0 112px; border-radius: 16px; background: #121b2c; border: 1px solid #2a3a52; box-shadow: none;
+}
+#breakSheet .fracture-card.selected {
+  border-color: #2ee0c8; background: #04222a; box-shadow: none;
+}
+#breakSheet .fracture-card.selected svg,
+#breakSheet .fracture-card.selected .fc-type { color: #2ee0c8; filter: none; text-shadow: none; }
+#reportSheet .mix-sheet-inner { max-width: 860px; }
+#reportSheet .report-toolbar { margin-bottom: 12px; }
+#reportSheet .report-toolbar .btn { width: 100%; justify-content: center; min-height: 48px; border-radius: 12px; }
+#crpt-output { overflow-x: auto; }
+@media (max-width: 420px) {
+  #concrete-view .concrete-phone .form-grid,
+  #concrete-view .concrete-phone .form-grid.three,
+  #breakSheet .form-grid,
+  #breakSheet .form-grid.three { grid-template-columns: 1fr; }
+}
 #mixApprovalView {
   display: none;
   position: absolute;
@@ -6424,15 +6565,15 @@ END $$;
      ══════════════════════════════════════════════════════════════ -->
 <div class="view" id="concrete-view">
   <div class="page-wide">
-    <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:12px;">
-      <div class="lab-mode-tabs" data-tour="concrete-tabs" data-guide="concrete-tabs" style="margin-bottom:0;flex:1;min-width:240px;">
-        <button class="lab-mode-tab active" id="ctab-intake"   onclick="switchConcreteTab('intake')">⊕ INTAKE</button>
-        <button class="lab-mode-tab"        id="ctab-mixes"    onclick="switchConcreteTab('mixes')">MIXES</button>
-        <button class="lab-mode-tab"        id="ctab-approved" onclick="switchConcreteTab('approved')" style="display:none;">APPROVED MIXES</button>
-        <button class="lab-mode-tab"        id="ctab-log"      onclick="switchConcreteTab('log')">📋 CYLINDER LOG</button>
-        <button class="lab-mode-tab"        id="ctab-schedule" onclick="switchConcreteTab('schedule')">📅 BREAK SCHEDULE</button>
-        <button class="lab-mode-tab"        id="ctab-break"    onclick="switchConcreteTab('break')">🔨 BREAK ENTRY</button>
-        <button class="lab-mode-tab"        id="ctab-report"   onclick="switchConcreteTab('report')">🖨 REPORT</button>
+    <div class="concrete-phone-nav" style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:12px;">
+      <div class="lab-mode-tabs" data-tour="concrete-tabs" data-guide="concrete-tabs" style="margin-bottom:0;">
+        <button class="lab-mode-tab active" id="ctab-intake"   onclick="switchConcreteTab('intake')">Intake</button>
+        <button class="lab-mode-tab"        id="ctab-mixes"    onclick="switchConcreteTab('mixes')">Mixes</button>
+        <button class="lab-mode-tab"        id="ctab-approved" onclick="switchConcreteTab('approved')" style="display:none;">Approved</button>
+        <button class="lab-mode-tab"        id="ctab-log"      onclick="switchConcreteTab('log')">Log</button>
+        <button class="lab-mode-tab"        id="ctab-schedule" onclick="switchConcreteTab('schedule')">Schedule</button>
+        <button class="lab-mode-tab"        id="ctab-break"    onclick="switchConcreteTab('break')">Break</button>
+        <button class="lab-mode-tab"        id="ctab-report"   onclick="switchConcreteTab('report')">Report</button>
       </div>
       <button type="button" class="concrete-guide-toggle" id="btnConcreteGuidedTabs" onclick="toggleConcreteGuidedMode()"
               title="Turn Guided Mode on or off">
@@ -6442,9 +6583,14 @@ END $$;
     </div>
 
     <!-- ── INTAKE ── -->
-    <div id="csub-intake">
-      <div class="card">
-        <div class="card-title">New Concrete Set — Field Intake</div>
+    <div id="csub-intake" class="concrete-phone">
+      <div class="mix-phone-head">
+        <div>
+          <div class="mix-phone-title">New set</div>
+          <div class="mix-phone-count">Log a pour and its cylinders.</div>
+        </div>
+      </div>
+      <div class="card concrete-form">
         <div class="form-grid three" style="margin-bottom:12px;" data-guide="intake-job">
           <div class="form-group">
             <label>Set ID <span style="color:var(--muted);font-size:9px;">(auto-assigned if blank)</span></label>
@@ -6477,35 +6623,33 @@ END $$;
         </div>
 
         <!-- Fresh Properties -->
-        <div data-guide="intake-fresh">
-        <div class="manual-section-title" style="margin-top:6px;">Fresh Concrete Properties (AASHTO T 119 / T 152 / T 121 / T 309)</div>
-        <div class="form-grid" style="grid-template-columns:repeat(5,1fr); margin-bottom:12px;">
+        <div class="manual-section-title" style="margin-top:6px;">Fresh concrete</div>
+        <div class="concrete-pair" data-guide="intake-fresh">
           <div class="form-group">
-            <label>Slump (in) — T 119</label>
+            <label>Slump (in)</label>
             <input type="number" id="ci_slump" step="0.25" min="0" max="12" placeholder="4.5">
           </div>
           <div class="form-group">
-            <label>Air Content (%) — T 152</label>
+            <label>Air (%)</label>
             <input type="number" id="ci_air" step="0.1" min="0" max="20" placeholder="6.2">
           </div>
           <div class="form-group">
-            <label>Unit Weight (pcf) — T 121</label>
+            <label>Unit weight (pcf)</label>
             <input type="number" id="ci_unit_wt" step="0.1" min="100" max="180" placeholder="147.8">
           </div>
           <div class="form-group">
-            <label>Concrete Temp (°F) — T 309</label>
+            <label>Concrete temp (°F)</label>
             <input type="number" id="ci_conc_temp" step="1" min="40" max="120" placeholder="72">
           </div>
           <div class="form-group">
-            <label>Ambient Temp (°F)</label>
+            <label>Ambient temp (°F)</label>
             <input type="number" id="ci_amb_temp" step="1" min="-20" max="120" placeholder="68">
           </div>
         </div>
-        </div><!-- /data-guide intake-fresh -->
 
         <!-- Cylinder Setup -->
         <div data-guide="intake-cylinders">
-        <div class="manual-section-title">Cylinder Setup (AASHTO T 22)</div>
+        <div class="manual-section-title">Cylinders</div>
         <div class="form-grid" style="margin-bottom:14px;">
           <div class="form-group">
             <label>Cylinder Diameter</label>
@@ -6520,8 +6664,8 @@ END $$;
           </div>
         </div>
 
-        <div class="manual-section-title">Break Schedule — Cylinders per Age</div>
-        <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:8px;">
+        <div class="manual-section-title">How many to break</div>
+        <div class="concrete-ages">
           <div class="form-group">
             <label>7-Day Cylinders</label>
             <select id="ci_age_7"><option value="0">0</option><option value="1">1</option><option value="2" selected>2</option><option value="3">3</option></select>
@@ -6542,7 +6686,7 @@ END $$;
         <!-- Custom break age rows -->
         <div id="custom-age-rows" style="margin-bottom:8px;"></div>
         <div style="margin-bottom:14px;">
-          <button type="button" onclick="addCustomAgeRow()" style="background:none;border:1px dashed var(--border);color:var(--accent);padding:5px 14px;border-radius:var(--radius);cursor:pointer;font-size:11px;font-family:var(--mono);">+ Add Custom Break Age (e.g. 3-day, 5-day, 10-day)</button>
+          <button type="button" class="concrete-text-btn" onclick="addCustomAgeRow()">+ Add a break age</button>
         </div>
         </div><!-- /data-guide intake-cylinders -->
 
@@ -6552,11 +6696,10 @@ END $$;
         </div>
 
         <!-- DMP-15 Test Info & Materials (collapsible) -->
-        <div style="border:1px solid var(--border);border-radius:var(--radius);margin-bottom:14px;">
-          <div id="ci_materials_toggle" onclick="this.nextElementSibling.style.display=this.nextElementSibling.style.display==='none'?'':'none';this.querySelector('.toggle-arrow').textContent=this.nextElementSibling.style.display===''?'▾':'▸';"
-            style="padding:10px 14px;cursor:pointer;display:flex;justify-content:space-between;align-items:center;font-family:var(--mono);font-size:10px;letter-spacing:1px;color:var(--gold);text-transform:uppercase;user-select:none;">
-            <span>▸ DMP-15 / DMF-13 Extended Fields (Test Info &amp; Materials)</span>
-            <span class="toggle-arrow">▸</span>
+        <div style="margin-bottom:14px;">
+          <div id="ci_materials_toggle" class="concrete-disclose" onclick="this.nextElementSibling.style.display=this.nextElementSibling.style.display==='none'?'':'none';this.querySelector('.toggle-arrow').textContent=this.nextElementSibling.style.display===''?'▾':'›';">
+            <span>DMP-15 / DMF-13 Extended Fields</span>
+            <span class="toggle-arrow">›</span>
           </div>
           <div id="ci_materials_body" style="display:none;padding:0 14px 14px;">
             <div class="manual-section-title" style="margin-top:4px;">Test &amp; Project Info</div>
@@ -6591,7 +6734,7 @@ END $$;
             </div>
 
             <div class="manual-section-title">Materials Used</div>
-            <div style="display:grid;grid-template-columns:1fr 80px 1fr 80px;gap:8px;margin-bottom:10px;align-items:end;">
+            <div class="mix-mat-grid">
               <div class="form-group" data-guide="intake-materials-cement"><label>Cement 1 Brand</label><input type="text" id="ci_cement1" placeholder="RIVERSIDE"></div>
               <div class="form-group"><label>%</label><input type="number" id="ci_cement1_pct" placeholder="75" min="0" max="100"></div>
               <div class="form-group"><label>Cement 2 Brand</label><input type="text" id="ci_cement2" placeholder="EARTHCEM"></div>
@@ -6621,130 +6764,144 @@ END $$;
         </div>
 
         <div class="btn-row" data-guide="intake-create">
-          <button class="btn btn-success" onclick="submitConcreteIntake()">✓ CREATE SET &amp; LOG CYLINDERS</button>
+          <button class="btn btn-success" onclick="submitConcreteIntake()">Create set &amp; log cylinders</button>
           <button class="btn btn-ghost" onclick="clearConcreteIntakeForm()">CLEAR</button>
         </div>
       </div>
     </div>
 
     <!-- ── MIX DESIGNS ── -->
-    <div id="csub-mixes" style="display:none;">
-      <div class="card" style="margin-bottom:10px;">
-        <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
-          <input type="search" id="md-search" placeholder="Search supplier, product, class, plant, or mix name…" oninput="renderMixDesignLibrary()"
-            style="flex:1;background:var(--panel);border:1px solid var(--border);color:var(--text);padding:8px 12px;border-radius:var(--radius);font-size:13px;outline:none;min-width:0;">
-          <select id="md-status" onchange="renderMixDesignLibrary()"
-            style="background:var(--panel);border:1px solid var(--border);color:var(--text);padding:8px 12px;border-radius:var(--radius);font-size:13px;outline:none;">
-            <option value="all">All designs</option>
-            <option value="pending">Pending</option>
-            <option value="approved">Approved</option>
-            <option value="rejected">Sent back</option>
-          </select>
-          <div id="md-search-count" style="font-family:var(--mono);font-size:11px;color:var(--muted);"></div>
+    <div id="csub-mixes" class="mix-phone" style="display:none;">
+      <div class="mix-phone-head">
+        <div>
+          <div class="mix-phone-title">Mix designs</div>
+          <div class="mix-phone-count" id="md-search-count"></div>
         </div>
+        <button type="button" class="mix-phone-add" onclick="openMixDesignForm()" aria-label="New mix design">+</button>
       </div>
+      <input type="search" id="md-search" class="mix-phone-search" placeholder="Search supplier, product, class, plant…" oninput="renderMixDesignLibrary()">
+      <div class="mix-phone-chips" id="md-status-chips">
+        <button type="button" class="on" data-status="all" onclick="setMixLibraryStatus('all')">All</button>
+        <button type="button" data-status="pending" onclick="setMixLibraryStatus('pending')">Pending</button>
+        <button type="button" data-status="approved" onclick="setMixLibraryStatus('approved')">Approved</button>
+        <button type="button" data-status="rejected" onclick="setMixLibraryStatus('rejected')">Sent back</button>
+      </div>
+      <div id="mixDesignDbNote" class="si-action-msg bad" style="display:none;margin-bottom:12px;">Mix designs are only on this browser until the shared table exists. In Settings, choose Copy mix design SQL, paste it into the Supabase SQL editor, and click Run.</div>
       <div id="mixDesignList"></div>
-      <div class="card" id="mixDesignFormCard" style="margin:12px 0;">
-        <div class="card-title" id="mixDesignFormTitle">New mix design</div>
-        <p id="mixDesignFormNote" style="font-family:var(--mono);font-size:11px;color:var(--muted);line-height:1.5;margin:0 0 12px;">An approved design fills a new pour. The pour keeps its own copy, so editing the pour does not change the design.</p>
-        <div id="mixDesignDbNote" class="si-action-msg bad" style="display:none;margin-bottom:12px;">Mix designs are only on this browser until the shared table exists. In Settings, choose Copy mix design SQL, paste it into the Supabase SQL editor, and click Run.</div>
-        <div id="md_review_banner" style="display:none;margin-bottom:12px;padding:8px 10px;border:1px solid var(--border);border-radius:var(--radius);font-size:12px;color:var(--text);"></div>
-        <div class="form-grid three" style="margin-bottom:12px;">
-          <div class="form-group"><label>Mix name</label><input type="text" id="md_name" placeholder="Class A — 4000 psi"></div>
-          <div class="form-group"><label>Supplier</label><input type="text" id="md_supplier" placeholder="Eastern Concrete"></div>
-          <div class="form-group"><label>Class</label>
-            <select id="md_class">
-              <option value="">—</option>
-              <option value="A">A</option><option value="AA">AA</option>
-              <option value="B">B</option><option value="C">C</option>
-              <option value="D">D</option><option value="E">E</option>
-              <option value="F">F</option><option value="P">P</option>
-            </select>
+      <div id="mixDesignFormCard" class="mix-sheet">
+        <div class="mix-sheet-inner">
+          <button type="button" class="mix-sheet-back" onclick="closeMixDesignForm()">‹ Mix designs</button>
+          <div class="mix-phone-title" id="mixDesignFormTitle" style="margin-bottom:8px;">New mix design</div>
+          <p id="mixDesignFormNote" style="font-size:14px;color:#8ea0b5;line-height:1.45;margin:0 0 14px;">An approved design fills a new pour. The pour keeps its own copy, so editing the pour does not change the design.</p>
+          <div id="md_review_banner" style="display:none;margin-bottom:12px;padding:8px 10px;border:1px solid var(--border);border-radius:12px;font-size:13px;color:var(--text);"></div>
+          <div class="form-grid three" style="margin-bottom:12px;">
+            <div class="form-group"><label>Mix name</label><input type="text" id="md_name" placeholder="Class A — 4000 psi"></div>
+            <div class="form-group"><label>Supplier</label><input type="text" id="md_supplier" placeholder="Eastern Concrete"></div>
+            <div class="form-group"><label>Class</label>
+              <select id="md_class">
+                <option value="">—</option>
+                <option value="A">A</option><option value="AA">AA</option>
+                <option value="B">B</option><option value="C">C</option>
+                <option value="D">D</option><option value="E">E</option>
+                <option value="F">F</option><option value="P">P</option>
+              </select>
+            </div>
+            <div class="form-group"><label>Required f'c (psi)</label><input type="number" id="md_required_fc" step="100" min="1000" max="20000" placeholder="4000"></div>
+            <div class="form-group"><label>Cement (SKS/CY)</label><input type="text" id="md_cement_sks" placeholder="6"></div>
+            <div class="form-group"><label>Plant</label><input type="text" id="md_plant" placeholder="HERITAGE SHS 603"></div>
+            <div class="form-group"><label>GGBFS Corr. Factor</label><input type="text" id="md_corr_factor" placeholder="-3"></div>
           </div>
-          <div class="form-group"><label>Required f'c (psi)</label><input type="number" id="md_required_fc" step="100" min="1000" max="20000" placeholder="4000"></div>
-          <div class="form-group"><label>Cement (SKS/CY)</label><input type="text" id="md_cement_sks" placeholder="6"></div>
-          <div class="form-group"><label>Plant</label><input type="text" id="md_plant" placeholder="HERITAGE SHS 603"></div>
-          <div class="form-group"><label>GGBFS Corr. Factor</label><input type="text" id="md_corr_factor" placeholder="-3"></div>
-        </div>
-        <div class="manual-section-title">Materials used</div>
-        <div class="mix-mat-grid">
-          <div class="form-group"><label>Cement 1 Brand</label><input type="text" id="md_cement1" placeholder="RIVERSIDE"></div>
-          <div class="form-group"><label>%</label><input type="number" id="md_cement1_pct" placeholder="75" min="0" max="100"></div>
-          <div class="form-group"><label>Cement 2 Brand</label><input type="text" id="md_cement2" placeholder="EARTHCEM"></div>
-          <div class="form-group"><label>%</label><input type="number" id="md_cement2_pct" placeholder="25" min="0" max="100"></div>
-          <div class="form-group"><label>Cement 3 Brand</label><input type="text" id="md_cement3"></div>
-          <div class="form-group"><label>%</label><input type="number" id="md_cement3_pct" placeholder="0" min="0" max="100"></div>
-          <div class="form-group"><label>Admix 1 Brand</label><input type="text" id="md_admix1" placeholder="2020"></div>
-          <div class="form-group"><label>Oz/Sk</label><input type="number" id="md_admix1_oz" placeholder="4.7" step="0.01"></div>
-          <div class="form-group"><label>Admix 2 Brand</label><input type="text" id="md_admix2"></div>
-          <div class="form-group"><label>Oz/Sk</label><input type="number" id="md_admix2_oz" step="0.01"></div>
-          <div class="form-group"><label>Admix 3 Brand</label><input type="text" id="md_admix3"></div>
-          <div class="form-group"><label>Oz/Sk</label><input type="number" id="md_admix3_oz" step="0.01"></div>
-          <div class="form-group"><label>Admix 4 Brand</label><input type="text" id="md_admix4"></div>
-          <div class="form-group"><label>Oz/Sk</label><input type="number" id="md_admix4_oz" step="0.01"></div>
-          <div class="form-group"><label>AEA Brand</label><input type="text" id="md_aea" placeholder="AEA-14"></div>
-          <div class="form-group"><label>Oz/Sk</label><input type="number" id="md_aea_oz" placeholder="0.37" step="0.01"></div>
-        </div>
-        <div class="form-grid three" style="margin-bottom:14px;">
-          <div class="form-group"><label>Water Source</label><input type="text" id="md_water" placeholder="CITY OF WILMINGTON"></div>
-          <div class="form-group"><label>Fine Agg</label><input type="text" id="md_fine_agg" placeholder="ESSG YORK SAND"></div>
-          <div class="form-group"><label>Coarse Agg</label><input type="text" id="md_coarse_agg" placeholder="EAST PETERSBURG"></div>
-          <div class="form-group"><label>Fibers (Lbs/CY)</label><input type="text" id="md_fibers"></div>
-        </div>
-        <div class="btn-row">
-          <button class="btn btn-success" type="button" onclick="saveMixDesign(false)">Submit for approval</button>
-          <button class="btn btn-primary" type="button" id="md_approve_now" onclick="saveMixDesign(true)" style="display:none;">Save as approved</button>
-          <button class="btn btn-ghost" type="button" onclick="clearMixDesignForm()">Clear</button>
+          <div class="manual-section-title">Materials used</div>
+          <div class="mix-mat-grid">
+            <div class="form-group"><label>Cement 1 Brand</label><input type="text" id="md_cement1" placeholder="RIVERSIDE"></div>
+            <div class="form-group"><label>%</label><input type="number" id="md_cement1_pct" placeholder="75" min="0" max="100"></div>
+            <div class="form-group"><label>Cement 2 Brand</label><input type="text" id="md_cement2" placeholder="EARTHCEM"></div>
+            <div class="form-group"><label>%</label><input type="number" id="md_cement2_pct" placeholder="25" min="0" max="100"></div>
+            <div class="form-group"><label>Cement 3 Brand</label><input type="text" id="md_cement3"></div>
+            <div class="form-group"><label>%</label><input type="number" id="md_cement3_pct" placeholder="0" min="0" max="100"></div>
+            <div class="form-group"><label>Admix 1 Brand</label><input type="text" id="md_admix1" placeholder="2020"></div>
+            <div class="form-group"><label>Oz/Sk</label><input type="number" id="md_admix1_oz" placeholder="4.7" step="0.01"></div>
+            <div class="form-group"><label>Admix 2 Brand</label><input type="text" id="md_admix2"></div>
+            <div class="form-group"><label>Oz/Sk</label><input type="number" id="md_admix2_oz" step="0.01"></div>
+            <div class="form-group"><label>Admix 3 Brand</label><input type="text" id="md_admix3"></div>
+            <div class="form-group"><label>Oz/Sk</label><input type="number" id="md_admix3_oz" step="0.01"></div>
+            <div class="form-group"><label>Admix 4 Brand</label><input type="text" id="md_admix4"></div>
+            <div class="form-group"><label>Oz/Sk</label><input type="number" id="md_admix4_oz" step="0.01"></div>
+            <div class="form-group"><label>AEA Brand</label><input type="text" id="md_aea" placeholder="AEA-14"></div>
+            <div class="form-group"><label>Oz/Sk</label><input type="number" id="md_aea_oz" placeholder="0.37" step="0.01"></div>
+          </div>
+          <div class="form-grid three" style="margin-bottom:14px;">
+            <div class="form-group"><label>Water Source</label><input type="text" id="md_water" placeholder="CITY OF WILMINGTON"></div>
+            <div class="form-group"><label>Fine Agg</label><input type="text" id="md_fine_agg" placeholder="ESSG YORK SAND"></div>
+            <div class="form-group"><label>Coarse Agg</label><input type="text" id="md_coarse_agg" placeholder="EAST PETERSBURG"></div>
+            <div class="form-group"><label>Fibers (Lbs/CY)</label><input type="text" id="md_fibers"></div>
+          </div>
+          <div class="btn-row">
+            <button class="btn btn-success" type="button" onclick="saveMixDesign(false)">Submit for approval</button>
+            <button class="btn btn-primary" type="button" id="md_approve_now" onclick="saveMixDesign(true)" style="display:none;">Save as approved</button>
+            <button class="btn btn-ghost" type="button" onclick="clearMixDesignForm()">Clear</button>
+          </div>
         </div>
       </div>
+      <div id="mixDetailSheet" class="mix-sheet"></div>
     </div>
 
     <!-- ── APPROVED MIXES (supplier) ── -->
-    <div id="csub-approved" style="display:none;">
-      <p style="font-family:var(--mono);font-size:11px;color:var(--muted);line-height:1.5;margin:0 0 12px;">Designs DelDOT has approved. Open one to view the official approval, or print and save it as a PDF.</p>
-      <div class="card" style="margin-bottom:10px;">
-        <input type="search" id="approved-mix-search" placeholder="Search supplier, product, class, plant, or mix name…" oninput="renderApprovedMixes()"
-          style="width:100%;box-sizing:border-box;background:var(--panel);border:1px solid var(--border);color:var(--text);padding:8px 12px;border-radius:var(--radius);font-size:13px;outline:none;">
+    <div id="csub-approved" class="mix-phone" style="display:none;">
+      <div class="mix-phone-head">
+        <div>
+          <div class="mix-phone-title">Approved mixes</div>
+          <div class="mix-phone-count">Open one for the official approval.</div>
+        </div>
       </div>
-      <div id="approvedMixList"></div>
+      <input type="search" id="approved-mix-search" class="mix-phone-search" placeholder="Search supplier, product, class, plant…" oninput="renderApprovedMixes()">
+      <div id="approvedMixList" style="margin-top:12px;"></div>
     </div>
 
     <!-- ── CYLINDER LOG ── -->
-    <div id="csub-log" style="display:none;" data-guide="cylinder-log">
-      <div class="card" style="margin-bottom:10px;">
-        <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
-          <input type="text" id="clog-search" placeholder="Search contract, set ID, location…" oninput="renderConcreteLog()"
-            style="flex:1;background:var(--panel);border:1px solid var(--border);color:var(--text);padding:8px 12px;border-radius:var(--radius);font-size:13px;outline:none;min-width:200px;">
-          <select id="clog-filter" onchange="renderConcreteLog()"
-            style="background:var(--panel);border:1px solid var(--border);color:var(--text);padding:8px 12px;border-radius:var(--radius);font-size:13px;outline:none;">
-            <option value="all">All Sets</option>
-            <option value="active">Active (has pending)</option>
-            <option value="complete">Complete</option>
-          </select>
-          <div id="clog-stats" style="font-family:var(--mono);font-size:11px;color:var(--muted);"></div>
+    <div id="csub-log" class="concrete-phone" style="display:none;" data-guide="cylinder-log">
+      <div class="mix-phone-head">
+        <div>
+          <div class="mix-phone-title">Cylinder log</div>
+          <div class="mix-phone-count" id="clog-stats"></div>
         </div>
+        <button type="button" class="mix-phone-add" onclick="switchConcreteTab('intake')" aria-label="New set">+</button>
+      </div>
+      <input type="search" id="clog-search" class="mix-phone-search" placeholder="Search set, contract, location…" oninput="renderConcreteLog()">
+      <div class="mix-phone-chips" id="clog-chips">
+        <button type="button" class="on" data-status="all" onclick="setConcreteLogFilter('all')">All</button>
+        <button type="button" data-status="active" onclick="setConcreteLogFilter('active')">Active</button>
+        <button type="button" data-status="complete" onclick="setConcreteLogFilter('complete')">Complete</button>
       </div>
       <div id="clog-body"></div>
+      <div id="concreteSetSheet" class="mix-sheet"></div>
     </div>
 
     <!-- ── BREAK SCHEDULE ── -->
-    <div id="csub-schedule" style="display:none;" data-guide="break-schedule">
-      <div class="card" style="margin-bottom:12px;padding:14px 16px;">
-        <div style="display:flex;gap:20px;flex-wrap:wrap;" id="csched-summary"></div>
-      </div>
-      <div class="card">
-        <div class="card-title">Upcoming &amp; Overdue Breaks</div>
-        <div style="background:var(--panel);display:grid;grid-template-columns:100px 1fr 80px 110px 110px;gap:10px;padding:8px 12px;font-family:var(--mono);font-size:9px;color:var(--muted);letter-spacing:1px;text-transform:uppercase;border-radius:var(--radius) var(--radius) 0 0;">
-          <span>SET ID</span><span>LOCATION</span><span>CYL</span><span>DUE DATE</span><span>STATUS</span>
+    <div id="csub-schedule" class="concrete-phone" style="display:none;" data-guide="break-schedule">
+      <div class="mix-phone-head">
+        <div>
+          <div class="mix-phone-title">Schedule</div>
+          <div class="mix-phone-count">Tap a cylinder to break it.</div>
         </div>
-        <div id="csched-body"></div>
       </div>
+      <div class="concrete-stats" id="csched-summary"></div>
+      <div id="csched-body"></div>
     </div>
 
     <!-- ── BREAK ENTRY ── -->
-    <div id="csub-break" style="display:none;" data-guide="break-entry">
-      <div class="card">
-        <div class="card-title">Cylinder Break Entry — AASHTO T 22</div>
+    <div id="csub-break" class="concrete-phone" style="display:none;" data-guide="break-entry">
+      <div class="mix-phone-head">
+        <div>
+          <div class="mix-phone-title">Breaks</div>
+          <div class="mix-phone-count">Tap a cylinder, then enter the load.</div>
+        </div>
+      </div>
+      <div id="break-queue"></div>
+      <div id="breakSheet" class="mix-sheet">
+        <div class="mix-sheet-inner">
+          <button type="button" class="mix-sheet-back" onclick="closeBreakSheet()">‹ Breaks</button>
+          <div class="mix-phone-title" style="margin-bottom:12px;">Record break</div>
         <div class="form-grid" style="margin-bottom:12px;">
           <div class="form-group">
             <label>Select Set</label>
@@ -6761,7 +6918,7 @@ END $$;
         </div>
 
         <!-- Cylinder Info Banner -->
-        <div id="cb-info-banner" style="display:none;" class="lab-sample-banner" style="margin-bottom:14px;">
+        <div id="cb-info-banner" class="lab-sample-banner" style="display:none;margin-bottom:14px;">
           <div class="lsb-item"><label>Set</label><span id="cb_info_set">—</span></div>
           <div class="lsb-item"><label>Break age</label><span id="cb_info_age">—</span></div>
           <div class="lsb-item"><label>Due date</label><span id="cb_info_due">—</span></div>
@@ -6939,30 +7096,43 @@ END $$;
         </div>
 
         <div class="btn-row" style="margin-top:14px;">
-          <button class="btn btn-success" onclick="submitBreakEntry()">✓ RECORD BREAK</button>
-          <button class="btn btn-ghost" onclick="clearBreakForm()">CLEAR</button>
+          <button class="btn btn-success" onclick="submitBreakEntry()">Record break</button>
+          <button class="btn btn-ghost" onclick="clearBreakForm()">Clear</button>
+        </div>
         </div>
       </div>
     </div>
 
     <!-- ── REPORT ── -->
-    <div id="csub-report" style="display:none;" data-guide="concrete-report">
-      <div class="report-toolbar" style="flex-wrap:wrap;gap:8px;">
-        <select id="crpt-set-select" onchange="renderBothConcreteReports(this.value)"
-          style="background:var(--panel);border:1px solid var(--border);color:var(--text);padding:8px 12px;border-radius:var(--radius);font-size:13px;outline:none;min-width:280px;">
-          <option value="">— Select a Set to Report —</option>
-        </select>
-        <button onclick="printConcreteReports()" style="background:var(--accent);color:#fff;border:none;padding:9px 16px;font-family:var(--mono);font-size:10px;letter-spacing:1px;cursor:pointer;border-radius:var(--radius);">🖨 PRINT BOTH FORMS</button>
-      </div>
-      <div id="crpt-approval" style="display:none;margin:0 0 12px;">
-        <div id="crpt-pending-notice" style="display:none;background:#1c1300;border:1px solid #f59e0b;border-radius:6px;padding:9px 14px;margin:0 0 8px;font-family:var(--sans);font-size:13px;line-height:1.45;color:#fde68a;"></div>
-        <div id="crpt-approved-notice" style="display:none;background:#052e16;border:1px solid #16a34a;border-radius:6px;padding:9px 14px;margin:0 0 8px;font-family:var(--sans);font-size:13px;line-height:1.45;color:#4ade80;"></div>
-        <div style="display:flex;gap:8px;">
-          <button type="button" id="crpt-approve-btn" onclick="slApproveForDistribution()" style="display:none;">Approve</button>
-          <button type="button" id="crpt-reject-btn" onclick="slOpenRejectModal()" style="display:none;">Reject</button>
+    <div id="csub-report" class="concrete-phone" style="display:none;" data-guide="concrete-report">
+      <div class="mix-phone-head">
+        <div>
+          <div class="mix-phone-title">Reports</div>
+          <div class="mix-phone-count">Tap a set for the DMP-15 and DMF-13.</div>
         </div>
       </div>
-      <div id="crpt-output"></div>
+      <input type="search" id="crpt-search" class="mix-phone-search" placeholder="Search set, contract, location…" oninput="renderConcreteReportList()">
+      <div id="crpt-list" style="margin-top:12px;"></div>
+      <select id="crpt-set-select" onchange="renderBothConcreteReports(this.value)" style="display:none;" aria-hidden="true">
+        <option value="">— Select a Set to Report —</option>
+      </select>
+      <div id="reportSheet" class="mix-sheet">
+        <div class="mix-sheet-inner">
+          <button type="button" class="mix-sheet-back" onclick="closeReportSheet()">‹ Reports</button>
+          <div class="report-toolbar" style="flex-wrap:wrap;gap:8px;">
+            <button class="btn btn-primary" type="button" onclick="printConcreteReports()">Print / Save PDF</button>
+          </div>
+          <div id="crpt-approval" style="display:none;margin:0 0 12px;">
+            <div id="crpt-pending-notice" style="display:none;background:#1c1300;border:1px solid #f59e0b;border-radius:12px;padding:9px 14px;margin:0 0 8px;font-family:var(--sans);font-size:13px;line-height:1.45;color:#fde68a;"></div>
+            <div id="crpt-approved-notice" style="display:none;background:#052e16;border:1px solid #16a34a;border-radius:12px;padding:9px 14px;margin:0 0 8px;font-family:var(--sans);font-size:13px;line-height:1.45;color:#4ade80;"></div>
+            <div style="display:flex;gap:8px;">
+              <button type="button" id="crpt-approve-btn" onclick="slApproveForDistribution()" style="display:none;">Approve</button>
+              <button type="button" id="crpt-reject-btn" onclick="slOpenRejectModal()" style="display:none;">Reject</button>
+            </div>
+          </div>
+          <div id="crpt-output"></div>
+        </div>
+      </div>
     </div>
 
   </div><!-- end page-wide -->
@@ -7979,7 +8149,7 @@ END $$;
 // GLOBALS
 // ══════════════════════════════════════════════
 let db = null;
-const APP_BUILD = '2026.11.05-mix-search';
+const APP_BUILD = '2026.11.05-concrete-phone';
 const FC_CORE_ICON_SRC = 'docs/r18-reference/core-drill-icon-128.png';
 const BORELOG_ICON_SRC = 'docs/r18-reference/borelog-icon.webp';
 const BORELOG_PATH = 'deldot-borelog-v6-uscs.html';
@@ -31899,6 +32069,8 @@ function selectFractureType(type) {
 const MIX_DESIGN_KEY = 'labtrak_mix_designs';
 const MIX_DESIGN_ROW_ID = 'mix_designs';
 let _mixEditingId = null;
+let mixLibraryStatus = 'all';
+let concreteLogFilter = 'all';
 
 const MIX_MAT_FIELDS = [
   ['cement1', 'md_cement1', 'ci_cement1', 'text'],
@@ -32053,10 +32225,15 @@ function applyMixDesignChrome() {
   if (guide) guide.style.display = supplier ? 'none' : '';
   const approveNow = document.getElementById('md_approve_now');
   if (approveNow) approveNow.style.display = mixDesignCanReview() ? '' : 'none';
+  const addBtn = document.querySelector('#csub-mixes .mix-phone-add');
+  if (addBtn) addBtn.style.display = mixDesignCanSubmit() ? '' : 'none';
+  const approvedChip = document.querySelector('#md-status-chips button[data-status="approved"]');
+  if (approvedChip) approvedChip.style.display = supplier ? 'none' : '';
+  if (supplier && mixLibraryStatus === 'approved') mixLibraryStatus = 'all';
   const note = document.getElementById('mixDesignFormNote');
   if (note) {
     note.textContent = supplier
-      ? 'Submit a design here. After DelDOT approves it, the official sheet is on Approved Mixes.'
+      ? 'Submit a design here. After DelDOT approves it, the official sheet is on Approved.'
       : 'An approved design fills a new pour. The pour keeps its own copy, so editing the pour does not change the design.';
   }
   const app = document.getElementById('app');
@@ -32155,7 +32332,80 @@ function editMixDesign(id) {
       banner.textContent = '';
     }
   }
-  document.getElementById('mixDesignFormCard')?.scrollIntoView({ block: 'start' });
+  closeMixDetail();
+  const sheet = document.getElementById('mixDesignFormCard');
+  if (sheet) { sheet.classList.add('open'); sheet.scrollTop = 0; }
+}
+
+function setMixLibraryStatus(status) {
+  mixLibraryStatus = status || 'all';
+  document.querySelectorAll('#md-status-chips button').forEach(btn => {
+    btn.classList.toggle('on', btn.dataset.status === mixLibraryStatus);
+  });
+  renderMixDesignLibrary();
+}
+
+function openMixDesignForm() {
+  if (!mixDesignCanSubmit()) return;
+  clearMixDesignForm();
+  const sheet = document.getElementById('mixDesignFormCard');
+  if (sheet) { sheet.classList.add('open'); sheet.scrollTop = 0; }
+}
+
+function closeMixDesignForm() {
+  const sheet = document.getElementById('mixDesignFormCard');
+  if (sheet) sheet.classList.remove('open');
+}
+
+function closeMixDetail() {
+  const sheet = document.getElementById('mixDetailSheet');
+  if (!sheet) return;
+  sheet.classList.remove('open');
+  sheet.innerHTML = '';
+}
+
+function openMixRow(id) {
+  const design = mixDesigns().find(d => d.id === id);
+  if (!design || !mixDesignVisible(design)) return;
+  if (design.status === 'approved' && currentUser?.role === 'supplier') {
+    openMixApproval(id);
+    return;
+  }
+  const sheet = document.getElementById('mixDetailSheet');
+  if (!sheet) return;
+  const safeId = mixEsc(design.id);
+  const statusLabel = design.status === 'rejected' ? 'Sent back' : (design.status === 'approved' ? 'Approved' : 'Pending');
+  const rows = [
+    ['Supplier', design.supplier],
+    ['Class', design.concreteClass ? ('Class ' + design.concreteClass) : ''],
+    ["Required f'c", design.requiredFc ? (Number(design.requiredFc).toLocaleString() + ' psi') : ''],
+    ['Cement', design.cementSks ? (design.cementSks + ' SKS/CY') : ''],
+    ['Plant', design.plant],
+    ['Corr. factor', design.corrFactor],
+    ['Products', mixProductLine(design)],
+    ['Submitted by', design.submittedBy],
+    ['Status', statusLabel]
+  ].filter(([, value]) => value != null && String(value).trim() !== '');
+  const actions = [];
+  if (design.status === 'approved') actions.push('<button class="btn btn-primary" type="button" onclick="openMixApproval(\'' + safeId + '\')">View approval</button>');
+  if (mixDesignCanReview() && design.status !== 'approved') actions.push('<button class="btn btn-success" type="button" onclick="reviewMixDesign(\'' + safeId + '\',\'approved\')">Approve</button>');
+  if (mixDesignCanReview() && design.status !== 'rejected') actions.push('<button class="btn btn-ghost" type="button" onclick="reviewMixDesign(\'' + safeId + '\',\'rejected\')">Send back</button>');
+  if (mixDesignCanEdit(design)) {
+    actions.push('<button class="btn btn-ghost" type="button" onclick="editMixDesign(\'' + safeId + '\')">Edit</button>');
+    actions.push('<button class="btn btn-ghost" type="button" onclick="deleteMixDesign(\'' + safeId + '\')">Remove</button>');
+  }
+  const note = mixDesignCanReview()
+    ? '<div class="form-group" style="margin-top:14px;"><label>Note if you send this back</label><input id="md_note_' + safeId + '" value="' + mixEsc(design.reviewNote || '') + '"></div>'
+    : (design.reviewNote ? '<div class="mix-detail-row"><span>Note</span><strong>' + mixEsc(design.reviewNote) + '</strong></div>' : '');
+  sheet.innerHTML = '<div class="mix-sheet-inner">' +
+    '<button type="button" class="mix-sheet-back" onclick="closeMixDetail()">‹ Mix designs</button>' +
+    '<h2 class="mix-detail-title">' + mixEsc(design.name) + '</h2>' +
+    rows.map(([label, value]) => '<div class="mix-detail-row"><span>' + mixEsc(label) + '</span><strong>' + mixEsc(value) + '</strong></div>').join('') +
+    note +
+    (actions.length ? '<div class="mix-detail-actions">' + actions.join('') + '</div>' : '') +
+    '</div>';
+  sheet.classList.add('open');
+  sheet.scrollTop = 0;
 }
 
 function mixDesignToRow(design) {
@@ -32390,6 +32640,7 @@ async function saveMixDesign(approveNow) {
   const next = existing ? designs.map(d => d.id === record.id ? record : d) : [record, ...designs];
   const shared = await persistMixDesigns(next);
   clearMixDesignForm();
+  closeMixDesignForm();
   showToast(approve ? (shared ? 'Mix design approved' : 'Approved on this browser') : (shared ? 'Mix design submitted' : 'Saved on this browser'), shared ? 'success' : 'info');
 }
 
@@ -32415,6 +32666,7 @@ async function reviewMixDesign(id, status) {
   };
   const shared = await persistMixDesigns(mixDesigns().map(d => d.id === id ? record : d));
   if (_mixEditingId === id) clearMixDesignForm();
+  closeMixDetail();
   showToast(status === 'approved' ? 'Mix design approved' : 'Sent back', shared ? 'success' : 'info');
 }
 
@@ -32423,7 +32675,11 @@ async function deleteMixDesign(id) {
   if (!design || !mixDesignCanEdit(design)) return;
   if (!confirm('Remove ' + design.name + '?')) return;
   const shared = await persistMixDesigns(mixDesigns().filter(d => d.id !== id));
-  if (_mixEditingId === id) clearMixDesignForm();
+  if (_mixEditingId === id) {
+    clearMixDesignForm();
+    closeMixDesignForm();
+  }
+  closeMixDetail();
   showToast(shared ? 'Mix design removed' : 'Removed on this browser', shared ? 'success' : 'info');
 }
 
@@ -32454,65 +32710,55 @@ function mixProductLine(design) {
     .join(' · ');
 }
 
+function mixRowButton(design, action) {
+  const safeId = mixEsc(design.id);
+  const meta = [design.supplier, design.concreteClass ? ('Class ' + design.concreteClass) : '', design.requiredFc ? (Number(design.requiredFc).toLocaleString() + ' psi') : '', design.plant].filter(Boolean).join(' · ');
+  const products = mixProductLine(design);
+  const label = { pending: 'Pending', approved: 'Approved', rejected: 'Sent back' };
+  return '<button type="button" class="mix-row" onclick="' + action + '(\'' + safeId + '\')">' +
+    '<div class="mix-row-main">' +
+      '<div class="mix-row-name">' + mixEsc(design.name) + '</div>' +
+      (meta ? '<div class="mix-row-sub">' + mixEsc(meta) + '</div>' : '') +
+      (products ? '<div class="mix-row-products">' + mixEsc(products) + '</div>' : '') +
+    '</div>' +
+    '<span class="mix-pill ' + mixEsc(design.status || '') + '">' + (label[design.status] || 'Pending') + '</span>' +
+    '<span class="mix-chevron" aria-hidden="true">›</span>' +
+  '</button>';
+}
+
 function renderMixDesignLibrary() {
   applyMixDesignChrome();
   showMixDesignDbNote();
   if (typeof renderConcreteHub === 'function') renderConcreteHub();
   const list = document.getElementById('mixDesignList');
   if (!list) return;
+  document.querySelectorAll('#md-status-chips button').forEach(btn => {
+    btn.classList.toggle('on', btn.dataset.status === mixLibraryStatus);
+  });
   const rank = { pending: 0, rejected: 1, approved: 2 };
   const query = document.getElementById('md-search')?.value || '';
-  const status = document.getElementById('md-status')?.value || 'all';
+  const status = mixLibraryStatus || 'all';
   const library = mixDesigns()
     .filter(mixDesignVisible)
     .filter(d => !(currentUser?.role === 'supplier' && d.status === 'approved'))
     .sort((a, b) => (rank[a.status] - rank[b.status]) || String(b.updatedAt).localeCompare(String(a.updatedAt)));
   const designs = library.filter(d => (status === 'all' || d.status === status) && mixDesignQueryMatch(d, query));
   const count = document.getElementById('md-search-count');
-  if (count) count.textContent = library.length ? (designs.length + ' of ' + library.length) : '';
+  const filtering = status !== 'all' || String(query).trim() !== '';
+  if (count) {
+    if (!library.length) count.textContent = 'None yet';
+    else if (!filtering) count.textContent = library.length + (library.length === 1 ? ' design' : ' designs');
+    else count.textContent = designs.length + ' of ' + library.length;
+  }
   if (!library.length) {
-    list.innerHTML = '<div class="card" style="text-align:center;padding:28px;color:var(--muted);font-family:var(--mono);font-size:12px;">No mix designs yet.</div>';
+    list.innerHTML = '<div class="mix-empty">No mix designs yet. Tap + to add one.</div>';
     return;
   }
   if (!designs.length) {
-    list.innerHTML = '<div class="card" style="text-align:center;padding:28px;color:var(--muted);font-family:var(--mono);font-size:12px;">No mix designs match that search.</div>';
+    list.innerHTML = '<div class="mix-empty">Nothing matches that search.</div>';
     return;
   }
-  const badge = { pending: 'badge-pending', approved: 'badge-complete', rejected: 'badge-rejected' };
-  const label = { pending: 'PENDING', approved: 'APPROVED', rejected: 'SENT BACK' };
-  list.innerHTML = designs.map(d => {
-    const safeId = mixEsc(d.id);
-    const meta = [d.supplier, d.concreteClass ? ('Class ' + d.concreteClass) : '', d.requiredFc ? (Number(d.requiredFc).toLocaleString() + ' psi') : '', d.plant].filter(Boolean).join(' · ');
-    const products = mixProductLine(d);
-    const actions = [];
-    if (mixDesignCanEdit(d)) {
-      actions.push('<button class="btn btn-ghost" type="button" onclick="editMixDesign(\'' + safeId + '\')">Edit</button>');
-      actions.push('<button class="btn btn-ghost" type="button" onclick="deleteMixDesign(\'' + safeId + '\')">Remove</button>');
-    }
-    if (d.status === 'approved') {
-      actions.push('<button class="btn btn-primary" type="button" onclick="openMixApproval(\'' + safeId + '\')">View approval</button>');
-    }
-    if (mixDesignCanReview() && d.status !== 'approved') {
-      actions.push('<button class="btn btn-success" type="button" onclick="reviewMixDesign(\'' + safeId + '\',\'approved\')">Approve</button>');
-    }
-    if (mixDesignCanReview() && d.status !== 'rejected') {
-      actions.push('<button class="btn btn-ghost" type="button" onclick="reviewMixDesign(\'' + safeId + '\',\'rejected\')">Send back</button>');
-    }
-    const noteBox = mixDesignCanReview()
-      ? '<input id="md_note_' + safeId + '" value="' + mixEsc(d.reviewNote || '') + '" placeholder="Note if you send this back" style="width:100%;box-sizing:border-box;margin-top:8px;background:var(--panel);border:1px solid var(--border);color:var(--text);padding:8px 10px;border-radius:var(--radius);font-size:12px;">'
-      : (d.reviewNote ? '<div style="margin-top:6px;font-size:12px;color:var(--text);">Note: ' + mixEsc(d.reviewNote) + '</div>' : '');
-    return '<div class="card" style="margin-bottom:10px;">' +
-      '<div style="display:flex;justify-content:space-between;gap:10px;align-items:flex-start;">' +
-        '<div><div style="font-weight:700;">' + mixEsc(d.name) + '</div>' +
-        '<div style="font-family:var(--mono);font-size:11px;color:var(--muted);margin-top:3px;">' + mixEsc(meta) + '</div>' +
-        (products ? '<div style="font-size:12px;color:var(--text);margin-top:4px;">' + mixEsc(products) + '</div>' : '') +
-        '</div>' +
-        '<span class="badge ' + (badge[d.status] || 'badge-pending') + '">' + (label[d.status] || 'PENDING') + '</span></div>' +
-      (d.submittedBy ? '<div style="font-size:11px;color:var(--muted);margin-top:6px;">Submitted by ' + mixEsc(d.submittedBy) + '</div>' : '') +
-      noteBox +
-      (actions.length ? '<div class="btn-row" style="margin-top:10px;">' + actions.join('') + '</div>' : '') +
-      '</div>';
-  }).join('');
+  list.innerHTML = designs.map(d => mixRowButton(d, 'openMixRow')).join('');
 }
 
 function supplierApprovedMixes() {
@@ -32529,27 +32775,14 @@ function renderApprovedMixes() {
   const query = document.getElementById('approved-mix-search')?.value || '';
   const designs = library.filter(d => mixDesignQueryMatch(d, query));
   if (!library.length) {
-    list.innerHTML = '<div class="card" style="text-align:center;padding:28px;color:var(--muted);font-family:var(--mono);font-size:12px;">No approved mix designs yet. Submit one on Mixes. It shows up here after DelDOT approves it.</div>';
+    list.innerHTML = '<div class="mix-empty">No approved mixes yet. Submit one on Mixes. It shows up here after DelDOT approves it.</div>';
     return;
   }
   if (!designs.length) {
-    list.innerHTML = '<div class="card" style="text-align:center;padding:28px;color:var(--muted);font-family:var(--mono);font-size:12px;">No approved mixes match that search.</div>';
+    list.innerHTML = '<div class="mix-empty">Nothing matches that search.</div>';
     return;
   }
-  list.innerHTML = designs.map(d => {
-    const safeId = mixEsc(d.id);
-    const meta = [d.supplier, d.concreteClass ? ('Class ' + d.concreteClass) : '', d.requiredFc ? (Number(d.requiredFc).toLocaleString() + ' psi') : '', d.plant, d.reviewedAt ? ('Approved ' + mixReportDate(d.reviewedAt)) : ''].filter(Boolean).join(' · ');
-    const products = mixProductLine(d);
-    return '<button type="button" class="card" onclick="openMixApproval(\'' + safeId + '\')" style="display:block;width:100%;text-align:left;margin-bottom:10px;cursor:pointer;color:inherit;font:inherit;">' +
-      '<div style="display:flex;justify-content:space-between;gap:10px;align-items:flex-start;">' +
-        '<div><div style="font-weight:700;">' + mixEsc(d.name) + '</div>' +
-        '<div style="font-family:var(--mono);font-size:11px;color:var(--muted);margin-top:3px;">' + mixEsc(meta) + '</div>' +
-        (products ? '<div style="font-size:12px;margin-top:4px;">' + mixEsc(products) + '</div>' : '') +
-        '</div>' +
-        '<span class="badge badge-complete">APPROVED</span></div>' +
-      '<div style="margin-top:8px;font-size:12px;color:var(--accent2);">View approval</div>' +
-      '</button>';
-  }).join('');
+  list.innerHTML = designs.map(d => mixRowButton(d, 'openMixApproval')).join('');
 }
 
 function mixReportDate(value) {
@@ -32628,6 +32861,8 @@ function openMixApproval(id) {
   const design = mixDesigns().find(d => d.id === id);
   if (!design || design.status !== 'approved') return;
   if (!mixDesignCanReview() && !mixDesignVisible(design)) return;
+  closeMixDetail();
+  closeMixDesignForm();
   const view = document.getElementById('mixApprovalView');
   const sheet = document.getElementById('mixApprovalSheet');
   if (!view || !sheet) return;
@@ -32683,6 +32918,11 @@ function switchConcreteTab(tab, opts) {
   if (!opts.skipHistory && tab !== activeConcSubTab) navPushCurrent();
   activeConcSubTab = tab;
   closeMixApproval();
+  closeMixDesignForm();
+  closeMixDetail();
+  closeConcreteSet();
+  closeBreakSheet();
+  closeReportSheet();
   ['intake','log','schedule','break','report','mixes','approved'].forEach(t => {
     const btn = document.getElementById('ctab-' + t);
     const sub = document.getElementById('csub-' + t);
@@ -32873,133 +33113,218 @@ async function submitConcreteIntake() {
 // ══════════════════════════════════════════════════════════════
 // CYLINDER LOG
 // ══════════════════════════════════════════════════════════════
+function setConcreteLogFilter(status) {
+  concreteLogFilter = status || 'all';
+  document.querySelectorAll('#clog-chips button').forEach(btn => {
+    btn.classList.toggle('on', btn.dataset.status === concreteLogFilter);
+  });
+  renderConcreteLog();
+}
+
+function concJs(value) {
+  return String(value == null ? '' : value).replace(/\\/g, '\\\\').replace(/'/g, "\\'");
+}
+
+function concreteDueLabel(status) {
+  if (status.cls === 'overdue') return 'Overdue';
+  if (status.cls === 'due-today') return 'Due today';
+  return status.label;
+}
+
+function concreteBreakRow(item) {
+  const st = cylDueStatus(item.dueDate);
+  return '<button type="button" class="mix-row" onclick="openBreakFor(\'' + concJs(item.set.id) + '\',\'' + concJs(item.cylId) + '\')">' +
+    '<div class="mix-row-main">' +
+      '<div class="mix-row-name">' + mixEsc(item.set.id) + ' · ' + mixEsc(item.breakAge) + '-day</div>' +
+      '<div class="mix-row-sub">' + mixEsc(item.set.pourLocation || 'No location') + '</div>' +
+      '<div class="mix-row-products">Due ' + mixEsc(formatDate(item.dueDate)) + '</div>' +
+    '</div>' +
+    '<span class="mix-pill ' + mixEsc(st.cls) + '">' + mixEsc(concreteDueLabel(st)) + '</span>' +
+    '<span class="mix-chevron" aria-hidden="true">›</span>' +
+  '</button>';
+}
+
+function closeConcreteSet() {
+  const sheet = document.getElementById('concreteSetSheet');
+  if (!sheet) return;
+  sheet.classList.remove('open');
+  sheet.innerHTML = '';
+}
+
+function closeBreakSheet() {
+  document.getElementById('breakSheet')?.classList.remove('open');
+}
+
+function closeReportSheet() {
+  document.getElementById('reportSheet')?.classList.remove('open');
+}
+
+function openBreakFor(setId, cylId) {
+  switchConcreteTab('break');
+  const sel = document.getElementById('cb_set_select');
+  if (sel) sel.value = setId;
+  populateBreakCylSelect();
+  if (cylId) {
+    const cyl = document.getElementById('cb_cyl_select');
+    if (cyl) cyl.value = cylId;
+    populateBreakCylInfo();
+  }
+  const sheet = document.getElementById('breakSheet');
+  if (sheet) { sheet.classList.add('open'); sheet.scrollTop = 0; }
+}
+
+function openConcreteReport(id) {
+  switchConcreteTab('report');
+  const sel = document.getElementById('crpt-set-select');
+  if (sel) sel.value = id;
+  renderBothConcreteReports(id);
+  const sheet = document.getElementById('reportSheet');
+  if (sheet) { sheet.classList.add('open'); sheet.scrollTop = 0; }
+}
+
+function openConcreteSet(id) {
+  const set = loadConcreteSets().find(s => s.id === id);
+  const sheet = document.getElementById('concreteSetSheet');
+  if (!set || !sheet) return;
+  const fresh = [
+    set.fresh && set.fresh.slump != null ? (set.fresh.slump + '" slump') : '',
+    set.fresh && set.fresh.air != null ? (set.fresh.air + '% air') : '',
+    set.fresh && set.fresh.unitWeight != null ? (set.fresh.unitWeight + ' pcf') : '',
+    set.fresh && set.fresh.concTemp != null ? (set.fresh.concTemp + '°F') : ''
+  ].filter(Boolean).join(' · ');
+  const rows = [
+    ['Location', set.pourLocation],
+    ['Contract', set.contract],
+    ['Contractor', set.contractor],
+    ['Supplier', set.supplier],
+    ['Mix', set.mixDesign],
+    ['Cast', set.castDate ? formatDate(set.castDate) : ''],
+    ['Fresh', fresh]
+  ].filter(([, value]) => value != null && String(value).trim() !== '');
+  const cyls = (set.cylinders || []).map(c => {
+    if (c.status === 'broken') {
+      return '<div class="mix-detail-row"><span>' + mixEsc(c.breakAge + '-day · ' + c.cylId) + '</span><strong>' +
+        mixEsc(c.strength ? (c.strength.toLocaleString() + ' psi') : 'Broken') + '</strong></div>';
+    }
+    return '<button type="button" class="mix-row" onclick="openBreakFor(\'' + concJs(set.id) + '\',\'' + concJs(c.cylId) + '\')">' +
+      '<div class="mix-row-main"><div class="mix-row-name">' + mixEsc(c.breakAge + '-day') + '</div>' +
+      '<div class="mix-row-sub">Due ' + mixEsc(formatDate(c.dueDate)) + '</div></div>' +
+      '<span class="mix-pill ' + mixEsc(cylDueStatus(c.dueDate).cls) + '">' + mixEsc(concreteDueLabel(cylDueStatus(c.dueDate))) + '</span>' +
+      '<span class="mix-chevron" aria-hidden="true">›</span></button>';
+  }).join('');
+  sheet.innerHTML = '<div class="mix-sheet-inner">' +
+    '<button type="button" class="mix-sheet-back" onclick="closeConcreteSet()">‹ Cylinder log</button>' +
+    '<h2 class="mix-detail-title">' + mixEsc(set.id) + '</h2>' +
+    rows.map(([label, value]) => '<div class="mix-detail-row"><span>' + mixEsc(label) + '</span><strong>' + mixEsc(value) + '</strong></div>').join('') +
+    '<div style="margin-top:16px;">' + cyls + '</div>' +
+    '<div class="mix-detail-actions">' +
+      '<button class="btn btn-primary" type="button" onclick="openConcreteReport(\'' + concJs(set.id) + '\')">Open report</button>' +
+      '<button class="btn btn-ghost" type="button" onclick="deleteConcreteSet(\'' + concJs(set.id) + '\')">Remove set</button>' +
+    '</div></div>';
+  sheet.classList.add('open');
+  sheet.scrollTop = 0;
+}
+
 function renderConcreteLog() {
   const sets = loadConcreteSets();
   const search = (document.getElementById('clog-search')?.value || '').toLowerCase();
-  const filter = document.getElementById('clog-filter')?.value || 'all';
+  const filter = concreteLogFilter || 'all';
+  document.querySelectorAll('#clog-chips button').forEach(btn => {
+    btn.classList.toggle('on', btn.dataset.status === filter);
+  });
 
-  let filtered = sets.filter(s => {
-    const matchSearch = !search ||
-      s.id.toLowerCase().includes(search) ||
-      (s.contract||'').toLowerCase().includes(search) ||
-      (s.pourLocation||'').toLowerCase().includes(search) ||
-      (s.contractor||'').toLowerCase().includes(search);
-    const pending = s.cylinders.some(c => c.status === 'pending');
+  const filtered = sets.filter(s => {
+    const hay = [s.id, s.contract, s.pourLocation, s.contractor, s.supplier, s.mixDesign, s.testNo].join(' ').toLowerCase();
+    const matchSearch = !search || search.trim().split(/\s+/).every(part => hay.includes(part));
+    const pending = (s.cylinders || []).some(c => c.status === 'pending');
     const matchFilter = filter === 'all' || (filter === 'active' && pending) || (filter === 'complete' && !pending);
     return matchSearch && matchFilter;
   });
 
   const statsEl = document.getElementById('clog-stats');
-  if (statsEl) statsEl.textContent = `${filtered.length} set${filtered.length !== 1 ? 's' : ''}`;
+  if (statsEl) {
+    if (!sets.length) statsEl.textContent = 'None yet';
+    else if (filtered.length === sets.length && filter === 'all' && !search.trim()) statsEl.textContent = sets.length + (sets.length === 1 ? ' set' : ' sets');
+    else statsEl.textContent = filtered.length + ' of ' + sets.length;
+  }
 
   const body = document.getElementById('clog-body');
   if (!body) return;
-
-  if (filtered.length === 0) {
-    body.innerHTML = `<div class="card" style="text-align:center;padding:32px;color:var(--muted);font-family:var(--mono);font-size:12px;">No concrete sets found. Use ⊕ INTAKE to create one.</div>`;
+  if (!sets.length) {
+    body.innerHTML = '<div class="mix-empty">No sets yet. Tap + to log a pour.</div>';
+    return;
+  }
+  if (!filtered.length) {
+    body.innerHTML = '<div class="mix-empty">Nothing matches that search.</div>';
     return;
   }
 
   body.innerHTML = filtered.map(s => {
-    const pending = s.cylinders.filter(c => c.status === 'pending').length;
-    const broken  = s.cylinders.filter(c => c.status === 'broken').length;
-    const overdue = s.cylinders.filter(c => c.status === 'pending' && cylDueStatus(c.dueDate).cls === 'overdue').length;
-
-    const freshHtml = `<div class="set-fresh">
-      ${s.fresh.slump    != null ? `<div class="sf-item"><div class="sf-val">${s.fresh.slump}"</div><div class="sf-lbl">Slump</div></div>` : ''}
-      ${s.fresh.air      != null ? `<div class="sf-item"><div class="sf-val">${s.fresh.air}%</div><div class="sf-lbl">Air</div></div>` : ''}
-      ${s.fresh.unitWeight != null ? `<div class="sf-item"><div class="sf-val">${s.fresh.unitWeight}</div><div class="sf-lbl">pcf</div></div>` : ''}
-      ${s.fresh.concTemp != null ? `<div class="sf-item"><div class="sf-val">${s.fresh.concTemp}°F</div><div class="sf-lbl">Conc Temp</div></div>` : ''}
-    </div>`;
-
-    const cylHtml = s.cylinders.map(c => {
-      if (c.status === 'broken') {
-        const pf = c.strength >= s.requiredFc ? 'pass' : 'fail';
-        return `<div class="cyl-card broken">
-          <div class="cc-id">${c.cylId}</div>
-          <div class="cc-age">${c.breakAge}-day</div>
-          <div class="cc-due">Broken ${formatDate(c.brokenDate)}</div>
-          <div class="cc-str ${pf}">${c.strength ? c.strength.toLocaleString() + ' psi' : '—'}</div>
-          ${c.fracture ? `<div style="font-family:var(--mono);font-size:8px;color:var(--muted);margin-top:2px;">${FRACTURE_SHORT[c.fracture]||c.fracture}</div>` : ''}
-          <div style="margin-top:4px;"><span class="badge ${pf === 'pass' ? 'badge-complete' : 'badge-rejected'}">${pf.toUpperCase()}</span></div>
-        </div>`;
-      }
-      const st = cylDueStatus(c.dueDate);
-      return `<div class="cyl-card ${st.cls === 'overdue' ? 'overdue' : st.cls === 'due-today' ? 'due-today' : ''}">
-        <div class="cc-id">${c.cylId}</div>
-        <div class="cc-age">${c.breakAge}-day</div>
-        <div class="cc-due">Due ${formatDate(c.dueDate)}</div>
-        <div style="margin-top:6px;"><span class="badge badge-${st.cls === 'overdue' ? 'overdue' : st.cls === 'due-today' ? 'due' : 'upcoming'}">${st.label}</span></div>
-      </div>`;
-    }).join('');
-
-    return `<div class="card" style="margin-bottom:14px;">
-      <div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:8px;margin-bottom:10px;">
-        <div>
-          <div style="font-family:var(--mono);font-size:10px;color:var(--accent2);letter-spacing:1.5px;">${s.id}${s.testNo ? ' · ' + s.testNo : ''}${s.contract ? ' · ' + s.contract : ''}</div>
-          <div style="font-size:15px;font-weight:600;margin-top:2px;">${s.pourLocation || 'No location'}</div>
-          <div style="font-size:11px;color:var(--muted);margin-top:1px;">${s.contractor||''} ${s.mixDesign ? '· ' + s.mixDesign : ''} · Cast ${formatDate(s.castDate)}</div>
-        </div>
-        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
-          <span class="badge badge-pending">${pending} pending</span>
-          <span class="badge badge-complete">${broken} broken</span>
-          ${overdue > 0 ? `<span class="badge badge-overdue">${overdue} overdue</span>` : ''}
-          <button class="action-btn" onclick="switchConcreteTab('break');document.getElementById('cb_set_select').value='${s.id}';populateBreakCylSelect();" style="font-size:10px;padding:4px 10px;">🔨 BREAK</button>
-          <button class="action-btn" onclick="switchConcreteTab('report');document.getElementById('crpt-set-select').value='${s.id}';renderBothConcreteReports('${s.id}');" style="font-size:10px;padding:4px 10px;">🖨 REPORT</button>
-          <button class="action-btn" onclick="deleteConcreteSet('${s.id}')" style="font-size:10px;padding:4px 10px;color:var(--red2);border-color:var(--red);">✕</button>
-        </div>
-      </div>
-      ${freshHtml}
-      <div class="cyl-grid">${cylHtml}</div>
-    </div>`;
+    const pending = (s.cylinders || []).filter(c => c.status === 'pending').length;
+    const broken = (s.cylinders || []).filter(c => c.status === 'broken').length;
+    const overdue = (s.cylinders || []).filter(c => c.status === 'pending' && cylDueStatus(c.dueDate).cls === 'overdue').length;
+    const meta = [s.contractor, s.mixDesign, s.castDate ? ('Cast ' + formatDate(s.castDate)) : ''].filter(Boolean).join(' · ');
+    const products = [pending ? (pending + ' waiting') : '', broken ? (broken + ' broken') : '', overdue ? (overdue + ' overdue') : ''].filter(Boolean).join(' · ');
+    const pill = overdue ? 'overdue' : (pending ? 'upcoming' : 'approved');
+    const pillText = overdue ? 'Overdue' : (pending ? 'Active' : 'Complete');
+    return '<button type="button" class="mix-row" onclick="openConcreteSet(\'' + concJs(s.id) + '\')">' +
+      '<div class="mix-row-main">' +
+        '<div class="mix-row-name">' + mixEsc(s.id) + '</div>' +
+        '<div class="mix-row-sub">' + mixEsc(s.pourLocation || s.contract || 'No location') + '</div>' +
+        (meta || products ? '<div class="mix-row-products">' + mixEsc([meta, products].filter(Boolean).join(' · ')) + '</div>' : '') +
+      '</div>' +
+      '<span class="mix-pill ' + pill + '">' + pillText + '</span>' +
+      '<span class="mix-chevron" aria-hidden="true">›</span>' +
+    '</button>';
   }).join('');
 }
 
 function deleteConcreteSet(id) {
-  if (!confirm(`Delete set ${id}? This cannot be undone.`)) return;
+  if (!confirm('Delete set ' + id + '? This cannot be undone.')) return;
   const sets = loadConcreteSets().filter(s => s.id !== id);
   saveConcreteSets(sets);
   deleteConcreteSetFromCloud(id);
+  closeConcreteSet();
   renderConcreteLog();
-  showToast(`Set ${id} deleted`, 'success');
+  showToast('Set ' + id + ' deleted', 'success');
 }
 
-// ══════════════════════════════════════════════════════════════
-// BREAK SCHEDULE
-// ══════════════════════════════════════════════════════════════
 function renderBreakSchedule() {
   const sets = loadConcreteSets();
   const pending = [];
-  sets.forEach(s => { s.cylinders.forEach(c => { if (c.status === 'pending') pending.push({ ...c, set: s }); }); });
-  pending.sort((a, b) => a.dueDate.localeCompare(b.dueDate));
+  sets.forEach(s => { (s.cylinders || []).forEach(c => { if (c.status === 'pending') pending.push({ ...c, set: s }); }); });
+  pending.sort((a, b) => String(a.dueDate).localeCompare(String(b.dueDate)));
 
-  const overdue  = pending.filter(c => cylDueStatus(c.dueDate).cls === 'overdue').length;
+  const overdue = pending.filter(c => cylDueStatus(c.dueDate).cls === 'overdue').length;
   const dueToday = pending.filter(c => cylDueStatus(c.dueDate).cls === 'due-today').length;
   const upcoming = pending.filter(c => cylDueStatus(c.dueDate).cls === 'upcoming').length;
 
   const sumEl = document.getElementById('csched-summary');
-  if (sumEl) sumEl.innerHTML = `
-    <div class="stat-card" style="flex:1;min-width:140px;"><div class="stat-icon">🔴</div><div class="stat-body"><div class="s-num" style="color:var(--red2);">${overdue}</div><div class="s-lbl">Overdue</div></div></div>
-    <div class="stat-card" style="flex:1;min-width:140px;"><div class="stat-icon">🟡</div><div class="stat-body"><div class="s-num" style="color:var(--gold);">${dueToday}</div><div class="s-lbl">Due Today</div></div></div>
-    <div class="stat-card" style="flex:1;min-width:140px;"><div class="stat-icon">🔵</div><div class="stat-body"><div class="s-num" style="color:var(--accent2);">${upcoming}</div><div class="s-lbl">Upcoming</div></div></div>
-    <div class="stat-card" style="flex:1;min-width:140px;"><div class="stat-icon">📦</div><div class="stat-body"><div class="s-num">${pending.length}</div><div class="s-lbl">Total Pending</div></div></div>`;
+  if (sumEl) sumEl.innerHTML =
+    '<div class="concrete-stat overdue"><b>' + overdue + '</b><span>Overdue</span></div>' +
+    '<div class="concrete-stat today"><b>' + dueToday + '</b><span>Today</span></div>' +
+    '<div class="concrete-stat soon"><b>' + upcoming + '</b><span>Upcoming</span></div>';
 
   const body = document.getElementById('csched-body');
   if (!body) return;
-  if (pending.length === 0) {
-    body.innerHTML = `<div style="text-align:center;padding:24px;color:var(--muted);font-family:var(--mono);font-size:12px;">No pending breaks.</div>`;
+  if (!pending.length) {
+    body.innerHTML = '<div class="mix-empty">No breaks waiting.</div>';
     return;
   }
-  body.innerHTML = pending.map(c => {
-    const st = cylDueStatus(c.dueDate);
-    return `<div class="sched-row ${st.cls === 'overdue' ? 'overdue' : st.cls === 'due-today' ? 'due-today' : ''}">
-      <span style="font-family:var(--mono);font-size:10px;color:var(--accent2);">${c.set.id}</span>
-      <span style="font-size:12px;">${c.set.pourLocation || '—'}</span>
-      <span style="font-family:var(--mono);font-size:11px;font-weight:600;">${c.breakAge}-day</span>
-      <span style="font-size:12px;">${formatDate(c.dueDate)}</span>
-      <span><span class="badge badge-${st.cls === 'overdue' ? 'overdue' : st.cls === 'due-today' ? 'due' : 'upcoming'}">${st.label}</span></span>
-    </div>`;
-  }).join('');
+  body.innerHTML = pending.map(concreteBreakRow).join('');
+}
+
+function renderBreakQueue() {
+  const body = document.getElementById('break-queue');
+  if (!body) return;
+  const pending = [];
+  loadConcreteSets().forEach(s => { (s.cylinders || []).forEach(c => { if (c.status === 'pending') pending.push({ ...c, set: s }); }); });
+  pending.sort((a, b) => String(a.dueDate).localeCompare(String(b.dueDate)));
+  if (!pending.length) {
+    body.innerHTML = '<div class="mix-empty">No cylinders waiting. New pours show up here after intake.</div>';
+    return;
+  }
+  body.innerHTML = pending.map(concreteBreakRow).join('');
 }
 
 // ══════════════════════════════════════════════════════════════
@@ -33014,6 +33339,7 @@ function populateBreakSetSelect() {
     sets.filter(s => s.cylinders.some(c => c.status === 'pending'))
         .map(s => `<option value="${s.id}" ${s.id === cur ? 'selected' : ''}>${s.id} — ${s.pourLocation || s.contract || 'Unlabeled'}</option>`).join('');
   if (cur) populateBreakCylSelect();
+  renderBreakQueue();
 }
 
 function populateBreakCylSelect() {
@@ -33150,6 +33476,36 @@ function populateReportSetSelect() {
   sel.innerHTML = '<option value="">— Select a Set to Report —</option>' +
     sets.map(s => `<option value="${s.id}" ${s.id === cur ? 'selected' : ''}>${s.id}${s.testNo ? ' · ' + s.testNo : ''} — ${s.pourLocation || s.contract || 'Unlabeled'} — Cast ${formatDateShort(s.castDate)}</option>`).join('');
   if (cur) renderBothConcreteReports(cur);
+  renderConcreteReportList();
+}
+
+function renderConcreteReportList() {
+  const list = document.getElementById('crpt-list');
+  if (!list) return;
+  const query = (document.getElementById('crpt-search')?.value || '').trim().toLowerCase();
+  const sets = loadConcreteSets().filter(s => {
+    if (!query) return true;
+    const hay = [s.id, s.testNo, s.contract, s.pourLocation, s.contractor, s.mixDesign].join(' ').toLowerCase();
+    return query.split(/\s+/).every(part => hay.includes(part));
+  });
+  if (!loadConcreteSets().length) {
+    list.innerHTML = '<div class="mix-empty">No sets yet. Log a pour on Intake first.</div>';
+    return;
+  }
+  if (!sets.length) {
+    list.innerHTML = '<div class="mix-empty">Nothing matches that search.</div>';
+    return;
+  }
+  list.innerHTML = sets.map(s => {
+    const meta = [s.pourLocation || s.contract || 'No location', s.castDate ? ('Cast ' + formatDate(s.castDate)) : ''].filter(Boolean).join(' · ');
+    return '<button type="button" class="mix-row" onclick="openConcreteReport(\'' + concJs(s.id) + '\')">' +
+      '<div class="mix-row-main">' +
+        '<div class="mix-row-name">' + mixEsc(s.id) + '</div>' +
+        '<div class="mix-row-sub">' + mixEsc(meta) + '</div>' +
+      '</div>' +
+      '<span class="mix-chevron" aria-hidden="true">›</span>' +
+    '</button>';
+  }).join('');
 }
 
 function getLogoSrc() {
