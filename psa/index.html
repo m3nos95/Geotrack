@@ -77,6 +77,13 @@
     .cbtn.hist { opacity: .9; }
     .cbtn.hist.on { background: #3a2e16; border-color: var(--accent2); color: #ffe9c4; }
     .cbtn.add { border-style: dashed; color: var(--accent2); }
+    .who-switch {
+      display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--muted); flex-shrink: 0;
+    }
+    .who-switch select {
+      background: var(--panel); color: var(--text); border: 1px solid var(--border);
+      border-radius: 8px; padding: 6px 8px; max-width: 190px;
+    }
     .role-switch {
       display: flex; border: 1px solid var(--border); border-radius: 999px; overflow: hidden; flex-shrink: 0;
     }
@@ -611,6 +618,7 @@
   <script src="psa-seed.js"></script>
   <script src="psa-analyzer.js?v=analyzer-labor"></script>
   <script src="psa-pdf.js?v=qp20-font"></script>
-  <script src="psa-app.js?v=items-override"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+  <script src="psa-app.js?v=contrak-access"></script>
 </body>
 </html>

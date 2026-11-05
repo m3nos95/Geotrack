@@ -4068,6 +4068,38 @@ END $$;
       </div>
     </div>
 
+    <!-- ConTrak access — LabTrak admin or ConTrak admin -->
+    <div class="user-mgmt-section setup-collapse" id="contrakAccessSection" data-setup-open="false" style="display:none;">
+      <button type="button" class="setup-collapse-hdr" onclick="toggleSetupSection(this)" aria-expanded="false">
+        <span class="setup-collapse-title">ConTrak access</span>
+        <span class="setup-collapse-chevron" aria-hidden="true">▾</span>
+      </button>
+      <div class="setup-collapse-body">
+      <p style="font-family:var(--mono);font-size:10px;color:var(--muted);margin:0 0 12px;line-height:1.6;">
+        The ConTrak admin sees every assigned person's book and sets this list.
+        All M/R contracts opens every assigned book. Their contracts is that person's own book, plus anyone checked under Can open.
+        Soil and concrete admins get a line when they need ConTrak. Field control stays on No ConTrak.
+        A LabTrak administrator can open ConTrak until their line is set to No ConTrak.
+        The file already on this browser stays with the first person set to Their contracts.
+      </p>
+      <div id="contrakAccessList"></div>
+      <p id="contrakAccessNote" style="font-family:var(--mono);font-size:10px;color:var(--muted);margin:10px 0 0;line-height:1.5;"></p>
+      <button type="button" onclick="saveContrakAccess()"
+        style="margin-top:12px;width:100%;background:var(--gold);color:#0a1628;border:none;
+               padding:10px;font-family:var(--mono);font-size:10px;letter-spacing:1.5px;
+               font-weight:700;border-radius:var(--radius);cursor:pointer;">
+        SAVE CONTRAK ACCESS
+      </button>
+      <button type="button" onclick="copyContrakSql()"
+        style="margin-top:8px;width:100%;background:var(--surface);border:1px solid var(--border);color:var(--text);
+               padding:10px;font-family:var(--mono);font-size:10px;letter-spacing:1px;
+               border-radius:var(--radius);cursor:pointer;">
+        COPY CONTRAK SQL
+      </button>
+      <pre id="contrakSql" style="display:none;"></pre>
+      </div>
+    </div>
+
     <!-- Hub Restrictions — admin only -->
     <div class="user-mgmt-section setup-collapse" id="hubRestrictSection" data-setup-open="false" style="display:none;">
       <button type="button" class="setup-collapse-hdr" onclick="toggleSetupSection(this)" aria-expanded="false">
@@ -7929,7 +7961,7 @@ END $$;
 // GLOBALS
 // ══════════════════════════════════════════════
 let db = null;
-const APP_BUILD = '2026.11.04-contrak-home';
+const APP_BUILD = '2026.11.04-contrak-access';
 const FC_CORE_ICON_SRC = 'docs/r18-reference/core-drill-icon-128.png';
 const BORELOG_ICON_SRC = 'docs/r18-reference/borelog-icon.webp';
 const BORELOG_PATH = 'deldot-borelog-v6-uscs.html';
@@ -15676,12 +15708,13 @@ function showSetup() {
   updateComfortModeUI();
   const isAdmin = currentUser && currentUser.role === 'admin';
 
-  ['userMgmtSection','emailSettingsSection','manageTeamsSection','hubRestrictSection','approvalPathSection','teamAssignSection']
+  ['userMgmtSection','emailSettingsSection','manageTeamsSection','hubRestrictSection','approvalPathSection','teamAssignSection','contrakAccessSection']
     .forEach(id => { const el = document.getElementById(id); if (el) el.style.display = 'none'; });
 
   showDataMaintenancePanel(isAdmin);
 
   if (isAdmin) applyPermissionUnlockUI();
+  else showContrakAccessSection();
 
   const acct = document.getElementById('myAccountSection');
   if (acct) {
@@ -15772,6 +15805,8 @@ function applyPermissionUnlockUI() {
 
   const teamSect = document.getElementById('teamAssignSection');
   if (teamSect && isAdmin) { teamSect.style.display = 'block'; renderTeamAssignments(); }
+
+  showContrakAccessSection();
 }
 
 
@@ -18146,20 +18181,288 @@ function phoneNewSample() {
   if (typeof slOpenNewSample === 'function') slOpenNewSample();
 }
 
+const CONTRAK_ACCESS_KEY = 'labtrak_contrak_access';
+const CONTRAK_SQL = `-- ConTrak access and each person's book. Run once.
+-- contrak_role: none | user | admin
+-- contrak_scope: own (their contracts) | all (every Materials & Research book)
+CREATE TABLE IF NOT EXISTS public.contrak_access (
+  user_id TEXT PRIMARY KEY,
+  contrak_role TEXT NOT NULL DEFAULT 'none',
+  contrak_scope TEXT NOT NULL DEFAULT 'own',
+  view_ids JSONB NOT NULL DEFAULT '[]'::jsonb,
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS public.contrak_books (
+  user_id TEXT PRIMARY KEY,
+  state JSONB NOT NULL DEFAULT '{}'::jsonb,
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+ALTER TABLE public.contrak_access ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.contrak_books ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "contrak_access_all" ON public.contrak_access;
+CREATE POLICY "contrak_access_all" ON public.contrak_access
+  FOR ALL USING (true) WITH CHECK (true);
+
+DROP POLICY IF EXISTS "contrak_books_all" ON public.contrak_books;
+CREATE POLICY "contrak_books_all" ON public.contrak_books
+  FOR ALL USING (true) WITH CHECK (true);
+
+NOTIFY pgrst, 'reload schema';
+`;
+
+function readContrakAccessMap() {
+  try { return JSON.parse(localStorage.getItem(CONTRAK_ACCESS_KEY) || '{}'); }
+  catch (e) { return {}; }
+}
+function writeContrakAccessMap(map) {
+  localStorage.setItem(CONTRAK_ACCESS_KEY, JSON.stringify(map || {}));
+}
+function contrakGrantFor(user) {
+  if (!user || !user.id) return null;
+  const row = readContrakAccessMap()[user.id];
+  if (row && row.role === 'none') return null;
+  if (row && (row.role === 'admin' || row.role === 'user')) return row;
+  if (user.role === 'admin') return { role: 'admin', scope: 'all', viewIds: [] };
+  return null;
+}
+function userCanOpenConTrak(user) {
+  return !!contrakGrantFor(user || (typeof currentUser === 'object' ? currentUser : null));
+}
+function userCanAssignConTrak(user) {
+  const u = user || currentUser;
+  if (!u) return false;
+  if (u.role === 'admin') return true;
+  const g = contrakGrantFor(u);
+  return !!(g && g.role === 'admin');
+}
+function refreshContrakTile() {
+  const tile = document.getElementById('home-app-contrak');
+  if (tile) tile.hidden = !userCanOpenConTrak(currentUser);
+}
 function openConTrak() {
+  if (!userCanOpenConTrak(currentUser)) return;
   window.location.href = 'psa/';
 }
 
 function filterHomeApps(q) {
   const query = String(q || '').trim().toLowerCase();
-  const role = (typeof currentUser === 'object' && currentUser && currentUser.role) || '';
   document.querySelectorAll('#home-view .home-app').forEach(btn => {
-    if (btn.dataset.adminOnly === '1' && role !== 'admin') {
+    if (btn.dataset.adminOnly === '1' && !userCanOpenConTrak(currentUser)) {
       btn.hidden = true;
       return;
     }
     btn.hidden = !!(query && !btn.textContent.toLowerCase().includes(query));
   });
+}
+
+function ctEsc(s) {
+  return String(s == null ? '' : s).replace(/[&<>"']/g, c => ({
+    '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+  }[c]));
+}
+function contrakSelectValue(row) {
+  if (!row || !row.role || row.role === 'none') return 'none';
+  if (row.role === 'admin') return 'admin';
+  if (row.scope === 'all') return 'all';
+  return 'own';
+}
+function displayedContrakGrant(user, map) {
+  if (map && map[user.id]) return map[user.id];
+  if (user.role === 'admin') return { role: 'admin', scope: 'all', viewIds: [] };
+  return { role: 'none', scope: 'own', viewIds: [] };
+}
+
+async function renderContrakAccess() {
+  const el = document.getElementById('contrakAccessList');
+  if (!el) return;
+  const users = (await getUsers()).filter(u => u && u.role !== 'supplier');
+  const map = readContrakAccessMap();
+  if (!users.length) {
+    el.innerHTML = '<div style="font-family:var(--mono);font-size:10px;color:var(--muted);">No people yet.</div>';
+    return;
+  }
+  el.innerHTML = users.map(u => {
+    const grant = displayedContrakGrant(u, map);
+    const value = contrakSelectValue(grant);
+    const opts = [
+      ['none', 'No ConTrak'],
+      ['own', 'Their contracts'],
+      ['all', 'All M/R contracts'],
+      ['admin', 'ConTrak admin']
+    ].map(([v, label]) => '<option value="' + v + '"' + (v === value ? ' selected' : '') + '>' + label + '</option>').join('');
+    return '<div style="background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:12px;margin-bottom:10px;">' +
+      '<div style="font-family:var(--mono);font-size:12px;font-weight:700;color:var(--accent2);">' + ctEsc(u.name || u.id) + '</div>' +
+      '<div style="font-family:var(--mono);font-size:9px;color:var(--muted);margin-bottom:8px;">' + ctEsc((ROLE_DEFS[u.role] || {}).label || u.role || '') + '</div>' +
+      '<select data-ct-user="' + ctEsc(u.id) + '" data-ct-name="' + ctEsc(u.name || u.id) + '" data-ct-role="' + ctEsc(u.role || '') + '" onchange="contrakAccessScopeChanged()" ' +
+      'style="width:100%;background:var(--bg);color:var(--text);border:1px solid var(--border);border-radius:6px;padding:8px;font-family:var(--mono);font-size:11px;">' +
+      opts + '</select>' +
+      '<div data-ct-views="' + ctEsc(u.id) + '" style="margin-top:8px;"></div>' +
+      '</div>';
+  }).join('');
+  const checks = {};
+  users.forEach(u => {
+    const g = displayedContrakGrant(u, map);
+    checks[u.id] = Array.isArray(g.viewIds) ? g.viewIds.slice() : [];
+  });
+  el._ctChecks = checks;
+  contrakAccessScopeChanged();
+  const note = document.getElementById('contrakAccessNote');
+  if (note) {
+    note.textContent = window.__contrakSqlNeeded
+      ? 'Saved on this browser. Copy the ConTrak SQL and run it once so a boss on another computer can open these books.'
+      : 'After the SQL is in place, Save copies this list to the server.';
+  }
+}
+
+function contrakAccessScopeChanged() {
+  const root = document.getElementById('contrakAccessList');
+  if (!root) return;
+  const selects = Array.from(root.querySelectorAll('select[data-ct-user]'));
+  const prev = root._ctChecks || {};
+  selects.forEach(sel => {
+    const id = sel.getAttribute('data-ct-user');
+    const box = root.querySelector('[data-ct-views="' + id + '"]');
+    if (!box) return;
+    const own = sel.value === 'own';
+    box.hidden = !own;
+    if (!own) { box.innerHTML = ''; return; }
+    const checked = new Set(prev[id] || []);
+    box.querySelectorAll('input[data-ct-target]').forEach(cb => {
+      if (cb.checked) checked.add(cb.getAttribute('data-ct-target'));
+      else checked.delete(cb.getAttribute('data-ct-target'));
+    });
+    prev[id] = Array.from(checked);
+    const targets = selects.filter(s => s !== sel && s.value !== 'none');
+    box.innerHTML = targets.length
+      ? '<div style="font-family:var(--mono);font-size:9px;color:var(--muted);letter-spacing:1px;margin-bottom:4px;">CAN OPEN</div>' +
+        targets.map(s => {
+          const tid = s.getAttribute('data-ct-user');
+          const on = checked.has(tid) ? ' checked' : '';
+          return '<label style="display:flex;align-items:center;gap:6px;font-family:var(--mono);font-size:11px;padding:3px 0;cursor:pointer;">' +
+            '<input type="checkbox" data-ct-view="' + ctEsc(id) + '" data-ct-target="' + ctEsc(tid) + '"' + on + ' style="accent-color:var(--gold);"> ' +
+            ctEsc(s.getAttribute('data-ct-name') || tid) + '</label>';
+        }).join('')
+      : '<div style="font-family:var(--mono);font-size:10px;color:var(--muted);">Nobody else has ConTrak yet.</div>';
+  });
+  root._ctChecks = prev;
+}
+
+async function saveContrakAccess() {
+  const root = document.getElementById('contrakAccessList');
+  if (!root) return;
+  contrakAccessScopeChanged();
+  const map = {};
+  root.querySelectorAll('select[data-ct-user]').forEach(sel => {
+    const id = sel.getAttribute('data-ct-user');
+    const v = sel.value;
+    if (v === 'none') {
+      if (sel.getAttribute('data-ct-role') === 'admin') map[id] = { role: 'none', scope: 'own', viewIds: [] };
+      return;
+    }
+    if (v === 'admin') map[id] = { role: 'admin', scope: 'all', viewIds: [] };
+    else if (v === 'all') map[id] = { role: 'user', scope: 'all', viewIds: [] };
+    else {
+      const viewIds = [];
+      root.querySelectorAll('input[data-ct-view="' + id + '"]:checked').forEach(cb => {
+        const tid = cb.getAttribute('data-ct-target');
+        if (tid) viewIds.push(tid);
+      });
+      map[id] = { role: 'user', scope: 'own', viewIds: viewIds };
+    }
+  });
+  writeContrakAccessMap(map);
+  const pushed = await pushContrakAccess(map);
+  refreshContrakTile();
+  if (typeof applyRoleUI === 'function' && currentUser) applyRoleUI(currentUser.role);
+  const note = document.getElementById('contrakAccessNote');
+  if (note) {
+    note.textContent = pushed
+      ? 'Saved. Assigned people see ConTrak on the home screen.'
+      : 'Saved on this browser. Copy the ConTrak SQL and run it once so a boss on another computer can open these books.';
+  }
+  if (typeof showToast === 'function') showToast(pushed ? 'ConTrak access saved' : 'ConTrak access saved on this browser', 'success');
+}
+
+async function pushContrakAccess(map) {
+  if (typeof db === 'undefined' || !db) return false;
+  try {
+    const now = new Date().toISOString();
+    const rows = Object.keys(map).map(id => ({
+      user_id: id,
+      contrak_role: map[id].role,
+      contrak_scope: map[id].scope || 'own',
+      view_ids: Array.isArray(map[id].viewIds) ? map[id].viewIds : [],
+      updated_at: now
+    }));
+    const existing = await db.from('contrak_access').select('user_id');
+    if (existing.error) {
+      window.__contrakSqlNeeded = true;
+      return false;
+    }
+    const keep = new Set(Object.keys(map));
+    const drop = (existing.data || []).map(r => r.user_id).filter(id => !keep.has(id));
+    if (drop.length) await db.from('contrak_access').delete().in('user_id', drop);
+    if (rows.length) {
+      const up = await db.from('contrak_access').upsert(rows, { onConflict: 'user_id' });
+      if (up.error) { window.__contrakSqlNeeded = true; return false; }
+    }
+    window.__contrakSqlNeeded = false;
+    return true;
+  } catch (e) {
+    window.__contrakSqlNeeded = true;
+    return false;
+  }
+}
+
+async function pullContrakAccess() {
+  if (typeof db === 'undefined' || !db) return;
+  try {
+    const res = await db.from('contrak_access').select('user_id,contrak_role,contrak_scope,view_ids');
+    if (res.error) { window.__contrakSqlNeeded = true; return; }
+    window.__contrakSqlNeeded = false;
+    if (!res.data || !res.data.length) return;
+    const map = {};
+    res.data.forEach(row => {
+      map[row.user_id] = {
+        role: row.contrak_role || 'none',
+        scope: row.contrak_scope || 'own',
+        viewIds: Array.isArray(row.view_ids) ? row.view_ids : []
+      };
+    });
+    writeContrakAccessMap(map);
+    refreshContrakTile();
+  } catch (e) {
+    window.__contrakSqlNeeded = true;
+  }
+}
+
+function showContrakAccessSection() {
+  const sect = document.getElementById('contrakAccessSection');
+  if (!sect) return;
+  const show = userCanAssignConTrak(currentUser);
+  sect.style.display = show ? 'block' : 'none';
+  if (show) {
+    renderContrakAccess();
+    pullContrakAccess().then(() => { if (userCanAssignConTrak(currentUser)) renderContrakAccess(); });
+  }
+}
+
+function copyContrakSql() {
+  const pre = document.getElementById('contrakSql');
+  if (pre) pre.textContent = CONTRAK_SQL;
+  const done = () => { if (typeof showToast === 'function') showToast('ConTrak SQL copied', 'success'); };
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(CONTRAK_SQL).then(done).catch(() => {
+      if (pre) { pre.style.display = 'block'; }
+      done();
+    });
+  } else if (pre) {
+    pre.style.display = 'block';
+    done();
+  }
 }
 
 function renderPhoneDash() {
@@ -23058,7 +23361,7 @@ function applyRoleUI(role) {
     el.hidden = !allowed;
   });
   const contrakTile = document.getElementById('home-app-contrak');
-  if (contrakTile) contrakTile.hidden = role !== 'admin';
+  if (contrakTile) contrakTile.hidden = !userCanOpenConTrak(currentUser);
 
   const specsBtn = document.getElementById('queueSpecsBtn');
   if (specsBtn) specsBtn.hidden = !roleCanUseSoilModule();
