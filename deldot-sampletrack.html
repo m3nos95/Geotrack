@@ -1245,6 +1245,14 @@ nav:not(#r18-nav), .nav-top-row { display: none !important; }
 .dd-rpt-fail { color: #991b1b; font-weight: 700; }
 /* Concrete forms inside dd-rpt shell */
 .dd-rpt.dmf13, .dd-rpt.dmp15 { max-width: 1000px; font-size: 9pt; }
+.dd-rpt.dmf13,
+.dd-rpt.dmf13 *,
+.dd-rpt.dmp15,
+.dd-rpt.dmp15 * {
+  font-family: Inter, "Segoe UI", Arial, sans-serif !important;
+  font-style: normal !important;
+  letter-spacing: 0 !important;
+}
 .dd-rpt.dmp15 { margin-top: 28px; }
 
 @media print {
@@ -8179,7 +8187,7 @@ END $$;
 // GLOBALS
 // ══════════════════════════════════════════════
 let db = null;
-const APP_BUILD = '2026.11.05-strength';
+const APP_BUILD = '2026.11.05-report-type';
 const FC_CORE_ICON_SRC = 'docs/r18-reference/core-drill-icon-128.png';
 const BORELOG_ICON_SRC = 'docs/r18-reference/borelog-icon.webp';
 const BORELOG_PATH = 'deldot-borelog-v6-uscs.html';
@@ -33701,7 +33709,7 @@ async function printConcreteReports() {
       'color-adjust:exact !important;' +
       'forced-color-adjust:none !important;}' +
     'html,body{margin:0;padding:0;background:#fff;' +
-      'font-family:"Arial Narrow",Arial,Helvetica,sans-serif;font-size:9pt;color:#000;}' +
+      'font-family:Inter,"Segoe UI",Arial,sans-serif;font-size:9pt;color:#000;}' +
     '@page{size:letter portrait;margin:0.4in;}' +
     '.con-page-break{page-break-before:always;margin-top:0 !important;}' +
     'table{border-collapse:collapse;}' +
@@ -33709,6 +33717,7 @@ async function printConcreteReports() {
 
   pw.document.open();
   pw.document.write('<!DOCTYPE html><html><head><meta charset="UTF-8">');
+  pw.document.write('<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap">');
   pw.document.write('<title>DelDOT Concrete Test Report<\/title>');
   pw.document.write('<style>' + allCss + baseCss + '<\/style><\/head><body>');
   pw.document.write(renderDMF13(set));
