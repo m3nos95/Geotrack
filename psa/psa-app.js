@@ -36,6 +36,38 @@
   };
 
   var state = null;
+  var who = {
+    me: null,
+    grant: null,
+    viewId: null,
+    foreign: false,
+    locked: false,
+    cloudNote: "",
+    client: undefined,
+  };
+  var BOOKS_KEY = "contrak_books_v1";
+  var ACCESS_KEY = "labtrak_contrak_access";
+  var OWNER_KEY = "contrak_local_owner";
+  var SB_URL = "https://qlwaqdlldldyoshyglmu.supabase.co";
+  var SB_KEY =
+    "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFsd2FxZGxsZGxkeW9zaHlnbG11Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzg2MDQxOTEsImV4cCI6MjA5NDE4MDE5MX0.VRDDiDxGay5npABiVHiJ1o0-M6mHrwAVWaclWMBNU_k";
+  var READ_ACTS = {
+    "switch-contract": 1,
+    "switch-task": 1,
+    view: 1,
+    "open-qp": 1,
+    "qp-tab": 1,
+    "back-ledger": 1,
+    "open-inv": 1,
+    "print-closeout": 1,
+    "print-ntp": 1,
+    "print-task-closeout": 1,
+    "print-bulk-closeout": 1,
+    "az-print": 1,
+    "view-bulk-closeout": 1,
+    "contrak-access": 1,
+    "save-contrak-access": 1,
+  };
 
   var BACKUP_FILE = "contrak-backup.json";
   var FS_DB = "contrak_fs_v1";
@@ -83,11 +115,23 @@
   }
 
   function save(opts) {
+    if (who.foreign || who.locked) return;
     persistUi();
+    var owner = "";
     try {
-      localStorage.setItem(STORE, JSON.stringify(state));
+      owner = localStorage.getItem(OWNER_KEY) || "";
+    } catch (e) {}
+    try {
+      if (!who.me || !owner || owner === who.me.id) {
+        localStorage.setItem(STORE, JSON.stringify(state));
+        if (who.me && !owner) localStorage.setItem(OWNER_KEY, who.me.id);
+      }
     } catch (err) {
       toast("Could not save locally: " + err.message);
+    }
+    if (who.me) {
+      writeBookLocal(who.me.id, state);
+      pushBook(who.me.id, state);
     }
     if (!(opts && opts.skipFolder)) scheduleBackupWrite();
   }
@@ -571,6 +615,400 @@
     });
   }
 
+  function readActor() {
+    try {
+      var raw = sessionStorage.getItem("st_current_user");
+      if (!raw) return null;
+      var u = JSON.parse(raw);
+      if (!u || !u.id) return null;
+      return { id: String(u.id), name: u.name || "User", labRole: u.role || "" };
+    } catch (e) {
+      return null;
+    }
+  }
+  function readAccess() {
+    try {
+      return JSON.parse(localStorage.getItem(ACCESS_KEY) || "{}");
+    } catch (e) {
+      return {};
+    }
+  }
+  function writeAccess(map) {
+    localStorage.setItem(ACCESS_KEY, JSON.stringify(map || {}));
+  }
+  function grantFor(actor, map) {
+    if (!actor) return null;
+    var row = map[actor.id];
+    if (row && row.role === "none") return null;
+    if (row && (row.role === "admin" || row.role === "user")) return row;
+    if (actor.labRole === "admin") return { role: "admin", scope: "all", viewIds: [] };
+    return null;
+  }
+  function labUsers() {
+    try {
+      return JSON.parse(localStorage.getItem("st_users") || "[]");
+    } catch (e) {
+      return [];
+    }
+  }
+  function personName(id) {
+    var users = labUsers();
+    for (var i = 0; i < users.length; i++) {
+      if (String(users[i].id) === String(id)) return users[i].name || id;
+    }
+    if (who.me && who.me.id === id) return who.me.name;
+    return id;
+  }
+  function canAssign() {
+    if (!who.me) return false;
+    if (who.me.labRole === "admin") return true;
+    return !!(who.grant && who.grant.role === "admin");
+  }
+  function visibleIds() {
+    if (!who.me || !who.grant) return [];
+    var map = readAccess();
+    var ids = who.grant.role === "admin" || who.grant.scope === "all"
+      ? Object.keys(map).filter(function (id) {
+          var row = map[id];
+          return row && (row.role === "user" || row.role === "admin");
+        })
+      : [who.me.id].concat(who.grant.viewIds || []);
+    if (ids.indexOf(who.me.id) < 0) ids.unshift(who.me.id);
+    var seen = {};
+    return ids.filter(function (id) {
+      if (!id || seen[id]) return false;
+      seen[id] = true;
+      if (id === who.me.id) return true;
+      var row = map[id];
+      return !!(row && (row.role === "user" || row.role === "admin"));
+    });
+  }
+  function readBooks() {
+    try {
+      return JSON.parse(localStorage.getItem(BOOKS_KEY) || "{}");
+    } catch (e) {
+      return {};
+    }
+  }
+  function writeBookLocal(id, st) {
+    var books = readBooks();
+    books[id] = { state: JSON.parse(JSON.stringify(st)), updatedAt: new Date().toISOString() };
+    localStorage.setItem(BOOKS_KEY, JSON.stringify(books));
+  }
+  function contrakClient() {
+    if (who.client !== undefined) return who.client;
+    try {
+      if (!window.supabase || !window.supabase.createClient) {
+        who.client = null;
+        return null;
+      }
+      var url = localStorage.getItem("labtrak_sb_url") || SB_URL;
+      var key = localStorage.getItem("labtrak_sb_anon_key") || SB_KEY;
+      who.client = window.supabase.createClient(url, key, {
+        auth: { persistSession: true, autoRefreshToken: false },
+      });
+    } catch (e) {
+      who.client = null;
+    }
+    return who.client;
+  }
+  var bookPushTimer = null;
+  function pushBook(id, st) {
+    var client = contrakClient();
+    if (!client || !id) return;
+    clearTimeout(bookPushTimer);
+    var payload = { user_id: id, state: st, updated_at: new Date().toISOString() };
+    bookPushTimer = setTimeout(function () {
+      var up = client.from("contrak_books").upsert(payload, { onConflict: "user_id" });
+      if (up && typeof up.then === "function") Promise.resolve(up).then(function () {});
+    }, 300);
+  }
+  function bootWho() {
+    who.me = readActor();
+    who.locked = false;
+    who.foreign = false;
+    if (!who.me) return;
+    who.grant = grantFor(who.me, readAccess());
+    if (!who.grant) {
+      who.locked = true;
+      return;
+    }
+    who.viewId = who.me.id;
+    var mine = readBooks()[who.me.id];
+    if (mine && mine.state) {
+      state = T.migrateState(mine.state);
+      applyRestoredState();
+      return;
+    }
+    var owner = "";
+    try { owner = localStorage.getItem(OWNER_KEY) || ""; } catch (e) {}
+    var claim = who.grant.role === "user" && who.grant.scope !== "all" && (!owner || owner === who.me.id);
+    if (claim) {
+      try { localStorage.setItem(OWNER_KEY, who.me.id); } catch (e) {}
+      writeBookLocal(who.me.id, state);
+      pushBook(who.me.id, state);
+    } else {
+      state = defaultState();
+      applyRestoredState();
+      writeBookLocal(who.me.id, state);
+    }
+  }
+  function switchWho(id) {
+    if (visibleIds().indexOf(id) < 0) return;
+    if (!who.foreign && who.viewId === who.me.id) save({ skipFolder: true });
+    who.viewId = id;
+    who.foreign = id !== who.me.id;
+    var book = readBooks()[id];
+    state = book && book.state ? T.migrateState(book.state) : defaultState();
+    applyRestoredState();
+    ui.view = "ledger";
+    render();
+  }
+  function pullCloud() {
+    var client = contrakClient();
+    if (!client || !who.me || who.locked) return Promise.resolve();
+    return Promise.resolve(
+      client.from("contrak_access").select("user_id,contrak_role,contrak_scope,view_ids")
+    ).then(function (res) {
+        if (res.error) {
+          who.cloudNote = "Books stay on this browser until the ConTrak SQL is run once in LabTrak settings.";
+          return null;
+        }
+        if (res.data && res.data.length) {
+          var map = {};
+          res.data.forEach(function (row) {
+            map[row.user_id] = {
+              role: row.contrak_role || "none",
+              scope: row.contrak_scope || "own",
+              viewIds: Array.isArray(row.view_ids) ? row.view_ids : [],
+            };
+          });
+          writeAccess(map);
+          who.grant = grantFor(who.me, map);
+          if (!who.grant) {
+            who.locked = true;
+            return null;
+          }
+        }
+        return client.from("contrak_books").select("user_id,state,updated_at");
+      })
+      .then(function (res) {
+        if (!res || res.error || !res.data) return;
+        var books = readBooks();
+        var changed = false;
+        res.data.forEach(function (row) {
+          if (!row || !row.user_id || !row.state) return;
+          var local = books[row.user_id];
+          var cloudAt = row.updated_at || "";
+          var localAt = (local && local.updatedAt) || "";
+          if (!local || String(cloudAt) > String(localAt)) {
+            books[row.user_id] = { state: row.state, updatedAt: cloudAt || new Date().toISOString() };
+            changed = true;
+          }
+        });
+        if (changed) localStorage.setItem(BOOKS_KEY, JSON.stringify(books));
+        var current = books[who.viewId || (who.me && who.me.id)];
+        if (changed && current && current.state) {
+          state = T.migrateState(current.state);
+          applyRestoredState();
+        }
+        who.cloudNote = "";
+      })
+      .catch(function () {
+        who.cloudNote = "Books stay on this browser until the ConTrak SQL is run once in LabTrak settings.";
+      })
+      .then(function () {
+        render();
+      });
+  }
+  function whoBar() {
+    if (!who.me || who.locked) return "";
+    var ids = visibleIds();
+    var opts = ids
+      .map(function (id) {
+        var label = personName(id);
+        if (id === who.me.id) label += " (you)";
+        return (
+          '<option value="' +
+          esc(id) +
+          '"' +
+          (id === who.viewId ? " selected" : "") +
+          ">" +
+          esc(label) +
+          "</option>"
+        );
+      })
+      .join("");
+    var accessBtn = canAssign()
+      ? '<button type="button" class="btn small" data-act="contrak-access"' +
+        (ui.view === "access" ? ' style="border-color:var(--accent2)"' : "") +
+        ">Access</button>"
+      : "";
+    return (
+      '<label class="who-switch" id="contrak-who">Viewing <select data-act="switch-who">' +
+      opts +
+      "</select></label>" +
+      accessBtn
+    );
+  }
+  function whoBanner() {
+    if (who.foreign) {
+      return (
+        '<div class="backup-banner" id="contrak-readonly">Read only. This is ' +
+        esc(personName(who.viewId)) +
+        "'s ConTrak.</div>"
+      );
+    }
+    if (who.cloudNote) {
+      return '<div class="backup-banner" id="contrak-cloud-note">' + esc(who.cloudNote) + "</div>";
+    }
+    return "";
+  }
+  function renderAccess() {
+    var users = labUsers().filter(function (u) {
+      return u && u.role !== "supplier";
+    });
+    var map = readAccess();
+    if (!users.length) {
+      return '<p class="muted">Sign in from LabTrak first so this list has people.</p>';
+    }
+    function shown(u) {
+      if (map[u.id]) return map[u.id];
+      if (u.role === "admin") return { role: "admin", scope: "all", viewIds: [] };
+      return { role: "none", scope: "own", viewIds: [] };
+    }
+    function val(row) {
+      if (!row || row.role === "none") return "none";
+      if (row.role === "admin") return "admin";
+      if (row.scope === "all") return "all";
+      return "own";
+    }
+    return (
+      '<h2>ConTrak access</h2>' +
+      '<p class="muted">ConTrak admin sees every assigned book and sets this list. All M/R contracts opens every assigned book. Their contracts is that person\'s book, plus anyone checked under Can open. Field control stays on No ConTrak.</p>' +
+      users
+        .map(function (u) {
+          var row = shown(u);
+          var v = val(row);
+          var opts = [
+            ["none", "No ConTrak"],
+            ["own", "Their contracts"],
+            ["all", "All M/R contracts"],
+            ["admin", "ConTrak admin"],
+          ]
+            .map(function (pair) {
+              return (
+                '<option value="' +
+                pair[0] +
+                '"' +
+                (pair[0] === v ? " selected" : "") +
+                ">" +
+                pair[1] +
+                "</option>"
+              );
+            })
+            .join("");
+          var views = "";
+          if (v === "own") {
+            var targets = users.filter(function (o) {
+              return o.id !== u.id && val(shown(o)) !== "none";
+            });
+            var have = row.viewIds || [];
+            views =
+              '<div style="margin-top:8px;font-size:12px;color:var(--muted)">Can open</div>' +
+              (targets.length
+                ? targets
+                    .map(function (o) {
+                      return (
+                        '<label class="chk"><input type="checkbox" data-ct-view="' +
+                        esc(u.id) +
+                        '" data-ct-target="' +
+                        esc(o.id) +
+                        '"' +
+                        (have.indexOf(o.id) >= 0 ? " checked" : "") +
+                        "> " +
+                        esc(o.name || o.id) +
+                        "</label>"
+                      );
+                    })
+                    .join("")
+                : '<div class="muted">Nobody else has ConTrak yet.</div>');
+          }
+          return (
+            '<div class="panel" style="padding:12px;margin:0 0 10px">' +
+            "<b>" +
+            esc(u.name || u.id) +
+            "</b>" +
+            '<div class="muted" style="margin-bottom:6px">' +
+            esc(u.role || "") +
+            "</div>" +
+            '<select data-ct-user="' +
+            esc(u.id) +
+            '" data-ct-role="' +
+            esc(u.role || "") +
+            '">' +
+            opts +
+            "</select>" +
+            views +
+            "</div>"
+          );
+        })
+        .join("") +
+      '<button class="btn primary" data-act="save-contrak-access">Save ConTrak access</button>'
+    );
+  }
+  function saveAccessFromForm() {
+    if (!canAssign()) return;
+    var root = document.getElementById("app");
+    var map = {};
+    root.querySelectorAll("select[data-ct-user]").forEach(function (sel) {
+      var id = sel.getAttribute("data-ct-user");
+      var v = sel.value;
+      if (v === "none") {
+        if (sel.getAttribute("data-ct-role") === "admin") map[id] = { role: "none", scope: "own", viewIds: [] };
+        return;
+      }
+      if (v === "admin") map[id] = { role: "admin", scope: "all", viewIds: [] };
+      else if (v === "all") map[id] = { role: "user", scope: "all", viewIds: [] };
+      else {
+        var viewIds = [];
+        root.querySelectorAll('input[data-ct-view="' + id + '"]:checked').forEach(function (cb) {
+          var tid = cb.getAttribute("data-ct-target");
+          if (tid) viewIds.push(tid);
+        });
+        map[id] = { role: "user", scope: "own", viewIds: viewIds };
+      }
+    });
+    writeAccess(map);
+    who.grant = grantFor(who.me, map);
+    var client = contrakClient();
+    var done = function (ok) {
+      toast(ok ? "ConTrak access saved" : "Saved on this browser. Run the ConTrak SQL once in LabTrak settings.");
+      render();
+    };
+    if (!client) {
+      done(false);
+      return;
+    }
+    var now = new Date().toISOString();
+    var rows = Object.keys(map).map(function (id) {
+      return {
+        user_id: id,
+        contrak_role: map[id].role,
+        contrak_scope: map[id].scope || "own",
+        view_ids: map[id].viewIds || [],
+        updated_at: now,
+      };
+    });
+    Promise.resolve(client.from("contrak_access").upsert(rows, { onConflict: "user_id" }))
+      .then(function (res) {
+        done(!(res && res.error));
+      })
+      .catch(function () {
+        done(false);
+      });
+  }
+
   function load() {
     try {
       var raw = localStorage.getItem(STORE);
@@ -782,10 +1220,22 @@
   }
 
   function render() {
+    var app = document.getElementById("app");
+    if (who.locked) {
+      app.innerHTML =
+        '<div class="setup-wrap"><h2>ConTrak is not assigned to you</h2>' +
+        '<p class="muted">A ConTrak admin turns it on under LabTrak settings, ConTrak access. ' +
+        "Field control does not get ConTrak unless someone assigns it.</p></div>";
+      return;
+    }
+    if (ui.view === "access" && canAssign()) {
+      app.innerHTML = topChrome(contract()) + '<div class="setup-wrap">' + renderAccess() + "</div>";
+      bind();
+      return;
+    }
     var c = contract();
     var t = task();
     var r = E.contractRollup(c);
-    var app = document.getElementById("app");
     if (ui.view === "finance") {
       app.innerHTML = topChrome(c) + '<div class="setup-wrap">' + renderFinance(c) + "</div>";
       bind();
@@ -861,6 +1311,7 @@
       '<div class="brand"><span class="brand-title"><b>DelDOT</b> ConTrak</span><small>' +
       esc(org) +
       " · IDIQ</small></div>" +
+      whoBar() +
       '<div class="contract-switch">' +
       btns +
       (isFinance()
@@ -889,7 +1340,8 @@
       '<button class="btn' +
       (ui.view === "settings" ? " on" : "") +
       '" data-act="view" data-view="settings">Backup</button>' +
-      "</div></header>"
+      "</div></header>" +
+      whoBanner()
     );
   }
 
@@ -4139,6 +4591,20 @@
     var el = ev.target.closest("[data-act]");
     if (!el) return;
     var act = el.getAttribute("data-act");
+    if (act === "contrak-access") {
+      if (!canAssign()) return;
+      ui.view = "access";
+      render();
+      return;
+    }
+    if (act === "save-contrak-access") {
+      saveAccessFromForm();
+      return;
+    }
+    if (who.foreign && !READ_ACTS[act]) {
+      toast("Read only. This is " + personName(who.viewId) + "'s ConTrak.");
+      return;
+    }
     var c = contract();
     var t = task();
     var q = qp();
@@ -5072,6 +5538,15 @@
     var el = ev.target.closest("[data-act]");
     if (!el) return;
     var act = el.getAttribute("data-act");
+    if (act === "switch-who") {
+      switchWho(el.value);
+      return;
+    }
+    if (who.foreign) {
+      toast("Read only. This is " + personName(who.viewId) + "'s ConTrak.");
+      render();
+      return;
+    }
     var c = contract();
     var t = task();
     var q = qp();
@@ -5376,6 +5851,8 @@
   };
 
   load();
+  bootWho();
   render();
+  pullCloud();
   restoreBackupFolder();
 })();
