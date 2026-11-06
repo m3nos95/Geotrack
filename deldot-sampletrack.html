@@ -7627,36 +7627,6 @@ END $$;
           <div class="hub-greet" id="fhub_greet">Good morning</div>
           <div class="hub-date-line" id="fhub_date">—</div>
         </div>
-        <span class="hub-role-badge" style="background:rgba(96,165,250,0.15);color:#60a5fa;border:1px solid rgba(96,165,250,0.3);">Field technician</span>
-      </div>
-
-      <div class="hub-kpi-row" id="fhub_kpis">
-        <div class="hub-kpi-card" style="--kpi-color:#60a5fa">
-          <div class="hub-kpi-card" style="position:absolute;inset:0;border-radius:inherit;">
-            <div style="position:absolute;top:0;left:0;right:0;height:3px;background:linear-gradient(90deg,#3b82f6,#60a5fa);border-radius:inherit;"></div>
-          </div>
-          <div class="hub-kpi-icon">📋</div>
-          <div class="hub-kpi-val" id="fkpi_today">—</div>
-          <div class="hub-kpi-lbl">Today's Samples</div>
-        </div>
-        <div class="hub-kpi-card">
-          <div style="position:absolute;top:0;left:0;right:0;height:3px;background:linear-gradient(90deg,var(--accent),var(--accent2));border-radius:inherit;"></div>
-          <div class="hub-kpi-icon">⏳</div>
-          <div class="hub-kpi-val" id="fkpi_pending">—</div>
-          <div class="hub-kpi-lbl">Awaiting Lab</div>
-        </div>
-        <div class="hub-kpi-card">
-          <div style="position:absolute;top:0;left:0;right:0;height:3px;background:linear-gradient(90deg,var(--green),var(--green2));border-radius:inherit;"></div>
-          <div class="hub-kpi-icon">📅</div>
-          <div class="hub-kpi-val" id="fkpi_week">—</div>
-          <div class="hub-kpi-lbl">This Week</div>
-        </div>
-        <div class="hub-kpi-card">
-          <div style="position:absolute;top:0;left:0;right:0;height:3px;background:linear-gradient(90deg,var(--blue),var(--blue2));border-radius:inherit;"></div>
-          <div class="hub-kpi-icon">🗂️</div>
-          <div class="hub-kpi-val" id="fkpi_total">—</div>
-          <div class="hub-kpi-lbl">All My Samples</div>
-        </div>
       </div>
 
       <div class="hub-actions" data-guide="fieldhub-actions">
@@ -7686,7 +7656,7 @@ END $$;
         </div>
         <input type="search" id="fhub_results_search" placeholder="Search test, contract, or material" autocomplete="off"
           oninput="_fieldResultQuery=this.value; renderFieldLabResults();"
-          style="width:100%;box-sizing:border-box;margin:0 0 10px;background:var(--panel);border:1px solid var(--border);color:var(--text);padding:8px 12px;border-radius:var(--radius);font-size:13px;">
+          style="width:100%;box-sizing:border-box;margin:0 0 12px;background:var(--surface);border:1px solid var(--border);color:var(--text);padding:12px 14px;border-radius:14px;font-size:15px;">
         <div id="fhub_lab_status"><div class="hub-empty">Loading…</div></div>
       </div>
 
@@ -8214,7 +8184,7 @@ END $$;
 // GLOBALS
 // ══════════════════════════════════════════════
 let db = null;
-const APP_BUILD = '2026.11.06-qm-click';
+const APP_BUILD = '2026.11.06-field-hub';
 const FC_CORE_ICON_SRC = 'docs/r18-reference/core-drill-icon-128.png';
 const BORELOG_ICON_SRC = 'docs/r18-reference/borelog-icon.webp';
 const BORELOG_PATH = 'deldot-borelog-v6-uscs.html';
@@ -24855,23 +24825,12 @@ function renderFieldHub() {
   hubGreeting('fhub_greet','fhub_date','Field Operations · Dover, DE');
   renderBorrowCountReport();
   const samples = allSamples || [];
-  const today   = new Date().toISOString().split('T')[0];
-  const weekAgo = new Date(Date.now() - 7*86400000).toISOString().split('T')[0];
   const myName  = currentUser?.name?.split(' ').pop() || '';
 
   // Filter mine (by last name or sampled_by match) or fall back to all if name can't match
   const mine = myName
     ? samples.filter(s => (s.sampled_by||'').toLowerCase().includes(myName.toLowerCase()))
     : samples;
-
-  const todayCt  = mine.filter(s => (s.date_sampled||'') === today).length;
-  const pending  = mine.filter(s => !s.status || s.status === 'pending').length;
-  const weekCt   = mine.filter(s => (s.date_sampled||'') >= weekAgo).length;
-
-  setText('fkpi_today',   todayCt);
-  setText('fkpi_pending', pending);
-  setText('fkpi_week',    weekCt);
-  setText('fkpi_total',   mine.length || samples.length);
 
   // ── Recent samples list ──
   const src    = mine.length ? mine : samples;
@@ -40210,6 +40169,81 @@ html.comfort-mode .rail-label {
     box-shadow: none;
   }
   #conchub-view .hub-panel { background: transparent; border: none; box-shadow: none; }
+}
+
+/* Field hub matches the concrete column: quiet greeting, action grid, card lists.
+   The count rail is gone. The recent list already answers those numbers. */
+@media (min-width: 821px) {
+  #fieldhub-view .hub-wrap { max-width: 720px; padding-top: 8px; }
+  #fieldhub-view .hub-header { justify-content: flex-start; margin-bottom: 18px; }
+  #fieldhub-view .hub-greet {
+    font-size: 34px;
+    font-weight: 650;
+    letter-spacing: -0.03em;
+  }
+  #fieldhub-view .hub-date-line {
+    font-family: var(--sans);
+    font-size: 16px;
+    letter-spacing: 0;
+    color: #c5d0de;
+    margin-top: 6px;
+  }
+  #fieldhub-view .hub-actions {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+  }
+  #fieldhub-view .hub-action-btn,
+  #fieldhub-view .concrete-guide-toggle {
+    min-height: 48px;
+    border-radius: 14px;
+    justify-content: center;
+    font-family: var(--sans);
+    font-size: 15px;
+    font-weight: 600;
+    letter-spacing: 0;
+    text-transform: none;
+    color: #eef3f8;
+    background: #121b2c;
+    border: 1px solid #2a3a52;
+    box-shadow: none;
+  }
+  #fieldhub-view .hub-action-btn.primary {
+    grid-column: 1 / -1;
+    color: #fff;
+    background: linear-gradient(135deg, var(--accent), var(--accent2));
+    border-color: transparent;
+  }
+  #fieldhub-view .concrete-guide-toggle { width: auto; }
+  #fieldhub-view .hub-panel {
+    border-radius: 16px;
+    background: #121b2c;
+    border-color: #2a3a52;
+  }
+  #fieldhub-view .hub-panel-title,
+  #fieldhub-view .hub-cal-title,
+  #fieldhub-view .fc-borrow-title {
+    font-family: var(--sans);
+    font-size: 16px;
+    letter-spacing: 0;
+    text-transform: none;
+    color: #eef3f8;
+    font-weight: 650;
+  }
+  #fieldhub-view .hub-panel-link { font-size: 14px; }
+  #fieldhub-view .hub-sample-row,
+  #fieldhub-view .hub-break-row {
+    padding: 14px;
+    border-radius: 14px;
+    border-left-width: 0;
+    margin-bottom: 8px;
+    background: transparent;
+  }
+  #fieldhub-view .hub-sample-row.pending,
+  #fieldhub-view .hub-sample-row.complete { border-left-color: transparent; }
+  #fieldhub-view .hub-sr-id { font-family: var(--sans); font-size: 15px; color: #eef3f8; }
+  #fieldhub-view .hub-sr-info { font-size: 13px; max-width: none; }
+  #fieldhub-view .hub-sr-date { font-size: 13px; }
 }
 
 /* Side rail is retired. Home launches every app, and Back returns there.
