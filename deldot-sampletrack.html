@@ -7655,6 +7655,7 @@ END $$;
           <span class="guide-dot" aria-hidden="true"></span>
           <span class="guide-toggle-label">Guided Mode</span>
         </button>
+        <button type="button" class="hub-action-btn" id="btnFieldWeather" onclick="toggleFieldHubWeather()">Weather</button>
         <button type="button" class="hub-action-btn hub-action-wide" data-guide="hub-core" onclick="fcOpenCoreDrillFromHub()">
           <span class="fc-core-icon fc-core-icon--sm" aria-hidden="true"><img src="docs/r18-reference/core-drill-icon-128.png" alt=""></span>
           Core drill
@@ -7715,8 +7716,8 @@ END $$;
         </div>
       </div>
 
-      <!-- Field Control Weather -->
-      <div class="hub-wx-panel" style="margin-top:18px;">
+      <!-- Field Control Weather — closed until someone asks for it -->
+      <div class="hub-wx-panel" id="fieldHubWeather" style="margin-top:18px;" hidden>
         <div style="font-family:var(--mono);font-size:8px;letter-spacing:2px;color:var(--muted);margin-bottom:10px;">DOVER, DE — CURRENT CONDITIONS</div>
         <div style="position:relative;border-radius:8px;overflow:hidden;margin-bottom:14px;background:#000;">
           <img src="https://radar.weather.gov/ridge/standard/KDOX_loop.gif" style="width:100%;height:auto;display:block;border-radius:8px;" onerror="this.src='https://radar.weather.gov/lite/N0R/DOX_loop.gif'">
@@ -7898,7 +7899,7 @@ END $$;
       </div>
 
       <!-- Concrete Weather -->
-      <div class="hub-wx-panel" style="margin-top:18px;" hidden>
+      <div class="hub-wx-panel" id="concreteHubWeather" style="margin-top:18px;" hidden>
         <div style="font-family:var(--mono);font-size:8px;letter-spacing:2px;color:var(--muted);margin-bottom:10px;">DOVER, DE — CURING CONDITIONS</div>
         <div style="position:relative;border-radius:8px;overflow:hidden;margin-bottom:14px;background:#000;">
           <img src="https://radar.weather.gov/ridge/standard/KDOX_loop.gif" style="width:100%;height:auto;display:block;border-radius:8px;" onerror="this.src='https://radar.weather.gov/lite/N0R/DOX_loop.gif'">
@@ -8169,7 +8170,7 @@ END $$;
 // GLOBALS
 // ══════════════════════════════════════════════
 let db = null;
-const APP_BUILD = '2026.11.06-core-screen';
+const APP_BUILD = '2026.11.06-field-weather';
 const FC_CORE_ICON_SRC = 'docs/r18-reference/core-drill-icon-128.png';
 const BORELOG_ICON_SRC = 'docs/r18-reference/borelog-icon.webp';
 const BORELOG_PATH = 'deldot-borelog-v6-uscs.html';
@@ -25007,12 +25008,20 @@ function renderLabHub() {
 }
 
 // ── CONCRETE HUB ──────────────────────────────────────────────
-function toggleConcreteHubWeather() {
-  const panel = document.querySelector('#conchub-view .hub-wx-panel');
-  const btn = document.getElementById('btnConcreteWeather');
+function toggleHubWeather(panelId, btnId) {
+  const panel = document.getElementById(panelId);
+  const btn = document.getElementById(btnId);
   if (!panel) return;
   panel.hidden = !panel.hidden;
   if (btn) btn.textContent = panel.hidden ? 'Weather' : 'Hide weather';
+}
+
+function toggleFieldHubWeather() {
+  toggleHubWeather('fieldHubWeather', 'btnFieldWeather');
+}
+
+function toggleConcreteHubWeather() {
+  toggleHubWeather('concreteHubWeather', 'btnConcreteWeather');
 }
 
 function renderConcreteHub() {
@@ -39750,7 +39759,6 @@ html.comfort-mode .rail-label {
   #conchub-view .hub-greet,
   #fieldhub-view .hub-role-badge,
   #labhub-view .hub-role-badge,
-  #fieldhub-view .hub-wx-panel,
   #conchub-view .hub-wx-panel,
   #fc_borrow_report,
   #fieldhub-view .concrete-guide-toggle,
@@ -40196,7 +40204,8 @@ html.comfort-mode .rail-label {
     background: linear-gradient(135deg, var(--accent), var(--accent2));
     border-color: transparent;
   }
-  #fieldhub-view .hub-action-btn.hub-action-wide { grid-column: 1 / -1; }
+  #fieldhub-view .hub-action-btn.hub-action-wide,
+  #fieldhub-view #btnFieldWeather { grid-column: 1 / -1; }
   #labhub-view .hub-action-btn { grid-column: 1 / -1; }
   #fieldhub-view .concrete-guide-toggle { width: auto; }
   #fieldhub-view .hub-panel,
