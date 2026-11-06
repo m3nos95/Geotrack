@@ -3460,6 +3460,33 @@ table.fc-borrow-tbl tr.fc-borrow-detail-row td{background:var(--surface);border-
 .r18-app .section-row.depth-2 { padding-left: 40px; }
 .r18-app .section-row.depth-3 { padding-left: 64px; }
 .r18-app .section-row.depth-4 { padding-left: 88px; }
+.r18-app .r18-qm-bar { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-top: 12px; }
+.r18-app .r18-qm-toc { background: white; border: 1px solid var(--r18-line); border-radius: 6px; padding: 12px 16px; margin: 16px 0 20px; }
+.r18-app .r18-qm-toc a { display: block; color: var(--r18-accent); text-decoration: none; font-size: 13px; padding: 2px 0; cursor: pointer; }
+.r18-app .r18-qm-toc a:hover { text-decoration: underline; }
+.r18-app .r18-qm-block { background: white; border: 1px solid var(--r18-line); border-radius: 6px; }
+.r18-app .r18-qm-sec { padding: 16px 18px; border-bottom: 1px solid var(--r18-line-2); }
+.r18-app .r18-qm-sec:last-child { border-bottom: 0; }
+.r18-app .r18-qm-sec.depth-1 { padding-left: 28px; }
+.r18-app .r18-qm-sec.depth-2 { padding-left: 44px; }
+.r18-app .r18-qm-sec.depth-3 { padding-left: 60px; }
+.r18-app .r18-qm-num { font-family: 'JetBrains Mono', ui-monospace, monospace; color: var(--r18-accent); font-weight: 600; font-size: 14px; }
+.r18-app .r18-qm-title { font-size: 15px; font-weight: 600; color: var(--r18-ink); margin-top: 2px; line-height: 1.35; }
+.r18-app .r18-qm-sec.is-header { cursor: pointer; }
+.r18-app .r18-qm-sec.is-header .r18-qm-title { font-family: 'Source Serif 4', Georgia, serif; font-size: 22px; font-weight: 600; }
+.r18-app .r18-qm-sec.is-header.depth-1 .r18-qm-title { font-size: 18px; }
+.r18-app .r18-qm-actions { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+.r18-app .r18-qm-body { margin-top: 10px; font-size: 14px; line-height: 1.55; white-space: pre-wrap; color: var(--r18-ink); }
+.r18-app .r18-qm-rev { margin-top: 8px; font-size: 12px; color: var(--r18-ink-3); }
+.r18-app .r18-qm-table { width: 100%; border-collapse: collapse; font-size: 13px; margin-top: 10px; }
+.r18-app .r18-qm-table th { text-align: left; font-size: 11px; letter-spacing: .04em; text-transform: uppercase; color: var(--r18-ink-3); padding: 8px; border-bottom: 1px solid var(--r18-line); }
+.r18-app .r18-qm-table td { padding: 8px; border-bottom: 1px solid var(--r18-line-2); vertical-align: top; }
+.r18-app .r18-qm-pager { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-top: 10px; font-size: 13px; }
+.r18-app .r18-qm-cards { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 10px; }
+.r18-app .r18-qm-card { border: 1px solid var(--r18-line); border-radius: 6px; padding: 12px 14px; min-width: 180px; background: var(--r18-paper); }
+.r18-app .r18-qm-kvs { display: grid; grid-template-columns: minmax(120px, 180px) 1fr; gap: 6px 12px; margin-top: 8px; font-size: 14px; }
+.r18-app .r18-qm-kvs .k { color: var(--r18-ink-3); }
+.r18-app .r18-qm-table-wrap { overflow-x: auto; }
 .r18-app .stub-card { padding: 32px; background: var(--r18-paper-2); border: 1px dashed var(--r18-line); border-radius: 6px; text-align: center; color: var(--r18-ink-2); }
 .r18-app .modal-backdrop { position: fixed; inset: 0; background: rgba(15,29,46,0.5); display: flex; align-items: center; justify-content: center; z-index: 9999; padding: 16px; animation: r18-fadeIn 0.15s ease-out; }
 .r18-app .modal { background: white; border-radius: 8px; max-width: 640px; width: 100%; max-height: 90vh; overflow-y: auto; box-shadow: 0 24px 48px rgba(0,0,0,0.25); animation: r18-scaleIn 0.18s cubic-bezier(0.34,1.56,0.64,1); }
@@ -8187,7 +8214,7 @@ END $$;
 // GLOBALS
 // ══════════════════════════════════════════════
 let db = null;
-const APP_BUILD = '2026.11.05-report-type';
+const APP_BUILD = '2026.11.06-quality-manual';
 const FC_CORE_ICON_SRC = 'docs/r18-reference/core-drill-icon-128.png';
 const BORELOG_ICON_SRC = 'docs/r18-reference/borelog-icon.webp';
 const BORELOG_PATH = 'deldot-borelog-v6-uscs.html';
@@ -34619,43 +34646,197 @@ const repo = new R18SupabaseRepository();
 
 /* ---------- AASHTO R18 SEED TEMPLATE ---------- */
 const R18_TEMPLATE = [
-  { num: '5',     title: 'Management Requirements',                                  type: 'header' },
-  { num: '5.1',   title: 'Quality Management System (QMS)',                          type: 'header' },
-  { num: '5.2',   title: 'Documentation',                                            type: 'text' },
-  { num: '5.2.1', title: 'Summary documents for laboratory QMS',                     type: 'text' },
-  { num: '5.2.2', title: 'Policy for maintaining copies of standards',               type: 'text' },
-  { num: '5.2.3', title: 'Corporate Quality Manual (CQM)',                           type: 'file' },
-  { num: '5.3',   title: 'Organization',                                             type: 'header' },
-  { num: '5.3.1', title: 'Company and Laboratory Legal Name and Address',            type: 'address' },
-  { num: '5.3.2', title: 'Ownership and Management Structure',                       type: 'text' },
-  { num: '5.3.3', title: 'Organizational Chart',                                     type: 'file' },
-  { num: '5.4',   title: 'Staff',                                                    type: 'header' },
-  { num: '5.4.1', title: 'Position Descriptions',                                    type: 'text' },
-  { num: '5.4.2', title: 'Personnel Records',                                        type: 'text' },
-  { num: '5.5',   title: 'Subcontracting of Tests',                                  type: 'text' },
-  { num: '5.6',   title: 'Purchasing Services and Supplies',                         type: 'text' },
-  { num: '5.7',   title: 'Service to the Client',                                    type: 'text' },
-  { num: '5.8',   title: 'Complaints',                                               type: 'text' },
-  { num: '5.9',   title: 'Control of Nonconforming Testing Work',                    type: 'text' },
-  { num: '5.10',  title: 'Corrective Action',                                        type: 'text' },
-  { num: '5.11',  title: 'Preventive Action',                                        type: 'text' },
-  { num: '5.12',  title: 'Records',                                                  type: 'text' },
-  { num: '5.13',  title: 'Internal Audits',                                          type: 'text' },
-  { num: '5.14',  title: 'Management Reviews',                                       type: 'text' },
-  { num: '6',     title: 'Technical Requirements',                                   type: 'header' },
-  { num: '6.1',   title: 'Personnel',                                                type: 'text' },
-  { num: '6.2',   title: 'Accommodations and Environmental Conditions',              type: 'text' },
-  { num: '6.3',   title: 'Test and Calibration Methods and Method Validation',       type: 'text' },
-  { num: '6.4',   title: 'Equipment',                                                type: 'text' },
-  { num: '6.5',   title: 'Measurement Traceability',                                 type: 'text' },
-  { num: '6.6',   title: 'Sampling',                                                 type: 'text' },
-  { num: '6.7',   title: 'Handling of Test Items',                                   type: 'text' },
-  { num: '6.8',   title: 'Assuring the Quality of Test Results',                     type: 'text' },
-  { num: '6.9',   title: 'Reporting the Results',                                    type: 'text' },
-  { num: '7',     title: 'Additional Requirements',                                  type: 'header' },
-  { num: '7.1',   title: 'Proficiency Sample Program Participation',                 type: 'text' },
-  { num: '7.2',   title: 'On-site Assessment',                                       type: 'text' },
+  { num: '5', title: 'Management Requirements', type: 'header' },
+  { num: '5.1', title: 'Quality Management System (QMS)', type: 'header' },
+  { num: '5.1.1', title: 'Provide Summary QMS Documents (i.e. Accreditation Certificate, Criteria Compliance Documents, etc.)', type: 'text', sync: true },
+  { num: '5.1.2', title: 'Corporate Quality Manual (CQM)', type: 'text', edit: false },
+  { num: '5.2.2', title: 'Policy for maintaining copies of standards', type: 'text', sync: true },
+  { num: '5.3', title: 'Organization', type: 'header' },
+  { num: '5.3.1', title: 'Company and Laboratory Legal Name and Address', type: 'address' },
+  { num: '5.3.1.1', title: 'Parent or Subsidiary Relationships with other Organizations', type: 'text' },
+  { num: '5.3.2', title: 'Ownership and Management Structure', type: 'positions' },
+  { num: '5.3.3', title: 'Organizational Chart', type: 'chart' },
+  { num: '5.4', title: 'Staff', type: 'header' },
+  { num: '5.4.1', title: 'Position Descriptions', type: 'roles', edit: false },
+  { num: '5.4.2', title: 'Biographical Sketches', type: 'bios' },
+  { num: '5.4.3', title: 'Technical Manager and Individual Named in Their Absence', type: 'text', sync: true },
+  { num: '5.4.4', title: 'QMS Management', type: 'text', sync: true },
+  { num: '5.4.5', title: 'Technicians and Assigned Tests', type: 'techs', edit: false },
+  { num: '5.5', title: 'Technician Training', type: 'header' },
+  { num: '5.5.1', title: 'Procedure for Training Technicians', type: 'text' },
+  { num: '5.6', title: 'Evaluating Technician Competency', type: 'header' },
+  { num: '5.6.1', title: 'Procedure for Evaluating Staff Competency', type: 'text', sync: true },
+  { num: '5.6.2', title: 'Training and Evaluation Report Records', type: 'training', edit: false },
+  { num: '5.6.4', title: 'Certification Records', type: 'certs', edit: false, pdf: false },
+  { num: '5.7', title: 'Customer Complaints', type: 'header' },
+  { num: '5.7.1', title: 'Procedure for Handling Customer Complaints', type: 'text', sync: true },
+  { num: '5.7.1.1', title: 'Customer Complaint Records', type: 'reports', report: 'customer_complaints', edit: false, pdf: false },
+  { num: '5.8', title: 'Internal Audits', type: 'header' },
+  { num: '5.8.1', title: 'Procedure for Conducting an Internal Audit', type: 'text', sync: true },
+  { num: '5.8.4', title: 'Internal Audit Report Records', type: 'reports', report: 'internal_audits', edit: false },
+  { num: '5.9', title: 'Management Reviews', type: 'header' },
+  { num: '5.9.1', title: 'Procedure for Conducting a Management Review', type: 'text' },
+  { num: '5.9.2', title: 'Completed Management Reviews', type: 'reports', report: 'management_reviews', edit: false, pdf: false },
+  { num: '5.10', title: 'Corrective Action', type: 'header' },
+  { num: '5.10.1', title: 'Procedure for Implementing Corrective Actions - Areas for corrective action implementation include: internal audits, customer complaints, equipment calibrations, standardizations, checks and maintainence, external assessments, and proficiency sample testing', type: 'text' },
+  { num: '5.10.2', title: 'Corrective Action Records', type: 'corrective', report: 'corrective_actions', edit: false },
+  { num: '5.11', title: 'Records Retention', type: 'header' },
+  { num: '5.11.1', title: 'Policy and Procedure for Retention, Storage and Disposal of Records', type: 'text' },
+  { num: '6', title: 'Technical Requirements', type: 'header' },
+  { num: '6.1.1', title: 'Inventory List of Equipment', type: 'inventory', edit: false },
+  { num: '6.2', title: 'General Equipment Procedures', type: 'header' },
+  { num: '6.2.1', title: 'General procedure for ensuring the calibration, standardization, check, and maintenance are performed for all required equipment and measurement standards at the specified intervals.', type: 'text', sync: true },
+  { num: '6.2.1.6', title: 'Provide Calibration Certificates - Establish the traceability of measurement standards or in-house equipment used for calibrations, standardizations, and checks.', type: 'text', sync: true },
+  { num: '6.3', title: 'Procedures for Individual Pieces of Equipment', type: 'header' },
+  { num: '6.3.1', title: 'List of Procedures', type: 'procedures', edit: false },
+  { num: '6.5', title: 'Equipment Records', type: 'header' },
+  { num: '6.5.1', title: 'Cal/Check/Standardization/Maintenance Records', type: 'records', edit: false },
+  { num: '6.6', title: 'Sample and Test Specimen Management', type: 'header' },
+  { num: '6.6.1', title: 'Procedure for storage, retention, and disposal of test samples.', type: 'text' },
+  { num: '6.6.2', title: 'Procedure for identifying samples', type: 'text' },
+  { num: '6.7', title: 'Test Records and Reports', type: 'header' },
+  { num: '6.7.1', title: 'Methods used to produce test records and to prepare, check, and amend test reports.', type: 'text' },
+  { num: '6.7.2', title: 'Verification of Test Records - Process', type: 'text' },
+  { num: '6.8', title: 'Subcontracting', type: 'header' },
+  { num: '6.8.1', title: 'Documentation describing polices followed by the laboratory relative to subcontracting and its procedure for selecting subcontractors and reporting of results', type: 'text' },
+  { num: '6.9', title: 'Calibration Service Provider Selection', type: 'header' },
+  { num: '6.9.1', title: 'Policy for Selecting Calibration Service Providers. Include the qualifications necessary to be considered an appropriate Calibration Service Provider.', type: 'text' },
+  { num: '6.10', title: 'Assuring the Quality of Results', type: 'header' },
+  { num: '6.10.1', title: 'Procedure for monitoring the validity of test results', type: 'text' },
+  { num: '6.10.1.1', title: 'External Assessment Programs', type: 'text', sync: true },
+  { num: '6.10.1.2', title: 'Proficiency Sample Program or Interlaboratory Comparison Testing', type: 'text' },
+  { num: '6.10.1.3', title: 'Retesting of Retained Items', type: 'text', sync: true },
+  { num: '6.10.2', title: 'Proficiency Sample Program or Interlaboratory Comparison Testing Records', type: 'psp', report: 'psp_reports', edit: false },
+  { num: '6.10.2.1', title: 'External Assessment Program Records', type: 'assessments', report: 'external_assessments', edit: false, pdf: false },
+  { num: '6.10.2.3', title: 'Retesting of Retained Items Records', type: 'text' },
 ];
+
+const QM_DEFAULTS = {
+  '5.1.1': 'The QMS is located in the Primary Lab.',
+  '5.1.2': 'This lab does not have a Corporate Quality Manual.',
+  '5.4.3': 'There is no one qualified in the organization to fill this role in their absence.',
+  '5.5.1': `Soil and Aggregate Laboratory
+
+Technician Training
+
+1.0 Scope
+
+This document outlines the training protocol for technicians performing soil and aggregate testing within the laboratory's AASHTO R 18-accredited quality system.
+
+2.0 Reference
+
+AASHTO R 18-23: Standard Recommended Practice for Establishing and Implementing a Quality Management System for Construction Materials Testing Laboratories
+
+3.0 Training Process
+
+New Technicians: Training is delivered by the Supervisor or certified EPS Technicians (if applicable). Technician certification is conducted by the Supervisor. On-site accreditation events may be used to assess competence.
+Recertification: Technicians with less than 5 years of experience undergo annual recertification. Technicians with over 5 years of experience are recertified every two years.
+Training Records: It is the responsibility of the Supervisor to maintain training records. Checklists used to determine competency are kept with this section.`,
+  '5.6.1': `Procedure to Evaluate Staff Competency (AASHTO R18)
+
+1.0 Scope:
+
+This document outlines the procedure for evaluating the competency of technicians performing soil and aggregate testing within the laboratory's AASHTO R18-accredited quality system.
+
+2.0 Reference:
+
+AASHTO R18-23: Standard Recommended Practice for Establishing and Implementing a Quality Management System for Construction Materials Testing Laboratories.
+
+3.0 Definitions:
+
+Competency: Demonstrated ability to apply knowledge and skills to perform a test or task accurately and reliably. This includes understanding the test method, proper use of equipment, data analysis, and adherence to quality control procedures.
+
+4.0 Training and Competency Evaluation Process:
+
+4.1 New Technicians:
+
+Training: New technicians will receive training on the relevant AASHTO test methods, laboratory procedures, equipment operation, and safety protocols. Training will be delivered by the Supervisor or certified EPS Technicians (if applicable).
+Competency Evaluation: Following training, competency will be evaluated by the Supervisor using a combination of the following methods:
+Direct Observation: The Supervisor will observe the technician performing the test(s) to ensure they follow the correct procedures and use equipment properly. A checklist may be used to document the observation.
+Written/Oral Examination: The technician may be given a written or oral exam to assess their knowledge of the test method, related standards, and quality control requirements.
+Practical Demonstration: The technician may be required to perform a "blind" or proficiency test to demonstrate their ability to obtain accurate and reliable results.
+
+4.2 Recertification:
+
+Frequency: Technicians with less than 5 years of experience undergo annual recertification. Technicians with over 5 years of experience are recertified every two years.
+Competency Evaluation: Recertification will involve a review of the technician's performance, including review of recent test records, participation in proficiency testing programs (if applicable), observation of testing activities, and review of training records for any updates to procedures or standards.
+Areas of Focus: Recertification may focus on areas where changes have occurred (new versions of AASHTO standards, new equipment, changes to lab procedures) or where performance has been less than ideal.
+
+4.3 Training Records:
+
+The Supervisor is responsible for maintaining training and competency evaluation records for all technicians. These records include the technician's name, test methods covered, dates of training and evaluations, results, the name of the evaluator, and any follow-up actions.
+
+4.4 Addressing Unsatisfactory Performance:
+
+If a technician's competency evaluation reveals unsatisfactory performance, the Supervisor will develop a plan to address the deficiencies. This may include additional training, closer supervision, or reassignment of duties. The plan and its outcomes will be documented.`,
+  '5.7.1': 'This procedure is located in the Primary Labs QMS.',
+  '5.10.1': `Procedure for Implementing Corrective Actions
+
+1.0 Purpose
+
+This procedure outlines the process for implementing corrective actions within the lab to address nonconformities and prevent their recurrence. It applies to internal audits, customer complaints, equipment calibrations, standardizations, checks and maintenance, external assessments, and proficiency sample testing.
+
+2.0 Scope
+
+This procedure covers identification, documentation, implementation, verification, and closeout of corrective actions for nonconformities identified within the laboratory's quality management system.
+
+3.0 Definitions
+
+Nonconformity: A deviation from documented requirements (a standard, procedure, specification, or regulatory requirement).
+Corrective Action: Action taken to eliminate the cause of a nonconformity and prevent recurrence.
+Root Cause: The underlying cause of a nonconformity.
+Corrective Action Request: A document used to initiate and track the corrective action process.
+Verification: Confirmation, through objective evidence, that the implemented corrective action is effective.
+
+4.0 Responsibilities
+
+The lab supervisor is responsible for the corrective action process, including review and approval, investigation of root causes, and verification of effectiveness. Assigned personnel implement the actions.
+
+5.0 Procedure
+
+5.1 Any staff member who identifies a nonconformity documents it immediately, including a description, location, objective evidence, potential impact, the reporter's name, and the date.
+5.2 The supervisor initiates a corrective action request and assigns a tracking number.
+5.3 The supervisor investigates the root cause and documents it.
+5.4 A corrective action plan names the actions, the people responsible, and the target dates.
+5.5 Assigned personnel implement the plan and record progress.
+5.6 The supervisor verifies effectiveness by repeat testing, record review, internal audit, or performance monitoring.
+5.7 When verification shows the action worked, the supervisor closes the request and files it.
+
+6.0 Records
+
+Nonconformance reports, corrective action requests, root cause notes, plans, and verification records are retained.
+
+7.0 Training
+
+Personnel involved in the corrective action process are trained on this procedure.`,
+  '5.11.1': 'This procedure is located in the Primary Labs QMS.',
+  '6.2.1': 'This procedure is located in the Primary Labs QMS.',
+  '6.6.1': `1.0 Reference
+
+AASHTO R 18-23: Standard Recommended Practice for Establishing and Implementing a Quality Management System for Construction Materials Testing Laboratories.
+
+2.0 Sample Receipt and Logging
+
+Soils arrive from either field projects (with Field Control Sample Cards) or soil borings (with boring ID tags). Field control samples require expedited testing (typically within 10 days). All samples are logged in central lab books with unique, annually reset test numbers. Logbooks are retained for 3 years. Fine aggregate samples are logged in the same manner. The Supervisor maintains a digital log for coarse aggregate samples.
+
+3.0 Sample Testing and Reporting
+
+Following testing, passing samples are discarded, while retained samples are stored in the drying room with a designated sample tag. The Supervisor then prepares and issues final reports reviewed by the Geotechnical Engineer, and maintains a database of all test results.`,
+  '6.6.2': `1.0 Reference
+
+AASHTO R 18-23: Standard Recommended Practice for Establishing and Implementing a Quality Management System for Construction Materials Testing Laboratories.
+
+2.0 Sample Receipt and Logging
+
+Soils arrive from either field projects (with Field Control Sample Cards) or soil borings (with boring ID tags). Field control samples require expedited testing (typically within 10 days). All samples are logged in central lab books with unique, annually reset test numbers. Logbooks are retained for 3 years. Fine aggregate samples are logged in the same manner. The Supervisor maintains a digital log for coarse aggregate samples.
+
+3.0 Sample Testing and Reporting
+
+Following testing, passing samples are discarded, while retained samples are stored in the drying room with a designated sample tag. The Supervisor then prepares and issues final reports reviewed by the Geotechnical Engineer, and maintains a database of all test results.`,
+  '6.7.1': 'This procedure is located in the Primary Labs QMS.',
+  '6.7.2': 'This procedure is located in Primary Labs QMS.',
+  '6.10.1.2': 'This procedure is located in the Primary Labs QMS.',
+};
 
 /* Seed equipment for a fresh primary lab — drawn from the screenshots */
 const SEED_EQUIPMENT_MEASUREMENT = [
@@ -34713,6 +34894,10 @@ const state = {
   reportStatusFilter: 'completed',
   userFilter: 'active',
   reportSubtab: 'external_assessments',
+  qmCollapsed: {},
+  qmPage: {},
+  qmQuery: {},
+  qmPageSize: {},
 };
 
 const TABS = [
@@ -34815,7 +35000,7 @@ async function createLab({ name, type, address }) {
     await repo.put('sections', {
       id: uuid(), labId: lab.id, sectionNumber: tpl.num, title: tpl.title, contentType: tpl.type,
       content: tpl.type === 'address' ? { street: address?.street || '', city: address?.city || '', state: address?.state || '', zip: address?.zip || '' }
-              : (tpl.type === 'header' ? null : ''),
+              : (tpl.type === 'header' ? null : (QM_DEFAULTS[tpl.num] || '')),
       isStandard: true, lastRevisedBy: 'System', lastRevisedAt: now(), syncedFromPrimary: false,
     });
   }
@@ -34901,7 +35086,16 @@ function renderTabs() {
     </button>`;
   }).join('');
   bar.querySelectorAll('button').forEach(btn => {
-    btn.addEventListener('click', () => { state.currentTab = btn.dataset.tab; r18_renderTabs(); r18_renderView(); });
+    btn.addEventListener('click', () => {
+      state.currentTab = btn.dataset.tab;
+      renderTabs();
+      try { renderView(); }
+      catch (err) {
+        console.error(err);
+        const root = document.getElementById('r18-view-root');
+        if (root) root.innerHTML = '<div class="stub-card">This section could not open. ' + escapeHtml(err.message || String(err)) + '</div>';
+      }
+    });
   });
 }
 
@@ -35176,99 +35370,494 @@ window.r18_deleteLabPrompt = async (id) => {
 /* ====================================================================
    QUALITY MANUAL
    ==================================================================== */
+function qualityManualRows() {
+  const byNum = new Map(state.sections.map(s => [s.sectionNumber, s]));
+  const nums = new Set(R18_TEMPLATE.map(t => t.num));
+  const rows = R18_TEMPLATE.map(tpl => {
+    const saved = byNum.get(tpl.num);
+    return {
+      id: saved?.id || ('tpl-' + tpl.num),
+      sectionNumber: tpl.num,
+      title: tpl.title,
+      kind: tpl.type,
+      sync: !!tpl.sync,
+      edit: tpl.edit !== false && tpl.type !== 'header',
+      pdf: tpl.pdf !== false && tpl.type !== 'header',
+      report: tpl.report || '',
+      content: saved ? saved.content : (QM_DEFAULTS[tpl.num] || ''),
+      contentType: saved?.contentType || (tpl.type === 'header' ? 'header' : tpl.type === 'address' ? 'address' : 'text'),
+      lastRevisedAt: saved?.lastRevisedAt || null,
+      lastRevisedBy: saved?.lastRevisedBy || '',
+      isStandard: saved ? saved.isStandard !== false : true,
+      virtual: !saved,
+    };
+  });
+  state.sections.filter(s => !nums.has(s.sectionNumber) && s.isStandard === false).forEach(s => {
+    rows.push({
+      id: s.id,
+      sectionNumber: s.sectionNumber,
+      title: s.title,
+      kind: s.contentType === 'header' ? 'header' : (s.contentType || 'text'),
+      sync: false,
+      edit: s.contentType !== 'header',
+      pdf: s.contentType !== 'header',
+      report: '',
+      content: s.content,
+      contentType: s.contentType || 'text',
+      lastRevisedAt: s.lastRevisedAt,
+      lastRevisedBy: s.lastRevisedBy || '',
+      isStandard: false,
+      virtual: false,
+    });
+  });
+  return rows;
+}
+
+function manualText(row) {
+  const raw = row.content;
+  const empty = raw == null || (typeof raw === 'string' && !String(raw).trim());
+  if (!empty && typeof raw === 'string') return raw;
+  if (empty && (!row.lastRevisedBy || row.lastRevisedBy === 'System')) return QM_DEFAULTS[row.sectionNumber] || '';
+  return typeof raw === 'string' ? raw : '';
+}
+
+function qmAncestorHidden(num) {
+  const parts = String(num || '').split('.');
+  for (let i = 1; i < parts.length; i++) {
+    const ancestor = parts.slice(0, i).join('.');
+    if (state.qmCollapsed && state.qmCollapsed[ancestor]) return true;
+  }
+  return false;
+}
+
+function qmPeople() {
+  return state.users.filter(u => u.active !== false).slice()
+    .sort((a, b) => String(a.name || '').localeCompare(String(b.name || '')));
+}
+
+function qmPositionName(user) {
+  const role = roleLabel(user.role);
+  if (user.title && user.title !== role) return user.title;
+  return user.title || role || '';
+}
+
+let _qmOutlineFlight = null;
+function ensureManualOutline() {
+  if (!state.currentLabId || typeof db === 'undefined' || !db) return Promise.resolve();
+  if (state._qmOutlineFor === state.currentLabId) return Promise.resolve();
+  if (_qmOutlineFlight) return _qmOutlineFlight;
+  const labId = state.currentLabId;
+  _qmOutlineFlight = (async () => {
+    const have = new Set(state.sections.map(s => s.sectionNumber));
+    let wrote = false;
+    const lab = state.labs.find(l => l.id === labId);
+    for (const tpl of R18_TEMPLATE) {
+      if (have.has(tpl.num)) continue;
+      const address = lab?.address || { street: '', city: '', state: '', zip: '' };
+      await repo.put('sections', {
+        id: uuid(),
+        labId,
+        sectionNumber: tpl.num,
+        title: tpl.title,
+        contentType: tpl.type === 'address' ? 'address' : (tpl.type === 'header' ? 'header' : 'text'),
+        content: tpl.type === 'address' ? { street: address.street || '', city: address.city || '', state: address.state || '', zip: address.zip || '' }
+          : (tpl.type === 'header' ? null : (QM_DEFAULTS[tpl.num] || '')),
+        isStandard: true,
+        lastRevisedBy: QM_DEFAULTS[tpl.num] ? 'Quality manual' : 'System',
+        lastRevisedAt: now(),
+        syncedFromPrimary: false,
+      });
+      wrote = true;
+    }
+    state._qmOutlineFor = labId;
+    if (wrote && state.currentLabId === labId) {
+      state.sections = (await repo.query('sections', 'labId', labId)).sort((a, b) => naturalSectionCompare(a.sectionNumber, b.sectionNumber));
+      if (state.currentTab === 'quality-manual') renderView();
+    }
+  })().catch(err => {
+    console.warn('quality manual outline', err);
+    state._qmOutlineFor = null;
+  }).finally(() => { _qmOutlineFlight = null; });
+  return _qmOutlineFlight;
+}
+
+async function materializeSection(row) {
+  const existing = state.sections.find(s => s.sectionNumber === row.sectionNumber && (!s.labId || s.labId === state.currentLabId));
+  if (existing) return existing.id;
+  if (typeof db !== 'undefined' && db) {
+    const remote = await repo.query('sections', 'labId', state.currentLabId);
+    const found = remote.find(s => s.sectionNumber === row.sectionNumber);
+    if (found) return found.id;
+  }
+  const lab = state.labs.find(l => l.id === state.currentLabId);
+  const rec = {
+    id: uuid(),
+    labId: state.currentLabId,
+    sectionNumber: row.sectionNumber,
+    title: row.title,
+    contentType: row.kind === 'address' ? 'address' : (row.kind === 'header' ? 'header' : 'text'),
+    content: row.kind === 'address'
+      ? { street: lab?.address?.street || '', city: lab?.address?.city || '', state: lab?.address?.state || '', zip: lab?.address?.zip || '' }
+      : (manualText(row) || ''),
+    isStandard: row.isStandard !== false,
+    lastRevisedBy: 'Quality manual',
+    lastRevisedAt: now(),
+    syncedFromPrimary: false,
+  };
+  await repo.put('sections', rec);
+  await refreshAll();
+  return rec.id;
+}
+
+function qmAnchor(num) { return 'qm-' + String(num).replace(/\./g, '-'); }
+
+function qmActionButtons(row, lab) {
+  if (row.kind === 'header') return '';
+  const pdf = row.pdf ? `<button type="button" class="btn btn-ghost text-xs" onclick="r18_exportQualityManualPDF()">PDF Export</button>` : '';
+  const sync = row.sync && lab.type !== 'primary'
+    ? `<button type="button" class="btn btn-ghost text-xs" onclick="r18_syncSection('${row.sectionNumber}')">Sync with Primary Lab</button>` : '';
+  const edit = row.edit && !['address','positions','chart','bios','roles','techs','training','certs','reports','inventory','procedures','records','psp','assessments','corrective'].includes(row.kind)
+    ? `<button type="button" class="btn btn-ghost text-xs" onclick="r18_editSection('${row.id}')">Edit Section</button>` : '';
+  let lead = '';
+  if (row.kind === 'address') lead = `<button type="button" class="btn btn-ghost text-xs" onclick="r18_openEditLabModal('${lab.id}')">Edit Lab Information</button>`;
+  else if (row.kind === 'positions') lead = `<button type="button" class="btn btn-ghost text-xs" onclick="r18_qmGo('roster')">Edit Positions</button>`;
+  else if (row.kind === 'chart') lead = `<button type="button" class="btn btn-ghost text-xs" onclick="r18_qmGo('roster')">Edit Organizational Chart</button>`;
+  else if (row.kind === 'bios') lead = `<button type="button" class="btn btn-ghost text-xs" onclick="r18_qmGo('roster')">Edit User</button>`;
+  else if (row.kind === 'inventory') lead = `<button type="button" class="btn btn-ghost text-xs" onclick="r18_qmGo('inventory')">Go To Inventory</button>`;
+  else if (row.kind === 'records') lead = `<button type="button" class="btn btn-ghost text-xs" onclick="r18_qmGo('procedure-history')">View All Records</button>`;
+  else if (row.report) lead = `<button type="button" class="btn btn-ghost text-xs" onclick="r18_qmReports('${row.report}')">QMS Reports</button>`;
+  else if (row.edit && !edit) lead = `<button type="button" class="btn btn-ghost text-xs" onclick="r18_editSection('${row.id}')">Edit Section</button>`;
+  const buttons = `${lead}${edit}${sync}${pdf}`;
+  return buttons ? `<div class="r18-qm-actions">${buttons}</div>` : '';
+}
+
+function qmRevision(row) {
+  if (!row.lastRevisedAt || row.lastRevisedBy === 'System') return '';
+  const who = row.lastRevisedBy && row.lastRevisedBy !== 'Quality manual' ? ` by ${escapeHtml(row.lastRevisedBy)}` : '';
+  return `<div class="r18-qm-rev">Last Revision on ${escapeHtml(fmtDate(row.lastRevisedAt))}${who}</div>`;
+}
+
+function qmSlice(key, items) {
+  const size = Number(state.qmPageSize[key] || 10);
+  const q = String(state.qmQuery[key] || '').trim().toLowerCase();
+  const filtered = q ? items.filter(item => item.hay.includes(q)) : items;
+  const pages = Math.max(1, Math.ceil(filtered.length / size) || 1);
+  let page = Number(state.qmPage[key] || 1);
+  if (page > pages) page = pages;
+  if (page < 1) page = 1;
+  const start = (page - 1) * size;
+  return { filtered, page, pages, size, slice: filtered.slice(start, start + size), total: items.length };
+}
+
+function qmPager(key, pageInfo, extra) {
+  const id = qmAnchor(key);
+  const prev = pageInfo.page > 1 ? pageInfo.page - 1 : 1;
+  const next = pageInfo.page < pageInfo.pages ? pageInfo.page + 1 : pageInfo.pages;
+  const windowStart = Math.max(1, pageInfo.page - 2);
+  const nums = [];
+  for (let n = windowStart; n <= Math.min(pageInfo.pages, windowStart + 3); n++) nums.push(n);
+  return `<div class="r18-qm-pager">
+    <span>${pageInfo.filtered.length === 1 ? '1' : pageInfo.filtered.length} of ${pageInfo.total}</span>
+    <label>Display <select class="select" style="width:auto;display:inline-block;padding:4px 8px;" onchange="r18_qmPageSize('${key}', this.value)">
+      ${[10, 25, 50].map(n => `<option value="${n}" ${pageInfo.size === n ? 'selected' : ''}>${n}</option>`).join('')}
+    </select></label>
+    ${extra || ''}
+    <input class="input" id="${id}-q" style="max-width:180px;padding:4px 8px;" placeholder="Search" value="${escapeHtml(state.qmQuery[key] || '')}" oninput="r18_qmQuery('${key}', this.value)" />
+    <button type="button" class="btn btn-ghost text-xs" onclick="r18_qmPage('${key}', ${prev})">Previous</button>
+    ${nums.map(n => `<button type="button" class="btn ${n === pageInfo.page ? 'btn-primary' : 'btn-ghost'} text-xs" onclick="r18_qmPage('${key}', ${n})">${n}</button>`).join('')}
+    ${pageInfo.pages > nums[nums.length - 1] ? '<span>…</span>' : ''}
+    <button type="button" class="btn btn-ghost text-xs" onclick="r18_qmPage('${key}', ${next})">Next</button>
+  </div>`;
+}
+
+function qmTable(headers, rowsHtml) {
+  return `<div class="r18-qm-table-wrap"><table class="r18-qm-table"><thead><tr>${headers.map(h => `<th>${h}</th>`).join('')}</tr></thead><tbody>${rowsHtml || `<tr><td colspan="${headers.length}">None on file.</td></tr>`}</tbody></table></div>`;
+}
+
+function renderQmBody(row, lab) {
+  const people = qmPeople();
+  if (row.kind === 'header') return '';
+  if (row.kind === 'address') {
+    const a = lab.address || {};
+    const fields = [
+      ['Lab Name', lab.name || ''],
+      ['Lab Type', lab.type === 'primary' ? 'Primary Lab' : 'Secondary Lab'],
+      ['Street Address', a.street || ''],
+      ['City', a.city || ''],
+      ['State', a.state || ''],
+      ['ZIP Code', a.zip || ''],
+    ];
+    return `<div class="r18-qm-kvs">${fields.map(([k, v]) => `<div class="k">${escapeHtml(k)}</div><div>${escapeHtml(v || '—')}</div>`).join('')}</div>`;
+  }
+  if (row.kind === 'positions') {
+    const body = people.map(u => `<tr><td>${escapeHtml(u.name || '')}</td><td>${escapeHtml(qmPositionName(u))}</td><td></td><td></td></tr>`).join('');
+    return qmTable(['Employee Name', 'Lab Position Name', 'Position Description', 'Files'], body);
+  }
+  if (row.kind === 'chart') {
+    if (!people.length) return '<div class="r18-qm-body">No one is on the roster yet.</div>';
+    const groups = {};
+    people.forEach(u => {
+      const key = qmPositionName(u) || 'Staff';
+      (groups[key] = groups[key] || []).push(u.name);
+    });
+    return `<div class="r18-qm-cards">${Object.keys(groups).map(title => `<div class="r18-qm-card"><div class="text-sm font-semibold ink">${escapeHtml(title)}</div>${groups[title].map(name => `<div class="text-sm ink-2">${escapeHtml(name)}</div>`).join('')}</div>`).join('')}</div>`;
+  }
+  if (row.kind === 'roles') {
+    const seen = [];
+    people.forEach(u => {
+      const name = qmPositionName(u);
+      if (name && !seen.includes(name)) seen.push(name);
+    });
+    const body = seen.map(name => `<tr><td>${escapeHtml(name)}</td><td></td><td></td></tr>`).join('');
+    return qmTable(['Lab Position Name', 'Position Description', 'Files'], body);
+  }
+  if (row.kind === 'bios') {
+    const body = people.map(u => `<tr><td>${escapeHtml(u.name || '')}</td><td>${escapeHtml(u.email || '')}</td><td></td></tr>`).join('');
+    return qmTable(['Users', 'Email Address', 'Files'], body);
+  }
+  if (row.kind === 'techs') {
+    const techs = people.filter(u => u.role === 'lab_technician' || /technician/i.test(u.title || '') || /technician/i.test(roleLabel(u.role) || ''));
+    const list = techs.length ? techs : people.filter(u => u.role !== 'primary_lab_manager');
+    if (!list.length) return '<div class="r18-qm-body">None on file.</div>';
+    return `<div class="r18-qm-cards">${list.map(u => {
+      const tests = state.trainings.filter(t => t.userId === u.id);
+      const methods = tests.map(t => t.testMethod).filter(Boolean);
+      return `<div class="r18-qm-card"><div class="text-sm font-semibold ink">${escapeHtml(u.name || '')}</div><div class="text-xs ink-2">${escapeHtml(qmPositionName(u))}</div><div class="text-sm" style="margin-top:6px;">${methods.length ? methods.map(m => escapeHtml(m)).join('<br>') : 'No tests assigned'}</div></div>`;
+    }).join('')}</div>`;
+  }
+  if (row.kind === 'training') {
+    if (!people.length) return '<div class="r18-qm-body">None on file.</div>';
+    return `<div class="r18-qm-cards">${people.map(u => {
+      const n = state.trainings.filter(t => t.userId === u.id).length;
+      return `<div class="r18-qm-card"><div class="text-sm font-semibold ink">${escapeHtml(u.name || '')}</div><div class="text-xs ink-2">${escapeHtml(roleLabel(u.role))}</div><div class="text-sm" style="margin-top:8px;"><strong>${n}</strong> ${n === 1 ? 'Training' : 'Trainings'}</div></div>`;
+    }).join('')}</div>`;
+  }
+  if (row.kind === 'certs') {
+    const n = state.trainings.length;
+    if (!n) return '<div class="r18-qm-body">No evaluations on file.</div>';
+    return `<div class="r18-qm-body">${n} training record${n === 1 ? '' : 's'} on file. Evaluations are kept with Training &amp; Evals.</div>`;
+  }
+  if (row.kind === 'inventory') {
+    const inService = state.equipment.filter(e => e.status !== 'out_of_service').length;
+    const out = state.equipment.filter(e => e.status === 'out_of_service').length;
+    return `<div class="r18-qm-body">In service: ${inService}\nOut of service: ${out}</div>`;
+  }
+  if (row.kind === 'procedures') {
+    const items = state.procedures.filter(p => p.active !== false).map(p => {
+      const eq = equipmentById(p.equipmentId);
+      const hay = [p.name, eq?.name, eq?.refId, p.procedureType, lab.name].join(' ').toLowerCase();
+      return { p, eq, hay };
+    });
+    const page = qmSlice(row.sectionNumber, items);
+    const body = page.slice.map(({ p, eq }) => `<tr>
+      <td class="mono">${escapeHtml((eq?.refId || p.id || '').toString().slice(0, 12))}</td>
+      <td><div class="font-medium">${escapeHtml(p.name || '')}</div><div class="text-xs ink-2">${escapeHtml(eq?.name || '')}</div></td>
+      <td>${escapeHtml(lab.name || '')}</td>
+      <td>${escapeHtml(PROCEDURE_TYPE_LABEL[p.procedureType] || p.procedureType || '')}</td>
+      <td><button type="button" class="btn btn-view text-xs" onclick="r18_openEquipmentDetail('${p.equipmentId || ''}')">View</button></td>
+    </tr>`).join('');
+    return `<div class="text-sm ink-2">In Use <strong class="ink">${items.length}</strong></div>
+      ${qmPager(row.sectionNumber, page, `<label>Category <select class="select" style="width:auto;display:inline-block;padding:4px 8px;" onchange="r18_qmQuery('${row.sectionNumber}', this.value === 'all' ? '' : this.value)"><option value="all">All</option>${PROCEDURE_TYPES.map(t => `<option value="${t.label.toLowerCase()}" ${String(state.qmQuery[row.sectionNumber] || '').toLowerCase() === t.label.toLowerCase() ? 'selected' : ''}>${t.label}</option>`).join('')}</select></label>`)}
+      ${qmTable(['ID', 'Procedure', 'Lab', 'Type', ''], body)}`;
+  }
+  if (row.kind === 'records') {
+    const items = state.procedureRecords.map(r => {
+      const proc = state.procedures.find(p => p.id === r.procedureId);
+      const eq = equipmentById(r.equipmentId || proc?.equipmentId);
+      const hay = [proc?.name, eq?.name, eq?.refId, r.completedBy, r.result].join(' ').toLowerCase();
+      return { r, proc, eq, hay };
+    });
+    const page = qmSlice(row.sectionNumber, items);
+    const body = page.slice.map(({ r, proc, eq }) => `<tr>
+      <td class="mono">${escapeHtml((eq?.refId || '').toString())}</td>
+      <td><div class="font-medium">${escapeHtml(eq?.name || 'Equipment')}</div><div class="text-xs ink-2">${escapeHtml(fmtDateShort(r.completedAt))} · ${escapeHtml(r.completedBy || 'Internal')}</div></td>
+      <td>${escapeHtml(proc?.name || '')}<div class="text-xs ink-2">${escapeHtml(PROCEDURE_TYPE_LABEL[proc?.procedureType] || '')}${proc ? ' ' + escapeHtml(freqLabel(proc.frequencyValue, proc.frequencyUnit)) : ''}</div></td>
+      <td>${escapeHtml(eq?.name || '')}${eq?.refId ? ` (${escapeHtml(eq.refId)})` : ''}</td>
+      <td>Last Completed<div>${escapeHtml(fmtDateShort(r.completedAt))}</div></td>
+      <td>Next Due<div>${escapeHtml(fmtDateShort(r.nextDueAt || proc?.nextDueAt))}</div></td>
+    </tr>`).join('');
+    return `<div class="text-sm ink-2">Procedure Records <strong class="ink">${items.length}</strong></div>
+      ${qmPager(row.sectionNumber, page)}
+      ${qmTable(['ID', 'Equipment', 'Procedure', 'Piece', 'Completed', 'Due'], body)}`;
+  }
+  if (row.kind === 'psp' || row.kind === 'reports') {
+    const type = row.report;
+    const items = state.reports.filter(r => !type || r.type === type).map(r => ({
+      r, hay: [r.title, r.status, r.content].join(' ').toLowerCase(),
+    }));
+    if (row.kind === 'reports') {
+      return `<div class="r18-qm-body">${items.length} on file.</div>`;
+    }
+    const page = qmSlice(row.sectionNumber, items);
+    const body = page.slice.map(({ r }) => `<tr>
+      <td>${escapeHtml(r.title || '')}</td>
+      <td>${escapeHtml(fmtDateShort(r.date))}</td>
+      <td>${escapeHtml(r.status || '')}</td>
+      <td><button type="button" class="btn btn-view text-xs" onclick="r18_qmReports('${type}')">View</button></td>
+    </tr>`).join('');
+    return `<div class="text-sm ink-2">PSP Reports <strong class="ink">${items.length}</strong></div>
+      ${qmPager(row.sectionNumber, page)}
+      ${qmTable(['Program', 'Date', 'Status', ''], body)}`;
+  }
+  if (row.kind === 'assessments') {
+    const rows = state.reports.filter(r => r.type === 'external_assessments');
+    const closed = rows.filter(r => /clos|complete/i.test(r.status || '')).length;
+    return `<div class="r18-qm-kvs"><div class="k">Completed Assessments</div><div>${closed}</div><div class="k">Incomplete Assessments</div><div>${rows.length - closed}</div></div>${rows.length ? '' : '<div class="r18-qm-body">None on file.</div>'}`;
+  }
+  if (row.kind === 'corrective') {
+    const rows = state.reports.filter(r => r.type === 'corrective_actions');
+    const closed = rows.filter(r => /clos|complete|resolv/i.test(r.status || '')).length;
+    return `<div class="r18-qm-kvs"><div class="k">Open Corrective Actions</div><div>${rows.length - closed}</div><div class="k">Closed Corrective Actions</div><div>${closed}</div></div>${rows.length ? '' : '<div class="r18-qm-body">None on file.</div>'}`;
+  }
+  if (state.editingSectionId === row.id) return renderSectionEditor(Object.assign({}, row, { content: manualText(row), contentType: row.contentType }));
+  const text = manualText(row);
+  if (!text) return '<div class="r18-qm-body" style="color:var(--r18-ink-3);">No content yet.</div>';
+  return `<div class="r18-qm-body">${escapeHtml(text)}</div>`;
+}
+
 function renderQualityManual(lab, root) {
   const isPrimary = lab.type === 'primary';
   const primaryLab = state.labs.find(l => l.type === 'primary');
+  ensureManualOutline();
+  const rows = qualityManualRows();
+  const toc = rows.map(row => {
+    const depth = (String(row.sectionNumber).match(/\./g) || []).length;
+    return `<a style="padding-left:${depth * 14}px" onclick="r18_qmJump('${row.sectionNumber}')"><span class="section-num">${escapeHtml(row.sectionNumber)}</span> ${escapeHtml(row.title)}</a>`;
+  }).join('');
+  const blocks = rows.map(row => {
+    if (qmAncestorHidden(row.sectionNumber)) return '';
+    const depth = (String(row.sectionNumber).match(/\./g) || []).length;
+    const header = row.kind === 'header';
+    const saved = state.sections.find(s => s.id === row.id);
+    const editing = state.editingSectionId && (state.editingSectionId === row.id || (saved && state.editingSectionId === saved.id));
+    const monitor = row.sectionNumber === '6.10.2.1' ? '<div class="r18-qm-title" style="margin-bottom:8px;">Records of Monitoring Activities</div>' : '';
+    return `<section class="r18-qm-sec depth-${depth}${header ? ' is-header' : ''}" id="${qmAnchor(row.sectionNumber)}" ${header ? `onclick="r18_qmToggle('${row.sectionNumber}')"` : ''}>
+      ${monitor}
+      <div class="r18-qm-num">${escapeHtml(row.sectionNumber)}</div>
+      <div class="r18-qm-title">${escapeHtml(row.title)}</div>
+      ${header ? '' : `<div onclick="event.stopPropagation()">${qmActionButtons(row, lab)}${qmRevision(row)}${editing ? renderSectionEditor(Object.assign({}, saved || row, { content: manualText(row) })) : renderQmBody(row, lab)}</div>`}
+    </section>`;
+  }).join('');
 
   root.innerHTML = `
-    <div class="mb-6">
-      <div class="flex items-center justify-between flex-wrap gap-3">
-        <h1 class="r18-page-title">Quality Manual</h1>
-        <div class="flex gap-2 flex-wrap">
-          <button class="btn btn-ghost text-xs" onclick="document.getElementById('r18-qm-toc').scrollIntoView({behavior:'smooth'})">Table of Contents</button>
-          <button class="btn btn-ghost" onclick="r18_openAddSectionModal()">Add Custom Section</button>
-          ${!isPrimary && primaryLab ? `<button class="btn btn-accent" onclick="r18_syncFromPrimary()">Sync R18 from Primary Lab</button>` : ''}
-          <button class="btn btn-primary" onclick="r18_exportQualityManualPDF()">Export Standard to PDF</button>
-        </div>
+    <div class="mb-4" id="r18-qm-top">
+      <h1 class="r18-page-title">Quality Manual</h1>
+      <div class="r18-qm-bar">
+        <button type="button" class="btn btn-ghost text-xs" onclick="r18_qmShortcut()">Add To Shortcuts</button>
+        <button type="button" class="btn btn-ghost text-xs" onclick="r18_qmTop()">Back To Top</button>
+        <button type="button" class="btn btn-ghost text-xs" onclick="document.getElementById('r18-qm-toc').scrollIntoView({behavior:'smooth'})">Table of Contents</button>
       </div>
-      <div class="text-sm ink-2 mt-2">${escapeHtml(lab.name)} · <span class="badge ${isPrimary ? 'badge-primary' : 'badge-secondary'}">${lab.type}</span></div>
+      <div class="text-sm ink-2 mt-2">${escapeHtml(lab.name)} · <span class="badge ${isPrimary ? 'badge-primary' : 'badge-secondary'}">${isPrimary ? 'Primary Lab' : 'Secondary Lab'}</span></div>
     </div>
-
     <div class="print-cover">
       <h1 class="print-title serif">AASHTO R18 Quality Manual</h1>
       <div class="meta">
         <div><strong>Laboratory:</strong> ${escapeHtml(lab.name)}</div>
-        <div><strong>Type:</strong> ${lab.type === 'primary' ? 'Primary' : 'Secondary'} Lab</div>
+        <div><strong>Type:</strong> ${isPrimary ? 'Primary' : 'Secondary'} Lab</div>
         <div><strong>Address:</strong> ${escapeHtml(lab.address?.street || '')}, ${escapeHtml(lab.address?.city || '')}, ${escapeHtml(lab.address?.state || '')} ${escapeHtml(lab.address?.zip || '')}</div>
         <div><strong>Generated:</strong> ${fmtDateShort(now())}</div>
-        <div><strong>Sections:</strong> ${state.sections.length} (${state.sections.filter(s => !s.isStandard).length} custom)</div>
       </div>
     </div>
-
-    <div class="border-b border-line mb-4 flex gap-4 no-print" id="r18-qm-toc">
-      <button class="px-1 pb-2 text-sm font-semibold border-b-2 border-ink ink">AASHTO R18</button>
+    <div class="border-b border-line mb-4 no-print"><button type="button" class="px-1 pb-2 text-sm font-semibold border-b-2 border-ink ink">AASHTO R18</button></div>
+    <div class="r18-qm-bar no-print" style="margin-bottom:16px;">
+      <button type="button" class="btn btn-ghost text-xs" onclick="document.getElementById('r18-qm-toc').scrollIntoView({behavior:'smooth'})">Table of Contents</button>
+      <button type="button" class="btn btn-ghost text-xs" onclick="r18_openAddSectionModal()">Add Custom Section</button>
+      ${!isPrimary && primaryLab ? `<button type="button" class="btn btn-accent text-xs" onclick="r18_syncFromPrimary()">Sync R18 from Primary Lab</button>` : ''}
+      <button type="button" class="btn btn-ghost text-xs" onclick="r18_qmCollapseAll(true)">Collapse All</button>
+      <button type="button" class="btn btn-ghost text-xs" onclick="r18_qmCollapseAll(false)">Expand All</button>
+      <button type="button" class="btn btn-primary text-xs" onclick="r18_exportQualityManualPDF()">Export Standard to PDF</button>
     </div>
-
-    <div class="card">
-      ${state.sections.length === 0 ? '<div class="p-8 text-center ink-2 text-sm">No sections yet. Add your first one.</div>' : ''}
-      ${state.sections.map(s => renderSectionRow(s)).join('')}
+    <div class="r18-qm-toc no-print" id="r18-qm-toc">
+      <div class="text-sm font-semibold ink mb-2">Table of Contents</div>
+      ${toc}
     </div>
+    <div class="r18-qm-block">${blocks}</div>
   `;
-}
-
-function renderSectionRow(s) {
-  const depth = (s.sectionNumber.match(/\./g) || []).length;
-  const isHeader = s.contentType === 'header';
-  const isEditing = state.editingSectionId === s.id;
-  const isStandard = s.isStandard;
-
-  return `
-    <div class="section-row depth-${depth} ${isEditing ? 'editing' : ''}">
-      <div class="section-num text-sm mt-0.5" style="min-width: 56px;">${s.sectionNumber}</div>
-      <div class="flex-1 min-w-0">
-        <div class="flex items-start justify-between gap-3 flex-wrap">
-          <div class="flex-1 min-w-0">
-            <div class="${isHeader ? 'text-base font-semibold serif ink' : 'text-sm font-medium ink'}">${escapeHtml(s.title)}</div>
-            ${!isHeader && !isEditing ? renderSectionContent(s) : ''}
-            ${!isHeader ? `<div class="revision-note mt-2">Last revised ${fmtDate(s.lastRevisedAt)} by ${escapeHtml(s.lastRevisedBy || 'Unknown')}${s.syncedFromPrimary ? ' · <span class="badge badge-synced">synced</span>' : ''}${!isStandard ? ' · <span class="badge badge-draft">custom</span>' : ''}</div>` : ''}
-          </div>
-          ${!isHeader ? `
-            <div class="flex gap-1 shrink-0 no-print">
-              ${isEditing
-                ? `<button class="btn btn-primary text-xs" onclick="r18_saveSection('${s.id}')">Save</button>
-                   <button class="btn btn-ghost text-xs" onclick="r18_cancelEdit()">Cancel</button>`
-                : `<button class="btn btn-ghost text-xs" onclick="r18_viewRevisions('${s.id}')">History</button>
-                   <button class="btn btn-ghost text-xs" onclick="r18_editSection('${s.id}')">Edit Section</button>
-                   ${!isPrimary ? `<button class="btn btn-ghost text-xs" onclick="r18_syncFromPrimary()">Sync with Primary Lab</button>` : ''}
-                   <button class="btn btn-ghost text-xs" onclick="r18_exportQualityManualPDF()">PDF Export</button>
-                   ${!isStandard ? `<button class="btn btn-danger text-xs" onclick="r18_deleteSectionPrompt('${s.id}')">Del</button>` : ''}`
-              }
-            </div>
-          ` : ''}
-        </div>
-        ${isEditing ? renderSectionEditor(s) : ''}
-      </div>
-    </div>
-  `;
-}
-
-function renderSectionContent(s) {
-  if (!s.content || (typeof s.content === 'string' && !s.content.trim())) return '<div class="text-sm ink-2 italic mt-1">No content yet.</div>';
-  if (s.contentType === 'address') {
-    const a = s.content;
-    return `<div class="text-sm ink mt-2 grid grid-cols-2 gap-x-4 gap-y-1 max-w-md">
-      <div><span class="label">Street</span>${escapeHtml(a.street || '—')}</div>
-      <div><span class="label">City</span>${escapeHtml(a.city || '—')}</div>
-      <div><span class="label">State</span>${escapeHtml(a.state || '—')}</div>
-      <div><span class="label">ZIP</span>${escapeHtml(a.zip || '—')}</div>
-    </div>`;
+  const focusId = state._qmFocus;
+  if (focusId) {
+    const el = document.getElementById(focusId);
+    if (el) { el.focus(); const n = el.value.length; if (el.setSelectionRange) el.setSelectionRange(n, n); }
+    state._qmFocus = null;
   }
-  if (s.contentType === 'file') {
-    return `<div class="text-sm ink mt-2 whitespace-pre-wrap">${escapeHtml(s.content || '(no file reference)')}</div>
-      <div class="text-xs ink-3 mt-1 italic">File attachment storage arrives with the Inventory module's photo system.</div>`;
-  }
-  return `<div class="text-sm ink mt-2 whitespace-pre-wrap">${escapeHtml(s.content)}</div>`;
 }
+
+window.r18_qmCollapseAll = (collapsed) => {
+  state.qmCollapsed = {};
+  if (collapsed) R18_TEMPLATE.filter(t => t.type === 'header').forEach(t => { state.qmCollapsed[t.num] = true; });
+  renderView();
+};
+window.r18_qmToggle = (num) => {
+  state.qmCollapsed = state.qmCollapsed || {};
+  if (state.qmCollapsed[num]) delete state.qmCollapsed[num];
+  else state.qmCollapsed[num] = true;
+  renderView();
+};
+window.r18_qmJump = (num) => {
+  const parts = String(num).split('.');
+  state.qmCollapsed = state.qmCollapsed || {};
+  for (let i = 1; i < parts.length; i++) delete state.qmCollapsed[parts.slice(0, i).join('.')];
+  renderView();
+  const el = document.getElementById(qmAnchor(num));
+  if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+};
+window.r18_qmPage = (key, page) => { state.qmPage[key] = page; renderView(); };
+window.r18_qmPageSize = (key, size) => { state.qmPageSize[key] = Number(size) || 10; state.qmPage[key] = 1; renderView(); };
+window.r18_qmQuery = (key, value) => {
+  state.qmQuery[key] = value;
+  state.qmPage[key] = 1;
+  state._qmFocus = qmAnchor(key) + '-q';
+  renderView();
+};
+window.r18_qmShortcut = () => {
+  let list = [];
+  try { list = JSON.parse(localStorage.getItem('r18_shortcuts') || '[]'); } catch (e) { list = []; }
+  if (!list.includes('quality-manual')) list.push('quality-manual');
+  localStorage.setItem('r18_shortcuts', JSON.stringify(list));
+  toast('Quality Manual added to shortcuts');
+};
+window.r18_qmTop = () => {
+  const view = document.getElementById('r18-view');
+  if (view) view.scrollTo({ top: 0, behavior: 'smooth' });
+  const toc = document.getElementById('r18-qm-top');
+  if (toc) toc.scrollIntoView({ behavior: 'smooth', block: 'start' });
+};
+window.r18_qmGo = (tab) => {
+  state.currentTab = tab;
+  renderTabs();
+  renderView();
+};
+window.r18_qmReports = (type) => {
+  state.currentTab = 'reports';
+  if (type) state.reportSubtab = type;
+  state.reportStatusFilter = 'completed';
+  renderTabs();
+  renderView();
+};
+window.r18_syncSection = async (num) => {
+  const lab = state.labs.find(l => l.id === state.currentLabId);
+  const primary = state.labs.find(l => l.type === 'primary');
+  if (!primary || !lab || lab.type === 'primary') return toast('No primary lab to sync from');
+  const primarySections = await repo.query('sections', 'labId', primary.id);
+  const ps = primarySections.find(s => s.sectionNumber === num);
+  if (!ps) return toast('Primary lab has no section ' + num);
+  let existing = state.sections.find(s => s.sectionNumber === num);
+  if (!existing) {
+    existing = { id: uuid(), labId: lab.id, sectionNumber: num, isStandard: true };
+  }
+  existing.title = ps.title;
+  existing.content = ps.content;
+  existing.contentType = ps.contentType;
+  existing.lastRevisedBy = 'Synced from ' + primary.name;
+  existing.lastRevisedAt = now();
+  existing.syncedFromPrimary = true;
+  await repo.put('sections', existing);
+  await refreshAll();
+  renderView();
+  toast('Synced section ' + num);
+};
+
+function renderSectionRow() { return ''; }
+function renderSectionContent() { return ''; }
 
 function renderSectionEditor(s) {
   if (s.contentType === 'address') {
@@ -35289,7 +35878,15 @@ function renderSectionEditor(s) {
   </div>`;
 }
 
-window.r18_editSection = (id) => { state.editingSectionId = id; renderView(); };
+window.r18_editSection = async (id) => {
+  const row = qualityManualRows().find(r => r.id === id || r.sectionNumber === id);
+  if (row && row.virtual) {
+    try { id = await materializeSection(row); }
+    catch (err) { console.error(err); return toast('Could not open that section'); }
+  }
+  state.editingSectionId = id;
+  renderView();
+};
 window.r18_cancelEdit = () => { state.editingSectionId = null; renderView(); };
 
 window.r18_saveSection = async (id) => {
@@ -35443,9 +36040,9 @@ window.r18_syncFromPrimary = async () => {
 };
 
 window.r18_exportQualityManualPDF = () => {
-  // Make sure we're on the Quality Manual view so the print styles target the right DOM
   state.currentTab = 'quality-manual';
   state.editingSectionId = null;
+  state.qmCollapsed = {};
   renderTabs();
   renderView();
   setTimeout(() => window.print(), 200);
