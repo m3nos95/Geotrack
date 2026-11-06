@@ -7742,49 +7742,6 @@ END $$;
           <div class="hub-greet" id="lhub_greet">Good morning</div>
           <div class="hub-date-line" id="lhub_date">—</div>
         </div>
-        <span class="hub-role-badge" style="background:rgba(52,211,153,0.12);color:#34d399;border:1px solid rgba(52,211,153,0.3);">Lab technician</span>
-      </div>
-
-      <div class="hub-kpi-row">
-        <div class="hub-kpi-card">
-          <div style="position:absolute;top:0;left:0;right:0;height:3px;background:linear-gradient(90deg,var(--accent),var(--accent2));border-radius:inherit;"></div>
-          <div class="hub-kpi-icon">⏳</div>
-          <div class="hub-kpi-val" id="lkpi_pending">—</div>
-          <div class="hub-kpi-lbl">Pending Analysis</div>
-        </div>
-        <div class="hub-kpi-card">
-          <div style="position:absolute;top:0;left:0;right:0;height:3px;background:linear-gradient(90deg,var(--green),var(--green2));border-radius:inherit;"></div>
-          <div class="hub-kpi-icon">✅</div>
-          <div class="hub-kpi-val" id="lkpi_today">—</div>
-          <div class="hub-kpi-lbl">Completed Today</div>
-        </div>
-        <div class="hub-kpi-card">
-          <div style="position:absolute;top:0;left:0;right:0;height:3px;background:linear-gradient(90deg,var(--blue),var(--blue2));border-radius:inherit;"></div>
-          <div class="hub-kpi-icon">📅</div>
-          <div class="hub-kpi-val" id="lkpi_week">—</div>
-          <div class="hub-kpi-lbl">Completed This Week</div>
-        </div>
-        <div class="hub-kpi-card" id="lkpi_oldest_card">
-          <div style="position:absolute;top:0;left:0;right:0;height:3px;background:linear-gradient(90deg,#f59e0b,#fbbf24);border-radius:inherit;"></div>
-          <div class="hub-kpi-icon">🕐</div>
-          <div class="hub-kpi-val" id="lkpi_oldest">—</div>
-          <div class="hub-kpi-lbl">Oldest Pending (days)</div>
-          <div class="hub-kpi-sub" id="lkpi_oldest_id">—</div>
-        </div>
-      </div>
-
-      <!-- BoreLog prominent card -->
-      <div id="tour-borelog-card" data-tour="borelog" class="borelog-launch-card" onclick="openBoreLog()"
-           style="cursor:pointer;background:linear-gradient(135deg,rgba(15,29,48,0.95),rgba(10,20,36,0.98));border:1px solid rgba(96,165,250,0.25);border-radius:14px;padding:16px 20px;margin-bottom:18px;display:flex;align-items:center;gap:18px;transition:border-color 0.2s,box-shadow 0.2s;"
-           onmouseover="this.style.borderColor='rgba(96,165,250,0.6)';this.style.boxShadow='0 4px 24px rgba(96,165,250,0.15)'"
-           onmouseout="this.style.borderColor='rgba(96,165,250,0.25)';this.style.boxShadow=''">
-        <img src="docs/r18-reference/borelog-icon.webp" alt="BoreLog" style="width:80px;height:80px;border-radius:14px;object-fit:contain;flex-shrink:0;display:block;">
-        <div>
-          <div style="font-family:var(--display);font-size:15px;font-weight:700;color:var(--text);letter-spacing:0.5px;">DelDOT BoreLog</div>
-          <div style="font-family:var(--mono);font-size:9px;color:var(--accent2);letter-spacing:2px;margin-top:3px;">Lab entry · .geo import</div>
-          <div style="font-family:var(--mono);font-size:9px;color:var(--muted);margin-top:6px;">Enter data from received boring logs — lab use only</div>
-        </div>
-        <div style="margin-left:auto;font-size:18px;color:var(--muted);opacity:0.5;">&#8599;</div>
       </div>
 
       <div class="hub-actions">
@@ -7792,9 +7749,17 @@ END $$;
         <button class="hub-action-btn" onclick="switchView('labarrival')">Scan arrival</button>
       </div>
 
+      <div id="tour-borelog-card" data-tour="borelog" class="borelog-launch-card" onclick="openBoreLog()">
+        <img src="docs/r18-reference/borelog-icon.webp" alt="">
+        <div>
+          <div class="borelog-launch-name">DelDOT BoreLog</div>
+          <div class="borelog-launch-sub">Lab entry and .geo import</div>
+        </div>
+      </div>
+
       <div class="hub-panel" data-tour="labhub-queue">
         <div class="hub-panel-hdr">
-          <span class="hub-panel-title">Pending Queue — Oldest First</span>
+          <span class="hub-panel-title">Pending queue</span>
           <button class="hub-panel-link" onclick="switchView('soillab')">Open in Lab →</button>
         </div>
         <div id="lhub_queue"><div class="hub-empty">Loading…</div></div>
@@ -8184,7 +8149,7 @@ END $$;
 // GLOBALS
 // ══════════════════════════════════════════════
 let db = null;
-const APP_BUILD = '2026.11.06-field-hub';
+const APP_BUILD = '2026.11.06-soil-hub';
 const FC_CORE_ICON_SRC = 'docs/r18-reference/core-drill-icon-128.png';
 const BORELOG_ICON_SRC = 'docs/r18-reference/borelog-icon.webp';
 const BORELOG_PATH = 'deldot-borelog-v6-uscs.html';
@@ -16580,9 +16545,9 @@ const CONTEXT_HELP_VIEWS = {
   },
   labhub: {
     title: 'Soil Lab Hub',
-    intro: 'Lab team dashboard — queue, calendar, KPIs, and BoreLog launcher.',
+    intro: 'Lab team home — queue, calendar, and BoreLog.',
     sections: [
-      { tour: 'labhub-header', title: 'Lab hub header', body: 'Greeting, weather, and quick stats for the materials lab.' },
+      { tour: 'labhub-header', title: 'Lab hub header', body: 'Greeting and the date for the materials lab.' },
       { tour: 'borelog', title: 'BoreLog', body: 'Opens BoreLog in a new tab for boring log data entry (lab workflow only).' },
       { tour: 'labhub-queue', title: 'Pending queue', body: 'Oldest pending soil/aggregate samples — click through to the full lab module.' }
     ]
@@ -16822,7 +16787,7 @@ const LABTRAK_TOUR_STEPS = [
     view: 'labhub',
     tour: 'labhub-header',
     title: 'Soil Lab hub',
-    body: 'Your soil lab home — pending queue, calendar, weather, KPIs, and quick actions for the materials lab team.',
+    body: 'Your soil lab home — pending queue, calendar, and quick actions for the materials lab team.',
     placement: 'bottom',
     pad: 6
   },
@@ -24987,33 +24952,13 @@ function renderFieldLabResults() {
 function renderLabHub() {
   hubGreeting('lhub_greet','lhub_date','Lab Operations · Materials & Research');
   const samples = allSamples || [];
-  const today   = new Date().toISOString().split('T')[0];
-  const weekAgo = new Date(Date.now() - 7*86400000).toISOString().split('T')[0];
 
   // Include ALL samples needing lab analysis: soil AND aggregate.
   // Exclude density-only records (record_kind='density_test' or status='density')
   // and any legacy nuclear_placeholder stubs.
   const needsLab = filterSoilLabSamples(samples);
-  const pending   = needsLab.filter(s => !s.status || s.status === 'pending');
-  const todayDone = needsLab.filter(s => s.status === 'complete' && (s.date_tested||'') === today);
-  const weekDone  = needsLab.filter(s => s.status === 'complete' && (s.date_tested||'') >= weekAgo);
-
-  setText('lkpi_pending', pending.length);
-  setText('lkpi_today',   todayDone.length);
-  setText('lkpi_week',    weekDone.length);
-
-  // Oldest pending
+  const pending = needsLab.filter(s => !s.status || s.status === 'pending');
   const sorted = [...pending].sort((a,b) => (a.date_sampled||'') < (b.date_sampled||'') ? -1 : 1);
-  const oldest = sorted[0];
-  if (oldest?.date_sampled) {
-    const days = Math.round((Date.now() - new Date(oldest.date_sampled).getTime()) / 86400000);
-    setText('lkpi_oldest', days);
-    setText('lkpi_oldest_id', oldest.test_no);
-    if (days > 7) document.getElementById('lkpi_oldest_card')?.classList.add('hub-kpi-alert');
-  } else {
-    setText('lkpi_oldest', '—');
-    setText('lkpi_oldest_id', '');
-  }
 
   // Pending queue
   const queueEl = document.getElementById('lhub_queue');
@@ -40171,29 +40116,35 @@ html.comfort-mode .rail-label {
   #conchub-view .hub-panel { background: transparent; border: none; box-shadow: none; }
 }
 
-/* Field hub matches the concrete column: quiet greeting, action grid, card lists.
-   The count rail is gone. The recent list already answers those numbers. */
+/* Field and soil hubs share the concrete column: quiet greeting, action grid, card lists.
+   The count rails are gone. The queues already answer those numbers. */
 @media (min-width: 821px) {
-  #fieldhub-view .hub-wrap { max-width: 720px; padding-top: 8px; }
-  #fieldhub-view .hub-header { justify-content: flex-start; margin-bottom: 18px; }
-  #fieldhub-view .hub-greet {
+  #fieldhub-view .hub-wrap,
+  #labhub-view .hub-wrap { max-width: 720px; padding-top: 8px; }
+  #fieldhub-view .hub-header,
+  #labhub-view .hub-header { justify-content: flex-start; margin-bottom: 18px; }
+  #fieldhub-view .hub-greet,
+  #labhub-view .hub-greet {
     font-size: 34px;
     font-weight: 650;
     letter-spacing: -0.03em;
   }
-  #fieldhub-view .hub-date-line {
+  #fieldhub-view .hub-date-line,
+  #labhub-view .hub-date-line {
     font-family: var(--sans);
     font-size: 16px;
     letter-spacing: 0;
     color: #c5d0de;
     margin-top: 6px;
   }
-  #fieldhub-view .hub-actions {
+  #fieldhub-view .hub-actions,
+  #labhub-view .hub-actions {
     display: grid;
     grid-template-columns: 1fr 1fr;
     gap: 10px;
   }
   #fieldhub-view .hub-action-btn,
+  #labhub-view .hub-action-btn,
   #fieldhub-view .concrete-guide-toggle {
     min-height: 48px;
     border-radius: 14px;
@@ -40208,20 +40159,25 @@ html.comfort-mode .rail-label {
     border: 1px solid #2a3a52;
     box-shadow: none;
   }
-  #fieldhub-view .hub-action-btn.primary {
+  #fieldhub-view .hub-action-btn.primary,
+  #labhub-view .hub-action-btn.primary {
     grid-column: 1 / -1;
     color: #fff;
     background: linear-gradient(135deg, var(--accent), var(--accent2));
     border-color: transparent;
   }
+  #labhub-view .hub-action-btn { grid-column: 1 / -1; }
   #fieldhub-view .concrete-guide-toggle { width: auto; }
-  #fieldhub-view .hub-panel {
+  #fieldhub-view .hub-panel,
+  #labhub-view .hub-panel {
     border-radius: 16px;
     background: #121b2c;
     border-color: #2a3a52;
   }
   #fieldhub-view .hub-panel-title,
+  #labhub-view .hub-panel-title,
   #fieldhub-view .hub-cal-title,
+  #labhub-view .hub-cal-title,
   #fieldhub-view .fc-borrow-title {
     font-family: var(--sans);
     font-size: 16px;
@@ -40230,9 +40186,12 @@ html.comfort-mode .rail-label {
     color: #eef3f8;
     font-weight: 650;
   }
-  #fieldhub-view .hub-panel-link { font-size: 14px; }
+  #fieldhub-view .hub-panel-link,
+  #labhub-view .hub-panel-link { font-size: 14px; }
   #fieldhub-view .hub-sample-row,
-  #fieldhub-view .hub-break-row {
+  #labhub-view .hub-sample-row,
+  #fieldhub-view .hub-break-row,
+  #labhub-view .hub-break-row {
     padding: 14px;
     border-radius: 14px;
     border-left-width: 0;
@@ -40240,11 +40199,40 @@ html.comfort-mode .rail-label {
     background: transparent;
   }
   #fieldhub-view .hub-sample-row.pending,
-  #fieldhub-view .hub-sample-row.complete { border-left-color: transparent; }
-  #fieldhub-view .hub-sr-id { font-family: var(--sans); font-size: 15px; color: #eef3f8; }
-  #fieldhub-view .hub-sr-info { font-size: 13px; max-width: none; }
-  #fieldhub-view .hub-sr-date { font-size: 13px; }
+  #labhub-view .hub-sample-row.pending,
+  #fieldhub-view .hub-sample-row.complete,
+  #labhub-view .hub-sample-row.complete { border-left-color: transparent; }
+  #fieldhub-view .hub-sr-id,
+  #labhub-view .hub-sr-id { font-family: var(--sans); font-size: 15px; color: #eef3f8; }
+  #fieldhub-view .hub-sr-info,
+  #labhub-view .hub-sr-info { font-size: 13px; max-width: none; }
+  #fieldhub-view .hub-sr-date,
+  #labhub-view .hub-sr-date { font-size: 13px; }
+  #labhub-view .borelog-launch-card {
+    margin-bottom: 14px;
+    padding: 14px 16px;
+    gap: 14px;
+    border-radius: 16px;
+    background: #121b2c;
+    border: 1px solid #2a3a52;
+    box-shadow: none;
+  }
+  #labhub-view .borelog-launch-card::before {
+    width: 44px;
+    height: 44px;
+    font-size: 13px;
+    box-shadow: none;
+  }
 }
+
+#labhub-view .borelog-launch-card {
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+}
+#labhub-view .borelog-launch-name { font-size: 16px; font-weight: 650; color: var(--text); }
+#labhub-view .borelog-launch-sub { font-size: 13px; color: var(--muted); margin-top: 2px; }
+#labhub-view .hub-action-btn { grid-column: 1 / -1; }
 
 /* Side rail is retired. Home launches every app, and Back returns there.
    The rail markup stays so module photos can still be copied from it. */
