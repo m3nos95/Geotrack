@@ -3306,7 +3306,7 @@ table.fc-borrow-tbl tr.fc-borrow-detail-row td{background:var(--surface);border-
   background: #f8fafc; border: 1px solid #cbd5e1; border-radius: 8px; padding: 8px; margin: 12px 0;
   overflow-x: auto;
 }
-.fc-curve-chart-wrap svg { display: block; min-width: 640px; }
+.fc-curve-chart-wrap svg { display: block; width: auto; max-width: 100%; height: auto; min-width: 0; margin: 0 auto; }
 .fc-curve-table {
   display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 6px; margin: 12px 0;
 }
@@ -3364,7 +3364,7 @@ table.fc-borrow-tbl tr.fc-borrow-detail-row td{background:var(--surface);border-
 .fc-result-strip .val { font-family:var(--mono); font-size:18px; font-weight:700; color:var(--accent2); }
 .fc-result-strip .lbl { font-family:var(--mono); font-size:9px; color:var(--muted); letter-spacing:1px; }
 .fc-foc-chart-box { background:#f8fafc; border:1px solid #cbd5e1; border-radius:8px; padding:8px; overflow-x:auto; margin:12px 0; }
-.fc-foc-chart-box svg { display:block; min-width:640px; }
+.fc-foc-chart-box svg { display:block; width:auto; max-width:100%; height:auto; min-width:0; margin:0 auto; }
 #fcAddFamilyModal { display:none; position:fixed; inset:0; z-index:940; background:rgba(0,0,0,0.75); align-items:center; justify-content:center; padding:16px; }
 #fcAddFamilyModal.open { display:flex; }
 .fc-add-family-panel { background:var(--surface); border:1px solid var(--border); border-radius:12px; padding:18px; width:min(440px,100%); }
@@ -8170,7 +8170,7 @@ END $$;
 // GLOBALS
 // ══════════════════════════════════════════════
 let db = null;
-const APP_BUILD = '2026.11.06-r18-reporter';
+const APP_BUILD = '2026.11.06-curve-scale';
 const FC_CORE_ICON_SRC = 'docs/r18-reference/core-drill-icon-128.png';
 const BORELOG_ICON_SRC = 'docs/r18-reference/borelog-icon.webp';
 const BORELOG_PATH = 'deldot-borelog-v6-uscs.html';
@@ -27431,6 +27431,67 @@ function fcApplyCurveFromPicker() {
   showToast(`Curve ${_fcCurvePickerSelected} applied`, 'success');
 }
 
+/** Whole-number axis window around the plotted values, with a little padding. */
+function fcChartSpan(values, pad, fallbackMin, fallbackMax) {
+  const nums = (values || []).filter(v => v != null && !isNaN(v));
+  if (!nums.length) return { min: fallbackMin, max: fallbackMax };
+  let min = Math.floor(Math.min.apply(null, nums) - pad);
+  let max = Math.ceil(Math.max.apply(null, nums) + pad);
+  if (max - min < 4) {
+    const extra = 4 - (max - min);
+    min -= Math.ceil(extra / 2);
+    max += Math.floor(extra / 2);
+  }
+  return { min, max };
+}
+
+/**
+ * Paper-chart scale: 1% moisture and 1 pcf are the same length, so a real
+ * slope of 2 pcf per percent rises at that angle instead of being stretched flat.
+ * The longer axis stays near 680px; the other side follows.
+ */
+function fcSquareChartFrame(xMin, xMax, yMin, yMax) {
+  const ml = 64, mr = 16, mt = 20, mb = 46;
+  const xSpan = Math.max(2, xMax - xMin);
+  const ySpan = Math.max(2, yMax - yMin);
+  const unit = Math.max(12, Math.min(24, 680 / Math.max(xSpan, ySpan)));
+  const plotW = xSpan * unit;
+  const plotH = ySpan * unit;
+  const W = Math.round(ml + plotW + mr);
+  const H = Math.round(mt + plotH + mb);
+  return {
+    W, H, ml, mr, mt, mb, plotW, plotH, unit,
+    x: m => ml + ((m - xMin) / xSpan) * plotW,
+    y: v => mt + plotH - ((v - yMin) / ySpan) * plotH,
+  };
+}
+
+function fcChartGrid(frame, xMin, xMax, yMin, yMax, xLabel, yLabel) {
+  const { ml, mt, plotW, plotH, H } = frame;
+  let g = `<rect x="${ml}" y="${mt}" width="${plotW}" height="${plotH}" fill="#ffffff" stroke="#475569" stroke-width="1"/>`;
+  for (let m = Math.ceil(xMin - 1e-6); m <= Math.floor(xMax + 1e-6); m++) {
+    const major = m % 2 === 0;
+    const x = frame.x(m);
+    g += `<line x1="${x}" y1="${mt}" x2="${x}" y2="${mt + plotH}" stroke="${major ? '#94a3b8' : '#e2e8f0'}" stroke-width="${major ? 1 : 0.6}"/>`;
+    if (major) g += `<text x="${x}" y="${H - 20}" font-size="11" fill="#1e293b" text-anchor="middle" font-family="ui-sans-serif,system-ui,sans-serif">${m}</text>`;
+  }
+  for (let v = Math.ceil(yMin - 1e-6); v <= Math.floor(yMax + 1e-6); v++) {
+    const major = v % 2 === 0;
+    const y = frame.y(v);
+    g += `<line x1="${ml}" y1="${y}" x2="${ml + plotW}" y2="${y}" stroke="${major ? '#94a3b8' : '#e2e8f0'}" stroke-width="${major ? 1 : 0.6}"/>`;
+    if (major) g += `<text x="${ml - 6}" y="${y + 4}" font-size="11" fill="#1e293b" text-anchor="end" font-family="ui-sans-serif,system-ui,sans-serif">${v}</text>`;
+  }
+  g += `<text x="${ml + plotW / 2}" y="${H - 4}" font-size="12" fill="#0f172a" text-anchor="middle" font-family="ui-sans-serif,system-ui,sans-serif">${xLabel}</text>`;
+  g += `<text x="16" y="${mt + plotH / 2}" font-size="12" fill="#0f172a" text-anchor="middle" font-family="ui-sans-serif,system-ui,sans-serif" transform="rotate(-90 16 ${mt + plotH / 2})">${yLabel}</text>`;
+  return g;
+}
+
+function fcApplyChartFrame(svg, frame) {
+  svg.setAttribute('viewBox', `0 0 ${frame.W} ${frame.H}`);
+  svg.setAttribute('width', String(frame.W));
+  svg.setAttribute('height', String(frame.H));
+}
+
 function fcRenderCurveChart() {
   const svg = document.getElementById('fcCurveChartSvg');
   const table = document.getElementById('fcCurveTable');
@@ -27444,9 +27505,6 @@ function fcRenderCurveChart() {
   const title = document.getElementById('fcCurvePickerTitle');
   if (title) title.textContent = fam ? fam.name : 'Family of Curves';
 
-  const W = 640, H = 440, ml = 54, mr = 16, mt = 22, mb = 42;
-  const plotW = W - ml - mr, plotH = H - mt - mb;
-
   const samples = [];
   famCurves.forEach(c => {
     if (c.optMoist == null) return;
@@ -27456,33 +27514,17 @@ function fcRenderCurveChart() {
   });
   const ms = samples.map(s => s.m).filter(v => v != null && !isNaN(v));
   const ws = samples.map(s => s.w).filter(v => v != null && !isNaN(v));
-  let xMin = ms.length ? Math.floor(Math.min(...ms) - 0.6) : 4;
-  let xMax = ms.length ? Math.ceil(Math.max(...ms) + 0.6) : 24;
-  let yMin = ws.length ? Math.floor((Math.min(...ws) - 3) / 2) * 2 : 100;
-  let yMax = ws.length ? Math.ceil((Math.max(...ws) + 3) / 2) * 2 : 150;
-  if (xMax - xMin < 4) xMax = xMin + 4;
-  if (yMax - yMin < 8) yMax = yMin + 8;
-
-  const xScale = m => ml + ((m - xMin) / (xMax - xMin)) * plotW;
-  const yScale = w => mt + plotH - ((w - yMin) / (yMax - yMin)) * plotH;
+  const xSpan = fcChartSpan(ms, 1, 6, 18);
+  const ySpan = fcChartSpan(ws, 2, 100, 145);
+  const frame = fcSquareChartFrame(xSpan.min, xSpan.max, ySpan.min, ySpan.max);
+  const xScale = frame.x;
+  const yScale = frame.y;
 
   let point = null;
   const read = fcReadOnePoint('nuclear');
   if (read) point = read;
 
-  const xStep = (xMax - xMin) > 16 ? 4 : 2;
-  const yStep = (yMax - yMin) > 30 ? 8 : 4;
-  let grid = '';
-  for (let m = Math.ceil(xMin / xStep) * xStep; m <= xMax; m += xStep) {
-    grid += `<line x1="${xScale(m)}" y1="${mt}" x2="${xScale(m)}" y2="${mt + plotH}" stroke="#e2e8f0" stroke-width="1"/>`;
-    grid += `<text x="${xScale(m)}" y="${H - 8}" font-size="9" fill="#64748b" text-anchor="middle">${m}</text>`;
-  }
-  for (let w = Math.ceil(yMin / yStep) * yStep; w <= yMax; w += yStep) {
-    grid += `<line x1="${ml}" y1="${yScale(w)}" x2="${ml + plotW}" y2="${yScale(w)}" stroke="#e2e8f0" stroke-width="1"/>`;
-    grid += `<text x="${ml - 6}" y="${yScale(w) + 3}" font-size="9" fill="#64748b" text-anchor="end">${w}</text>`;
-  }
-  grid += `<text x="${ml + plotW / 2}" y="${H - 22}" font-size="10" fill="#334155" text-anchor="middle">Moisture Content (%)</text>`;
-  grid += `<text x="14" y="${mt + plotH / 2}" font-size="10" fill="#334155" text-anchor="middle" transform="rotate(-90 14 ${mt + plotH / 2})">Wet Density (pcf)</text>`;
+  const grid = fcChartGrid(frame, xSpan.min, xSpan.max, ySpan.min, ySpan.max, 'Moisture, %', 'Wet Density (pcf)');
 
   let curves = '';
   famCurves.forEach(c => {
@@ -27497,10 +27539,12 @@ function fcRenderCurveChart() {
     }
     if (pts.length < 2) return;
     const sel = key === String(_fcCurvePickerSelected);
-    curves += `<path d="M ${pts.join(' L ')}" fill="none" stroke="${sel ? '#c47c2a' : '#94a3b8'}" stroke-width="${sel ? 2.8 : 1.4}" stroke-linecap="round" data-curve="${key}" style="cursor:pointer" onclick="fcSelectCurveInPicker('${key}')"/>`;
-    const px = xScale(c.optMoist);
-    const py = yScale(fcPredictedWet(c, c.optMoist));
-    curves += `<text x="${px}" y="${py - 5}" font-size="8" font-weight="${sel ? 700 : 400}" fill="${sel ? '#c47c2a' : '#64748b'}" text-anchor="middle" style="cursor:pointer" onclick="fcSelectCurveInPicker('${key}')">${key}</text>`;
+    curves += `<path d="M ${pts.join(' L ')}" fill="none" stroke="${sel ? '#c47c2a' : '#64748b'}" stroke-width="${sel ? 2.8 : 1.5}" stroke-linecap="round" data-curve="${key}" style="cursor:pointer" onclick="fcSelectCurveInPicker('${key}')"/>`;
+    const x0 = xScale(spine.min), x1 = xScale(spine.max);
+    const y0 = yScale(fcPredictedWet(c, spine.min)), y1 = yScale(fcPredictedWet(c, spine.max));
+    const mx = (x0 + x1) / 2, my = (y0 + y1) / 2;
+    const ang = Math.atan2(y1 - y0, x1 - x0) * 180 / Math.PI;
+    curves += `<text x="${mx.toFixed(1)}" y="${my.toFixed(1)}" font-size="9" font-weight="${sel ? 700 : 500}" fill="${sel ? '#c47c2a' : '#1e293b'}" text-anchor="middle" dominant-baseline="middle" stroke="#fff" stroke-width="3" paint-order="stroke" transform="rotate(${ang.toFixed(1)} ${mx.toFixed(1)} ${my.toFixed(1)})" style="cursor:pointer" onclick="fcSelectCurveInPicker('${key}')">${key}</text>`;
   });
 
   let marker = '';
@@ -27520,6 +27564,7 @@ function fcRenderCurveChart() {
   }
 
   svg.innerHTML = `${grid}${curves}${marker}`;
+  fcApplyChartFrame(svg, frame);
 
   if (table) {
     table.innerHTML = famCurves.map(c => {
@@ -27948,9 +27993,7 @@ function fcProctorDrawChart(peak, meta) {
   const svg = document.getElementById('prCurveSvg');
   if (!svg) return;
   const pts = peak?.points || [];
-  const W = 640, H = 400, ml = 54, mr = 18, mt = 28, mb = 44;
-  const plotW = W - ml - mr, plotH = H - mt - mb;
-  let xMin = 2.5, xMax = 17.5, yMin = 105, yMax = 130;
+  let xMin = 4, xMax = 18, yMin = 105, yMax = 130;
   if (pts.length) {
     const ms = pts.map(p => p.moisture);
     const ds = pts.map(p => p.dryDensity);
@@ -27958,36 +28001,22 @@ function fcProctorDrawChart(peak, meta) {
     if (peak?.optMoist != null) ms.push(peak.optMoist);
     const m0 = Math.min(...ms), m1 = Math.max(...ms);
     const d0 = Math.min(...ds), d1 = Math.max(...ds);
-    // Report-style padding
-    xMin = Math.max(0, Math.floor((m0 - 2.5) * 2) / 2);
-    xMax = Math.ceil((m1 + 2.5) * 2) / 2;
-    yMin = Math.floor((d0 - 5) / 5) * 5;
-    yMax = Math.ceil((d1 + 5) / 5) * 5;
-    if (yMax - yMin < 20) { yMin -= 5; yMax += 5; }
+    xMin = Math.max(0, Math.floor(m0 - 2));
+    xMax = Math.ceil(m1 + 2);
+    yMin = Math.floor(d0 - 4);
+    yMax = Math.ceil(d1 + 4);
+    if (yMax - yMin < 12) { yMin -= 4; yMax += 4; }
   }
+  xMin = Math.floor(xMin);
+  xMax = Math.ceil(xMax);
+  yMin = Math.floor(yMin);
+  yMax = Math.ceil(yMax);
   const zavGs = meta?.zavGs || meta?.soilGs;
-  const xScale = m => ml + ((m - xMin) / Math.max(0.1, xMax - xMin)) * plotW;
-  const yScale = d => mt + plotH - ((d - yMin) / Math.max(0.1, yMax - yMin)) * plotH;
-  let g = '';
-  // Plot frame
-  g += `<rect x="${ml}" y="${mt}" width="${plotW}" height="${plotH}" fill="#ffffff" stroke="#94a3b8" stroke-width="1"/>`;
-  // Minor + major grid
-  const xStepMinor = (xMax - xMin) <= 20 ? 0.5 : 1;
-  const xStepMajor = (xMax - xMin) <= 20 ? 2.5 : 2;
-  for (let m = xMin; m <= xMax + 1e-9; m += xStepMinor) {
-    const x = xScale(m);
-    const major = Math.abs((m - xMin) / xStepMajor - Math.round((m - xMin) / xStepMajor)) < 1e-6;
-    g += `<line x1="${x}" y1="${mt}" x2="${x}" y2="${mt+plotH}" stroke="${major ? '#cbd5e1' : '#eef2f7'}" stroke-width="${major ? 1 : 0.6}"/>`;
-    if (major) g += `<text x="${x}" y="${H-14}" font-size="10" fill="#334155" text-anchor="middle">${Number(m.toFixed(1))}</text>`;
-  }
-  for (let d = yMin; d <= yMax + 1e-9; d += 1) {
-    const y = yScale(d);
-    const major = Math.abs(d % 5) < 1e-6 || Math.abs(d % 5 - 5) < 1e-6;
-    g += `<line x1="${ml}" y1="${y}" x2="${ml+plotW}" y2="${y}" stroke="${major ? '#cbd5e1' : '#eef2f7'}" stroke-width="${major ? 1 : 0.6}"/>`;
-    if (major) g += `<text x="${ml-6}" y="${y+3}" font-size="10" fill="#334155" text-anchor="end">${d}</text>`;
-  }
-  g += `<text x="${ml+plotW/2}" y="${H-2}" font-size="11" fill="#0f172a" text-anchor="middle">Water content, %</text>`;
-  g += `<text x="14" y="${mt+plotH/2}" font-size="11" fill="#0f172a" text-anchor="middle" transform="rotate(-90 14 ${mt+plotH/2})">Dry density, pcf</text>`;
+  const frame = fcSquareChartFrame(xMin, xMax, yMin, yMax);
+  const { W, H, ml, mt, plotW, plotH } = frame;
+  const xScale = frame.x;
+  const yScale = frame.y;
+  let g = fcChartGrid(frame, xMin, xMax, yMin, yMax, 'Water content, %', 'Dry density, pcf');
 
   // Zero air voids curve
   if (zavGs && zavGs > 1) {
@@ -28038,8 +28067,7 @@ function fcProctorDrawChart(peak, meta) {
   }
 
   svg.innerHTML = g;
-  svg.setAttribute('viewBox', `0 0 ${W} ${H}`);
-  svg.setAttribute('height', String(H));
+  fcApplyChartFrame(svg, frame);
 }
 
 function fcProctorNew() {
@@ -28577,9 +28605,7 @@ function fcFocDrawFamilyChart(family) {
   const svg = document.getElementById('fcFocFamilySvg');
   if (!svg) return;
   const curves = family?.curves || [];
-  const W = 640, H = 400, ml = 54, mr = 16, mt = 22, mb = 42;
-  const plotW = W - ml - mr, plotH = H - mt - mb;
-  let xMin = 4, xMax = 28, yMin = 95, yMax = 140;
+  let xMin = 6, xMax = 20, yMin = 98, yMax = 140;
   // Build spine polylines first so axis ranges match 80–100% only
   const colors = ['#c47c2a', '#2563eb', '#16a34a', '#dc2626', '#7c3aed', '#0891b2', '#ca8a04', '#db2777'];
   const spineSeries = curves.map((c, idx) => {
@@ -28611,31 +28637,32 @@ function fcFocDrawFamilyChart(family) {
       yMax = Math.ceil(Math.max(...ds) + 2);
     }
   }
-  const xScale = m => ml + ((m - xMin) / Math.max(0.1, xMax - xMin)) * plotW;
-  const yScale = d => mt + plotH - ((d - yMin) / Math.max(0.1, yMax - yMin)) * plotH;
-  let g = '';
-  for (let m = Math.ceil(xMin); m <= xMax; m += 2) {
-    g += `<line x1="${xScale(m)}" y1="${mt}" x2="${xScale(m)}" y2="${mt+plotH}" stroke="#e2e8f0"/>`;
-    g += `<text x="${xScale(m)}" y="${H-10}" font-size="9" fill="#64748b" text-anchor="middle">${m}</text>`;
-  }
-  for (let d = yMin; d <= yMax; d += 5) {
-    g += `<line x1="${ml}" y1="${yScale(d)}" x2="${ml+plotW}" y2="${yScale(d)}" stroke="#e2e8f0"/>`;
-    g += `<text x="${ml-6}" y="${yScale(d)+3}" font-size="9" fill="#64748b" text-anchor="end">${d}</text>`;
-  }
-  g += `<text x="${ml+plotW/2}" y="${H-24}" font-size="10" fill="#334155" text-anchor="middle">Moisture Content (%) — 80% to 100% of OMC</text>`;
-  g += `<text x="14" y="${mt+plotH/2}" font-size="10" fill="#334155" text-anchor="middle" transform="rotate(-90 14 ${mt+plotH/2})">Dry Density (pcf)</text>`;
+  xMin = Math.floor(xMin);
+  xMax = Math.ceil(xMax);
+  yMin = Math.floor(yMin);
+  yMax = Math.ceil(yMax);
+  const frame = fcSquareChartFrame(xMin, xMax, yMin, yMax);
+  const { W, H } = frame;
+  const xScale = frame.x;
+  const yScale = frame.y;
+  let g = fcChartGrid(frame, xMin, xMax, yMin, yMax, 'Moisture, %', 'Dry Density (pcf)');
   spineSeries.forEach(s => {
     const pts = s.samples.map(pt => `${xScale(pt.m).toFixed(1)},${yScale(pt.d).toFixed(1)}`);
     if (pts.length > 1) {
-      g += `<path d="M ${pts.join(' L ')}" fill="none" stroke="${s.color}" stroke-width="2.4" stroke-linecap="round"/>`;
-      const peakY = s.c.maxDry != null ? yScale(s.c.maxDry) : yScale(s.samples[s.samples.length-1].d);
-      g += `<text x="${xScale(s.c.optMoist)}" y="${peakY - 6}" font-size="9" fill="${s.color}" text-anchor="middle">${s.c.no != null ? s.c.no : (s.idx + 1)}</text>`;
+      g += `<path d="M ${pts.join(' L ')}" fill="none" stroke="${s.color}" stroke-width="2.2" stroke-linecap="round"/>`;
+      const mid = s.samples[Math.floor(s.samples.length / 2)];
+      const mx = xScale(mid.m), my = yScale(mid.d);
+      const a0 = s.samples[0], a1 = s.samples[s.samples.length - 1];
+      const ang = Math.atan2(yScale(a1.d) - yScale(a0.d), xScale(a1.m) - xScale(a0.m)) * 180 / Math.PI;
+      const num = s.c.no != null ? s.c.no : (s.idx + 1);
+      g += `<text x="${mx.toFixed(1)}" y="${my.toFixed(1)}" font-size="9" font-weight="600" fill="${s.color}" text-anchor="middle" dominant-baseline="middle" stroke="#fff" stroke-width="3" paint-order="stroke" transform="rotate(${ang.toFixed(1)} ${mx.toFixed(1)} ${my.toFixed(1)})">${num}</text>`;
     }
   });
   if (!curves.length) {
     g += `<text x="${W/2}" y="${H/2}" font-size="12" fill="#94a3b8" text-anchor="middle">Add completed proctors to plot the 80–100% spine</text>`;
   }
   svg.innerHTML = g;
+  fcApplyChartFrame(svg, frame);
 }
 
 
