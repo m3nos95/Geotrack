@@ -5486,6 +5486,7 @@ END $$;
         <button type="button" class="lab-mode-tab active" id="fcmode-event" onclick="fcSetModuleMode('event')">⚡ FIELD EVENT</button>
         <button type="button" class="lab-mode-tab" id="fcmode-proctor" onclick="fcSetModuleMode('proctor')">Proctor</button>
         <button type="button" class="lab-mode-tab" id="fcmode-foc" onclick="fcSetModuleMode('foc')">Family of curves</button>
+        <button type="button" class="lab-mode-tab" id="fcmode-core" onclick="fcSetModuleMode('core')"><span class="fc-core-icon fc-core-icon--sm" aria-hidden="true"><img src="docs/r18-reference/core-drill-icon-128.png" alt=""></span> Core drill</button>
       </div>
 
       <!-- ══ PROCTOR LIBRARY ══ -->
@@ -5648,6 +5649,170 @@ END $$;
         </div>
       </div>
 
+      <!-- ══ CORE DRILL — own screen, not part of a field event ══ -->
+      <div id="fc_core_state" data-guide="fc-core" style="display:none;">
+        <div class="fc-lib-toolbar">
+          <div style="font-family:var(--display);font-size:18px;font-weight:700;color:var(--text);display:flex;align-items:center;gap:8px;">
+            <span class="fc-core-icon fc-core-icon--md" aria-hidden="true"><img src="docs/r18-reference/core-drill-icon-128.png" alt=""></span>
+            Core drill
+          </div>
+          <div style="flex:1"></div>
+          <div id="fc_core_session_label" style="display:none;font-family:var(--sans);font-size:15px;font-weight:650;color:#c084fc;"></div>
+          <button type="button" id="fc_core_end_btn" class="btn btn-ghost" style="display:none;" onclick="clearFC_Session()">End session</button>
+        </div>
+        <p style="font-family:var(--sans);font-size:13px;color:var(--muted);margin:-4px 0 14px;line-height:1.45;">
+          Pavement cores for this section. This screen is separate from field events.
+        </p>
+        <!-- ── CORE DRILL — separate subgroup (not mixed with density/lab intents) ── -->
+        <div class="card" id="fc_core_start_card" data-guide="fc-core-start" style="margin-top:14px;border:1px solid rgba(168,85,247,0.35);background:linear-gradient(135deg,rgba(168,85,247,0.08),rgba(168,85,247,0.02));">
+          <div class="card-title" style="color:#c084fc;"><span class="fc-core-icon fc-core-icon--md" aria-hidden="true"><img src="docs/r18-reference/core-drill-icon-128.png" alt=""></span> Core Drill</div>
+          <p style="font-family:var(--mono);font-size:10px;color:var(--muted);line-height:1.6;margin:-4px 0 14px;max-width:560px;">
+            Pavement core logging — thickness, layer, GPS, and photos. Separate from density / lab field events.
+          </p>
+
+          <div style="font-family:var(--mono);font-size:9px;letter-spacing:1.5px;color:var(--muted);margin-bottom:10px;">CORE # &amp; HEADER</div>
+          <div class="form-grid" style="margin-bottom:12px;">
+            <div class="form-group">
+              <label>Test Category</label>
+              <select id="fc_cd_category" class="form-input">
+                <option value="soil">Soil / Geotechnical</option>
+                <option value="aggregate">Coarse Aggregate</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label>Core # <span style="color:#c084fc;font-size:9px;" id="fc_cd_coreno_hint">(suggested: 1)</span></label>
+              <input type="text" id="fc_cd_coreno" class="form-input" autocomplete="off"
+                      style="border-color:rgba(168,85,247,0.45);"
+                      oninput="this.dataset.userTouched='1'"
+                      placeholder="1 or A1">
+            </div>
+            <div class="form-group">
+              <label>Contract No.</label>
+              <input type="text" id="fc_cd_contract" class="form-input" placeholder="T201109502" autocomplete="off" oninput="fcRefreshCoreSessionNo()">
+            </div>
+            <div class="form-group">
+              <label>Road / Location</label>
+              <input type="text" id="fc_cd_location" class="form-input" placeholder="Proposed Willow Grove" autocomplete="off">
+            </div>
+            <div class="form-group">
+              <label>Layer / Material</label>
+              <input type="text" id="fc_cd_material" class="form-input" placeholder="AC surface" autocomplete="off">
+            </div>
+            <div class="form-group">
+              <label>Technician</label>
+              <input type="text" id="fc_cd_tech" class="form-input" placeholder="Mills" autocomplete="off">
+            </div>
+            <div class="form-group">
+              <label>Road / Route</label>
+              <input type="text" id="fc_cd_road" class="form-input" placeholder="SR-1" autocomplete="off">
+            </div>
+            <div class="form-group">
+              <label>Date</label>
+              <input type="date" id="fc_cd_date" class="form-input">
+            </div>
+          </div>
+
+          <div class="btn-row" style="margin-bottom:18px;">
+            <button type="button" class="btn btn-core-start" style="font-size:13px;padding:12px 28px;letter-spacing:1.5px;background:linear-gradient(135deg,#7c3aed,#a855f7);border:none;color:#fff;border-radius:var(--radius);cursor:pointer;font-family:var(--mono);font-weight:700;" onclick="startFC_CoreSession()"><span class="fc-core-icon fc-core-icon--sm" aria-hidden="true"><img src="docs/r18-reference/core-drill-icon-128.png" alt=""></span> START CORE DRILL SESSION</button>
+          </div>
+
+          <div style="border-top:1px solid rgba(168,85,247,0.2);padding-top:14px;">
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;flex-wrap:wrap;gap:8px;">
+              <div style="font-family:var(--mono);font-size:9px;letter-spacing:1.5px;color:var(--muted);">CORE TRACK</div>
+              <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+                <input type="text" id="fc_core_filter_contract" class="form-input" placeholder="Contract…" style="font-size:11px;padding:5px 10px;width:140px;" oninput="renderCoreTrack()">
+                <input type="date" id="fc_core_filter_date" class="form-input" style="font-size:11px;padding:5px 10px;width:140px;" onchange="renderCoreTrack()">
+                <button type="button" onclick="loadCoreTrack()" style="background:transparent;border:1px solid var(--border);color:var(--muted);padding:3px 8px;border-radius:4px;font-family:var(--mono);font-size:8px;cursor:pointer;">↻</button>
+              </div>
+            </div>
+            <div id="fc_core_track_list" style="font-family:var(--mono);font-size:10px;color:var(--muted);">Loading…</div>
+          </div>
+        </div>
+
+        <!-- ④ CORE DRILL ─────────────────────────────────── -->
+        <div id="fcsub-core" style="display:none;" data-guide="fc-core-form">
+          <div class="card" style="margin-bottom:14px;">
+            <div style="display:flex;align-items:center;gap:14px;margin-bottom:16px;">
+              <div class="fc-core-icon fc-core-icon--lg" aria-hidden="true"><img src="docs/r18-reference/core-drill-icon-128.png" alt=""></div>
+              <div>
+                <div style="font-family:var(--mono);font-size:11px;font-weight:700;color:var(--text);margin-bottom:3px;">Core Drill Log</div>
+                <div style="font-family:var(--mono);font-size:10px;color:var(--muted);line-height:1.5;">Log pavement cores for this session — thickness, layer, GPS, and photo.</div>
+              </div>
+            </div>
+            <input type="hidden" id="fc_core_edit_id" value="">
+            <div class="form-grid" style="margin-bottom:12px;">
+              <div class="form-group">
+                <label>Core # <span style="color:var(--red2);">*</span></label>
+                <input type="text" id="fc_core_no" class="form-input" placeholder="1 or A1" autocomplete="off" oninput="this.dataset.userTouched='1'">
+              </div>
+              <div class="form-group">
+                <label>Station</label>
+                <input type="text" id="fc_core_station" class="form-input" placeholder="12+50" autocomplete="off">
+              </div>
+              <div class="form-group">
+                <label>Offset / Lane</label>
+                <input type="text" id="fc_core_lane" class="form-input" placeholder="CL / EB" autocomplete="off">
+              </div>
+              <div class="form-group">
+                <label>Layer <span style="color:var(--red2);">*</span></label>
+                <select id="fc_core_layer" class="form-input">
+                  <option value="">— select —</option>
+                  <option value="AC">AC (surface)</option>
+                  <option value="Binder">Binder</option>
+                  <option value="Base">Base</option>
+                  <option value="Subbase">Subbase</option>
+                  <option value="Subgrade">Subgrade</option>
+                  <option value="Other">Other</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label>Thickness (in) <span style="color:var(--red2);">*</span></label>
+                <input type="number" id="fc_core_thickness" class="form-input" placeholder="2.0" step="0.1" min="0" inputmode="decimal">
+              </div>
+              <div class="form-group">
+                <label>Hole Depth (in)</label>
+                <input type="number" id="fc_core_depth" class="form-input" placeholder="optional" step="0.1" min="0" inputmode="decimal">
+              </div>
+              <div class="form-group span2">
+                <label>GPS Coordinates</label>
+                <div style="display:flex;gap:6px;align-items:center;">
+                  <input type="text" id="fc_core_gps" class="form-input" placeholder="Tap to capture location" readonly style="flex:1;cursor:pointer;font-size:11px;" onclick="captureCoreGPS()">
+                  <button type="button" onclick="captureCoreGPS()" style="background:var(--accent);border:none;color:#fff;padding:9px 12px;border-radius:var(--radius);cursor:pointer;font-size:14px;flex-shrink:0;">📍</button>
+                </div>
+              </div>
+              <div class="form-group span2">
+                <label>Photo <span style="font-size:9px;color:var(--muted);">(compressed thumb)</span></label>
+                <div class="fc-core-photo-wrap">
+                  <input type="file" id="fc_core_photo_input" accept="image/*" capture="environment" style="display:none;" onchange="fcHandleCorePhoto(this)">
+                  <div class="fc-core-photo-actions">
+                    <button type="button" id="fc_core_photo_btn" class="fc-core-photo-btn" onclick="fcOpenCoreCamera()">📷 TAKE PHOTO</button>
+                    <img id="fc_core_photo_preview" alt="Core photo preview" style="display:none;">
+                    <button type="button" id="fc_core_photo_clear" onclick="fcClearCorePhoto()" style="display:none;background:transparent;border:1px solid var(--border);color:var(--muted);padding:6px 10px;border-radius:4px;font-family:var(--mono);font-size:9px;cursor:pointer;">✕ CLEAR</button>
+                  </div>
+                </div>
+              </div>
+              <div class="form-group span2">
+                <label>Remarks</label>
+                <input type="text" id="fc_core_remarks" class="form-input" placeholder="optional notes" autocomplete="off">
+              </div>
+            </div>
+            <div class="btn-row">
+              <button class="btn btn-primary" style="font-size:12px;padding:10px 20px;" onclick="fcSaveCore()">💾 SAVE CORE</button>
+              <button class="btn btn-ghost" style="font-size:12px;padding:10px 16px;" onclick="fcClearCoreForm()">CLEAR FORM</button>
+            </div>
+          </div>
+
+          <div class="card">
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;flex-wrap:wrap;gap:8px;">
+              <div style="font-family:var(--mono);font-size:9px;letter-spacing:1.5px;color:var(--muted);">CORES THIS SESSION (<span id="fc_core_session_count">0</span>)</div>
+              <button type="button" class="btn btn-ghost" style="font-size:9px;padding:4px 10px;" onclick="fcOpenSessionMap()">🗺 MAP</button>
+            </div>
+            <div id="fc_core_session_list" style="font-family:var(--mono);font-size:10px;color:var(--muted);">No cores logged yet.</div>
+          </div>
+        </div>
+
+      </div>
+
       <!-- ══ STATE A: NO ACTIVE SESSION ══ -->
       <div id="fc_start_state" data-tour="field-start">
 
@@ -5763,72 +5928,6 @@ END $$;
           </div>
         </div>
 
-        <!-- ── CORE DRILL — separate subgroup (not mixed with density/lab intents) ── -->
-        <div class="card" id="fc_core_start_card" data-guide="fc-core-start" style="margin-top:14px;border:1px solid rgba(168,85,247,0.35);background:linear-gradient(135deg,rgba(168,85,247,0.08),rgba(168,85,247,0.02));">
-          <div class="card-title" style="color:#c084fc;"><span class="fc-core-icon fc-core-icon--md" aria-hidden="true"><img src="docs/r18-reference/core-drill-icon-128.png" alt=""></span> Core Drill</div>
-          <p style="font-family:var(--mono);font-size:10px;color:var(--muted);line-height:1.6;margin:-4px 0 14px;max-width:560px;">
-            Pavement core logging — thickness, layer, GPS, and photos. Separate from density / lab field events.
-          </p>
-
-          <div style="font-family:var(--mono);font-size:9px;letter-spacing:1.5px;color:var(--muted);margin-bottom:10px;">CORE # &amp; HEADER</div>
-          <div class="form-grid" style="margin-bottom:12px;">
-            <div class="form-group">
-              <label>Test Category</label>
-              <select id="fc_cd_category" class="form-input">
-                <option value="soil">Soil / Geotechnical</option>
-                <option value="aggregate">Coarse Aggregate</option>
-              </select>
-            </div>
-            <div class="form-group">
-              <label>Core # <span style="color:#c084fc;font-size:9px;" id="fc_cd_coreno_hint">(suggested: 1)</span></label>
-              <input type="text" id="fc_cd_coreno" class="form-input" autocomplete="off"
-                      style="border-color:rgba(168,85,247,0.45);"
-                      oninput="this.dataset.userTouched='1'"
-                      placeholder="1 or A1">
-            </div>
-            <div class="form-group">
-              <label>Contract No.</label>
-              <input type="text" id="fc_cd_contract" class="form-input" placeholder="T201109502" autocomplete="off" oninput="fcRefreshCoreSessionNo()">
-            </div>
-            <div class="form-group">
-              <label>Road / Location</label>
-              <input type="text" id="fc_cd_location" class="form-input" placeholder="Proposed Willow Grove" autocomplete="off">
-            </div>
-            <div class="form-group">
-              <label>Layer / Material</label>
-              <input type="text" id="fc_cd_material" class="form-input" placeholder="AC surface" autocomplete="off">
-            </div>
-            <div class="form-group">
-              <label>Technician</label>
-              <input type="text" id="fc_cd_tech" class="form-input" placeholder="Mills" autocomplete="off">
-            </div>
-            <div class="form-group">
-              <label>Road / Route</label>
-              <input type="text" id="fc_cd_road" class="form-input" placeholder="SR-1" autocomplete="off">
-            </div>
-            <div class="form-group">
-              <label>Date</label>
-              <input type="date" id="fc_cd_date" class="form-input">
-            </div>
-          </div>
-
-          <div class="btn-row" style="margin-bottom:18px;">
-            <button type="button" class="btn btn-core-start" style="font-size:13px;padding:12px 28px;letter-spacing:1.5px;background:linear-gradient(135deg,#7c3aed,#a855f7);border:none;color:#fff;border-radius:var(--radius);cursor:pointer;font-family:var(--mono);font-weight:700;" onclick="startFC_CoreSession()"><span class="fc-core-icon fc-core-icon--sm" aria-hidden="true"><img src="docs/r18-reference/core-drill-icon-128.png" alt=""></span> START CORE DRILL SESSION</button>
-          </div>
-
-          <div style="border-top:1px solid rgba(168,85,247,0.2);padding-top:14px;">
-            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;flex-wrap:wrap;gap:8px;">
-              <div style="font-family:var(--mono);font-size:9px;letter-spacing:1.5px;color:var(--muted);">CORE TRACK</div>
-              <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
-                <input type="text" id="fc_core_filter_contract" class="form-input" placeholder="Contract…" style="font-size:11px;padding:5px 10px;width:140px;" oninput="renderCoreTrack()">
-                <input type="date" id="fc_core_filter_date" class="form-input" style="font-size:11px;padding:5px 10px;width:140px;" onchange="renderCoreTrack()">
-                <button type="button" onclick="loadCoreTrack()" style="background:transparent;border:1px solid var(--border);color:var(--muted);padding:3px 8px;border-radius:4px;font-family:var(--mono);font-size:8px;cursor:pointer;">↻</button>
-              </div>
-            </div>
-            <div id="fc_core_track_list" style="font-family:var(--mono);font-size:10px;color:var(--muted);">Loading…</div>
-          </div>
-        </div>
-
         <!-- Lab sample arrival -->
         <div class="card" style="margin-top:14px;border:1px solid rgba(52,211,153,0.35);background:linear-gradient(135deg,rgba(52,211,153,0.08),rgba(52,211,153,0.02));cursor:pointer;" onclick="switchView('labarrival')" data-tour="fc-lab-arrival">
           <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;">
@@ -5875,7 +5974,6 @@ END $$;
           <button class="lab-mode-tab active" id="fctab-lb68"   onclick="switchFCTab('lb68')">⚖️ LB-68</button>
           <button class="lab-mode-tab"        id="fctab-dmf68c" onclick="switchFCTab('dmf68c')">☢️ NUCLEAR</button>
           <button class="lab-mode-tab"        id="fctab-sample" onclick="switchFCTab('sample')">🧪 LAB SAMPLE</button>
-          <button class="lab-mode-tab"        id="fctab-core"   onclick="switchFCTab('core')" style="display:none;"><span class="fc-core-icon fc-core-icon--sm" aria-hidden="true"><img src="docs/r18-reference/core-drill-icon-128.png" alt=""></span> CORE DRILL</button>
         </div>
 
         <!-- ⚖️ LB-68 COMPACTION ──────────────────────────── -->
@@ -6106,88 +6204,6 @@ END $$;
           </div><!-- end fc_sample_form -->
 
         </div><!-- end fcsub-sample -->
-
-        <!-- ④ CORE DRILL ─────────────────────────────────── -->
-        <div id="fcsub-core" style="display:none;" data-guide="fc-core-form">
-          <div class="card" style="margin-bottom:14px;">
-            <div style="display:flex;align-items:center;gap:14px;margin-bottom:16px;">
-              <div class="fc-core-icon fc-core-icon--lg" aria-hidden="true"><img src="docs/r18-reference/core-drill-icon-128.png" alt=""></div>
-              <div>
-                <div style="font-family:var(--mono);font-size:11px;font-weight:700;color:var(--text);margin-bottom:3px;">Core Drill Log</div>
-                <div style="font-family:var(--mono);font-size:10px;color:var(--muted);line-height:1.5;">Log pavement cores for this session — thickness, layer, GPS, and photo.</div>
-              </div>
-            </div>
-            <input type="hidden" id="fc_core_edit_id" value="">
-            <div class="form-grid" style="margin-bottom:12px;">
-              <div class="form-group">
-                <label>Core # <span style="color:var(--red2);">*</span></label>
-                <input type="text" id="fc_core_no" class="form-input" placeholder="1 or A1" autocomplete="off" oninput="this.dataset.userTouched='1'">
-              </div>
-              <div class="form-group">
-                <label>Station</label>
-                <input type="text" id="fc_core_station" class="form-input" placeholder="12+50" autocomplete="off">
-              </div>
-              <div class="form-group">
-                <label>Offset / Lane</label>
-                <input type="text" id="fc_core_lane" class="form-input" placeholder="CL / EB" autocomplete="off">
-              </div>
-              <div class="form-group">
-                <label>Layer <span style="color:var(--red2);">*</span></label>
-                <select id="fc_core_layer" class="form-input">
-                  <option value="">— select —</option>
-                  <option value="AC">AC (surface)</option>
-                  <option value="Binder">Binder</option>
-                  <option value="Base">Base</option>
-                  <option value="Subbase">Subbase</option>
-                  <option value="Subgrade">Subgrade</option>
-                  <option value="Other">Other</option>
-                </select>
-              </div>
-              <div class="form-group">
-                <label>Thickness (in) <span style="color:var(--red2);">*</span></label>
-                <input type="number" id="fc_core_thickness" class="form-input" placeholder="2.0" step="0.1" min="0" inputmode="decimal">
-              </div>
-              <div class="form-group">
-                <label>Hole Depth (in)</label>
-                <input type="number" id="fc_core_depth" class="form-input" placeholder="optional" step="0.1" min="0" inputmode="decimal">
-              </div>
-              <div class="form-group span2">
-                <label>GPS Coordinates</label>
-                <div style="display:flex;gap:6px;align-items:center;">
-                  <input type="text" id="fc_core_gps" class="form-input" placeholder="Tap to capture location" readonly style="flex:1;cursor:pointer;font-size:11px;" onclick="captureCoreGPS()">
-                  <button type="button" onclick="captureCoreGPS()" style="background:var(--accent);border:none;color:#fff;padding:9px 12px;border-radius:var(--radius);cursor:pointer;font-size:14px;flex-shrink:0;">📍</button>
-                </div>
-              </div>
-              <div class="form-group span2">
-                <label>Photo <span style="font-size:9px;color:var(--muted);">(compressed thumb)</span></label>
-                <div class="fc-core-photo-wrap">
-                  <input type="file" id="fc_core_photo_input" accept="image/*" capture="environment" style="display:none;" onchange="fcHandleCorePhoto(this)">
-                  <div class="fc-core-photo-actions">
-                    <button type="button" id="fc_core_photo_btn" class="fc-core-photo-btn" onclick="fcOpenCoreCamera()">📷 TAKE PHOTO</button>
-                    <img id="fc_core_photo_preview" alt="Core photo preview" style="display:none;">
-                    <button type="button" id="fc_core_photo_clear" onclick="fcClearCorePhoto()" style="display:none;background:transparent;border:1px solid var(--border);color:var(--muted);padding:6px 10px;border-radius:4px;font-family:var(--mono);font-size:9px;cursor:pointer;">✕ CLEAR</button>
-                  </div>
-                </div>
-              </div>
-              <div class="form-group span2">
-                <label>Remarks</label>
-                <input type="text" id="fc_core_remarks" class="form-input" placeholder="optional notes" autocomplete="off">
-              </div>
-            </div>
-            <div class="btn-row">
-              <button class="btn btn-primary" style="font-size:12px;padding:10px 20px;" onclick="fcSaveCore()">💾 SAVE CORE</button>
-              <button class="btn btn-ghost" style="font-size:12px;padding:10px 16px;" onclick="fcClearCoreForm()">CLEAR FORM</button>
-            </div>
-          </div>
-
-          <div class="card">
-            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;flex-wrap:wrap;gap:8px;">
-              <div style="font-family:var(--mono);font-size:9px;letter-spacing:1.5px;color:var(--muted);">CORES THIS SESSION (<span id="fc_core_session_count">0</span>)</div>
-              <button type="button" class="btn btn-ghost" style="font-size:9px;padding:4px 10px;" onclick="fcOpenSessionMap()">🗺 MAP</button>
-            </div>
-            <div id="fc_core_session_list" style="font-family:var(--mono);font-size:10px;color:var(--muted);">No cores logged yet.</div>
-          </div>
-        </div>
 
       </div><!-- end fc_active_state -->
 
@@ -7630,7 +7646,7 @@ END $$;
       </div>
 
       <div class="hub-actions" data-guide="fieldhub-actions">
-        <button class="hub-action-btn primary" data-guide="new-test" onclick="switchView('fieldcontrol')">New test</button>
+        <button class="hub-action-btn primary" data-guide="new-test" onclick="switchView('fieldcontrol');setTimeout(()=>fcSetModuleMode('event'),80)">New test</button>
         <button class="hub-action-btn" onclick="switchView('labarrival')">Lab arrival</button>
         <button class="hub-action-btn" data-guide="hub-proctor" onclick="fcOpenProctorFromHub()">Proctor</button>
         <button class="hub-action-btn" data-guide="hub-foc" onclick="fcOpenFocFromHub()">Family of curves</button>
@@ -7648,7 +7664,7 @@ END $$;
       <div class="hub-panel">
         <div class="hub-panel-hdr">
           <span class="hub-panel-title">My Recent Samples</span>
-          <button class="hub-panel-link" onclick="switchView('fieldcontrol')">Field Entry →</button>
+          <button class="hub-panel-link" onclick="switchView('fieldcontrol');setTimeout(()=>fcSetModuleMode('event'),80)">Field Entry →</button>
         </div>
         <div id="fhub_samples"><div class="hub-empty">Loading…</div></div>
       </div>
@@ -8153,7 +8169,7 @@ END $$;
 // GLOBALS
 // ══════════════════════════════════════════════
 let db = null;
-const APP_BUILD = '2026.11.06-core-hub';
+const APP_BUILD = '2026.11.06-core-screen';
 const FC_CORE_ICON_SRC = 'docs/r18-reference/core-drill-icon-128.png';
 const BORELOG_ICON_SRC = 'docs/r18-reference/borelog-icon.webp';
 const BORELOG_PATH = 'deldot-borelog-v6-uscs.html';
@@ -15387,12 +15403,14 @@ const FIELD_GUIDE_STEPS = [
     id: 'core-start',
     view: 'fieldcontrol',
     guide: 'fc-core-start',
-    title: 'Core drill is separate',
-    body: 'Pavement cores use their own card — not Density / Lab Sample. Enter the core number and header, then tap START CORE DRILL SESSION.'
+    moduleMode: 'core',
+    title: 'Core drill is its own screen',
+    body: 'Pavement cores are not a field event. Open the Core drill screen, enter the core number and header, then tap START CORE DRILL SESSION.'
   },
   {
     id: 'core-log',
     view: 'fieldcontrol',
+    moduleMode: 'core',
     tab: 'core',
     guide: 'fc-core-form',
     title: 'Log each core',
@@ -15411,8 +15429,8 @@ const FIELD_GUIDE_STEPS = [
     view: 'fieldcontrol',
     moduleMode: 'event',
     guide: 'fc-modules',
-    title: 'Field Event, Proctor, Family of Curves',
-    body: 'At the top of Field Control, switch between Field Event (density/lab work), Proctor (full moisture–density curve), and Family of Curves (group completed proctors).'
+    title: 'Field Event, Proctor, Family of Curves, Core drill',
+    body: 'At the top of Field Control, switch between Field Event (density and lab work), Proctor, Family of Curves, and Core drill. Core drill is its own screen for the core crew.'
   },
   {
     id: 'proctor',
@@ -27505,7 +27523,7 @@ function fcRenderCurveChart() {
 // ══════════════════════════════════════════════════════════════
 const FC_PROCTORS_KEY = 'labtrak_proctors_v1';
 const FC_FOC_FAMILIES_KEY = 'labtrak_curve_families_v1';
-let _fcModuleMode = 'event'; // event | proctor | foc
+let _fcModuleMode = 'event'; // event | proctor | foc | core
 let _fcProctorEditId = null;
 let _fcProctorLoadedPoints = [];
 let _fcFocEditId = null;
@@ -27542,14 +27560,41 @@ function fcOpenFocFromHub() {
   setTimeout(() => fcSetModuleMode('foc'), 80);
 }
 
+function fcCoreSessionOpen() {
+  return _fcIntent === 'core' && !!activeFC_sessionId;
+}
+
+function fcRefreshCoreScreen() {
+  const start = document.getElementById('fc_core_start_card');
+  const log = document.getElementById('fcsub-core');
+  const endBtn = document.getElementById('fc_core_end_btn');
+  const label = document.getElementById('fc_core_session_label');
+  const open = fcCoreSessionOpen();
+  if (start) start.style.display = open ? 'none' : '';
+  if (log) log.style.display = open ? '' : 'none';
+  if (endBtn) endBtn.style.display = open ? '' : 'none';
+  if (label) {
+    label.style.display = open ? '' : 'none';
+    label.textContent = open ? ('Core #' + fcGetCoreSessionDisplayNo()) : '';
+  }
+  if (open) return;
+  const today = new Date().toISOString().split('T')[0];
+  const cdDateEl = document.getElementById('fc_cd_date');
+  if (cdDateEl && !cdDateEl.value) cdDateEl.value = today;
+  if (typeof _autoFillTech === 'function') _autoFillTech();
+  if (typeof loadCoreTrack === 'function') loadCoreTrack();
+  if (typeof fcRefreshCoreSessionNo === 'function') fcRefreshCoreSessionNo();
+}
+
 function fcSetModuleMode(mode) {
   _fcModuleMode = mode || 'event';
-  ['event', 'proctor', 'foc'].forEach(m => {
+  ['event', 'proctor', 'foc', 'core'].forEach(m => {
     const btn = document.getElementById('fcmode-' + m);
     if (btn) btn.classList.toggle('active', m === _fcModuleMode);
   });
   const proctorEl = document.getElementById('fc_proctor_state');
   const focEl = document.getElementById('fc_foc_state');
+  const coreEl = document.getElementById('fc_core_state');
   const startEl = document.getElementById('fc_start_state');
   const activeEl = document.getElementById('fc_active_state');
   const densWrap = document.getElementById('fc_density_records');
@@ -27557,6 +27602,7 @@ function fcSetModuleMode(mode) {
   const showLib = _fcModuleMode !== 'event';
   if (proctorEl) proctorEl.style.display = _fcModuleMode === 'proctor' ? '' : 'none';
   if (focEl) focEl.style.display = _fcModuleMode === 'foc' ? '' : 'none';
+  if (coreEl) coreEl.style.display = _fcModuleMode === 'core' ? '' : 'none';
 
   if (showLib) {
     if (startEl) startEl.style.display = 'none';
@@ -27566,11 +27612,15 @@ function fcSetModuleMode(mode) {
     if (densWrap) densWrap.style.display = 'none';
   } else {
     if (densWrap) densWrap.style.display = '';
-    // restore event UI via init logic light
-    if (activeFC_testNo && activeFC_sessionId) {
+    const banner = document.getElementById('fc_session_banner');
+    // A core session stays on the core screen. Field event keeps its own form.
+    if (fcCoreSessionOpen()) {
+      if (startEl) startEl.style.display = '';
+      if (activeEl) activeEl.style.display = 'none';
+      if (banner) banner.style.display = 'none';
+    } else if (activeFC_testNo && activeFC_sessionId) {
       if (startEl) startEl.style.display = 'none';
       if (activeEl) activeEl.style.display = '';
-      const banner = document.getElementById('fc_session_banner');
       if (banner) banner.style.display = 'flex';
     } else {
       if (startEl) startEl.style.display = '';
@@ -27588,6 +27638,7 @@ function fcSetModuleMode(mode) {
     fcRenderFocFamilyList();
     fcRenderFocDetail();
   }
+  if (_fcModuleMode === 'core') fcRefreshCoreScreen();
 }
 
 function fcProctorNum(v) {
@@ -28769,6 +28820,10 @@ function fcActivateSession({ intent, category, primary, table, linkedSample, fie
   }
   if (intent === 'core') fcLoadSessionCores(primary.id);
   fcPrefillSampleForm(linkedSample || primary);
+  if (intent === 'core') {
+    fcSetModuleMode('core');
+    return;
+  }
   fcApplyCategoryToTabs(category);
   fcApplyIntentToTabs(intent, category);
   document.getElementById('fc_start_state').style.display = 'none';
@@ -28887,10 +28942,6 @@ function initFC_View() {
     fcApplyCategoryToTabs(cat);
     fcApplyIntentToTabs(intent, cat);
     updateFCSessionBanner();
-    if (_fcPendingCoreDrillNav) {
-      _fcPendingCoreDrillNav = false;
-      setTimeout(() => fcShowCoreDrillStart(), 360);
-    }
   } else {
     startEl.style.display  = '';
     activeEl.style.display = 'none';
@@ -28908,10 +28959,6 @@ function initFC_View() {
     fcRefreshCoreSessionNo();
     // Restore last-used intent + category for this user
     fcRestorePrefs();
-    if (_fcPendingCoreDrillNav) {
-      _fcPendingCoreDrillNav = false;
-      setTimeout(() => fcShowCoreDrillStart(), 360);
-    }
   }
 }
 
@@ -28988,7 +29035,11 @@ async function startFC_Session() {
 
   const intent = (document.getElementById('fc_s_intent')?.value || _fcIntent || '').trim();
   if (!intent) { showToast('Select what you are doing (Density / Lab / Both)', 'error'); return; }
-  if (intent === 'core') { showToast('Use the Core Drill section below', 'info'); fcShowCoreDrillStart(); return; }
+  if (intent === 'core' || fcCoreSessionOpen()) {
+    showToast('Core drill has its own screen.', 'info');
+    fcSetModuleMode('core');
+    return;
+  }
 
   const category = (document.getElementById('fc_s_category')?.value || 'soil');
   const _tnEl    = document.getElementById('fc_s_testno');
@@ -29099,6 +29150,10 @@ async function startFC_Session() {
 // ── Start a core drill session (separate from density/lab field events) ──
 async function startFC_CoreSession() {
   if (!db) { showToast('Not connected to database', 'error'); return; }
+  if (activeFC_sessionId && _fcIntent && _fcIntent !== 'core') {
+    showToast('End the open field session before starting a core drill.', 'info');
+    return;
+  }
 
   const category = (document.getElementById('fc_cd_category')?.value || 'soil');
   const _cnEl = document.getElementById('fc_cd_coreno');
@@ -29307,40 +29362,14 @@ function fcClearFieldEventIntentUi() {
 }
 
 function fcShowCoreDrillStart() {
-  if (_fcModuleMode !== 'event') fcSetModuleMode('event');
-  if (activeFC_testNo && activeFC_sessionId) {
-    if (_fcIntent === 'core') {
-      switchFCTab('core');
-      return;
-    }
-    showToast('End your current field session first, then start Core Drill.', 'info');
-    const banner = document.getElementById('fc_session_banner');
-    if (banner) {
-      requestAnimationFrame(() => {
-        requestAnimationFrame(() => fcScrollViewToElement(banner, 'fieldcontrol-view'));
-      });
-    }
-    return;
-  }
-
-  fcClearFieldEventIntentUi();
-  const card = document.getElementById('fc_core_start_card');
-  if (!card) return;
-
-  requestAnimationFrame(() => {
-    requestAnimationFrame(() => {
-      fcScrollViewToElement(card, 'fieldcontrol-view');
-      card.style.boxShadow = '0 0 0 2px rgba(168,85,247,0.45)';
-      setTimeout(() => { card.style.boxShadow = ''; }, 1800);
-      const coreNo = document.getElementById('fc_cd_coreno');
-      if (coreNo) coreNo.focus({ preventScroll: true });
-    });
-  });
+  fcSetModuleMode('core');
+  const coreNo = document.getElementById('fc_cd_coreno');
+  if (coreNo && !fcCoreSessionOpen()) coreNo.focus({ preventScroll: true });
 }
 
 function fcOpenCoreDrillFromHub() {
-  _fcPendingCoreDrillNav = true;
   switchView('fieldcontrol');
+  setTimeout(() => fcSetModuleMode('core'), 80);
 }
 
 // ── Apply intent routing to tabs (show/hide + auto-navigate) ─
@@ -29351,14 +29380,7 @@ function fcApplyIntentToTabs(intent, category) {
   const toggleCard = document.getElementById('fc_lab_toggle_card');
 
   if (intent === 'core') {
-    if (tabLB68)   tabLB68.style.display   = 'none';
-    if (tabNuke)   tabNuke.style.display    = 'none';
-    if (tabSample) tabSample.style.display  = 'none';
-    const tabCore = document.getElementById('fctab-core');
-    if (tabCore) tabCore.style.display = '';
-    if (toggleCard) toggleCard.style.display = 'none';
-    switchFCTab('core');
-    fcSuggestNextCoreNo();
+    fcSetModuleMode('core');
   } else if (intent === 'density') {
     const tabCore = document.getElementById('fctab-core');
     if (tabCore) tabCore.style.display = 'none';
@@ -31584,7 +31606,8 @@ async function clearFC_Session() {
   document.getElementById('qrCard').style.display            = 'none';
   document.getElementById('fc_session_banner').style.display = 'none';
   document.getElementById('fc_active_state').style.display   = 'none';
-  document.getElementById('fc_start_state').style.display    = '';
+  const stayOnCore = _fcModuleMode === 'core' || intent === 'core';
+  if (!stayOnCore) document.getElementById('fc_start_state').style.display = '';
   const badge = document.getElementById('fc_intent_badge');
   if (badge) badge.style.display = 'none';
 
@@ -31614,6 +31637,7 @@ async function clearFC_Session() {
   loadCoreTrack();
   // Refresh table/dashboards
   if (typeof loadSamples === 'function') loadSamples();
+  if (stayOnCore) fcSetModuleMode('core');
   scrollActiveViewTop();
 }
 
