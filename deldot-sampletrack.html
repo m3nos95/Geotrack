@@ -8214,7 +8214,7 @@ END $$;
 // GLOBALS
 // ══════════════════════════════════════════════
 let db = null;
-const APP_BUILD = '2026.11.06-quality-manual';
+const APP_BUILD = '2026.11.06-qm-click';
 const FC_CORE_ICON_SRC = 'docs/r18-reference/core-drill-icon-128.png';
 const BORELOG_ICON_SRC = 'docs/r18-reference/borelog-icon.webp';
 const BORELOG_PATH = 'deldot-borelog-v6-uscs.html';
@@ -34534,7 +34534,7 @@ function bucketedProcedures() {
   }
   return buckets;
 }
-function equipmentById(id) { return state.equipment.find(e => e.id === id); }
+function equipmentById(id) { return (state.equipment || []).find(e => e && e.id === id); }
 function qmCompletionStats() {
   const editable = state.sections.filter(s => s.contentType !== 'header');
   const complete = editable.filter(s => {
@@ -35016,17 +35016,17 @@ async function refreshAll() {
     return true;
   });
   state.labs.sort((a, b) => (a.type === 'primary' ? -1 : 1) - (b.type === 'primary' ? -1 : 1));
-  state.sections  = (await repo.query('sections', 'labId', state.currentLabId)).sort((a, b) => naturalSectionCompare(a.sectionNumber, b.sectionNumber));
-  state.equipment = await repo.query('equipment', 'labId', state.currentLabId);
-  state.reports   = await repo.query('reports', 'labId', state.currentLabId);
-  state.users     = await repo.query('users', 'labId', state.currentLabId);
-  state.procedures = await repo.query('procedures', 'labId', state.currentLabId);
-  state.procedureRecords = (await repo.query('procedure_records', 'labId', state.currentLabId))
+  state.sections  = (await repo.query('sections', 'labId', state.currentLabId)).filter(Boolean).sort((a, b) => naturalSectionCompare(a.sectionNumber, b.sectionNumber));
+  state.equipment = (await repo.query('equipment', 'labId', state.currentLabId)).filter(Boolean);
+  state.reports   = (await repo.query('reports', 'labId', state.currentLabId)).filter(Boolean);
+  state.users     = (await repo.query('users', 'labId', state.currentLabId)).filter(Boolean);
+  state.procedures = (await repo.query('procedures', 'labId', state.currentLabId)).filter(Boolean);
+  state.procedureRecords = (await repo.query('procedure_records', 'labId', state.currentLabId)).filter(Boolean)
     .sort((a, b) => new Date(b.completedAt) - new Date(a.completedAt));
   // trainings cross-cut users
   const allTrainings = await repo.getAll('trainings');
   const userIds = new Set(state.users.map(u => u.id));
-  state.trainings = allTrainings.filter(t => userIds.has(t.userId));
+  state.trainings = (allTrainings || []).filter(t => t && userIds.has(t.userId));
 
   const opts = state.labs.map(l =>
     `<option value="${l.id}" ${l.id === state.currentLabId ? 'selected' : ''}>${l.name} ${l.type === 'primary' ? '[PRIMARY]' : ''}</option>`
@@ -35041,7 +35041,7 @@ async function refreshAll() {
 }
 
 function naturalSectionCompare(a, b) {
-  const pa = a.split('.').map(Number), pb = b.split('.').map(Number);
+  const pa = String(a == null ? '' : a).split('.').map(Number), pb = String(b == null ? '' : b).split('.').map(Number);
   for (let i = 0; i < Math.max(pa.length, pb.length); i++) {
     const x = pa[i] ?? 0, y = pb[i] ?? 0;
     if (x !== y) return x - y;
@@ -35074,35 +35074,64 @@ async function switchLab(labId) {
 window.r18_switchLab = switchLab;
 
 /* ---------- TABS ---------- */
+let _r18PaintedTab = null;
+
+function paintR18Failure(err) {
+  const root = document.getElementById('r18-view-root');
+  const view = document.getElementById('r18-view');
+  if (view) view.scrollTop = 0;
+  if (!root) return;
+  root.innerHTML = '<div class="stub-card" style="text-align:left;"><div class="r18-page-title" style="margin-bottom:8px;">' + escapeHtml(TABS.find(t => t.id === state.currentTab)?.label || 'R-18') + '</div><div>This section could not open. ' + escapeHtml(err && (err.message || String(err))) + '</div></div>';
+}
+
+function openR18Tab(tab) {
+  if (!tab) return;
+  state.currentTab = tab;
+  const view = document.getElementById('r18-view');
+  if (view) view.scrollTop = 0;
+  renderTabs();
+  try { renderView(); }
+  catch (err) {
+    console.error(err);
+    paintR18Failure(err);
+  }
+}
+window.r18_openTab = openR18Tab;
+
 function renderTabs() {
   const bar = document.getElementById('r18-tab-bar');
   if (!bar) return;
   bar.innerHTML = TABS.map(t => {
     const isActive = state.currentTab === t.id;
-    return `<button data-tab="${t.id}"
+    return `<button type="button" data-tab="${t.id}"
       style="padding:10px 16px;font-size:13px;font-weight:500;border:none;border-bottom:2px solid ${isActive ? '#1e4d8c' : 'transparent'};background:none;cursor:pointer;display:inline-flex;align-items:center;gap:6px;color:${isActive ? '#1e4d8c' : '#2a3a52'};white-space:nowrap;transition:all 0.15s;font-family:Inter,system-ui,sans-serif;"
       class="r18-tab-btn ${isActive ? 'tab-active' : 'ink-2'}">
-      <span style="font-size:11px;">${t.icon}</span>${t.label}
+      <span style="font-size:11px;">${t.icon}</span>${escapeHtml(t.label)}
     </button>`;
   }).join('');
-  bar.querySelectorAll('button').forEach(btn => {
-    btn.addEventListener('click', () => {
-      state.currentTab = btn.dataset.tab;
-      renderTabs();
-      try { renderView(); }
-      catch (err) {
-        console.error(err);
-        const root = document.getElementById('r18-view-root');
-        if (root) root.innerHTML = '<div class="stub-card">This section could not open. ' + escapeHtml(err.message || String(err)) + '</div>';
-      }
+  const nav = document.getElementById('r18-nav');
+  if (nav && !nav._r18TabBound) {
+    nav._r18TabBound = true;
+    nav.addEventListener('click', (e) => {
+      const btn = e.target.closest('button[data-tab]');
+      if (!btn || !nav.contains(btn)) return;
+      e.preventDefault();
+      openR18Tab(btn.getAttribute('data-tab'));
     });
-  });
+  }
 }
 
 /* ---------- VIEW ROUTER ---------- */
 function renderView() {
   const root = document.getElementById('r18-view-root');
-  const lab = state.labs.find(l => l.id === state.currentLabId);
+  if (!root) return;
+  const tabChanged = state.currentTab !== _r18PaintedTab;
+  _r18PaintedTab = state.currentTab;
+  if (tabChanged) {
+    const view = document.getElementById('r18-view');
+    if (view) view.scrollTop = 0;
+  }
+  const lab = (state.labs || []).find(l => l && l.id === state.currentLabId);
   if (!lab) { root.innerHTML = '<div class="stub-card">No lab selected.</div>'; return; }
   switch (state.currentTab) {
     case 'dashboard':         return renderDashboard(lab, root);
@@ -35147,8 +35176,8 @@ function renderDashboard(lab, root) {
           <div class="r18-qm-gauge" style="--pct:${qm.pct}%"><span>${qm.pct}%</span></div>
           <div class="text-xs ink-2 uppercase tracking-wider mb-3">Complete</div>
           <div class="flex justify-center gap-6 text-sm">
-            <div><strong class="ink">${qm.complete}</strong> <span class="ink-2">Complete</span><br><button class="btn btn-view mt-2" onclick="r18_state.currentTab='quality-manual';r18_renderTabs();r18_renderView();">VIEW</button></div>
-            <div><strong class="ink">${qm.incomplete}</strong> <span class="ink-2">Incomplete</span><br><button class="btn btn-view mt-2" onclick="r18_state.currentTab='quality-manual';r18_renderTabs();r18_renderView();">VIEW</button></div>
+            <div><strong class="ink">${qm.complete}</strong> <span class="ink-2">Complete</span><br><button type="button" class="btn btn-view mt-2" onclick="r18_openTab('quality-manual')">VIEW</button></div>
+            <div><strong class="ink">${qm.incomplete}</strong> <span class="ink-2">Incomplete</span><br><button type="button" class="btn btn-view mt-2" onclick="r18_openTab('quality-manual')">VIEW</button></div>
           </div>
         </div>
       </div>
@@ -35176,11 +35205,11 @@ function renderManageLab(lab, root) {
   const plmCount = state.users.filter(u => u.role === 'primary_lab_manager' && u.active).length;
   const activeCount = state.users.filter(u => u.active).length;
   const adminCards = [
-    { title: 'Organizational Chart', desc: 'Edit and organize users, roles, and resumes.', action: `r18_state.currentTab='training-evals';r18_renderTabs();r18_renderView();` },
-    { title: 'Equipment Procedures Admin', desc: 'Create and edit equipment procedures.', action: `r18_state.currentTab='inventory';r18_state.inventorySubTab='equipment_procedures';r18_renderTabs();r18_renderView();` },
-    { title: 'Test Methods & Standard Designations Admin', desc: 'Manage standard designations, test methods, and test categories for training.', action: `r18_state.currentTab='training-evals';r18_renderTabs();r18_renderView();` },
-    { title: 'Measurement Standards', desc: 'View measurement standards calibration.', action: `r18_state.currentTab='inventory';r18_state.inventorySubTab='lab_equipment';r18_renderTabs();r18_renderView();` },
-    { title: 'Section Roster', desc: 'Current staff by section, with years of service and the methods they are certified for.', action: `r18_state.currentTab='roster';r18_renderTabs();r18_renderView();` },
+    { title: 'Organizational Chart', desc: 'Edit and organize users, roles, and resumes.', action: `r18_openTab('training-evals')` },
+    { title: 'Equipment Procedures Admin', desc: 'Create and edit equipment procedures.', action: `r18_state.inventorySubTab='equipment_procedures';r18_openTab('inventory')` },
+    { title: 'Test Methods & Standard Designations Admin', desc: 'Manage standard designations, test methods, and test categories for training.', action: `r18_openTab('training-evals')` },
+    { title: 'Measurement Standards', desc: 'View measurement standards calibration.', action: `r18_state.inventorySubTab='lab_equipment';r18_openTab('inventory')` },
+    { title: 'Section Roster', desc: 'Current staff by section, with years of service and the methods they are certified for.', action: `r18_openTab('roster')` },
     { title: 'Outside Evaluators', desc: 'Identify third-party personnel who conduct lab evaluations.', action: `r18_openUserModal()`, add: true },
   ];
 
@@ -35371,7 +35400,8 @@ window.r18_deleteLabPrompt = async (id) => {
    QUALITY MANUAL
    ==================================================================== */
 function qualityManualRows() {
-  const byNum = new Map(state.sections.map(s => [s.sectionNumber, s]));
+  const sections = (state.sections || []).filter(s => s && s.sectionNumber != null && String(s.sectionNumber).trim() !== '');
+  const byNum = new Map(sections.map(s => [String(s.sectionNumber), s]));
   const nums = new Set(R18_TEMPLATE.map(t => t.num));
   const rows = R18_TEMPLATE.map(tpl => {
     const saved = byNum.get(tpl.num);
@@ -35392,7 +35422,7 @@ function qualityManualRows() {
       virtual: !saved,
     };
   });
-  state.sections.filter(s => !nums.has(s.sectionNumber) && s.isStandard === false).forEach(s => {
+  sections.filter(s => !nums.has(String(s.sectionNumber)) && s.isStandard === false).forEach(s => {
     rows.push({
       id: s.id,
       sectionNumber: s.sectionNumber,
@@ -35431,8 +35461,21 @@ function qmAncestorHidden(num) {
 }
 
 function qmPeople() {
-  return state.users.filter(u => u.active !== false).slice()
+  return (state.users || []).filter(u => u && u.active !== false).slice()
     .sort((a, b) => String(a.name || '').localeCompare(String(b.name || '')));
+}
+
+function qmBag(name) {
+  if (!state[name] || typeof state[name] !== 'object') state[name] = {};
+  return state[name];
+}
+
+function qmHay(parts) {
+  return (parts || []).map(p => (p == null || typeof p === 'object') ? '' : String(p)).join(' ').toLowerCase();
+}
+
+function qmJs(s) {
+  return String(s == null ? '' : s).replace(/\\/g, '\\\\').replace(/'/g, '\\x27').replace(/[\r\n<>&]/g, ' ');
 }
 
 function qmPositionName(user) {
@@ -35448,7 +35491,7 @@ function ensureManualOutline() {
   if (_qmOutlineFlight) return _qmOutlineFlight;
   const labId = state.currentLabId;
   _qmOutlineFlight = (async () => {
-    const have = new Set(state.sections.map(s => s.sectionNumber));
+    const have = new Set((state.sections || []).filter(Boolean).map(s => String(s.sectionNumber)));
     let wrote = false;
     const lab = state.labs.find(l => l.id === labId);
     for (const tpl of R18_TEMPLATE) {
@@ -35515,9 +35558,9 @@ function qmActionButtons(row, lab) {
   if (row.kind === 'header') return '';
   const pdf = row.pdf ? `<button type="button" class="btn btn-ghost text-xs" onclick="r18_exportQualityManualPDF()">PDF Export</button>` : '';
   const sync = row.sync && lab.type !== 'primary'
-    ? `<button type="button" class="btn btn-ghost text-xs" onclick="r18_syncSection('${row.sectionNumber}')">Sync with Primary Lab</button>` : '';
+    ? `<button type="button" class="btn btn-ghost text-xs" onclick="r18_syncSection('${qmJs(row.sectionNumber)}')">Sync with Primary Lab</button>` : '';
   const edit = row.edit && !['address','positions','chart','bios','roles','techs','training','certs','reports','inventory','procedures','records','psp','assessments','corrective'].includes(row.kind)
-    ? `<button type="button" class="btn btn-ghost text-xs" onclick="r18_editSection('${row.id}')">Edit Section</button>` : '';
+    ? `<button type="button" class="btn btn-ghost text-xs" onclick="r18_editSection('${qmJs(row.id)}')">Edit Section</button>` : '';
   let lead = '';
   if (row.kind === 'address') lead = `<button type="button" class="btn btn-ghost text-xs" onclick="r18_openEditLabModal('${lab.id}')">Edit Lab Information</button>`;
   else if (row.kind === 'positions') lead = `<button type="button" class="btn btn-ghost text-xs" onclick="r18_qmGo('roster')">Edit Positions</button>`;
@@ -35526,7 +35569,7 @@ function qmActionButtons(row, lab) {
   else if (row.kind === 'inventory') lead = `<button type="button" class="btn btn-ghost text-xs" onclick="r18_qmGo('inventory')">Go To Inventory</button>`;
   else if (row.kind === 'records') lead = `<button type="button" class="btn btn-ghost text-xs" onclick="r18_qmGo('procedure-history')">View All Records</button>`;
   else if (row.report) lead = `<button type="button" class="btn btn-ghost text-xs" onclick="r18_qmReports('${row.report}')">QMS Reports</button>`;
-  else if (row.edit && !edit) lead = `<button type="button" class="btn btn-ghost text-xs" onclick="r18_editSection('${row.id}')">Edit Section</button>`;
+  else if (row.edit && !edit) lead = `<button type="button" class="btn btn-ghost text-xs" onclick="r18_editSection('${qmJs(row.id)}')">Edit Section</button>`;
   const buttons = `${lead}${edit}${sync}${pdf}`;
   return buttons ? `<div class="r18-qm-actions">${buttons}</div>` : '';
 }
@@ -35538,11 +35581,11 @@ function qmRevision(row) {
 }
 
 function qmSlice(key, items) {
-  const size = Number(state.qmPageSize[key] || 10);
-  const q = String(state.qmQuery[key] || '').trim().toLowerCase();
-  const filtered = q ? items.filter(item => item.hay.includes(q)) : items;
+  const size = Number(qmBag('qmPageSize')[key] || 10);
+  const q = String(qmBag('qmQuery')[key] || '').trim().toLowerCase();
+  const filtered = q ? items.filter(item => item && String(item.hay || '').includes(q)) : items;
   const pages = Math.max(1, Math.ceil(filtered.length / size) || 1);
-  let page = Number(state.qmPage[key] || 1);
+  let page = Number(qmBag('qmPage')[key] || 1);
   if (page > pages) page = pages;
   if (page < 1) page = 1;
   const start = (page - 1) * size;
@@ -35558,15 +35601,15 @@ function qmPager(key, pageInfo, extra) {
   for (let n = windowStart; n <= Math.min(pageInfo.pages, windowStart + 3); n++) nums.push(n);
   return `<div class="r18-qm-pager">
     <span>${pageInfo.filtered.length === 1 ? '1' : pageInfo.filtered.length} of ${pageInfo.total}</span>
-    <label>Display <select class="select" style="width:auto;display:inline-block;padding:4px 8px;" onchange="r18_qmPageSize('${key}', this.value)">
+    <label>Display <select class="select" style="width:auto;display:inline-block;padding:4px 8px;" onchange="r18_qmPageSize('${qmJs(key)}', this.value)">
       ${[10, 25, 50].map(n => `<option value="${n}" ${pageInfo.size === n ? 'selected' : ''}>${n}</option>`).join('')}
     </select></label>
     ${extra || ''}
-    <input class="input" id="${id}-q" style="max-width:180px;padding:4px 8px;" placeholder="Search" value="${escapeHtml(state.qmQuery[key] || '')}" oninput="r18_qmQuery('${key}', this.value)" />
-    <button type="button" class="btn btn-ghost text-xs" onclick="r18_qmPage('${key}', ${prev})">Previous</button>
-    ${nums.map(n => `<button type="button" class="btn ${n === pageInfo.page ? 'btn-primary' : 'btn-ghost'} text-xs" onclick="r18_qmPage('${key}', ${n})">${n}</button>`).join('')}
+    <input class="input" id="${id}-q" style="max-width:180px;padding:4px 8px;" placeholder="Search" value="${escapeHtml(qmBag('qmQuery')[key] || '')}" oninput="r18_qmQuery('${qmJs(key)}', this.value)" />
+    <button type="button" class="btn btn-ghost text-xs" onclick="r18_qmPage('${qmJs(key)}', ${prev})">Previous</button>
+    ${nums.map(n => `<button type="button" class="btn ${n === pageInfo.page ? 'btn-primary' : 'btn-ghost'} text-xs" onclick="r18_qmPage('${qmJs(key)}', ${n})">${n}</button>`).join('')}
     ${pageInfo.pages > nums[nums.length - 1] ? '<span>…</span>' : ''}
-    <button type="button" class="btn btn-ghost text-xs" onclick="r18_qmPage('${key}', ${next})">Next</button>
+    <button type="button" class="btn btn-ghost text-xs" onclick="r18_qmPage('${qmJs(key)}', ${next})">Next</button>
   </div>`;
 }
 
@@ -35576,9 +35619,15 @@ function qmTable(headers, rowsHtml) {
 
 function renderQmBody(row, lab) {
   const people = qmPeople();
+  const trainings = (state.trainings || []).filter(Boolean);
+  const equipment = (state.equipment || []).filter(Boolean);
+  const procedures = (state.procedures || []).filter(Boolean);
+  const records = (state.procedureRecords || []).filter(Boolean);
+  const reports = (state.reports || []).filter(Boolean);
   if (row.kind === 'header') return '';
   if (row.kind === 'address') {
-    const a = lab.address || {};
+    const a = (lab.address && typeof lab.address === 'object') ? lab.address : {};
+    if (typeof lab.address === 'string') a.street = lab.address;
     const fields = [
       ['Lab Name', lab.name || ''],
       ['Lab Type', lab.type === 'primary' ? 'Primary Lab' : 'Secondary Lab'],
@@ -35620,7 +35669,7 @@ function renderQmBody(row, lab) {
     const list = techs.length ? techs : people.filter(u => u.role !== 'primary_lab_manager');
     if (!list.length) return '<div class="r18-qm-body">None on file.</div>';
     return `<div class="r18-qm-cards">${list.map(u => {
-      const tests = state.trainings.filter(t => t.userId === u.id);
+      const tests = trainings.filter(t => t.userId === u.id);
       const methods = tests.map(t => t.testMethod).filter(Boolean);
       return `<div class="r18-qm-card"><div class="text-sm font-semibold ink">${escapeHtml(u.name || '')}</div><div class="text-xs ink-2">${escapeHtml(qmPositionName(u))}</div><div class="text-sm" style="margin-top:6px;">${methods.length ? methods.map(m => escapeHtml(m)).join('<br>') : 'No tests assigned'}</div></div>`;
     }).join('')}</div>`;
@@ -35628,24 +35677,24 @@ function renderQmBody(row, lab) {
   if (row.kind === 'training') {
     if (!people.length) return '<div class="r18-qm-body">None on file.</div>';
     return `<div class="r18-qm-cards">${people.map(u => {
-      const n = state.trainings.filter(t => t.userId === u.id).length;
+      const n = trainings.filter(t => t.userId === u.id).length;
       return `<div class="r18-qm-card"><div class="text-sm font-semibold ink">${escapeHtml(u.name || '')}</div><div class="text-xs ink-2">${escapeHtml(roleLabel(u.role))}</div><div class="text-sm" style="margin-top:8px;"><strong>${n}</strong> ${n === 1 ? 'Training' : 'Trainings'}</div></div>`;
     }).join('')}</div>`;
   }
   if (row.kind === 'certs') {
-    const n = state.trainings.length;
+    const n = trainings.length;
     if (!n) return '<div class="r18-qm-body">No evaluations on file.</div>';
     return `<div class="r18-qm-body">${n} training record${n === 1 ? '' : 's'} on file. Evaluations are kept with Training &amp; Evals.</div>`;
   }
   if (row.kind === 'inventory') {
-    const inService = state.equipment.filter(e => e.status !== 'out_of_service').length;
-    const out = state.equipment.filter(e => e.status === 'out_of_service').length;
+    const inService = equipment.filter(e => e.status !== 'out_of_service').length;
+    const out = equipment.filter(e => e.status === 'out_of_service').length;
     return `<div class="r18-qm-body">In service: ${inService}\nOut of service: ${out}</div>`;
   }
   if (row.kind === 'procedures') {
-    const items = state.procedures.filter(p => p.active !== false).map(p => {
+    const items = procedures.filter(p => p.active !== false).map(p => {
       const eq = equipmentById(p.equipmentId);
-      const hay = [p.name, eq?.name, eq?.refId, p.procedureType, lab.name].join(' ').toLowerCase();
+      const hay = qmHay([p.name, eq?.name, eq?.refId, p.procedureType, lab.name]);
       return { p, eq, hay };
     });
     const page = qmSlice(row.sectionNumber, items);
@@ -35657,14 +35706,14 @@ function renderQmBody(row, lab) {
       <td><button type="button" class="btn btn-view text-xs" onclick="r18_openEquipmentDetail('${p.equipmentId || ''}')">View</button></td>
     </tr>`).join('');
     return `<div class="text-sm ink-2">In Use <strong class="ink">${items.length}</strong></div>
-      ${qmPager(row.sectionNumber, page, `<label>Category <select class="select" style="width:auto;display:inline-block;padding:4px 8px;" onchange="r18_qmQuery('${row.sectionNumber}', this.value === 'all' ? '' : this.value)"><option value="all">All</option>${PROCEDURE_TYPES.map(t => `<option value="${t.label.toLowerCase()}" ${String(state.qmQuery[row.sectionNumber] || '').toLowerCase() === t.label.toLowerCase() ? 'selected' : ''}>${t.label}</option>`).join('')}</select></label>`)}
+      ${qmPager(row.sectionNumber, page, `<label>Category <select class="select" style="width:auto;display:inline-block;padding:4px 8px;" onchange="r18_qmQuery('${qmJs(row.sectionNumber)}', this.value === 'all' ? '' : this.value)"><option value="all">All</option>${PROCEDURE_TYPES.map(t => `<option value="${t.label.toLowerCase()}" ${String(qmBag('qmQuery')[row.sectionNumber] || '').toLowerCase() === t.label.toLowerCase() ? 'selected' : ''}>${t.label}</option>`).join('')}</select></label>`)}
       ${qmTable(['ID', 'Procedure', 'Lab', 'Type', ''], body)}`;
   }
   if (row.kind === 'records') {
-    const items = state.procedureRecords.map(r => {
-      const proc = state.procedures.find(p => p.id === r.procedureId);
+    const items = records.map(r => {
+      const proc = procedures.find(p => p.id === r.procedureId);
       const eq = equipmentById(r.equipmentId || proc?.equipmentId);
-      const hay = [proc?.name, eq?.name, eq?.refId, r.completedBy, r.result].join(' ').toLowerCase();
+      const hay = qmHay([proc?.name, eq?.name, eq?.refId, r.completedBy, r.result]);
       return { r, proc, eq, hay };
     });
     const page = qmSlice(row.sectionNumber, items);
@@ -35682,8 +35731,8 @@ function renderQmBody(row, lab) {
   }
   if (row.kind === 'psp' || row.kind === 'reports') {
     const type = row.report;
-    const items = state.reports.filter(r => !type || r.type === type).map(r => ({
-      r, hay: [r.title, r.status, r.content].join(' ').toLowerCase(),
+    const items = reports.filter(r => !type || r.type === type).map(r => ({
+      r, hay: qmHay([r.title, r.status, r.content]),
     }));
     if (row.kind === 'reports') {
       return `<div class="r18-qm-body">${items.length} on file.</div>`;
@@ -35700,12 +35749,12 @@ function renderQmBody(row, lab) {
       ${qmTable(['Program', 'Date', 'Status', ''], body)}`;
   }
   if (row.kind === 'assessments') {
-    const rows = state.reports.filter(r => r.type === 'external_assessments');
+    const rows = reports.filter(r => r.type === 'external_assessments');
     const closed = rows.filter(r => /clos|complete/i.test(r.status || '')).length;
     return `<div class="r18-qm-kvs"><div class="k">Completed Assessments</div><div>${closed}</div><div class="k">Incomplete Assessments</div><div>${rows.length - closed}</div></div>${rows.length ? '' : '<div class="r18-qm-body">None on file.</div>'}`;
   }
   if (row.kind === 'corrective') {
-    const rows = state.reports.filter(r => r.type === 'corrective_actions');
+    const rows = reports.filter(r => r.type === 'corrective_actions');
     const closed = rows.filter(r => /clos|complete|resolv/i.test(r.status || '')).length;
     return `<div class="r18-qm-kvs"><div class="k">Open Corrective Actions</div><div>${rows.length - closed}</div><div class="k">Closed Corrective Actions</div><div>${closed}</div></div>${rows.length ? '' : '<div class="r18-qm-body">None on file.</div>'}`;
   }
@@ -35717,27 +35766,46 @@ function renderQmBody(row, lab) {
 
 function renderQualityManual(lab, root) {
   const isPrimary = lab.type === 'primary';
-  const primaryLab = state.labs.find(l => l.type === 'primary');
+  const primaryLab = (state.labs || []).find(l => l && l.type === 'primary');
   ensureManualOutline();
-  const rows = qualityManualRows();
+  let rows = [];
+  try { rows = qualityManualRows(); }
+  catch (err) {
+    console.error(err);
+    rows = R18_TEMPLATE.map(tpl => ({
+      id: 'tpl-' + tpl.num, sectionNumber: tpl.num, title: tpl.title, kind: tpl.type,
+      sync: !!tpl.sync, edit: false, pdf: tpl.type !== 'header', report: tpl.report || '',
+      content: QM_DEFAULTS[tpl.num] || '', contentType: tpl.type, lastRevisedAt: null,
+      lastRevisedBy: '', isStandard: true, virtual: true,
+    }));
+  }
   const toc = rows.map(row => {
-    const depth = (String(row.sectionNumber).match(/\./g) || []).length;
-    return `<a style="padding-left:${depth * 14}px" onclick="r18_qmJump('${row.sectionNumber}')"><span class="section-num">${escapeHtml(row.sectionNumber)}</span> ${escapeHtml(row.title)}</a>`;
+    try {
+      const depth = (String(row.sectionNumber).match(/\./g) || []).length;
+      return `<a style="padding-left:${depth * 14}px" onclick="r18_qmJump('${qmJs(row.sectionNumber)}')"><span class="section-num">${escapeHtml(row.sectionNumber)}</span> ${escapeHtml(row.title)}</a>`;
+    } catch (err) { return ''; }
   }).join('');
   const blocks = rows.map(row => {
-    if (qmAncestorHidden(row.sectionNumber)) return '';
-    const depth = (String(row.sectionNumber).match(/\./g) || []).length;
-    const header = row.kind === 'header';
-    const saved = state.sections.find(s => s.id === row.id);
-    const editing = state.editingSectionId && (state.editingSectionId === row.id || (saved && state.editingSectionId === saved.id));
-    const monitor = row.sectionNumber === '6.10.2.1' ? '<div class="r18-qm-title" style="margin-bottom:8px;">Records of Monitoring Activities</div>' : '';
-    return `<section class="r18-qm-sec depth-${depth}${header ? ' is-header' : ''}" id="${qmAnchor(row.sectionNumber)}" ${header ? `onclick="r18_qmToggle('${row.sectionNumber}')"` : ''}>
-      ${monitor}
-      <div class="r18-qm-num">${escapeHtml(row.sectionNumber)}</div>
-      <div class="r18-qm-title">${escapeHtml(row.title)}</div>
-      ${header ? '' : `<div onclick="event.stopPropagation()">${qmActionButtons(row, lab)}${qmRevision(row)}${editing ? renderSectionEditor(Object.assign({}, saved || row, { content: manualText(row) })) : renderQmBody(row, lab)}</div>`}
-    </section>`;
+    try {
+      if (qmAncestorHidden(row.sectionNumber)) return '';
+      const depth = (String(row.sectionNumber).match(/\./g) || []).length;
+      const header = row.kind === 'header';
+      const saved = (state.sections || []).find(s => s && s.id === row.id);
+      const editing = state.editingSectionId && (state.editingSectionId === row.id || (saved && state.editingSectionId === saved.id));
+      const monitor = row.sectionNumber === '6.10.2.1' ? '<div class="r18-qm-title" style="margin-bottom:8px;">Records of Monitoring Activities</div>' : '';
+      return `<section class="r18-qm-sec depth-${depth}${header ? ' is-header' : ''}" id="${qmAnchor(row.sectionNumber)}" ${header ? `onclick="r18_qmToggle('${qmJs(row.sectionNumber)}')"` : ''}>
+        ${monitor}
+        <div class="r18-qm-num">${escapeHtml(row.sectionNumber)}</div>
+        <div class="r18-qm-title">${escapeHtml(row.title)}</div>
+        ${header ? '' : `<div onclick="event.stopPropagation()">${qmActionButtons(row, lab)}${qmRevision(row)}${editing ? renderSectionEditor(Object.assign({}, saved || row, { content: manualText(row) })) : renderQmBody(row, lab)}</div>`}
+      </section>`;
+    } catch (err) {
+      console.error(err);
+      return `<section class="r18-qm-sec"><div class="r18-qm-num">${escapeHtml(row && row.sectionNumber)}</div><div class="r18-qm-title">${escapeHtml(row && row.title)}</div><div class="r18-qm-body">This section could not be shown.</div></section>`;
+    }
   }).join('');
+  const addr = lab.address;
+  const addrText = typeof addr === 'string' ? addr : [addr?.street, addr?.city, addr?.state, addr?.zip].filter(Boolean).join(', ');
 
   root.innerHTML = `
     <div class="mb-4" id="r18-qm-top">
@@ -35754,7 +35822,7 @@ function renderQualityManual(lab, root) {
       <div class="meta">
         <div><strong>Laboratory:</strong> ${escapeHtml(lab.name)}</div>
         <div><strong>Type:</strong> ${isPrimary ? 'Primary' : 'Secondary'} Lab</div>
-        <div><strong>Address:</strong> ${escapeHtml(lab.address?.street || '')}, ${escapeHtml(lab.address?.city || '')}, ${escapeHtml(lab.address?.state || '')} ${escapeHtml(lab.address?.zip || '')}</div>
+        <div><strong>Address:</strong> ${escapeHtml(addrText)}</div>
         <div><strong>Generated:</strong> ${fmtDateShort(now())}</div>
       </div>
     </div>
@@ -35800,11 +35868,11 @@ window.r18_qmJump = (num) => {
   const el = document.getElementById(qmAnchor(num));
   if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
 };
-window.r18_qmPage = (key, page) => { state.qmPage[key] = page; renderView(); };
-window.r18_qmPageSize = (key, size) => { state.qmPageSize[key] = Number(size) || 10; state.qmPage[key] = 1; renderView(); };
+window.r18_qmPage = (key, page) => { qmBag('qmPage')[key] = page; renderView(); };
+window.r18_qmPageSize = (key, size) => { qmBag('qmPageSize')[key] = Number(size) || 10; qmBag('qmPage')[key] = 1; renderView(); };
 window.r18_qmQuery = (key, value) => {
-  state.qmQuery[key] = value;
-  state.qmPage[key] = 1;
+  qmBag('qmQuery')[key] = value;
+  qmBag('qmPage')[key] = 1;
   state._qmFocus = qmAnchor(key) + '-q';
   renderView();
 };
@@ -35821,17 +35889,11 @@ window.r18_qmTop = () => {
   const toc = document.getElementById('r18-qm-top');
   if (toc) toc.scrollIntoView({ behavior: 'smooth', block: 'start' });
 };
-window.r18_qmGo = (tab) => {
-  state.currentTab = tab;
-  renderTabs();
-  renderView();
-};
+window.r18_qmGo = (tab) => { openR18Tab(tab); };
 window.r18_qmReports = (type) => {
-  state.currentTab = 'reports';
   if (type) state.reportSubtab = type;
   state.reportStatusFilter = 'completed';
-  renderTabs();
-  renderView();
+  openR18Tab('reports');
 };
 window.r18_syncSection = async (num) => {
   const lab = state.labs.find(l => l.id === state.currentLabId);
