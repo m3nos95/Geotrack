@@ -7639,6 +7639,10 @@ END $$;
           <span class="guide-dot" aria-hidden="true"></span>
           <span class="guide-toggle-label">Guided Mode</span>
         </button>
+        <button type="button" class="hub-action-btn hub-action-wide" data-guide="hub-core" onclick="fcOpenCoreDrillFromHub()">
+          <span class="fc-core-icon fc-core-icon--sm" aria-hidden="true"><img src="docs/r18-reference/core-drill-icon-128.png" alt=""></span>
+          Core drill
+        </button>
       </div>
 
       <div class="hub-panel">
@@ -8149,7 +8153,7 @@ END $$;
 // GLOBALS
 // ══════════════════════════════════════════════
 let db = null;
-const APP_BUILD = '2026.11.06-soil-hub';
+const APP_BUILD = '2026.11.06-core-hub';
 const FC_CORE_ICON_SRC = 'docs/r18-reference/core-drill-icon-128.png';
 const BORELOG_ICON_SRC = 'docs/r18-reference/borelog-icon.webp';
 const BORELOG_PATH = 'deldot-borelog-v6-uscs.html';
@@ -29303,6 +29307,7 @@ function fcClearFieldEventIntentUi() {
 }
 
 function fcShowCoreDrillStart() {
+  if (_fcModuleMode !== 'event') fcSetModuleMode('event');
   if (activeFC_testNo && activeFC_sessionId) {
     if (_fcIntent === 'core') {
       switchFCTab('core');
@@ -39793,6 +39798,7 @@ html.comfort-mode .rail-label {
     font-size: 16px;
     font-weight: 700;
   }
+  #fieldhub-view .hub-action-btn.hub-action-wide { grid-column: 1 / -1; }
   #fieldhub-view .hub-panel,
   #labhub-view .hub-panel,
   #conchub-view .hub-panel { background: transparent; border: none; box-shadow: none; padding: 0; }
@@ -40166,6 +40172,7 @@ html.comfort-mode .rail-label {
     background: linear-gradient(135deg, var(--accent), var(--accent2));
     border-color: transparent;
   }
+  #fieldhub-view .hub-action-btn.hub-action-wide { grid-column: 1 / -1; }
   #labhub-view .hub-action-btn { grid-column: 1 / -1; }
   #fieldhub-view .concrete-guide-toggle { width: auto; }
   #fieldhub-view .hub-panel,
