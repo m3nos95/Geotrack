@@ -5643,7 +5643,7 @@ END $$;
           <button type="button" class="btn btn-primary" onclick="fcFocNewFamily()">+ NEW FAMILY</button>
         </div>
         <p style="font-family:var(--sans);font-size:13px;color:var(--muted);margin:-4px 0 14px;line-height:1.45;">
-          <strong>DelDOT Historical Family</strong> is the built-in STA 12+25 chart. Add a completed proctor when a one-point does not land on a curve. Charts show only the <strong>80%–100%</strong> portion of each curve (dry of optimum through optimum).
+          <strong>DelDOT Historical Family</strong> is the built-in photographed 80–100 chart. Add a completed proctor when a one-point does not land on a curve. Other families chart only the <strong>80%–100%</strong> portion of each curve (dry of optimum through optimum).
         </p>
         <div class="fc-proctor-layout">
           <div class="card fc-proctor-list" id="fcFocFamilyList"><div class="hub-empty">No families yet.</div></div>
@@ -5656,7 +5656,7 @@ END $$;
               <div class="form-group"><label>Notes</label><input type="text" id="foc_notes" onchange="fcFocSaveMeta()"></div>
             </div>
             <div class="fc-foc-chart-box" id="fcFocChartWrap" style="display:none;">
-              <div style="font-family:var(--mono);font-size:10px;color:#64748b;margin-bottom:6px;">80%–100% of optimum moisture (spine only)</div>
+              <div id="fcFocChartCaption" style="font-family:var(--mono);font-size:10px;color:#64748b;margin-bottom:6px;">80%–100% of optimum moisture (spine only)</div>
               <svg id="fcFocFamilySvg" width="640" height="400" viewBox="0 0 640 400"></svg>
             </div>
             <div id="fcFocCurvesTable" style="display:none;margin-top:12px;"></div>
@@ -8197,7 +8197,7 @@ END $$;
 // GLOBALS
 // ══════════════════════════════════════════════
 let db = null;
-const APP_BUILD = '2026.11.07-pm-reports';
+const APP_BUILD = '2026.11.07-historical-curves';
 const FC_CORE_ICON_SRC = 'docs/r18-reference/core-drill-icon-128.png';
 const BORELOG_ICON_SRC = 'docs/r18-reference/borelog-icon.webp';
 const BORELOG_PATH = 'deldot-borelog-v6-uscs.html';
@@ -27408,37 +27408,26 @@ const FC_FAMILY_CURVES_T99 = [
   { no: 18, maxDry: 132.6, optMoist: 8.3 },
 ];
 
-// Digitized from the STA 12+25 family chart. slope is pcf of dry density per 1% moisture
-// on the straight spine. One-point charts draw only 80% of optimum through optimum.
+// Digitized from the photographed 80–100 family chart. slope is pcf of dry density
+// per 1% moisture on the straight trace from spineMin to optMoist (the last plotted point).
 const FC_HISTORICAL_FAMILY_ID = 'deldot-historical';
 const FC_T99_FAMILY_ID = 't99-reference';
-const FC_HISTORICAL_VERSION = 1;
+const FC_HISTORICAL_VERSION = 2;
 // Outside the fan, the point has to sit within 1 pcf of a line.
 // A wider allowance was naming curves the dot does not land on.
 const FC_ONE_POINT_FIT_PCF = 1;
 const FC_DELDOT_HISTORICAL_CURVES = [
-  { no: 34, maxDry: 132.4, optMoist: 8.0, slope: 3.27 },
-  { no: 33, maxDry: 131.0, optMoist: 8.5, slope: 3.03 },
-  { no: 32, maxDry: 130.2, optMoist: 8.8, slope: 3.21 },
-  { no: 31, maxDry: 129.5, optMoist: 9.0, slope: 2.83 },
-  { no: 30, maxDry: 128.7, optMoist: 9.3, slope: 2.66 },
-  { no: 29, maxDry: 127.9, optMoist: 9.5, slope: 2.43 },
-  { no: 28, maxDry: 127.1, optMoist: 9.8, slope: 2.18 },
-  { no: 27, maxDry: 126.2, optMoist: 10.1, slope: 2.01 },
-  { no: 26, maxDry: 125.4, optMoist: 10.4, slope: 1.96 },
-  { no: 25, maxDry: 124.5, optMoist: 10.7, slope: 1.81 },
-  { no: 24, maxDry: 123.6, optMoist: 11.0, slope: 1.72 },
-  { no: 23, maxDry: 122.6, optMoist: 11.3, slope: 1.58 },
-  { no: 22, maxDry: 121.7, optMoist: 11.6, slope: 1.58 },
-  { no: 21, maxDry: 120.9, optMoist: 11.9, slope: 1.49 },
-  { no: 20, maxDry: 119.8, optMoist: 12.3, slope: 1.51 },
-  { no: 19, maxDry: 117.4, optMoist: 12.7, slope: 2.20 },
-  { no: 18, maxDry: 115.4, optMoist: 13.4, slope: 2.20 },
-  { no: 17, maxDry: 114.2, optMoist: 13.8, slope: 2.20 },
-  { no: 16, maxDry: 113.2, optMoist: 14.1, slope: 2.20 },
-  { no: 15, maxDry: 111.9, optMoist: 14.6, slope: 2.20 },
-  { no: 14, maxDry: 110.5, optMoist: 15.1, slope: 2.20 },
-  { no: 13, maxDry: 109.5, optMoist: 15.4, slope: 2.20 },
+  { no: 100, maxDry: 139.63, optMoist: 7.04, slope: 9.77, spineMin: 6.74 },
+  { no: 98, maxDry: 139.63, optMoist: 7.28, slope: 8.30, spineMin: 6.78 },
+  { no: 96, maxDry: 139.09, optMoist: 7.45, slope: 7.32, spineMin: 6.79 },
+  { no: 94, maxDry: 137.96, optMoist: 7.56, slope: 6.56, spineMin: 6.81 },
+  { no: 92, maxDry: 136.79, optMoist: 7.68, slope: 5.85, spineMin: 6.83 },
+  { no: 90, maxDry: 135.54, optMoist: 7.80, slope: 5.37, spineMin: 6.88 },
+  { no: 88, maxDry: 134.25, optMoist: 7.93, slope: 4.92, spineMin: 6.94 },
+  { no: 86, maxDry: 132.93, optMoist: 8.06, slope: 4.54, spineMin: 7.01 },
+  { no: 84, maxDry: 131.59, optMoist: 8.19, slope: 4.23, spineMin: 7.09 },
+  { no: 82, maxDry: 130.33, optMoist: 8.31, slope: 3.94, spineMin: 7.14 },
+  { no: 80, maxDry: 128.97, optMoist: 8.45, slope: 3.69, spineMin: 7.24 },
 ];
 
 let _fcCurvePickerContext = 'nuclear';
@@ -27450,8 +27439,9 @@ function fcCurveKey(c) {
   return String(c.no != null ? c.no : c.id);
 }
 
-function fcStraightSpinePoints(maxDry, optMoist, slope) {
-  const m0 = optMoist * 0.8;
+function fcStraightSpinePoints(maxDry, optMoist, slope, spineMin) {
+  const custom = spineMin != null ? parseFloat(spineMin) : NaN;
+  const m0 = !isNaN(custom) ? custom : optMoist * 0.8;
   const m1 = optMoist;
   const pts = [];
   const steps = 8;
@@ -27474,7 +27464,8 @@ function fcHistoricalCurveRecords() {
     maxDry: c.maxDry,
     optMoist: c.optMoist,
     slope: c.slope,
-    points: fcStraightSpinePoints(c.maxDry, c.optMoist, c.slope),
+    spineMin: c.spineMin,
+    points: fcStraightSpinePoints(c.maxDry, c.optMoist, c.slope, c.spineMin),
   }));
 }
 
@@ -27487,12 +27478,16 @@ function fcMergeBuiltinFamily(list) {
     builtin: true,
     builtinVersion: FC_HISTORICAL_VERSION,
     locked: true,
-    contract: (existing && existing.contract) || 'STA 12+25',
+    contract: (existing && existing.contract && existing.contract !== 'STA 12+25') ? existing.contract : '',
     material: (existing && existing.material) || '',
-    notes: (existing && existing.notes) || 'Historical family from the STA 12+25 chart. Each line is the straight spine from 80% of optimum moisture to optimum. Nothing is drawn dry of 80% or wet of optimum.',
+    notes: (!existing || existing.builtinVersion !== FC_HISTORICAL_VERSION)
+      ? 'Historical family from the photographed 80–100 chart. Each line is the straight trace from the first plotted point to the last.'
+      : ((existing && existing.notes) || 'Historical family from the photographed 80–100 chart. Each line is the straight trace from the first plotted point to the last.'),
     curves: fcHistoricalCurveRecords().concat(added),
     createdAt: (existing && existing.createdAt) || '2026-11-04T00:00:00.000Z',
-    updatedAt: (existing && existing.updatedAt) || '2026-11-04T00:00:00.000Z',
+    updatedAt: (!existing || existing.builtinVersion !== FC_HISTORICAL_VERSION)
+      ? '2026-11-07T23:00:00.000Z'
+      : ((existing && existing.updatedAt) || '2026-11-07T23:00:00.000Z'),
   };
   return [rec].concat((list || []).filter(f => f && f.id !== FC_HISTORICAL_FAMILY_ID));
 }
@@ -27595,15 +27590,17 @@ function fcHilfCorrectedMaxDry(maxDry, pctGravel) {
   return Math.round((maxDry + (pctGravel / 100) * (130 - maxDry)) * 10) / 10;
 }
 
-/** Valid one-point moisture window per AASHTO T 272 / Earthworks Ch. 13 */
-function fcCurveSpineRange(optMoist) {
-  const om = parseFloat(optMoist) || 0;
-  return { min: om * 0.80, max: om };
+/** Valid one-point moisture window. Historical lines use their photographed span. */
+function fcCurveSpineRange(optMoist, curve) {
+  const om = parseFloat(curve && curve.optMoist != null ? curve.optMoist : optMoist) || 0;
+  const custom = curve && curve.spineMin != null ? parseFloat(curve.spineMin) : NaN;
+  const min = !isNaN(custom) ? custom : om * 0.80;
+  return { min, max: om };
 }
 
-function fcIsMoistureOnSpine(moisture, optMoist) {
-  const { min, max } = fcCurveSpineRange(optMoist);
-  return moisture >= min && moisture <= max;
+function fcIsMoistureOnSpine(moisture, optMoist, curve) {
+  const { min, max } = fcCurveSpineRange(optMoist, curve);
+  return moisture >= min - 1e-6 && moisture <= max + 1e-6;
 }
 
 function fcWetDensityAtMoisture(maxDry, optMoist, moisture) {
@@ -27750,7 +27747,7 @@ function fcPredictedWet(curve, moist) {
 }
 
 function fcScoreCurveForPoint(curve, wet, moist) {
-  if (!fcIsMoistureOnSpine(moist, curve.optMoist)) return Infinity;
+  if (!fcIsMoistureOnSpine(moist, curve.optMoist, curve)) return Infinity;
   const predicted = fcPredictedWet(curve, moist);
   if (predicted == null || isNaN(predicted)) return Infinity;
   return Math.abs(wet - predicted);
@@ -27760,7 +27757,7 @@ function fcPickCurveFromOnePoint(wetDensity, moisture, familyId) {
   if (!wetDensity || !moisture) return null;
   const famId = familyId || fcActiveFamilyId('nuclear');
   const curves = fcCurvesForFamily(famId);
-  const eligible = curves.filter(c => fcIsMoistureOnSpine(moisture, c.optMoist));
+  const eligible = curves.filter(c => fcIsMoistureOnSpine(moisture, c.optMoist, c));
   if (!eligible.length) return { fit: false, reason: 'moisture', familyId: famId };
   const scored = eligible
     .map(c => ({ ...c, score: fcScoreCurveForPoint(c, wetDensity, moisture) }))
@@ -28035,14 +28032,26 @@ function fcRenderCurveChart() {
   const famCurves = fcCurvesForFamily(famId);
   const title = document.getElementById('fcCurvePickerTitle');
   if (title) title.textContent = fam ? fam.name : 'Family of Curves';
+  const hint = document.getElementById('fcCurvePickerHint');
+  if (hint) {
+    hint.textContent = famId === FC_HISTORICAL_FAMILY_ID
+      ? 'DelDOT historical family from the photographed 80–100 chart. Each line is the photographed trace. Plot wet density vs moisture, then pick the matching curve.'
+      : 'Each curve shows only the valid one-point range: 80% to 100% of optimum moisture (the chart “spine”). Plot wet density vs moisture, then pick the matching curve.';
+  }
 
   const samples = [];
   famCurves.forEach(c => {
     if (c.optMoist == null) return;
-    const spine = fcCurveSpineRange(c.optMoist);
+    const spine = fcCurveSpineRange(c.optMoist, c);
     samples.push({ m: spine.min, w: fcPredictedWet(c, spine.min) });
     samples.push({ m: spine.max, w: fcPredictedWet(c, spine.max) });
   });
+  let point = null;
+  const read = fcReadOnePoint(context);
+  if (read) {
+    point = read;
+    samples.push({ m: read.moist, w: read.wet });
+  }
   const ms = samples.map(s => s.m).filter(v => v != null && !isNaN(v));
   const ws = samples.map(s => s.w).filter(v => v != null && !isNaN(v));
   const xSpan = fcChartSpan(ms, 1, 6, 18);
@@ -28051,17 +28060,13 @@ function fcRenderCurveChart() {
   const xScale = frame.x;
   const yScale = frame.y;
 
-  let point = null;
-  const read = fcReadOnePoint('nuclear');
-  if (read) point = read;
-
   const grid = fcChartGrid(frame, xSpan.min, xSpan.max, ySpan.min, ySpan.max, 'Moisture, %', 'Wet Density (pcf)');
 
   let curves = '';
   famCurves.forEach(c => {
     if (c.optMoist == null) return;
     const key = fcCurveKey(c);
-    const spine = fcCurveSpineRange(c.optMoist);
+    const spine = fcCurveSpineRange(c.optMoist, c);
     const pts = [];
     for (let m = spine.min; m <= spine.max + 1e-9; m += 0.15) {
       const w = fcPredictedWet(c, m);
@@ -28071,11 +28076,9 @@ function fcRenderCurveChart() {
     if (pts.length < 2) return;
     const sel = key === String(_fcCurvePickerSelected);
     curves += `<path d="M ${pts.join(' L ')}" fill="none" stroke="${sel ? '#c47c2a' : '#64748b'}" stroke-width="${sel ? 2.8 : 1.5}" stroke-linecap="round" data-curve="${key}" style="cursor:pointer" onclick="fcSelectCurveInPicker('${key}')"/>`;
-    const x0 = xScale(spine.min), x1 = xScale(spine.max);
-    const y0 = yScale(fcPredictedWet(c, spine.min)), y1 = yScale(fcPredictedWet(c, spine.max));
-    const mx = (x0 + x1) / 2, my = (y0 + y1) / 2;
-    const ang = Math.atan2(y1 - y0, x1 - x0) * 180 / Math.PI;
-    curves += `<text x="${mx.toFixed(1)}" y="${my.toFixed(1)}" font-size="9" font-weight="${sel ? 700 : 500}" fill="${sel ? '#c47c2a' : '#1e293b'}" text-anchor="middle" dominant-baseline="middle" stroke="#fff" stroke-width="3" paint-order="stroke" transform="rotate(${ang.toFixed(1)} ${mx.toFixed(1)} ${my.toFixed(1)})" style="cursor:pointer" onclick="fcSelectCurveInPicker('${key}')">${key}</text>`;
+    const x0 = xScale(spine.min);
+    const y0 = yScale(fcPredictedWet(c, spine.min));
+    curves += `<text x="${(x0 - 6).toFixed(1)}" y="${y0.toFixed(1)}" font-size="9" font-weight="${sel ? 700 : 500}" fill="${sel ? '#c47c2a' : '#1e293b'}" text-anchor="end" dominant-baseline="middle" stroke="#fff" stroke-width="3" paint-order="stroke" style="cursor:pointer" onclick="fcSelectCurveInPicker('${key}')">${key}</text>`;
   });
 
   let marker = '';
@@ -29041,9 +29044,9 @@ function fcRenderFocDetail() {
     } else {
       table.innerHTML = `<div style="font-family:var(--mono);font-size:9px;letter-spacing:1px;color:var(--muted);margin-bottom:8px;">CURVES IN THIS FAMILY (${curves.length})</div>` +
         curves.map((c, idx) => {
-          const om = parseFloat(c.optMoist);
-          const spineTxt = (!isNaN(om))
-            ? ` · spine ${(om * 0.8).toFixed(1)}–${om}%`
+          const spine = fcCurveSpineRange(c.optMoist, c);
+          const spineTxt = (spine && !isNaN(spine.max) && spine.max)
+            ? ` · spine ${Number(spine.min).toFixed(2)}–${spine.max}%`
             : '';
           return `<div style="display:flex;justify-content:space-between;gap:10px;align-items:center;padding:8px 0;border-bottom:1px solid var(--border);font-family:var(--mono);font-size:11px;">` +
             `<div><strong>${idx + 1}. ${(c.label || 'Curve').replace(/</g,'&lt;')}</strong><div style="color:var(--muted);margin-top:2px;">${c.maxDry != null ? c.maxDry : '—'} pcf @ ${c.optMoist != null ? c.optMoist : '—'}%${spineTxt}</div></div>` +
@@ -29144,12 +29147,18 @@ function fcFocDeleteFamily() {
 function fcFocDrawFamilyChart(family) {
   const svg = document.getElementById('fcFocFamilySvg');
   if (!svg) return;
+  const cap = document.getElementById('fcFocChartCaption');
+  if (cap) {
+    cap.textContent = family && family.id === FC_HISTORICAL_FAMILY_ID
+      ? 'Photographed 80–100 chart. Each line runs from its first plotted point to its last.'
+      : '80%–100% of optimum moisture (spine only)';
+  }
   const curves = family?.curves || [];
   let xMin = 6, xMax = 20, yMin = 98, yMax = 140;
   // Build spine polylines first so axis ranges match 80–100% only
   const colors = ['#c47c2a', '#2563eb', '#16a34a', '#dc2626', '#7c3aed', '#0891b2', '#ca8a04', '#db2777'];
   const spineSeries = curves.map((c, idx) => {
-    const spine = fcCurveSpineRange(c.optMoist);
+    const spine = fcCurveSpineRange(c.optMoist, c);
     const fitted = fcProctorSmoothSamples(c.points || [], {
       maxDry: c.maxDry,
       optMoist: c.optMoist,
@@ -29190,12 +29199,10 @@ function fcFocDrawFamilyChart(family) {
     const pts = s.samples.map(pt => `${xScale(pt.m).toFixed(1)},${yScale(pt.d).toFixed(1)}`);
     if (pts.length > 1) {
       g += `<path d="M ${pts.join(' L ')}" fill="none" stroke="${s.color}" stroke-width="2.2" stroke-linecap="round"/>`;
-      const mid = s.samples[Math.floor(s.samples.length / 2)];
-      const mx = xScale(mid.m), my = yScale(mid.d);
-      const a0 = s.samples[0], a1 = s.samples[s.samples.length - 1];
-      const ang = Math.atan2(yScale(a1.d) - yScale(a0.d), xScale(a1.m) - xScale(a0.m)) * 180 / Math.PI;
+      const a0 = s.samples[0];
+      const mx = xScale(a0.m) - 6, my = yScale(a0.d);
       const num = s.c.no != null ? s.c.no : (s.idx + 1);
-      g += `<text x="${mx.toFixed(1)}" y="${my.toFixed(1)}" font-size="9" font-weight="600" fill="${s.color}" text-anchor="middle" dominant-baseline="middle" stroke="#fff" stroke-width="3" paint-order="stroke" transform="rotate(${ang.toFixed(1)} ${mx.toFixed(1)} ${my.toFixed(1)})">${num}</text>`;
+      g += `<text x="${mx.toFixed(1)}" y="${my.toFixed(1)}" font-size="9" font-weight="600" fill="${s.color}" text-anchor="end" dominant-baseline="middle" stroke="#fff" stroke-width="3" paint-order="stroke">${num}</text>`;
     }
   });
   if (!curves.length) {
