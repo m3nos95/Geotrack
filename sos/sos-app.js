@@ -42,8 +42,17 @@
       return JSON.parse(r);
     } catch (e) { return fallback; }
   }
+  let workspaceReady = false;
+  let applyingRemote = false;
+  let workspaceTimer = null;
+  let workspacePushing = false;
+  let workspacePushAgain = false;
+  let filedByContract = {};
+  let toldToSignIn = false;
+
   function ls_set(key, val) {
     try { localStorage.setItem(key, JSON.stringify(val)); } catch (e) {}
+    scheduleWorkspacePush();
   }
 
   let items = ls_get(STORE.items, []);
@@ -2390,7 +2399,8 @@
     reader.onload = function (e) {
       normalizeSignatureImage(e.target.result, (dataUrl) => {
         signatureImage = dataUrl;
-        localStorage.setItem('sosSignatureImage', signatureImage);
+        try { localStorage.setItem('sosSignatureImage', signatureImage); } catch (e) {}
+        scheduleWorkspacePush();
         renderLetter(true);
       });
     };
@@ -2831,54 +2841,236 @@
       const script = document.createElement('script');
       script.src = 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js';
       script.onload = () => resolve();
-      script.onerror = () => reject(new Error('Could not reach LabTrak to save the letter.'));
+      script.onerror = () => reject(new Error('Could not reach LabTrak.'));
       document.head.appendChild(script);
     });
+  }
+
+  async function labtrakClient() {
+    await loadSupabaseJs();
+    let url = 'https://qlwaqdlldldyoshyglmu.supabase.co';
+    let key = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFsd2FxZGxsZGxkeW9zaHlnbG11Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzg2MDQxOTEsImV4cCI6MjA5NDE4MDE5MX0.VRDDiDxGay5npABiVHiJ1o0-M6mHrwAVWaclWMBNU_k';
+    try {
+      url = localStorage.getItem('labtrak_sb_url') || url;
+      key = localStorage.getItem('labtrak_sb_anon_key') || key;
+    } catch (e) {}
+    return window.supabase.createClient(url, key, {
+      auth: { persistSession: true, autoRefreshToken: true, storage: localStorage },
+    });
+  }
+
+  function scheduleWorkspacePush() {
+    if (!workspaceReady || applyingRemote) return;
+    clearTimeout(workspaceTimer);
+    workspaceTimer = setTimeout(pushWorkspace, 900);
+  }
+
+  function collectWorkspace() {
+    return {
+      items: items,
+      cc: ccList,
+      revisions: revisions,
+      currentRev: currentRev,
+      warnings: warnings,
+      project: ls_get(STORE.project, {}),
+      author: ls_get(STORE.author, {}),
+      contractors: ls_get(STORE.contractors, []),
+      projects: ls_get(STORE.projects, []),
+      contacts: ls_get(STORE.contacts, []),
+      sources: sourceLib,
+      specs: specLib,
+      ccLib: ccLib,
+      ccRetired: ccRetired,
+      ccSort: ccLibSortDir,
+      ccRules: ccAssignments,
+      samplers: samplerContacts,
+      letter: ls_get(STORE.letter, null),
+      lists: ls_get(STORE.lists, null),
+      signatureImage: signatureImage || '',
+      filedByContract: filedByContract,
+    };
+  }
+
+  function workspaceHasWork(payload) {
+    if (!payload) return false;
+    if (Array.isArray(payload.items) && payload.items.length) return true;
+    if (payload.project && payload.project.contract) return true;
+    if (Array.isArray(payload.sources) && payload.sources.length) return true;
+    if (Array.isArray(payload.specs) && payload.specs.length) return true;
+    return false;
+  }
+
+  function applyWorkspace(payload) {
+    applyingRemote = true;
+    try {
+      if (Array.isArray(payload.items)) { items = payload.items; ls_set(STORE.items, items); }
+      if (Array.isArray(payload.cc)) { ccList = payload.cc; ls_set(STORE.cc, ccList); }
+      if (Array.isArray(payload.revisions)) { revisions = payload.revisions; ls_set(STORE.revisions, revisions); }
+      if (payload.currentRev != null) { currentRev = payload.currentRev; ls_set(STORE.rev, currentRev); }
+      if (Array.isArray(payload.warnings)) { warnings = payload.warnings; ls_set(STORE.warnings, warnings); }
+      if (payload.project) ls_set(STORE.project, payload.project);
+      if (payload.author) ls_set(STORE.author, payload.author);
+      if (Array.isArray(payload.contractors)) ls_set(STORE.contractors, payload.contractors);
+      if (Array.isArray(payload.projects)) ls_set(STORE.projects, payload.projects);
+      if (Array.isArray(payload.contacts)) ls_set(STORE.contacts, payload.contacts);
+      if (Array.isArray(payload.sources)) { sourceLib = payload.sources; ls_set(STORE.sources, sourceLib); }
+      if (Array.isArray(payload.specs)) { specLib = payload.specs; ls_set(STORE.specs, specLib); }
+      if (Array.isArray(payload.ccLib)) { ccLib = payload.ccLib; ls_set(STORE.cc_lib, ccLib); ls_set(STORE.cc_lib_ready, true); }
+      if (Array.isArray(payload.ccRetired)) { ccRetired = payload.ccRetired; ls_set(STORE.cc_retired, ccRetired); }
+      if (payload.ccSort) { ccLibSortDir = payload.ccSort === 'desc' ? 'desc' : 'asc'; ls_set(STORE.cc_lib_sort, ccLibSortDir); }
+      if (Array.isArray(payload.ccRules)) { ccAssignments = payload.ccRules; ls_set(STORE.cc_rules, ccAssignments); }
+      if (payload.samplers && typeof payload.samplers === 'object') { samplerContacts = payload.samplers; ls_set(STORE.cc_samplers, samplerContacts); }
+      if (payload.letter) ls_set(STORE.letter, payload.letter);
+      if (payload.lists) ls_set(STORE.lists, payload.lists);
+      if (payload.signatureImage) {
+        signatureImage = payload.signatureImage;
+        try { localStorage.setItem('sosSignatureImage', signatureImage); } catch (e) {}
+      }
+      filedByContract = payload.filedByContract || {};
+    } finally {
+      applyingRemote = false;
+    }
+    loadAuthor();
+    loadProjectHeader();
+    loadSourceLib();
+    loadSpecLib();
+    loadCCLib();
+    loadCcRules();
+    renderItems();
+    renderCC();
+    renderRevisions();
+    renderWarnings();
+    loadLetterEdits();
+    renderLetter();
+    updateSourceLibCounts();
+    updateSpecLibCounts();
+    if (typeof renderCcRules === 'function') renderCcRules();
+    if (typeof loadAplSnapshot === 'function') {
+      loadAplSnapshot().then(function () {
+        if (typeof renderLists === 'function') renderLists();
+        renderLetter();
+      });
+    }
+  }
+
+  async function fileLetterOnProject(client, session) {
+    const letter = letterLabtrakPayload();
+    if (!letter.contract) return { ok: true, skipped: true };
+    if (!letter.sources.length && !(letter.letter_html || '').trim()) return { ok: true, skipped: true };
+    const key = letter.contract.toLowerCase();
+    if (!filedByContract[key]) filedByContract[key] = crypto.randomUUID();
+    const { error } = await client.from('sos_letters').upsert(Object.assign({ id: filedByContract[key] }, letter, {
+      saved_by: (session.user && session.user.email) || '',
+      updated_at: new Date().toISOString(),
+    }), { onConflict: 'id' });
+    if (error) return { ok: false, error: error };
+    return { ok: true, contract: letter.contract };
+  }
+
+  async function pushWorkspace() {
+    if (workspacePushing) { workspacePushAgain = true; return; }
+    workspacePushing = true;
+    try {
+      const client = await labtrakClient();
+      const { data: sessionData } = await client.auth.getSession();
+      const session = sessionData && sessionData.session;
+      if (!session) {
+        if (!toldToSignIn) {
+          toldToSignIn = true;
+          setLetterActionStatus('Sign in to LabTrak in this browser. Letters and libraries then save for every user.', 'blue');
+        }
+        return;
+      }
+      const filed = await fileLetterOnProject(client, session);
+      const payload = collectWorkspace();
+      const { error } = await client.from('labtrak_shared').upsert({
+        id: 'sos',
+        payload: payload,
+        updated_at: new Date().toISOString(),
+        updated_by: (session.user && session.user.email) || '',
+      }, { onConflict: 'id' });
+      if (error) {
+        const missing = /labtrak_shared|schema cache|relation|does not exist/i.test(error.message || '');
+        setLetterActionStatus(missing
+          ? 'Run supabase/migrations/20261107_labtrak_shared.sql in the Supabase SQL editor once. Letters stay in this browser until that table exists.'
+          : (error.message || 'Could not save to LabTrak.'), 'red');
+        return;
+      }
+      if (filed && filed.error) {
+        const missingLetter = /sos_letters|schema cache|relation|does not exist/i.test(filed.error.message || '');
+        setLetterActionStatus(missingLetter
+          ? 'The shared letter saved. Run supabase/migrations/20261107_sos_letters.sql once so the project manager can open it.'
+          : ('Shared letter saved. The project copy did not: ' + (filed.error.message || 'unknown error')), 'red');
+      }
+    } catch (e) {
+      setLetterActionStatus((e && e.message) || 'Could not save to LabTrak.', 'red');
+    } finally {
+      workspacePushing = false;
+      if (workspacePushAgain) {
+        workspacePushAgain = false;
+        scheduleWorkspacePush();
+      }
+    }
+  }
+
+  async function pullWorkspace() {
+    try {
+      const client = await labtrakClient();
+      const { data: sessionData } = await client.auth.getSession();
+      const session = sessionData && sessionData.session;
+      if (!session) {
+        setLetterActionStatus('Sign in to LabTrak in this browser. Letters and libraries then load for every user.', 'blue');
+        workspaceReady = true;
+        return;
+      }
+      const { data, error } = await client.from('labtrak_shared').select('payload').eq('id', 'sos').maybeSingle();
+      if (error) {
+        workspaceReady = true;
+        const missing = /labtrak_shared|schema cache|relation|does not exist/i.test(error.message || '');
+        if (missing) {
+          setLetterActionStatus('Run supabase/migrations/20261107_labtrak_shared.sql in the Supabase SQL editor once so letters save for every browser.', 'red');
+        }
+        return;
+      }
+      const remote = data && data.payload;
+      if (workspaceHasWork(remote)) applyWorkspace(remote);
+      workspaceReady = true;
+      if (workspaceHasWork(remote) || workspaceHasWork(collectWorkspace())) pushWorkspace();
+    } catch (e) {
+      workspaceReady = true;
+    }
   }
 
   window.saveLetterToLabtrak = async function () {
     if (window.saveLetterToLabtrak.busy) return;
     const payload = letterLabtrakPayload();
     if (!payload.contract) {
-      setLetterActionStatus('Enter the contract number before saving. That number links the letter to the project.', 'red');
-      return;
-    }
-    if (!payload.sources.length && !payload.letter_html.trim()) {
-      setLetterActionStatus('Add the source items or build the letter before saving.', 'red');
+      setLetterActionStatus('Enter the contract number. That number links the letter to the project.', 'red');
       return;
     }
     window.saveLetterToLabtrak.busy = true;
-    setLetterActionStatus('Saving this source letter to LabTrak…', 'blue');
+    setLetterActionStatus('Filing this letter on the project…', 'blue');
     try {
-      await loadSupabaseJs();
-      let url = 'https://qlwaqdlldldyoshyglmu.supabase.co';
-      let key = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFsd2FxZGxsZGxkeW9zaHlnbG11Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzg2MDQxOTEsImV4cCI6MjA5NDE4MDE5MX0.VRDDiDxGay5npABiVHiJ1o0-M6mHrwAVWaclWMBNU_k';
-      try {
-        url = localStorage.getItem('labtrak_sb_url') || url;
-        key = localStorage.getItem('labtrak_sb_anon_key') || key;
-      } catch (e) {}
-      const client = window.supabase.createClient(url, key, {
-        auth: { persistSession: true, autoRefreshToken: true, storage: localStorage },
-      });
+      const client = await labtrakClient();
       const { data: sessionData } = await client.auth.getSession();
       const session = sessionData && sessionData.session;
       if (!session) {
-        setLetterActionStatus('Sign in to LabTrak in this browser, then save the letter again.', 'red');
+        setLetterActionStatus('Sign in to LabTrak in this browser, then file the letter again.', 'red');
         return;
       }
-      const { error } = await client.from('sos_letters').insert(Object.assign({}, payload, {
-        saved_by: (session.user && session.user.email) || '',
-      }));
-      if (error) {
-        const missing = /sos_letters|schema cache|relation|does not exist/i.test(error.message || '');
+      const filed = await fileLetterOnProject(client, session);
+      if (filed.error) {
+        const missing = /sos_letters|schema cache|relation|does not exist/i.test(filed.error.message || '');
         setLetterActionStatus(missing
-          ? 'LabTrak does not have the source-letter table yet. Run supabase/migrations/20261107_sos_letters.sql in the Supabase SQL editor once, then save again.'
-          : (error.message || 'Could not save the letter.'), 'red');
+          ? 'Run supabase/migrations/20261107_sos_letters.sql in the Supabase SQL editor once, then file the letter again.'
+          : (filed.error.message || 'Could not file the letter.'), 'red');
         return;
       }
-      setLetterActionStatus('Saved this source letter on contract ' + payload.contract + '. The project manager for that contract can open it from their project.', 'green');
+      workspaceReady = true;
+      await pushWorkspace();
+      setLetterActionStatus('Filed on contract ' + payload.contract + '. Every signed-in browser loads this letter, and the project manager can open it.', 'green');
     } catch (e) {
-      setLetterActionStatus((e && e.message) || 'Could not save the letter.', 'red');
+      setLetterActionStatus((e && e.message) || 'Could not file the letter.', 'red');
     } finally {
       window.saveLetterToLabtrak.busy = false;
     }
@@ -3102,6 +3294,7 @@
         mergeLiveListsIntoLibraries();
         renderLists();
         renderCCHarvestStatus();
+        pullWorkspace();
       });
     }, 0);
   }

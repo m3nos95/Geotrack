@@ -536,3 +536,14 @@ CREATE INDEX IF NOT EXISTS idx_sos_letters_contract ON sos_letters (contract);
 ALTER TABLE sos_letters ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS "labtrak_sos_letters_all" ON sos_letters;
 CREATE POLICY "labtrak_sos_letters_all" ON sos_letters FOR ALL USING (true) WITH CHECK (true);
+
+-- Shared office settings and the Source of Supply workspace (one row per topic).
+CREATE TABLE IF NOT EXISTS labtrak_shared (
+  id          TEXT PRIMARY KEY,
+  payload     JSONB NOT NULL DEFAULT '{}'::jsonb,
+  updated_at  TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_by  TEXT NOT NULL DEFAULT ''
+);
+ALTER TABLE labtrak_shared ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "labtrak_shared_all" ON labtrak_shared;
+CREATE POLICY "labtrak_shared_all" ON labtrak_shared FOR ALL USING (true) WITH CHECK (true);

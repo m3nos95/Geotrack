@@ -8197,7 +8197,7 @@ END $$;
 // GLOBALS
 // ══════════════════════════════════════════════
 let db = null;
-const APP_BUILD = '2026.11.07-pm-letters';
+const APP_BUILD = '2026.11.07-shared-save';
 const FC_CORE_ICON_SRC = 'docs/r18-reference/core-drill-icon-128.png';
 const BORELOG_ICON_SRC = 'docs/r18-reference/borelog-icon.webp';
 const BORELOG_PATH = 'deldot-borelog-v6-uscs.html';
@@ -14591,6 +14591,49 @@ function setDbConnected(connected) {
   const dot = document.getElementById('connDot');
   if (dot) dot.classList.toggle('off', !connected);
   updateSyncStatusChip();
+  if (connected) pullSharedOfficeSettings();
+}
+
+async function sharedOfficeLoad(id) {
+  if (!db) return null;
+  const { data, error } = await db.from('labtrak_shared').select('payload').eq('id', id).maybeSingle();
+  if (error || !data) return null;
+  return data.payload;
+}
+
+function sharedOfficeSave(id, payload) {
+  if (!db || !window._dbConnected) return;
+  db.from('labtrak_shared').upsert({
+    id: id,
+    payload: payload,
+    updated_at: new Date().toISOString(),
+    updated_by: (currentUser && currentUser.name) || '',
+  }, { onConflict: 'id' }).then(function () {});
+}
+
+async function pullSharedOfficeSettings() {
+  const teams = await sharedOfficeLoad('custom_teams');
+  if (teams && Array.isArray(teams.teams)) {
+    try { localStorage.setItem('st_custom_teams', JSON.stringify(teams.teams)); } catch (e) {}
+    teams.teams.forEach(function (t) {
+      if (t && t.id && !ROLE_DEFS[t.id]) {
+        ROLE_DEFS[t.id] = { label: t.name, color: t.color || '#94a3b8', tabs: t.tabs || [], custom: true };
+        ROLE_HOME[t.id] = 'home';
+      }
+    });
+    if (typeof renderCustomTeamList === 'function') renderCustomTeamList();
+    if (typeof umRoleDropdownChanged === 'function') umRoleDropdownChanged();
+  }
+  const hubs = await sharedOfficeLoad('hub_restrictions');
+  if (hubs && hubs.map && typeof hubs.map === 'object') {
+    try { localStorage.setItem('st_hub_restrictions', JSON.stringify(hubs.map)); } catch (e) {}
+    if (_stUsersCache) _stUsersCache = _mergeHubRestrictions(_stUsersCache);
+  }
+  const mats = await sharedOfficeLoad('src_materials');
+  if (mats && Array.isArray(mats.materials) && mats.materials.length) {
+    srcMaterials = mats.materials;
+    try { localStorage.setItem('src_materials', JSON.stringify(srcMaterials)); } catch (e) {}
+  }
 }
 
 function setSyncInProgress(active) {
@@ -24108,6 +24151,7 @@ function addCustomTeam() {
   const teams = loadCustomTeams();
   teams.push({ id, name, color, tabs });
   localStorage.setItem('st_custom_teams', JSON.stringify(teams));
+  sharedOfficeSave('custom_teams', { teams: teams });
   ROLE_DEFS[id] = { label: name, color, tabs, custom: true };
   ROLE_HOME[id] = 'home';
   const nameEl = document.getElementById('ct_name');
@@ -24121,6 +24165,7 @@ function addCustomTeam() {
 function deleteCustomTeam(id) {
   const teams = loadCustomTeams().filter(t => t.id !== id);
   localStorage.setItem('st_custom_teams', JSON.stringify(teams));
+  sharedOfficeSave('custom_teams', { teams: teams });
   delete ROLE_DEFS[id];
   renderCustomTeamList();
   umRoleDropdownChanged();
@@ -24169,6 +24214,7 @@ function _getHubRestrictStore() {
 }
 function _saveHubRestrictStore(map) {
   localStorage.setItem('st_hub_restrictions', JSON.stringify(map));
+  sharedOfficeSave('hub_restrictions', { map: map });
 }
 // Merge stored hub restrictions into a users array
 function _mergeHubRestrictions(users) {
@@ -30818,6 +30864,13 @@ async function srcLoad() {
     ];
     localStorage.setItem('src_materials', JSON.stringify(srcMaterials));
   }
+  const remoteMats = await sharedOfficeLoad('src_materials');
+  if (remoteMats && Array.isArray(remoteMats.materials) && remoteMats.materials.length) {
+    srcMaterials = remoteMats.materials;
+    localStorage.setItem('src_materials', JSON.stringify(srcMaterials));
+  } else if (srcMaterials.length) {
+    sharedOfficeSave('src_materials', { materials: srcMaterials });
+  }
 
   // Load records from Supabase
   const { data, error } = await db.from('approved_sources').select('*').order('stockpile_location');
@@ -31153,6 +31206,7 @@ function srcEditMatDays(i) {
   if (isNaN(n) || n < 1) { showToast('Invalid', 'error'); return; }
   srcMaterials[i].default_days = n;
   localStorage.setItem('src_materials', JSON.stringify(srcMaterials));
+  sharedOfficeSave('src_materials', { materials: srcMaterials });
   srcRenderMatList();
 }
 function srcRemoveMaterial(i) {
@@ -31160,6 +31214,7 @@ function srcRemoveMaterial(i) {
   if (!confirm(`Remove material type "${m.name}"? This won't delete existing records.`)) return;
   srcMaterials.splice(i, 1);
   localStorage.setItem('src_materials', JSON.stringify(srcMaterials));
+  sharedOfficeSave('src_materials', { materials: srcMaterials });
   srcRenderMatList();
 }
 function srcAddMaterial() {
@@ -31171,6 +31226,7 @@ function srcAddMaterial() {
   }
   srcMaterials.push({ id: name, name, default_days: days });
   localStorage.setItem('src_materials', JSON.stringify(srcMaterials));
+  sharedOfficeSave('src_materials', { materials: srcMaterials });
   document.getElementById('src-new-mat-name').value = '';
   document.getElementById('src-new-mat-days').value = '90';
   srcRenderMatList();
