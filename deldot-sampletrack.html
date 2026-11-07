@@ -8197,7 +8197,7 @@ END $$;
 // GLOBALS
 // ══════════════════════════════════════════════
 let db = null;
-const APP_BUILD = '2026.11.06-pm-portal';
+const APP_BUILD = '2026.11.07-pm-letters';
 const FC_CORE_ICON_SRC = 'docs/r18-reference/core-drill-icon-128.png';
 const BORELOG_ICON_SRC = 'docs/r18-reference/borelog-icon.webp';
 const BORELOG_PATH = 'deldot-borelog-v6-uscs.html';
@@ -12505,6 +12505,67 @@ async function filterByProject(contract, name) {
   updateStats(filtered);
 }
 
+function pmDetailRow(main, sub, aside) {
+  return '<div style="display:flex;justify-content:space-between;gap:12px;padding:10px 0;border-bottom:1px solid var(--border);font-size:13px;">' +
+    '<div><strong>' + pmHtml(main || '—') + '</strong>' +
+    '<div style="color:var(--muted);font-size:12px;">' + pmHtml(sub || '—') + '</div></div>' +
+    '<div style="text-align:right;font-family:var(--mono);font-size:11px;color:var(--accent2);white-space:nowrap;">' + pmHtml(aside || '') + '</div></div>';
+}
+
+function pmDetailSection(title, body) {
+  return '<div style="margin-top:16px;"><div style="font-family:var(--mono);font-size:10px;letter-spacing:1px;color:var(--muted);margin-bottom:4px;">' +
+    pmHtml(title) + '</div>' + body + '</div>';
+}
+
+function pmEmptyLine(text) {
+  return '<div style="color:var(--muted);font-family:var(--mono);font-size:11px;padding:8px 0;">' + pmHtml(text) + '</div>';
+}
+
+function pmContractQuery(table, columns, contract) {
+  const safe = String(contract || '').trim().replace(/[%_,]/g, '');
+  return db.from(table).select(columns).ilike('contract', safe);
+}
+
+async function pmLoadRows(query) {
+  try {
+    const { data, error } = await query;
+    if (error) return { rows: [], error: error.message || 'Could not load' };
+    return { rows: data || [], error: '' };
+  } catch (e) {
+    return { rows: [], error: (e && e.message) || 'Could not load' };
+  }
+}
+
+function pmLetterSummary(letter) {
+  const sources = Array.isArray(letter.sources) ? letter.sources : [];
+  const names = sources.map(s => s.source).filter(Boolean).slice(0, 3).join(', ');
+  const when = letter.letter_date || String(letter.created_at || '').slice(0, 10);
+  const rev = letter.revision ? 'Rev ' + letter.revision : 'Letter';
+  return { when, rev, names: names || letter.title || letter.contractor || 'Source letter' };
+}
+
+async function openPmLetter(id) {
+  if (currentUser?.role !== 'pm' || !db) return;
+  const { data, error } = await db.from('sos_letters')
+    .select('id,contract,letter_date,letter_html,letter_text')
+    .eq('id', id)
+    .maybeSingle();
+  if (error || !data) {
+    showToast('Could not open that source letter.', 'error');
+    return;
+  }
+  const win = window.open('', '_blank');
+  if (!win) {
+    showToast('Allow pop-ups to open the source letter.', 'error');
+    return;
+  }
+  const body = data.letter_html
+    ? data.letter_html
+    : '<pre style="white-space:pre-wrap;font-family:Georgia,serif;">' + pmHtml(data.letter_text || 'This letter has no saved text.') + '</pre>';
+  win.document.write('<!DOCTYPE html><html><head><title>Source letter ' + pmHtml(data.contract || '') + '</title></head><body>' + body + '</body></html>');
+  win.document.close();
+}
+
 async function openPmProject(id) {
   if (currentUser?.role !== 'pm') return;
   const proj = (allProjects || []).find(p => p.id === id);
@@ -12513,28 +12574,43 @@ async function openPmProject(id) {
   const title = proj.contract || 'Project';
   const name = proj.road || proj.description || proj.contractor || '';
   box.style.display = '';
-  box.innerHTML = '<div class="card"><div class="card-title">' + pmHtml(title + (name ? ' — ' + name : '')) + '</div><div style="color:var(--muted);font-family:var(--mono);font-size:11px;">Loading samples…</div></div>';
-  let samples = [];
-  let note = '';
-  if (!db) {
-    note = 'Samples appear when LabTrak is connected.';
-  } else {
-    const { data, error } = await db.from('samples')
-      .select('id,test_no,sample_type,status,date_sampled,location,contract')
-      .eq('contract', proj.contract)
-      .is('deleted_at', null)
-      .order('created_at', { ascending: false });
-    if (error) note = 'Samples could not be loaded.';
-    else samples = (data || []).filter(s => !s.archived);
+  box.innerHTML = '<div class="card"><div class="card-title">' + pmHtml(title + (name ? ' — ' + name : '')) + '</div>' + pmEmptyLine('Loading this project…') + '</div>';
+  const offline = 'These records appear when LabTrak is connected.';
+  let letters = { rows: [], error: offline };
+  let samples = { rows: [], error: offline };
+  let fieldTests = { rows: [], error: offline };
+  let concrete = { rows: [], error: offline };
+  if (db && proj.contract) {
+    [letters, samples, fieldTests, concrete] = await Promise.all([
+      pmLoadRows(pmContractQuery('sos_letters', 'id,contract,title,contractor,letter_date,revision,sources,created_at', proj.contract).is('deleted_at', null).order('created_at', { ascending: false })),
+      pmLoadRows(pmContractQuery('samples', 'id,test_no,sample_type,status,date_sampled,location,contract,archived', proj.contract).is('deleted_at', null).order('created_at', { ascending: false })),
+      pmLoadRows(pmContractQuery('field_tests', 'id,test_no,test_category,location,status,test_date,contract', proj.contract).order('created_at', { ascending: false })),
+      pmLoadRows(pmContractQuery('concrete_sets', 'id,test_no,pour_location,cast_date,supplier,contract', proj.contract).order('created_at', { ascending: false })),
+    ]);
+    samples.rows = (samples.rows || []).filter(s => !s.archived);
   }
-  const rows = samples.length
-    ? samples.map(s => '<div style="display:flex;justify-content:space-between;gap:12px;padding:10px 0;border-bottom:1px solid var(--border);font-size:13px;">' +
-        '<div><strong>' + pmHtml(s.test_no || 'Sample') + '</strong>' +
-        '<div style="color:var(--muted);font-size:12px;">' + pmHtml([s.sample_type, s.location].filter(Boolean).join(' · ') || '—') + '</div></div>' +
-        '<div style="text-align:right;font-family:var(--mono);font-size:11px;color:var(--accent2);">' + pmHtml(s.status || 'pending') +
-        (s.date_sampled ? '<div style="color:var(--muted);">' + pmHtml(s.date_sampled) + '</div>' : '') + '</div></div>').join('')
-    : '<div style="color:var(--muted);font-family:var(--mono);font-size:11px;padding:8px 0;">' + pmHtml(note || 'No samples on this project yet.') + '</div>';
-  box.innerHTML = '<div class="card"><div class="card-title">' + pmHtml(title + (name ? ' — ' + name : '')) + '</div>' + rows + '</div>';
+  const letterRows = (letters.rows || []).map(letter => {
+    const bit = pmLetterSummary(letter);
+    const safeId = String(letter.id || '').replace(/'/g, '');
+    return '<button type="button" onclick="openPmLetter(\'' + safeId + '\')" style="display:block;width:100%;text-align:left;background:transparent;border:none;border-bottom:1px solid var(--border);padding:10px 0;cursor:pointer;color:inherit;">' +
+      '<strong>' + pmHtml(bit.names) + '</strong>' +
+      '<div style="color:var(--muted);font-size:12px;">' + pmHtml([bit.when, bit.rev, letter.contractor].filter(Boolean).join(' · ')) + '</div></button>';
+  }).join('');
+  const sampleRows = (samples.rows || []).map(s => pmDetailRow(s.test_no || 'Sample', [s.sample_type, s.location].filter(Boolean).join(' · '), s.status || 'pending')).join('');
+  const fieldRows = (fieldTests.rows || []).map(t => pmDetailRow(t.test_no || t.test_category || 'Field test', [t.test_category, t.location].filter(Boolean).join(' · '), t.status || t.test_date || '')).join('');
+  const concreteRows = (concrete.rows || []).map(c => pmDetailRow(c.test_no || 'Concrete', [c.pour_location, c.supplier].filter(Boolean).join(' · '), c.cast_date || '')).join('');
+  const sectionEmpty = (result, none, missing) => {
+    if (!db) return offline;
+    if (result.error && missing && missing.test(result.error)) return 'Source letters appear here after the letter table is added in Supabase.';
+    if (result.error) return 'Could not load this list.';
+    return none;
+  };
+  box.innerHTML = '<div class="card"><div class="card-title">' + pmHtml(title + (name ? ' — ' + name : '')) + '</div>' +
+    pmDetailSection('Source letters', letterRows || pmEmptyLine(sectionEmpty(letters, 'No source letter saved for this contract yet.', /sos_letters|schema cache|relation|does not exist/i))) +
+    pmDetailSection('Samples', sampleRows || pmEmptyLine(sectionEmpty(samples, 'No samples on this project yet.'))) +
+    pmDetailSection('Field tests', fieldRows || pmEmptyLine(sectionEmpty(fieldTests, 'No field tests on this project yet.'))) +
+    pmDetailSection('Concrete', concreteRows || pmEmptyLine(sectionEmpty(concrete, 'No concrete on this project yet.'))) +
+    '</div>';
   box.scrollIntoView({ block: 'nearest' });
 }
 

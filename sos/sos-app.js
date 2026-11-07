@@ -2782,6 +2782,108 @@
     }
   };
 
+  function letterLabtrakPayload() {
+    const contract = val('ph-contract').trim();
+    const project = {
+      contract: contract,
+      title: val('ph-title').trim(),
+      contractor: val('ph-contractor').trim(),
+      contractorAddr: val('ph-contractor-addr'),
+      district: val('ph-district'),
+      contact: val('ph-contact').trim(),
+      date: val('ph-date'),
+      docKind: val('ph-dockind'),
+    };
+    const sources = (items || []).map(item => ({
+      specs: item.letterSpecs || item.specs || [],
+      material: item.desc || '',
+      source: item.srcName || '',
+      location: item.srcLoc || '',
+      action: item.action || '',
+      actionNotes: item.actionNotes || '',
+    }));
+    let letterText = '';
+    if (typeof SOSEngine !== 'undefined' && SOSEngine.letterPlainText) {
+      try { letterText = SOSEngine.letterPlainText(project, items, ccList); } catch (e) {}
+    }
+    const doc = document.getElementById('letter-doc');
+    const letterDate = /^\d{4}-\d{2}-\d{2}$/.test(project.date) ? project.date : null;
+    return {
+      contract: contract,
+      title: project.title,
+      contractor: project.contractor,
+      district: project.district || '',
+      contact: project.contact,
+      letter_date: letterDate,
+      doc_kind: project.docKind || '',
+      revision: Number(currentRev) || null,
+      sources: sources,
+      cc: (ccList || []).map(c => ({ name: c.name || '', org: c.org || '' })),
+      letter_text: letterText,
+      letter_html: doc ? doc.innerHTML : '',
+    };
+  }
+  window.letterLabtrakPayload = letterLabtrakPayload;
+
+  function loadSupabaseJs() {
+    if (window.supabase && window.supabase.createClient) return Promise.resolve();
+    return new Promise((resolve, reject) => {
+      const script = document.createElement('script');
+      script.src = 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js';
+      script.onload = () => resolve();
+      script.onerror = () => reject(new Error('Could not reach LabTrak to save the letter.'));
+      document.head.appendChild(script);
+    });
+  }
+
+  window.saveLetterToLabtrak = async function () {
+    if (window.saveLetterToLabtrak.busy) return;
+    const payload = letterLabtrakPayload();
+    if (!payload.contract) {
+      setLetterActionStatus('Enter the contract number before saving. That number links the letter to the project.', 'red');
+      return;
+    }
+    if (!payload.sources.length && !payload.letter_html.trim()) {
+      setLetterActionStatus('Add the source items or build the letter before saving.', 'red');
+      return;
+    }
+    window.saveLetterToLabtrak.busy = true;
+    setLetterActionStatus('Saving this source letter to LabTrak…', 'blue');
+    try {
+      await loadSupabaseJs();
+      let url = 'https://qlwaqdlldldyoshyglmu.supabase.co';
+      let key = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFsd2FxZGxsZGxkeW9zaHlnbG11Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzg2MDQxOTEsImV4cCI6MjA5NDE4MDE5MX0.VRDDiDxGay5npABiVHiJ1o0-M6mHrwAVWaclWMBNU_k';
+      try {
+        url = localStorage.getItem('labtrak_sb_url') || url;
+        key = localStorage.getItem('labtrak_sb_anon_key') || key;
+      } catch (e) {}
+      const client = window.supabase.createClient(url, key, {
+        auth: { persistSession: true, autoRefreshToken: true, storage: localStorage },
+      });
+      const { data: sessionData } = await client.auth.getSession();
+      const session = sessionData && sessionData.session;
+      if (!session) {
+        setLetterActionStatus('Sign in to LabTrak in this browser, then save the letter again.', 'red');
+        return;
+      }
+      const { error } = await client.from('sos_letters').insert(Object.assign({}, payload, {
+        saved_by: (session.user && session.user.email) || '',
+      }));
+      if (error) {
+        const missing = /sos_letters|schema cache|relation|does not exist/i.test(error.message || '');
+        setLetterActionStatus(missing
+          ? 'LabTrak does not have the source-letter table yet. Run supabase/migrations/20261107_sos_letters.sql in the Supabase SQL editor once, then save again.'
+          : (error.message || 'Could not save the letter.'), 'red');
+        return;
+      }
+      setLetterActionStatus('Saved this source letter on contract ' + payload.contract + '. The project manager for that contract can open it from their project.', 'green');
+    } catch (e) {
+      setLetterActionStatus((e && e.message) || 'Could not save the letter.', 'red');
+    } finally {
+      window.saveLetterToLabtrak.busy = false;
+    }
+  };
+
   window.printLetter = function () {
     const html = document.getElementById('letter-doc').innerHTML;
     const w = window.open('', '_blank');

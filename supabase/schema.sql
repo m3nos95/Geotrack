@@ -511,3 +511,28 @@ CREATE POLICY "labtrak_sample_history_all"   ON sample_history   FOR ALL USING (
 CREATE POLICY "labtrak_borelog_projects_all" ON borelog_projects FOR ALL USING (true) WITH CHECK (true);
 CREATE POLICY "labtrak_borelog_borings_all"  ON borelog_borings  FOR ALL USING (true) WITH CHECK (true);
 CREATE POLICY "labtrak_borelog_samples_all"  ON borelog_samples  FOR ALL USING (true) WITH CHECK (true);
+
+-- Source of Supply letters saved from the SOS app. Linked to a project by contract.
+CREATE TABLE IF NOT EXISTS sos_letters (
+  id           UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  contract     TEXT NOT NULL,
+  title        TEXT NOT NULL DEFAULT '',
+  contractor   TEXT NOT NULL DEFAULT '',
+  district     TEXT NOT NULL DEFAULT '',
+  contact      TEXT NOT NULL DEFAULT '',
+  letter_date  DATE,
+  doc_kind     TEXT NOT NULL DEFAULT '',
+  revision     INTEGER,
+  sources      JSONB NOT NULL DEFAULT '[]'::jsonb,
+  cc           JSONB NOT NULL DEFAULT '[]'::jsonb,
+  letter_text  TEXT NOT NULL DEFAULT '',
+  letter_html  TEXT NOT NULL DEFAULT '',
+  saved_by     TEXT NOT NULL DEFAULT '',
+  created_at   TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at   TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  deleted_at   TIMESTAMPTZ
+);
+CREATE INDEX IF NOT EXISTS idx_sos_letters_contract ON sos_letters (contract);
+ALTER TABLE sos_letters ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "labtrak_sos_letters_all" ON sos_letters;
+CREATE POLICY "labtrak_sos_letters_all" ON sos_letters FOR ALL USING (true) WITH CHECK (true);
