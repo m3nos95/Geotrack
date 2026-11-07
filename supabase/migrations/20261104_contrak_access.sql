@@ -20,10 +20,10 @@ ALTER TABLE public.contrak_books ENABLE ROW LEVEL SECURITY;
 
 DROP POLICY IF EXISTS "contrak_access_all" ON public.contrak_access;
 CREATE POLICY "contrak_access_all" ON public.contrak_access
-  FOR ALL USING (true) WITH CHECK (true);
+  FOR ALL TO authenticated USING (true) WITH CHECK (true);
 
 DROP POLICY IF EXISTS "contrak_books_all" ON public.contrak_books;
 CREATE POLICY "contrak_books_all" ON public.contrak_books
-  FOR ALL USING (true) WITH CHECK (true);
+  FOR ALL TO authenticated USING (true) WITH CHECK (true);
 
 NOTIFY pgrst, 'reload schema';
