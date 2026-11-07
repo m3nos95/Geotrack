@@ -534,14 +534,14 @@ html.comfort-mode .hab-pulse{animation:none !important;box-shadow:none !importan
     <div class="splash-agency">Materials &amp; Research Lab</div>
     <div class="splash-version">v6.0 — DelDOT lab entry</div>
     <div class="splash-divider"></div>
-    <div class="splash-features">
+    <div class="splash-features" id="blSplashFeatures" style="display:none">
       <div class="splash-feat"><strong>Boring Logs</strong>DelDOT format</div>
       <div class="splash-feat"><strong>Lab Math</strong>Sieve · Atterberg · Moisture</div>
       <div class="splash-feat"><strong>Hydrometer</strong>Live timer · T-88</div>
       <div class="splash-feat"><strong>AASHTO M-145</strong>Auto-classified</div>
     </div>
-    <div class="splash-enter">
-      <button onclick="startApp()">⊙ &nbsp;ENTER</button>
+    <div class="splash-enter" id="blSplashEnter">
+      <p id="blSplashStatus" style="font-family:var(--sans);font-size:14px;color:var(--muted);margin:0;">Checking LabTrak sign-in…</p>
     </div>
     <div class="splash-tagline">DelDOT lab entry · .GEO import · cloud sync with LabTrak</div>
   </div>
@@ -1007,12 +1007,14 @@ const DELDOT_LOGO = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAPAAAADwCAYAA
    - Storage wrapper abstracted for future Supabase port
    ========================================================================= */
 const STORE_KEY = 'deldot_borelog_v2';
-const BORELOG_BUILD = '2026.08.14-desc-clayey-fix';
+const BORELOG_BUILD = '2026.11.07-labtrak-signin';
 const MAP_MIGRATE_KEY = 'deldot_borelog_gps_migrated_v2';
 const STORE_TS_KEY = 'deldot_borelog_v2_ts';
 const DE_STATE_PLANE = '+proj=lcc +lat_1=38.43333333333334 +lat_2=39.83333333333333 +lat_0=38 +lon_0=-75.41666666666666 +x_0=200000.99998984026 +y_0=0 +ellps=GRS80 +units=us-ft +no_defs';
 const SB_URL_KEY = 'labtrak_sb_url';
 const SB_KEY_KEY = 'labtrak_sb_anon_key';
+const SB_URL_DEFAULT = 'https://qlwaqdlldldyoshyglmu.supabase.co';
+const SB_KEY_DEFAULT = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFsd2FxZGxsZGxkeW9zaHlnbG11Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzg2MDQxOTEsImV4cCI6MjA5NDE4MDE5MX0.VRDDiDxGay5npABiVHiJ1o0-M6mHrwAVWaclWMBNU_k';
 const BORELOG_SYNC_QUEUE_KEY = 'deldot_borelog_sync_queue';
 const BORELOG_TOMBSTONES_KEY = 'deldot_borelog_tombstones';
 
@@ -1313,8 +1315,8 @@ function updateBlSyncChip(state, label) {
 function getBorelogSupabaseClient() {
   if (_blDb) return _blDb;
   if (typeof supabase === 'undefined') return null;
-  const url = localStorage.getItem(SB_URL_KEY);
-  const key = localStorage.getItem(SB_KEY_KEY);
+  const url = localStorage.getItem(SB_URL_KEY) || SB_URL_DEFAULT;
+  const key = localStorage.getItem(SB_KEY_KEY) || SB_KEY_DEFAULT;
   if (!url || !key) return null;
   _blDb = supabase.createClient(url, key, {
     auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true, storage: localStorage }
@@ -3089,7 +3091,47 @@ function pruneOrphanBoringsInStore() {
   if (changed) store._save(all);
 }
 
+let _blAuthOk = false;
+
+function showBorelogSignInWall() {
+  const feats = $('blSplashFeatures');
+  if (feats) feats.style.display = 'none';
+  const status = $('blSplashStatus');
+  if (!status) return;
+  status.innerHTML =
+    '<div style="font-family:var(--sans);font-size:18px;font-weight:650;color:var(--text);margin-bottom:8px;">Sign in to LabTrak to open BoreLog</div>' +
+    '<div style="color:var(--muted);font-size:13px;line-height:1.5;margin-bottom:16px;">BoreLog opens from the LabTrak home screen after you sign in. This address does not show the boring logs on its own.</div>' +
+    '<a href="deldot-sampletrack.html" style="display:inline-block;background:linear-gradient(135deg,var(--accent),var(--accent2));color:#fff;text-decoration:none;padding:12px 22px;border-radius:8px;font-weight:650;">LabTrak sign-in</a>';
+}
+
+async function borelogSignedInUser() {
+  const client = getBorelogSupabaseClient();
+  if (!client || !client.auth || typeof client.auth.getUser !== 'function') return null;
+  try {
+    const res = await client.auth.getUser();
+    if (!res || res.error || !res.data || !res.data.user) return null;
+    return res.data.user;
+  } catch (e) {
+    return null;
+  }
+}
+
+async function gateBorelog() {
+  const user = await borelogSignedInUser();
+  if (!user) {
+    _blAuthOk = false;
+    showBorelogSignInWall();
+    return;
+  }
+  _blAuthOk = true;
+  startApp();
+}
+
 function startApp(){
+  if (!_blAuthOk) {
+    showBorelogSignInWall();
+    return;
+  }
   initBorelogStore().then(() => {
     purgeStaleBorelogLocalMirror();
     backfillBorelogTombstonesFromQueue();
@@ -7377,6 +7419,8 @@ function closeSite3DRenderer() {
   if (container) container.innerHTML = '';
   _site3dState = null;
 }
+
+gateBorelog();
 
 function closeSite3DModal() {
   $('site3dModal')?.classList.remove('open', 'site3d-fullscreen');
