@@ -27140,7 +27140,9 @@ const FC_FAMILY_CURVES_T99 = [
 const FC_HISTORICAL_FAMILY_ID = 'deldot-historical';
 const FC_T99_FAMILY_ID = 't99-reference';
 const FC_HISTORICAL_VERSION = 1;
-const FC_ONE_POINT_FIT_PCF = 2.5;
+// Outside the fan, the point has to sit within 1 pcf of a line.
+// A wider allowance was naming curves the dot does not land on.
+const FC_ONE_POINT_FIT_PCF = 1;
 const FC_DELDOT_HISTORICAL_CURVES = [
   { no: 34, maxDry: 132.4, optMoist: 8.0, slope: 3.27 },
   { no: 33, maxDry: 131.0, optMoist: 8.5, slope: 3.03 },
@@ -27491,11 +27493,12 @@ function fcPickCurveFromOnePoint(wetDensity, moisture, familyId) {
     .map(c => ({ ...c, score: fcScoreCurveForPoint(c, wetDensity, moisture) }))
     .sort((a, b) => a.score - b.score);
   const best = scored[0];
-  if (!best || best.score > FC_ONE_POINT_FIT_PCF) {
+  const inside = fcPointInsideCurveFan(scored, wetDensity, moisture);
+  if (!best || (!inside && best.score > FC_ONE_POINT_FIT_PCF)) {
     return { fit: false, reason: 'distance', familyId: famId, best: best || null };
   }
   const second = scored[1];
-  if (second && (second.score - best.score) < 1.0 && second.score <= FC_ONE_POINT_FIT_PCF) {
+  if (second && (second.score - best.score) < 1.0 && (inside || second.score <= FC_ONE_POINT_FIT_PCF)) {
     return {
       fit: true,
       familyId: famId,
@@ -27586,15 +27589,31 @@ function fcReadOnePoint(context) {
   return { wet, moist };
 }
 
-function fcMissMessage(familyId) {
-  const fam = fcFamilyById(familyId);
-  const name = fam ? fam.name : 'this family';
-  return `No curve in ${name} fits this one-point. Run a full proctor and add that curve to the family.`;
+function fcPointInsideCurveFan(scored, wet, moist) {
+  let low = null;
+  let high = null;
+  (scored || []).forEach(c => {
+    const pred = fcPredictedWet(c, moist);
+    if (pred == null || isNaN(pred)) return;
+    if (pred <= wet && (low == null || pred > low)) low = pred;
+    if (pred >= wet && (high == null || pred < high)) high = pred;
+  });
+  return low != null && high != null && low < high;
 }
 
-function fcShowOnePointMiss(context, familyId) {
+function fcMissMessage(familyId, pick) {
+  const fam = fcFamilyById(familyId);
+  const name = fam ? fam.name : 'this family';
+  let near = '';
+  if (pick && pick.best && isFinite(pick.best.score)) {
+    near = ` The nearest line is curve ${fcCurveKey(pick.best)}, ${pick.best.score.toFixed(1)} pcf away.`;
+  }
+  return `No curve in ${name} fits this one-point.${near} Run a full proctor and add that curve to the family.`;
+}
+
+function fcShowOnePointMiss(context, familyId, pick) {
   _fcSuggestedFamilyId = familyId || fcActiveFamilyId(context || 'nuclear');
-  const msg = fcMissMessage(_fcSuggestedFamilyId);
+  const msg = fcMissMessage(_fcSuggestedFamilyId, pick);
   showToast(msg, 'error');
   const note = document.getElementById(context === 'density' ? 'den_family_note' : 'nuc_family_note');
   if (note) {
@@ -27626,7 +27645,7 @@ function fcAutoPickFromOnePoint() {
   const famId = fcActiveFamilyId(context);
   const pick = fcPickCurveFromOnePoint(point.wet, point.moist, famId);
   if (!pick || pick.fit === false) {
-    fcShowOnePointMiss(context, famId);
+    fcShowOnePointMiss(context, famId, pick);
     return null;
   }
   _fcCurvePickerSelected = String(pick.curveNo);
@@ -27795,7 +27814,7 @@ function fcRenderCurveChart() {
       pointInfo.style.color = fits ? 'var(--accent2)' : 'var(--red2)';
       pointInfo.textContent = fits
         ? `One-point: ${point.wet.toFixed(1)} pcf wet @ ${point.moist.toFixed(1)}% — curve ${pick.curveNo}`
-        : fcMissMessage(famId);
+        : fcMissMessage(famId, pick);
     }
   } else if (pointInfo) {
     pointInfo.style.color = 'var(--accent2)';
