@@ -6654,7 +6654,7 @@ END $$;
         <button id="rpt-email-btn" onclick="emailCurrentReport()" style="display:none;background:#064e2b;color:#fff;border-color:#16a34a;">📧 RESEND EMAIL</button>
         <button id="rpt-approve-btn" onclick="slApproveForDistribution()" style="display:none;">Approve</button>
         <button id="rpt-reject-btn"  onclick="slOpenRejectModal()"          style="display:none;">Reject</button>
-        <button onclick="showActiveSampleHistory()">🕓 HISTORY</button>
+        <button type="button" id="rpt-history-btn" onclick="showActiveSampleHistory()">🕓 HISTORY</button>
         <button type="button" id="rpt-back-btn" onclick="leaveReport()">← BACK TO SOIL LAB</button>
       </div>
       <div id="rpt-pending-notice" style="display:none;background:#1c1300;border:1px solid #f59e0b;border-radius:6px;padding:9px 14px;margin:0 20px 12px;font-family:var(--sans);font-size:13px;line-height:1.45;color:#fde68a;">
@@ -8197,7 +8197,7 @@ END $$;
 // GLOBALS
 // ══════════════════════════════════════════════
 let db = null;
-const APP_BUILD = '2026.11.06-pm-portal';
+const APP_BUILD = '2026.11.07-pm-reports';
 const FC_CORE_ICON_SRC = 'docs/r18-reference/core-drill-icon-128.png';
 const BORELOG_ICON_SRC = 'docs/r18-reference/borelog-icon.webp';
 const BORELOG_PATH = 'deldot-borelog-v6-uscs.html';
@@ -9131,6 +9131,7 @@ function labMapSetStyle(styleKey) {
   if (getLabTrakMapStyleKey() === styleKey) return;
   labTrakMapStyle = styleKey;
   localStorage.setItem('labtrak_map_style', styleKey);
+  sharedOfficeSave('map_style', { style: styleKey });
   syncMapStyleButtons();
   if (labMap) setLabTrakMapStyle(labMap, styleKey);
   if (projectMap) setLabTrakMapStyle(projectMap, styleKey);
@@ -11636,6 +11637,7 @@ function labMapSetPinStyle(layer, patch) {
     else delete all[layer];
   }
   try { localStorage.setItem(MAP_PIN_STYLE_KEY, JSON.stringify(all)); } catch (e) {}
+  sharedOfficeSave('map_pins', { styles: all });
   labMapRenderLayerPanel();
   labMapPlotMarkers(true);
   renderProjectMapLegend();
@@ -11645,6 +11647,7 @@ function labMapResetPinStyle(layer) {
   const all = mapPinStylesLoad();
   delete all[layer];
   try { localStorage.setItem(MAP_PIN_STYLE_KEY, JSON.stringify(all)); } catch (e) {}
+  sharedOfficeSave('map_pins', { styles: all });
   labMapRenderLayerPanel();
   labMapPlotMarkers(true);
   renderProjectMapLegend();
@@ -12505,6 +12508,107 @@ async function filterByProject(contract, name) {
   updateStats(filtered);
 }
 
+function pmDetailRow(main, sub, aside) {
+  return '<div style="display:flex;justify-content:space-between;gap:12px;padding:10px 0;border-bottom:1px solid var(--border);font-size:13px;">' +
+    '<div><strong>' + pmHtml(main || '—') + '</strong>' +
+    '<div style="color:var(--muted);font-size:12px;">' + pmHtml(sub || '—') + '</div></div>' +
+    '<div style="text-align:right;font-family:var(--mono);font-size:11px;color:var(--accent2);white-space:nowrap;">' + pmHtml(aside || '') + '</div></div>';
+}
+
+function pmDetailSection(title, body) {
+  return '<div style="margin-top:16px;"><div style="font-family:var(--mono);font-size:10px;letter-spacing:1px;color:var(--muted);margin-bottom:4px;">' +
+    pmHtml(title) + '</div>' + body + '</div>';
+}
+
+function pmEmptyLine(text) {
+  return '<div style="color:var(--muted);font-family:var(--mono);font-size:11px;padding:8px 0;">' + pmHtml(text) + '</div>';
+}
+
+function pmContractQuery(table, columns, contract) {
+  const safe = String(contract || '').trim().replace(/[%_,]/g, '');
+  return db.from(table).select(columns).ilike('contract', safe);
+}
+
+async function pmLoadRows(query) {
+  try {
+    const { data, error } = await query;
+    if (error) return { rows: [], error: error.message || 'Could not load' };
+    return { rows: data || [], error: '' };
+  } catch (e) {
+    return { rows: [], error: (e && e.message) || 'Could not load' };
+  }
+}
+
+function pmActionRow(main, sub, action, onclick) {
+  return '<button type="button" onclick="' + onclick + '" style="display:flex;justify-content:space-between;gap:12px;width:100%;text-align:left;background:transparent;border:none;border-bottom:1px solid var(--border);padding:10px 0;cursor:pointer;color:inherit;font:inherit;">' +
+    '<div><strong>' + pmHtml(main || '—') + '</strong>' +
+    '<div style="color:var(--muted);font-size:12px;">' + pmHtml(sub || '—') + '</div></div>' +
+    '<div style="text-align:right;font-family:var(--mono);font-size:11px;color:var(--accent2);white-space:nowrap;">' + pmHtml(action || '') + '</div></button>';
+}
+
+function pmSampleReady(sample) {
+  return sample && (sample.status === 'complete' || sample.status === 'approved' || sampleHasLabData(sample));
+}
+
+function pmLetterSummary(letter) {
+  const sources = Array.isArray(letter.sources) ? letter.sources : [];
+  const names = sources.map(s => s.source).filter(Boolean).slice(0, 3).join(', ');
+  const when = letter.letter_date || String(letter.created_at || '').slice(0, 10);
+  const rev = letter.revision ? 'Rev ' + letter.revision : 'Letter';
+  return { when, rev, names: names || letter.title || letter.contractor || 'Source letter' };
+}
+
+function closePmLetter() {
+  const overlay = document.getElementById('pmLetterOverlay');
+  if (overlay) overlay.classList.remove('open');
+}
+
+function showPmLetterPanel(data) {
+  let overlay = document.getElementById('pmLetterOverlay');
+  if (!overlay) {
+    overlay = document.createElement('div');
+    overlay.id = 'pmLetterOverlay';
+    overlay.className = 'edit-overlay';
+    overlay.innerHTML = '<div class="edit-panel" style="max-width:900px;width:100%;height:min(92vh,960px);display:flex;flex-direction:column;">' +
+      '<div style="display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:10px;">' +
+      '<h2 id="pmLetterTitle" style="margin:0;">Source letter</h2>' +
+      '<button type="button" class="btn btn-ghost" onclick="closePmLetter()">Close</button></div>' +
+      '<iframe id="pmLetterFrame" title="Source letter" style="flex:1;width:100%;border:1px solid var(--border);background:#fff;border-radius:8px;"></iframe>' +
+      '</div>';
+    document.body.appendChild(overlay);
+  }
+  const title = document.getElementById('pmLetterTitle');
+  if (title) title.textContent = 'Source letter' + (data.contract ? ' · ' + data.contract : '');
+  const frame = document.getElementById('pmLetterFrame');
+  const body = data.letter_html
+    ? '<div class="letter-doc">' + data.letter_html + '</div>'
+    : '<pre style="white-space:pre-wrap;font-family:Georgia,serif;padding:24px;">' + pmHtml(data.letter_text || 'This letter has no saved text.') + '</pre>';
+  if (frame) {
+    frame.srcdoc = '<!DOCTYPE html><html><head><meta charset="utf-8"><title>Source letter</title>' +
+      '<link rel="stylesheet" href="sos/sos.css?v=20260908a"></head><body style="background:#fff;margin:0;">' +
+      body + '</body></html>';
+  }
+  overlay.classList.add('open');
+}
+
+async function openPmLetter(id) {
+  if (currentUser?.role !== 'pm' || !db || !id) return;
+  const { data, error } = await db.from('sos_letters')
+    .select('id,contract,letter_date,letter_html,letter_text')
+    .eq('id', id)
+    .maybeSingle();
+  if (error || !data) {
+    showToast('Could not open that source letter.', 'error');
+    return;
+  }
+  showPmLetterPanel(data);
+}
+
+async function openPmSampleReport(id) {
+  if (currentUser?.role !== 'pm' || !id) return;
+  await viewReport(id);
+}
+
 async function openPmProject(id) {
   if (currentUser?.role !== 'pm') return;
   const proj = (allProjects || []).find(p => p.id === id);
@@ -12513,29 +12617,55 @@ async function openPmProject(id) {
   const title = proj.contract || 'Project';
   const name = proj.road || proj.description || proj.contractor || '';
   box.style.display = '';
-  box.innerHTML = '<div class="card"><div class="card-title">' + pmHtml(title + (name ? ' — ' + name : '')) + '</div><div style="color:var(--muted);font-family:var(--mono);font-size:11px;">Loading samples…</div></div>';
-  let samples = [];
-  let note = '';
-  if (!db) {
-    note = 'Samples appear when LabTrak is connected.';
-  } else {
-    const { data, error } = await db.from('samples')
-      .select('id,test_no,sample_type,status,date_sampled,location,contract')
-      .eq('contract', proj.contract)
-      .is('deleted_at', null)
-      .order('created_at', { ascending: false });
-    if (error) note = 'Samples could not be loaded.';
-    else samples = (data || []).filter(s => !s.archived);
+  box.innerHTML = '<div class="card"><div class="card-title">' + pmHtml(title + (name ? ' — ' + name : '')) + '</div>' + pmEmptyLine('Loading this project…') + '</div>';
+  const offline = 'These records appear when LabTrak is connected.';
+  let letters = { rows: [], error: offline };
+  let samples = { rows: [], error: offline };
+  let fieldTests = { rows: [], error: offline };
+  let concrete = { rows: [], error: offline };
+  if (db && proj.contract) {
+    [letters, samples, fieldTests, concrete] = await Promise.all([
+      pmLoadRows(pmContractQuery('sos_letters', 'id,contract,title,contractor,letter_date,revision,sources,created_at', proj.contract).is('deleted_at', null).order('created_at', { ascending: false })),
+      pmLoadRows(pmContractQuery('samples', 'id,test_no,sample_type,status,date_sampled,location,contract,archived,lab_data,test_category', proj.contract).is('deleted_at', null).order('created_at', { ascending: false })),
+      pmLoadRows(pmContractQuery('field_tests', 'id,test_no,test_category,location,status,test_date,contract', proj.contract).order('created_at', { ascending: false })),
+      pmLoadRows(pmContractQuery('concrete_sets', 'id,test_no,pour_location,cast_date,supplier,contract', proj.contract).order('created_at', { ascending: false })),
+    ]);
+    samples.rows = (samples.rows || []).filter(s => !s.archived);
   }
-  const rows = samples.length
-    ? samples.map(s => '<div style="display:flex;justify-content:space-between;gap:12px;padding:10px 0;border-bottom:1px solid var(--border);font-size:13px;">' +
-        '<div><strong>' + pmHtml(s.test_no || 'Sample') + '</strong>' +
-        '<div style="color:var(--muted);font-size:12px;">' + pmHtml([s.sample_type, s.location].filter(Boolean).join(' · ') || '—') + '</div></div>' +
-        '<div style="text-align:right;font-family:var(--mono);font-size:11px;color:var(--accent2);">' + pmHtml(s.status || 'pending') +
-        (s.date_sampled ? '<div style="color:var(--muted);">' + pmHtml(s.date_sampled) + '</div>' : '') + '</div></div>').join('')
-    : '<div style="color:var(--muted);font-family:var(--mono);font-size:11px;padding:8px 0;">' + pmHtml(note || 'No samples on this project yet.') + '</div>';
-  box.innerHTML = '<div class="card"><div class="card-title">' + pmHtml(title + (name ? ' — ' + name : '')) + '</div>' + rows + '</div>';
+  box.innerHTML = pmProjectPacketHtml(proj, letters, samples, fieldTests, concrete);
   box.scrollIntoView({ block: 'nearest' });
+}
+
+function pmProjectPacketHtml(proj, letters, samples, fieldTests, concrete) {
+  const title = proj.contract || 'Project';
+  const name = proj.road || proj.description || proj.contractor || '';
+  const offline = 'These records appear when LabTrak is connected.';
+  const letterRows = (letters.rows || []).map(letter => {
+    const bit = pmLetterSummary(letter);
+    const safeId = String(letter.id || '').replace(/'/g, '');
+    return pmActionRow(bit.names, [bit.when, bit.rev, letter.contractor].filter(Boolean).join(' · '), 'View letter', "openPmLetter('" + safeId + "')");
+  }).join('');
+  const sampleRows = (samples.rows || []).map(s => {
+    const main = s.test_no || 'Sample';
+    const sub = [s.sample_type, s.location].filter(Boolean).join(' · ');
+    if (!pmSampleReady(s)) return pmDetailRow(main, sub, s.status || 'pending');
+    const safeId = String(s.id || '').replace(/'/g, '');
+    return pmActionRow(main, sub, 'View report', "openPmSampleReport('" + safeId + "')");
+  }).join('');
+  const fieldRows = (fieldTests.rows || []).map(t => pmDetailRow(t.test_no || t.test_category || 'Field test', [t.test_category, t.location].filter(Boolean).join(' · '), t.status || t.test_date || '')).join('');
+  const concreteRows = (concrete.rows || []).map(c => pmDetailRow(c.test_no || 'Concrete', [c.pour_location, c.supplier].filter(Boolean).join(' · '), c.cast_date || '')).join('');
+  const sectionEmpty = (result, none, missing) => {
+    if (!db) return offline;
+    if (result.error && missing && missing.test(result.error)) return 'Source letters appear here after the letter table is added in Supabase.';
+    if (result.error) return 'Could not load this list.';
+    return none;
+  };
+  return '<div class="card"><div class="card-title">' + pmHtml(title + (name ? ' — ' + name : '')) + '</div>' +
+    pmDetailSection('Source letters', letterRows || pmEmptyLine(sectionEmpty(letters, 'No source letter has been filed on this project yet.', /sos_letters|schema cache|relation|does not exist/i))) +
+    pmDetailSection('Samples', sampleRows || pmEmptyLine(sectionEmpty(samples, 'No samples on this project yet.'))) +
+    pmDetailSection('Field tests', fieldRows || pmEmptyLine(sectionEmpty(fieldTests, 'No field tests on this project yet.'))) +
+    pmDetailSection('Concrete', concreteRows || pmEmptyLine(sectionEmpty(concrete, 'No concrete on this project yet.'))) +
+    '</div>';
 }
 
 function clearProjectFilter() {
@@ -12666,11 +12796,16 @@ function saveEmailSettings() {
   if (!gmail) {
     localStorage.removeItem('sl_gmail_from');
     localStorage.removeItem('sl_gmail_app_password');
+    sharedOfficeSave('gmail', { from: '', appPassword: '' });
     if (statusEl) statusEl.textContent = '';
     showToast('Gmail settings cleared', 'info');
     return;
   }
   localStorage.setItem('sl_gmail_from', gmail);
+  sharedOfficeSave('gmail', {
+    from: gmail,
+    appPassword: appPass || localStorage.getItem('sl_gmail_app_password') || '',
+  });
   if (appPass) {
     if (!isValidAppPassword(appPass)) {
       showToast('App password must be exactly 16 characters (not your regular Gmail password)', 'error');
@@ -13042,7 +13177,7 @@ function refreshReportEmailBtn(sample) {
   const concrete = isConcreteApprovalRecord(sample);
 
   // Resend stays with the lab. Field techs only read the finished report.
-  const fieldReader = currentUser?.role === 'field';
+  const fieldReader = currentUser?.role === 'field' || currentUser?.role === 'pm';
   if (btn) btn.style.display = (!fieldReader && !concrete && hasDist && isApproved && gmailSendReady()) ? '' : 'none';
   const editBtn = document.getElementById('rpt-soillab-edit-btn');
   if (editBtn && (compaction || concrete || !roleCanUseSoilModule())) editBtn.style.display = 'none';
@@ -14515,6 +14650,133 @@ function setDbConnected(connected) {
   const dot = document.getElementById('connDot');
   if (dot) dot.classList.toggle('off', !connected);
   updateSyncStatusChip();
+  if (connected) pullSharedOfficeSettings();
+}
+
+async function sharedOfficeLoad(id) {
+  if (!db) return null;
+  const { data, error } = await db.from('labtrak_shared').select('payload').eq('id', id).maybeSingle();
+  if (error || !data) return null;
+  return data.payload;
+}
+
+function sharedOfficeWrite(id, payload) {
+  if (!db || !window._dbConnected) return;
+  db.from('labtrak_shared').upsert({
+    id: id,
+    payload: payload,
+    updated_at: new Date().toISOString(),
+    updated_by: (currentUser && currentUser.name) || '',
+  }, { onConflict: 'id' }).then(function () {});
+}
+
+function sharedOfficeSave(id, payload) {
+  if (!window._officeSyncReady) return;
+  sharedOfficeWrite(id, payload);
+}
+
+async function pullSharedOfficeSettings() {
+  window._officeSyncReady = false;
+  try {
+  const teams = await sharedOfficeLoad('custom_teams');
+  if (teams && Array.isArray(teams.teams)) {
+    try { localStorage.setItem('st_custom_teams', JSON.stringify(teams.teams)); } catch (e) {}
+    teams.teams.forEach(function (t) {
+      if (t && t.id && !ROLE_DEFS[t.id]) {
+        ROLE_DEFS[t.id] = { label: t.name, color: t.color || '#94a3b8', tabs: t.tabs || [], custom: true };
+        ROLE_HOME[t.id] = 'home';
+      }
+    });
+    if (typeof renderCustomTeamList === 'function') renderCustomTeamList();
+    if (typeof umRoleDropdownChanged === 'function') umRoleDropdownChanged();
+  }
+  const hubs = await sharedOfficeLoad('hub_restrictions');
+  if (hubs && hubs.map && typeof hubs.map === 'object') {
+    try { localStorage.setItem('st_hub_restrictions', JSON.stringify(hubs.map)); } catch (e) {}
+    if (_stUsersCache) _stUsersCache = _mergeHubRestrictions(_stUsersCache);
+  }
+  const mats = await sharedOfficeLoad('src_materials');
+  if (mats && Array.isArray(mats.materials) && mats.materials.length) {
+    srcMaterials = mats.materials;
+    try { localStorage.setItem('src_materials', JSON.stringify(srcMaterials)); } catch (e) {}
+  }
+  await adoptSharedList('proctors', function () { return fcLoadProctors(); }, function (list) {
+    _fcProctorRaw = list;
+    try { localStorage.setItem(FC_PROCTORS_KEY, JSON.stringify(list)); } catch (e) {}
+  });
+  await adoptSharedList('curve_families', function () {
+    try { return JSON.parse(localStorage.getItem(FC_FOC_FAMILIES_KEY) || '[]'); } catch (e) { return []; }
+  }, function (list) {
+    _fcFamilyRaw = list;
+    try { localStorage.setItem(FC_FOC_FAMILIES_KEY, JSON.stringify(list)); } catch (e) {}
+  });
+  const pins = await sharedOfficeLoad('map_pins');
+  if (pins && pins.styles && typeof pins.styles === 'object') {
+    try { localStorage.setItem(MAP_PIN_STYLE_KEY, JSON.stringify(pins.styles)); } catch (e) {}
+    if (typeof labMapPlotMarkers === 'function' && labMap) labMapPlotMarkers(true);
+  } else {
+    const localPins = mapPinStylesLoad();
+    if (localPins && Object.keys(localPins).length) sharedOfficeWrite('map_pins', { styles: localPins });
+  }
+  const mapStyle = await sharedOfficeLoad('map_style');
+  if (mapStyle && mapStyle.style) {
+    labTrakMapStyle = mapStyle.style;
+    try { localStorage.setItem('labtrak_map_style', mapStyle.style); } catch (e) {}
+    if (typeof syncMapStyleButtons === 'function') syncMapStyleButtons();
+    if (labMap) setLabTrakMapStyle(labMap, mapStyle.style);
+    if (projectMap) setLabTrakMapStyle(projectMap, mapStyle.style);
+  } else if (labTrakMapStyle) {
+    sharedOfficeWrite('map_style', { style: labTrakMapStyle });
+  }
+  const mail = await sharedOfficeLoad('gmail');
+  if (mail && typeof mail === 'object' && ('from' in mail || 'appPassword' in mail)) {
+    if (mail.from) localStorage.setItem('sl_gmail_from', mail.from);
+    else localStorage.removeItem('sl_gmail_from');
+    if (mail.appPassword) localStorage.setItem('sl_gmail_app_password', mail.appPassword);
+    else localStorage.removeItem('sl_gmail_app_password');
+  } else {
+    const from = localStorage.getItem('sl_gmail_from') || '';
+    const pass = localStorage.getItem('sl_gmail_app_password') || '';
+    if (from || pass) sharedOfficeWrite('gmail', { from: from, appPassword: pass });
+  }
+  const shortcuts = await sharedOfficeLoad('r18_shortcuts');
+  if (shortcuts && Array.isArray(shortcuts.list)) {
+    try { localStorage.setItem('r18_shortcuts', JSON.stringify(shortcuts.list)); } catch (e) {}
+  } else {
+    try {
+      const localCuts = JSON.parse(localStorage.getItem('r18_shortcuts') || '[]');
+      if (localCuts.length) sharedOfficeWrite('r18_shortcuts', { list: localCuts });
+    } catch (e) {}
+  }
+  const prefs = await sharedOfficeLoad('fc_prefs');
+  const uid = (currentUser && currentUser.id) || '';
+  if (prefs && prefs.byUser && typeof prefs.byUser === 'object') {
+    _fcPrefsByUser = prefs.byUser;
+    if (uid && prefs.byUser[uid]) {
+      try { localStorage.setItem('fc_prefs_' + uid, JSON.stringify(prefs.byUser[uid])); } catch (e) {}
+    }
+  } else if (uid) {
+    try {
+      const raw = JSON.parse(localStorage.getItem('fc_prefs_' + uid) || 'null');
+      if (raw) {
+        _fcPrefsByUser[uid] = raw;
+        sharedOfficeWrite('fc_prefs', { byUser: _fcPrefsByUser });
+      }
+    } catch (e) {}
+  }
+  } finally {
+    window._officeSyncReady = true;
+  }
+}
+
+async function adoptSharedList(id, readLocal, applyList) {
+  const remote = await sharedOfficeLoad(id);
+  if (remote && Array.isArray(remote.list)) {
+    applyList(remote.list);
+    return;
+  }
+  const local = readLocal() || [];
+  if (local.length) sharedOfficeWrite(id, { list: local });
 }
 
 function setSyncInProgress(active) {
@@ -16447,7 +16709,7 @@ function showPlannedModule(name) {
 function switchView(name, opts) {
   opts = opts || {};
   if (currentUser?.role === 'supplier' && name !== 'concrete') name = 'concrete';
-  if (currentUser?.role === 'pm' && name !== 'projects') name = 'projects';
+  if (currentUser?.role === 'pm' && name !== 'projects' && name !== 'report') name = 'projects';
   if ((name === 'soillab' || name === 'labhub') && !roleCanUseSoilModule()) {
     const hint = currentUser?.role === 'field' ? ' Finished reports are on Field Control.' : '';
     showToast('The soil lab stays with the lab techs.' + hint, 'info');
@@ -22955,10 +23217,14 @@ function syncReportChrome() {
   const back = document.getElementById('rpt-back-btn');
   const compaction = isCompactionApprovalRecord(_approvalTarget || slCurrentSample);
   if (back) {
-    back.textContent = compaction ? '← BACK' : (roleCanUseSoilModule() ? '← BACK TO SOIL LAB' : '← BACK');
+    back.textContent = currentUser?.role === 'pm'
+      ? '← BACK TO PROJECT'
+      : (compaction ? '← BACK' : (roleCanUseSoilModule() ? '← BACK TO SOIL LAB' : '← BACK'));
   }
   const editBtn = document.getElementById('rpt-soillab-edit-btn');
   if (editBtn && (compaction || !roleCanUseSoilModule())) editBtn.style.display = 'none';
+  const historyBtn = document.getElementById('rpt-history-btn');
+  if (historyBtn) historyBtn.style.display = currentUser?.role === 'pm' ? 'none' : '';
 }
 
 function openFoundSample(sample) {
@@ -22977,6 +23243,10 @@ function leaveReport() {
   _approvalTarget = null;
   const btn = document.getElementById('rpt-soillab-edit-btn');
   if (btn) btn.style.display = 'none';
+  if (currentUser?.role === 'pm') {
+    switchView('projects');
+    return;
+  }
   switchView(compaction ? 'fieldhub' : (roleCanUseSoilModule() ? 'soillab' : 'fieldhub'));
 }
 
@@ -24032,6 +24302,7 @@ function addCustomTeam() {
   const teams = loadCustomTeams();
   teams.push({ id, name, color, tabs });
   localStorage.setItem('st_custom_teams', JSON.stringify(teams));
+  sharedOfficeSave('custom_teams', { teams: teams });
   ROLE_DEFS[id] = { label: name, color, tabs, custom: true };
   ROLE_HOME[id] = 'home';
   const nameEl = document.getElementById('ct_name');
@@ -24045,6 +24316,7 @@ function addCustomTeam() {
 function deleteCustomTeam(id) {
   const teams = loadCustomTeams().filter(t => t.id !== id);
   localStorage.setItem('st_custom_teams', JSON.stringify(teams));
+  sharedOfficeSave('custom_teams', { teams: teams });
   delete ROLE_DEFS[id];
   renderCustomTeamList();
   umRoleDropdownChanged();
@@ -24093,6 +24365,7 @@ function _getHubRestrictStore() {
 }
 function _saveHubRestrictStore(map) {
   localStorage.setItem('st_hub_restrictions', JSON.stringify(map));
+  sharedOfficeSave('hub_restrictions', { map: map });
 }
 // Merge stored hub restrictions into a users array
 function _mergeHubRestrictions(users) {
@@ -27836,19 +28109,28 @@ function fcUid() {
   return 'id_' + Date.now().toString(36) + '_' + Math.random().toString(36).slice(2, 9);
 }
 
+let _fcProctorRaw = null;
+let _fcFamilyRaw = null;
 function fcLoadProctors() {
-  try { return JSON.parse(localStorage.getItem(FC_PROCTORS_KEY) || '[]'); } catch { return []; }
+  if (_fcProctorRaw) return _fcProctorRaw;
+  try { _fcProctorRaw = JSON.parse(localStorage.getItem(FC_PROCTORS_KEY) || '[]'); } catch { _fcProctorRaw = []; }
+  return _fcProctorRaw;
 }
 function fcSaveProctors(list) {
-  localStorage.setItem(FC_PROCTORS_KEY, JSON.stringify(list || []));
+  _fcProctorRaw = list || [];
+  localStorage.setItem(FC_PROCTORS_KEY, JSON.stringify(_fcProctorRaw));
+  sharedOfficeSave('proctors', { list: _fcProctorRaw });
 }
 function fcLoadFamilies() {
-  try {
-    return fcMergeBuiltinFamily(JSON.parse(localStorage.getItem(FC_FOC_FAMILIES_KEY) || '[]'));
-  } catch { return fcMergeBuiltinFamily([]); }
+  if (!_fcFamilyRaw) {
+    try { _fcFamilyRaw = JSON.parse(localStorage.getItem(FC_FOC_FAMILIES_KEY) || '[]'); } catch { _fcFamilyRaw = []; }
+  }
+  return fcMergeBuiltinFamily(_fcFamilyRaw);
 }
 function fcSaveFamilies(list) {
-  localStorage.setItem(FC_FOC_FAMILIES_KEY, JSON.stringify(list || []));
+  _fcFamilyRaw = list || [];
+  localStorage.setItem(FC_FOC_FAMILIES_KEY, JSON.stringify(_fcFamilyRaw));
+  sharedOfficeSave('curve_families', { list: _fcFamilyRaw });
 }
 
 function fcOpenProctorFromHub() {
@@ -29245,18 +29527,24 @@ function initFC_View() {
 }
 
 // ── FC user prefs — persist last-used intent + category ───────
-// Keyed to currentUser.id so each tech gets their own default.
-// Stored in localStorage; survives page refresh, not device swap.
+// Keyed to currentUser.id so each tech keeps their own default,
+// and the same default follows that person to any browser.
 
 function fcPrefsKey() {
   const uid = currentUser?.id || 'anon';
   return 'fc_prefs_' + uid;
 }
 
+let _fcPrefsByUser = {};
 function fcSavePrefs(intent, category) {
   try {
     const prefs = { intent, category, saved: new Date().toISOString() };
     localStorage.setItem(fcPrefsKey(), JSON.stringify(prefs));
+    const uid = (currentUser && currentUser.id) || '';
+    if (uid) {
+      _fcPrefsByUser[uid] = prefs;
+      sharedOfficeSave('fc_prefs', { byUser: _fcPrefsByUser });
+    }
   } catch(e) { /* storage blocked — silent fail */ }
 }
 
@@ -30742,6 +31030,13 @@ async function srcLoad() {
     ];
     localStorage.setItem('src_materials', JSON.stringify(srcMaterials));
   }
+  const remoteMats = await sharedOfficeLoad('src_materials');
+  if (remoteMats && Array.isArray(remoteMats.materials) && remoteMats.materials.length) {
+    srcMaterials = remoteMats.materials;
+    localStorage.setItem('src_materials', JSON.stringify(srcMaterials));
+  } else if (srcMaterials.length) {
+    sharedOfficeSave('src_materials', { materials: srcMaterials });
+  }
 
   // Load records from Supabase
   const { data, error } = await db.from('approved_sources').select('*').order('stockpile_location');
@@ -31077,6 +31372,7 @@ function srcEditMatDays(i) {
   if (isNaN(n) || n < 1) { showToast('Invalid', 'error'); return; }
   srcMaterials[i].default_days = n;
   localStorage.setItem('src_materials', JSON.stringify(srcMaterials));
+  sharedOfficeSave('src_materials', { materials: srcMaterials });
   srcRenderMatList();
 }
 function srcRemoveMaterial(i) {
@@ -31084,6 +31380,7 @@ function srcRemoveMaterial(i) {
   if (!confirm(`Remove material type "${m.name}"? This won't delete existing records.`)) return;
   srcMaterials.splice(i, 1);
   localStorage.setItem('src_materials', JSON.stringify(srcMaterials));
+  sharedOfficeSave('src_materials', { materials: srcMaterials });
   srcRenderMatList();
 }
 function srcAddMaterial() {
@@ -31095,6 +31392,7 @@ function srcAddMaterial() {
   }
   srcMaterials.push({ id: name, name, default_days: days });
   localStorage.setItem('src_materials', JSON.stringify(srcMaterials));
+  sharedOfficeSave('src_materials', { materials: srcMaterials });
   document.getElementById('src-new-mat-name').value = '';
   document.getElementById('src-new-mat-days').value = '90';
   srcRenderMatList();
@@ -36096,6 +36394,7 @@ window.r18_qmShortcut = () => {
   try { list = JSON.parse(localStorage.getItem('r18_shortcuts') || '[]'); } catch (e) { list = []; }
   if (!list.includes('quality-manual')) list.push('quality-manual');
   localStorage.setItem('r18_shortcuts', JSON.stringify(list));
+  sharedOfficeSave('r18_shortcuts', { list: list });
   toast('Quality Manual added to shortcuts');
 };
 window.r18_qmTop = () => {
