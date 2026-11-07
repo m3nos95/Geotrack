@@ -4292,6 +4292,7 @@ END $$;
         Soil and concrete admins get a line when they need ConTrak. Field control stays on No ConTrak.
         A LabTrak administrator can open ConTrak until their line is set to No ConTrak.
         The file already on this browser stays with the first person set to Their contracts.
+        ConTrak opens only after a LabTrak sign-in. The ConTrak address by itself does not show the books.
       </p>
       <div id="contrakAccessList"></div>
       <p id="contrakAccessNote" style="font-family:var(--mono);font-size:10px;color:var(--muted);margin:10px 0 0;line-height:1.5;"></p>
@@ -18524,11 +18525,11 @@ ALTER TABLE public.contrak_books ENABLE ROW LEVEL SECURITY;
 
 DROP POLICY IF EXISTS "contrak_access_all" ON public.contrak_access;
 CREATE POLICY "contrak_access_all" ON public.contrak_access
-  FOR ALL USING (true) WITH CHECK (true);
+  FOR ALL TO authenticated USING (true) WITH CHECK (true);
 
 DROP POLICY IF EXISTS "contrak_books_all" ON public.contrak_books;
 CREATE POLICY "contrak_books_all" ON public.contrak_books
-  FOR ALL USING (true) WITH CHECK (true);
+  FOR ALL TO authenticated USING (true) WITH CHECK (true);
 
 NOTIFY pgrst, 'reload schema';
 `;
@@ -18632,8 +18633,8 @@ async function renderContrakAccess() {
   const note = document.getElementById('contrakAccessNote');
   if (note) {
     note.textContent = window.__contrakSqlNeeded
-      ? 'Saved on this browser. Copy the ConTrak SQL and run it once so a boss on another computer can open these books.'
-      : 'After the SQL is in place, Save copies this list to the server.';
+      ? 'Saved on this browser. Copy the ConTrak SQL and run it once so a boss on another computer can open these books, and so the books stay closed until someone signs in to LabTrak.'
+      : 'Copy the ConTrak SQL and run it once more in Supabase so the books stay closed until someone signs in to LabTrak. Save still copies this list to the server.';
   }
 }
 

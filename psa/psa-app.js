@@ -42,6 +42,7 @@
     viewId: null,
     foreign: false,
     locked: false,
+    signedOut: true,
     cloudNote: "",
     client: undefined,
   };
@@ -115,7 +116,7 @@
   }
 
   function save(opts) {
-    if (who.foreign || who.locked) return;
+    if (who.signedOut || who.foreign || who.locked) return;
     persistUi();
     var owner = "";
     try {
@@ -1219,8 +1220,35 @@
     return Math.max(0, Math.min(100, Math.round((part / whole) * 100)));
   }
 
+  function signedOutHtml() {
+    return (
+      '<div class="setup-wrap">' +
+      labtrakHomeLink() +
+      '<h2 style="margin-top:14px">Sign in to LabTrak to open ConTrak</h2>' +
+      '<p class="muted">ConTrak opens from the LabTrak home screen after you sign in. ' +
+      "This address does not show the contract books on its own.</p>" +
+      '<p style="margin-top:16px"><a class="btn primary" href="../deldot-sampletrack.html">LabTrak sign-in</a></p>' +
+      "</div>"
+    );
+  }
+
+  function confirmedLabTrakUser() {
+    var client = contrakClient();
+    if (!client || !client.auth || typeof client.auth.getUser !== "function") return Promise.resolve(null);
+    return client.auth.getUser().then(function (res) {
+      if (!res || res.error || !res.data || !res.data.user) return null;
+      return res.data.user;
+    }).catch(function () {
+      return null;
+    });
+  }
+
   function render() {
     var app = document.getElementById("app");
+    if (who.signedOut) {
+      app.innerHTML = signedOutHtml();
+      return;
+    }
     if (who.locked) {
       app.innerHTML =
         '<div class="setup-wrap">' +
@@ -5857,9 +5885,20 @@
     },
   };
 
-  load();
-  bootWho();
-  render();
-  pullCloud();
-  restoreBackupFolder();
+  who.signedOut = true;
+  document.getElementById("app").innerHTML =
+    '<div class="setup-wrap"><p class="muted">Checking LabTrak sign-in…</p></div>';
+  confirmedLabTrakUser().then(function (user) {
+    if (!user || !readActor()) {
+      who.signedOut = true;
+      render();
+      return;
+    }
+    who.signedOut = false;
+    load();
+    bootWho();
+    render();
+    pullCloud();
+    restoreBackupFolder();
+  });
 })();
