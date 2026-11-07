@@ -3923,7 +3923,7 @@ ALTER TABLE public.st_user_profiles
   ADD CONSTRAINT st_user_profiles_role_check
   CHECK (role IN (
     'admin', 'section_admin', 'field', 'lab', 'concrete',
-    'hotmix', 'precast', 'chemlab', 'supplier'
+    'hotmix', 'precast', 'chemlab', 'supplier', 'pm'
   ));</pre>
       <pre id="siEmailTemplate" style="display:none;">Paste the Invite user block into Supabase → Authentication → Emails → Invite user → Body. Paste the Magic link block into Authentication → Emails → Magic link → Body. Save both.
 
@@ -4108,6 +4108,31 @@ END $$;
       </div>
     </div>
 
+    <div class="user-mgmt-section setup-collapse" id="pmInviteSection" data-setup-open="false" style="display:none;">
+      <button type="button" class="setup-collapse-hdr" onclick="toggleSetupSection(this)" aria-expanded="false">
+        <span class="setup-collapse-title">Invite a project manager</span>
+        <span class="setup-collapse-chevron" aria-hidden="true">▾</span>
+      </button>
+      <div class="setup-collapse-body">
+      <p style="font-family:var(--mono);font-size:10px;color:var(--muted);margin:0 0 12px;line-height:1.6;">
+        Name and email. LabTrak creates their account and emails a one-time link. You stay signed in.
+        The first time they open it, they choose a password. After that they sign in here with that email and password.
+        They only see projects whose Project Manager is their LabTrak id. Set that on the project in Projects.
+      </p>
+      <div class="um-add-form supplier-invite-form">
+        <input type="text" id="pm_name" placeholder="Project manager name" autocomplete="off" maxlength="80">
+        <input type="email" id="pm_email" placeholder="Email address" autocomplete="off">
+        <button type="button" class="btn-um-add" id="pmInviteBtn" onclick="inviteProjectManager()">Send sign-in link</button>
+      </div>
+      <div id="pmInviteMsg" class="si-action-msg" role="status" aria-live="polite"></div>
+      <p style="font-family:var(--mono);font-size:10px;color:var(--muted);margin:12px 0 0;line-height:1.6;">
+        One-time: run the role SQL from Invite a concrete supplier (it now includes project managers), and redeploy
+        <code style="background:var(--bg);padding:1px 5px;border-radius:3px;">invite-supplier</code>
+        so this invite can create the account.
+      </p>
+      </div>
+    </div>
+
     <div class="user-mgmt-section setup-collapse" id="authProvisionSection" data-setup-open="false" style="display:none;">
       <button type="button" class="setup-collapse-hdr" onclick="toggleSetupSection(this)" aria-expanded="false">
         <span class="setup-collapse-title">Provision sign-in</span>
@@ -4115,7 +4140,7 @@ END $$;
       </button>
       <div class="setup-collapse-body">
       <p style="font-family:var(--mono);font-size:10px;color:var(--muted);margin:0 0 12px;line-height:1.6;">
-        For lab staff. Concrete suppliers use Invite a concrete supplier above.
+        For lab staff. Concrete suppliers and project managers use the invite sections above.
         Create a Supabase Auth account and link it to an existing LabTrak user tile.
         The temporary password is changed by that person under My account. No extra Supabase table is required.
         Disable email confirmation in Supabase Auth settings for instant access, or have the user confirm their email first.
@@ -4533,7 +4558,7 @@ END $$;
 
   <div class="user-select-wrap" id="supplierPasswordPanel" style="display:none;max-width:380px;width:100%;box-sizing:border-box;">
     <div class="user-select-title" style="text-align:center;margin-bottom:6px;">Choose a password</div>
-    <div style="font-family:var(--mono);font-size:10px;color:var(--muted);text-align:center;margin-bottom:14px;line-height:1.5;">
+    <div id="supplierPasswordHint" style="font-family:var(--mono);font-size:10px;color:var(--muted);text-align:center;margin-bottom:14px;line-height:1.5;">
       Pick a password for this plant. Next time, open LabTrak and sign in with this email and password. You do not need a new email link to submit mix designs.
     </div>
     <div id="supplierPasswordEmail" style="font-family:var(--sans);font-size:13px;text-align:center;margin-bottom:14px;word-break:break-all;"></div>
@@ -5160,8 +5185,8 @@ END $$;
     <div class="page-wide">
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;" data-tour="projects-header">
         <div>
-          <h2 style="font-family:var(--display);font-size:22px;color:var(--text);letter-spacing:1px;">Projects</h2>
-          <p style="color:var(--muted);font-size:12px;font-family:var(--mono);margin-top:3px;">Select a project to view its samples, or add a new one below.</p>
+          <h2 id="projViewTitle" style="font-family:var(--display);font-size:22px;color:var(--text);letter-spacing:1px;">Projects</h2>
+          <p id="projViewSub" style="color:var(--muted);font-size:12px;font-family:var(--mono);margin-top:3px;">Select a project to view its samples, or add a new one below.</p>
         </div>
         <button class="btn btn-primary" id="btnNewProject" onclick="openNewProject()" style="font-size:13px;padding:10px 18px;">+ New project</button>
       </div>
@@ -5169,6 +5194,7 @@ END $$;
       <div class="projects-grid" id="projectsGrid" data-tour="projects-grid">
         <div style="color:var(--muted);font-family:var(--mono);font-size:11px;padding:20px;">Loading projects…</div>
       </div>
+      <div id="pmProjectDetail" style="display:none;margin-top:18px;"></div>
     </div>
   </div>
 
@@ -8171,7 +8197,7 @@ END $$;
 // GLOBALS
 // ══════════════════════════════════════════════
 let db = null;
-const APP_BUILD = '2026.11.06-curve-scale';
+const APP_BUILD = '2026.11.06-pm-portal';
 const FC_CORE_ICON_SRC = 'docs/r18-reference/core-drill-icon-128.png';
 const BORELOG_ICON_SRC = 'docs/r18-reference/borelog-icon.webp';
 const BORELOG_PATH = 'deldot-borelog-v6-uscs.html';
@@ -12309,16 +12335,83 @@ let allProjects = [];
 let currentProjectFilter = null;
 let currentProjectName   = null; // display name for the breadcrumb
 
+function pmHtml(value) {
+  return String(value == null ? '' : value).replace(/[&<>"']/g, c => ({
+    '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+  }[c]));
+}
+
+function projectLinkedToPm(project, user) {
+  if (!project || !user) return false;
+  const raw = String(project.project_manager || '').trim();
+  if (!raw) return false;
+  if (raw === String(user.id)) return true;
+  const name = String(user.name || '').trim();
+  return !!name && raw.toLowerCase() === name.toLowerCase();
+}
+
+function projectsForCurrentUser(list) {
+  const rows = list || [];
+  if (currentUser?.role !== 'pm') return rows;
+  return rows.filter(p => projectLinkedToPm(p, currentUser));
+}
+
+function projectManagerLabel(raw) {
+  const value = String(raw || '').trim();
+  if (!value) return '';
+  const users = _stUsersCache || [];
+  const match = users.find(u => String(u.id) === value);
+  return match ? match.name : value;
+}
+
+async function fillProjectManagerSelect(selected) {
+  const el = document.getElementById('proj_manager');
+  if (!el) return;
+  const users = (await getUsers()).filter(u => u && u.role === 'pm');
+  const current = String(selected || '').trim();
+  const known = users.some(u => String(u.id) === current);
+  const byName = users.find(u => u.name && current && u.name.trim().toLowerCase() === current.toLowerCase());
+  let html = '<option value="">No project manager</option>';
+  users.forEach(u => {
+    html += '<option value="' + pmHtml(u.id) + '">' + pmHtml(u.name || u.id) + '</option>';
+  });
+  if (current && !known && !byName) {
+    html += '<option value="' + pmHtml(current) + '">' + pmHtml(current) + ' (saved name)</option>';
+  }
+  el.innerHTML = html;
+  el.value = known ? current : (byName ? byName.id : current);
+}
+
+function refreshPmPortalChrome() {
+  const pm = currentUser?.role === 'pm';
+  const title = document.getElementById('projViewTitle');
+  const sub = document.getElementById('projViewSub');
+  if (title) title.textContent = pm ? 'Your projects' : 'Projects';
+  if (sub) {
+    sub.textContent = pm
+      ? 'These are the projects linked to your LabTrak id in the project manager field.'
+      : 'Select a project to view its samples, or add a new one below.';
+  }
+  if (!pm) {
+    const detail = document.getElementById('pmProjectDetail');
+    if (detail) {
+      detail.style.display = 'none';
+      detail.innerHTML = '';
+    }
+  }
+}
+
 async function loadProjects() {
   showGridSkeleton('projectsGrid', 4);
   if (!db) {
     offlineLoadCached();
+    allProjects = projectsForCurrentUser(allProjects || []);
     await renderProjectCards(allProjects || []);
     return;
   }
   const { data, error } = await db.from('projects').select('*').is('deleted_at', null).order('created_at', { ascending: false });
   if (error) { console.error('Projects error:', error.message); return; }
-  allProjects = data || [];
+  allProjects = projectsForCurrentUser(data || []);
   try { localStorage.setItem('labtrak_cached_projects', JSON.stringify(allProjects)); } catch(e) {}
   await renderProjectCards(allProjects);
   refreshProjectAdminUI();
@@ -12329,13 +12422,21 @@ async function renderProjectCards(projects) {
   if (!grid) return;
 
   if (!projects.length) {
-    grid.innerHTML = '<div style="color:var(--muted);font-family:var(--mono);font-size:11px;padding:20px;grid-column:span 3;">No projects yet. Click + New Project to create one.</div>';
+    const empty = currentUser?.role === 'pm'
+      ? 'No projects are linked to you yet. Materials & Research chooses you as Project Manager on the project.'
+      : 'No projects yet. Click + New Project to create one.';
+    grid.innerHTML = '<div style="color:var(--muted);font-family:var(--mono);font-size:11px;padding:20px;grid-column:span 3;">' + empty + '</div>';
     return;
   }
 
   let counts = {};
   try {
-    const { data: samples } = await db.from('samples').select('contract,status').or('archived.is.null,archived.eq.false');
+    let sampleQuery = db.from('samples').select('contract,status').or('archived.is.null,archived.eq.false');
+    if (currentUser?.role === 'pm') {
+      const contracts = projects.map(p => p.contract).filter(Boolean);
+      sampleQuery = contracts.length ? sampleQuery.in('contract', contracts) : null;
+    }
+    const { data: samples } = sampleQuery ? await sampleQuery : { data: [] };
     (samples || []).forEach(s => {
       if (!s.contract) return;
       if (!counts[s.contract]) counts[s.contract] = { total:0, complete:0, pending:0 };
@@ -12345,21 +12446,28 @@ async function renderProjectCards(projects) {
     });
   } catch(e) {}
 
+  const pmView = currentUser?.role === 'pm';
   grid.innerHTML = projects.map(p => {
     const c = counts[p.contract] || { total:0, complete:0, pending:0 };
     const safeName     = (p.road || p.description || p.contractor || 'Unnamed Project').replace(/'/g, "\'");
     const safeContract = (p.contract || '').replace(/'/g, "\'");
-    return `
-    <div class="project-card" onclick="filterByProject('${safeContract}','${safeName}')">
+    const manager = projectManagerLabel(p.project_manager);
+    const open = pmView
+      ? `openPmProject('${String(p.id).replace(/'/g, '')}')`
+      : `filterByProject('${safeContract}','${safeName}')`;
+    const actions = pmView ? '' : `
       <div class="pc-actions" onclick="event.stopPropagation()">
         <button class="pc-action-btn" onclick="openProjectMap('${p.contract}','${(p.road||p.contractor||'Project').replace(/'/g,"\'")}')">&#128506; Map</button>
         <button class="pc-action-btn" onclick="openEditProject('${p.id}')">&#9998; Edit</button>
         <button class="pc-action-btn" onclick="deleteProject('${p.id}','${(p.contract||'').replace(/'/g,"\'")}','${(p.road||p.contractor||'this project').replace(/'/g,"\'")}');event.stopPropagation();" style="color:#ef4444;border-color:#ef4444;">&#10005; Delete</button>
-      </div>
+      </div>`;
+    return `
+    <div class="project-card" onclick="${open}">
+      ${actions}
       <div class="pc-contract">${p.contract || '—'}</div>
       <div class="pc-name">${p.road || p.description || p.contractor || 'Unnamed Project'}</div>
       <div class="pc-meta">${p.contractor || ''} ${p.fa_project ? '&middot; '+p.fa_project : ''}</div>
-      ${p.project_manager ? `<div class="pc-meta" style="color:var(--accent2);">👤 ${p.project_manager}</div>` : ''}
+      ${manager ? `<div class="pc-meta" style="color:var(--accent2);">👤 ${pmHtml(manager)}</div>` : ''}
       ${p.email_distribution ? `<div class="pc-meta" style="color:var(--muted);font-size:9px;">📧 ${p.email_distribution.split(',').length} email recipient${p.email_distribution.split(',').length !== 1 ? 's' : ''}</div>` : ''}
       <div class="pc-stats">
         <div class="pc-stat"><div class="n">${c.total}</div><div class="l">TOTAL</div></div>
@@ -12397,6 +12505,39 @@ async function filterByProject(contract, name) {
   updateStats(filtered);
 }
 
+async function openPmProject(id) {
+  if (currentUser?.role !== 'pm') return;
+  const proj = (allProjects || []).find(p => p.id === id);
+  const box = document.getElementById('pmProjectDetail');
+  if (!box || !proj) return;
+  const title = proj.contract || 'Project';
+  const name = proj.road || proj.description || proj.contractor || '';
+  box.style.display = '';
+  box.innerHTML = '<div class="card"><div class="card-title">' + pmHtml(title + (name ? ' — ' + name : '')) + '</div><div style="color:var(--muted);font-family:var(--mono);font-size:11px;">Loading samples…</div></div>';
+  let samples = [];
+  let note = '';
+  if (!db) {
+    note = 'Samples appear when LabTrak is connected.';
+  } else {
+    const { data, error } = await db.from('samples')
+      .select('id,test_no,sample_type,status,date_sampled,location,contract')
+      .eq('contract', proj.contract)
+      .is('deleted_at', null)
+      .order('created_at', { ascending: false });
+    if (error) note = 'Samples could not be loaded.';
+    else samples = (data || []).filter(s => !s.archived);
+  }
+  const rows = samples.length
+    ? samples.map(s => '<div style="display:flex;justify-content:space-between;gap:12px;padding:10px 0;border-bottom:1px solid var(--border);font-size:13px;">' +
+        '<div><strong>' + pmHtml(s.test_no || 'Sample') + '</strong>' +
+        '<div style="color:var(--muted);font-size:12px;">' + pmHtml([s.sample_type, s.location].filter(Boolean).join(' · ') || '—') + '</div></div>' +
+        '<div style="text-align:right;font-family:var(--mono);font-size:11px;color:var(--accent2);">' + pmHtml(s.status || 'pending') +
+        (s.date_sampled ? '<div style="color:var(--muted);">' + pmHtml(s.date_sampled) + '</div>' : '') + '</div></div>').join('')
+    : '<div style="color:var(--muted);font-family:var(--mono);font-size:11px;padding:8px 0;">' + pmHtml(note || 'No samples on this project yet.') + '</div>';
+  box.innerHTML = '<div class="card"><div class="card-title">' + pmHtml(title + (name ? ' — ' + name : '')) + '</div>' + rows + '</div>';
+  box.scrollIntoView({ block: 'nearest' });
+}
+
 function clearProjectFilter() {
   currentProjectFilter = null;
   currentProjectName   = null;
@@ -12408,7 +12549,7 @@ function clearProjectFilter() {
   switchView('projects');
 }
 
-function openNewProject() {
+async function openNewProject() {
   if (!canManageProjects()) {
     showToast('Only administrators can create projects', 'error');
     return;
@@ -12417,7 +12558,8 @@ function openNewProject() {
   document.getElementById('proj_id').value = '';
   ['proj_contract','proj_fa_project','proj_contractor','proj_road','proj_material_type',
    'proj_examined_for','proj_reported_by','proj_reviewed_by','proj_qa_sup','proj_geo_eng',
-   'proj_description','proj_manager','proj_email_dist'].forEach(id => { const el=document.getElementById(id); if(el) el.value=''; });
+   'proj_description','proj_email_dist'].forEach(id => { const el=document.getElementById(id); if(el) el.value=''; });
+  await fillProjectManagerSelect('');
   const _tsEl = document.getElementById('proj_track_sources'); if (_tsEl) _tsEl.checked = false;
   document.getElementById('projectOverlay').classList.add('open');
   navUpdateBackButton();
@@ -12433,7 +12575,7 @@ async function openEditProject(id) {
   sv('proj_road', proj.road);
   sv('proj_contractor', proj.contractor);
   sv('proj_fa_project', proj.fa_project);
-  sv('proj_manager', proj.project_manager);
+  await fillProjectManagerSelect(proj.project_manager);
   sv('proj_email_dist', proj.email_distribution);
   const tsEl = document.getElementById('proj_track_sources');
   if (tsEl) tsEl.checked = !!proj.track_sources;
@@ -13624,6 +13766,7 @@ function formatDbRlsError(table, err) {
 function refreshProjectAdminUI() {
   const btn = document.getElementById('btnNewProject');
   if (btn) btn.style.display = canManageProjects() ? '' : 'none';
+  refreshPmPortalChrome();
 }
 
 function hideAllLoginPanels() {
@@ -13729,7 +13872,7 @@ function supplierHasChosenPassword(authUser) {
 }
 
 function supplierMustSetPassword(user) {
-  if (!user || user.role !== 'supplier') return false;
+  if (!user || (user.role !== 'supplier' && user.role !== 'pm')) return false;
   const authUser = _supabaseAuthSession?.user;
   if (!authUser) return false;
   return !supplierHasChosenPassword(authUser);
@@ -13752,6 +13895,12 @@ function showSupplierPasswordPanel(user) {
   const email = _supabaseAuthSession?.user?.email || '';
   const emailEl = document.getElementById('supplierPasswordEmail');
   if (emailEl) emailEl.textContent = email;
+  const hint = document.getElementById('supplierPasswordHint');
+  if (hint) {
+    hint.textContent = user?.role === 'pm'
+      ? 'Pick a password for this account. Next time, open LabTrak and sign in with this email and password. You will see the projects linked to you as project manager.'
+      : 'Pick a password for this plant. Next time, open LabTrak and sign in with this email and password. You do not need a new email link to submit mix designs.';
+  }
   const err = document.getElementById('supplierPasswordErr');
   if (err) err.textContent = '';
   stampSupplierPasswordRequired();
@@ -13893,12 +14042,14 @@ function updateAuthStatusLine() {
 async function refreshAuthProvisionUI() {
   const section = document.getElementById('authProvisionSection');
   const inviteSection = document.getElementById('supplierInviteSection');
+  const pmInviteSection = document.getElementById('pmInviteSection');
   const sel = document.getElementById('authModeSelect');
   if (sel) sel.value = getAuthMode();
   updateAuthStatusLine();
   const isAdmin = currentUser?.role === 'admin';
   const showAdminCloud = isAdmin && window._dbConnected;
   if (inviteSection) inviteSection.style.display = showAdminCloud ? 'block' : 'none';
+  if (pmInviteSection) pmInviteSection.style.display = showAdminCloud ? 'block' : 'none';
   if (!section) return;
   section.style.display = showAdminCloud ? 'block' : 'none';
   const appSel = document.getElementById('ap_app_user');
@@ -14036,6 +14187,78 @@ function copyMixDesignSql() {
   }
   if (copyTextFallback(sql)) copied();
   else failed();
+}
+
+async function inviteProjectManager() {
+  const btn = document.getElementById('pmInviteBtn');
+  const fail = (text) => {
+    setSupplierActionMsg('pmInviteMsg', text, 'bad');
+    showToast(text.length > 140 ? 'Invite failed. See the note under the form.' : text, 'error');
+  };
+  setSupplierActionMsg('pmInviteMsg', '', '');
+  if (currentUser?.role !== 'admin') {
+    fail('Admin only');
+    return;
+  }
+  if (!db || !window._dbConnected) {
+    fail('Connect to Supabase first');
+    return;
+  }
+  const name = document.getElementById('pm_name')?.value.trim() || '';
+  const email = document.getElementById('pm_email')?.value.trim() || '';
+  if (name.length < 2 || !email) {
+    fail('Enter the project manager name and email');
+    return;
+  }
+  if (!_supabaseAuthSession) {
+    fail('Sign in with your admin email first. This sends the link without signing you out.');
+    return;
+  }
+  if (btn) {
+    btn.disabled = true;
+    btn.textContent = 'Sending…';
+  }
+  setSupplierActionMsg('pmInviteMsg', 'Sending the sign-in link…', 'wait');
+  let sent = false;
+  try {
+    const redirectTo = (location.protocol === 'http:' || location.protocol === 'https:')
+      ? (location.origin + location.pathname)
+      : 'https://m3nos95.github.io/Geotrack/deldot-sampletrack.html';
+    const { data, error } = await db.functions.invoke('invite-supplier', {
+      body: { name, email, role: 'pm', redirectTo },
+    });
+    if (error) throw error;
+    if (data?.error) throw new Error(data.error);
+    const note = data?.needsPassword === false
+      ? name + ' already has a password. They sign in with ' + email + ' and that password.'
+      : 'Sign-in link sent to ' + email + '. The first time they open it, they choose a password. After that they sign in here with that email and password. Their portal shows projects where they are the project manager.';
+    setSupplierActionMsg('pmInviteMsg', note, 'ok');
+    showToast('Sign-in link sent to ' + email, 'success');
+    sent = true;
+    const nameEl = document.getElementById('pm_name');
+    const emailEl = document.getElementById('pm_email');
+    if (nameEl) nameEl.value = '';
+    if (emailEl) emailEl.value = '';
+    _stUsersCache = null;
+    await getUsers();
+    if (typeof umRenderUsers === 'function') umRenderUsers();
+  } catch (e) {
+    let parsed = await parseInvokeError(e);
+    if (/failed to send a request|function was not found|not found|404/i.test(parsed)) {
+      parsed = 'Invite service is not deployed yet. From the project folder run: supabase functions deploy invite-supplier';
+    }
+    fail(parsed);
+  } finally {
+    if (btn) {
+      btn.disabled = false;
+      btn.textContent = sent ? 'Link sent' : 'Send sign-in link';
+      if (sent) {
+        setTimeout(() => {
+          if (btn.textContent === 'Link sent') btn.textContent = 'Send sign-in link';
+        }, 5000);
+      }
+    }
+  }
 }
 
 async function inviteConcreteSupplier() {
@@ -16224,6 +16447,7 @@ function showPlannedModule(name) {
 function switchView(name, opts) {
   opts = opts || {};
   if (currentUser?.role === 'supplier' && name !== 'concrete') name = 'concrete';
+  if (currentUser?.role === 'pm' && name !== 'projects') name = 'projects';
   if ((name === 'soillab' || name === 'labhub') && !roleCanUseSoilModule()) {
     const hint = currentUser?.role === 'field' ? ' Finished reports are on Field Control.' : '';
     showToast('The soil lab stays with the lab techs.' + hint, 'info');
@@ -18498,6 +18722,7 @@ function phoneNewSample() {
   }
   const role = (typeof currentUser === 'object' && currentUser && currentUser.role) || '';
   if (role === 'concrete' || role === 'supplier') { switchView('concrete'); return; }
+  if (role === 'pm') { switchView('projects'); return; }
   if (role === 'field') { switchView('fieldhub'); return; }
   if (typeof slOpenNewSample === 'function') slOpenNewSample();
 }
@@ -18599,7 +18824,7 @@ function displayedContrakGrant(user, map) {
 async function renderContrakAccess() {
   const el = document.getElementById('contrakAccessList');
   if (!el) return;
-  const users = (await getUsers()).filter(u => u && u.role !== 'supplier');
+  const users = (await getUsers()).filter(u => u && u.role !== 'supplier' && u.role !== 'pm');
   const map = readContrakAccessMap();
   if (!users.length) {
     el.innerHTML = '<div style="font-family:var(--mono);font-size:10px;color:var(--muted);">No people yet.</div>';
@@ -23286,10 +23511,12 @@ function syncPhoneChrome() {
   };
   titleEl.textContent = currentUser?.role === 'supplier'
     ? 'Mix designs'
-    : (titles[name] || (typeof VIEW_LABELS !== 'undefined' && VIEW_LABELS[name]) || 'LabTrak');
+    : currentUser?.role === 'pm'
+      ? 'Your projects'
+      : (titles[name] || (typeof VIEW_LABELS !== 'undefined' && VIEW_LABELS[name]) || 'LabTrak');
   const backBtn = document.querySelector('#phoneModuleBar > button');
   if (backBtn) {
-    const supplier = currentUser?.role === 'supplier';
+    const supplier = currentUser?.role === 'supplier' || currentUser?.role === 'pm';
     backBtn.textContent = '‹';
     backBtn.style.visibility = supplier ? 'hidden' : '';
     backBtn.setAttribute('aria-label', 'Back');
@@ -23313,7 +23540,7 @@ function phoneOpenSettings() {
 }
 
 function phoneModuleBack() {
-  if (currentUser?.role === 'supplier') return;
+  if (currentUser?.role === 'supplier' || currentUser?.role === 'pm') return;
   if (document.getElementById('sampleHub')?.classList.contains('open')) {
     closeSampleHub();
     return;
@@ -23365,6 +23592,7 @@ function setActiveView(name) {
     const phoneShell = name === 'conchub' && (ROLE_HOME[role] || 'home') === 'home';
     appEl.classList.toggle('phone-app', phoneShell);
     appEl.classList.toggle('supplier-mode', role === 'supplier');
+    appEl.classList.toggle('pm-mode', role === 'pm');
   }
   document.querySelectorAll('.rail-item').forEach(r => r.classList.toggle('active', r.dataset.view === name));
   document.querySelectorAll('.view').forEach(v => v.classList.toggle('active', v.id === name + '-view'));
@@ -23388,8 +23616,9 @@ const ROLE_DEFS = {
   lab:           { label: 'Lab Technician',   color: '#34d399', tabs: ['projects','dashboard','labhub','labarrival','soillab','r18'] },
   concrete:      { label: 'Concrete Tech',    color: '#a78bfa', tabs: ['projects','conchub','concrete','r18'] },
   supplier:      { label: 'Concrete Supplier', color: '#d4a017', tabs: ['concrete'] },
+  pm:            { label: 'Project Manager',  color: '#4a90e2', tabs: ['projects'] },
 };
-const ROLE_HOME = { admin:'home', section_admin:'home', field:'home', lab:'home', concrete:'home', supplier:'concrete' };
+const ROLE_HOME = { admin:'home', section_admin:'home', field:'home', lab:'home', concrete:'home', supplier:'concrete', pm:'projects' };
 
 // ── Load custom teams from localStorage and extend ROLE_DEFS ───
 function loadCustomTeams() {
@@ -23535,6 +23764,9 @@ async function showLabPicker() {
   }
   if (users.some(u => u.role === 'supplier')) {
     dynamicTiles.push({ role: 'supplier', label: 'Concrete Supplier', icon: '', color: '#d4a017', img: 'assets/icon-compression-press.png' });
+  }
+  if (users.some(u => u.role === 'pm')) {
+    dynamicTiles.push({ role: 'pm', label: 'Project Manager', icon: '', color: '#4a90e2', img: 'assets/icon-compression-press.png' });
   }
   customTeams.forEach(t => {
     if (users.some(u => u.role === t.id)) {
@@ -26740,7 +26972,13 @@ function slClearEntry() {
         <div class="mf" style="grid-column:span 2;"><label>Contract Name / Road</label><input type="text" id="proj_road" placeholder="Proposed Willow Grove Road"></div>
         <div class="mf"><label>Contractor</label><input type="text" id="proj_contractor" placeholder="Allan Myers"></div>
         <div class="mf"><label>F.A. Project</label><input type="text" id="proj_fa_project" placeholder="ESTP-K029(07)"></div>
-        <div class="mf" style="grid-column:span 2;"><label>Project Manager</label><input type="text" id="proj_manager" placeholder="Jane Smith"></div>
+        <div class="mf" style="grid-column:span 2;">
+          <label>Project Manager</label>
+          <select id="proj_manager" style="width:100%;background:var(--panel);border:1px solid var(--border);color:var(--text);padding:9px 11px;border-radius:var(--radius);font-size:13px;">
+            <option value="">No project manager</option>
+          </select>
+          <div style="font-size:10px;color:var(--muted);margin-top:4px;line-height:1.4;">People invited under Invite a project manager. Saving stores their LabTrak id, and that login only sees this project.</div>
+        </div>
         <div class="mf" style="grid-column:span 2;">
           <label>Email Distribution <span style="font-size:9px;color:var(--muted);font-weight:400;">(comma-separated — auto-emailed when reports complete)</span></label>
           <input type="text" id="proj_email_dist" placeholder="jsmith@deldot.gov, contractor@example.com, inspector@dot.gov">
@@ -39601,8 +39839,10 @@ html.comfort-mode .rail-label {
     justify-content: space-around;
   }
   #app.on-home #phoneTabBar { display: flex !important; }
-  #app.supplier-mode #phoneTabBar { display: none !important; }
-  #app.supplier-mode .view.active { bottom: 0; }
+  #app.supplier-mode #phoneTabBar,
+  #app.pm-mode #phoneTabBar { display: none !important; }
+  #app.supplier-mode .view.active,
+  #app.pm-mode .view.active { bottom: 0; }
   .phone-tab {
     flex: 1; border: none; background: transparent; color: #8ea0b5;
     display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px;
