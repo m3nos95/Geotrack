@@ -11,7 +11,7 @@ const FALLBACK_REDIRECT =
   "https://m3nos95.github.io/Geotrack/deldot-sampletrack.html";
 
 const ROLE_SQL =
-  "Run supabase/migrations/20261102_supplier_role.sql once in the Supabase SQL editor, then send the invite again.";
+  "Run the role SQL from LabTrak settings (Invite a concrete supplier → Copy role SQL) once in the Supabase SQL editor, then send the invite again.";
 
 function jsonResponse(body: Record<string, unknown>, status = 200): Response {
   return new Response(JSON.stringify(body), {
@@ -60,8 +60,13 @@ function safeRedirect(raw: unknown): string {
   }
 }
 
-function appUserId(): string {
-  return "sup_" + crypto.randomUUID().replace(/-/g, "").slice(0, 12);
+function portalRole(raw: unknown): "supplier" | "pm" {
+  return raw === "pm" ? "pm" : "supplier";
+}
+
+function appUserId(role: "supplier" | "pm"): string {
+  const prefix = role === "pm" ? "pm_" : "sup_";
+  return prefix + crypto.randomUUID().replace(/-/g, "").slice(0, 12);
 }
 
 function passwordAlreadySet(user: { user_metadata?: Record<string, unknown> } | null): boolean {
@@ -69,13 +74,15 @@ function passwordAlreadySet(user: { user_metadata?: Record<string, unknown> } | 
   return meta.password_set === true || meta.password_set === "true";
 }
 
-function supplierAuthData(name: string, passwordSet: boolean) {
-  return {
-    labtrak_role: "supplier",
-    plant_name: name,
+function portalAuthData(role: "supplier" | "pm", name: string, passwordSet: boolean) {
+  const data: Record<string, unknown> = {
+    labtrak_role: role,
     must_set_password: !passwordSet,
     password_set: passwordSet,
   };
+  if (role === "pm") data.pm_name = name;
+  else data.plant_name = name;
+  return data;
 }
 
 type AdminClient = ReturnType<typeof createClient>;
@@ -164,15 +171,17 @@ Deno.serve(async (req) => {
     }
     if (!callerProfile || callerProfile.active === false ||
       callerProfile.role !== "admin") {
-      return jsonResponse({ error: "Only an administrator can invite a supplier." }, 403);
+      return jsonResponse({ error: "Only an administrator can send this invite." }, 403);
     }
 
     const payload = await req.json().catch(() => null);
+    const role = portalRole(payload?.role);
+    const who = role === "pm" ? "project manager" : "plant";
     const name = cleanName(payload?.name);
     const email = cleanEmail(payload?.email);
     if (!name || !email) {
       return jsonResponse({
-        error: "Enter a plant name (at least 2 characters) and a valid email.",
+        error: "Enter a " + who + " name (at least 2 characters) and a valid email.",
       }, 400);
     }
     const redirectTo = safeRedirect(payload?.redirectTo);
@@ -183,7 +192,7 @@ Deno.serve(async (req) => {
 
     if (!authUser) {
       const invited = await admin.auth.admin.inviteUserByEmail(email, {
-        data: supplierAuthData(name, false),
+        data: portalAuthData(role, name, false),
         redirectTo,
       });
       if (invited.error) {
@@ -222,14 +231,14 @@ Deno.serve(async (req) => {
       return jsonResponse({ error: profileReadErr.message }, 500);
     }
     if (existingProfile && existingProfile.role &&
-      existingProfile.role !== "supplier") {
+      existingProfile.role !== role) {
       return jsonResponse({
         error: "That email already belongs to a LabTrak account (" +
-          existingProfile.role + "). Use a different address for the plant.",
+          existingProfile.role + "). Use a different address.",
       }, 409);
     }
 
-    let labUserId = existingProfile?.app_user_id || appUserId();
+    let labUserId = existingProfile?.app_user_id || appUserId(role);
     const { data: existingLab, error: labReadErr } = await admin
       .from("st_users")
       .select("id, role, created_at, pin_hash, recovery, initials, color")
@@ -239,20 +248,20 @@ Deno.serve(async (req) => {
       if (createdAuth) await admin.auth.admin.deleteUser(authUser.id);
       return jsonResponse({ error: labReadErr.message }, 500);
     }
-    if (existingLab && existingLab.role && existingLab.role !== "supplier") {
-      labUserId = appUserId();
+    if (existingLab && existingLab.role && existingLab.role !== role) {
+      labUserId = appUserId(role);
     }
-    const labRow = existingLab && existingLab.role === "supplier" ? existingLab : null;
+    const labRow = existingLab && existingLab.role === role ? existingLab : null;
 
     const now = new Date().toISOString();
     const userRow = {
       id: labUserId,
       name,
-      role: "supplier",
+      role,
       pin_hash: labRow?.pin_hash ?? null,
       recovery: labRow?.recovery ?? "",
       initials: labRow?.initials || initialsFor(name),
-      color: labRow?.color || "#d4a017",
+      color: labRow?.color || (role === "pm" ? "#4a90e2" : "#d4a017"),
       can_approve_reports: false,
       restricted_hubs: null,
       assigned_tech_ids: [],
@@ -269,7 +278,7 @@ Deno.serve(async (req) => {
       auth_user_id: authUser.id,
       app_user_id: labUserId,
       display_name: name,
-      role: "supplier",
+      role,
       can_approve_reports: false,
       active: true,
     };
@@ -290,7 +299,7 @@ Deno.serve(async (req) => {
       const updated = await admin.auth.admin.updateUserById(authUser.id, {
         user_metadata: {
           ...(authUser.user_metadata || {}),
-          ...supplierAuthData(name, passwordSet),
+          ...portalAuthData(role, name, passwordSet),
         },
       });
       if (updated.error) {
@@ -303,7 +312,7 @@ Deno.serve(async (req) => {
       });
       if (link.error) {
         return jsonResponse({
-          error: "The supplier account is saved, but the sign-in email failed: " +
+          error: "The account is saved, but the sign-in email failed: " +
             (link.error.message || "unknown error"),
           appUserId: labUserId,
         }, 502);
