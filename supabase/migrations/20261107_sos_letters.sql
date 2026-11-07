@@ -86,10 +86,11 @@ CREATE POLICY "sos_letters staff insert" ON public.sos_letters
 CREATE POLICY "sos_letters pm read" ON public.sos_letters
   FOR SELECT TO authenticated USING (
     public.st_current_role() = 'pm'
-    AND contract IN (
-      SELECT p.contract
+    AND lower(btrim(contract)) IN (
+      SELECT lower(btrim(p.contract))
       FROM public.projects p
       WHERE p.deleted_at IS NULL
+        AND p.contract IS NOT NULL
         AND public.project_visible_to_current_pm(p.project_manager)
     )
   );

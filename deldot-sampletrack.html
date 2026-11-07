@@ -6654,7 +6654,7 @@ END $$;
         <button id="rpt-email-btn" onclick="emailCurrentReport()" style="display:none;background:#064e2b;color:#fff;border-color:#16a34a;">📧 RESEND EMAIL</button>
         <button id="rpt-approve-btn" onclick="slApproveForDistribution()" style="display:none;">Approve</button>
         <button id="rpt-reject-btn"  onclick="slOpenRejectModal()"          style="display:none;">Reject</button>
-        <button onclick="showActiveSampleHistory()">🕓 HISTORY</button>
+        <button type="button" id="rpt-history-btn" onclick="showActiveSampleHistory()">🕓 HISTORY</button>
         <button type="button" id="rpt-back-btn" onclick="leaveReport()">← BACK TO SOIL LAB</button>
       </div>
       <div id="rpt-pending-notice" style="display:none;background:#1c1300;border:1px solid #f59e0b;border-radius:6px;padding:9px 14px;margin:0 20px 12px;font-family:var(--sans);font-size:13px;line-height:1.45;color:#fde68a;">
@@ -8197,7 +8197,7 @@ END $$;
 // GLOBALS
 // ══════════════════════════════════════════════
 let db = null;
-const APP_BUILD = '2026.11.07-web-data';
+const APP_BUILD = '2026.11.07-pm-reports';
 const FC_CORE_ICON_SRC = 'docs/r18-reference/core-drill-icon-128.png';
 const BORELOG_ICON_SRC = 'docs/r18-reference/borelog-icon.webp';
 const BORELOG_PATH = 'deldot-borelog-v6-uscs.html';
@@ -12539,6 +12539,17 @@ async function pmLoadRows(query) {
   }
 }
 
+function pmActionRow(main, sub, action, onclick) {
+  return '<button type="button" onclick="' + onclick + '" style="display:flex;justify-content:space-between;gap:12px;width:100%;text-align:left;background:transparent;border:none;border-bottom:1px solid var(--border);padding:10px 0;cursor:pointer;color:inherit;font:inherit;">' +
+    '<div><strong>' + pmHtml(main || '—') + '</strong>' +
+    '<div style="color:var(--muted);font-size:12px;">' + pmHtml(sub || '—') + '</div></div>' +
+    '<div style="text-align:right;font-family:var(--mono);font-size:11px;color:var(--accent2);white-space:nowrap;">' + pmHtml(action || '') + '</div></button>';
+}
+
+function pmSampleReady(sample) {
+  return sample && (sample.status === 'complete' || sample.status === 'approved' || sampleHasLabData(sample));
+}
+
 function pmLetterSummary(letter) {
   const sources = Array.isArray(letter.sources) ? letter.sources : [];
   const names = sources.map(s => s.source).filter(Boolean).slice(0, 3).join(', ');
@@ -12547,8 +12558,41 @@ function pmLetterSummary(letter) {
   return { when, rev, names: names || letter.title || letter.contractor || 'Source letter' };
 }
 
+function closePmLetter() {
+  const overlay = document.getElementById('pmLetterOverlay');
+  if (overlay) overlay.classList.remove('open');
+}
+
+function showPmLetterPanel(data) {
+  let overlay = document.getElementById('pmLetterOverlay');
+  if (!overlay) {
+    overlay = document.createElement('div');
+    overlay.id = 'pmLetterOverlay';
+    overlay.className = 'edit-overlay';
+    overlay.innerHTML = '<div class="edit-panel" style="max-width:900px;width:100%;height:min(92vh,960px);display:flex;flex-direction:column;">' +
+      '<div style="display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:10px;">' +
+      '<h2 id="pmLetterTitle" style="margin:0;">Source letter</h2>' +
+      '<button type="button" class="btn btn-ghost" onclick="closePmLetter()">Close</button></div>' +
+      '<iframe id="pmLetterFrame" title="Source letter" style="flex:1;width:100%;border:1px solid var(--border);background:#fff;border-radius:8px;"></iframe>' +
+      '</div>';
+    document.body.appendChild(overlay);
+  }
+  const title = document.getElementById('pmLetterTitle');
+  if (title) title.textContent = 'Source letter' + (data.contract ? ' · ' + data.contract : '');
+  const frame = document.getElementById('pmLetterFrame');
+  const body = data.letter_html
+    ? '<div class="letter-doc">' + data.letter_html + '</div>'
+    : '<pre style="white-space:pre-wrap;font-family:Georgia,serif;padding:24px;">' + pmHtml(data.letter_text || 'This letter has no saved text.') + '</pre>';
+  if (frame) {
+    frame.srcdoc = '<!DOCTYPE html><html><head><meta charset="utf-8"><title>Source letter</title>' +
+      '<link rel="stylesheet" href="sos/sos.css?v=20260908a"></head><body style="background:#fff;margin:0;">' +
+      body + '</body></html>';
+  }
+  overlay.classList.add('open');
+}
+
 async function openPmLetter(id) {
-  if (currentUser?.role !== 'pm' || !db) return;
+  if (currentUser?.role !== 'pm' || !db || !id) return;
   const { data, error } = await db.from('sos_letters')
     .select('id,contract,letter_date,letter_html,letter_text')
     .eq('id', id)
@@ -12557,16 +12601,12 @@ async function openPmLetter(id) {
     showToast('Could not open that source letter.', 'error');
     return;
   }
-  const win = window.open('', '_blank');
-  if (!win) {
-    showToast('Allow pop-ups to open the source letter.', 'error');
-    return;
-  }
-  const body = data.letter_html
-    ? data.letter_html
-    : '<pre style="white-space:pre-wrap;font-family:Georgia,serif;">' + pmHtml(data.letter_text || 'This letter has no saved text.') + '</pre>';
-  win.document.write('<!DOCTYPE html><html><head><title>Source letter ' + pmHtml(data.contract || '') + '</title></head><body>' + body + '</body></html>');
-  win.document.close();
+  showPmLetterPanel(data);
+}
+
+async function openPmSampleReport(id) {
+  if (currentUser?.role !== 'pm' || !id) return;
+  await viewReport(id);
 }
 
 async function openPmProject(id) {
@@ -12586,20 +12626,32 @@ async function openPmProject(id) {
   if (db && proj.contract) {
     [letters, samples, fieldTests, concrete] = await Promise.all([
       pmLoadRows(pmContractQuery('sos_letters', 'id,contract,title,contractor,letter_date,revision,sources,created_at', proj.contract).is('deleted_at', null).order('created_at', { ascending: false })),
-      pmLoadRows(pmContractQuery('samples', 'id,test_no,sample_type,status,date_sampled,location,contract,archived', proj.contract).is('deleted_at', null).order('created_at', { ascending: false })),
+      pmLoadRows(pmContractQuery('samples', 'id,test_no,sample_type,status,date_sampled,location,contract,archived,lab_data,test_category', proj.contract).is('deleted_at', null).order('created_at', { ascending: false })),
       pmLoadRows(pmContractQuery('field_tests', 'id,test_no,test_category,location,status,test_date,contract', proj.contract).order('created_at', { ascending: false })),
       pmLoadRows(pmContractQuery('concrete_sets', 'id,test_no,pour_location,cast_date,supplier,contract', proj.contract).order('created_at', { ascending: false })),
     ]);
     samples.rows = (samples.rows || []).filter(s => !s.archived);
   }
+  box.innerHTML = pmProjectPacketHtml(proj, letters, samples, fieldTests, concrete);
+  box.scrollIntoView({ block: 'nearest' });
+}
+
+function pmProjectPacketHtml(proj, letters, samples, fieldTests, concrete) {
+  const title = proj.contract || 'Project';
+  const name = proj.road || proj.description || proj.contractor || '';
+  const offline = 'These records appear when LabTrak is connected.';
   const letterRows = (letters.rows || []).map(letter => {
     const bit = pmLetterSummary(letter);
     const safeId = String(letter.id || '').replace(/'/g, '');
-    return '<button type="button" onclick="openPmLetter(\'' + safeId + '\')" style="display:block;width:100%;text-align:left;background:transparent;border:none;border-bottom:1px solid var(--border);padding:10px 0;cursor:pointer;color:inherit;">' +
-      '<strong>' + pmHtml(bit.names) + '</strong>' +
-      '<div style="color:var(--muted);font-size:12px;">' + pmHtml([bit.when, bit.rev, letter.contractor].filter(Boolean).join(' · ')) + '</div></button>';
+    return pmActionRow(bit.names, [bit.when, bit.rev, letter.contractor].filter(Boolean).join(' · '), 'View letter', "openPmLetter('" + safeId + "')");
   }).join('');
-  const sampleRows = (samples.rows || []).map(s => pmDetailRow(s.test_no || 'Sample', [s.sample_type, s.location].filter(Boolean).join(' · '), s.status || 'pending')).join('');
+  const sampleRows = (samples.rows || []).map(s => {
+    const main = s.test_no || 'Sample';
+    const sub = [s.sample_type, s.location].filter(Boolean).join(' · ');
+    if (!pmSampleReady(s)) return pmDetailRow(main, sub, s.status || 'pending');
+    const safeId = String(s.id || '').replace(/'/g, '');
+    return pmActionRow(main, sub, 'View report', "openPmSampleReport('" + safeId + "')");
+  }).join('');
   const fieldRows = (fieldTests.rows || []).map(t => pmDetailRow(t.test_no || t.test_category || 'Field test', [t.test_category, t.location].filter(Boolean).join(' · '), t.status || t.test_date || '')).join('');
   const concreteRows = (concrete.rows || []).map(c => pmDetailRow(c.test_no || 'Concrete', [c.pour_location, c.supplier].filter(Boolean).join(' · '), c.cast_date || '')).join('');
   const sectionEmpty = (result, none, missing) => {
@@ -12608,13 +12660,12 @@ async function openPmProject(id) {
     if (result.error) return 'Could not load this list.';
     return none;
   };
-  box.innerHTML = '<div class="card"><div class="card-title">' + pmHtml(title + (name ? ' — ' + name : '')) + '</div>' +
-    pmDetailSection('Source letters', letterRows || pmEmptyLine(sectionEmpty(letters, 'No source letter saved for this contract yet.', /sos_letters|schema cache|relation|does not exist/i))) +
+  return '<div class="card"><div class="card-title">' + pmHtml(title + (name ? ' — ' + name : '')) + '</div>' +
+    pmDetailSection('Source letters', letterRows || pmEmptyLine(sectionEmpty(letters, 'No source letter has been filed on this project yet.', /sos_letters|schema cache|relation|does not exist/i))) +
     pmDetailSection('Samples', sampleRows || pmEmptyLine(sectionEmpty(samples, 'No samples on this project yet.'))) +
     pmDetailSection('Field tests', fieldRows || pmEmptyLine(sectionEmpty(fieldTests, 'No field tests on this project yet.'))) +
     pmDetailSection('Concrete', concreteRows || pmEmptyLine(sectionEmpty(concrete, 'No concrete on this project yet.'))) +
     '</div>';
-  box.scrollIntoView({ block: 'nearest' });
 }
 
 function clearProjectFilter() {
@@ -13126,7 +13177,7 @@ function refreshReportEmailBtn(sample) {
   const concrete = isConcreteApprovalRecord(sample);
 
   // Resend stays with the lab. Field techs only read the finished report.
-  const fieldReader = currentUser?.role === 'field';
+  const fieldReader = currentUser?.role === 'field' || currentUser?.role === 'pm';
   if (btn) btn.style.display = (!fieldReader && !concrete && hasDist && isApproved && gmailSendReady()) ? '' : 'none';
   const editBtn = document.getElementById('rpt-soillab-edit-btn');
   if (editBtn && (compaction || concrete || !roleCanUseSoilModule())) editBtn.style.display = 'none';
@@ -16658,7 +16709,7 @@ function showPlannedModule(name) {
 function switchView(name, opts) {
   opts = opts || {};
   if (currentUser?.role === 'supplier' && name !== 'concrete') name = 'concrete';
-  if (currentUser?.role === 'pm' && name !== 'projects') name = 'projects';
+  if (currentUser?.role === 'pm' && name !== 'projects' && name !== 'report') name = 'projects';
   if ((name === 'soillab' || name === 'labhub') && !roleCanUseSoilModule()) {
     const hint = currentUser?.role === 'field' ? ' Finished reports are on Field Control.' : '';
     showToast('The soil lab stays with the lab techs.' + hint, 'info');
@@ -23166,10 +23217,14 @@ function syncReportChrome() {
   const back = document.getElementById('rpt-back-btn');
   const compaction = isCompactionApprovalRecord(_approvalTarget || slCurrentSample);
   if (back) {
-    back.textContent = compaction ? '← BACK' : (roleCanUseSoilModule() ? '← BACK TO SOIL LAB' : '← BACK');
+    back.textContent = currentUser?.role === 'pm'
+      ? '← BACK TO PROJECT'
+      : (compaction ? '← BACK' : (roleCanUseSoilModule() ? '← BACK TO SOIL LAB' : '← BACK'));
   }
   const editBtn = document.getElementById('rpt-soillab-edit-btn');
   if (editBtn && (compaction || !roleCanUseSoilModule())) editBtn.style.display = 'none';
+  const historyBtn = document.getElementById('rpt-history-btn');
+  if (historyBtn) historyBtn.style.display = currentUser?.role === 'pm' ? 'none' : '';
 }
 
 function openFoundSample(sample) {
@@ -23188,6 +23243,10 @@ function leaveReport() {
   _approvalTarget = null;
   const btn = document.getElementById('rpt-soillab-edit-btn');
   if (btn) btn.style.display = 'none';
+  if (currentUser?.role === 'pm') {
+    switchView('projects');
+    return;
+  }
   switchView(compaction ? 'fieldhub' : (roleCanUseSoilModule() ? 'soillab' : 'fieldhub'));
 }
 
