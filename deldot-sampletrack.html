@@ -19015,7 +19015,7 @@ AS $$
         AND (
           a.contrak_role = 'admin'
           OR a.contrak_scope = 'all'
-          OR COALESCE(a.view_ids, '[]'::jsonb) ? target
+          OR jsonb_exists(COALESCE(a.view_ids, '[]'::jsonb), target)
         )
     )
 $$;

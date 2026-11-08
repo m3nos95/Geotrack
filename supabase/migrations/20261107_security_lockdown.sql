@@ -176,7 +176,7 @@ AS $$
         AND (
           a.contrak_role = 'admin'
           OR a.contrak_scope = 'all'
-          OR COALESCE(a.view_ids, '[]'::jsonb) ? target
+          OR jsonb_exists(COALESCE(a.view_ids, '[]'::jsonb), target)
         )
     )
 $$;
@@ -237,7 +237,7 @@ LANGUAGE plpgsql
 SET search_path = public
 AS $$
 BEGIN
-  IF NEW.id = 'gmail' AND NEW.payload ? 'appPassword' THEN
+  IF NEW.id = 'gmail' AND jsonb_exists(NEW.payload, 'appPassword') THEN
     NEW.payload := NEW.payload - 'appPassword';
   END IF;
   RETURN NEW;
@@ -252,7 +252,7 @@ CREATE TRIGGER trg_labtrak_shared_strip_mail
 UPDATE public.labtrak_shared
 SET payload = payload - 'appPassword',
     updated_at = NOW()
-WHERE id = 'gmail' AND payload ? 'appPassword';
+WHERE id = 'gmail' AND jsonb_exists(payload, 'appPassword');
 
 -- The anon key stays in the web page. It must not be able to touch these tables.
 DO $$
