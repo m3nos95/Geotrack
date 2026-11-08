@@ -1,4 +1,5 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
+import { createClient } from "jsr:@supabase/supabase-js@2";
 import { SMTPClient } from "https://deno.land/x/denomailer@1.6.0/mod.ts";
 
 const corsHeaders = {
@@ -75,6 +76,54 @@ function normalizeGmailPass(pass: string): string {
   return pass.replace(/\s+/g, "");
 }
 
+const MAIL_ROLES = new Set([
+  "admin",
+  "section_admin",
+  "field",
+  "lab",
+  "concrete",
+  "hotmix",
+  "precast",
+  "chemlab",
+  "pm",
+]);
+
+async function signedInMailRole(req: Request): Promise<string | Response> {
+  const supabaseUrl = Deno.env.get("SUPABASE_URL") || "";
+  const anonKey = Deno.env.get("SUPABASE_ANON_KEY") || "";
+  const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || "";
+  const authHeader = req.headers.get("Authorization") || "";
+  if (!supabaseUrl || !anonKey || !serviceKey) {
+    return jsonResponse({ error: "Email service is missing its Supabase credentials." }, 500);
+  }
+  if (!authHeader.toLowerCase().startsWith("bearer ")) {
+    return jsonResponse({ error: "Sign in to LabTrak before sending mail." }, 401);
+  }
+  const userClient = createClient(supabaseUrl, anonKey, {
+    global: { headers: { Authorization: authHeader } },
+    auth: { persistSession: false, autoRefreshToken: false },
+  });
+  const { data: userData, error: userErr } = await userClient.auth.getUser();
+  const caller = userData?.user;
+  if (userErr || !caller) {
+    return jsonResponse({ error: "Sign in to LabTrak before sending mail." }, 401);
+  }
+  const admin = createClient(supabaseUrl, serviceKey, {
+    auth: { persistSession: false, autoRefreshToken: false },
+  });
+  const { data: profile, error: profileErr } = await admin
+    .from("st_user_profiles")
+    .select("role, active")
+    .eq("auth_user_id", caller.id)
+    .maybeSingle();
+  if (profileErr) return jsonResponse({ error: profileErr.message }, 500);
+  const role = profile?.active === false ? "" : (profile?.role || "");
+  if (!MAIL_ROLES.has(role)) {
+    return jsonResponse({ error: "This sign-in cannot send LabTrak mail." }, 403);
+  }
+  return role;
+}
+
 function decodeBase64(b64: string): Uint8Array {
   const bin = atob(b64);
   const out = new Uint8Array(bin.length);
@@ -88,6 +137,8 @@ Deno.serve(async (req) => {
   }
 
   try {
+    const role = await signedInMailRole(req);
+    if (role instanceof Response) return role;
     const payload: EmailRequest = await req.json();
     const bodyUser = payload.gmailUser?.trim() || "";
     const bodyPass = normalizeGmailPass(payload.gmailAppPassword || "");
