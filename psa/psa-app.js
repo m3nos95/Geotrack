@@ -1975,7 +1975,9 @@
           " " +
           esc(x.number) +
           (x.closed ? ' <span class="pill st-closed">closed</span>' : "") +
-          '</div><div class="m">PO ' +
+          ' <button type="button" class="btn small ghost" data-act="delete-task" data-id="' +
+          esc(x.id) +
+          '">Delete</button></div><div class="m">PO ' +
           E.fmtMoney(x.poAmount) +
           "<br>" +
           counts.total +
@@ -2170,9 +2172,12 @@
       banner +
       '<div class="row-between"><div><b>' +
       esc(taskNoun(c)) +
-      " " +
+      "</b> " +
+      '<input id="taskNumber" aria-label="' +
+      esc(taskNoun(c)) +
+      ' number" value="' +
       esc(t.number) +
-      "</b> · PO " +
+      '" style="width:56px;background:var(--panel);border:1px solid var(--border);border-radius:6px;padding:4px 6px"> · PO ' +
       '<input id="poAmount" value="' +
       esc(t.poAmount || 0) +
       '"' +
@@ -2208,6 +2213,11 @@
         ? '<button class="btn" data-act="print-task-closeout">Print task close-out</button>' +
           '<button class="btn" data-act="reopen-task">Reopen ' +
           esc(taskNoun(c).toLowerCase()) +
+          "</button>" +
+          '<button class="btn" data-act="delete-task" data-id="' +
+          esc(t.id) +
+          '">Delete ' +
+          esc(taskNoun(c).toLowerCase()) +
           "</button>"
         : '<button class="btn primary" data-act="add-qp">+ ' +
           esc(noun(c)) +
@@ -2219,6 +2229,11 @@
             : "") +
           bulkBtn +
           '<button class="btn" data-act="goto-task-closeout">Close out ' +
+          esc(taskNoun(c).toLowerCase()) +
+          "</button>" +
+          '<button class="btn" data-act="delete-task" data-id="' +
+          esc(t.id) +
+          '">Delete ' +
           esc(taskNoun(c).toLowerCase()) +
           "</button>") +
       "</div></div>" +
@@ -4096,6 +4111,32 @@
     );
   }
 
+  function saveTaskNumber() {
+    var input = document.getElementById("taskNumber");
+    var t = task();
+    var c = contract();
+    if (!input || !t || !c) return;
+    var next = String(input.value || "").trim();
+    if (!next) {
+      input.value = t.number;
+      toast("Enter a " + taskNoun(c).toLowerCase() + " number");
+      return;
+    }
+    if (next === String(t.number)) return;
+    var clash = (c.tasks || []).some(function (x) {
+      return x.id !== t.id && String(x.number) === next;
+    });
+    if (clash) {
+      input.value = t.number;
+      toast(taskNoun(c) + " " + next + " is already on " + c.code);
+      return;
+    }
+    t.number = next;
+    save();
+    toast(taskNoun(c) + " number is now " + next);
+    render();
+  }
+
   function saveTemplateFields() {
     var et = findTemplate(ui.editTemplateId);
     if (!et) return;
@@ -4116,6 +4157,12 @@
     document.getElementById("app").onclick = onClick;
     document.getElementById("app").onchange = onChange;
     document.getElementById("app").onkeydown = onKey;
+    var taskNo = document.getElementById("taskNumber");
+    if (taskNo) {
+      taskNo.onchange = function () {
+        saveTaskNumber();
+      };
+    }
     var po = document.getElementById("poAmount");
     if (po) {
       po.onchange = function () {
@@ -4661,6 +4708,45 @@
       deleteAgreement(el.getAttribute("data-id"));
       return;
     }
+    if (act === "delete-task") {
+      ev.stopPropagation();
+      var delTaskId = el.getAttribute("data-id") || (t && t.id);
+      var delTask = (c.tasks || []).find(function (x) {
+        return String(x.id) === String(delTaskId);
+      });
+      if (!delTask) return;
+      var qpCount = (delTask.qps || []).length;
+      var msg =
+        "Delete " +
+        taskNoun(c) +
+        " " +
+        delTask.number +
+        " from " +
+        c.code +
+        "?";
+      if (qpCount) {
+        msg +=
+          " This removes " +
+          qpCount +
+          " " +
+          (qpCount === 1 ? noun(c) : nouns(c)) +
+          " and their invoices.";
+      }
+      msg += " This cannot be undone.";
+      if (!confirm(msg)) return;
+      c.tasks = (c.tasks || []).filter(function (x) {
+        return x.id !== delTask.id;
+      });
+      if (String(ui.taskId) === String(delTask.id)) {
+        ui.taskId = (c.tasks[0] && c.tasks[0].id) || null;
+        ui.qpId = null;
+        clearBulkUi();
+      }
+      save();
+      toast("Deleted " + taskNoun(c) + " " + delTask.number);
+      render();
+      return;
+    }
     if (act === "switch-task") {
       ui.taskId = el.getAttribute("data-id");
       ui.qpId = null;
@@ -4904,8 +4990,7 @@
       return;
     }
     if (act === "add-task") {
-      var n = (c.tasks || []).length + 1;
-      var nt = E.emptyTask(String(n), 0);
+      var nt = E.emptyTask(E.nextTaskNumber(c.tasks), 0);
       c.tasks.push(nt);
       ui.taskId = nt.id;
       save();

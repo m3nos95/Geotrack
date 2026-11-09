@@ -2359,6 +2359,19 @@
     };
   }
 
+  function nextTaskNumber(tasks) {
+    var max = 0;
+    var any = false;
+    (tasks || []).forEach(function (t) {
+      var m = String((t && t.number) || "").match(/\d+/);
+      if (!m) return;
+      any = true;
+      var n = parseInt(m[0], 10);
+      if (n > max) max = n;
+    });
+    return String((any ? max : (tasks || []).length) + 1);
+  }
+
   function emptyTask(number, poAmount) {
     return {
       id: uid("task"),
@@ -2508,6 +2521,7 @@
     excelDate: excelDate,
     emptyQp: emptyQp,
     emptyTask: emptyTask,
+    nextTaskNumber: nextTaskNumber,
     emptyInvoice: emptyInvoice,
     AGREEMENT_TYPES: AGREEMENT_TYPES,
     PAYMENT_METHODS: PAYMENT_METHODS,
