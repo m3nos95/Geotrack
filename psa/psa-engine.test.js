@@ -1133,6 +1133,9 @@ assert("No invoices cannot estimate", E.forecastNeed([{ id: "x", code: "x", cont
 var past = E.forecastNeed(needContracts, "2020-01-01", { from: "2026-10-16" });
 assert("Past through date estimates zero days", past.days === 0 && past.need === 0);
 
+assert("Next task uses the highest number", E.nextTaskNumber([{ number: "3" }, { number: "4" }, { number: "3" }]) === "5");
+assert("Next task starts at 1", E.nextTaskNumber([]) === "1");
+
 if (fails) {
   console.error("\n" + fails + " failed");
   process.exit(1);
