@@ -1136,6 +1136,54 @@ assert("Past through date estimates zero days", past.days === 0 && past.need ===
 assert("Next task uses the highest number", E.nextTaskNumber([{ number: "3" }, { number: "4" }, { number: "3" }]) === "5");
 assert("Next task starts at 1", E.nextTaskNumber([]) === "1");
 
+var cpuBook = {
+  contracts: [{
+    id: "2019F",
+    code: "2019F",
+    cap: 100,
+    tasks: [
+      { id: "task-3", number: "3", poAmount: 10, qps: [{ id: "qp-a", qpNumber: "1", invoices: [] }] },
+      { id: "task-5", number: "5", poAmount: 0, qps: [] },
+    ],
+  }],
+};
+var ipadBook = {
+  contracts: [{
+    id: "2019F",
+    code: "2019F",
+    cap: 80,
+    tasks: [
+      { id: "task-3", number: "3", poAmount: 25, qps: [
+        { id: "qp-a", qpNumber: "1", invoices: [{ id: "inv-1", amount: 5 }] },
+        { id: "qp-b", qpNumber: "2", invoices: [] },
+      ] },
+    ],
+  }],
+  ui: { contractId: "2019F", taskId: "task-3" },
+};
+var joined = E.mergeLedgerStates(ipadBook, cpuBook, "2026-11-09T15:00:00.000Z", "2026-11-09T16:00:00.000Z");
+var joinedTasks = joined.contracts[0].tasks;
+assert("Cloud task created on the computer is kept", joinedTasks.some(function (t) { return t.id === "task-5"; }));
+assert("iPad QP missing from the newer book is kept", joinedTasks[0].qps.some(function (q) { return q.id === "qp-b"; }));
+assert("Newer task amount wins", joinedTasks[0].poAmount === 10);
+assert("Invoice posted only on the iPad is kept", joinedTasks[0].qps[0].invoices.some(function (inv) { return inv.id === "inv-1"; }));
+assert("Merge keeps the iPad's open screen", joined.ui && joined.ui.taskId === "task-3");
+
+E.noteSyncRemoved(cpuBook, "task", "task-3");
+var afterDelete = E.mergeLedgerStates(ipadBook, cpuBook, "2026-11-09T17:00:00.000Z", "2026-11-09T16:00:00.000Z");
+assert("Deleted task does not come back from the other device", afterDelete.contracts[0].tasks.every(function (t) { return t.id !== "task-3"; }));
+assert("Task 5 still survives the delete merge", afterDelete.contracts[0].tasks.some(function (t) { return t.id === "task-5"; }));
+
+var seenCpu = { contracts: [{ id: "2019F", tasks: [{ id: "task-5", number: "5", qps: [] }] }], syncSeen: { task: { "task-3": "2026-11-09T16:00:00.000Z" } } };
+var seenIpad = { contracts: [{ id: "2019F", tasks: [{ id: "task-3", number: "3", qps: [] }] }] };
+var seenMerge = E.mergeLedgerStates(seenIpad, seenCpu, "2026-11-09T15:00:00.000Z", "2026-11-09T16:00:00.000Z");
+assert("A task the computer already saved and removed stays gone", seenMerge.contracts[0].tasks.every(function (t) { return t.id !== "task-3"; }));
+
+var resetRemote = { syncEpoch: 2, contracts: [{ id: "2216F", tasks: [{ id: "only-new", number: "1", qps: [] }] }] };
+var staleLocal = { syncEpoch: 1, contracts: [{ id: "2019F", tasks: [{ id: "old", number: "3", qps: [] }] }] };
+var resetMerge = E.mergeLedgerStates(staleLocal, resetRemote, "2026-11-09T18:00:00.000Z", "2026-11-09T17:00:00.000Z");
+assert("A newer book epoch replaces the old tasks", resetMerge.contracts.length === 1 && resetMerge.contracts[0].id === "2216F");
+
 if (fails) {
   console.error("\n" + fails + " failed");
   process.exit(1);

@@ -2449,6 +2449,257 @@
     return { state: next, pdfs: pdfs };
   }
 
+  function syncTime(value) {
+    var n = Date.parse(value || "");
+    return isNaN(n) ? 0 : n;
+  }
+
+  function noteSyncSeen(state, at) {
+    if (!state) return state;
+    var when = at || new Date().toISOString();
+    state.syncSeen = state.syncSeen || {};
+    function mark(kind, id) {
+      if (id == null || id === "") return;
+      var box = state.syncSeen[kind] || (state.syncSeen[kind] = {});
+      var key = String(id);
+      if (!box[key]) box[key] = when;
+    }
+    (state.contracts || []).forEach(function (c) {
+      mark("contract", c && c.id);
+      (c && c.tasks || []).forEach(function (t) {
+        mark("task", t && t.id);
+        (t && t.qps || []).forEach(function (q) {
+          mark("qp", q && q.id);
+          (q && q.invoices || []).forEach(function (inv) {
+            mark("invoice", inv && inv.id);
+          });
+        });
+        (t && t.bulkCloseouts || []).forEach(function (b) {
+          mark("bulk", b && b.id);
+        });
+      });
+    });
+    (state.templates || []).forEach(function (tpl) {
+      mark("template", tpl && tpl.id);
+    });
+    var examples = state.analyzer && state.analyzer.examples;
+    (examples || []).forEach(function (ex) {
+      mark("example", ex && ex.id);
+    });
+    return state;
+  }
+
+  function noteSyncRemoved(state, kind, id) {
+    if (!state || !kind || id == null || id === "") return state;
+    var when = new Date().toISOString();
+    var key = String(id);
+    state.tombstones = Array.isArray(state.tombstones) ? state.tombstones : [];
+    var found = false;
+    state.tombstones.forEach(function (row) {
+      if (row && row.kind === kind && String(row.id) === key) {
+        row.at = when;
+        found = true;
+      }
+    });
+    if (!found) state.tombstones.push({ kind: kind, id: key, at: when });
+    state.syncSeen = state.syncSeen || {};
+    var box = state.syncSeen[kind] || (state.syncSeen[kind] = {});
+    if (!box[key]) box[key] = when;
+    return state;
+  }
+
+  function bumpSyncEpoch(state) {
+    if (!state) return state;
+    var n = Number(state.syncEpoch);
+    state.syncEpoch = (isFinite(n) && n > 0 ? n : 0) + 1;
+    return state;
+  }
+
+  function syncEpochOf(state) {
+    var n = Number(state && state.syncEpoch);
+    return isFinite(n) && n > 0 ? n : 0;
+  }
+
+  function hasTombstone(state, kind, id) {
+    if (!state || id == null || id === "") return false;
+    var key = String(id);
+    var tombs = state.tombstones || [];
+    for (var i = 0; i < tombs.length; i++) {
+      var row = tombs[i];
+      if (row && row.kind === kind && String(row.id) === key) return true;
+    }
+    return false;
+  }
+
+  function seenAndMissing(state, kind, id) {
+    if (!state || id == null || id === "") return false;
+    var seen = state.syncSeen && state.syncSeen[kind];
+    return !!(seen && Object.prototype.hasOwnProperty.call(seen, String(id)));
+  }
+
+  function mergeIdList(newerList, olderList, newerState, olderState, kind, nest) {
+    var newerMap = {};
+    var olderMap = {};
+    (newerList || []).forEach(function (item) {
+      if (item && item.id != null && item.id !== "") newerMap[String(item.id)] = item;
+    });
+    (olderList || []).forEach(function (item) {
+      if (item && item.id != null && item.id !== "") olderMap[String(item.id)] = item;
+    });
+    var order = [];
+    var seen = {};
+    function take(list) {
+      (list || []).forEach(function (item) {
+        if (!item || item.id == null || item.id === "") return;
+        var id = String(item.id);
+        if (seen[id]) return;
+        seen[id] = true;
+        order.push(id);
+      });
+    }
+    take(newerList);
+    take(olderList);
+    var out = [];
+    order.forEach(function (id) {
+      var fromNewer = newerMap[id];
+      var fromOlder = olderMap[id];
+      if (hasTombstone(newerState, kind, id) || hasTombstone(olderState, kind, id)) return;
+      if (!fromNewer && seenAndMissing(newerState, kind, id)) return;
+      if (!fromOlder && seenAndMissing(olderState, kind, id)) return;
+      var body = cloneJson(fromNewer || fromOlder);
+      if (nest) body = nest(body, fromNewer || null, fromOlder || null);
+      out.push(body);
+    });
+    return out;
+  }
+
+  function mergeTasks(newerList, olderList, newerState, olderState) {
+    return mergeIdList(newerList, olderList, newerState, olderState, "task", function (body, newer, older) {
+      body.qps = mergeIdList(
+        (newer && newer.qps) || [],
+        (older && older.qps) || [],
+        newerState,
+        olderState,
+        "qp",
+        function (qp, newerQp, olderQp) {
+          qp.invoices = mergeIdList(
+            (newerQp && newerQp.invoices) || [],
+            (olderQp && olderQp.invoices) || [],
+            newerState,
+            olderState,
+            "invoice",
+            null
+          );
+          return qp;
+        }
+      );
+      body.bulkCloseouts = mergeIdList(
+        (newer && newer.bulkCloseouts) || [],
+        (older && older.bulkCloseouts) || [],
+        newerState,
+        olderState,
+        "bulk",
+        null
+      );
+      return body;
+    });
+  }
+
+  function combineTombstones(a, b) {
+    var map = {};
+    function add(state) {
+      (state && state.tombstones || []).forEach(function (row) {
+        if (!row || !row.kind || row.id == null || row.id === "") return;
+        var key = row.kind + "\0" + row.id;
+        var prev = map[key];
+        if (!prev || syncTime(row.at) >= syncTime(prev.at)) {
+          map[key] = { kind: row.kind, id: String(row.id), at: row.at || "" };
+        }
+      });
+    }
+    add(a);
+    add(b);
+    return Object.keys(map).map(function (key) {
+      return map[key];
+    });
+  }
+
+  function combineSeen(a, b) {
+    var out = {};
+    function add(state) {
+      var seen = (state && state.syncSeen) || {};
+      Object.keys(seen).forEach(function (kind) {
+        var box = seen[kind];
+        if (!box || typeof box !== "object") return;
+        out[kind] = out[kind] || {};
+        Object.keys(box).forEach(function (id) {
+          if (!out[kind][id] || syncTime(box[id]) < syncTime(out[kind][id])) out[kind][id] = box[id];
+        });
+      });
+    }
+    add(a);
+    add(b);
+    return out;
+  }
+
+  /* Keep a task, QP, or invoice that exists on only one device.
+     A delete sticks when that device recorded a tombstone or had already
+     saved the row and no longer has it. A higher syncEpoch replaces the book. */
+  function mergeLedgerStates(local, remote, localAt, remoteAt) {
+    local = local || {};
+    remote = remote || {};
+    var localEpoch = syncEpochOf(local);
+    var remoteEpoch = syncEpochOf(remote);
+    if (localEpoch !== remoteEpoch) {
+      var winner = cloneJson(localEpoch > remoteEpoch ? local : remote);
+      if (local.ui) winner.ui = cloneJson(local.ui);
+      return winner;
+    }
+    var localWins = syncTime(localAt) >= syncTime(remoteAt);
+    var newer = localWins ? local : remote;
+    var older = localWins ? remote : local;
+    var merged = cloneJson(newer);
+    merged.contracts = mergeIdList(
+      newer.contracts || [],
+      older.contracts || [],
+      newer,
+      older,
+      "contract",
+      function (body, fromNewer, fromOlder) {
+        body.tasks = mergeTasks(
+          (fromNewer && fromNewer.tasks) || [],
+          (fromOlder && fromOlder.tasks) || [],
+          newer,
+          older
+        );
+        return body;
+      }
+    );
+    merged.templates = mergeIdList(
+      newer.templates || [],
+      older.templates || [],
+      newer,
+      older,
+      "template",
+      null
+    );
+    merged.analyzer = cloneJson((newer.analyzer && typeof newer.analyzer === "object") ? newer.analyzer : { examples: [] });
+    merged.analyzer.examples = mergeIdList(
+      (newer.analyzer && newer.analyzer.examples) || [],
+      (older.analyzer && older.analyzer.examples) || [],
+      newer,
+      older,
+      "example",
+      null
+    );
+    merged.tombstones = combineTombstones(local, remote);
+    merged.syncSeen = combineSeen(local, remote);
+    merged.syncEpoch = localEpoch;
+    if (local.ui) merged.ui = cloneJson(local.ui);
+    else delete merged.ui;
+    return merged;
+  }
+
   global.PsaEngine = {
     money: money,
     uid: uid,
@@ -2500,6 +2751,10 @@
     cloneJson: cloneJson,
     backupSnapshot: backupSnapshot,
     parseBackup: parseBackup,
+    noteSyncSeen: noteSyncSeen,
+    noteSyncRemoved: noteSyncRemoved,
+    bumpSyncEpoch: bumpSyncEpoch,
+    mergeLedgerStates: mergeLedgerStates,
     isQpCloseable: isQpCloseable,
     closeableQps: closeableQps,
     sortQpsByNumber: sortQpsByNumber,

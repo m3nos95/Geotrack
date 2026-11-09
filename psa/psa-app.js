@@ -131,8 +131,9 @@
       toast("Could not save locally: " + err.message);
     }
     if (who.me) {
-      writeBookLocal(who.me.id, state);
-      pushBook(who.me.id, state);
+      E.noteSyncSeen(state);
+      writeBookLocal(who.me.id, state, { dirty: true });
+      schedulePush();
     }
     if (!(opts && opts.skipFolder)) scheduleBackupWrite();
   }
@@ -360,11 +361,18 @@
       !confirm(
         "Delete agreement " +
           target.code +
-          " and all of its tasks, QPs, NTPs, and invoices from this browser? This cannot be undone."
+          " and all of its tasks, QPs, NTPs, and invoices? This removes them on every signed-in device. This cannot be undone."
       )
     ) {
       return;
     }
+    E.noteSyncRemoved(state, "contract", id);
+    (target.tasks || []).forEach(function (taskRow) {
+      E.noteSyncRemoved(state, "task", taskRow.id);
+      (taskRow.qps || []).forEach(function (qpRow) {
+        E.noteSyncRemoved(state, "qp", qpRow.id);
+      });
+    });
     state.contracts = list.filter(function (x) {
       return x.id !== id;
     });
@@ -691,10 +699,150 @@
       return {};
     }
   }
-  function writeBookLocal(id, st) {
+  function writeBookLocal(id, st, opts) {
+    opts = opts || {};
     var books = readBooks();
-    books[id] = { state: JSON.parse(JSON.stringify(st)), updatedAt: new Date().toISOString() };
+    var prev = books[id] || {};
+    books[id] = {
+      state: JSON.parse(JSON.stringify(st)),
+      updatedAt: opts.updatedAt || new Date().toISOString(),
+      dirty: opts.dirty != null ? !!opts.dirty : true,
+      pushedAt: opts.pushedAt != null ? opts.pushedAt : prev.pushedAt || "",
+    };
     localStorage.setItem(BOOKS_KEY, JSON.stringify(books));
+  }
+  function cloudCopy(st) {
+    var copy = JSON.parse(JSON.stringify(st || {}));
+    delete copy.ui;
+    return copy;
+  }
+  function mixHash(h, text) {
+    text = String(text);
+    var a = h[0];
+    var b = h[1];
+    for (var i = 0; i < text.length; i++) {
+      var c = text.charCodeAt(i);
+      a = (Math.imul(a, 33) ^ c) >>> 0;
+      b = (Math.imul(b, 31) ^ c) >>> 0;
+    }
+    h[0] = a;
+    h[1] = b;
+  }
+  function hashAny(value, h, skipUi) {
+    if (Array.isArray(value)) {
+      mixHash(h, "[");
+      for (var i = 0; i < value.length; i++) hashAny(value[i], h, false);
+      mixHash(h, "]");
+      return;
+    }
+    if (value && typeof value === "object") {
+      var keys = Object.keys(value);
+      if (skipUi) {
+        keys = keys.filter(function (key) {
+          return key !== "ui";
+        });
+      }
+      keys.sort();
+      mixHash(h, "{");
+      for (var k = 0; k < keys.length; k++) {
+        mixHash(h, keys[k]);
+        hashAny(value[keys[k]], h, false);
+      }
+      mixHash(h, "}");
+      return;
+    }
+    mixHash(h, value === undefined ? "u" : JSON.stringify(value));
+  }
+  function ledgerSig(st) {
+    try {
+      var h = [2166136261, 5381];
+      hashAny(st || {}, h, true);
+      return h[0].toString(16) + ":" + h[1].toString(16);
+    } catch (e) {
+      return "";
+    }
+  }
+  function typingInApp() {
+    var active = document.activeElement;
+    return !!(active && /^(INPUT|TEXTAREA|SELECT)$/.test(active.tagName));
+  }
+  function sbUrl() {
+    try {
+      return localStorage.getItem("labtrak_sb_url") || SB_URL;
+    } catch (e) {
+      return SB_URL;
+    }
+  }
+  function sbKey() {
+    try {
+      return localStorage.getItem("labtrak_sb_anon_key") || SB_KEY;
+    } catch (e) {
+      return SB_KEY;
+    }
+  }
+  var liveToken = "";
+  function rememberToken() {
+    var client = contrakClient();
+    if (!client || !client.auth || typeof client.auth.getSession !== "function") return Promise.resolve("");
+    return client.auth.getSession().then(function (res) {
+      var token = res && res.data && res.data.session && res.data.session.access_token;
+      if (token) liveToken = token;
+      return token || "";
+    }).catch(function () {
+      return liveToken;
+    });
+  }
+  function paintCloudNote() {
+    var el = document.getElementById("contrak-cloud-note");
+    if (!who.cloudNote) {
+      if (el && el.parentNode) el.parentNode.removeChild(el);
+      return;
+    }
+    if (el) {
+      el.textContent = who.cloudNote;
+      return;
+    }
+    if (!typingInApp()) render();
+  }
+  function cloudFail(err) {
+    var msg = (err && (err.message || err.details || err.hint)) || "";
+    if (/row-level security|permission|jwt|not authenticated|401|403/i.test(String(msg))) {
+      who.cloudNote = "Saved on this browser only. Sign in to LabTrak again so this book can reach your iPad.";
+    } else if (/contrak_books|schema cache|does not exist|PGRST205/i.test(String(msg))) {
+      who.cloudNote = "Saved on this browser only. Run the ConTrak SQL once in LabTrak settings so the book can sync.";
+    } else if (msg) {
+      who.cloudNote = "Saved on this browser only. " + msg;
+    } else {
+      who.cloudNote = "Saved on this browser only. Your iPad will not show this change until LabTrak accepts the book.";
+    }
+    paintCloudNote();
+  }
+  function ownState() {
+    if (who.me && !who.foreign && who.viewId === who.me.id) return state;
+    var book = who.me && readBooks()[who.me.id];
+    return book && book.state ? book.state : null;
+  }
+  function storeOwnBook(next, at, dirty) {
+    var onOwnScreen = who.me && !who.foreign && (who.viewId || who.me.id) === who.me.id;
+    if (onOwnScreen) {
+      var before = ledgerSig(state);
+      var uiKeep = state && state.ui;
+      state = T.migrateState(next);
+      if (uiKeep) state.ui = uiKeep;
+      applyRestoredState();
+      writeBookLocal(who.me.id, state, {
+        updatedAt: at,
+        dirty: !!dirty,
+        pushedAt: dirty ? undefined : at,
+      });
+      if (ledgerSig(state) !== before && !typingInApp()) render();
+      return;
+    }
+    writeBookLocal(who.me.id, next, {
+      updatedAt: at,
+      dirty: !!dirty,
+      pushedAt: dirty ? undefined : at,
+    });
   }
   function contrakClient() {
     if (who.client !== undefined) return who.client;
@@ -706,7 +854,7 @@
       var url = localStorage.getItem("labtrak_sb_url") || SB_URL;
       var key = localStorage.getItem("labtrak_sb_anon_key") || SB_KEY;
       who.client = window.supabase.createClient(url, key, {
-        auth: { persistSession: true, autoRefreshToken: false },
+        auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: false },
       });
     } catch (e) {
       who.client = null;
@@ -714,15 +862,88 @@
     return who.client;
   }
   var bookPushTimer = null;
-  function pushBook(id, st) {
-    var client = contrakClient();
-    if (!client || !id) return;
+  var cloudChain = Promise.resolve();
+  function enqueueCloud(work) {
+    cloudChain = cloudChain.then(work, work);
+    return cloudChain;
+  }
+  function schedulePush() {
+    if (who.signedOut || who.foreign || who.locked || !who.me) return;
     clearTimeout(bookPushTimer);
-    var payload = { user_id: id, state: st, updated_at: new Date().toISOString() };
     bookPushTimer = setTimeout(function () {
-      var up = client.from("contrak_books").upsert(payload, { onConflict: "user_id" });
-      if (up && typeof up.then === "function") Promise.resolve(up).then(function () {});
-    }, 300);
+      enqueueCloud(function () {
+        return pushBookNow();
+      });
+    }, 200);
+  }
+  function pushBook() {
+    schedulePush();
+  }
+  function pushBookNow() {
+    var client = contrakClient();
+    var id = who.me && who.me.id;
+    var local = ownState();
+    if (!client || !id || !local || who.signedOut || who.locked) return Promise.resolve();
+    var sentAt = new Date().toISOString();
+    return rememberToken().then(function (token) {
+      if (!token) {
+        cloudFail({ message: "Sign in to LabTrak again so this book can reach your iPad." });
+        return null;
+      }
+      return client.from("contrak_books").select("state,updated_at").eq("user_id", id).maybeSingle();
+    }).then(function (res) {
+      if (!res) return null;
+      if (res.error) throw res.error;
+      var remote = res.data;
+      var merged = JSON.parse(JSON.stringify(ownState() || local));
+      if (remote && remote.state) {
+        merged = E.mergeLedgerStates(merged, remote.state, sentAt, remote.updated_at || "");
+      }
+      E.noteSyncSeen(merged);
+      var payload = cloudCopy(merged);
+      var payloadSig = ledgerSig(payload);
+      var remoteSig = remote && remote.state ? ledgerSig(remote.state) : "";
+      if (remote && remote.state && payloadSig === remoteSig) {
+        storeOwnBook(merged, remote.updated_at || sentAt, false);
+        who.cloudNote = "";
+        paintCloudNote();
+        return null;
+      }
+      return client
+        .from("contrak_books")
+        .upsert({ user_id: id, state: payload, updated_at: sentAt }, { onConflict: "user_id" })
+        .then(function (up) {
+          if (up && up.error) throw up.error;
+          storeOwnBook(merged, sentAt, false);
+          who.cloudNote = "";
+          paintCloudNote();
+        });
+    }).catch(function (err) {
+      cloudFail(err);
+    });
+  }
+  function flushBookOnLeave() {
+    var id = who.me && who.me.id;
+    var book = id && readBooks()[id];
+    if (!id || !liveToken || !book || !book.dirty) return;
+    var payload = {
+      user_id: id,
+      state: cloudCopy(ownState() || book.state),
+      updated_at: new Date().toISOString(),
+    };
+    try {
+      fetch(sbUrl() + "/rest/v1/contrak_books?on_conflict=user_id", {
+        method: "POST",
+        keepalive: true,
+        headers: {
+          apikey: sbKey(),
+          Authorization: "Bearer " + liveToken,
+          "Content-Type": "application/json",
+          Prefer: "resolution=merge-duplicates",
+        },
+        body: JSON.stringify(payload),
+      });
+    } catch (e) {}
   }
   function bootWho() {
     who.me = readActor();
@@ -746,12 +967,11 @@
     var claim = who.grant.role === "user" && who.grant.scope !== "all" && (!owner || owner === who.me.id);
     if (claim) {
       try { localStorage.setItem(OWNER_KEY, who.me.id); } catch (e) {}
-      writeBookLocal(who.me.id, state);
+      writeBookLocal(who.me.id, state, { dirty: true });
       pushBook(who.me.id, state);
     } else {
       state = defaultState();
       applyRestoredState();
-      writeBookLocal(who.me.id, state);
     }
   }
   function switchWho(id) {
@@ -766,61 +986,129 @@
     render();
   }
   function pullCloud() {
+    return enqueueCloud(function () {
+      return pullCloudNow();
+    });
+  }
+  function pullCloudNow() {
     var client = contrakClient();
-    if (!client || !who.me || who.locked) return Promise.resolve();
-    return Promise.resolve(
-      client.from("contrak_access").select("user_id,contrak_role,contrak_scope,view_ids")
-    ).then(function (res) {
-        if (res.error) {
-          who.cloudNote = "Books stay on this browser until the ConTrak SQL is run once in LabTrak settings.";
+    if (!client || !who.me || who.locked || who.signedOut) return Promise.resolve();
+    return rememberToken().then(function (token) {
+      if (!token) {
+        cloudFail({ message: "Sign in to LabTrak again so this book can reach your iPad." });
+        return null;
+      }
+      return client.from("contrak_access").select("user_id,contrak_role,contrak_scope,view_ids");
+    }).then(function (res) {
+      if (!res) return null;
+      if (res.error) {
+        who.cloudNote = "Saved on this browser only. Run the ConTrak SQL once in LabTrak settings so the book can sync.";
+        paintCloudNote();
+        return null;
+      }
+      if (res.data && res.data.length) {
+        var map = {};
+        res.data.forEach(function (row) {
+          map[row.user_id] = {
+            role: row.contrak_role || "none",
+            scope: row.contrak_scope || "own",
+            viewIds: Array.isArray(row.view_ids) ? row.view_ids : [],
+          };
+        });
+        var accessBefore = "";
+        try { accessBefore = JSON.stringify(readAccess()); } catch (e) {}
+        writeAccess(map);
+        who.grant = grantFor(who.me, map);
+        if (!who.grant) {
+          who.locked = true;
+          render();
           return null;
         }
-        if (res.data && res.data.length) {
-          var map = {};
-          res.data.forEach(function (row) {
-            map[row.user_id] = {
-              role: row.contrak_role || "none",
-              scope: row.contrak_scope || "own",
-              viewIds: Array.isArray(row.view_ids) ? row.view_ids : [],
-            };
-          });
-          writeAccess(map);
-          who.grant = grantFor(who.me, map);
-          if (!who.grant) {
-            who.locked = true;
-            return null;
-          }
+        if (JSON.stringify(map) !== accessBefore && !typingInApp()) render();
+      }
+      return client.from("contrak_books").select("user_id,state,updated_at");
+    }).then(function (res) {
+      if (!res) return;
+      if (res.error) {
+        cloudFail(res.error);
+        return;
+      }
+      var books = readBooks();
+      var mine = who.me.id;
+      var remoteMine = null;
+      (res.data || []).forEach(function (row) {
+        if (!row || !row.user_id || !row.state) return;
+        if (row.user_id === mine) {
+          remoteMine = row;
+          return;
         }
-        return client.from("contrak_books").select("user_id,state,updated_at");
-      })
-      .then(function (res) {
-        if (!res || res.error || !res.data) return;
-        var books = readBooks();
-        var changed = false;
-        res.data.forEach(function (row) {
-          if (!row || !row.user_id || !row.state) return;
-          var local = books[row.user_id];
-          var cloudAt = row.updated_at || "";
-          var localAt = (local && local.updatedAt) || "";
-          if (!local || String(cloudAt) > String(localAt)) {
-            books[row.user_id] = { state: row.state, updatedAt: cloudAt || new Date().toISOString() };
-            changed = true;
-          }
-        });
-        if (changed) localStorage.setItem(BOOKS_KEY, JSON.stringify(books));
-        var current = books[who.viewId || (who.me && who.me.id)];
-        if (changed && current && current.state) {
-          state = T.migrateState(current.state);
-          applyRestoredState();
+        var local = books[row.user_id];
+        var cloudAt = Date.parse(row.updated_at || "") || 0;
+        var localAt = Date.parse((local && local.updatedAt) || "") || 0;
+        if (!local || local.dirty !== true && cloudAt >= localAt) {
+          books[row.user_id] = {
+            state: row.state,
+            updatedAt: row.updated_at || new Date().toISOString(),
+            dirty: false,
+            pushedAt: row.updated_at || "",
+          };
         }
-        who.cloudNote = "";
-      })
-      .catch(function () {
-        who.cloudNote = "Books stay on this browser until the ConTrak SQL is run once in LabTrak settings.";
-      })
-      .then(function () {
-        render();
       });
+      try {
+        localStorage.setItem(BOOKS_KEY, JSON.stringify(books));
+      } catch (e) {}
+      var viewing = who.viewId || mine;
+      if (viewing !== mine) {
+        var shown = books[viewing];
+        if (shown && shown.state && ledgerSig(shown.state) !== ledgerSig(state)) {
+          state = T.migrateState(shown.state);
+          applyRestoredState();
+          if (!typingInApp()) render();
+        }
+        return;
+      }
+      var localBook = books[mine];
+      if (
+        localBook &&
+        localBook.dirty !== true &&
+        remoteMine &&
+        localBook.pushedAt &&
+        String(localBook.pushedAt) === String(remoteMine.updated_at || "")
+      ) {
+        who.cloudNote = "";
+        return;
+      }
+      if (!localBook) {
+        if (remoteMine && remoteMine.state) {
+          storeOwnBook(remoteMine.state, remoteMine.updated_at || new Date().toISOString(), false);
+          who.cloudNote = "";
+          paintCloudNote();
+          return;
+        }
+        return pushBookNow();
+      }
+      var localState = ownState() || localBook.state || state;
+      if (!remoteMine) {
+        return pushBookNow();
+      }
+      var merged = E.mergeLedgerStates(
+        localState,
+        remoteMine.state,
+        (localBook && localBook.updatedAt) || "",
+        remoteMine.updated_at || ""
+      );
+      var mergedSig = ledgerSig(merged);
+      var remoteSig = ledgerSig(remoteMine.state);
+      var screenSig = ledgerSig(state);
+      if (mergedSig !== screenSig) {
+        storeOwnBook(merged, remoteMine.updated_at || new Date().toISOString(), mergedSig !== remoteSig);
+      }
+      if (mergedSig !== remoteSig) return pushBookNow();
+      who.cloudNote = "";
+      paintCloudNote();
+    }).catch(function (err) {
+      cloudFail(err);
+    });
   }
   function whoBar() {
     if (!who.me || who.locked) return "";
@@ -1753,7 +2041,7 @@
         ? '<div class="admin-list">' + ledgerList + "</div>"
         : "<p class='muted'>No proposal lines on the ledger yet. Dropping a proposal onto a QP also trains the analyzer.</p>") +
       "<h3 style=\"margin-top:14px\">Packets you taught</h3>" +
-      (exList ? '<div class="admin-list">' + exList + "</div>" : "<p class='muted'>None yet — drop a request and proposal together above. They stay in this browser.</p>") +
+      (exList ? '<div class="admin-list">' + exList + "</div>" : "<p class='muted'>None yet — drop a request and proposal together above. They are saved with this ConTrak book.</p>") +
       "</div></div>" +
       renderAnalyzerReport(contract(), res)
     );
@@ -2392,6 +2680,7 @@
   function finishDeleteQp(c, t, q) {
     var id = q.id;
     var num = q.qpNumber;
+    E.noteSyncRemoved(state, "qp", id);
     var removed = E.deleteQp(t, id);
     if (!removed) {
       toast(
@@ -4100,7 +4389,7 @@
     return (
       folderCard +
       '<div class="card"><h2>Backup / import</h2>' +
-      "<p>Data lives in this browser (localStorage). Export a JSON backup before switching computers. You can also import a task sheet in the same layout as <b>NEW CGC 2024.xlsx</b> / <b>HCEA Task 3.xlsx</b> (assignment #, Contract, Project, NTP Amount, invoice date/amount columns).</p>" +
+      "<p>This book is saved to LabTrak for the person signed in. Open ConTrak on another signed-in phone or computer and the same tasks load there. Export JSON is a backup copy. You can also import a task sheet in the same layout as <b>NEW CGC 2024.xlsx</b> / <b>HCEA Task 3.xlsx</b> (assignment #, Contract, Project, NTP Amount, invoice date/amount columns).</p>" +
       '<div style="display:flex;gap:8px;flex-wrap:wrap;margin:12px 0">' +
       '<button class="btn primary" data-act="export-json">Export JSON</button>' +
       '<label class="btn">Import JSON<input type="file" id="importJson" accept="application/json" hidden></label>' +
@@ -4732,8 +5021,12 @@
           (qpCount === 1 ? noun(c) : nouns(c)) +
           " and their invoices.";
       }
-      msg += " This cannot be undone.";
+      msg += " This removes it on every signed-in device and cannot be undone.";
       if (!confirm(msg)) return;
+      E.noteSyncRemoved(state, "task", delTask.id);
+      (delTask.qps || []).forEach(function (qpRow) {
+        E.noteSyncRemoved(state, "qp", qpRow.id);
+      });
       c.tasks = (c.tasks || []).filter(function (x) {
         return x.id !== delTask.id;
       });
@@ -4808,6 +5101,7 @@
     }
     if (act === "az-del-ex") {
       var xid = el.getAttribute("data-id");
+      E.noteSyncRemoved(state, "example", xid);
       state.analyzer.examples = (state.analyzer.examples || []).filter(function (ex) {
         return ex.id !== xid;
       });
@@ -4927,6 +5221,7 @@
         toast("Unbind this template from " + used.map(function (x) { return x.code; }).join(", ") + " first");
         return;
       }
+      E.noteSyncRemoved(state, "template", doomed.id);
       state.templates = state.templates.filter(function (x) {
         return x.id !== doomed.id;
       });
@@ -5230,6 +5525,7 @@
         return;
       }
       var undoId = el.getAttribute("data-id") || ui.bulkCloseoutId;
+      E.noteSyncRemoved(state, "bulk", undoId);
       var undone = E.undoBulkCloseout(t, undoId);
       if (!undone) {
         toast("Could not undo that close-out");
@@ -5561,11 +5857,16 @@
       return;
     }
     if (act === "reset") {
-      if (!confirm("Reset all ConTrak data in this browser?")) return;
+      if (!confirm("Reset this ConTrak book? Other signed-in devices will get the starter book too.")) return;
+      var epoch = (Number(state && state.syncEpoch) || 0) + 1;
       localStorage.removeItem(STORE);
-      load();
+      state = defaultState();
+      state.syncEpoch = epoch;
       ui.contractId = "2216F";
+      ui.taskId = null;
       ui.qpId = null;
+      applyRestoredState();
+      save();
       toast("Reset to starter data");
       render();
       return;
@@ -5871,7 +6172,9 @@
 
   function applyImportedBackup(raw) {
     var parsed = E.parseBackup(raw);
+    var epoch = (Number(state && state.syncEpoch) || 0) + 1;
     state = T.migrateState(parsed.state);
+    state.syncEpoch = Math.max(epoch, (Number(parsed.state && parsed.state.syncEpoch) || 0) + 1);
     applyRestoredState();
     save();
     return parsed;
@@ -5969,6 +6272,15 @@
       };
     },
   };
+
+  document.addEventListener("visibilitychange", function () {
+    if (document.visibilityState === "visible") pullCloud();
+  });
+  window.addEventListener("pagehide", flushBookOnLeave);
+  setInterval(function () {
+    if (document.visibilityState !== "visible") return;
+    pullCloud();
+  }, 20000);
 
   who.signedOut = true;
   document.getElementById("app").innerHTML =
