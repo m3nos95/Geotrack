@@ -15,7 +15,7 @@
 <script>
 // Load external scripts dynamically so a failed CDN fetch doesn't block the page
 window._scriptsReady = 0;
-window._scriptsNeeded = 4; // supabase, qrcode, html5-qrcode, html2pdf
+window._scriptsNeeded = 5; // supabase, qrcode, html5-qrcode, html2pdf, jspdf
 window._tailwindReady = false;
 
 function _loadScript(src, onload, onerror) {
@@ -66,6 +66,10 @@ _loadScript(
 _loadScript(
   'https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js',
   _scriptLoaded, _scriptFailed('html2pdf')
+);
+_loadScript(
+  'https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js',
+  _scriptLoaded, _scriptFailed('jsPDF')
 );
 </script>
 <!-- ── End offline-safe script loader ───────────────────────── -->
@@ -8923,6 +8927,7 @@ const CACHE = 'labtrak-v1';
 const PRECACHE = [
   'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js',
   'https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js',
+  'https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js',
   'https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js',
   'https://cdnjs.cloudflare.com/ajax/libs/html5-qrcode/2.3.8/html5-qrcode.min.js',
   'https://cdn.tailwindcss.com',
@@ -37739,13 +37744,19 @@ function caliperFormHtml(eq, proc, data, opts) {
   const approve = readonly && !data.approvedBy
     ? '<div class="r18-form-actions"><label class="r18-paper-field" style="min-width:220px"><span>Approved by</span><input class="r18-paper-input" id="cal-approve-name" value="' + escapeHtml(viewerName()) + '" autocomplete="off" /></label><button type="button" class="btn btn-primary" onclick="r18_approveCaliperRecord(\'' + recordId + '\')">Approve</button></div>'
     : '';
-  const actions = readonly ? '' : '<div class="r18-form-actions"><button type="button" class="btn btn-ghost" id="cal-save-progress" onclick="r18_saveCaliperForm(\'draft\')">Save Progress</button><button type="button" class="btn btn-primary" id="cal-save-complete" onclick="r18_saveCaliperForm(\'complete\')">Save and Complete</button></div>';
+  const actions = readonly
+    ? ''
+    : (opts && opts.editing
+      ? '<div class="r18-form-actions"><button type="button" class="btn btn-primary" id="cal-save-complete" onclick="r18_saveCaliperForm(\'complete\')">Save changes</button></div>'
+      : '<div class="r18-form-actions"><button type="button" class="btn btn-ghost" id="cal-save-progress" onclick="r18_saveCaliperForm(\'draft\')">Save Progress</button><button type="button" class="btn btn-primary" id="cal-save-complete" onclick="r18_saveCaliperForm(\'complete\')">Save and Complete</button></div>');
   const remarks = readonly
     ? '<div class="r18-paper-value" style="min-height:48px;white-space:pre-wrap;">' + escapeHtml(data.remarks || '—') + '</div>'
     : '<textarea class="r18-paper-area" id="cal-remarks">' + escapeHtml(data.remarks || '') + '</textarea>';
   return '<div class="p-5" id="r18-cal-form" data-procedure-id="' + escapeHtml(proc && proc.id) + '" data-record-id="' + escapeHtml(recordId) + '" data-readonly="' + (readonly ? '1' : '0') + '" data-back="' + escapeHtml(back) + '">' +
     '<div class="r18-form-top"><div><div class="r18-form-kicker">Calibration Procedure</div><h2 class="text-xl serif font-semibold ink">Caliper Calibration' + (result ? ' · ' + escapeHtml(result) : '') + '</h2><div class="text-sm ink-2">' + escapeHtml((eq && eq.name) || '') + '</div></div>' +
-    '<div class="flex gap-2"><button type="button" class="btn btn-ghost" onclick="r18_printCaliperForm()">Print</button><button type="button" class="btn btn-ghost" onclick="' + leave + '">Close</button></div></div>' +
+    '<div class="flex gap-2"><button type="button" class="btn btn-ghost" id="cal-export-pdf" onclick="r18_exportCaliperPdf()">Export PDF</button>' +
+    (readonly && recordId ? '<button type="button" class="btn btn-primary" onclick="r18_editCaliperRecord(\'' + recordId + '\')">Edit</button>' : '') +
+    '<button type="button" class="btn btn-ghost" onclick="' + leave + '">Close</button></div></div>' +
     '<div class="r18-perform-layout"><div><div class="r18-paper">' +
     '<div class="r18-paper-org">Delaware Department of Transportation</div>' +
     '<div class="r18-paper-sub">Materials &amp; Research Dover, Delaware</div>' +
@@ -37780,12 +37791,14 @@ function caliperFormHtml(eq, proc, data, opts) {
     '<textarea id="r18-cal-data" hidden readonly>' + JSON.stringify(data).replace(/</g, '\\u003c') + '</textarea>' +
     '</div>';
 }
-function openCaliperForm(proc, eq, back, record) {
-  const draft = record || procedureDraft(proc.id);
-  const bag = draft ? formBag(draft) : null;
+function openCaliperForm(proc, eq, back, record, options) {
+  const editing = !!(options && options.editing);
+  const source = record || procedureDraft(proc.id);
+  const bag = source ? formBag(source) : null;
   const data = caliperDataFrom(bag, eq, proc);
-  if (draft && draft.result) data.result = draft.result;
-  showModal(caliperFormHtml(eq, proc, data, { back: back, recordId: draft ? draft.id : '', readonly: !!(record && formBag(record).status === 'complete') }), {
+  if (source && source.result) data.result = source.result;
+  const complete = !!(bag && bag.status === 'complete');
+  showModal(caliperFormHtml(eq, proc, data, { back: back, recordId: source ? source.id : '', readonly: complete && !editing, editing: complete && editing }), {
     form: true,
     lock: true,
     onMount: () => {
@@ -37877,6 +37890,7 @@ window.r18_saveCaliperForm = async (mode) => {
     ? new Date(data.nextDue + 'T12:00:00').toISOString()
     : addFrequency(completedAt, proc.frequencyValue, proc.frequencyUnit);
   const result = mode === 'complete' ? caliperResult(data) : null;
+  const previous = (state.procedureRecords || []).find(r => r.id === root.dataset.recordId);
   const record = {
     id: root.dataset.recordId || uuid(),
     labId: state.currentLabId || proc.labId,
@@ -37889,44 +37903,103 @@ window.r18_saveCaliperForm = async (mode) => {
     certificateNumber: '',
     formData: Object.assign({ formId: CALIPER_FORM_ID, status: mode === 'complete' ? 'complete' : 'draft', revision: '2025-05-07' }, data),
     nextDueAt: nextDueAt,
+    createdAt: previous && previous.createdAt,
   };
   const btn = document.getElementById(mode === 'complete' ? 'cal-save-complete' : 'cal-save-progress');
   if (btn) btn.disabled = true;
   try {
     if (!db) throw new Error('Connect Supabase before saving this calibration.');
-    await repo.put('procedure_records', record);
-    if (mode === 'complete') {
-      await repo.put('procedures', Object.assign({}, proc, { lastCompletedAt: completedAt, nextDueAt: nextDueAt }));
-      if (proc.procedureType === 'calibration' && eq) {
-        await repo.put('equipment', Object.assign({}, eq, { lastCalibration: completedAt, nextCalibration: nextDueAt }));
-      }
-    }
+    await repo.put('procedure_records', calibrationRecordPayload(record));
   } catch (e) {
     if (btn) btn.disabled = false;
     console.error(e);
-    const message = e && e.message && e.message.indexOf('Supabase') >= 0 ? e.message : 'Could not save this calibration.';
-    toast(message);
-    return;
-  }
-  upsertById(state.procedureRecords, record);
-  if (mode === 'complete') {
-    upsertById(state.procedures, Object.assign({}, proc, { lastCompletedAt: completedAt, nextDueAt: nextDueAt }));
-    if (proc.procedureType === 'calibration' && eq) {
-      upsertById(state.equipment, Object.assign({}, eq, { lastCalibration: completedAt, nextCalibration: nextDueAt }));
-    }
-    try { await refreshAll(); } catch (e) { console.warn(e); }
-    renderView();
-    window.r18_openEquipmentDetail(proc.equipmentId);
-    toast(result === 'fail'
-      ? 'Saved as a fail. Take this instrument out of service until it is corrected.'
-      : 'Calibration saved. Next due ' + (fmtDateNum(data.nextDue) || fmtDateShort(nextDueAt)));
+    toast(saveFailureText(e));
     return;
   }
   root.dataset.recordId = record.id;
-  root._initial = JSON.stringify(readCaliperForm());
-  if (btn) btn.disabled = false;
-  toast('Calibration progress saved.');
+  upsertById(state.procedureRecords, record);
+  if (mode !== 'complete') {
+    root._initial = JSON.stringify(readCaliperForm());
+    if (btn) btn.disabled = false;
+    toast('Progress saved in the lab database.');
+    return;
+  }
+  let scheduleSaved = true;
+  try {
+    await repo.put('procedures', procedureSchedulePayload(proc, completedAt, nextDueAt));
+    if (proc.procedureType === 'calibration' && eq) {
+      await repo.put('equipment', equipmentCalibrationPayload(eq, completedAt, nextDueAt));
+    }
+  } catch (e) {
+    scheduleSaved = false;
+    console.error(e);
+  }
+  upsertById(state.procedures, Object.assign({}, proc, { lastCompletedAt: completedAt, nextDueAt: nextDueAt }));
+  if (proc.procedureType === 'calibration' && eq) {
+    upsertById(state.equipment, Object.assign({}, eq, { lastCalibration: completedAt, nextCalibration: nextDueAt }));
+  }
+  try { await refreshAll(); } catch (e) { console.warn(e); }
+  renderView();
+  window.r18_openEquipmentDetail(proc.equipmentId);
+  if (!scheduleSaved) {
+    toast('The sheet is in the lab database. The next due date could not be updated.');
+    return;
+  }
+  toast(result === 'fail'
+    ? 'Saved in the lab database as a fail. Take this instrument out of service until it is corrected.'
+    : 'Saved in the lab database. Next due ' + (fmtDateNum(data.nextDue) || fmtDateShort(nextDueAt)));
 };
+function calibrationRecordPayload(record) {
+  const row = {
+    id: record.id,
+    labId: record.labId,
+    equipmentId: record.equipmentId,
+    procedureId: record.procedureId,
+    completedAt: record.completedAt,
+    completedBy: record.completedBy || '',
+    result: record.result,
+    notes: record.notes || '',
+    certificateNumber: record.certificateNumber || '',
+    formData: record.formData || {},
+    nextDueAt: record.nextDueAt,
+  };
+  if (record.createdAt) row.createdAt = record.createdAt;
+  return row;
+}
+function procedureSchedulePayload(proc, completedAt, nextDueAt) {
+  const row = {
+    id: proc.id,
+    labId: proc.labId,
+    equipmentId: proc.equipmentId,
+    procedureType: proc.procedureType,
+    name: proc.name,
+    frequencyValue: proc.frequencyValue || 1,
+    frequencyUnit: proc.frequencyUnit || 'months',
+    lastCompletedAt: completedAt,
+    nextDueAt: nextDueAt,
+    instructions: proc.instructions || '',
+    active: proc.active !== false,
+  };
+  if (proc.createdAt) row.createdAt = proc.createdAt;
+  return row;
+}
+function equipmentCalibrationPayload(eq, completedAt, nextDueAt) {
+  const next = {};
+  Object.keys(eq || {}).forEach(key => {
+    if (key === 'updatedAt' || eq[key] === undefined) return;
+    next[key] = eq[key];
+  });
+  next.id = eq.id;
+  next.lastCalibration = completedAt;
+  next.nextCalibration = nextDueAt;
+  return next;
+}
+function saveFailureText(e) {
+  if (!db) return 'Connect Supabase before saving this calibration.';
+  const msg = e && (e.message || e.details) ? String(e.message || e.details) : '';
+  if (msg && msg.length < 180) return msg;
+  return 'Could not save this calibration to the lab database.';
+}
 window.r18_approveCaliperRecord = async (recordId) => {
   const record = (state.procedureRecords || []).find(r => r.id === recordId);
   if (!record) return;
@@ -37955,36 +38028,160 @@ function caliperPrintValue(value, type) {
   if (!value) return '';
   return type === 'date' ? (fmtDateNum(value) || value) : value;
 }
-window.r18_printCaliperForm = () => {
-  const live = document.getElementById('cal-instrument');
-  const data = live ? readCaliperForm() : JSON.parse(document.getElementById('r18-cal-data').textContent);
-  const root = document.getElementById('r18-cal-form');
-  const proc = root ? state.procedures.find(p => p.id === root.dataset.procedureId) : null;
-  const eq = proc ? equipmentById(proc.equipmentId) : null;
-  const line = (label, value) => '<div class="line"><b>' + label + '</b> ' + escapeHtml(caliperPrintValue(value, label === 'Date' || label === 'Previous' || label === 'Next Due' ? 'date' : 'text') || '') + '</div>';
-  const cell = (value) => '<td>' + escapeHtml(value || '') + '</td>';
-  const sheetRow = (label, row) => '<tr><td>' + label + '</td>' + cell(row.g1) + cell(row.m1) + cell(row.g2) + cell(row.m2) + cell(row.g3) + cell(row.m3) + cell(row.pf) + '</tr>';
-  const html = '<!DOCTYPE html><html><head><meta charset="utf-8"><title>Calibration of Micrometers and Calipers</title><style>' +
-    'body{font-family:Georgia,serif;color:#111;margin:0.6in;font-size:12px;} h1,h2{text-align:center;margin:0;} h1{font-size:18px;} h2{font-size:15px;margin-top:8px;} .sub{text-align:center;margin-top:2px;} .grid{display:grid;grid-template-columns:1fr 1fr;gap:8px 24px;margin-top:16px;} .line{border-bottom:1px solid #111;padding:4px 0;} ol{padding-left:20px;line-height:1.4;} table{width:100%;border-collapse:collapse;margin-top:8px;} th,td{border:1px solid #111;padding:4px;text-align:center;font-size:11px;} .foot{margin-top:18px;text-align:center;font-size:11px;}' +
-    '</style></head><body>' +
-    '<h1>Delaware Department of Transportation</h1><div class="sub">Materials &amp; Research Dover, Delaware</div><h2>Calibration of Micrometers and Calipers</h2>' +
-    '<div class="grid">' + line('Instrument', data.instrument) + line('Date', data.date) + line('Serial Number', data.serialNumber) + line('Previous', data.previous) + line('Reason', data.reason) + line('Next Due', data.nextDue) + '</div>' +
-    '<h2 style="text-align:left;margin-top:16px;">Procedure</h2><ol>' + CALIPER_STEPS.map(step => '<li>' + step.replace(/<[^>]+>/g, '') + '</li>').join('') + '</ol>' +
-    '<h2 style="text-align:left;margin-top:16px;">Calibration</h2>' +
-    '<div class="grid">' + line('Gauge 1', data.gauge1) + line('Serial Number', data.gauge1Serial) + line('Gauge 2', data.gauge2) + line('Serial Number', data.gauge2Serial) + '</div>' +
-    '<table><thead><tr><th>-Zero-</th><th>Gauge 1 Value</th><th>Measure 1</th><th>Gauge 2 Value</th><th>Measure 2</th><th>Gauge 3 Value</th><th>Measure 3</th><th>Pass/Fail</th></tr></thead><tbody>' +
-    sheetRow('Zero', data.rows.zero) + sheetRow('Block', data.rows.block) + '</tbody></table>' +
-    '<div class="line" style="margin-top:14px"><b>Remarks</b> ' + escapeHtml(data.remarks || '') + '</div>' +
-    '<div class="grid">' + line('Verified By', data.verifiedBy) + '<div></div>' + line('Approved By', data.approvedBy) + line('Date', data.approvedDate) + '</div>' +
-    '<div class="foot">Calibration of Micrometers &amp; Calipers – Updated May 7, 2025' + (eq && eq.name ? ' · ' + escapeHtml(eq.name) : '') + '</div>' +
-    '</body></html>';
-  const blob = new Blob([html], { type: 'text/html;charset=utf-8' });
-  const url = URL.createObjectURL(blob);
-  const w = window.open(url, '_blank');
-  if (!w) { URL.revokeObjectURL(url); toast('Allow pop-ups to print this form.'); return; }
-  w.addEventListener('load', () => setTimeout(() => { try { w.focus(); w.print(); } catch (e) {} }, 200));
-  setTimeout(() => URL.revokeObjectURL(url), 60000);
+function currentCaliperData() {
+  if (document.getElementById('cal-instrument')) return readCaliperForm();
+  const stored = document.getElementById('r18-cal-data');
+  return stored ? JSON.parse(stored.value || stored.textContent) : null;
+}
+function caliperPdfName(data) {
+  const serial = String((data && data.serialNumber) || 'calipers').replace(/[^\w.-]+/g, '-').replace(/-+/g, '-').slice(0, 40);
+  return 'Caliper-Calibration-' + serial + '-' + ((data && data.date) || todayInput()) + '.pdf';
+}
+function writeCaliperPdf(data) {
+  const doc = new window.jspdf.jsPDF({ unit: 'in', format: 'letter' });
+  const left = 0.55;
+  const width = 7.4;
+  let y = 0.52;
+  const ensure = (need) => {
+    if (y + need <= 10.55) return;
+    doc.addPage();
+    y = 0.55;
+  };
+  const center = (text, size, style) => {
+    doc.setFont('times', style || 'bold');
+    doc.setFontSize(size);
+    doc.setTextColor(17);
+    doc.text(text, 4.25, y, { align: 'center' });
+    y += size / 72 + 0.08;
+  };
+  const shown = (value, date) => caliperPrintValue(value, date ? 'date' : 'text') || '';
+  const fieldPair = (aLabel, aValue, bLabel, bValue) => {
+    ensure(0.42);
+    const colW = width / 2 - 0.18;
+    const draw = (x, label, value) => {
+      doc.setFont('times', 'bold');
+      doc.setFontSize(8);
+      doc.text(String(label || '').toUpperCase(), x, y);
+      doc.setFont('times', 'normal');
+      doc.setFontSize(11);
+      const lines = doc.splitTextToSize(String(value || ''), colW);
+      doc.text(lines.slice(0, 1), x, y + 0.18);
+      doc.setDrawColor(30);
+      doc.setLineWidth(0.01);
+      doc.line(x, y + 0.24, x + colW, y + 0.24);
+    };
+    draw(left, aLabel, aValue);
+    if (bLabel) draw(left + width / 2 + 0.08, bLabel, bValue);
+    y += 0.42;
+  };
+  center('Delaware Department of Transportation', 14, 'bold');
+  center('Materials & Research Dover, Delaware', 10, 'normal');
+  y += 0.02;
+  center('Calibration of Micrometers and Calipers', 13, 'bold');
+  y += 0.06;
+  fieldPair('Instrument', shown(data.instrument), 'Date', shown(data.date, true));
+  fieldPair('Serial Number', shown(data.serialNumber), 'Previous', shown(data.previous, true));
+  fieldPair('Reason', shown(data.reason), 'Next Due', shown(data.nextDue, true));
+  y += 0.04;
+  ensure(0.24);
+  doc.setFont('times', 'bold');
+  doc.setFontSize(12);
+  doc.text('Procedure', left, y);
+  y += 0.2;
+  doc.setFont('times', 'normal');
+  doc.setFontSize(9);
+  CALIPER_STEPS.forEach((step, index) => {
+    const lines = doc.splitTextToSize((index + 1) + '. ' + step.replace(/<[^>]+>/g, ''), width);
+    ensure(lines.length * 0.145 + 0.02);
+    doc.text(lines, left, y);
+    y += lines.length * 0.145 + 0.03;
+  });
+  y += 0.08;
+  ensure(0.24);
+  doc.setFont('times', 'bold');
+  doc.setFontSize(12);
+  doc.text('Calibration', left, y);
+  y += 0.22;
+  fieldPair('Gauge 1', shown(data.gauge1), 'Serial Number', shown(data.gauge1Serial));
+  fieldPair('Gauge 2', shown(data.gauge2), 'Serial Number', shown(data.gauge2Serial));
+  const headers = ['-Zero-', 'Gauge 1 Value', 'Measure 1', 'Gauge 2 Value', 'Measure 2', 'Gauge 3 Value', 'Measure 3', 'Pass/Fail'];
+  const cols = [0.62, 1.02, 0.92, 1.02, 0.92, 1.02, 0.92, 0.96];
+  const paintRow = (cells, header) => {
+    const rowH = header ? 0.36 : 0.26;
+    ensure(rowH);
+    let x = left;
+    doc.setFont('times', header ? 'bold' : 'normal');
+    doc.setFontSize(header ? 7 : 9);
+    cells.forEach((cell, index) => {
+      doc.setDrawColor(30);
+      doc.setLineWidth(0.008);
+      doc.rect(x, y, cols[index], rowH);
+      const lines = doc.splitTextToSize(String(cell || ''), cols[index] - 0.06);
+      doc.text(lines.slice(0, 2), x + cols[index] / 2, y + (header ? 0.14 : 0.16), { align: 'center' });
+      x += cols[index];
+    });
+    y += rowH;
+  };
+  paintRow(headers, true);
+  const rows = data.rows || {};
+  const cellsFor = (label, row) => [label, row.g1 || '', row.m1 || '', row.g2 || '', row.m2 || '', row.g3 || '', row.m3 || '', row.pf || ''];
+  paintRow(cellsFor('Zero', rows.zero || {}), false);
+  paintRow(cellsFor('Block', rows.block || {}), false);
+  y += 0.16;
+  ensure(0.2);
+  doc.setFont('times', 'italic');
+  doc.setFontSize(8);
+  doc.text('Readable to 0.001 inch (0.025 mm). Each measurement must be within +/- 0.002 of the gage block.', left, y);
+  y += 0.22;
+  ensure(0.7);
+  doc.setFont('times', 'bold');
+  doc.setFontSize(10);
+  doc.text('Remarks', left, y);
+  y += 0.08;
+  doc.setFont('times', 'normal');
+  const remarkLines = doc.splitTextToSize(data.remarks || ' ', width - 0.16);
+  const remarkH = Math.max(0.48, remarkLines.length * 0.16 + 0.12);
+  ensure(remarkH);
+  doc.rect(left, y, width, remarkH);
+  doc.text(remarkLines, left + 0.08, y + 0.18);
+  y += remarkH + 0.22;
+  fieldPair('Verified By', shown(data.verifiedBy), 'Approved By', shown(data.approvedBy));
+  fieldPair('Date', shown(data.approvedDate, true), '', '');
+  y += 0.04;
+  ensure(0.2);
+  doc.setFont('times', 'normal');
+  doc.setFontSize(9);
+  doc.text('Calibration of Micrometers & Calipers - Updated May 7, 2025', 4.25, y, { align: 'center' });
+  return doc;
+}
+window.r18_editCaliperRecord = (recordId) => {
+  const record = (state.procedureRecords || []).find(r => r.id === recordId);
+  if (!record) return;
+  const proc = state.procedures.find(p => p.id === record.procedureId);
+  const eq = equipmentById(record.equipmentId) || {};
+  if (!proc) return toast('This procedure is no longer on the equipment.');
+  openCaliperForm(proc, eq, 'equipment', record, { editing: true });
 };
+window.r18_exportCaliperPdf = async () => {
+  const data = currentCaliperData();
+  if (!data) return;
+  const btn = document.getElementById('cal-export-pdf');
+  if (!window.jspdf || typeof window.jspdf.jsPDF !== 'function') {
+    toast('PDF export is still loading. Try again in a moment.');
+    return;
+  }
+  if (btn) btn.disabled = true;
+  try {
+    writeCaliperPdf(data).save(caliperPdfName(data));
+    toast('PDF downloaded.');
+  } catch (e) {
+    console.error(e);
+    toast('Could not create the PDF.');
+  } finally {
+    if (btn) btn.disabled = false;
+  }
+};
+window.r18_printCaliperForm = () => { window.r18_exportCaliperPdf(); };
 
 window.r18_openCompleteProcedureModal = (procedureId, back) => {
   const proc = state.procedures.find(p => p.id === procedureId);
