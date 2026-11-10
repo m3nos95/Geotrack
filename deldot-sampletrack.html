@@ -3716,10 +3716,9 @@ table.fc-borrow-tbl tr.fc-borrow-detail-row td{background:var(--surface);border-
 .r18-app .r18-org-extra-row { display: flex; justify-content: space-between; gap: 12px; align-items: center; background: white; border: 1px solid var(--r18-line); border-radius: 8px; padding: 10px 12px; margin-top: 8px; }
 .r18-app .r18-org-box.person { cursor: grab; user-select: none; touch-action: none; }
 .r18-app .r18-org-box.person.dragging { opacity: 0.35; }
-.r18-app .r18-org-lower { display: flex; flex-direction: column; align-items: center; width: 100%; position: relative; }
-.r18-app .r18-org-lower::before { content: ''; position: absolute; top: 0; bottom: 18px; left: 50%; border-left: 1px solid var(--r18-line); }
-.r18-app .r18-org-slot { position: relative; z-index: 1; margin-top: 10px; min-width: 168px; min-height: 44px; padding: 8px 12px; border: 1px dashed var(--r18-line); border-radius: 8px; background: white; color: var(--r18-ink-3); font-size: 12px; display: flex; align-items: center; justify-content: center; }
-.r18-app .r18-org-box.hot, .r18-app .r18-org-slot.hot { outline: 2px solid var(--r18-accent); outline-offset: 2px; }
+.r18-app .r18-org-newbox { cursor: grab; user-select: none; touch-action: none; min-width: 120px; min-height: 36px; padding: 8px 14px; border: 1px dashed var(--r18-line); border-radius: 8px; background: white; color: var(--r18-ink-2); font-size: 13px; font-weight: 650; display: flex; align-items: center; justify-content: center; }
+.r18-app .r18-org-newbox.dragging { opacity: 0.35; }
+.r18-app .r18-org-box.hot { outline: 2px solid var(--r18-accent); outline-offset: 2px; }
 .r18-org-ghost { position: fixed; z-index: 100002; pointer-events: none; background: white; border: 1px solid var(--r18-accent); border-radius: 8px; padding: 8px 12px; font-weight: 700; font-size: 14px; color: var(--r18-ink); box-shadow: 0 8px 24px rgba(15, 29, 46, 0.16); }
 .r18-app .r18-org-actions { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 10px; }
 @media (max-width: 720px) {
@@ -40924,9 +40923,8 @@ function orgPersonBox(user, mode) {
   </div>`;
 }
 
-function orgNode(boxHtml, childrenHtml, slotHtml) {
-  const lower = (slotHtml || childrenHtml) ? `<div class="r18-org-lower">${slotHtml || ''}${childrenHtml || ''}</div>` : '';
-  return `<div class="r18-org-node">${boxHtml}${lower}</div>`;
+function orgNode(boxHtml, childrenHtml) {
+  return `<div class="r18-org-node">${boxHtml}${childrenHtml || ''}</div>`;
 }
 
 function orgRenderKey(key, boxHtml, shown, map, editable) {
@@ -40945,9 +40943,7 @@ function orgRenderKey(key, boxHtml, shown, map, editable) {
   }).join('');
   const children = sectionHtml + peopleHtml;
   const childWrap = children ? `<div class="r18-org-children" data-parent="${escapeHtml(key)}">${children}</div>` : '';
-  const slot = editable && people.length && shown.some(u => String(u.id) === key)
-    ? `<div class="r18-org-slot" data-slot="${escapeHtml(key)}">New box</div>` : '';
-  return orgNode(boxHtml, childWrap, slot);
+  return orgNode(boxHtml, childWrap);
 }
 
 function orgChartMarkup(lab, opts) {
@@ -40980,44 +40976,56 @@ function orgChartMarkup(lab, opts) {
   return `<div class="r18-org">${tree}${removedHtml}${extrasHtml}</div>`;
 }
 
-function orgDropTarget(tree, draggedId, x, y) {
-  const ghost = tree.querySelector('.r18-org-ghost');
+function orgHitElement(root, x, y) {
+  const ghost = root.querySelector('.r18-org-ghost');
   if (ghost) ghost.style.display = 'none';
   const el = document.elementFromPoint(x, y);
   if (ghost) ghost.style.display = 'block';
-  if (!el || !tree.contains(el)) return null;
-  const slot = el.closest('.r18-org-slot');
-  if (slot && tree.contains(slot)) {
-    const parent = slot.getAttribute('data-slot');
-    if (parent && orgApplyMove(orgShownPeople(orgChartConfig().hiddenIds), orgChartConfig().links, draggedId, parent, true)) return { id: parent, insert: true, el: slot };
-  }
+  return el && root.contains(el) ? el : null;
+}
+function orgDropTarget(root, draggedId, x, y) {
+  const el = orgHitElement(root, x, y);
+  if (!el) return null;
   const card = el.closest('.r18-org-box');
-  if (card && tree.contains(card)) {
-    const target = card.getAttribute('data-user-id') || card.getAttribute('data-drop-id');
-    if (target && orgApplyMove(orgShownPeople(orgChartConfig().hiddenIds), orgChartConfig().links, draggedId, target, false)) return { id: target, insert: false, el: card };
-  }
+  if (!card || !root.contains(card)) return null;
+  const target = card.getAttribute('data-user-id') || card.getAttribute('data-drop-id');
+  if (target && orgApplyMove(orgShownPeople(orgChartConfig().hiddenIds), orgChartConfig().links, draggedId, target, false)) return { draggedId: draggedId, id: target, insert: false, el: card };
   return null;
 }
+function orgNewBoxTarget(root, x, y) {
+  const el = orgHitElement(root, x, y);
+  if (!el) return null;
+  const card = el.closest('.r18-org-box.person');
+  if (!card || !root.contains(card)) return null;
+  const personId = card.getAttribute('data-user-id');
+  const cfg = orgChartConfig();
+  const shown = orgShownPeople(cfg.hiddenIds);
+  const parent = orgParentMap(shown, cfg.links)[String(personId)];
+  if (!parent || !orgApplyMove(shown, cfg.links, personId, parent, true)) return null;
+  return { draggedId: String(personId), id: parent, insert: true, el: card };
+}
 
-function bindOrgChartDrag(tree) {
-  tree.addEventListener('pointerdown', (e) => {
-    const box = e.target.closest('.r18-org-box.person');
-    if (!box || e.target.closest('button')) return;
+function bindOrgChartDrag(root) {
+  root.addEventListener('pointerdown', (e) => {
     if (e.button != null && e.button !== 0) return;
-    const draggedId = box.getAttribute('data-user-id');
-    if (!draggedId) return;
+    const fresh = e.target.closest('.r18-org-newbox');
+    const box = fresh ? null : e.target.closest('.r18-org-box.person');
+    if (!fresh && (!box || e.target.closest('button'))) return;
+    const draggedId = box ? box.getAttribute('data-user-id') : '';
+    if (box && !draggedId) return;
     e.preventDefault();
+    const source = fresh || box;
     const startX = e.clientX;
     const startY = e.clientY;
     let moved = false;
     const ghost = document.createElement('div');
     ghost.className = 'r18-org-ghost';
-    ghost.textContent = (box.querySelector('.r18-org-name') || {}).textContent || '';
+    ghost.textContent = fresh ? 'New box' : ((box.querySelector('.r18-org-name') || {}).textContent || '');
     ghost.style.display = 'none';
-    tree.appendChild(ghost);
+    root.appendChild(ghost);
     const paint = (x, y) => {
-      tree.querySelectorAll('.hot').forEach(el => el.classList.remove('hot'));
-      const hit = orgDropTarget(tree, draggedId, x, y);
+      root.querySelectorAll('.hot').forEach(el => el.classList.remove('hot'));
+      const hit = fresh ? orgNewBoxTarget(root, x, y) : orgDropTarget(root, draggedId, x, y);
       ghost.style.left = (x + 14) + 'px';
       ghost.style.top = (y + 14) + 'px';
       if (hit) hit.el.classList.add('hot');
@@ -41026,7 +41034,7 @@ function bindOrgChartDrag(tree) {
     const move = (ev) => {
       if (!moved && Math.hypot(ev.clientX - startX, ev.clientY - startY) < 6) return;
       moved = true;
-      box.classList.add('dragging');
+      source.classList.add('dragging');
       ghost.style.display = 'block';
       paint(ev.clientX, ev.clientY);
     };
@@ -41035,10 +41043,13 @@ function bindOrgChartDrag(tree) {
       window.removeEventListener('pointerup', up);
       window.removeEventListener('pointercancel', up);
       const hit = moved ? paint(ev.clientX, ev.clientY) : null;
+      const released = moved && fresh && !hit ? orgHitElement(root, ev.clientX, ev.clientY) : null;
+      const releasedOnPerson = !!(released && released.closest('.r18-org-box.person'));
       ghost.remove();
-      box.classList.remove('dragging');
-      tree.querySelectorAll('.hot').forEach(el => el.classList.remove('hot'));
-      if (hit) window.r18_orgChartMove(draggedId, hit.id, hit.insert);
+      source.classList.remove('dragging');
+      root.querySelectorAll('.hot').forEach(el => el.classList.remove('hot'));
+      if (hit) window.r18_orgChartMove(hit.draggedId, hit.id, hit.insert);
+      else if (moved && fresh && releasedOnPerson) toast('Drop New box on someone who has others beside them.');
     };
     window.addEventListener('pointermove', move);
     window.addEventListener('pointerup', up);
@@ -41052,12 +41063,11 @@ function renderOrgChart(lab, root) {
   root.innerHTML = `
     <h1 class="r18-page-title">Organizational Chart</h1>
     <p class="r18-org-note">This chart belongs to ${escapeHtml(lab.name || 'this lab')}. Each lab has its own chart${others ? ', and the lab switcher in the header opens the others' : ''}. People come from this lab’s roster, once each.</p>
-    <p class="r18-org-note">Drag a person into the New box under a supervisor to place them between that supervisor and the people below. Drop a person on a card to report to that person. Remove takes someone off this chart and leaves them on the roster.</p>
-    ${custom ? '<div class="r18-org-actions"><button type="button" class="btn btn-ghost text-xs" onclick="r18_orgChartReset()">Reset to roster layout</button></div>' : ''}
+    <p class="r18-org-note">Drag New box onto the person who should sit between their supervisor and the others. Drop a person on a card to report to that person. Remove takes someone off this chart and leaves them on the roster.</p>
+    <div class="r18-org-actions"><div class="r18-org-newbox">New box</div>${custom ? '<button type="button" class="btn btn-ghost text-xs" onclick="r18_orgChartReset()">Reset to roster layout</button>' : ''}</div>
     ${orgChartMarkup(lab, { editable: true })}
   `;
-  const org = root.querySelector('.r18-org');
-  if (org) bindOrgChartDrag(org);
+  bindOrgChartDrag(root);
 }
 
 async function orgChartWrite(patch) {
