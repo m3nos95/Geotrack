@@ -39003,10 +39003,28 @@ function readCustomForm(fields) {
   });
   return values;
 }
+function equipmentLabels(eq) {
+  return [eq && eq.name, eq && eq.nickname, eq && eq.alias].map(value => String(value || '').trim().toLowerCase()).filter(Boolean);
+}
+function isEquipmentLabel(eq, text) {
+  const value = String(text || '').trim().toLowerCase();
+  return !!value && equipmentLabels(eq).indexOf(value) >= 0;
+}
+function customPreviewHeading(session) {
+  const procedure = session.proc && String(session.proc.name || '').trim();
+  const procedureOk = procedure && !isEquipmentLabel(session.eq, procedure);
+  let title = String(session.title || '').trim();
+  if (!title || isEquipmentLabel(session.eq, title)) title = procedureOk ? procedure : 'Procedure form';
+  const note = procedureOk && procedure.toLowerCase() !== title.toLowerCase() ? procedure : '';
+  return { title: title, note: note };
+}
 function customFormHtml() {
   const session = customFormSession;
   if (!session) return '';
   const lab = (state.labs || []).find(l => l.id === state.currentLabId);
+  const heading = session.preview
+    ? customPreviewHeading(session)
+    : { title: session.templateName || session.title || 'Procedure form', note: (session.eq && session.eq.name) || '' };
   const buttons = '<button type="button" class="btn btn-ghost" onclick="r18_exportCustomPdf()">Export PDF</button>' +
     (session.readonly && session.recordId ? '<button type="button" class="btn btn-primary" onclick="r18_editCustomRecord(\'' + session.recordId + '\')">Edit</button>' : '') +
     '<button type="button" class="btn btn-ghost" onclick="r18_leaveCustomForm()">Close</button>';
@@ -39018,12 +39036,13 @@ function customFormHtml() {
   }
   const result = session.readonly && session.result ? ' · ' + session.result : '';
   return '<div class="p-5" id="r18-custom-form" data-readonly="' + (session.readonly ? '1' : '0') + '">' +
-    '<div class="r18-form-top"><div><div class="r18-form-kicker">Procedure form</div><h2 class="text-xl serif font-semibold ink">' + escapeHtml(session.templateName || session.title || 'Procedure form') + escapeHtml(result) + '</h2>' +
-    '<div class="text-sm ink-2">' + escapeHtml((session.eq && session.eq.name) || '') + '</div></div><div class="flex gap-2 flex-wrap">' + buttons + '</div></div>' +
+    '<div class="r18-form-top"><div><div class="r18-form-kicker">Procedure form</div><h2 class="text-xl serif font-semibold ink" id="r18-form-heading">' + escapeHtml(heading.title) + escapeHtml(result) + '</h2>' +
+    (heading.note ? '<div class="text-sm ink-2" id="r18-form-heading-note">' + escapeHtml(heading.note) + '</div>' : '') +
+    '</div><div class="flex gap-2 flex-wrap">' + buttons + '</div></div>' +
     '<div class="r18-perform-layout"><div><div class="r18-paper">' +
     '<div class="r18-paper-org">Delaware Department of Transportation</div>' +
     '<div class="r18-paper-sub">' + escapeHtml((lab && lab.name) || 'Materials & Research') + '</div>' +
-    '<div class="r18-paper-title">' + escapeHtml(session.title || session.templateName || 'Procedure form') + '</div>' +
+    '<div class="r18-paper-title">' + escapeHtml(session.preview ? heading.title : (session.title || session.templateName || 'Procedure form')) + '</div>' +
     customFormBodyHtml(session) +
     (session.footer ? '<div class="r18-paper-foot">' + escapeHtml(session.footer) + '</div>' : '') +
     '</div>' + actions + '</div>' + caliperSideHtml(session.eq, session.proc) + '</div></div>';
@@ -39110,10 +39129,12 @@ window.r18_previewCustomForm = () => {
   if (!draft.fields.length) return toast('Add a field before previewing.');
   state._formBuilderReturn = draft;
   const eq = (state.equipment || [])[0] || { name: 'Example equipment', refId: 'REF-1', serialNumber: 'SN-1' };
-  const proc = { name: draft.name || 'Procedure', frequencyValue: 12, frequencyUnit: 'months', equipmentId: eq.id };
+  const proc = { name: String(draft.name || '').trim(), frequencyValue: 12, frequencyUnit: 'months', equipmentId: eq.id };
+  const sheetTitle = String(draft.title || '').trim();
+  const title = sheetTitle && !isEquipmentLabel(eq, sheetTitle) ? sheetTitle : (proc.name && !isEquipmentLabel(eq, proc.name) ? proc.name : 'Procedure form');
   openCustomForm(proc, eq, 'equipment', null, {
     preview: true,
-    previewDefinition: { title: draft.title || draft.name || 'Procedure form', footer: draft.footer, fields: draft.fields },
+    previewDefinition: { title: title, footer: draft.footer, fields: draft.fields },
   });
 };
 window.r18_leaveCustomForm = () => {
