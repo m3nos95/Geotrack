@@ -3523,6 +3523,9 @@ table.fc-borrow-tbl tr.fc-borrow-detail-row td{background:var(--surface);border-
 .r18-app .r18-equip-fact span { display: block; font-size: 10px; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; color: var(--r18-ink-3); }
 .r18-app .r18-equip-fact strong { display: block; margin-top: 2px; font-size: 13px; font-weight: 600; color: var(--r18-ink); word-break: break-word; }
 .r18-app .r18-paper { background: white; border: 1px solid var(--r18-line); padding: 18px 16px 12px; }
+.r18-app .r18-pdf-drop { margin-top: 10px; border: 1px dashed var(--r18-line); background: var(--r18-paper-2); padding: 16px; text-align: center; }
+.r18-app .r18-pdf-drop.over { border-color: var(--r18-ink); background: #fff; }
+.r18-app .r18-pdf-file { margin-top: 8px; font: inherit; font-size: 12px; color: var(--r18-ink-2); }
 .r18-app .r18-paper-org, .r18-app .r18-paper-sub, .r18-app .r18-paper-title { text-align: center; color: var(--r18-ink); }
 .r18-app .r18-paper-org { font-family: 'Source Serif 4', Georgia, serif; font-size: 18px; font-weight: 700; }
 .r18-app .r18-paper-sub { font-size: 13px; margin-top: 2px; }
@@ -37527,7 +37530,7 @@ window.r18_openProcedureModal = (procedureId, equipmentId) => {
           <label class="label">Procedure form</label>
           <select class="select" id="proc-form">
             <option value="">No custom form</option>
-            ${(state.formTemplates || []).filter(t => { if (t.active === false) return false; return !isDedicatedSheetDef(definitionObject(t)); }).map(t => `<option value="${t.id}" ${proc?.formTemplateId === t.id ? 'selected' : ''}>${escapeHtml(t.name)}</option>`).join('')}
+            ${(state.formTemplates || []).filter(templateOnProcedurePicker).map(t => `<option value="${t.id}" ${proc?.formTemplateId === t.id ? 'selected' : ''}>${escapeHtml(t.name)}</option>`).join('')}
           </select>
           <div class="text-xs ink-2 mt-1">Build sheets under Inventory → Procedure Forms, then choose one here. ${proc?.formTemplateId ? '' : (procedureUsesSieveForm(eq, proc || { name: eq.name }) ? 'Until you choose one, this equipment uses the built-in sieve inspection sheet.' : (procedureUsesCaliperForm(eq, proc || { name: eq.name }) ? 'Until you choose one, this equipment uses the built-in caliper sheet.' : 'Until you choose one, the tech gets the short completion screen.'))}</div>
         </div>
@@ -37598,6 +37601,7 @@ window.r18_deleteProcedure = async (id, equipmentId) => {
 /* Built-in procedure sheets, plus forms a lab builds under Inventory → Procedure Forms. */
 const CALIPER_FORM_ID = 'caliper_calibration';
 const SIEVE_FORM_ID = 'sieve_inspection';
+const PDF_SHEET_ID = 'pdf_sheet';
 let caliperSheetReturn = null;
 function caliperCleanText(value, fallback) {
   const text = String(value == null ? '' : value).replace(/<[^>]+>/g, '').replace(/\s+/g, ' ').trim();
@@ -37812,7 +37816,13 @@ function procedureUsesSieveForm(eq, proc) {
   return /sieve/.test(hay);
 }
 function isDedicatedSheetDef(def) {
-  return !!(def && (def.formKey === CALIPER_FORM_ID || def.formKey === SIEVE_FORM_ID));
+  return !!(def && (def.formKey === CALIPER_FORM_ID || def.formKey === SIEVE_FORM_ID || def.formKey === PDF_SHEET_ID));
+}
+function templateOnProcedurePicker(template) {
+  if (!template || template.active === false) return false;
+  const def = definitionObject(template);
+  if (!def) return true;
+  return def.formKey !== CALIPER_FORM_ID && def.formKey !== SIEVE_FORM_ID;
 }
 function procedureDraft(procedureId) {
   const rows = (state.procedureRecords || []).filter(r => {
@@ -38172,8 +38182,10 @@ function performProceduresHtml(eq, procs) {
   const rows = (procs || []).map(p => {
     const due = fmtDateNum(p.nextDueAt) || 'N/A';
     const template = procedureTemplate(p);
-    const draft = procedureDraft(p.id) || sieveDraft(p.id) || (template && customDraft(p.id, template.id));
-    const formNote = template ? template.name : (procedureUsesSieveForm(eq, p) ? 'Sieve inspection' : (procedureUsesCaliperForm(eq, p) ? 'Caliper sheet' : ''));
+    const linked = p.formTemplateId ? (state.formTemplates || []).find(t => t.id === p.formTemplateId) : null;
+    const linkedDef = linked ? definitionObject(linked) : null;
+    const draft = procedureDraft(p.id) || sieveDraft(p.id) || pdfSheetDraft(p.id) || (template && customDraft(p.id, template.id));
+    const formNote = template ? template.name : (linkedDef && linkedDef.formKey === PDF_SHEET_ID ? linked.name : (procedureUsesSieveForm(eq, p) ? 'Sieve inspection' : (procedureUsesCaliperForm(eq, p) ? 'Caliper sheet' : '')));
     return '<button type="button" class="r18-perform-row" onclick="r18_openCompleteProcedureModal(\'' + p.id + '\',\'list\')">' +
       '<span class="r18-perform-row-main"><span class="r18-perform-name">' + escapeHtml(p.name) + '</span>' +
       '<span class="r18-perform-due">Due Date: ' + escapeHtml(due) + (formNote ? ' · ' + escapeHtml(formNote) : '') + '</span>' +
@@ -39544,6 +39556,1427 @@ window.r18_saveSieveSheet = async () => {
   }
 };
 
+/* ---------- PDF PROCEDURE SHEETS ----------
+   A dropped PDF is read in the browser with pdf.js. No model call and no API key.
+   A simple layout becomes a custom form. A readings grid, named sizes, gauges,
+   or a tolerance becomes a dedicated sheet. Nothing is saved or attached until
+   the lab saves the draft. */
+const PDFJS_SRC = 'https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/build/pdf.min.js';
+const PDFJS_WORKER_SRC = 'https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/build/pdf.worker.min.js';
+const PDF_PAGE_CAP = 6;
+let pdfJsPromise = null;
+let pdfEditor = null;
+let pdfPerform = null;
+
+function ensurePdfJs() {
+  if (window.pdfjsLib) {
+    window.pdfjsLib.GlobalWorkerOptions.workerSrc = PDFJS_WORKER_SRC;
+    return Promise.resolve(window.pdfjsLib);
+  }
+  if (pdfJsPromise) return pdfJsPromise;
+  pdfJsPromise = new Promise((resolve, reject) => {
+    const script = document.createElement('script');
+    script.src = PDFJS_SRC;
+    script.onload = () => {
+      if (!window.pdfjsLib) {
+        pdfJsPromise = null;
+        reject(new Error('PDF reader did not start.'));
+        return;
+      }
+      window.pdfjsLib.GlobalWorkerOptions.workerSrc = PDFJS_WORKER_SRC;
+      resolve(window.pdfjsLib);
+    };
+    script.onerror = () => {
+      pdfJsPromise = null;
+      reject(new Error('The PDF reader could not be loaded.'));
+    };
+    document.head.appendChild(script);
+  });
+  return pdfJsPromise;
+}
+
+function pdfJoinParts(parts) {
+  const ordered = (parts || []).filter(part => part && String(part.str || '').trim());
+  let text = '';
+  ordered.forEach((part, index) => {
+    const piece = String(part.str || '').replace(/\s+/g, ' ').trim();
+    if (!piece) return;
+    if (!text) { text = piece; return; }
+    const prev = ordered[index - 1];
+    const size = Math.max(part.h || 10, 8);
+    const prevEnd = (prev.x || 0) + size * String(prev.str || '').length * 0.46;
+    text += (part.x - prevEnd > size * 0.3 ? ' ' : '') + piece;
+  });
+  return text.replace(/\s+/g, ' ').trim();
+}
+
+function pdfLinesFromItems(items) {
+  const buckets = [];
+  (items || []).forEach(item => {
+    const str = String(item && item.str || '').replace(/\s+/g, ' ').trim();
+    if (!str) return;
+    const page = item.page || 1;
+    const y = Number(item.y) || 0;
+    const h = Math.max(6, Number(item.h) || 10);
+    const x = Number(item.x) || 0;
+    let bucket = null;
+    for (let i = 0; i < buckets.length; i++) {
+      const row = buckets[i];
+      if (row.page === page && Math.abs(row.y - y) <= Math.max(2.2, h * 0.45)) { bucket = row; break; }
+    }
+    if (!bucket) {
+      bucket = { page: page, y: y, h: h, parts: [] };
+      buckets.push(bucket);
+    }
+    bucket.h = Math.max(bucket.h, h);
+    bucket.parts.push({ x: x, str: str, h: h });
+  });
+  buckets.sort((a, b) => a.page - b.page || b.y - a.y);
+  return buckets.map(bucket => {
+    const parts = bucket.parts.slice().sort((a, b) => a.x - b.x);
+    return { page: bucket.page, y: bucket.y, h: bucket.h, parts: parts, text: pdfJoinParts(parts) };
+  }).filter(line => line.text && !pdfSkipLine(line.text));
+}
+
+function pdfSkipLine(text) {
+  return /^page\s+\d+(\s+of\s+\d+)?$/i.test(text) || /^\d+\s+of\s+\d+$/i.test(text);
+}
+
+function pdfStepText(text) {
+  const numbered = String(text || '').match(/^(?:step\s+)?(\d{1,2})[\.\)]\s+(\S.{1,})$/i);
+  if (numbered && /[A-Za-z]/.test(numbered[2]) && numbered[2].length < 500) return numbered[2].trim();
+  const bullet = String(text || '').match(/^[•\u2022]\s+(\S.{1,})$/);
+  if (bullet && /[A-Za-z]/.test(bullet[1]) && bullet[1].length < 500) return bullet[1].trim();
+  return '';
+}
+
+function pdfHeaderCandidate(line) {
+  const count = line.parts.length;
+  if (count < 2 || count > 8) return false;
+  if (line.text.length > 100) return false;
+  if (pdfStepText(line.text)) return false;
+  if (line.parts.some(part => part.str.length > 42)) return false;
+  return /pass|fail|date|serial|size|gauge|gage|measure|reading|deviation|opening|standard|value|initial|weight|result|nominal|actual/i.test(line.text);
+}
+
+function pdfAligns(line, xs) {
+  if (!line || line.parts.length < 2) return false;
+  let hits = 0;
+  line.parts.forEach(part => {
+    if (xs.some(x => Math.abs(part.x - x) <= 36)) hits += 1;
+  });
+  return hits >= Math.min(2, line.parts.length);
+}
+
+function pdfNearestCol(x, xs) {
+  let best = -1;
+  let dist = 43;
+  xs.forEach((hx, index) => {
+    const gap = Math.abs(x - hx);
+    if (gap < dist) { dist = gap; best = index; }
+  });
+  return best;
+}
+
+function pdfColumnKind(label) {
+  const text = String(label || '').toLowerCase();
+  if (/pass|fail/.test(text)) return 'passfail';
+  if (/date/.test(text)) return 'date';
+  if (/serial|initial|inspector|remark|note|comment/.test(text)) return 'text';
+  if (/reading|measure|value|opening|deviation|weight|temp|nominal|actual|gauge|gage|standard|block/.test(text)) return 'number';
+  return 'text';
+}
+
+function pdfNamedRow(label) {
+  const text = String(label || '').trim();
+  if (!text || /^row\s*\d+$/i.test(text)) return false;
+  if (/^(zero|block|std|standard)$/i.test(text)) return true;
+  if (/#\s*\d+/.test(text)) return true;
+  if (/\d+\s*(\/\s*\d+)?\s*("|in\b|mm|″)/i.test(text)) return true;
+  if (/^\d+(\.\d+)?$/.test(text)) return false;
+  return /[A-Za-z]/.test(text) && text.length <= 48;
+}
+
+function pdfMostlyLabels(values) {
+  const filled = (values || []).map(value => String(value || '').trim()).filter(Boolean);
+  if (!filled.length) return false;
+  const named = filled.filter(value => pdfNamedRow(value));
+  return named.length >= Math.ceil(filled.length * 0.6);
+}
+
+function pdfLabelHeader(label) {
+  return /size|item|description|point|nominal|sieve|standard|row/i.test(String(label || ''));
+}
+
+function pdfTableFromLines(lines) {
+  let best = null;
+  lines.forEach((line, index) => {
+    if (!pdfHeaderCandidate(line)) return;
+    const xs = line.parts.map(part => part.x);
+    const body = [];
+    const used = [index];
+    for (let cursor = index + 1; cursor < lines.length && body.length < 24; cursor++) {
+      const next = lines[cursor];
+      if (next.page !== line.page && body.length) break;
+      if (pdfAligns(next, xs)) {
+        body.push(next);
+        used.push(cursor);
+        continue;
+      }
+      if (body.length) break;
+      break;
+    }
+    if (!body.length) return;
+    const score = body.length * line.parts.length;
+    if (!best || score > best.score) best = { header: line, body: body, used: used, score: score };
+  });
+  if (!best) return null;
+  const headers = best.header.parts.map(part => part.str.replace(/\s+/g, ' ').trim());
+  const xs = best.header.parts.map(part => part.x);
+  const matrix = best.body.map(line => {
+    const cells = headers.map(() => '');
+    let rowLabel = '';
+    line.parts.forEach(part => {
+      const col = pdfNearestCol(part.x, xs);
+      if (col < 0) {
+        if (!rowLabel && part.x < xs[0] - 28) rowLabel = part.str;
+        return;
+      }
+      cells[col] = cells[col] ? (cells[col] + ' ' + part.str) : part.str;
+    });
+    return { label: rowLabel, cells: cells };
+  });
+  let columns = headers.map((label, index) => ({ label: label || ('Column ' + (index + 1)), cells: matrix.map(row => row.cells[index] || '') }));
+  let corner = 'Row';
+  let rowLabels = matrix.map(row => row.label);
+  const first = columns[0];
+  if (first && (pdfLabelHeader(first.label) || pdfMostlyLabels(first.cells) || pdfMostlyLabels(rowLabels))) {
+    corner = first.label || 'Row';
+    rowLabels = matrix.map((row, index) => row.label || first.cells[index] || '');
+    columns = columns.slice(1);
+  }
+  const tableColumns = columns.map(col => ({ label: col.label, kind: pdfColumnKind(col.label) })).slice(0, 8);
+  const rows = [];
+  rowLabels.forEach((label, index) => {
+    const text = String(label || '').trim();
+    const hasCell = columns.some(col => String((col.cells[index] || '')).trim());
+    if (!text && !hasCell) return;
+    rows.push({ label: text || ('Row ' + (rows.length + 1)) });
+  });
+  if (!tableColumns.length || !rows.length) return null;
+  return { corner: corner, columns: tableColumns, rows: rows.slice(0, 24), used: best.used };
+}
+
+function pdfFieldRules() {
+  return [
+    { re: /^(instrument|equipment(?:\s+name)?|device)\b\s*[:\-]?\s*(.*)$/i, type: 'text', prefill: 'equipmentName', label: 'Instrument' },
+    { re: /^(serial(?:\s*(?:number|no\.?|#))?|reference(?:\s+id)?)\b\s*[:\-]?\s*(.*)$/i, type: 'text', prefill: 'serial', label: 'Serial number' },
+    { re: /^(next\s+due(?:\s+date)?)\b\s*[:\-]?\s*(.*)$/i, type: 'date', prefill: 'nextDue', label: 'Next due' },
+    { re: /^((?:date\s+of\s+)?(?:last|previous)(?:\s+(?:inspection|calibration|completed))?|previous)\b\s*[:\-]?\s*(.*)$/i, type: 'date', prefill: 'previous', label: 'Previous' },
+    { re: /^(date(?:\s+of\s+[A-Za-z]+)?|inspection date)\b\s*[:\-]?\s*(.*)$/i, type: 'date', prefill: 'today', label: 'Date' },
+    { re: /^(verified by|performed by|inspector|technician)\b\s*[:\-]?\s*(.*)$/i, type: 'text', prefill: 'viewer', label: 'Verified by' },
+    { re: /^(approved by)\b\s*[:\-]?\s*(.*)$/i, type: 'text', prefill: '', label: 'Approved by' },
+    { re: /^(remarks|comments|notes)\b\s*[:\-]?\s*(.*)$/i, type: 'longtext', prefill: '', label: 'Remarks' },
+    { re: /^(result|pass\s*\/\s*fail)\b\s*[:\-]?\s*(.*)$/i, type: 'passfail', prefill: '', label: 'Result' },
+  ];
+}
+
+function pdfBlankValue(value) {
+  const text = String(value || '').trim();
+  return !text || /^[_\.\s-]{2,}$/.test(text);
+}
+
+function pdfTolerance(text) {
+  const patterns = [
+    /(?:±|\+\/-|\+\/−)\s*([0-9]+(?:\.[0-9]+)?)/,
+    /within\s+\+?\/?-?\s*([0-9]+(?:\.[0-9]+)?)/i,
+    /tolerance[^0-9]{0,24}([0-9]+(?:\.[0-9]+)?)/i,
+  ];
+  for (let i = 0; i < patterns.length; i++) {
+    const match = String(text || '').match(patterns[i]);
+    if (!match) continue;
+    const number = Number(match[1]);
+    if (number > 0 && number < 1000) return number;
+  }
+  return null;
+}
+
+function pdfClean(value, max) {
+  return String(value == null ? '' : value).replace(/<[^>]+>/g, '').replace(/\s+/g, ' ').trim().slice(0, max || 180);
+}
+
+function pdfUnique(raw, used, prefix) {
+  let id = String(raw || '').replace(/[^a-z0-9]/gi, '').slice(0, 16);
+  if (!id) id = prefix;
+  let next = id;
+  let n = 2;
+  while (used[next]) { next = id + n; n += 1; }
+  used[next] = true;
+  return next;
+}
+
+function sheetNeedsDedicated(model) {
+  if ((model.gauges || []).length) return true;
+  if (model.tolerance != null) return true;
+  const table = model.table;
+  if (!table) return false;
+  if ((table.rows || []).some(row => pdfNamedRow(row.label))) return true;
+  if ((table.columns || []).some(col => col.kind === 'date' || col.kind === 'number')) return true;
+  if ((table.columns || []).length > 8 || (table.rows || []).length > 12) return true;
+  if ((table.columns || []).some(col => /gauge|gage|measure|deviation|opening|reading/i.test(col.label))) return true;
+  return false;
+}
+
+function pdfModelFromLines(lines, meta) {
+  const source = lines || [];
+  const used = {};
+  const tableHit = pdfTableFromLines(source);
+  if (tableHit) tableHit.used.forEach(index => { used[index] = true; });
+  const steps = [];
+  source.forEach((line, index) => {
+    if (used[index]) return;
+    const step = pdfStepText(line.text);
+    if (!step) return;
+    steps.push(step);
+    used[index] = true;
+  });
+  const gauges = [];
+  source.forEach((line, index) => {
+    if (used[index] || gauges.length >= 6) return;
+    const match = line.text.match(/^(gauge|gage)\s*#?\s*(\d+)?\b\s*[:\-]?\s*(.*)$/i);
+    if (!match) return;
+    if (/block|value|reading/i.test(line.text) && line.parts.length > 2) return;
+    const number = match[2] ? String(match[2]) : String(gauges.length + 1);
+    gauges.push({ label: 'Gauge ' + number, serialLabel: 'Serial number' });
+    used[index] = true;
+  });
+  const fields = [];
+  const seenLabels = {};
+  source.forEach((line, index) => {
+    if (used[index] || fields.length >= 16) return;
+    if (line.text.length > 90 && line.text.indexOf(':') < 0) return;
+    const rules = pdfFieldRules();
+    for (let i = 0; i < rules.length; i++) {
+      const rule = rules[i];
+      const match = line.text.match(rule.re);
+      if (!match) continue;
+      const key = rule.label.toLowerCase();
+      if (seenLabels[key]) break;
+      seenLabels[key] = true;
+      fields.push({ label: rule.label, type: rule.type, prefill: rule.prefill, required: rule.prefill === 'today' || rule.type === 'passfail' });
+      used[index] = true;
+      break;
+    }
+    if (used[index] || fields.length >= 16) return;
+    const loose = line.text.match(/^([A-Z][A-Za-z0-9 /#-]{1,32}):\s*([_\.\s-]{0,24})$/);
+    if (loose && pdfBlankValue(loose[2])) {
+      const label = pdfClean(loose[1], 40);
+      if (label && !seenLabels[label.toLowerCase()]) {
+        seenLabels[label.toLowerCase()] = true;
+        fields.push({ label: label, type: 'text', prefill: '', required: false });
+        used[index] = true;
+      }
+    }
+  });
+  const fullText = source.map(line => line.text).join('\n');
+  const tolerance = pdfTolerance(fullText);
+  let toleranceNote = '';
+  if (tolerance != null) {
+    const sentence = source.find(line => pdfTolerance(line.text) != null);
+    toleranceNote = sentence ? pdfClean(sentence.text, 240) : ('Within ±' + tolerance);
+  }
+  let title = '';
+  const head = source.slice(0, 8).filter(line => line.text.length >= 6 && line.text.length <= 140 && !pdfStepText(line.text));
+  if (head.length) {
+    let best = head[0];
+    head.forEach(line => { if (line.h > best.h + 0.4) best = line; });
+    title = best.text;
+  } else if (meta && meta.fileName) {
+    title = String(meta.fileName).replace(/\.pdf$/i, '').replace(/[_-]+/g, ' ');
+  }
+  title = pdfClean(title, 140) || 'Procedure form';
+  const titleIndex = source.findIndex(line => line.text === title);
+  if (titleIndex >= 0) used[titleIndex] = true;
+  let organization = '';
+  let subtitle = '';
+  source.forEach((line, index) => {
+    if (organization || used[index]) return;
+    if (/department|deldot|laboratory|materials\s*&|research section/i.test(line.text) && line.text.length < 140) organization = pdfClean(line.text, 160);
+  });
+  if (titleIndex >= 0 && source[titleIndex + 1] && !used[titleIndex + 1]) {
+    const next = source[titleIndex + 1];
+    if (next.text.length <= 90 && !pdfStepText(next.text) && !pdfFieldRules().some(rule => rule.re.test(next.text))) subtitle = pdfClean(next.text, 140);
+  }
+  let footer = '';
+  for (let i = source.length - 1; i >= 0; i--) {
+    if (/updated|revision|rev\.|form\s+(no|number)|effective/i.test(source[i].text) && source[i].text.length < 140) {
+      footer = pdfClean(source[i].text, 160);
+      used[i] = true;
+      break;
+    }
+  }
+  const blocks = [];
+  let heading = '';
+  source.forEach((line, index) => {
+    if (tolerance != null && pdfTolerance(line.text) != null) used[index] = true;
+  });
+  source.forEach((line, index) => {
+    if (used[index] || blocks.length >= 6) return;
+    if (line.text.length <= 48 && !/[.]$/.test(line.text) && source[index + 1] && source[index + 1].text.length > line.text.length) {
+      heading = pdfClean(line.text, 60);
+      used[index] = true;
+      return;
+    }
+    if (line.text.length < 40) return;
+    const body = pdfClean(line.text, 1200);
+    blocks.push({ heading: heading, body: body });
+    heading = '';
+    used[index] = true;
+  });
+  return {
+    title: title,
+    organization: organization,
+    subtitle: subtitle,
+    footer: footer,
+    steps: steps.slice(0, 30),
+    blocks: blocks,
+    fields: fields,
+    gauges: gauges,
+    tolerance: tolerance,
+    toleranceNote: toleranceNote,
+    table: tableHit ? { corner: tableHit.corner, columns: tableHit.columns, rows: tableHit.rows } : null,
+    lineCount: source.length,
+  };
+}
+
+function pdfEmptyMessage() {
+  return 'This PDF has no text layer. A scan, photo, or handwritten sheet cannot be turned into a form here. LabTrak can read numbered steps, headings, labeled blanks, and tables whose columns line up, including a readings grid, named sizes, gauges, and a written tolerance. It reads that text in this browser. It does not send the file to a model. Export a text PDF, or use New form.';
+}
+
+function sheetFromTextItems(items, meta) {
+  const lines = pdfLinesFromItems(items).slice(0, 500);
+  const info = meta || {};
+  if (!lines.length) return { kind: 'empty', message: pdfEmptyMessage(), name: '', draft: null, sheet: null };
+  const model = pdfModelFromLines(lines, info);
+  const useful = model.steps.length || model.fields.length || model.table || model.gauges.length || model.blocks.length;
+  const notice = 'Read in this browser from the PDF' + (info.truncated ? ' (first ' + PDF_PAGE_CAP + ' pages)' : '') + '. Review the draft, then save. Saving adds it to this list. It is not attached to a procedure until you attach it.';
+  if (!useful) {
+    const text = lines.map(line => line.text).join('\n').slice(0, 4000);
+    const draft = {
+      name: model.title.slice(0, 80),
+      title: model.title,
+      footer: model.footer,
+      notice: 'This PDF did not have a clear form layout. The text is in an instructions field so you can shape the sheet. A scan with no text layer cannot be read here, and the file is not sent to a model.',
+      fields: [
+        normalizeCustomField({ type: 'note', label: 'From the PDF', text: text }),
+        normalizeCustomField({ type: 'passfail', label: 'Result', required: true }),
+        normalizeCustomField({ type: 'text', label: 'Verified by', prefill: 'viewer', required: true }),
+      ],
+    };
+    return { kind: 'custom', message: draft.notice, name: draft.name, draft: draft, sheet: null };
+  }
+  if (!sheetNeedsDedicated(model)) {
+    const fields = [];
+    model.fields.forEach(field => {
+      if (/remark|verified|approved/i.test(field.label) && field.type !== 'passfail') return;
+      fields.push(normalizeCustomField(field));
+    });
+    if (model.steps.length) {
+      fields.unshift(normalizeCustomField({ type: 'note', label: 'Procedure', text: model.steps.map((step, index) => (index + 1) + '. ' + step).join('\n') }));
+    }
+    model.blocks.forEach(block => {
+      if (block.heading) fields.push(normalizeCustomField({ type: 'section', label: block.heading }));
+      if (block.body) fields.push(normalizeCustomField({ type: 'note', label: block.heading || 'Notes', text: block.body }));
+    });
+    if (model.table) {
+      fields.push(normalizeCustomField({
+        type: 'table',
+        label: model.table.corner && model.table.corner !== 'Row' ? model.table.corner : 'Readings',
+        rows: Math.max(1, Math.min(12, model.table.rows.length || 2)),
+        columns: model.table.columns.map(col => ({ label: col.label, kind: col.kind === 'passfail' ? 'passfail' : 'text' })),
+      }));
+    }
+    if (!fields.some(field => field.type === 'passfail')) fields.push(normalizeCustomField({ type: 'passfail', label: 'Result', required: true }));
+    if (!fields.some(field => /verified|inspector/i.test(field.label))) fields.push(normalizeCustomField({ type: 'text', label: 'Verified by', prefill: 'viewer', required: true }));
+    const draft = { name: model.title.slice(0, 80), title: model.title, footer: model.footer, notice: notice, fields: fields.slice(0, 40) };
+    return { kind: 'custom', message: notice, name: draft.name, draft: draft, sheet: null };
+  }
+  const header = [];
+  let remarks = 'Remarks';
+  let verified = 'Verified by';
+  let approved = 'Approved by';
+  model.fields.forEach(field => {
+    if (/remark|^notes$|comment/i.test(field.label)) { remarks = field.label; return; }
+    if (/verified|performed by|inspector|technician/i.test(field.label)) { verified = field.label; return; }
+    if (/approved/i.test(field.label)) { approved = field.label; return; }
+    header.push(field);
+  });
+  const sheet = normalizePdfSheet({
+    title: model.title,
+    organization: model.organization,
+    subtitle: model.subtitle,
+    footer: model.footer,
+    steps: model.steps,
+    blocks: model.blocks,
+    fields: header,
+    gauges: model.gauges,
+    tolerance: model.tolerance,
+    toleranceNote: model.toleranceNote,
+    table: model.table,
+    remarksLabel: remarks,
+    verifiedLabel: verified,
+    approvedLabel: approved,
+    dateLabel: 'Date',
+  });
+  return { kind: 'dedicated', message: notice, name: model.title.slice(0, 80), draft: null, sheet: sheet, notice: notice };
+}
+
+async function pdfItemsFromBytes(bytes) {
+  const lib = await ensurePdfJs();
+  const data = bytes instanceof Uint8Array ? bytes.slice(0) : new Uint8Array(bytes);
+  let pdf;
+  try {
+    pdf = await lib.getDocument({ data: data.slice(0), disableWorker: true }).promise;
+  } catch (err) {
+    lib.GlobalWorkerOptions.workerSrc = PDFJS_WORKER_SRC;
+    pdf = await lib.getDocument({ data: data.slice(0) }).promise;
+  }
+  const pageCount = pdf.numPages || 0;
+  const readPages = Math.min(pageCount, PDF_PAGE_CAP);
+  const items = [];
+  for (let pageNo = 1; pageNo <= readPages; pageNo++) {
+    const page = await pdf.getPage(pageNo);
+    const content = await page.getTextContent();
+    (content.items || []).forEach(item => {
+      if (!item || !item.str || !String(item.str).trim()) return;
+      const transform = item.transform || [1, 0, 0, 1, 0, 0];
+      items.push({
+        str: item.str,
+        x: transform[4],
+        y: transform[5],
+        h: Math.abs(transform[3]) || Math.abs(transform[0]) || 10,
+        page: pageNo,
+      });
+    });
+  }
+  return { items: items, pages: pageCount, truncated: pageCount > readPages };
+}
+
+function normalizePdfSheet(raw) {
+  const src = raw || {};
+  const used = {};
+  const fields = (Array.isArray(src.fields) ? src.fields : []).slice(0, 20).map(field => {
+    const type = ['text', 'number', 'date', 'longtext', 'yesno', 'passfail'].indexOf(field && field.type) >= 0 ? field.type : 'text';
+    return {
+      id: pdfUnique(field && field.id, used, 'f'),
+      label: pdfClean(field && field.label, 60) || 'Field',
+      type: type,
+      required: !!(field && field.required),
+      prefill: customPrefillAllowed(type, field && field.prefill) ? (field.prefill || '') : '',
+    };
+  });
+  const gauges = (Array.isArray(src.gauges) ? src.gauges : []).slice(0, 6).map((gauge, index) => ({
+    id: pdfUnique(gauge && gauge.id, used, 'g'),
+    label: pdfClean(gauge && gauge.label, 40) || ('Gauge ' + (index + 1)),
+    serialLabel: pdfClean(gauge && gauge.serialLabel, 40) || 'Serial number',
+  }));
+  const blocks = (Array.isArray(src.blocks) ? src.blocks : []).slice(0, 8).map(block => ({
+    id: pdfUnique(block && block.id, used, 'b'),
+    heading: pdfClean(block && block.heading, 80),
+    body: String(block && block.body || '').replace(/<[^>]+>/g, '').trim().slice(0, 1500),
+  })).filter(block => block.heading || block.body);
+  let table = null;
+  if (src.table && Array.isArray(src.table.columns) && src.table.columns.length) {
+    const columns = src.table.columns.slice(0, 8).map((col, index) => ({
+      id: pdfUnique(col && col.id, used, 'c'),
+      label: pdfClean(col && col.label, 40) || ('Column ' + (index + 1)),
+      kind: ['text', 'number', 'date', 'passfail'].indexOf(col && col.kind) >= 0 ? col.kind : 'text',
+    }));
+    const rows = (Array.isArray(src.table.rows) ? src.table.rows : []).slice(0, 24).map((row, index) => ({
+      id: pdfUnique(row && row.id, used, 'r'),
+      label: pdfClean(row && row.label, 48) || ('Row ' + (index + 1)),
+    }));
+    if (columns.length && rows.length) {
+      table = { corner: pdfClean(src.table.corner, 40) || 'Row', columns: columns, rows: rows };
+    }
+  }
+  const tolerance = Number(src.tolerance);
+  const steps = (Array.isArray(src.steps) ? src.steps : []).map(step => pdfClean(step, 500)).filter(Boolean).slice(0, 30);
+  return {
+    formKey: PDF_SHEET_ID,
+    title: pdfClean(src.title, 160) || 'Procedure form',
+    organization: pdfClean(src.organization, 160),
+    subtitle: pdfClean(src.subtitle, 160),
+    footer: pdfClean(src.footer, 180),
+    steps: steps,
+    blocks: blocks,
+    fields: fields,
+    gauges: gauges,
+    tolerance: Number.isFinite(tolerance) && tolerance > 0 ? tolerance : null,
+    toleranceNote: src.toleranceNote == null ? '' : String(src.toleranceNote).replace(/<[^>]+>/g, '').trim().slice(0, 400),
+    table: table,
+    remarksLabel: pdfClean(src.remarksLabel, 40) || 'Remarks',
+    verifiedLabel: pdfClean(src.verifiedLabel, 40) || 'Verified by',
+    approvedLabel: pdfClean(src.approvedLabel, 40) || 'Approved by',
+    dateLabel: pdfClean(src.dateLabel, 40) || 'Date',
+  };
+}
+
+function pdfSheetTemplates() {
+  return (state.formTemplates || []).filter(template => {
+    if (!template || template.active === false) return false;
+    const def = definitionObject(template);
+    return !!(def && def.formKey === PDF_SHEET_ID);
+  });
+}
+
+function pdfSheetById(id) {
+  return pdfSheetTemplates().find(template => template.id === id) || null;
+}
+
+function pdfSheetDraft(procedureId) {
+  const rows = (state.procedureRecords || []).filter(record => {
+    const bag = formBag(record);
+    return record && record.procedureId === procedureId && bag.formId === PDF_SHEET_ID && bag.status === 'draft';
+  });
+  rows.sort((a, b) => String(b.updatedAt || b.completedAt || '').localeCompare(String(a.updatedAt || a.completedAt || '')));
+  return rows[0] || null;
+}
+
+function pdfMeasurePairs(sheet) {
+  const columns = sheet && sheet.table ? sheet.table.columns : [];
+  const pairs = [];
+  for (let i = 0; i < columns.length - 1; i++) {
+    const left = columns[i];
+    const right = columns[i + 1];
+    const standard = /standard|nominal|gauge|gage|block|value/i.test(left.label);
+    const measure = /measure|reading|actual|found/i.test(right.label);
+    if (standard && measure && left.kind !== 'passfail' && left.kind !== 'date' && right.kind !== 'passfail' && right.kind !== 'date') {
+      pairs.push({ valueId: left.id, measureId: right.id });
+    }
+  }
+  return pairs;
+}
+
+function pdfPairOk(row, pairs, tolerance) {
+  let seen = false;
+  let bad = false;
+  pairs.forEach(pair => {
+    const standard = parseFloat(row[pair.valueId]);
+    const measure = parseFloat(row[pair.measureId]);
+    if (!Number.isFinite(standard) || !Number.isFinite(measure)) return;
+    seen = true;
+    if (Math.abs(measure - standard) > tolerance + 1e-9) bad = true;
+  });
+  if (!seen) return null;
+  return !bad;
+}
+
+function pdfDropCardHtml() {
+  return '<div class="card mt-4 p-4"><div class="text-sm font-semibold ink">Build a sheet from a PDF</div>' +
+    '<p class="text-xs ink-2 mt-1">Drop a procedure or report PDF. LabTrak reads the text in this browser and opens a draft you can review. Nothing is sent out, and no API key is used. The sheet is not saved, and it is not attached to a procedure, until you save it.</p>' +
+    '<div id="r18-pdf-drop" class="r18-pdf-drop" ondragover="r18_pdfDrag(event,true)" ondragleave="r18_pdfDrag(event,false)" ondrop="r18_pdfDrag(event,false);r18_dropProcedurePdf(event)">' +
+    '<div class="text-sm ink">Drop a PDF here, or choose a file</div>' +
+    '<input id="r18-pdf-file" class="r18-pdf-file" type="file" accept="application/pdf,.pdf" onchange="r18_dropProcedurePdf(event)" /></div>' +
+    '<div id="r18-pdf-status" class="text-xs ink-2 mt-2"></div></div>';
+}
+
+function pdfSheetLibraryHtml() {
+  const forms = pdfSheetTemplates();
+  if (!forms.length) return '';
+  const procs = state.procedures || [];
+  const options = procs.map(proc => '<option value="' + proc.id + '">' + escapeHtml(procedureChoiceLabel(proc)) + '</option>').join('');
+  const rows = forms.map(template => {
+    const sheet = normalizePdfSheet(definitionObject(template));
+    const used = procs.filter(proc => proc.formTemplateId === template.id).length;
+    const bits = [sheet.steps.length + ' steps'];
+    if (sheet.table) bits.push(sheet.table.rows.length + ' rows');
+    if (sheet.gauges.length) bits.push(sheet.gauges.length + ' gauges');
+    if (sheet.tolerance) bits.push('±' + sheet.tolerance);
+    return '<div class="px-4 py-3 border-b border-line-2 last:border-0"><div class="flex justify-between gap-3 flex-wrap items-start">' +
+      '<div><div class="text-sm font-medium ink">' + escapeHtml(template.name) + '</div>' +
+      '<div class="text-xs ink-2">' + escapeHtml(sheet.title) + ' · ' + bits.join(' · ') + ' · attached to ' + used + '</div>' +
+      '<div class="text-xs ink-3 mt-1">Edit the whole sheet when the paper changes. A signed record stays on the sheet it was signed with.</div></div>' +
+      '<div class="flex gap-1 flex-wrap"><button type="button" class="btn btn-ghost text-xs" onclick="r18_editPdfSheet(\'' + template.id + '\')">Edit form</button>' +
+      '<button type="button" class="btn btn-danger text-xs" onclick="r18_deleteCustomForm(\'' + template.id + '\')">Delete</button></div></div>' +
+      (procs.length
+        ? '<div class="flex gap-2 mt-2 flex-wrap items-center"><select class="select" id="attach-' + template.id + '" style="max-width:420px"><option value="">Attach to a procedure…</option>' + options + '</select><button type="button" class="btn btn-primary text-xs" onclick="r18_attachCustomForm(\'' + template.id + '\')">Attach</button></div>'
+        : '<div class="text-xs ink-2 mt-2">Add a procedure on a piece of equipment, then attach this sheet.</div>') +
+      '</div>';
+  }).join('');
+  return '<div class="card mt-4"><div class="px-4 py-3 border-b border-line-2"><div class="text-sm font-semibold ink">Sheets from PDFs (' + forms.length + ')</div>' +
+    '<div class="text-xs ink-2">These stay in the list until you attach one to a procedure.</div></div>' + rows + '</div>';
+}
+
+function pdfStatus(text) {
+  const el = document.getElementById('r18-pdf-status');
+  if (el) el.textContent = text || '';
+}
+
+function pdfStopHtml(message) {
+  return '<div class="p-5"><div class="r18-form-kicker">PDF</div><h2 class="text-xl serif font-semibold ink">This PDF cannot become a sheet here</h2>' +
+    '<p class="text-sm ink-2 mt-3">' + escapeHtml(message) + '</p>' +
+    '<div class="flex justify-end mt-4"><button type="button" class="btn btn-ghost" onclick="r18_closeModal()">Close</button></div></div>';
+}
+
+async function acceptProcedurePdf(file) {
+  if (!file) return;
+  const name = file.name || 'procedure.pdf';
+  if (file.type && file.type !== 'application/pdf' && !/\.pdf$/i.test(name)) return toast('Drop a PDF.');
+  if (!/\.pdf$/i.test(name) && file.type !== 'application/pdf') return toast('Drop a PDF.');
+  if (file.size > 15 * 1024 * 1024) return toast('This PDF is too large to read in the browser.');
+  pdfStatus('Reading “' + name + '” in this browser…');
+  try {
+    const bytes = new Uint8Array(await file.arrayBuffer());
+    const extracted = await pdfItemsFromBytes(bytes);
+    const parsed = sheetFromTextItems(extracted.items, { fileName: name, truncated: extracted.truncated, pages: extracted.pages });
+    if (parsed.kind === 'empty') {
+      pdfStatus(parsed.message);
+      showModal(pdfStopHtml(parsed.message), { wide: true });
+      return;
+    }
+    pdfStatus('Draft ready. Review it, then save. It is not attached to a procedure yet.');
+    if (parsed.kind === 'custom') {
+      paintFormBuilder(parsed.draft);
+      return;
+    }
+    paintPdfEditor({
+      id: '',
+      name: parsed.name,
+      notice: parsed.notice,
+      review: true,
+      returnTo: null,
+      sheet: parsed.sheet,
+    });
+  } catch (err) {
+    console.error(err);
+    pdfStatus('This PDF could not be read in the browser.');
+    toast('This PDF could not be read in the browser.');
+  }
+}
+
+window.r18_pdfDrag = (event, on) => {
+  if (event && event.preventDefault) event.preventDefault();
+  const zone = document.getElementById('r18-pdf-drop');
+  if (zone) zone.classList.toggle('over', !!on);
+};
+window.r18_dropProcedurePdf = (event) => {
+  if (event && event.preventDefault) event.preventDefault();
+  const fromDrop = event && event.dataTransfer && event.dataTransfer.files && event.dataTransfer.files[0];
+  const fromInput = event && event.target && event.target.files && event.target.files[0];
+  const file = fromDrop || fromInput;
+  if (event && event.target && event.target.value) event.target.value = '';
+  acceptProcedurePdf(file);
+};
+window.r18_sheetFromTextItems = (items, meta) => sheetFromTextItems(items, meta);
+
+function pdfEditorValue(id) {
+  const el = document.getElementById(id);
+  return el ? String(el.value || '') : '';
+}
+
+function readPdfEditor() {
+  const root = document.getElementById('r18-pdf-editor');
+  if (!root || !pdfEditor) return pdfEditor;
+  const fields = [];
+  root.querySelectorAll('[data-ps-field]').forEach(row => {
+    fields.push({
+      id: row.dataset.psField,
+      label: row.querySelector('.ps-label') ? row.querySelector('.ps-label').value : '',
+      type: row.querySelector('.ps-type') ? row.querySelector('.ps-type').value : 'text',
+      required: !!(row.querySelector('.ps-required') && row.querySelector('.ps-required').checked),
+      prefill: row.querySelector('.ps-prefill') ? row.querySelector('.ps-prefill').value : '',
+    });
+  });
+  const blocks = [];
+  root.querySelectorAll('[data-ps-block]').forEach(row => {
+    blocks.push({
+      id: row.dataset.psBlock,
+      heading: row.querySelector('.ps-heading') ? row.querySelector('.ps-heading').value : '',
+      body: row.querySelector('.ps-body') ? row.querySelector('.ps-body').value : '',
+    });
+  });
+  const gauges = [];
+  root.querySelectorAll('[data-ps-gauge]').forEach(row => {
+    gauges.push({
+      id: row.dataset.psGauge,
+      label: row.querySelector('.ps-gauge-label') ? row.querySelector('.ps-gauge-label').value : '',
+      serialLabel: row.querySelector('.ps-gauge-serial') ? row.querySelector('.ps-gauge-serial').value : '',
+    });
+  });
+  const columns = [];
+  root.querySelectorAll('[data-ps-col]').forEach(row => {
+    columns.push({
+      id: row.dataset.psCol,
+      label: row.querySelector('.ps-col-label') ? row.querySelector('.ps-col-label').value : '',
+      kind: row.querySelector('.ps-col-kind') ? row.querySelector('.ps-col-kind').value : 'text',
+    });
+  });
+  const rows = [];
+  root.querySelectorAll('[data-ps-row]').forEach(row => {
+    rows.push({ id: row.dataset.psRow, label: row.querySelector('.ps-row-label') ? row.querySelector('.ps-row-label').value : '' });
+  });
+  const tolerance = pdfEditorValue('ps-tol');
+  return {
+    id: pdfEditor.id || '',
+    name: pdfEditorValue('ps-name').trim(),
+    notice: pdfEditor.notice || '',
+    review: !!pdfEditor.review,
+    returnTo: pdfEditor.returnTo || null,
+    initial: pdfEditor.initial || '',
+    sheet: normalizePdfSheet({
+      title: pdfEditorValue('ps-title'),
+      organization: pdfEditorValue('ps-org'),
+      subtitle: pdfEditorValue('ps-sub'),
+      footer: pdfEditorValue('ps-footer'),
+      steps: pdfEditorValue('ps-steps').split(/\n/).map(step => step.trim()).filter(Boolean),
+      blocks: blocks,
+      fields: fields,
+      gauges: gauges,
+      tolerance: tolerance,
+      toleranceNote: pdfEditorValue('ps-tol-note'),
+      table: columns.length && rows.length ? { corner: pdfEditorValue('ps-corner') || 'Row', columns: columns, rows: rows } : null,
+      remarksLabel: pdfEditorValue('ps-remarks-label'),
+      verifiedLabel: pdfEditorValue('ps-verified-label'),
+      approvedLabel: pdfEditorValue('ps-approved-label'),
+      dateLabel: pdfEditorValue('ps-date-label'),
+    }),
+  };
+}
+
+function pdfEditorSnapshot(draft) {
+  if (!draft) return '';
+  return JSON.stringify({ name: draft.name, sheet: draft.sheet });
+}
+
+function pdfFieldTypeOptions(selected) {
+  return [['text', 'Short text'], ['number', 'Number'], ['date', 'Date'], ['longtext', 'Long text'], ['yesno', 'Yes / No'], ['passfail', 'Pass / Fail']]
+    .map(pair => '<option value="' + pair[0] + '"' + (selected === pair[0] ? ' selected' : '') + '>' + pair[1] + '</option>').join('');
+}
+
+function pdfKindOptions(selected) {
+  return [['text', 'Text'], ['number', 'Number'], ['date', 'Date'], ['passfail', 'Pass / Fail']]
+    .map(pair => '<option value="' + pair[0] + '"' + (selected === pair[0] ? ' selected' : '') + '>' + pair[1] + '</option>').join('');
+}
+
+function pdfEditorHtml(draft) {
+  const sheet = draft.sheet;
+  const fieldRows = (sheet.fields || []).map(field =>
+    '<div class="r18-fb-field" data-ps-field="' + field.id + '"><div class="r18-fb-top">' +
+    '<label class="grow text-xs ink-2">Label<input class="input ps-label" value="' + escapeHtml(field.label) + '" /></label>' +
+    '<label class="text-xs ink-2">Type<select class="select ps-type">' + pdfFieldTypeOptions(field.type) + '</select></label>' +
+    '<label class="text-xs ink-2">Prefill<select class="select ps-prefill">' + formBuilderPrefillOptions(field.type, field.prefill) + '</select></label>' +
+    '<label class="text-xs ink-2" style="display:flex;align-items:center;gap:6px"><input type="checkbox" class="ps-required"' + (field.required ? ' checked' : '') + ' /> Required</label>' +
+    '<button type="button" class="btn btn-ghost text-xs" onclick="r18_pdfEditorRemove(\'field\',\'' + field.id + '\')">Remove</button></div></div>'
+  ).join('');
+  const blockRows = (sheet.blocks || []).map(block =>
+    '<div class="r18-fb-field" data-ps-block="' + block.id + '"><input class="input ps-heading" value="' + escapeHtml(block.heading) + '" placeholder="Heading" />' +
+    '<textarea class="textarea ps-body mt-2" rows="3">' + escapeHtml(block.body) + '</textarea>' +
+    '<button type="button" class="btn btn-ghost text-xs mt-2" onclick="r18_pdfEditorRemove(\'block\',\'' + block.id + '\')">Remove</button></div>'
+  ).join('');
+  const gaugeRows = (sheet.gauges || []).map(gauge =>
+    '<div class="grid grid-cols-2 gap-2 mb-2" data-ps-gauge="' + gauge.id + '">' +
+    '<input class="input ps-gauge-label" value="' + escapeHtml(gauge.label) + '" placeholder="Gauge name" />' +
+    '<div class="flex gap-2"><input class="input ps-gauge-serial" value="' + escapeHtml(gauge.serialLabel) + '" placeholder="Serial label" />' +
+    '<button type="button" class="btn btn-ghost text-xs" onclick="r18_pdfEditorRemove(\'gauge\',\'' + gauge.id + '\')">Remove</button></div></div>'
+  ).join('');
+  const columnRows = sheet.table ? sheet.table.columns.map(col =>
+    '<div class="r18-fb-col" data-ps-col="' + col.id + '"><input class="input ps-col-label" value="' + escapeHtml(col.label) + '" />' +
+    '<select class="select ps-col-kind">' + pdfKindOptions(col.kind) + '</select>' +
+    '<button type="button" class="btn btn-ghost text-xs" onclick="r18_pdfEditorRemove(\'col\',\'' + col.id + '\')">Remove</button></div>'
+  ).join('') : '';
+  const rowRows = sheet.table ? sheet.table.rows.map(row =>
+    '<div class="flex gap-2 mb-2" data-ps-row="' + row.id + '"><input class="input ps-row-label" value="' + escapeHtml(row.label) + '" />' +
+    '<button type="button" class="btn btn-ghost text-xs" onclick="r18_pdfEditorRemove(\'row\',\'' + row.id + '\')">Remove</button></div>'
+  ).join('') : '';
+  return '<div class="p-5" id="r18-pdf-editor"><div class="r18-form-top"><div><div class="r18-form-kicker">Procedure form</div>' +
+    '<h2 class="text-xl serif font-semibold ink">' + (draft.review ? 'Review sheet from PDF' : 'Edit form') + '</h2>' +
+    '<div class="text-sm ink-2">' + escapeHtml(draft.notice || 'Change the sheet, then save. A signed record stays on the sheet it was signed with. Saving does not attach it to a procedure.') + '</div></div>' +
+    '<button type="button" class="btn btn-ghost" onclick="r18_closePdfEditor()">Close</button></div>' +
+    '<div class="grid grid-cols-2 gap-3 mt-3"><div><label class="label">Form name</label><input class="input" id="ps-name" value="' + escapeHtml(draft.name || '') + '" /></div>' +
+    '<div><label class="label">Title on the sheet</label><input class="input" id="ps-title" value="' + escapeHtml(sheet.title) + '" /></div></div>' +
+    '<div class="grid grid-cols-2 gap-3 mt-3"><div><label class="label">Organization</label><input class="input" id="ps-org" value="' + escapeHtml(sheet.organization) + '" /></div>' +
+    '<div><label class="label">Subtitle</label><input class="input" id="ps-sub" value="' + escapeHtml(sheet.subtitle) + '" /></div></div>' +
+    '<div class="mt-3"><label class="label">Footer</label><input class="input" id="ps-footer" value="' + escapeHtml(sheet.footer) + '" /></div>' +
+    '<div class="mt-3"><label class="label">Procedure steps, one per line</label><textarea class="textarea" id="ps-steps" rows="5">' + escapeHtml((sheet.steps || []).join('\n')) + '</textarea></div>' +
+    '<div class="text-sm font-semibold ink mt-4">Sections</div>' + (blockRows || '<div class="text-xs ink-2 mt-1">No extra sections.</div>') +
+    '<button type="button" class="btn btn-ghost text-xs mt-2" onclick="r18_pdfEditorAdd(\'block\')">Add section</button>' +
+    '<div class="text-sm font-semibold ink mt-4">Header fields</div>' + (fieldRows || '<div class="text-xs ink-2 mt-1">No header fields.</div>') +
+    '<button type="button" class="btn btn-ghost text-xs mt-2" onclick="r18_pdfEditorAdd(\'field\')">Add field</button>' +
+    '<div class="text-sm font-semibold ink mt-4">Gauges</div>' + (gaugeRows || '<div class="text-xs ink-2 mt-1">No gauge lines.</div>') +
+    '<button type="button" class="btn btn-ghost text-xs mt-2" onclick="r18_pdfEditorAdd(\'gauge\')">Add gauge</button>' +
+    '<div class="grid grid-cols-2 gap-3 mt-4"><div><label class="label">Tolerance</label><input class="input" id="ps-tol" value="' + escapeHtml(sheet.tolerance == null ? '' : String(sheet.tolerance)) + '" placeholder="0.002" /></div>' +
+    '<div><label class="label">Tolerance note</label><input class="input" id="ps-tol-note" value="' + escapeHtml(sheet.toleranceNote) + '" /></div></div>' +
+    '<div class="text-sm font-semibold ink mt-4">Readings table</div>' +
+    (sheet.table
+      ? '<div class="mt-2"><label class="label">Corner label</label><input class="input" id="ps-corner" value="' + escapeHtml(sheet.table.corner) + '" /></div>' +
+        '<div class="text-xs ink-2 mt-2">Columns</div>' + columnRows +
+        '<button type="button" class="btn btn-ghost text-xs mt-2" onclick="r18_pdfEditorAdd(\'col\')">Add column</button>' +
+        '<div class="text-xs ink-2 mt-3">Row names</div>' + rowRows +
+        '<button type="button" class="btn btn-ghost text-xs mt-2" onclick="r18_pdfEditorAdd(\'row\')">Add row</button>'
+      : '<div class="text-xs ink-2 mt-1">No readings table.</div><button type="button" class="btn btn-ghost text-xs mt-2" onclick="r18_pdfEditorAdd(\'table\')">Add readings table</button>') +
+    '<div class="grid grid-cols-2 gap-3 mt-4">' +
+    '<div><label class="label">Remarks label</label><input class="input" id="ps-remarks-label" value="' + escapeHtml(sheet.remarksLabel) + '" /></div>' +
+    '<div><label class="label">Verified by label</label><input class="input" id="ps-verified-label" value="' + escapeHtml(sheet.verifiedLabel) + '" /></div>' +
+    '<div><label class="label">Approved by label</label><input class="input" id="ps-approved-label" value="' + escapeHtml(sheet.approvedLabel) + '" /></div>' +
+    '<div><label class="label">Date label</label><input class="input" id="ps-date-label" value="' + escapeHtml(sheet.dateLabel) + '" /></div></div>' +
+    '<div class="flex justify-end gap-2 mt-4"><button type="button" class="btn btn-ghost" onclick="r18_previewPdfSheet()">Preview</button>' +
+    '<button type="button" class="btn btn-primary" id="ps-save" onclick="r18_savePdfSheet()">Save sheet</button></div></div>';
+}
+
+function paintPdfEditor(draft) {
+  pdfEditor = draft;
+  showModal(pdfEditorHtml(draft), {
+    form: true,
+    lock: true,
+    onMount: () => {
+      if (pdfEditor && !pdfEditor.initial) pdfEditor.initial = pdfEditorSnapshot(readPdfEditor());
+    },
+  });
+}
+
+window.r18_pdfEditorAdd = (kind) => {
+  const draft = readPdfEditor();
+  if (!draft) return;
+  const sheet = draft.sheet;
+  if (kind === 'field') {
+    if (sheet.fields.length >= 20) return toast('This sheet can have 20 header fields.');
+    sheet.fields.push({ id: customFieldId(), label: 'Field', type: 'text', required: false, prefill: '' });
+  } else if (kind === 'block') {
+    if (sheet.blocks.length >= 8) return toast('This sheet can have 8 sections.');
+    sheet.blocks.push({ id: customFieldId(), heading: 'Section', body: '' });
+  } else if (kind === 'gauge') {
+    if (sheet.gauges.length >= 6) return toast('This sheet can have 6 gauges.');
+    sheet.gauges.push({ id: customFieldId(), label: 'Gauge ' + (sheet.gauges.length + 1), serialLabel: 'Serial number' });
+  } else if (kind === 'table') {
+    sheet.table = {
+      corner: 'Row',
+      columns: [{ id: customFieldId(), label: 'Reading', kind: 'number' }, { id: customFieldId(), label: 'Pass / Fail', kind: 'passfail' }],
+      rows: [{ id: customFieldId(), label: 'Row 1' }],
+    };
+  } else if (kind === 'col') {
+    if (!sheet.table) return;
+    if (sheet.table.columns.length >= 8) return toast('A table can have 8 columns.');
+    sheet.table.columns.push({ id: customFieldId(), label: 'Column', kind: 'text' });
+  } else if (kind === 'row') {
+    if (!sheet.table) return;
+    if (sheet.table.rows.length >= 24) return toast('A table can have 24 rows.');
+    sheet.table.rows.push({ id: customFieldId(), label: 'Row ' + (sheet.table.rows.length + 1) });
+  }
+  draft.sheet = normalizePdfSheet(sheet);
+  paintPdfEditor(draft);
+};
+window.r18_pdfEditorRemove = (kind, id) => {
+  const draft = readPdfEditor();
+  if (!draft) return;
+  const sheet = draft.sheet;
+  if (kind === 'field') sheet.fields = sheet.fields.filter(field => field.id !== id);
+  if (kind === 'block') sheet.blocks = sheet.blocks.filter(block => block.id !== id);
+  if (kind === 'gauge') sheet.gauges = sheet.gauges.filter(gauge => gauge.id !== id);
+  if (kind === 'col' && sheet.table) {
+    sheet.table.columns = sheet.table.columns.filter(col => col.id !== id);
+    if (!sheet.table.columns.length) sheet.table = null;
+  }
+  if (kind === 'row' && sheet.table) {
+    sheet.table.rows = sheet.table.rows.filter(row => row.id !== id);
+    if (!sheet.table.rows.length) sheet.table = null;
+  }
+  draft.sheet = normalizePdfSheet(sheet);
+  paintPdfEditor(draft);
+};
+window.r18_closePdfEditor = () => {
+  const draft = readPdfEditor();
+  if (draft && pdfEditorSnapshot(draft) !== (pdfEditor && pdfEditor.initial) && !confirm('Leave this draft without saving?')) return;
+  const back = draft && draft.returnTo;
+  pdfEditor = null;
+  if (back && back.procedureId) {
+    const proc = (state.procedures || []).find(item => item.id === back.procedureId);
+    const record = back.recordId ? (state.procedureRecords || []).find(item => item.id === back.recordId) : null;
+    if (proc) {
+      openPdfSheet(proc, equipmentById(proc.equipmentId) || {}, back.back || 'equipment', record && record.formData && formBag(record).status === 'complete' ? record : null, {});
+      return;
+    }
+  }
+  closeModal();
+};
+window.r18_editPdfSheet = (templateId, returnTo) => {
+  const existing = templateId ? (state.formTemplates || []).find(item => item.id === templateId) : null;
+  if (templateId && !existing) return toast('That sheet is no longer in this lab.');
+  const def = existing ? definitionObject(existing) : null;
+  if (def && def.formKey !== PDF_SHEET_ID) return;
+  paintPdfEditor({
+    id: existing ? existing.id : '',
+    name: existing ? existing.name : '',
+    notice: 'A signed record stays on the sheet it was signed with. Saving does not attach this sheet to a procedure.',
+    review: false,
+    returnTo: returnTo || null,
+    sheet: normalizePdfSheet(def || {}),
+  });
+};
+window.r18_previewPdfSheet = () => {
+  const draft = readPdfEditor();
+  if (!draft) return;
+  pdfEditor = draft;
+  const eq = (state.equipment || [])[0] || { id: 'preview', name: 'Example equipment', serialNumber: 'SN-1', refId: 'REF-1' };
+  const proc = { id: 'preview', name: draft.name || draft.sheet.title, frequencyValue: 12, frequencyUnit: 'months', equipmentId: eq.id };
+  openPdfSheet(proc, eq, 'preview', null, { preview: true, sheet: draft.sheet });
+};
+window.r18_savePdfSheet = async () => {
+  const draft = readPdfEditor();
+  if (!draft) return;
+  if (!draft.name) return toast('Name this form.');
+  if (!draft.sheet.title) return toast('Enter the title on the sheet.');
+  const sheet = draft.sheet;
+  const fillable = sheet.fields.length || sheet.table || sheet.gauges.length;
+  if (!fillable) return toast('Add a field, a gauge, or a readings table the tech can fill in.');
+  if (!state.currentLabId) return toast('Open a lab first.');
+  const existing = draft.id ? (state.formTemplates || []).find(item => item.id === draft.id) : null;
+  const row = {
+    id: draft.id || uuid(),
+    labId: state.currentLabId,
+    name: draft.name,
+    definition: sheet,
+    active: existing ? existing.active !== false : true,
+  };
+  if (existing && existing.createdAt) row.createdAt = existing.createdAt;
+  const btn = document.getElementById('ps-save');
+  if (btn) btn.disabled = true;
+  try {
+    if (!db) throw new Error('Connect Supabase before saving this form.');
+    await repo.put('form_templates', row);
+    upsertById(state.formTemplates, row);
+  } catch (err) {
+    if (btn) btn.disabled = false;
+    console.error(err);
+    const raw = String((err && (err.message || err.details)) || '');
+    if (/form_template|schema cache|does not exist/i.test(raw)) {
+      state.customFormsReady = false;
+      state.customFormsSchemaError = true;
+      closeModal();
+      renderView();
+      toast('Run the one-time database update on this page, then save the sheet again.');
+      return;
+    }
+    toast('Could not save this sheet.');
+    return;
+  }
+  pdfEditor = null;
+  try { await refreshAll(); } catch (err) { console.warn(err); }
+  if (!pdfSheetById(row.id)) upsertById(state.formTemplates, row);
+  toast('Sheet saved. Attach it to a procedure when you are ready.');
+  const back = draft.returnTo;
+  if (back && back.procedureId) {
+    const proc = (state.procedures || []).find(item => item.id === back.procedureId);
+    if (proc) {
+      openPdfSheet(proc, equipmentById(proc.equipmentId) || {}, back.back || 'equipment');
+      return;
+    }
+  }
+  closeModal();
+  state.currentTab = 'inventory';
+  state.inventorySubTab = 'procedure_forms';
+  renderTabs();
+  renderView();
+};
+
+function pdfBlankRow(sheet) {
+  const row = {};
+  ((sheet.table && sheet.table.columns) || []).forEach(col => { row[col.id] = ''; });
+  return row;
+}
+
+function pdfDataFrom(raw, eq, proc, sheet) {
+  const src = raw || {};
+  const fields = {};
+  (sheet.fields || []).forEach(field => {
+    const stored = src.fields && src.fields[field.id];
+    fields[field.id] = stored != null && stored !== '' ? stored : (customPrefill(field, eq, proc) || '');
+  });
+  const gauges = {};
+  (sheet.gauges || []).forEach(gauge => {
+    const stored = src.gauges && src.gauges[gauge.id];
+    gauges[gauge.id] = { name: stored && stored.name || '', serial: stored && stored.serial || '' };
+  });
+  const rows = {};
+  ((sheet.table && sheet.table.rows) || []).forEach(def => {
+    rows[def.id] = Object.assign(pdfBlankRow(sheet), (src.rows && src.rows[def.id]) || {});
+  });
+  return {
+    fields: fields,
+    gauges: gauges,
+    rows: rows,
+    remarks: src.remarks || '',
+    verifiedBy: src.verifiedBy || viewerName(),
+    approvedBy: src.approvedBy || '',
+    approvedDate: src.approvedDate || '',
+    sheet: sheet,
+  };
+}
+
+function pdfCellHtml(id, value, kind, readonly, rowId, colId) {
+  if (readonly) {
+    const shown = kind === 'date' ? (fmtDateNum(value) || value || '') : (value || '');
+    return escapeHtml(shown);
+  }
+  if (kind === 'passfail') {
+    const options = [['', '—'], ['P', 'P'], ['F', 'F']].map(opt =>
+      '<option value="' + opt[0] + '"' + (value === opt[0] ? ' selected' : '') + '>' + opt[1] + '</option>'
+    ).join('');
+    return '<select class="r18-cell-select" id="' + id + '" data-col="' + colId + '" onchange="this.dataset.touched=\'1\'">' + options + '</select>';
+  }
+  const type = kind === 'date' ? 'date' : 'text';
+  const mode = kind === 'number' ? ' inputmode="decimal"' : '';
+  return '<input class="r18-cell-input" id="' + id + '" data-col="' + colId + '" type="' + type + '"' + mode + ' value="' + escapeHtml(value || '') + '" autocomplete="off" oninput="r18_pdfCheckRow(\'' + rowId + '\')" />';
+}
+
+function pdfSheetBodyHtml(sheet, data, readonly) {
+  let html = '';
+  if (sheet.organization) html += '<div class="r18-paper-org">' + escapeHtml(sheet.organization) + '</div>';
+  if (sheet.subtitle) html += '<div class="r18-paper-sub">' + escapeHtml(sheet.subtitle) + '</div>';
+  html += '<div class="r18-paper-title">' + escapeHtml(sheet.title) + '</div>';
+  const shorts = [];
+  (sheet.fields || []).forEach(field => {
+    const value = data.fields[field.id] || '';
+    const control = field.type === 'longtext'
+      ? '<div class="r18-paper-h">' + escapeHtml(field.label) + '</div>' + (readonly
+        ? '<div class="r18-paper-value" style="min-height:48px;white-space:pre-wrap">' + escapeHtml(value || '—') + '</div>'
+        : '<textarea class="r18-paper-area" id="psf-' + field.id + '">' + escapeHtml(value) + '</textarea>')
+      : paperField(field.label, 'psf-' + field.id, value, field.type === 'passfail' || field.type === 'yesno' ? 'text' : (field.type === 'date' ? 'date' : 'text'), readonly);
+    if (field.type === 'longtext') {
+      if (shorts.length) {
+        html += '<div class="r18-paper-grid">' + shorts.join('') + (shorts.length % 2 ? '<div></div>' : '') + '</div>';
+        shorts.length = 0;
+      }
+      html += control;
+    } else if (field.type === 'passfail' || field.type === 'yesno') {
+      const options = field.type === 'yesno' ? [['', '—'], ['Yes', 'Yes'], ['No', 'No']] : [['', '—'], ['P', 'Pass'], ['F', 'Fail']];
+      const select = readonly
+        ? '<div class="r18-paper-value">' + escapeHtml(value || '—') + '</div>'
+        : '<select class="r18-paper-input" id="psf-' + field.id + '">' + options.map(opt => '<option value="' + opt[0] + '"' + (value === opt[0] ? ' selected' : '') + '>' + opt[1] + '</option>').join('') + '</select>';
+      shorts.push('<label class="r18-paper-field"><span>' + escapeHtml(field.label) + '</span>' + select + '</label>');
+    } else {
+      shorts.push(control);
+    }
+  });
+  if (shorts.length) html += '<div class="r18-paper-grid">' + shorts.join('') + (shorts.length % 2 ? '<div></div>' : '') + '</div>';
+  (sheet.blocks || []).forEach(block => {
+    if (block.heading) html += '<div class="r18-paper-h">' + escapeHtml(block.heading) + '</div>';
+    if (block.body) html += '<div class="r18-note">' + escapeHtml(block.body) + '</div>';
+  });
+  if (sheet.steps.length) {
+    html += '<div class="r18-paper-h">Procedure</div><ol class="r18-paper-steps">' + sheet.steps.map(step => '<li>' + escapeHtml(step) + '</li>').join('') + '</ol>';
+  }
+  if (sheet.gauges.length) {
+    html += '<div class="r18-paper-h">Calibration</div>';
+    sheet.gauges.forEach(gauge => {
+      const saved = data.gauges[gauge.id] || { name: '', serial: '' };
+      html += '<div class="r18-gauge-line">' + paperField(gauge.label, 'psg-' + gauge.id + '-name', saved.name, 'text', readonly) + paperField(gauge.serialLabel, 'psg-' + gauge.id + '-serial', saved.serial, 'text', readonly) + '</div>';
+    });
+  }
+  if (sheet.table) {
+    const head = '<tr><th>' + escapeHtml(sheet.table.corner) + '</th>' + sheet.table.columns.map(col => '<th>' + escapeHtml(col.label) + '</th>').join('') + '</tr>';
+    const body = sheet.table.rows.map(def => {
+      const row = data.rows[def.id] || {};
+      const cells = sheet.table.columns.map(col => '<td>' + pdfCellHtml('psv-' + def.id + '-' + col.id, row[col.id], col.kind, readonly, def.id, col.id) + '</td>').join('');
+      const span = sheet.table.columns.length + 1;
+      return '<tr data-pdf-row="' + def.id + '"><td class="r18-row-label">' + escapeHtml(def.label) + '</td>' + cells + '</tr>' +
+        '<tr><td class="r18-tol" colspan="' + span + '" id="pdf-tol-' + def.id + '"></td></tr>';
+    }).join('');
+    html += '<div class="r18-cal-table-wrap"><table class="r18-cal-table"><thead>' + head + '</thead><tbody>' + body + '</tbody></table></div>';
+    if (sheet.toleranceNote) html += '<div class="text-xs ink-3 mt-2">' + escapeHtml(sheet.toleranceNote) + '</div>';
+  }
+  html += '<div class="r18-paper-h">' + escapeHtml(sheet.remarksLabel) + '</div>' + (readonly
+    ? '<div class="r18-paper-value" style="min-height:48px;white-space:pre-wrap">' + escapeHtml(data.remarks || '—') + '</div>'
+    : '<textarea class="r18-paper-area" id="ps-remarks">' + escapeHtml(data.remarks || '') + '</textarea>');
+  html += '<div class="r18-paper-grid" style="margin-top:12px">' +
+    paperField(sheet.verifiedLabel, 'ps-verified', data.verifiedBy, 'text', readonly) +
+    paperField(sheet.approvedLabel, 'ps-approved', data.approvedBy, 'text', readonly) +
+    paperField(sheet.dateLabel, 'ps-approved-date', data.approvedDate, 'date', readonly) +
+    '<div></div></div>';
+  if (sheet.footer) html += '<div class="r18-paper-foot">' + escapeHtml(sheet.footer) + '</div>';
+  return html;
+}
+
+function readPdfPerform() {
+  const root = document.getElementById('r18-pdf-form');
+  if (!root || !pdfPerform) return null;
+  const sheet = pdfPerform.sheet;
+  const fields = {};
+  (sheet.fields || []).forEach(field => {
+    const el = document.getElementById('psf-' + field.id);
+    fields[field.id] = el ? el.value : ((pdfPerform.data.fields || {})[field.id] || '');
+  });
+  const gauges = {};
+  (sheet.gauges || []).forEach(gauge => {
+    const name = document.getElementById('psg-' + gauge.id + '-name');
+    const serial = document.getElementById('psg-' + gauge.id + '-serial');
+    gauges[gauge.id] = { name: name ? name.value : '', serial: serial ? serial.value : '' };
+  });
+  const rows = {};
+  ((sheet.table && sheet.table.rows) || []).forEach(def => {
+    const row = {};
+    (sheet.table.columns || []).forEach(col => {
+      const el = document.getElementById('psv-' + def.id + '-' + col.id);
+      row[col.id] = el ? el.value : '';
+    });
+    rows[def.id] = row;
+  });
+  const remarks = document.getElementById('ps-remarks');
+  const verified = document.getElementById('ps-verified');
+  const approved = document.getElementById('ps-approved');
+  const approvedDate = document.getElementById('ps-approved-date');
+  return {
+    fields: fields,
+    gauges: gauges,
+    rows: rows,
+    remarks: remarks ? remarks.value : '',
+    verifiedBy: verified ? verified.value.trim() : '',
+    approvedBy: approved ? approved.value.trim() : '',
+    approvedDate: approvedDate ? approvedDate.value : '',
+    sheet: sheet,
+  };
+}
+
+function pdfCompleteError(data, sheet) {
+  for (let i = 0; i < (sheet.fields || []).length; i++) {
+    const field = sheet.fields[i];
+    if (field.required && !String(data.fields[field.id] || '').trim()) return 'Enter ' + (field.label || 'the required field') + '.';
+  }
+  if (!data.verifiedBy) return 'Enter ' + (sheet.verifiedLabel || 'verified by') + '.';
+  const columns = sheet.table ? sheet.table.columns : [];
+  const passCol = columns.find(col => col.kind === 'passfail');
+  if (passCol) {
+    const missing = (sheet.table.rows || []).some(def => {
+      const row = data.rows[def.id] || {};
+      return row[passCol.id] !== 'P' && row[passCol.id] !== 'F';
+    });
+    if (missing) return 'Mark pass or fail on every row.';
+  }
+  return '';
+}
+
+function pdfResult(data, sheet) {
+  const columns = sheet.table ? sheet.table.columns : [];
+  const passCol = columns.find(col => col.kind === 'passfail');
+  if (passCol && (sheet.table.rows || []).some(def => (data.rows[def.id] || {})[passCol.id] === 'F')) return 'fail';
+  if ((sheet.fields || []).some(field => field.type === 'passfail' && data.fields[field.id] === 'F')) return 'fail';
+  return 'pass';
+}
+
+function pdfCompletedAt(data, sheet) {
+  const dateField = (sheet.fields || []).find(field => field.type === 'date' && field.prefill === 'today') || (sheet.fields || []).find(field => field.type === 'date');
+  const value = dateField ? data.fields[dateField.id] : '';
+  return value || data.approvedDate || todayInput();
+}
+
+function openPdfSheet(proc, eq, back, record, options) {
+  const opts = options || {};
+  const source = record || (!opts.preview && proc ? pdfSheetDraft(proc.id) : null);
+  const bag = source ? formBag(source) : null;
+  const complete = !!(bag && bag.status === 'complete');
+  const template = proc && proc.formTemplateId ? (state.formTemplates || []).find(item => item.id === proc.formTemplateId) : null;
+  let sheet = null;
+  if (opts.sheet) sheet = normalizePdfSheet(opts.sheet);
+  else if ((complete || opts.readonly) && bag && bag.sheet) sheet = normalizePdfSheet(bag.sheet);
+  else if (template) sheet = normalizePdfSheet(definitionObject(template));
+  else if (bag && bag.sheet) sheet = normalizePdfSheet(bag.sheet);
+  if (!sheet || sheet.formKey !== PDF_SHEET_ID) return toast('That sheet is no longer available.');
+  const data = pdfDataFrom(complete || source ? bag : null, eq, proc, sheet);
+  if (!source && !opts.preview) data.verifiedBy = data.verifiedBy || viewerName();
+  pdfPerform = {
+    proc: proc || {},
+    eq: eq || {},
+    back: back || 'equipment',
+    recordId: source ? source.id : '',
+    templateId: (bag && bag.templateId) || (template && template.id) || (proc && proc.formTemplateId) || '',
+    templateName: (bag && bag.templateName) || (template && template.name) || sheet.title,
+    sheet: sheet,
+    data: data,
+    readonly: !!(opts.readonly && !opts.editing),
+    editing: !!opts.editing,
+    preview: !!opts.preview,
+    result: source && source.result ? source.result : '',
+  };
+  const readonly = pdfPerform.readonly;
+  const leave = opts.preview ? 'r18_leavePdfPreview()' : ('r18_leavePdfSheet(\'' + (eq && eq.id ? eq.id : '') + '\',\'' + (back || '') + '\')');
+  const actions = opts.preview || readonly
+    ? ''
+    : (opts.editing
+      ? '<div class="r18-form-actions"><button type="button" class="btn btn-primary" id="pdf-save-complete" onclick="r18_savePdfPerform(\'complete\')">Save changes</button></div>'
+      : '<div class="r18-form-actions"><button type="button" class="btn btn-ghost" id="pdf-save-progress" onclick="r18_savePdfPerform(\'draft\')">Save Progress</button><button type="button" class="btn btn-primary" id="pdf-save-complete" onclick="r18_savePdfPerform(\'complete\')">Save and Complete</button></div>');
+  const approve = readonly && !data.approvedBy && pdfPerform.recordId
+    ? '<div class="r18-form-actions"><label class="r18-paper-field" style="min-width:220px"><span>' + escapeHtml(sheet.approvedLabel) + '</span><input class="r18-paper-input" id="pdf-approve-name" value="' + escapeHtml(viewerName()) + '" autocomplete="off" /></label><button type="button" class="btn btn-primary" onclick="r18_approvePdfRecord(\'' + pdfPerform.recordId + '\')">Approve</button></div>'
+    : '';
+  const buttons = '<div class="flex gap-2 flex-wrap">' +
+    (readonly && pdfPerform.recordId ? '<button type="button" class="btn btn-primary" onclick="r18_editPdfRecord(\'' + pdfPerform.recordId + '\')">Edit</button>' : '') +
+    (opts.preview ? '' : '<button type="button" class="btn btn-ghost" onclick="r18_editPdfSheetFromPerform()">Edit form</button>') +
+    '<button type="button" class="btn btn-ghost" onclick="' + leave + '">' + (opts.preview ? 'Back to edit' : 'Close') + '</button></div>';
+  showModal(
+    '<div class="p-5" id="r18-pdf-form" data-readonly="' + (readonly ? '1' : '0') + '"><div class="r18-form-top"><div><div class="r18-form-kicker">Procedure form</div>' +
+    '<h2 class="text-xl serif font-semibold ink">' + escapeHtml(pdfPerform.templateName) + (pdfPerform.result ? ' · ' + escapeHtml(pdfPerform.result) : '') + '</h2>' +
+    '<div class="text-sm ink-2">' + escapeHtml((eq && eq.name) || '') + '</div></div>' + buttons + '</div>' +
+    '<div class="r18-perform-layout">' + (opts.preview ? '' : caliperSideHtml(eq, proc)) + '<div><div class="r18-paper">' + pdfSheetBodyHtml(sheet, data, readonly) + '</div>' + actions + approve + '</div></div></div>',
+    { form: true, lock: true, onMount: () => { if (!readonly && sheet.table) (sheet.table.rows || []).forEach(row => window.r18_pdfCheckRow(row.id)); } }
+  );
+}
+
+window.r18_pdfCheckRow = (rowId) => {
+  if (!pdfPerform || !pdfPerform.sheet || !pdfPerform.sheet.tolerance || !pdfPerform.sheet.table) return;
+  const data = readPdfPerform();
+  if (!data) return;
+  const row = data.rows[rowId] || {};
+  const ok = pdfPairOk(row, pdfMeasurePairs(pdfPerform.sheet), pdfPerform.sheet.tolerance);
+  const cell = document.getElementById('pdf-tol-' + rowId);
+  if (cell) {
+    const tol = pdfPerform.sheet.tolerance;
+    cell.textContent = ok === true ? ('Within ±' + tol) : (ok === false ? ('Outside ±' + tol) : '');
+    cell.className = 'r18-tol' + (ok === true ? ' ok' : (ok === false ? ' bad' : ''));
+  }
+  const passCol = pdfPerform.sheet.table.columns.find(col => col.kind === 'passfail');
+  if (!passCol || ok == null) return;
+  const select = document.getElementById('psv-' + rowId + '-' + passCol.id);
+  if (select && select.dataset.touched !== '1') select.value = ok ? 'P' : 'F';
+};
+window.r18_leavePdfPreview = () => {
+  pdfPerform = null;
+  if (pdfEditor) paintPdfEditor(pdfEditor);
+  else closeModal();
+};
+window.r18_leavePdfSheet = (equipmentId, back) => {
+  if (pdfPerform && !pdfPerform.readonly && !pdfPerform.preview) {
+    const nowData = readPdfPerform();
+    if (nowData && JSON.stringify(nowData) !== JSON.stringify(pdfPerform.data) && !confirm('Leave this sheet without saving?')) return;
+  }
+  pdfPerform = null;
+  if (back === 'list' && equipmentId) window.r18_openPerformProcedures(equipmentId);
+  else if (equipmentId) window.r18_openEquipmentDetail(equipmentId);
+  else closeModal();
+};
+window.r18_editPdfSheetFromPerform = () => {
+  if (!pdfPerform || pdfPerform.preview) return;
+  const templateId = pdfPerform.templateId;
+  const returnTo = { procedureId: pdfPerform.proc && pdfPerform.proc.id, recordId: pdfPerform.recordId, back: pdfPerform.back };
+  if (!templateId) return toast('This signed sheet is kept as it was signed. The lab copy is no longer in the list.');
+  window.r18_editPdfSheet(templateId, returnTo);
+};
+window.r18_editPdfRecord = (recordId) => {
+  const record = (state.procedureRecords || []).find(item => item.id === recordId);
+  if (!record) return;
+  const bag = formBag(record);
+  const proc = (state.procedures || []).find(item => item.id === record.procedureId) || {
+    id: record.procedureId, name: bag.templateName || 'Procedure', equipmentId: record.equipmentId, labId: record.labId, frequencyValue: 12, frequencyUnit: 'months', formTemplateId: bag.templateId || '',
+  };
+  openPdfSheet(proc, equipmentById(record.equipmentId) || {}, 'equipment', record, { editing: true });
+};
+window.r18_savePdfPerform = async (mode) => {
+  if (!pdfPerform || pdfPerform.preview) return;
+  const data = readPdfPerform();
+  if (!data) return;
+  const sheet = pdfPerform.sheet;
+  const proc = pdfPerform.proc || {};
+  if (mode === 'complete' || pdfPerform.editing) {
+    const err = pdfCompleteError(data, sheet);
+    if (err) return toast(err);
+    if (sheet.tolerance) {
+      const outside = (sheet.table && sheet.table.rows || []).some(def => {
+        const row = data.rows[def.id] || {};
+        const passCol = sheet.table.columns.find(col => col.kind === 'passfail');
+        return passCol && row[passCol.id] === 'P' && pdfPairOk(row, pdfMeasurePairs(sheet), sheet.tolerance) === false;
+      });
+      if (outside && !confirm('A measurement is outside ±' + sheet.tolerance + ' and marked Pass. Save it anyway?')) return;
+    }
+  } else {
+    const any = data.verifiedBy || data.remarks || Object.keys(data.fields).some(key => String(data.fields[key] || '').trim()) || Object.keys(data.rows).some(key => Object.keys(data.rows[key] || {}).some(col => String(data.rows[key][col] || '').trim()));
+    if (!any) return toast('Enter something before saving progress.');
+  }
+  const day = pdfCompletedAt(data, sheet);
+  const completedAt = new Date(day + 'T12:00:00').toISOString();
+  const nextField = (sheet.fields || []).find(field => field.prefill === 'nextDue');
+  const nextRaw = nextField ? data.fields[nextField.id] : '';
+  const nextDueAt = nextRaw
+    ? new Date(nextRaw + 'T12:00:00').toISOString()
+    : addFrequency(completedAt, proc.frequencyValue || 12, proc.frequencyUnit || 'months');
+  const previous = (state.procedureRecords || []).find(item => item.id === pdfPerform.recordId);
+  const result = mode === 'complete' || pdfPerform.editing ? pdfResult(data, sheet) : null;
+  const record = {
+    id: pdfPerform.recordId || uuid(),
+    labId: state.currentLabId || proc.labId,
+    equipmentId: proc.equipmentId,
+    procedureId: proc.id,
+    completedAt: completedAt,
+    completedBy: data.verifiedBy,
+    result: result,
+    notes: data.remarks,
+    certificateNumber: '',
+    formData: Object.assign({
+      formId: PDF_SHEET_ID,
+      templateId: pdfPerform.templateId,
+      templateName: pdfPerform.templateName,
+      status: mode === 'complete' || pdfPerform.editing ? 'complete' : 'draft',
+    }, data),
+    nextDueAt: nextDueAt,
+    createdAt: previous && previous.createdAt,
+  };
+  const btn = document.getElementById(mode === 'complete' ? 'pdf-save-complete' : 'pdf-save-progress');
+  if (btn) btn.disabled = true;
+  try {
+    if (!db) throw new Error('Connect Supabase before saving this form.');
+    await repo.put('procedure_records', calibrationRecordPayload(record));
+  } catch (err) {
+    if (btn) btn.disabled = false;
+    console.error(err);
+    toast(saveFailureText(err));
+    return;
+  }
+  pdfPerform.recordId = record.id;
+  pdfPerform.data = data;
+  upsertById(state.procedureRecords, record);
+  if (mode !== 'complete' && !pdfPerform.editing) {
+    if (btn) btn.disabled = false;
+    toast('Progress saved in the lab database.');
+    return;
+  }
+  let scheduleSaved = true;
+  const eq = equipmentById(proc.equipmentId);
+  try {
+    if (proc.id && proc.id !== 'preview') {
+      await repo.put('procedures', procedureSchedulePayload(proc, completedAt, nextDueAt));
+      if (proc.procedureType === 'calibration' && eq) await repo.put('equipment', equipmentCalibrationPayload(eq, completedAt, nextDueAt));
+    }
+  } catch (err) {
+    scheduleSaved = false;
+    console.error(err);
+  }
+  if (proc.id) upsertById(state.procedures, Object.assign({}, proc, { lastCompletedAt: completedAt, nextDueAt: nextDueAt }));
+  try { await refreshAll(); } catch (err) { console.warn(err); }
+  renderView();
+  if (proc.equipmentId) window.r18_openEquipmentDetail(proc.equipmentId);
+  else closeModal();
+  if (!scheduleSaved) return toast('The sheet is in the lab database. The next due date could not be updated.');
+  toast(result === 'fail' ? 'Saved in the lab database as a fail.' : 'Saved in the lab database.');
+};
+window.r18_approvePdfRecord = async (recordId) => {
+  const record = (state.procedureRecords || []).find(item => item.id === recordId);
+  if (!record) return;
+  const input = document.getElementById('pdf-approve-name');
+  const name = input ? input.value.trim() : '';
+  if (!name) return toast('Enter who approved this sheet.');
+  const bag = Object.assign({}, formBag(record), { approvedBy: name, approvedDate: todayInput() });
+  const next = Object.assign({}, record, { formData: bag });
+  try {
+    if (!db) throw new Error('Connect Supabase before saving this form.');
+    await repo.put('procedure_records', calibrationRecordPayload(next));
+  } catch (err) {
+    console.error(err);
+    toast('Could not save the approval.');
+    return;
+  }
+  upsertById(state.procedureRecords, next);
+  try { await refreshAll(); } catch (err) { console.warn(err); }
+  window.r18_openProcedureRecordDetail(record.id);
+  toast('Approval saved.');
+};
+
 /* ---------- CUSTOM PROCEDURE FORMS ---------- */
 let customFormSession = null;
 const CUSTOM_FIELD_TYPES = ['text', 'number', 'date', 'longtext', 'yesno', 'passfail', 'section', 'note', 'table'];
@@ -39857,7 +41290,7 @@ function renderProcedureFormsHtml() {
         : '<div class="text-xs ink-2 mt-2">Add a procedure on a piece of equipment, then come back and attach this form.</div>') +
       '</div>';
   }).join('');
-  return caliperFormLibraryCard() + sieveFormLibraryCard() + '<div class="card mt-4"><div class="px-4 py-3 border-b border-line-2 flex justify-between items-center gap-3 flex-wrap">' +
+  return pdfDropCardHtml() + pdfSheetLibraryHtml() + caliperFormLibraryCard() + sieveFormLibraryCard() + '<div class="card mt-4"><div class="px-4 py-3 border-b border-line-2 flex justify-between items-center gap-3 flex-wrap">' +
     '<div><div class="text-sm font-semibold ink">Procedure forms (' + forms.length + ')</div>' +
     '<div class="text-xs ink-2">Build a sheet once, attach it to any procedure, and Perform Procedure opens it for the tech.</div></div>' +
     '<button type="button" class="btn btn-primary text-xs" onclick="r18_openFormBuilder()">+ New form</button></div>' +
@@ -39925,7 +41358,9 @@ function paintFormBuilder(draft) {
     '<h2 class="text-xl serif font-semibold ink">' + (draft.id ? 'Edit form' : 'New form') + '</h2>' +
     '<div class="text-sm ink-2">Add the blanks the tech fills in. A saved sheet keeps the fields it was filled with.</div></div>' +
     '<button type="button" class="btn btn-ghost" onclick="r18_closeModal()">Close</button></div>' +
+    (draft.notice ? '<div class="text-sm ink-2 mt-3">' + escapeHtml(draft.notice) + '</div>' : '') +
     '<input type="hidden" id="fb-id" value="' + escapeHtml(draft.id || '') + '" />' +
+    '<input type="hidden" id="fb-notice" value="' + escapeHtml(draft.notice || '') + '" />' +
     '<div class="grid grid-cols-2 gap-3"><div><label class="label">Form name</label><input class="input" id="fb-name" value="' + escapeHtml(draft.name || '') + '" placeholder="Balance verification" /></div>' +
     '<div><label class="label">Title on the sheet</label><input class="input" id="fb-title" value="' + escapeHtml(draft.title || '') + '" placeholder="Calibration of Balances" /></div></div>' +
     '<div class="mt-3"><label class="label">Footer</label><input class="input" id="fb-footer" value="' + escapeHtml(draft.footer || '') + '" placeholder="Optional line at the bottom of the sheet" /></div>' +
@@ -39973,6 +41408,7 @@ function readFormBuilder() {
   });
   return {
     id: document.getElementById('fb-id') ? document.getElementById('fb-id').value : '',
+    notice: document.getElementById('fb-notice') ? document.getElementById('fb-notice').value : '',
     name: document.getElementById('fb-name') ? document.getElementById('fb-name').value.trim() : '',
     title: document.getElementById('fb-title') ? document.getElementById('fb-title').value.trim() : '',
     footer: document.getElementById('fb-footer') ? document.getElementById('fb-footer').value.trim() : '',
@@ -39992,6 +41428,7 @@ window.r18_openFormBuilder = (id) => {
   const existingDef = existing ? definitionObject(existing) : null;
   if (existingDef && existingDef.formKey === CALIPER_FORM_ID) return window.r18_editCaliperSheet();
   if (existingDef && existingDef.formKey === SIEVE_FORM_ID) return window.r18_editSieveSheet();
+  if (existingDef && existingDef.formKey === PDF_SHEET_ID) return window.r18_editPdfSheet(existing.id);
   const def = existing ? templateDefinition(existing) : { title: '', footer: '', fields: defaultCustomFields() };
   paintFormBuilder({
     id: existing ? existing.id : '',
@@ -41043,10 +42480,15 @@ window.r18_openCompleteProcedureModal = (procedureId, back) => {
   const linkedDef = linked ? definitionObject(linked) : null;
   const linkedCaliper = !!(linkedDef && linkedDef.formKey === CALIPER_FORM_ID);
   const linkedSieve = !!(linkedDef && linkedDef.formKey === SIEVE_FORM_ID);
-  if (proc.formTemplateId && !template && !linkedCaliper && !linkedSieve) {
+  const linkedPdf = !!(linkedDef && linkedDef.formKey === PDF_SHEET_ID);
+  if (proc.formTemplateId && !template && !linkedCaliper && !linkedSieve && !linkedPdf) {
     toast('The form on this procedure is no longer available. Attach another under Inventory → Procedure Forms.');
   } else if (template) {
     openCustomForm(proc, eq || {}, back || 'equipment', customDraft(proc.id, template.id), {});
+    return;
+  }
+  if (linkedPdf) {
+    openPdfSheet(proc, eq || {}, back || 'equipment');
     return;
   }
   if (procedureUsesSieveForm(eq, proc) || linkedSieve) {
@@ -41158,6 +42600,15 @@ window.r18_openProcedureRecordDetail = (recordId) => {
     data.result = r.result || '';
     data.sheet = sheet;
     showModal(caliperFormHtml(eq || {}, proc || { id: r.procedureId, name: 'Caliper Calibration' }, data, { readonly: true, recordId: r.id, back: 'equipment' }), { form: true, lock: true });
+    return;
+  }
+  if (bag.formId === PDF_SHEET_ID && bag.status === 'draft') {
+    if (proc) openPdfSheet(proc, eq || {}, 'equipment');
+    return;
+  }
+  if (bag.formId === PDF_SHEET_ID) {
+    const stub = proc || { id: r.procedureId, name: bag.templateName || 'Procedure', equipmentId: r.equipmentId, labId: r.labId, frequencyValue: 12, frequencyUnit: 'months' };
+    openPdfSheet(stub, eq || {}, 'equipment', r, { readonly: true });
     return;
   }
   if (bag.formId === 'custom' && Array.isArray(bag.fields)) {
