@@ -3598,6 +3598,32 @@ table.fc-borrow-tbl tr.fc-borrow-detail-row td{background:var(--surface);border-
 .r18-app .r18-cert { border: 1px solid #bbf7d0; background: #ecfdf5; color: #166534; border-radius: 999px; padding: 4px 8px; font-size: 11px; font-weight: 650; cursor: pointer; }
 .r18-app .r18-cert.expired { border-color: #fecaca; background: #fef2f2; color: #b91c1c; }
 .r18-app .r18-cert-empty { font-size: 12px; color: var(--r18-ink-3); font-style: italic; background: none; border: none; padding: 0; cursor: pointer; }
+.r18-app .r18-org { margin-top: 8px; }
+.r18-app .r18-org-tree { display: flex; justify-content: center; overflow-x: auto; padding: 8px 0 12px; }
+.r18-app .r18-org-node { display: flex; flex-direction: column; align-items: center; position: relative; padding: 18px 8px 0; }
+.r18-app .r18-org-tree > .r18-org-node { padding-top: 0; }
+.r18-app .r18-org-node::before { content: ''; position: absolute; top: 0; left: 50%; width: 0; height: 18px; border-left: 1px solid var(--r18-line); }
+.r18-app .r18-org-tree > .r18-org-node::before { display: none; }
+.r18-app .r18-org-children { display: flex; justify-content: center; position: relative; padding-top: 18px; }
+.r18-app .r18-org-children::before { content: ''; position: absolute; top: 0; left: 50%; height: 18px; border-left: 1px solid var(--r18-line); }
+.r18-app .r18-org-children > .r18-org-node::after { content: ''; position: absolute; top: 0; left: 0; right: 0; border-top: 1px solid var(--r18-line); }
+.r18-app .r18-org-children > .r18-org-node:first-child::after { left: 50%; }
+.r18-app .r18-org-children > .r18-org-node:last-child::after { right: 50%; }
+.r18-app .r18-org-children > .r18-org-node:only-child::after { display: none; }
+.r18-app .r18-org-box { background: white; border: 1px solid var(--r18-line); border-radius: 8px; padding: 10px 12px; min-width: 168px; max-width: 220px; text-align: center; }
+.r18-app .r18-org-box.lab { background: var(--r18-accent); border-color: var(--r18-accent); color: white; font-weight: 700; }
+.r18-app .r18-org-box.section { background: var(--r18-paper-2); font-weight: 700; font-size: 13px; }
+.r18-app .r18-org-name { font-weight: 700; font-size: 14px; color: var(--r18-ink); }
+.r18-app .r18-org-title { font-size: 12px; color: var(--r18-ink-2); margin-top: 2px; }
+.r18-app .r18-org-remove { margin-top: 8px; }
+.r18-app .r18-org-note { font-size: 13px; color: var(--r18-ink-2); line-height: 1.5; max-width: 720px; margin: 8px 0 0; }
+.r18-app .r18-org-extra { margin-top: 22px; }
+.r18-app .r18-org-extra h2 { font-family: 'Source Serif 4', Georgia, serif; font-size: 20px; margin: 0 0 6px; color: var(--r18-ink); }
+.r18-app .r18-org-extra-row { display: flex; justify-content: space-between; gap: 12px; align-items: center; background: white; border: 1px solid var(--r18-line); border-radius: 8px; padding: 10px 12px; margin-top: 8px; }
+@media (max-width: 720px) {
+  .r18-app .r18-org-children { flex-direction: column; align-items: center; }
+  .r18-app .r18-org-children > .r18-org-node::after { display: none; }
+}
 .r18-app .r18-accordion-hd { padding: 12px 16px; background: var(--r18-paper-2); border: 1px solid var(--r18-line); border-radius: 4px; display: flex; align-items: center; justify-content: space-between; cursor: pointer; margin-bottom: 4px; }
 .r18-app .r18-accordion-hd:hover { background: var(--r18-paper-3); }
 .r18-app .r18-accordion-bd { border: 1px solid var(--r18-line); border-top: none; border-radius: 0 0 4px 4px; margin-bottom: 8px; margin-top: -4px; }
@@ -35520,6 +35546,7 @@ const TABS = [
   { id: 'procedure-history', label: 'Procedure History',  icon: '≡' },
   { id: 'reports',           label: 'Reports',            icon: '⎙' },
   { id: 'roster',            label: 'Roster',             icon: '☺' },
+  { id: 'org-chart',         label: 'Org Chart',          icon: '⌂' },
   { id: 'training-evals',    label: 'Training & Evals',   icon: '✓' },
 ];
 
@@ -35574,18 +35601,6 @@ async function init() {
         // Seed lab equipment on secondary
         for (const eq of SEED_EQUIPMENT_SOIL) {
           await repo.put('equipment', { id: uuid(), labId: secondary.id, ...eq, status: 'in_service', photo: null, lastCalibration: null, nextCalibration: null, notes: '' });
-        }
-        // Seed users — pulled from your screenshot 3
-        const seedUsers = [
-          { name: 'Jennifer Pinkerton', role: 'primary_lab_manager', active: true,  labId: primary.id },
-          { name: 'James Kwasnieski',   role: 'primary_lab_manager', active: true,  labId: primary.id },
-          { name: 'Aaron Wieczorek',    role: 'lab_manager',         active: true,  labId: secondary.id },
-          { name: 'Michael Street',     role: 'lab_technician',      active: true,  labId: secondary.id },
-          { name: 'Nick Loebe',         role: 'lab_technician',      active: true,  labId: secondary.id },
-          { name: 'Joshua Smith',       role: 'lab_technician',      active: true,  labId: secondary.id },
-        ];
-        for (const u of seedUsers) {
-          await repo.put('users', { id: uuid(), ...u, email: '' });
         }
         state.currentLabId = primary.id;
         labs = await repo.getAll('labs');
@@ -35754,6 +35769,7 @@ function renderView() {
     case 'procedure-history': return renderProcedureHistory(lab, root);
     case 'reports':           return renderReports(lab, root);
     case 'roster':            return renderRoster(lab, root);
+    case 'org-chart':         return renderOrgChart(lab, root);
     case 'training-evals':    return renderTrainingEvals(lab, root);
   }
 }
@@ -35815,10 +35831,11 @@ function renderDashboard(lab, root) {
    MANAGE LAB
    ==================================================================== */
 function renderManageLab(lab, root) {
-  const plmCount = state.users.filter(u => u.role === 'primary_lab_manager' && u.active).length;
-  const activeCount = state.users.filter(u => u.active).length;
+  const rosterPeople = splitLabPeople().roster;
+  const plmCount = rosterPeople.filter(u => u.role === 'primary_lab_manager').length;
+  const activeCount = rosterPeople.length;
   const adminCards = [
-    { title: 'Organizational Chart', desc: 'Edit and organize users, roles, and resumes.', action: `r18_openTab('training-evals')` },
+    { title: 'Organizational Chart', desc: 'The roster, drawn as a chart. Remove someone here without deleting their roster card.', action: `r18_openTab('org-chart')` },
     { title: 'Equipment Procedures Admin', desc: 'Create and edit equipment procedures.', action: `r18_state.inventorySubTab='equipment_procedures';r18_openTab('inventory')` },
     { title: 'Test Methods & Standard Designations Admin', desc: 'Manage standard designations, test methods, and test categories for training.', action: `r18_openTab('training-evals')` },
     { title: 'Measurement Standards', desc: 'View measurement standards calibration.', action: `r18_state.inventorySubTab='lab_equipment';r18_openTab('inventory')` },
@@ -36073,9 +36090,53 @@ function qmAncestorHidden(num) {
   return false;
 }
 
+function personNameKey(name) {
+  return String(name || '').trim().toLowerCase().replace(/\s+/g, ' ');
+}
+
+function rosterRichness(user) {
+  let score = 0;
+  if (user.section) score += 8;
+  if (user.title) score += 4;
+  if (user.hireDate) score += 4;
+  if (user.labtrakUserId) score += 4;
+  if (rosterGearIds(user).length) score += 2;
+  if (user.email) score += 1;
+  return score;
+}
+
+function isRosterCard(user) {
+  return !!(user && (user.section || user.title || user.hireDate || user.labtrakUserId || rosterGearIds(user).length));
+}
+
+/* One card per name. The roster card (section, title, hire date, or LabTrak link)
+   wins over a bare name that was only saved on the lab. */
+function splitLabPeople() {
+  const active = (state.users || []).filter(u => u && u.active !== false);
+  const groups = {};
+  active.forEach(u => {
+    const key = personNameKey(u.name);
+    if (!key) return;
+    (groups[key] = groups[key] || []).push(u);
+  });
+  const roster = [];
+  const extras = [];
+  Object.keys(groups).forEach(key => {
+    const ranked = groups[key].slice().sort((a, b) => rosterRichness(b) - rosterRichness(a));
+    const best = ranked[0];
+    const rest = ranked.slice(1);
+    if (isRosterCard(best)) roster.push(best);
+    else extras.push(best);
+    rest.forEach(u => extras.push(u));
+  });
+  const byName = (a, b) => String(a.name || '').localeCompare(String(b.name || ''));
+  roster.sort(byName);
+  extras.sort(byName);
+  return { roster, extras };
+}
+
 function qmPeople() {
-  return (state.users || []).filter(u => u && u.active !== false).slice()
-    .sort((a, b) => String(a.name || '').localeCompare(String(b.name || '')));
+  return splitLabPeople().roster;
 }
 
 function qmBag(name) {
@@ -36177,7 +36238,7 @@ function qmActionButtons(row, lab) {
   let lead = '';
   if (row.kind === 'address') lead = `<button type="button" class="btn btn-ghost text-xs" onclick="r18_openEditLabModal('${lab.id}')">Edit Lab Information</button>`;
   else if (row.kind === 'positions') lead = `<button type="button" class="btn btn-ghost text-xs" onclick="r18_qmGo('roster')">Edit Positions</button>`;
-  else if (row.kind === 'chart') lead = `<button type="button" class="btn btn-ghost text-xs" onclick="r18_qmGo('roster')">Edit Organizational Chart</button>`;
+  else if (row.kind === 'chart') lead = `<button type="button" class="btn btn-ghost text-xs" onclick="r18_openTab('org-chart')">Edit Organizational Chart</button>`;
   else if (row.kind === 'bios') lead = `<button type="button" class="btn btn-ghost text-xs" onclick="r18_qmGo('roster')">Edit User</button>`;
   else if (row.kind === 'inventory') lead = `<button type="button" class="btn btn-ghost text-xs" onclick="r18_qmGo('inventory')">Go To Inventory</button>`;
   else if (row.kind === 'records') lead = `<button type="button" class="btn btn-ghost text-xs" onclick="r18_qmGo('procedure-history')">View All Records</button>`;
@@ -36255,15 +36316,7 @@ function renderQmBody(row, lab) {
     const body = people.map(u => `<tr><td>${escapeHtml(u.name || '')}</td><td>${escapeHtml(qmPositionName(u))}</td><td></td><td></td></tr>`).join('');
     return qmTable(['Employee Name', 'Lab Position Name', 'Position Description', 'Files'], body);
   }
-  if (row.kind === 'chart') {
-    if (!people.length) return '<div class="r18-qm-body">No one is on the roster yet.</div>';
-    const groups = {};
-    people.forEach(u => {
-      const key = qmPositionName(u) || 'Staff';
-      (groups[key] = groups[key] || []).push(u.name);
-    });
-    return `<div class="r18-qm-cards">${Object.keys(groups).map(title => `<div class="r18-qm-card"><div class="text-sm font-semibold ink">${escapeHtml(title)}</div>${groups[title].map(name => `<div class="text-sm ink-2">${escapeHtml(name)}</div>`).join('')}</div>`).join('')}</div>`;
-  }
+  if (row.kind === 'chart') return orgChartMarkup(lab, { editable: false });
   if (row.kind === 'roles') {
     const seen = [];
     people.forEach(u => {
@@ -38029,6 +38082,160 @@ window.r18_recheckRosterColumns = () => {
   renderView();
 };
 
+function rosterSectionLabel(id) {
+  const found = ROSTER_SECTIONS.find(s => s.id === id);
+  return found ? found.label : (id ? String(id) : '');
+}
+
+function orgChartConfig() {
+  const row = (state.sections || []).find(s => String(s.sectionNumber) === '5.3.3' && (!s.labId || s.labId === state.currentLabId));
+  let content = row && row.content;
+  if (typeof content === 'string') {
+    try { content = JSON.parse(content); } catch (e) { content = null; }
+  }
+  const hiddenIds = content && Array.isArray(content.hiddenIds) ? content.hiddenIds.map(String) : [];
+  return { row, hiddenIds };
+}
+
+function orgPersonBox(user, mode) {
+  const title = qmPositionName(user);
+  const section = mode === 'top' ? rosterSectionLabel(user.section) : '';
+  const subtitle = [title, section].filter(Boolean).join(' · ');
+  const button = mode === 'read' ? '' : `<button type="button" class="btn btn-danger text-xs r18-org-remove" onclick="r18_orgChartHide('${qmJs(user.id)}')">Remove</button>`;
+  return `<div class="r18-org-box">
+    <div class="r18-org-name">${escapeHtml(user.name || '')}</div>
+    ${subtitle ? `<div class="r18-org-title">${escapeHtml(subtitle)}</div>` : ''}
+    ${button}
+  </div>`;
+}
+
+function orgNode(boxHtml, childrenHtml) {
+  return `<div class="r18-org-node">${boxHtml}${childrenHtml ? `<div class="r18-org-children">${childrenHtml}</div>` : ''}</div>`;
+}
+
+function orgChartMarkup(lab, opts) {
+  const editable = !!(opts && opts.editable);
+  const mode = editable ? 'edit' : 'read';
+  const hidden = new Set(orgChartConfig().hiddenIds);
+  const split = splitLabPeople();
+  const shown = split.roster.filter(u => !hidden.has(String(u.id)));
+  const removed = split.roster.filter(u => hidden.has(String(u.id)));
+  const managers = shown.filter(u => u.role === 'primary_lab_manager');
+  const managerIds = new Set(managers.map(u => String(u.id)));
+  const rest = shown.filter(u => !managerIds.has(String(u.id)));
+  const order = ROSTER_SECTIONS.map(s => s.id);
+  const sectionIds = [];
+  rest.forEach(u => {
+    const id = u.section || 'unassigned';
+    if (!sectionIds.includes(id)) sectionIds.push(id);
+  });
+  sectionIds.sort((a, b) => {
+    const ia = order.indexOf(a);
+    const ib = order.indexOf(b);
+    return (ia < 0 ? 99 : ia) - (ib < 0 ? 99 : ib) || a.localeCompare(b);
+  });
+  const sectionNodes = sectionIds.map(id => {
+    const members = rest.filter(u => (u.section || 'unassigned') === id)
+      .sort((a, b) => String(a.name).localeCompare(String(b.name)));
+    const label = id === 'unassigned' ? 'Unassigned' : rosterSectionLabel(id);
+    const leads = members.filter(u => u.role === 'lab_manager' || u.role === 'primary_lab_manager');
+    const staff = members.filter(u => leads.indexOf(u) < 0).map(u => orgNode(orgPersonBox(u, mode))).join('');
+    const head = leads.length === 1
+      ? orgNode(orgPersonBox(leads[0], mode), staff)
+      : members.map(u => orgNode(orgPersonBox(u, mode))).join('');
+    return orgNode(`<div class="r18-org-box section">${escapeHtml(label)}</div>`, head);
+  }).join('');
+  const managerNodes = managers.map(u => orgNode(orgPersonBox(u, mode === 'read' ? 'read' : 'top'))).join('');
+  let underLab = managerNodes + sectionNodes;
+  if (managers.length === 1 && sectionNodes) underLab = orgNode(orgPersonBox(managers[0], mode === 'read' ? 'read' : 'top'), sectionNodes);
+  const tree = shown.length
+    ? `<div class="r18-org-tree">${orgNode(`<div class="r18-org-box lab">${escapeHtml(lab.name || 'Laboratory')}</div>`, underLab)}</div>`
+    : '<div class="stub-card">No one is on the chart yet. Add a person on the Roster and set their section.</div>';
+  const removedHtml = editable && removed.length ? `
+    <div class="r18-org-extra">
+      <h2>Removed from the chart</h2>
+      <p class="r18-org-note">They are still on the roster.</p>
+      ${removed.map(u => `<div class="r18-org-extra-row"><div><div class="r18-org-name">${escapeHtml(u.name || '')}</div><div class="r18-org-title">${escapeHtml(qmPositionName(u) || rosterSectionLabel(u.section) || '')}</div></div><button type="button" class="btn btn-ghost" onclick="r18_orgChartRestore('${qmJs(u.id)}')">Put back</button></div>`).join('')}
+    </div>` : '';
+  const extrasHtml = editable && split.extras.length ? `
+    <div class="r18-org-extra">
+      <h2>Not on the roster</h2>
+      <p class="r18-org-note">These names are saved on this lab, but they are not a roster card. A second copy of someone already on the roster lands here, and so does a starter name that was never given a section. Training was listing them. Remove deletes that extra card.</p>
+      ${split.extras.map(u => {
+        const same = split.roster.some(r => personNameKey(r.name) === personNameKey(u.name));
+        const why = same ? 'Same name as the roster card already on the chart.' : 'No section, title, hire date, or LabTrak link.';
+        return `<div class="r18-org-extra-row"><div><div class="r18-org-name">${escapeHtml(u.name || '')}</div><div class="r18-org-title">${escapeHtml(why)}</div></div><button type="button" class="btn btn-danger" onclick="r18_deleteUser('${qmJs(u.id)}')">Remove</button></div>`;
+      }).join('')}
+    </div>` : '';
+  return `<div class="r18-org">${tree}${removedHtml}${extrasHtml}</div>`;
+}
+
+function renderOrgChart(lab, root) {
+  root.innerHTML = `
+    <h1 class="r18-page-title">Organizational Chart</h1>
+    <p class="r18-org-note">Drawn from the roster. Each person is listed once, from the roster card. Remove takes someone off this chart and leaves them on the roster.</p>
+    ${orgChartMarkup(lab, { editable: true })}
+  `;
+}
+
+async function orgChartWriteHidden(ids) {
+  const found = orgChartConfig();
+  let row = found.row;
+  let content = row && row.content;
+  if (typeof content === 'string') {
+    let parsed = null;
+    try { parsed = JSON.parse(content); } catch (e) {}
+    content = parsed && typeof parsed === 'object' && !Array.isArray(parsed) ? parsed : (content ? { note: content } : {});
+  }
+  if (!content || typeof content !== 'object' || Array.isArray(content)) content = {};
+  content.hiddenIds = ids;
+  if (!row) {
+    row = {
+      id: uuid(),
+      labId: state.currentLabId,
+      sectionNumber: '5.3.3',
+      title: 'Organizational Chart',
+      contentType: 'chart',
+      isStandard: true,
+      content,
+      lastRevisedBy: 'Organizational chart',
+      lastRevisedAt: now(),
+    };
+  } else {
+    row.content = content;
+    row.contentType = row.contentType || 'chart';
+    row.lastRevisedBy = 'Organizational chart';
+    row.lastRevisedAt = now();
+  }
+  await repo.put('sections', row);
+  await refreshAll();
+  renderView();
+}
+
+window.r18_orgChartHide = async (id) => {
+  const person = (state.users || []).find(u => String(u.id) === String(id));
+  if (!person) return;
+  if (!confirm('Remove ' + (person.name || 'this person') + ' from the organizational chart? They stay on the roster.')) return;
+  const ids = orgChartConfig().hiddenIds.filter(x => x !== String(id));
+  ids.push(String(id));
+  try {
+    await orgChartWriteHidden(ids);
+    toast('Removed from the chart');
+  } catch (e) {
+    toast('Could not update the chart.');
+  }
+};
+
+window.r18_orgChartRestore = async (id) => {
+  const ids = orgChartConfig().hiddenIds.filter(x => x !== String(id));
+  try {
+    await orgChartWriteHidden(ids);
+    toast('Put back on the chart');
+  } catch (e) {
+    toast('Could not update the chart.');
+  }
+};
+
 function renderRoster(lab, root) {
   if (state.rosterColumns == null || state.rosterPackReady !== true) {
     if (!state.rosterProbe) {
@@ -38159,7 +38366,8 @@ function renderRoster(lab, root) {
    TRAINING & EVALUATIONS
    ==================================================================== */
 function renderTrainingEvals(lab, root) {
-  const active = state.users.filter(u => u.active);
+  const split = splitLabPeople();
+  const active = split.roster;
   const trainingsByUser = {};
   for (const t of state.trainings) (trainingsByUser[t.userId] = trainingsByUser[t.userId] || []).push(t);
   const selected = state.trainingSelectedUsers || [];
@@ -38174,7 +38382,8 @@ function renderTrainingEvals(lab, root) {
         <button class="px-4 py-2 text-sm font-medium border-b-2 border-transparent ink-2" onclick="toast('Report history — coming soon')">Report History</button>
       </div>
       <div class="text-sm font-semibold ink mb-1">Step 1: Select Users</div>
-      <div class="text-sm ink-2 mb-4">Select one or more of the users below to add or remove assigned tests.</div>
+      <div class="text-sm ink-2 mb-4">These are the roster cards, one row per person. Select one or more to add or remove assigned tests.</div>
+      ${split.extras.length ? `<div class="r18-roster-note">This lab also has ${split.extras.length === 1 ? 'a name' : split.extras.length + ' names'} that ${split.extras.length === 1 ? 'is' : 'are'} not on the roster, so ${split.extras.length === 1 ? 'it is' : 'they are'} not listed here. Remove ${split.extras.length === 1 ? 'it' : 'them'} on the Org Chart.</div>` : ''}
       <div class="grid sm:grid-cols-2 lg:grid-cols-3 gap-3 mb-6">
         ${active.map(u => {
           const n = (trainingsByUser[u.id] || []).length;
