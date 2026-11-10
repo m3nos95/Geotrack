@@ -3714,6 +3714,14 @@ table.fc-borrow-tbl tr.fc-borrow-detail-row td{background:var(--surface);border-
 .r18-app .r18-org-extra { margin-top: 22px; }
 .r18-app .r18-org-extra h2 { font-family: 'Source Serif 4', Georgia, serif; font-size: 20px; margin: 0 0 6px; color: var(--r18-ink); }
 .r18-app .r18-org-extra-row { display: flex; justify-content: space-between; gap: 12px; align-items: center; background: white; border: 1px solid var(--r18-line); border-radius: 8px; padding: 10px 12px; margin-top: 8px; }
+.r18-app .r18-org-box.person { cursor: grab; user-select: none; touch-action: none; }
+.r18-app .r18-org-box.person.dragging { opacity: 0.35; }
+.r18-app .r18-org-lower { display: flex; flex-direction: column; align-items: center; width: 100%; position: relative; }
+.r18-app .r18-org-lower::before { content: ''; position: absolute; top: 0; bottom: 18px; left: 50%; border-left: 1px solid var(--r18-line); }
+.r18-app .r18-org-slot { position: relative; z-index: 1; margin-top: 10px; min-width: 168px; min-height: 44px; padding: 8px 12px; border: 1px dashed var(--r18-line); border-radius: 8px; background: white; color: var(--r18-ink-3); font-size: 12px; display: flex; align-items: center; justify-content: center; }
+.r18-app .r18-org-box.hot, .r18-app .r18-org-slot.hot { outline: 2px solid var(--r18-accent); outline-offset: 2px; }
+.r18-org-ghost { position: fixed; z-index: 100002; pointer-events: none; background: white; border: 1px solid var(--r18-accent); border-radius: 8px; padding: 8px 12px; font-weight: 700; font-size: 14px; color: var(--r18-ink); box-shadow: 0 8px 24px rgba(15, 29, 46, 0.16); }
+.r18-app .r18-org-actions { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 10px; }
 @media (max-width: 720px) {
   .r18-app .r18-org-children { flex-direction: column; align-items: center; }
   .r18-app .r18-org-children > .r18-org-node::after { display: none; }
@@ -35943,7 +35951,7 @@ function renderManageLab(lab, root) {
   const plmCount = rosterPeople.filter(u => u.role === 'primary_lab_manager').length;
   const activeCount = rosterPeople.length;
   const adminCards = [
-    { title: 'Organizational Chart', desc: 'The roster, drawn as a chart. Remove someone here without deleting their roster card.', action: `r18_openTab('org-chart')` },
+    { title: 'Organizational Chart', desc: 'Each lab has its own chart, drawn from that lab’s roster. Drag people to change the structure. Remove someone here without deleting their roster card.', action: `r18_openTab('org-chart')` },
     { title: 'Equipment Procedures Admin', desc: 'Create and edit equipment procedures.', action: `r18_state.inventorySubTab='equipment_procedures';r18_openTab('inventory')` },
     { title: 'Procedure Forms', desc: 'Build the sheets techs fill in. Reuse one form on as many procedures as you need.', action: `r18_state.inventorySubTab='procedure_forms';r18_openTab('inventory')` },
     { title: 'Test Methods & Standard Designations Admin', desc: 'Manage standard designations, test methods, and test categories for training.', action: `r18_openTab('training-evals')` },
@@ -40326,69 +40334,200 @@ function rosterSectionLabel(id) {
   return found ? found.label : (id ? String(id) : '');
 }
 
-function orgChartConfig() {
-  const row = (state.sections || []).find(s => String(s.sectionNumber) === '5.3.3' && (!s.labId || s.labId === state.currentLabId));
+function orgChartContentObject(row) {
   let content = row && row.content;
   if (typeof content === 'string') {
-    try { content = JSON.parse(content); } catch (e) { content = null; }
+    let parsed = null;
+    try { parsed = JSON.parse(content); } catch (e) {}
+    content = parsed && typeof parsed === 'object' && !Array.isArray(parsed) ? parsed : (content ? { note: content } : {});
   }
-  const hiddenIds = content && Array.isArray(content.hiddenIds) ? content.hiddenIds.map(String) : [];
-  return { row, hiddenIds };
+  if (!content || typeof content !== 'object' || Array.isArray(content)) content = {};
+  return Object.assign({}, content);
+}
+
+function orgChartConfig() {
+  const rows = (state.sections || []).filter(s => s && String(s.sectionNumber) === '5.3.3' && (!s.labId || s.labId === state.currentLabId));
+  const row = rows.find(s => s.labId === state.currentLabId) || rows[0] || null;
+  const content = orgChartContentObject(row);
+  const hiddenIds = Array.isArray(content.hiddenIds) ? content.hiddenIds.map(String) : [];
+  const links = {};
+  if (content.links && typeof content.links === 'object' && !Array.isArray(content.links)) {
+    Object.keys(content.links).forEach(key => {
+      const value = content.links[key];
+      if (typeof value === 'string' && value) links[String(key)] = value;
+    });
+  }
+  return { row, hiddenIds, links };
+}
+
+function orgShownPeople(hiddenIds) {
+  const hidden = new Set(hiddenIds || []);
+  return splitLabPeople().roster.filter(u => !hidden.has(String(u.id)));
+}
+
+function orgByName(a, b) {
+  return String(a.name || '').localeCompare(String(b.name || ''));
+}
+
+function orgDefaultParent(user, shown) {
+  const id = String(user.id);
+  if (user.role === 'primary_lab_manager') return 'lab';
+  const section = user.section || 'unassigned';
+  const members = shown.filter(u => u.role !== 'primary_lab_manager' && (u.section || 'unassigned') === section);
+  const leads = members.filter(u => u.role === 'lab_manager');
+  if (leads.length === 1 && String(leads[0].id) !== id) return String(leads[0].id);
+  return 'section:' + section;
+}
+
+function orgSectionParent(sectionId, shown) {
+  const managers = shown.filter(u => u.role === 'primary_lab_manager');
+  if (managers.length === 1) return String(managers[0].id);
+  return 'lab';
+}
+
+function orgParentMap(shown, links) {
+  const ids = new Set(shown.map(u => String(u.id)));
+  const map = {};
+  shown.forEach(u => {
+    const id = String(u.id);
+    const saved = links && links[id];
+    const savedOk = saved === 'lab' || (typeof saved === 'string' && saved.indexOf('section:') === 0 && saved.length > 8) || (saved && ids.has(String(saved)));
+    map[id] = savedOk ? String(saved) : orgDefaultParent(u, shown);
+  });
+  let guard = shown.length + 2;
+  let changed = true;
+  while (changed && guard > 0) {
+    changed = false;
+    guard -= 1;
+    shown.forEach(u => {
+      const id = String(u.id);
+      const seen = new Set([id]);
+      let cursor = map[id];
+      while (cursor && ids.has(cursor)) {
+        if (seen.has(cursor)) {
+          map[id] = orgDefaultParent(u, shown);
+          changed = true;
+          return;
+        }
+        seen.add(cursor);
+        cursor = map[cursor];
+      }
+    });
+  }
+  return map;
+}
+
+function orgDescendants(id, map) {
+  const out = new Set();
+  Object.keys(map).forEach(key => {
+    if (map[key] === id && !out.has(key)) {
+      out.add(key);
+      orgDescendants(key, map).forEach(child => out.add(child));
+    }
+  });
+  return out;
+}
+
+function orgApplyMove(shown, links, draggedId, targetId, insert) {
+  const before = orgParentMap(shown, links);
+  const map = Object.assign({}, before);
+  const dragged = String(draggedId);
+  const target = String(targetId);
+  if (!map[dragged] || dragged === target) return null;
+  const desc = orgDescendants(dragged, map);
+  if (desc.has(target)) return null;
+  if (insert) {
+    const childIds = Object.keys(map).filter(key => map[key] === target && key !== dragged && !desc.has(key));
+    if (!childIds.length) return null;
+    map[dragged] = target;
+    childIds.forEach(key => { map[key] = dragged; });
+  } else {
+    const targetOk = target === 'lab' || target.indexOf('section:') === 0 || shown.some(u => String(u.id) === target);
+    if (!targetOk) return null;
+    map[dragged] = target;
+  }
+  if (shown.every(u => map[String(u.id)] === before[String(u.id)])) return null;
+  return map;
+}
+
+function orgNextLinks(shown, previous, map) {
+  const next = Object.assign({}, previous || {});
+  shown.forEach(u => { delete next[String(u.id)]; });
+  shown.forEach(u => {
+    const id = String(u.id);
+    const parent = map[id];
+    if (parent && parent !== orgDefaultParent(u, shown)) next[id] = parent;
+  });
+  return next;
+}
+
+function orgVisibleSections(shown, map) {
+  const ids = [];
+  shown.forEach(u => {
+    const parent = map[String(u.id)];
+    if (parent && parent.indexOf('section:') === 0) {
+      const id = parent.slice('section:'.length);
+      if (id && ids.indexOf(id) < 0) ids.push(id);
+    }
+  });
+  ids.sort((a, b) => {
+    const order = ROSTER_SECTIONS.map(s => s.id);
+    const ia = order.indexOf(a);
+    const ib = order.indexOf(b);
+    return (ia < 0 ? 99 : ia) - (ib < 0 ? 99 : ib) || a.localeCompare(b);
+  });
+  return ids;
 }
 
 function orgPersonBox(user, mode) {
+  const editable = mode !== 'read' && mode !== 'top-read';
   const title = qmPositionName(user);
-  const section = mode === 'top' ? rosterSectionLabel(user.section) : '';
+  const section = mode === 'top' || mode === 'top-read' ? rosterSectionLabel(user.section) : '';
   const subtitle = [title, section].filter(Boolean).join(' · ');
-  const button = mode === 'read' ? '' : `<button type="button" class="btn btn-danger text-xs r18-org-remove" onclick="r18_orgChartHide('${qmJs(user.id)}')">Remove</button>`;
-  return `<div class="r18-org-box">
+  const button = editable ? `<button type="button" class="btn btn-danger text-xs r18-org-remove" onclick="r18_orgChartHide('${qmJs(user.id)}')">Remove</button>` : '';
+  return `<div class="r18-org-box${editable ? ' person' : ''}" data-user-id="${escapeHtml(String(user.id))}">
     <div class="r18-org-name">${escapeHtml(user.name || '')}</div>
     ${subtitle ? `<div class="r18-org-title">${escapeHtml(subtitle)}</div>` : ''}
     ${button}
   </div>`;
 }
 
-function orgNode(boxHtml, childrenHtml) {
-  return `<div class="r18-org-node">${boxHtml}${childrenHtml ? `<div class="r18-org-children">${childrenHtml}</div>` : ''}</div>`;
+function orgNode(boxHtml, childrenHtml, slotHtml) {
+  const lower = (slotHtml || childrenHtml) ? `<div class="r18-org-lower">${slotHtml || ''}${childrenHtml || ''}</div>` : '';
+  return `<div class="r18-org-node">${boxHtml}${lower}</div>`;
+}
+
+function orgRenderKey(key, boxHtml, shown, map, editable) {
+  const people = shown.filter(u => map[String(u.id)] === key).sort(orgByName);
+  const sections = orgVisibleSections(shown, map).filter(id => orgSectionParent(id, shown) === key);
+  const peopleHtml = people.map(u => {
+    const mode = editable
+      ? (u.role === 'primary_lab_manager' ? 'top' : 'edit')
+      : (u.role === 'primary_lab_manager' ? 'top-read' : 'read');
+    return orgRenderKey(String(u.id), orgPersonBox(u, mode), shown, map, editable);
+  }).join('');
+  const sectionHtml = sections.map(id => {
+    const label = id === 'unassigned' ? 'Unassigned' : rosterSectionLabel(id);
+    const box = `<div class="r18-org-box section" data-drop-id="section:${escapeHtml(id)}">${escapeHtml(label)}</div>`;
+    return orgRenderKey('section:' + id, box, shown, map, editable);
+  }).join('');
+  const children = sectionHtml + peopleHtml;
+  const childWrap = children ? `<div class="r18-org-children" data-parent="${escapeHtml(key)}">${children}</div>` : '';
+  const slot = editable && people.length && shown.some(u => String(u.id) === key)
+    ? `<div class="r18-org-slot" data-slot="${escapeHtml(key)}">New box</div>` : '';
+  return orgNode(boxHtml, childWrap, slot);
 }
 
 function orgChartMarkup(lab, opts) {
   const editable = !!(opts && opts.editable);
-  const mode = editable ? 'edit' : 'read';
-  const hidden = new Set(orgChartConfig().hiddenIds);
+  const cfg = orgChartConfig();
   const split = splitLabPeople();
-  const shown = split.roster.filter(u => !hidden.has(String(u.id)));
-  const removed = split.roster.filter(u => hidden.has(String(u.id)));
-  const managers = shown.filter(u => u.role === 'primary_lab_manager');
-  const managerIds = new Set(managers.map(u => String(u.id)));
-  const rest = shown.filter(u => !managerIds.has(String(u.id)));
-  const order = ROSTER_SECTIONS.map(s => s.id);
-  const sectionIds = [];
-  rest.forEach(u => {
-    const id = u.section || 'unassigned';
-    if (!sectionIds.includes(id)) sectionIds.push(id);
-  });
-  sectionIds.sort((a, b) => {
-    const ia = order.indexOf(a);
-    const ib = order.indexOf(b);
-    return (ia < 0 ? 99 : ia) - (ib < 0 ? 99 : ib) || a.localeCompare(b);
-  });
-  const sectionNodes = sectionIds.map(id => {
-    const members = rest.filter(u => (u.section || 'unassigned') === id)
-      .sort((a, b) => String(a.name).localeCompare(String(b.name)));
-    const label = id === 'unassigned' ? 'Unassigned' : rosterSectionLabel(id);
-    const leads = members.filter(u => u.role === 'lab_manager' || u.role === 'primary_lab_manager');
-    const staff = members.filter(u => leads.indexOf(u) < 0).map(u => orgNode(orgPersonBox(u, mode))).join('');
-    const head = leads.length === 1
-      ? orgNode(orgPersonBox(leads[0], mode), staff)
-      : members.map(u => orgNode(orgPersonBox(u, mode))).join('');
-    return orgNode(`<div class="r18-org-box section">${escapeHtml(label)}</div>`, head);
-  }).join('');
-  const managerNodes = managers.map(u => orgNode(orgPersonBox(u, mode === 'read' ? 'read' : 'top'))).join('');
-  let underLab = managerNodes + sectionNodes;
-  if (managers.length === 1 && sectionNodes) underLab = orgNode(orgPersonBox(managers[0], mode === 'read' ? 'read' : 'top'), sectionNodes);
+  const shown = orgShownPeople(cfg.hiddenIds);
+  const removed = split.roster.filter(u => cfg.hiddenIds.indexOf(String(u.id)) >= 0);
+  const map = orgParentMap(shown, cfg.links);
+  const labBox = `<div class="r18-org-box lab" data-drop-id="lab">${escapeHtml(lab.name || 'Laboratory')}</div>`;
   const tree = shown.length
-    ? `<div class="r18-org-tree">${orgNode(`<div class="r18-org-box lab">${escapeHtml(lab.name || 'Laboratory')}</div>`, underLab)}</div>`
+    ? `<div class="r18-org-tree">${orgRenderKey('lab', labBox, shown, map, editable)}</div>`
     : '<div class="stub-card">No one is on the chart yet. Add a person on the Roster and set their section.</div>';
   const removedHtml = editable && removed.length ? `
     <div class="r18-org-extra">
@@ -40409,25 +40548,92 @@ function orgChartMarkup(lab, opts) {
   return `<div class="r18-org">${tree}${removedHtml}${extrasHtml}</div>`;
 }
 
-function renderOrgChart(lab, root) {
-  root.innerHTML = `
-    <h1 class="r18-page-title">Organizational Chart</h1>
-    <p class="r18-org-note">Drawn from the roster. Each person is listed once, from the roster card. Remove takes someone off this chart and leaves them on the roster.</p>
-    ${orgChartMarkup(lab, { editable: true })}
-  `;
+function orgDropTarget(tree, draggedId, x, y) {
+  const ghost = tree.querySelector('.r18-org-ghost');
+  if (ghost) ghost.style.display = 'none';
+  const el = document.elementFromPoint(x, y);
+  if (ghost) ghost.style.display = 'block';
+  if (!el || !tree.contains(el)) return null;
+  const slot = el.closest('.r18-org-slot');
+  if (slot && tree.contains(slot)) {
+    const parent = slot.getAttribute('data-slot');
+    if (parent && orgApplyMove(orgShownPeople(orgChartConfig().hiddenIds), orgChartConfig().links, draggedId, parent, true)) return { id: parent, insert: true, el: slot };
+  }
+  const card = el.closest('.r18-org-box');
+  if (card && tree.contains(card)) {
+    const target = card.getAttribute('data-user-id') || card.getAttribute('data-drop-id');
+    if (target && orgApplyMove(orgShownPeople(orgChartConfig().hiddenIds), orgChartConfig().links, draggedId, target, false)) return { id: target, insert: false, el: card };
+  }
+  return null;
 }
 
-async function orgChartWriteHidden(ids) {
+function bindOrgChartDrag(tree) {
+  tree.addEventListener('pointerdown', (e) => {
+    const box = e.target.closest('.r18-org-box.person');
+    if (!box || e.target.closest('button')) return;
+    if (e.button != null && e.button !== 0) return;
+    const draggedId = box.getAttribute('data-user-id');
+    if (!draggedId) return;
+    e.preventDefault();
+    const startX = e.clientX;
+    const startY = e.clientY;
+    let moved = false;
+    const ghost = document.createElement('div');
+    ghost.className = 'r18-org-ghost';
+    ghost.textContent = (box.querySelector('.r18-org-name') || {}).textContent || '';
+    ghost.style.display = 'none';
+    tree.appendChild(ghost);
+    const paint = (x, y) => {
+      tree.querySelectorAll('.hot').forEach(el => el.classList.remove('hot'));
+      const hit = orgDropTarget(tree, draggedId, x, y);
+      ghost.style.left = (x + 14) + 'px';
+      ghost.style.top = (y + 14) + 'px';
+      if (hit) hit.el.classList.add('hot');
+      return hit;
+    };
+    const move = (ev) => {
+      if (!moved && Math.hypot(ev.clientX - startX, ev.clientY - startY) < 6) return;
+      moved = true;
+      box.classList.add('dragging');
+      ghost.style.display = 'block';
+      paint(ev.clientX, ev.clientY);
+    };
+    const up = (ev) => {
+      window.removeEventListener('pointermove', move);
+      window.removeEventListener('pointerup', up);
+      window.removeEventListener('pointercancel', up);
+      const hit = moved ? paint(ev.clientX, ev.clientY) : null;
+      ghost.remove();
+      box.classList.remove('dragging');
+      tree.querySelectorAll('.hot').forEach(el => el.classList.remove('hot'));
+      if (hit) window.r18_orgChartMove(draggedId, hit.id, hit.insert);
+    };
+    window.addEventListener('pointermove', move);
+    window.addEventListener('pointerup', up);
+    window.addEventListener('pointercancel', up);
+  });
+}
+
+function renderOrgChart(lab, root) {
+  const custom = Object.keys(orgChartConfig().links).length > 0;
+  const others = (state.labs || []).filter(l => l && l.id !== lab.id).length;
+  root.innerHTML = `
+    <h1 class="r18-page-title">Organizational Chart</h1>
+    <p class="r18-org-note">This chart belongs to ${escapeHtml(lab.name || 'this lab')}. Each lab has its own chart${others ? ', and the lab switcher in the header opens the others' : ''}. People come from this lab’s roster, once each.</p>
+    <p class="r18-org-note">Drag a person into the New box under a supervisor to place them between that supervisor and the people below. Drop a person on a card to report to that person. Remove takes someone off this chart and leaves them on the roster.</p>
+    ${custom ? '<div class="r18-org-actions"><button type="button" class="btn btn-ghost text-xs" onclick="r18_orgChartReset()">Reset to roster layout</button></div>' : ''}
+    ${orgChartMarkup(lab, { editable: true })}
+  `;
+  const org = root.querySelector('.r18-org');
+  if (org) bindOrgChartDrag(org);
+}
+
+async function orgChartWrite(patch) {
   const found = orgChartConfig();
-  let row = found.row;
-  let content = row && row.content;
-  if (typeof content === 'string') {
-    let parsed = null;
-    try { parsed = JSON.parse(content); } catch (e) {}
-    content = parsed && typeof parsed === 'object' && !Array.isArray(parsed) ? parsed : (content ? { note: content } : {});
-  }
-  if (!content || typeof content !== 'object' || Array.isArray(content)) content = {};
-  content.hiddenIds = ids;
+  const content = orgChartContentObject(found.row);
+  content.hiddenIds = patch && patch.hiddenIds ? patch.hiddenIds.map(String) : found.hiddenIds.slice();
+  content.links = patch && patch.links ? patch.links : Object.assign({}, found.links);
+  let row = found.row ? Object.assign({}, found.row) : null;
   if (!row) {
     row = {
       id: uuid(),
@@ -40436,16 +40642,16 @@ async function orgChartWriteHidden(ids) {
       title: 'Organizational Chart',
       contentType: 'chart',
       isStandard: true,
-      content,
-      lastRevisedBy: 'Organizational chart',
-      lastRevisedAt: now(),
+      syncedFromPrimary: false,
     };
-  } else {
-    row.content = content;
-    row.contentType = row.contentType || 'chart';
-    row.lastRevisedBy = 'Organizational chart';
-    row.lastRevisedAt = now();
   }
+  row.labId = state.currentLabId;
+  row.sectionNumber = '5.3.3';
+  row.title = row.title || 'Organizational Chart';
+  row.contentType = 'chart';
+  row.content = content;
+  row.lastRevisedBy = 'Organizational chart';
+  row.lastRevisedAt = now();
   await repo.put('sections', row);
   await refreshAll();
   renderView();
@@ -40458,7 +40664,7 @@ window.r18_orgChartHide = async (id) => {
   const ids = orgChartConfig().hiddenIds.filter(x => x !== String(id));
   ids.push(String(id));
   try {
-    await orgChartWriteHidden(ids);
+    await orgChartWrite({ hiddenIds: ids });
     toast('Removed from the chart');
   } catch (e) {
     toast('Could not update the chart.');
@@ -40468,8 +40674,32 @@ window.r18_orgChartHide = async (id) => {
 window.r18_orgChartRestore = async (id) => {
   const ids = orgChartConfig().hiddenIds.filter(x => x !== String(id));
   try {
-    await orgChartWriteHidden(ids);
+    await orgChartWrite({ hiddenIds: ids });
     toast('Put back on the chart');
+  } catch (e) {
+    toast('Could not update the chart.');
+  }
+};
+
+window.r18_orgChartReset = async () => {
+  if (!Object.keys(orgChartConfig().links).length) return;
+  if (!confirm('Put everyone back where the roster places them? People removed from the chart stay off it.')) return;
+  try {
+    await orgChartWrite({ links: {} });
+    toast('Chart reset');
+  } catch (e) {
+    toast('Could not update the chart.');
+  }
+};
+
+window.r18_orgChartMove = async (draggedId, targetId, insert) => {
+  const cfg = orgChartConfig();
+  const shown = orgShownPeople(cfg.hiddenIds);
+  const map = orgApplyMove(shown, cfg.links, draggedId, targetId, !!insert);
+  if (!map) return;
+  try {
+    await orgChartWrite({ links: orgNextLinks(shown, cfg.links, map) });
+    toast('Chart updated');
   } catch (e) {
     toast('Could not update the chart.');
   }
