@@ -3545,6 +3545,17 @@ table.fc-borrow-tbl tr.fc-borrow-detail-row td{background:var(--surface);border-
 .r18-app .r18-paper-foot { margin-top: 14px; font-size: 11px; color: var(--r18-ink-3); text-align: center; }
 .r18-app .r18-form-actions { position: sticky; bottom: 0; display: flex; justify-content: flex-end; flex-wrap: wrap; gap: 8px; padding-top: 12px; margin-top: 12px; background: white; border-top: 1px solid var(--r18-line); }
 .r18-app .r18-form-top { display: flex; justify-content: space-between; gap: 12px; align-items: flex-start; margin-bottom: 12px; }
+.r18-app .r18-fb-field { border: 1px solid var(--r18-line); border-radius: 8px; padding: 10px 12px; margin-top: 8px; background: #fff; }
+.r18-app .r18-fb-top { display: flex; flex-wrap: wrap; gap: 8px; align-items: flex-end; }
+.r18-app .r18-fb-top .grow { flex: 1 1 180px; min-width: 0; }
+.r18-app .r18-fb-note, .r18-app .r18-fb-cols { margin-top: 8px; }
+.r18-app .r18-fb-col { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-top: 6px; }
+.r18-app .r18-note { font-size: 13px; line-height: 1.45; white-space: pre-wrap; }
+.r18-app .r18-schema { background: #fffbeb; border: 1px solid #fcd34d; border-radius: 8px; padding: 14px 16px; margin-top: 16px; }
+.r18-app .r18-schema pre { white-space: pre-wrap; font-size: 11px; background: #fff; border: 1px solid #fde68a; border-radius: 6px; padding: 10px; max-height: 420px; overflow: auto; }
+@media (max-width: 720px) {
+  .r18-app #r18-form-builder .grid-cols-2 { grid-template-columns: 1fr; }
+}
 .r18-app .r18-form-kicker { font-size: 12px; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; color: var(--r18-ink-3); }
 @media (max-width: 860px) {
   .r18-app .r18-perform-layout, .r18-app .r18-paper-grid, .r18-app .r18-gauge-line { grid-template-columns: 1fr; }
@@ -35310,7 +35321,7 @@ function procedureRowHtml(proc, opts = {}) {
    R-18 SUPABASE REPOSITORY
    Tables: r18_labs, r18_sections, r18_revisions,
            r18_equipment, r18_reports, r18_users, r18_trainings,
-           r18_procedures, r18_procedure_records
+           r18_procedures, r18_procedure_records, r18_form_templates
    ====================================================== */
 const _r18toSnake = s => s.replace(/[A-Z]/g, c => '_' + c.toLowerCase());
 const _r18toCamel = s => s.replace(/_([a-z])/g, (_, c) => c.toUpperCase());
@@ -35601,6 +35612,8 @@ const state = {
   trainings: [],
   procedures: [],
   procedureRecords: [],
+  formTemplates: [],
+  customFormsReady: null,
   editingSectionId: null,
   inventorySearch: '',
   inventoryList: 'in_service',
@@ -35743,6 +35756,7 @@ async function refreshAll() {
   state.reports   = (await repo.query('reports', 'labId', state.currentLabId)).filter(Boolean);
   state.users     = (await repo.query('users', 'labId', state.currentLabId)).filter(Boolean);
   state.procedures = (await repo.query('procedures', 'labId', state.currentLabId)).filter(Boolean);
+  await loadFormTemplates();
   state.procedureRecords = (await repo.query('procedure_records', 'labId', state.currentLabId)).filter(Boolean)
     .sort((a, b) => new Date(b.completedAt) - new Date(a.completedAt));
   // trainings cross-cut users
@@ -35931,6 +35945,7 @@ function renderManageLab(lab, root) {
   const adminCards = [
     { title: 'Organizational Chart', desc: 'The roster, drawn as a chart. Remove someone here without deleting their roster card.', action: `r18_openTab('org-chart')` },
     { title: 'Equipment Procedures Admin', desc: 'Create and edit equipment procedures.', action: `r18_state.inventorySubTab='equipment_procedures';r18_openTab('inventory')` },
+    { title: 'Procedure Forms', desc: 'Build the sheets techs fill in. Reuse one form on as many procedures as you need.', action: `r18_state.inventorySubTab='procedure_forms';r18_openTab('inventory')` },
     { title: 'Test Methods & Standard Designations Admin', desc: 'Manage standard designations, test methods, and test categories for training.', action: `r18_openTab('training-evals')` },
     { title: 'Measurement Standards', desc: 'View measurement standards calibration.', action: `r18_state.inventorySubTab='lab_equipment';r18_openTab('inventory')` },
     { title: 'Section Roster', desc: 'Current staff by section, with years of service and the methods they are certified for.', action: `r18_openTab('roster')` },
@@ -36104,6 +36119,7 @@ window.r18_deleteLabPrompt = async (id) => {
     await repo.delete('sections', s.id);
   }
   for (const p of await repo.query('procedures', 'labId', id)) await repo.delete('procedures', p.id);
+  for (const f of await repo.query('form_templates', 'labId', id)) await repo.delete('form_templates', f.id);
   for (const r of await repo.query('procedure_records', 'labId', id)) await repo.delete('procedure_records', r.id);
   for (const e of await repo.query('equipment', 'labId', id)) await repo.delete('equipment', e.id);
   for (const u of await repo.query('users', 'labId', id)) {
@@ -36875,8 +36891,12 @@ window.r18_exportQualityManualPDF = () => {
    INVENTORY — measurement standards + lab equipment (R18LabQMS style)
    ==================================================================== */
 function renderInventory(lab, root) {
-  if (state.inventorySubTab !== 'equipment_procedures') state.inventorySubTab = 'lab_equipment';
+  if (state.inventorySubTab !== 'equipment_procedures' && state.inventorySubTab !== 'procedure_forms') state.inventorySubTab = 'lab_equipment';
   const sub = state.inventorySubTab;
+  if (sub === 'procedure_forms') {
+    root.innerHTML = '<h1 class="r18-page-title mb-4">Inventory</h1>' + renderInventorySubTabs(sub) + renderProcedureFormsHtml();
+    return;
+  }
   const q = state.inventorySearch.toLowerCase();
   const inService = state.equipment.filter(e => e.status === 'in_service');
   const measStd = state.equipment.filter(e => e.category === 'measurement_standard');
@@ -36896,7 +36916,7 @@ function renderInventory(lab, root) {
           const eq = equipmentById(p.equipmentId);
           return `<div class="px-4 py-3 border-b border-line-2 last:border-0 flex justify-between items-center hover:bg-paper-2">
             <div><div class="text-sm font-medium ink">${escapeHtml(eq?.name || 'Equipment')} · ${escapeHtml(p.name)}</div>
-            <div class="text-xs ink-2">${escapeHtml(PROCEDURE_TYPE_LABEL[p.procedureType])} · ${freqLabel(p.frequencyValue, p.frequencyUnit)} · due ${fmtDateShort(p.nextDueAt)}</div></div>
+            <div class="text-xs ink-2">${escapeHtml(PROCEDURE_TYPE_LABEL[p.procedureType])} · ${freqLabel(p.frequencyValue, p.frequencyUnit)} · due ${fmtDateShort(p.nextDueAt)}${procedureFormLabel(p) ? ' · ' + escapeHtml(procedureFormLabel(p)) : ''}</div></div>
             <button class="btn btn-view" onclick="r18_openCompleteProcedureModal('${p.id}')">COMPLETE</button>
           </div>`;
         }).join('')}
@@ -36963,6 +36983,7 @@ function renderInventorySubTabs(active) {
   const tabs = [
     { id: 'lab_equipment', label: 'Lab Equipment' },
     { id: 'equipment_procedures', label: 'Equipment Procedures' },
+    { id: 'procedure_forms', label: 'Procedure Forms' },
   ];
   return `<div class="border-b border-line flex gap-1">${tabs.map(t => `
     <button class="px-4 py-2 text-sm font-medium border-b-2 ${active === t.id ? 'tab-active' : 'border-transparent ink-2'}"
@@ -37304,7 +37325,7 @@ function equipmentRecordHtml(eq, procs, records) {
             <div class="px-4 py-3 border-b border-line-2 last:border-0 flex items-center justify-between gap-2">
               <div class="min-w-0">
                 <div class="text-sm font-medium ink">${escapeHtml(PROCEDURE_TYPE_LABEL[p.procedureType] || p.procedureType)} — ${escapeHtml(p.name)}</div>
-                <div class="text-xs ink-2 mt-0.5">${freqLabel(p.frequencyValue, p.frequencyUnit)}${p.lastCompletedAt ? ' · last ' + fmtDateShort(p.lastCompletedAt) : ''}</div>
+                <div class="text-xs ink-2 mt-0.5">${freqLabel(p.frequencyValue, p.frequencyUnit)}${p.lastCompletedAt ? ' · last ' + fmtDateShort(p.lastCompletedAt) : ''}${procedureFormLabel(p) ? ' · ' + escapeHtml(procedureFormLabel(p)) : ''}</div>
               </div>
               <div class="flex items-center gap-1 shrink-0">
                 ${procedureDueBadge(p)}
@@ -37462,6 +37483,14 @@ window.r18_openProcedureModal = (procedureId, equipmentId) => {
         </div>
         <div><label class="label">Next Due Date</label><input type="date" class="input" id="proc-next-due" value="${fmtDateInput(proc?.nextDueAt)}" /></div>
         <div><label class="label">Instructions / Form Notes</label><textarea class="textarea" id="proc-instructions" rows="3">${escapeHtml(proc?.instructions || '')}</textarea></div>
+        <div>
+          <label class="label">Procedure form</label>
+          <select class="select" id="proc-form">
+            <option value="">No custom form</option>
+            ${(state.formTemplates || []).filter(t => t.active !== false).map(t => `<option value="${t.id}" ${proc?.formTemplateId === t.id ? 'selected' : ''}>${escapeHtml(t.name)}</option>`).join('')}
+          </select>
+          <div class="text-xs ink-2 mt-1">Build sheets under Inventory → Procedure Forms, then choose one here. ${proc?.formTemplateId ? '' : (procedureUsesCaliperForm(eq, proc || { name: eq.name }) ? 'Until you choose one, this equipment uses the built-in caliper sheet.' : 'Until you choose one, the tech gets the short completion screen.')}</div>
+        </div>
         ${isEdit ? `<div><label class="label">Status</label><select class="select" id="proc-active"><option value="true" ${proc.active !== false ? 'selected' : ''}>Active</option><option value="false" ${proc.active === false ? 'selected' : ''}>Inactive</option></select></div>` : ''}
       </div>
       <div class="flex justify-between gap-2 mt-5">
@@ -37496,7 +37525,21 @@ window.r18_saveProcedure = async (id, equipmentId) => {
     lastCompletedAt: existing?.lastCompletedAt || null,
     createdAt: existing?.createdAt,
   };
-  await repo.put('procedures', proc);
+  const formEl = document.getElementById('proc-form');
+  const formTemplateId = formEl && formEl.value ? formEl.value : null;
+  if (formEl && (formTemplateId || (existing && existing.formTemplateId))) proc.formTemplateId = formTemplateId;
+  try {
+    await repo.put('procedures', proc);
+  } catch (e) {
+    console.error(e);
+    const msg = String((e && (e.message || e.details)) || '');
+    if (/form_template/i.test(msg)) {
+      toast('Custom forms need a one-time database update. Open Inventory → Procedure Forms.');
+      return;
+    }
+    toast('Could not save this procedure.');
+    return;
+  }
   closeModal();
   await refreshAll();
   renderView();
@@ -37512,7 +37555,7 @@ window.r18_deleteProcedure = async (id, equipmentId) => {
   toast('Procedure deleted');
 };
 
-/* Built-in procedure sheets. The next equipment form is another entry beside the caliper sheet. */
+/* Built-in caliper sheet, plus forms a lab builds under Inventory → Procedure Forms. */
 const CALIPER_FORM_ID = 'caliper_calibration';
 const CALIPER_STEPS = [
   'Calibrate annually, or when put into service, or when needed.',
@@ -37824,10 +37867,12 @@ function openCaliperForm(proc, eq, back, record, options) {
 function performProceduresHtml(eq, procs) {
   const rows = (procs || []).map(p => {
     const due = fmtDateNum(p.nextDueAt) || 'N/A';
-    const draft = procedureDraft(p.id);
+    const template = procedureTemplate(p);
+    const draft = procedureDraft(p.id) || (template && customDraft(p.id, template.id));
+    const formNote = template ? template.name : (procedureUsesCaliperForm(eq, p) ? 'Caliper sheet' : '');
     return '<button type="button" class="r18-perform-row" onclick="r18_openCompleteProcedureModal(\'' + p.id + '\',\'list\')">' +
       '<span class="r18-perform-row-main"><span class="r18-perform-name">' + escapeHtml(p.name) + '</span>' +
-      '<span class="r18-perform-due">Due Date: ' + escapeHtml(due) + '</span>' +
+      '<span class="r18-perform-due">Due Date: ' + escapeHtml(due) + (formNote ? ' · ' + escapeHtml(formNote) : '') + '</span>' +
       '<span class="r18-proc-chip">' + escapeHtml(PROCEDURE_TYPE_LABEL[p.procedureType] || p.procedureType) + '</span>' +
       (draft ? '<span class="r18-perform-draft">In progress</span>' : '') +
       '</span><span class="r18-perform-go" aria-hidden="true">›</span></button>';
@@ -38183,10 +38228,1127 @@ window.r18_exportCaliperPdf = async () => {
 };
 window.r18_printCaliperForm = () => { window.r18_exportCaliperPdf(); };
 
+/* ---------- CUSTOM PROCEDURE FORMS ---------- */
+let customFormSession = null;
+const CUSTOM_FIELD_TYPES = ['text', 'number', 'date', 'longtext', 'yesno', 'passfail', 'section', 'note', 'table'];
+const CUSTOM_FORMS_SQL = [
+  'CREATE TABLE IF NOT EXISTS public.r18_form_templates (',
+  '  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),',
+  '  lab_id UUID NOT NULL REFERENCES public.r18_labs(id) ON DELETE CASCADE,',
+  '  name TEXT NOT NULL,',
+  '  definition JSONB NOT NULL DEFAULT \'{}\'::jsonb,',
+  '  active BOOLEAN NOT NULL DEFAULT TRUE,',
+  '  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),',
+  '  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()',
+  ');',
+  'ALTER TABLE public.r18_procedures ADD COLUMN IF NOT EXISTS form_template_id UUID REFERENCES public.r18_form_templates(id) ON DELETE SET NULL;',
+  'ALTER TABLE public.r18_form_templates ENABLE ROW LEVEL SECURITY;',
+  'DROP POLICY IF EXISTS "r18_form_templates authenticated read" ON public.r18_form_templates;',
+  'DROP POLICY IF EXISTS "r18_form_templates authenticated write" ON public.r18_form_templates;',
+  'CREATE POLICY "r18_form_templates authenticated read" ON public.r18_form_templates FOR SELECT TO authenticated USING (public.st_current_role() IS NOT NULL);',
+  'CREATE POLICY "r18_form_templates authenticated write" ON public.r18_form_templates FOR ALL TO authenticated USING (public.st_current_role() IS NOT NULL) WITH CHECK (public.st_current_role() IS NOT NULL);',
+  'GRANT SELECT, INSERT, UPDATE, DELETE ON public.r18_form_templates TO authenticated;',
+].join('\n');
+
+function customFormsSchemaMissing(error) {
+  if (!error) return false;
+  const msg = String(error.message || '') + ' ' + String(error.details || '') + ' ' + String(error.code || '');
+  return error.code === '42P01' || error.code === '42703' || error.code === 'PGRST204' || /does not exist|schema cache|form_template/i.test(msg);
+}
+async function loadFormTemplates() {
+  if (!db) {
+    state.formTemplates = [];
+    state.customFormsReady = false;
+    state.customFormsSchemaError = false;
+    return;
+  }
+  const table = await db.from('r18_form_templates').select('id').limit(1);
+  if (table.error) {
+    state.formTemplates = [];
+    state.customFormsReady = false;
+    state.customFormsSchemaError = customFormsSchemaMissing(table.error);
+    return;
+  }
+  const col = await db.from('r18_procedures').select('form_template_id').limit(1);
+  if (col.error) {
+    state.formTemplates = [];
+    state.customFormsReady = false;
+    state.customFormsSchemaError = customFormsSchemaMissing(col.error);
+    return;
+  }
+  state.customFormsReady = true;
+  state.customFormsSchemaError = false;
+  state.formTemplates = (await repo.query('form_templates', 'labId', state.currentLabId)).filter(Boolean);
+}
+function customFieldId() {
+  return 'f' + Math.random().toString(36).slice(2, 10);
+}
+function customPrefillAllowed(type, prefill) {
+  if (!prefill) return true;
+  if (type === 'date') return prefill === 'today' || prefill === 'previous' || prefill === 'nextDue';
+  if (type === 'text' || type === 'number' || type === 'longtext') return prefill === 'equipmentName' || prefill === 'serial' || prefill === 'viewer' || prefill === 'procedureName';
+  return false;
+}
+function normalizeCustomField(raw) {
+  const type = raw && CUSTOM_FIELD_TYPES.indexOf(raw.type) >= 0 ? raw.type : 'text';
+  const field = {
+    id: (raw && raw.id) || customFieldId(),
+    type: type,
+    label: String((raw && raw.label) || ''),
+    required: !!(raw && raw.required) && type !== 'section' && type !== 'note',
+    prefill: customPrefillAllowed(type, raw && raw.prefill) ? (raw.prefill || '') : '',
+    text: type === 'note' ? String((raw && raw.text) || '') : '',
+  };
+  if (type === 'table') {
+    const cols = Array.isArray(raw && raw.columns) ? raw.columns : [];
+    field.columns = (cols.length ? cols : [{ label: 'Value', kind: 'text' }]).slice(0, 8).map(col => ({
+      id: (col && col.id) || customFieldId(),
+      label: String((col && col.label) || 'Column'),
+      kind: col && col.kind === 'passfail' ? 'passfail' : 'text',
+    }));
+    field.rows = Math.max(1, Math.min(12, parseInt(raw && raw.rows, 10) || 2));
+  }
+  return field;
+}
+function blankCustomField(type) {
+  if (type === 'table') {
+    return normalizeCustomField({
+      type: 'table',
+      label: 'Measurements',
+      rows: 2,
+      columns: [
+        { label: 'Standard', kind: 'text' },
+        { label: 'Reading', kind: 'text' },
+        { label: 'Pass/Fail', kind: 'passfail' },
+      ],
+    });
+  }
+  if (type === 'note') return normalizeCustomField({ type: 'note', label: 'Procedure', text: '' });
+  if (type === 'section') return normalizeCustomField({ type: 'section', label: 'Section' });
+  if (type === 'passfail') return normalizeCustomField({ type: 'passfail', label: 'Result', required: true });
+  if (type === 'yesno') return normalizeCustomField({ type: 'yesno', label: 'Yes / No' });
+  if (type === 'longtext') return normalizeCustomField({ type: 'longtext', label: 'Remarks' });
+  if (type === 'date') return normalizeCustomField({ type: 'date', label: 'Date' });
+  if (type === 'number') return normalizeCustomField({ type: 'number', label: 'Reading' });
+  return normalizeCustomField({ type: 'text', label: '' });
+}
+function defaultCustomFields() {
+  return [
+    normalizeCustomField({ type: 'text', label: 'Instrument', prefill: 'equipmentName' }),
+    normalizeCustomField({ type: 'date', label: 'Date', prefill: 'today', required: true }),
+    normalizeCustomField({ type: 'text', label: 'Serial number', prefill: 'serial' }),
+    normalizeCustomField({ type: 'date', label: 'Previous', prefill: 'previous' }),
+    normalizeCustomField({ type: 'date', label: 'Next due', prefill: 'nextDue' }),
+    normalizeCustomField({ type: 'longtext', label: 'Remarks' }),
+    normalizeCustomField({ type: 'text', label: 'Verified by', prefill: 'viewer', required: true }),
+    normalizeCustomField({ type: 'passfail', label: 'Result', required: true }),
+  ];
+}
+function templateDefinition(template) {
+  let def = template && template.definition;
+  if (typeof def === 'string') {
+    try { def = JSON.parse(def); } catch (e) { def = {}; }
+  }
+  if (!def || typeof def !== 'object') def = {};
+  return {
+    title: def.title || (template && template.name) || 'Procedure form',
+    footer: def.footer || '',
+    fields: Array.isArray(def.fields) ? def.fields.map(normalizeCustomField) : [],
+  };
+}
+function procedureTemplate(proc) {
+  if (!proc || !proc.formTemplateId) return null;
+  return (state.formTemplates || []).find(t => t.id === proc.formTemplateId && t.active !== false) || null;
+}
+function procedureFormLabel(proc) {
+  const template = procedureTemplate(proc);
+  if (template) return template.name;
+  const eq = equipmentById(proc && proc.equipmentId);
+  if (procedureUsesCaliperForm(eq, proc)) return 'Caliper sheet';
+  return '';
+}
+function procedureChoiceLabel(proc) {
+  const eq = equipmentById(proc.equipmentId);
+  return (eq && eq.name ? eq.name + ' — ' : '') + (proc.name || 'Procedure');
+}
+function customDraft(procedureId, templateId) {
+  if (!templateId) return null;
+  const rows = (state.procedureRecords || []).filter(r => {
+    const bag = formBag(r);
+    return r && r.procedureId === procedureId && bag.formId === 'custom' && bag.templateId === templateId && bag.status === 'draft';
+  });
+  rows.sort((a, b) => String(b.updatedAt || b.completedAt || '').localeCompare(String(a.updatedAt || a.completedAt || '')));
+  return rows[0] || null;
+}
+function customBlankRow(field) {
+  const row = {};
+  (field && field.columns || []).forEach(col => { row[col.id] = ''; });
+  return row;
+}
+function customPrefill(field, eq, proc) {
+  const key = field.prefill || '';
+  if (key === 'equipmentName') return (eq && (eq.manufacturer || eq.modelNumber || eq.name)) || '';
+  if (key === 'serial') return (eq && (eq.serialNumber || eq.refId)) || '';
+  if (key === 'today') return todayInput();
+  if (key === 'previous') return isoDay(proc && proc.lastCompletedAt) || isoDay(eq && eq.lastCalibration);
+  if (key === 'nextDue') {
+    const today = todayInput();
+    if (proc && proc.frequencyValue) return addFrequency(today + 'T12:00:00', proc.frequencyValue, proc.frequencyUnit).slice(0, 10);
+    return isoDay(proc && proc.nextDueAt) || isoDay(eq && eq.nextCalibration);
+  }
+  if (key === 'viewer') return viewerName();
+  if (key === 'procedureName') return (proc && proc.name) || '';
+  return '';
+}
+function customStartingValues(fields, eq, proc, stored) {
+  const values = {};
+  (fields || []).forEach(field => {
+    if (field.type === 'section' || field.type === 'note') return;
+    if (field.type === 'table') {
+      const rows = stored && Array.isArray(stored[field.id]) ? stored[field.id] : [];
+      const count = Math.max(field.rows || 1, rows.length || 0, 1);
+      const filled = [];
+      for (let i = 0; i < Math.min(count, 30); i++) filled.push(Object.assign(customBlankRow(field), rows[i] || {}));
+      values[field.id] = filled;
+      return;
+    }
+    if (stored) values[field.id] = stored[field.id] != null ? String(stored[field.id]) : '';
+    else values[field.id] = customPrefill(field, eq, proc);
+  });
+  return values;
+}
+function customFieldValue(fields, values, pred) {
+  const field = (fields || []).find(pred);
+  return field ? String((values && values[field.id]) || '').trim() : '';
+}
+function customCompletedBy(fields, values) {
+  return customFieldValue(fields, values, f => f.prefill === 'viewer' || /verified|completed by|technician/i.test(f.label || '')) || viewerName();
+}
+function customDateValue(fields, values) {
+  return customFieldValue(fields, values, f => f.type === 'date' && (f.prefill === 'today' || /^date$/i.test((f.label || '').trim())))
+    || customFieldValue(fields, values, f => f.type === 'date');
+}
+function customNextDueValue(fields, values) {
+  return customFieldValue(fields, values, f => f.prefill === 'nextDue');
+}
+function customNotes(fields, values) {
+  return (fields || []).filter(f => f.type === 'longtext').map(f => {
+    const value = String((values && values[f.id]) || '').trim();
+    return value ? ((f.label ? f.label + ': ' : '') + value) : '';
+  }).filter(Boolean).join('\n');
+}
+function customCompleteError(fields, values) {
+  for (const field of fields || []) {
+    if (field.type === 'section' || field.type === 'note') continue;
+    if (field.type === 'table') {
+      const rows = values[field.id] || [];
+      const any = rows.some(row => (field.columns || []).some(col => String((row && row[col.id]) || '').trim()));
+      if (field.required && !any) return 'Enter at least one value in ' + (field.label || 'the table') + '.';
+      continue;
+    }
+    if (field.required && !String(values[field.id] || '').trim()) return 'Enter ' + (field.label || 'the required field') + '.';
+  }
+  return '';
+}
+function customResult(fields, values) {
+  let fail = false;
+  (fields || []).forEach(field => {
+    if (field.type === 'passfail' && values[field.id] === 'F') fail = true;
+    if (field.type === 'table') {
+      (values[field.id] || []).forEach(row => {
+        (field.columns || []).forEach(col => {
+          if (col.kind === 'passfail' && row && row[col.id] === 'F') fail = true;
+        });
+      });
+    }
+  });
+  return fail ? 'fail' : 'pass';
+}
+function procedureCorePayload(proc, extra) {
+  const row = {
+    id: proc.id,
+    labId: proc.labId,
+    equipmentId: proc.equipmentId,
+    procedureType: proc.procedureType,
+    name: proc.name,
+    frequencyValue: proc.frequencyValue || 1,
+    frequencyUnit: proc.frequencyUnit || 'months',
+    lastCompletedAt: extra.lastCompletedAt,
+    nextDueAt: extra.nextDueAt,
+    instructions: proc.instructions || '',
+    active: proc.active !== false,
+  };
+  if (proc.createdAt) row.createdAt = proc.createdAt;
+  return row;
+}
+function customRecordPayload(record) {
+  const row = {
+    id: record.id,
+    labId: record.labId,
+    equipmentId: record.equipmentId,
+    procedureId: record.procedureId,
+    completedAt: record.completedAt,
+    completedBy: record.completedBy || '',
+    result: record.result,
+    notes: record.notes || '',
+    certificateNumber: record.certificateNumber || '',
+    formData: record.formData || {},
+    nextDueAt: record.nextDueAt || null,
+  };
+  if (record.createdAt) row.createdAt = record.createdAt;
+  return row;
+}
+function customFormsSchemaHtml() {
+  if (!state.customFormsSchemaError) {
+    return '<div class="card mt-4 p-5"><div class="text-sm ink">The form list could not be loaded.</div><button class="btn btn-primary text-xs mt-3" onclick="r18_recheckCustomForms()">Check again</button></div>';
+  }
+  return '<div class="r18-schema"><div class="text-sm font-semibold ink">One database update turns on custom forms</div>' +
+    '<p class="text-sm ink-2 mt-2">Run this once in the Supabase SQL editor, then click Check again. The same script is in supabase/migrations/20261110_r18_form_templates.sql. After that, new sheets are built here. Nothing else has to be added in code.</p>' +
+    '<pre>' + escapeHtml(CUSTOM_FORMS_SQL) + '</pre>' +
+    '<button class="btn btn-primary text-xs mt-3" onclick="r18_recheckCustomForms()">Check again</button></div>';
+}
+function renderProcedureFormsHtml() {
+  if (state.customFormsReady == null) {
+    loadFormTemplates().then(() => {
+      if (state.currentTab === 'inventory' && state.inventorySubTab === 'procedure_forms') renderView();
+    });
+    return '<div class="p-8 text-sm ink-2">Checking the lab database…</div>';
+  }
+  if (!state.customFormsReady) return customFormsSchemaHtml();
+  const forms = (state.formTemplates || []).filter(t => t.active !== false);
+  const procs = state.procedures || [];
+  const options = procs.map(p => '<option value="' + p.id + '">' + escapeHtml(procedureChoiceLabel(p)) + '</option>').join('');
+  const rows = forms.map(t => {
+    const def = templateDefinition(t);
+    const used = procs.filter(p => p.formTemplateId === t.id).length;
+    return '<div class="px-4 py-3 border-b border-line-2 last:border-0">' +
+      '<div class="flex justify-between gap-3 flex-wrap items-start">' +
+      '<div><div class="text-sm font-medium ink">' + escapeHtml(t.name) + '</div>' +
+      '<div class="text-xs ink-2">' + escapeHtml(def.title) + ' · ' + def.fields.length + ' fields · attached to ' + used + '</div></div>' +
+      '<div class="flex gap-1 flex-wrap"><button type="button" class="btn btn-ghost text-xs" onclick="r18_openFormBuilder(\'' + t.id + '\')">Edit</button>' +
+      '<button type="button" class="btn btn-ghost text-xs" onclick="r18_duplicateCustomForm(\'' + t.id + '\')">Duplicate</button>' +
+      '<button type="button" class="btn btn-danger text-xs" onclick="r18_deleteCustomForm(\'' + t.id + '\')">Delete</button></div></div>' +
+      (procs.length
+        ? '<div class="flex gap-2 mt-2 flex-wrap items-center"><select class="select" id="attach-' + t.id + '" style="max-width:420px"><option value="">Attach to a procedure…</option>' + options + '</select><button type="button" class="btn btn-primary text-xs" onclick="r18_attachCustomForm(\'' + t.id + '\')">Attach</button></div>'
+        : '<div class="text-xs ink-2 mt-2">Add a procedure on a piece of equipment, then come back and attach this form.</div>') +
+      '</div>';
+  }).join('');
+  return '<div class="card mt-4"><div class="px-4 py-3 border-b border-line-2 flex justify-between items-center gap-3 flex-wrap">' +
+    '<div><div class="text-sm font-semibold ink">Procedure forms (' + forms.length + ')</div>' +
+    '<div class="text-xs ink-2">Build a sheet once, attach it to any procedure, and Perform Procedure opens it for the tech.</div></div>' +
+    '<button type="button" class="btn btn-primary text-xs" onclick="r18_openFormBuilder()">+ New form</button></div>' +
+    (rows || '<div class="p-8 text-center text-sm ink-2">No forms yet. New form starts with the usual header. Add the instructions and the readings table from the paper sheet.</div>') +
+    '</div>';
+}
+function formBuilderTypeOptions(selected) {
+  const types = [
+    ['text', 'Short text'], ['number', 'Number'], ['date', 'Date'], ['longtext', 'Long text'],
+    ['yesno', 'Yes / No'], ['passfail', 'Pass / Fail'], ['section', 'Section heading'],
+    ['note', 'Instructions'], ['table', 'Table'],
+  ];
+  return types.map(pair => '<option value="' + pair[0] + '"' + (selected === pair[0] ? ' selected' : '') + '>' + pair[1] + '</option>').join('');
+}
+function formBuilderPrefillOptions(type, selected) {
+  const all = [
+    ['', 'No prefill'],
+    ['equipmentName', 'Equipment name'],
+    ['serial', 'Serial or reference ID'],
+    ['viewer', 'Person signed in'],
+    ['procedureName', 'Procedure name'],
+    ['today', "Today's date"],
+    ['previous', 'Previous completion'],
+    ['nextDue', 'Next due date'],
+  ];
+  return all.filter(opt => !opt[0] || customPrefillAllowed(type, opt[0])).map(opt =>
+    '<option value="' + opt[0] + '"' + (selected === opt[0] ? ' selected' : '') + '>' + escapeHtml(opt[1]) + '</option>'
+  ).join('');
+}
+function formBuilderFieldHtml(field, index, total) {
+  const fillable = field.type !== 'section' && field.type !== 'note';
+  const prefill = fillable && field.type !== 'yesno' && field.type !== 'passfail' && field.type !== 'table'
+    ? '<label class="text-xs ink-2">Prefill<select class="select fb-prefill" onchange="r18_formBuilderType()">' + formBuilderPrefillOptions(field.type, field.prefill) + '</select></label>'
+    : '';
+  const required = fillable
+    ? '<label class="text-xs ink-2" style="display:flex;align-items:center;gap:6px;padding-bottom:8px"><input type="checkbox" class="fb-required"' + (field.required ? ' checked' : '') + ' /> Required</label>'
+    : '';
+  let extra = '';
+  if (field.type === 'note') {
+    extra = '<textarea class="textarea fb-note" rows="3" placeholder="Steps the tech reads on the sheet">' + escapeHtml(field.text || '') + '</textarea>';
+  }
+  if (field.type === 'table') {
+    const cols = (field.columns || []).map(col =>
+      '<div class="r18-fb-col" data-col-id="' + col.id + '"><input class="input fb-col-label" value="' + escapeHtml(col.label || '') + '" placeholder="Column name" />' +
+      '<select class="select fb-col-kind"><option value="text"' + (col.kind !== 'passfail' ? ' selected' : '') + '>Text</option><option value="passfail"' + (col.kind === 'passfail' ? ' selected' : '') + '>Pass / Fail</option></select>' +
+      '<button type="button" class="btn btn-ghost text-xs" onclick="r18_formBuilderRemoveCol(\'' + field.id + '\',\'' + col.id + '\')">Remove</button></div>'
+    ).join('');
+    extra = '<div class="r18-fb-cols"><div class="text-xs ink-2">Columns</div>' + cols +
+      '<div class="flex gap-2 items-center mt-2 flex-wrap"><button type="button" class="btn btn-ghost text-xs" onclick="r18_formBuilderAddCol(\'' + field.id + '\')">Add column</button>' +
+      '<label class="text-xs ink-2">Starting rows <input class="input fb-rows" type="number" min="1" max="12" value="' + (field.rows || 2) + '" style="width:80px;display:inline-block" /></label></div></div>';
+  }
+  return '<div class="r18-fb-field" data-field-id="' + field.id + '"><div class="r18-fb-top">' +
+    '<label class="grow text-xs ink-2">' + (field.type === 'note' ? 'Heading' : 'Label') + '<input class="input fb-label" value="' + escapeHtml(field.label || '') + '" /></label>' +
+    '<label class="text-xs ink-2">Type<select class="select fb-type" onchange="r18_formBuilderType()">' + formBuilderTypeOptions(field.type) + '</select></label>' +
+    prefill + required +
+    '<button type="button" class="btn btn-ghost text-xs" onclick="r18_formBuilderMove(\'' + field.id + '\',-1)"' + (index === 0 ? ' disabled' : '') + '>Up</button>' +
+    '<button type="button" class="btn btn-ghost text-xs" onclick="r18_formBuilderMove(\'' + field.id + '\',1)"' + (index === total - 1 ? ' disabled' : '') + '>Down</button>' +
+    '<button type="button" class="btn btn-ghost text-xs" onclick="r18_formBuilderRemove(\'' + field.id + '\')">Remove</button>' +
+    '</div>' + extra + '</div>';
+}
+function paintFormBuilder(draft) {
+  const fields = (draft.fields || []).map((field, index) => formBuilderFieldHtml(field, index, draft.fields.length)).join('');
+  showModal(
+    '<div class="p-5" id="r18-form-builder"><div class="r18-form-top"><div><div class="r18-form-kicker">Procedure form</div>' +
+    '<h2 class="text-xl serif font-semibold ink">' + (draft.id ? 'Edit form' : 'New form') + '</h2>' +
+    '<div class="text-sm ink-2">Add the blanks the tech fills in. A saved sheet keeps the fields it was filled with.</div></div>' +
+    '<button type="button" class="btn btn-ghost" onclick="r18_closeModal()">Close</button></div>' +
+    '<input type="hidden" id="fb-id" value="' + escapeHtml(draft.id || '') + '" />' +
+    '<div class="grid grid-cols-2 gap-3"><div><label class="label">Form name</label><input class="input" id="fb-name" value="' + escapeHtml(draft.name || '') + '" placeholder="Balance verification" /></div>' +
+    '<div><label class="label">Title on the sheet</label><input class="input" id="fb-title" value="' + escapeHtml(draft.title || '') + '" placeholder="Calibration of Balances" /></div></div>' +
+    '<div class="mt-3"><label class="label">Footer</label><input class="input" id="fb-footer" value="' + escapeHtml(draft.footer || '') + '" placeholder="Optional line at the bottom of the sheet" /></div>' +
+    '<div class="text-sm font-semibold ink mt-4">Fields</div>' + (fields || '<div class="text-sm ink-2 mt-2">Add a field to start the sheet.</div>') +
+    '<div class="flex flex-wrap gap-2 mt-3">' +
+    '<button type="button" class="btn btn-ghost text-xs" onclick="r18_formBuilderAdd(\'text\')">Short text</button>' +
+    '<button type="button" class="btn btn-ghost text-xs" onclick="r18_formBuilderAdd(\'number\')">Number</button>' +
+    '<button type="button" class="btn btn-ghost text-xs" onclick="r18_formBuilderAdd(\'date\')">Date</button>' +
+    '<button type="button" class="btn btn-ghost text-xs" onclick="r18_formBuilderAdd(\'longtext\')">Long text</button>' +
+    '<button type="button" class="btn btn-ghost text-xs" onclick="r18_formBuilderAdd(\'passfail\')">Pass / fail</button>' +
+    '<button type="button" class="btn btn-ghost text-xs" onclick="r18_formBuilderAdd(\'yesno\')">Yes / no</button>' +
+    '<button type="button" class="btn btn-ghost text-xs" onclick="r18_formBuilderAdd(\'section\')">Heading</button>' +
+    '<button type="button" class="btn btn-ghost text-xs" onclick="r18_formBuilderAdd(\'note\')">Instructions</button>' +
+    '<button type="button" class="btn btn-ghost text-xs" onclick="r18_formBuilderAdd(\'table\')">Table</button>' +
+    '</div><div class="flex justify-end gap-2 mt-4">' +
+    '<button type="button" class="btn btn-ghost" onclick="r18_previewCustomForm()">Preview</button>' +
+    '<button type="button" class="btn btn-primary" id="fb-save" onclick="r18_saveFormBuilder()">Save form</button></div></div>',
+    { form: true, lock: true }
+  );
+}
+function readFormBuilder() {
+  const fields = [];
+  document.querySelectorAll('#r18-form-builder [data-field-id]').forEach(row => {
+    const type = row.querySelector('.fb-type') ? row.querySelector('.fb-type').value : 'text';
+    const raw = {
+      id: row.dataset.fieldId,
+      type: type,
+      label: row.querySelector('.fb-label') ? row.querySelector('.fb-label').value : '',
+      required: !!(row.querySelector('.fb-required') && row.querySelector('.fb-required').checked),
+      prefill: row.querySelector('.fb-prefill') ? row.querySelector('.fb-prefill').value : '',
+      text: row.querySelector('.fb-note') ? row.querySelector('.fb-note').value : '',
+    };
+    if (type === 'table') {
+      raw.columns = [];
+      row.querySelectorAll('[data-col-id]').forEach(col => {
+        raw.columns.push({
+          id: col.dataset.colId,
+          label: col.querySelector('.fb-col-label') ? col.querySelector('.fb-col-label').value : '',
+          kind: col.querySelector('.fb-col-kind') ? col.querySelector('.fb-col-kind').value : 'text',
+        });
+      });
+      raw.rows = row.querySelector('.fb-rows') ? row.querySelector('.fb-rows').value : 2;
+    }
+    fields.push(normalizeCustomField(raw));
+  });
+  return {
+    id: document.getElementById('fb-id') ? document.getElementById('fb-id').value : '',
+    name: document.getElementById('fb-name') ? document.getElementById('fb-name').value.trim() : '',
+    title: document.getElementById('fb-title') ? document.getElementById('fb-title').value.trim() : '',
+    footer: document.getElementById('fb-footer') ? document.getElementById('fb-footer').value.trim() : '',
+    fields: fields,
+  };
+}
+window.r18_recheckCustomForms = async () => {
+  state.customFormsReady = null;
+  await loadFormTemplates();
+  state.inventorySubTab = 'procedure_forms';
+  renderView();
+};
+window.r18_openFormBuilder = (id) => {
+  if (!state.customFormsReady) return toast('Custom forms are not available until the database update is in place.');
+  const existing = id ? (state.formTemplates || []).find(t => t.id === id) : null;
+  if (id && !existing) return toast('That form is no longer in this lab.');
+  const def = existing ? templateDefinition(existing) : { title: '', footer: '', fields: defaultCustomFields() };
+  paintFormBuilder({
+    id: existing ? existing.id : '',
+    name: existing ? existing.name : '',
+    title: existing ? def.title : '',
+    footer: def.footer,
+    fields: def.fields,
+  });
+};
+window.r18_formBuilderType = () => { paintFormBuilder(readFormBuilder()); };
+window.r18_formBuilderAdd = (type) => {
+  const draft = readFormBuilder();
+  if (draft.fields.length >= 40) return toast('A form can have 40 fields.');
+  draft.fields.push(blankCustomField(type));
+  paintFormBuilder(draft);
+};
+window.r18_formBuilderRemove = (id) => {
+  const draft = readFormBuilder();
+  draft.fields = draft.fields.filter(field => field.id !== id);
+  paintFormBuilder(draft);
+};
+window.r18_formBuilderMove = (id, dir) => {
+  const draft = readFormBuilder();
+  const index = draft.fields.findIndex(field => field.id === id);
+  const next = index + dir;
+  if (index < 0 || next < 0 || next >= draft.fields.length) return;
+  const swap = draft.fields[index];
+  draft.fields[index] = draft.fields[next];
+  draft.fields[next] = swap;
+  paintFormBuilder(draft);
+};
+window.r18_formBuilderAddCol = (fieldId) => {
+  const draft = readFormBuilder();
+  const field = draft.fields.find(item => item.id === fieldId);
+  if (!field || field.type !== 'table') return;
+  if ((field.columns || []).length >= 8) return toast('A table can have 8 columns.');
+  field.columns.push({ id: customFieldId(), label: 'Column', kind: 'text' });
+  paintFormBuilder(draft);
+};
+window.r18_formBuilderRemoveCol = (fieldId, colId) => {
+  const draft = readFormBuilder();
+  const field = draft.fields.find(item => item.id === fieldId);
+  if (!field || !field.columns || field.columns.length <= 1) return toast('Keep at least one column.');
+  field.columns = field.columns.filter(col => col.id !== colId);
+  paintFormBuilder(draft);
+};
+window.r18_saveFormBuilder = async () => {
+  const draft = readFormBuilder();
+  if (!draft.name) return toast('Name this form.');
+  if (!draft.fields.some(field => field.type !== 'section' && field.type !== 'note')) return toast('Add a field the tech can fill in.');
+  if (!state.currentLabId) return toast('Open a lab first.');
+  const existing = draft.id ? (state.formTemplates || []).find(t => t.id === draft.id) : null;
+  const row = {
+    id: draft.id || uuid(),
+    labId: state.currentLabId,
+    name: draft.name,
+    definition: { title: draft.title || draft.name, footer: draft.footer || '', fields: draft.fields },
+    active: existing ? existing.active !== false : true,
+  };
+  if (existing && existing.createdAt) row.createdAt = existing.createdAt;
+  const btn = document.getElementById('fb-save');
+  if (btn) btn.disabled = true;
+  try {
+    if (!db) throw new Error('Connect Supabase before saving this form.');
+    await repo.put('form_templates', row);
+  } catch (e) {
+    if (btn) btn.disabled = false;
+    console.error(e);
+    const msg = String((e && (e.message || e.details)) || '');
+    if (/form_template|schema cache|does not exist/i.test(msg)) {
+      state.customFormsReady = false;
+      state.customFormsSchemaError = true;
+      closeModal();
+      renderView();
+      toast('Run the one-time database update on this page, then build the form again.');
+      return;
+    }
+    toast('Could not save this form.');
+    return;
+  }
+  closeModal();
+  await refreshAll();
+  state.currentTab = 'inventory';
+  state.inventorySubTab = 'procedure_forms';
+  renderTabs();
+  renderView();
+  toast('Form saved. Attach it to a procedure below.');
+};
+window.r18_duplicateCustomForm = async (id) => {
+  const src = (state.formTemplates || []).find(t => t.id === id);
+  if (!src) return;
+  const def = templateDefinition(src);
+  try {
+    if (!db) throw new Error('Connect Supabase before saving this form.');
+    await repo.put('form_templates', {
+      id: uuid(),
+      labId: state.currentLabId,
+      name: src.name + ' copy',
+      definition: { title: def.title, footer: def.footer, fields: def.fields },
+      active: true,
+    });
+  } catch (e) {
+    console.error(e);
+    toast('Could not copy this form.');
+    return;
+  }
+  await refreshAll();
+  renderView();
+  toast('Form copied.');
+};
+window.r18_deleteCustomForm = async (id) => {
+  const src = (state.formTemplates || []).find(t => t.id === id);
+  if (!src) return;
+  const used = (state.procedures || []).filter(p => p.formTemplateId === id);
+  const noun = used.length === 1 ? 'procedure' : 'procedures';
+  if (!confirm('Delete "' + src.name + '"?' + (used.length ? ' It is attached to ' + used.length + ' ' + noun + '. Those procedures keep their schedule.' : ''))) return;
+  try {
+    if (!db) throw new Error('Connect Supabase before deleting this form.');
+    for (const proc of used) {
+      const next = procedureCorePayload(proc, { lastCompletedAt: proc.lastCompletedAt || null, nextDueAt: proc.nextDueAt || null });
+      next.formTemplateId = null;
+      await repo.put('procedures', next);
+    }
+    await repo.delete('form_templates', id);
+  } catch (e) {
+    console.error(e);
+    toast('Could not delete this form.');
+    return;
+  }
+  await refreshAll();
+  renderView();
+  toast('Form deleted.');
+};
+window.r18_attachCustomForm = async (templateId) => {
+  const select = document.getElementById('attach-' + templateId);
+  const procId = select ? select.value : '';
+  if (!procId) return toast('Choose a procedure.');
+  const proc = (state.procedures || []).find(p => p.id === procId);
+  if (!proc) return;
+  const next = procedureCorePayload(proc, { lastCompletedAt: proc.lastCompletedAt || null, nextDueAt: proc.nextDueAt || null });
+  next.formTemplateId = templateId;
+  try {
+    if (!db) throw new Error('Connect Supabase before attaching this form.');
+    await repo.put('procedures', next);
+  } catch (e) {
+    console.error(e);
+    toast('Could not attach this form.');
+    return;
+  }
+  await refreshAll();
+  renderView();
+  toast('Form attached to ' + proc.name + '.');
+};
+function customTableHtml(field, rows, readonly) {
+  const cols = field.columns || [];
+  const data = Array.isArray(rows) && rows.length ? rows : [customBlankRow(field)];
+  const head = '<tr>' + cols.map(col => '<th>' + escapeHtml(col.label || '') + '</th>').join('') + (readonly ? '' : '<th></th>') + '</tr>';
+  const body = data.map((row, index) => {
+    const cells = cols.map(col => {
+      const val = row && row[col.id] ? row[col.id] : '';
+      if (readonly) return '<td>' + escapeHtml(val) + '</td>';
+      if (col.kind === 'passfail') {
+        return '<td><select class="r18-cell-select" data-col="' + col.id + '">' +
+          [['', '—'], ['P', 'P'], ['F', 'F']].map(opt => '<option value="' + opt[0] + '"' + (val === opt[0] ? ' selected' : '') + '>' + opt[1] + '</option>').join('') +
+          '</select></td>';
+      }
+      return '<td><input class="r18-cell-input" data-col="' + col.id + '" value="' + escapeHtml(val) + '" autocomplete="off" /></td>';
+    }).join('');
+    const remove = readonly ? '' : '<td><button type="button" class="btn btn-ghost text-xs" onclick="r18_customRemoveRow(\'' + field.id + '\',' + index + ')">Remove</button></td>';
+    return '<tr>' + cells + remove + '</tr>';
+  }).join('');
+  const add = readonly ? '' : '<button type="button" class="btn btn-ghost text-xs" style="margin-top:8px" onclick="r18_customAddRow(\'' + field.id + '\')">Add row</button>';
+  return '<div class="r18-paper-h">' + escapeHtml(field.label || 'Table') + '</div><div class="r18-cal-table-wrap"><table class="r18-cal-table"><thead>' + head + '</thead><tbody id="cf-table-' + field.id + '">' + body + '</tbody></table></div>' + add;
+}
+function customControlHtml(field, value, readonly) {
+  if (field.type === 'section') return '<div class="r18-paper-h">' + escapeHtml(field.label || '') + '</div>';
+  if (field.type === 'note') {
+    return (field.label ? '<div class="r18-paper-h">' + escapeHtml(field.label) + '</div>' : '') + '<div class="r18-note">' + escapeHtml(field.text || '') + '</div>';
+  }
+  if (field.type === 'table') return customTableHtml(field, value, readonly);
+  const id = 'cf-' + field.id;
+  if (readonly) {
+    const shown = field.type === 'date' ? (fmtDateNum(value) || '—') : (field.type === 'passfail' ? (value === 'P' ? 'Pass' : (value === 'F' ? 'Fail' : '—')) : (value || '—'));
+    if (field.type === 'longtext') return '<div class="r18-paper-h">' + escapeHtml(field.label || '') + '</div><div class="r18-paper-value" style="min-height:48px;white-space:pre-wrap">' + escapeHtml(value || '—') + '</div>';
+    return '<label class="r18-paper-field"><span>' + escapeHtml(field.label || '') + '</span><div class="r18-paper-value">' + escapeHtml(shown) + '</div></label>';
+  }
+  if (field.type === 'longtext') return '<div class="r18-paper-h">' + escapeHtml(field.label || '') + '</div><textarea class="r18-paper-area" id="' + id + '">' + escapeHtml(value || '') + '</textarea>';
+  if (field.type === 'yesno' || field.type === 'passfail') {
+    const opts = field.type === 'yesno' ? [['', '—'], ['Yes', 'Yes'], ['No', 'No']] : [['', '—'], ['P', 'Pass'], ['F', 'Fail']];
+    return '<label class="r18-paper-field"><span>' + escapeHtml(field.label || '') + '</span><select class="r18-paper-input" id="' + id + '">' +
+      opts.map(opt => '<option value="' + opt[0] + '"' + (value === opt[0] ? ' selected' : '') + '>' + opt[1] + '</option>').join('') + '</select></label>';
+  }
+  const inputType = field.type === 'date' ? 'date' : (field.type === 'number' ? 'number' : 'text');
+  return '<label class="r18-paper-field"><span>' + escapeHtml(field.label || '') + '</span><input class="r18-paper-input" id="' + id + '" type="' + inputType + '" value="' + escapeHtml(value || '') + '" autocomplete="off" /></label>';
+}
+function customFormBodyHtml(session) {
+  const fields = session.fields || [];
+  let html = '';
+  let pair = [];
+  const flush = () => {
+    if (!pair.length) return;
+    html += '<div class="r18-paper-grid">' + pair.join('') + (pair.length === 1 ? '<div></div>' : '') + '</div>';
+    pair = [];
+  };
+  fields.forEach(field => {
+    const short = field.type === 'text' || field.type === 'number' || field.type === 'date' || field.type === 'yesno' || field.type === 'passfail';
+    const piece = customControlHtml(field, session.values[field.id], session.readonly);
+    if (short) {
+      pair.push(piece);
+      if (pair.length === 2) flush();
+    } else {
+      flush();
+      html += piece;
+    }
+  });
+  flush();
+  return html;
+}
+function readCustomForm(fields) {
+  const values = {};
+  (fields || []).forEach(field => {
+    if (field.type === 'section' || field.type === 'note') return;
+    if (field.type === 'table') {
+      const body = document.getElementById('cf-table-' + field.id);
+      const rows = [];
+      if (body) {
+        body.querySelectorAll('tr').forEach(tr => {
+          const row = {};
+          (field.columns || []).forEach(col => {
+            const input = tr.querySelector('[data-col="' + col.id + '"]');
+            row[col.id] = input ? input.value : '';
+          });
+          rows.push(row);
+        });
+      }
+      values[field.id] = rows;
+      return;
+    }
+    const el = document.getElementById('cf-' + field.id);
+    values[field.id] = el ? el.value : '';
+  });
+  return values;
+}
+function customFormHtml() {
+  const session = customFormSession;
+  if (!session) return '';
+  const lab = (state.labs || []).find(l => l.id === state.currentLabId);
+  const buttons = '<button type="button" class="btn btn-ghost" onclick="r18_exportCustomPdf()">Export PDF</button>' +
+    (session.readonly && session.recordId ? '<button type="button" class="btn btn-primary" onclick="r18_editCustomRecord(\'' + session.recordId + '\')">Edit</button>' : '') +
+    '<button type="button" class="btn btn-ghost" onclick="r18_leaveCustomForm()">Close</button>';
+  let actions = '';
+  if (!session.preview && !session.readonly) {
+    actions = session.editing
+      ? '<div class="r18-form-actions"><button type="button" class="btn btn-primary" id="cf-save-complete" onclick="r18_saveCustomForm(\'complete\')">Save changes</button></div>'
+      : '<div class="r18-form-actions"><button type="button" class="btn btn-ghost" id="cf-save-progress" onclick="r18_saveCustomForm(\'draft\')">Save Progress</button><button type="button" class="btn btn-primary" id="cf-save-complete" onclick="r18_saveCustomForm(\'complete\')">Save and Complete</button></div>';
+  }
+  const result = session.readonly && session.result ? ' · ' + session.result : '';
+  return '<div class="p-5" id="r18-custom-form" data-readonly="' + (session.readonly ? '1' : '0') + '">' +
+    '<div class="r18-form-top"><div><div class="r18-form-kicker">Procedure form</div><h2 class="text-xl serif font-semibold ink">' + escapeHtml(session.templateName || session.title || 'Procedure form') + escapeHtml(result) + '</h2>' +
+    '<div class="text-sm ink-2">' + escapeHtml((session.eq && session.eq.name) || '') + '</div></div><div class="flex gap-2 flex-wrap">' + buttons + '</div></div>' +
+    '<div class="r18-perform-layout"><div><div class="r18-paper">' +
+    '<div class="r18-paper-org">Delaware Department of Transportation</div>' +
+    '<div class="r18-paper-sub">' + escapeHtml((lab && lab.name) || 'Materials & Research') + '</div>' +
+    '<div class="r18-paper-title">' + escapeHtml(session.title || session.templateName || 'Procedure form') + '</div>' +
+    customFormBodyHtml(session) +
+    (session.footer ? '<div class="r18-paper-foot">' + escapeHtml(session.footer) + '</div>' : '') +
+    '</div>' + actions + '</div>' + caliperSideHtml(session.eq, session.proc) + '</div></div>';
+}
+function openCustomForm(proc, eq, back, record, options) {
+  const opts = options || {};
+  const bag = record ? formBag(record) : null;
+  let fields, title, footer, templateId, templateName;
+  if (bag && bag.formId === 'custom' && Array.isArray(bag.fields) && bag.fields.length) {
+    fields = bag.fields.map(normalizeCustomField);
+    title = bag.title || 'Procedure form';
+    footer = bag.footer || '';
+    templateId = bag.templateId || '';
+    templateName = bag.templateName || title;
+  } else if (opts.previewDefinition) {
+    const def = opts.previewDefinition;
+    fields = (def.fields || []).map(normalizeCustomField);
+    title = def.title || 'Procedure form';
+    footer = def.footer || '';
+    templateId = '';
+    templateName = title;
+  } else {
+    const template = procedureTemplate(proc);
+    if (!template) return;
+    const def = templateDefinition(template);
+    fields = def.fields;
+    title = def.title;
+    footer = def.footer;
+    templateId = template.id;
+    templateName = template.name;
+  }
+  const stored = bag && bag.values && typeof bag.values === 'object' ? bag.values : null;
+  const values = customStartingValues(fields, eq, proc, record ? stored : null);
+  customFormSession = {
+    proc: proc || {},
+    eq: eq || {},
+    back: back || 'equipment',
+    recordId: record && record.id ? record.id : '',
+    fields: fields,
+    values: values,
+    title: title,
+    footer: footer,
+    templateId: templateId,
+    templateName: templateName,
+    readonly: !!opts.readonly,
+    editing: !!opts.editing,
+    preview: !!opts.preview,
+    result: record && record.result ? record.result : '',
+    initial: JSON.stringify(values),
+  };
+  showModal(customFormHtml(), { form: true, lock: true });
+}
+function syncCustomSessionFromDom() {
+  const root = document.getElementById('r18-custom-form');
+  if (!customFormSession || !root || root.dataset.readonly === '1') return;
+  customFormSession.values = readCustomForm(customFormSession.fields);
+}
+window.r18_customAddRow = (fieldId) => {
+  syncCustomSessionFromDom();
+  if (!customFormSession) return;
+  const field = customFormSession.fields.find(item => item.id === fieldId);
+  if (!field) return;
+  const rows = customFormSession.values[fieldId] || [];
+  if (rows.length >= 30) return toast('This table already has 30 rows.');
+  rows.push(customBlankRow(field));
+  customFormSession.values[fieldId] = rows;
+  showModal(customFormHtml(), { form: true, lock: true });
+};
+window.r18_customRemoveRow = (fieldId, index) => {
+  syncCustomSessionFromDom();
+  if (!customFormSession) return;
+  const field = customFormSession.fields.find(item => item.id === fieldId);
+  const rows = (customFormSession.values[fieldId] || []).slice();
+  if (rows.length <= 1) {
+    customFormSession.values[fieldId] = [customBlankRow(field)];
+  } else {
+    rows.splice(index, 1);
+    customFormSession.values[fieldId] = rows;
+  }
+  showModal(customFormHtml(), { form: true, lock: true });
+};
+window.r18_previewCustomForm = () => {
+  const draft = readFormBuilder();
+  if (!draft.fields.length) return toast('Add a field before previewing.');
+  state._formBuilderReturn = draft;
+  const eq = (state.equipment || [])[0] || { name: 'Example equipment', refId: 'REF-1', serialNumber: 'SN-1' };
+  const proc = { name: draft.name || 'Procedure', frequencyValue: 12, frequencyUnit: 'months', equipmentId: eq.id };
+  openCustomForm(proc, eq, 'equipment', null, {
+    preview: true,
+    previewDefinition: { title: draft.title || draft.name || 'Procedure form', footer: draft.footer, fields: draft.fields },
+  });
+};
+window.r18_leaveCustomForm = () => {
+  const session = customFormSession;
+  if (!session) return closeModal();
+  if (session.preview) {
+    customFormSession = null;
+    if (state._formBuilderReturn) paintFormBuilder(state._formBuilderReturn);
+    else closeModal();
+    return;
+  }
+  if (!session.readonly) {
+    syncCustomSessionFromDom();
+    if (JSON.stringify(session.values) !== session.initial && !confirm('Leave this form without saving?')) return;
+  }
+  const back = session.back;
+  const equipmentId = session.eq && session.eq.id;
+  customFormSession = null;
+  if (back === 'list' && equipmentId) window.r18_openPerformProcedures(equipmentId);
+  else if (equipmentId) window.r18_openEquipmentDetail(equipmentId);
+  else closeModal();
+};
+window.r18_editCustomRecord = (recordId) => {
+  const record = (state.procedureRecords || []).find(r => r.id === recordId);
+  if (!record) return;
+  const bag = formBag(record);
+  const proc = (state.procedures || []).find(p => p.id === record.procedureId) || {
+    id: record.procedureId,
+    name: bag.templateName || 'Procedure',
+    equipmentId: record.equipmentId,
+    labId: record.labId,
+    frequencyValue: 12,
+    frequencyUnit: 'months',
+  };
+  openCustomForm(proc, equipmentById(record.equipmentId) || {}, 'equipment', record, { editing: true });
+};
+window.r18_saveCustomForm = async (mode) => {
+  const session = customFormSession;
+  if (!session) return;
+  syncCustomSessionFromDom();
+  const values = session.values;
+  if (mode === 'complete') {
+    const err = customCompleteError(session.fields, values);
+    if (err) return toast(err);
+  } else {
+    const any = (session.fields || []).some(field => {
+      if (field.type === 'section' || field.type === 'note') return false;
+      if (field.type === 'table') return (values[field.id] || []).some(row => (field.columns || []).some(col => String((row && row[col.id]) || '').trim()));
+      return !!String(values[field.id] || '').trim();
+    });
+    if (!any) return toast('Enter something before saving progress.');
+  }
+  const dateValue = customDateValue(session.fields, values) || todayInput();
+  const completedAt = new Date(dateValue + 'T12:00:00').toISOString();
+  const nextRaw = customNextDueValue(session.fields, values);
+  const proc = session.proc || {};
+  const nextDueAt = nextRaw
+    ? new Date(nextRaw + 'T12:00:00').toISOString()
+    : addFrequency(completedAt, proc.frequencyValue || 12, proc.frequencyUnit || 'months');
+  const previous = (state.procedureRecords || []).find(r => r.id === session.recordId);
+  const result = mode === 'complete' ? customResult(session.fields, values) : null;
+  const record = {
+    id: session.recordId || uuid(),
+    labId: state.currentLabId || proc.labId,
+    equipmentId: proc.equipmentId,
+    procedureId: proc.id,
+    completedAt: completedAt,
+    completedBy: customCompletedBy(session.fields, values),
+    result: result,
+    notes: customNotes(session.fields, values),
+    certificateNumber: '',
+    formData: {
+      formId: 'custom',
+      templateId: session.templateId,
+      templateName: session.templateName,
+      title: session.title,
+      footer: session.footer,
+      status: mode === 'complete' ? 'complete' : 'draft',
+      fields: session.fields,
+      values: values,
+    },
+    nextDueAt: nextDueAt,
+    createdAt: previous && previous.createdAt,
+  };
+  const btn = document.getElementById(mode === 'complete' ? 'cf-save-complete' : 'cf-save-progress');
+  if (btn) btn.disabled = true;
+  try {
+    if (!db) throw new Error('Connect Supabase before saving this form.');
+    await repo.put('procedure_records', customRecordPayload(record));
+  } catch (e) {
+    if (btn) btn.disabled = false;
+    console.error(e);
+    toast(e && e.message && e.message.indexOf('Supabase') >= 0 ? e.message : 'Could not save this form to the lab database.');
+    return;
+  }
+  session.recordId = record.id;
+  session.initial = JSON.stringify(values);
+  upsertById(state.procedureRecords, record);
+  if (mode !== 'complete') {
+    if (btn) btn.disabled = false;
+    toast('Progress saved in the lab database.');
+    return;
+  }
+  const live = (state.procedures || []).find(p => p.id === proc.id);
+  const eq = live ? equipmentById(live.equipmentId) : null;
+  let scheduleSaved = true;
+  if (live) {
+    try {
+      await repo.put('procedures', procedureCorePayload(live, { lastCompletedAt: completedAt, nextDueAt: nextDueAt }));
+      if (live.procedureType === 'calibration' && eq) {
+        const nextEq = {};
+        Object.keys(eq).forEach(key => {
+          if (key === 'updatedAt' || key === 'photo' || eq[key] === undefined) return;
+          nextEq[key] = eq[key];
+        });
+        nextEq.id = eq.id;
+        nextEq.lastCalibration = completedAt;
+        nextEq.nextCalibration = nextDueAt;
+        await repo.put('equipment', nextEq);
+      }
+    } catch (e) {
+      scheduleSaved = false;
+      console.error(e);
+    }
+    upsertById(state.procedures, Object.assign({}, live, { lastCompletedAt: completedAt, nextDueAt: nextDueAt }));
+  }
+  try { await refreshAll(); } catch (e) { console.warn(e); }
+  customFormSession = null;
+  renderView();
+  if (proc.equipmentId) window.r18_openEquipmentDetail(proc.equipmentId);
+  else closeModal();
+  if (!scheduleSaved) {
+    toast('The sheet is in the lab database. The next due date could not be updated.');
+    return;
+  }
+  toast(result === 'fail'
+    ? 'Saved in the lab database as a fail.'
+    : 'Saved in the lab database. Next due ' + (fmtDateNum(nextRaw) || fmtDateShort(nextDueAt)));
+};
+function pdfSafe(value) {
+  return String(value == null ? '' : value)
+    .replace(/\u2013|\u2014/g, '-')
+    .replace(/\u2018|\u2019/g, "'")
+    .replace(/\u201c|\u201d/g, '"')
+    .replace(/\u00b1/g, '+/-')
+    .replace(/[^\x09\x0A\x0D\x20-\x7E]/g, '');
+}
+function customPdfName(session) {
+  const serial = customFieldValue(session.fields, session.values, f => f.prefill === 'serial');
+  const date = customDateValue(session.fields, session.values) || todayInput();
+  const base = String(session.templateName || session.title || 'procedure-form').replace(/[^\w.-]+/g, '-').replace(/-+/g, '-').replace(/^-|-$/g, '').slice(0, 40) || 'procedure-form';
+  const extra = String(serial).replace(/[^\w.-]+/g, '-').replace(/-+/g, '-').replace(/^-|-$/g, '').slice(0, 24);
+  return base + (extra ? '-' + extra : '') + '-' + date + '.pdf';
+}
+function writeCustomPdf(session) {
+  const doc = new window.jspdf.jsPDF({ unit: 'in', format: 'letter' });
+  const left = 0.55;
+  const width = 7.4;
+  let y = 0.52;
+  const ensure = (need) => {
+    if (y + need <= 10.55) return;
+    doc.addPage();
+    y = 0.55;
+  };
+  const center = (text, size, style) => {
+    doc.setFont('times', style || 'bold');
+    doc.setFontSize(size);
+    doc.text(pdfSafe(text) || ' ', 4.25, y, { align: 'center' });
+    y += size / 72 + 0.08;
+  };
+  const lab = (state.labs || []).find(l => l.id === state.currentLabId);
+  center('Delaware Department of Transportation', 14, 'bold');
+  center((lab && lab.name) || 'Materials & Research', 10, 'normal');
+  y += 0.02;
+  center(session.title || session.templateName || 'Procedure form', 13, 'bold');
+  y += 0.08;
+  const display = (field, value) => {
+    if (field.type === 'date') return fmtDateNum(value) || value || '';
+    if (field.type === 'passfail') return value === 'P' ? 'Pass' : (value === 'F' ? 'Fail' : '');
+    return value || '';
+  };
+  const drawShort = (x, field, colW) => {
+    doc.setFont('times', 'bold');
+    doc.setFontSize(8);
+    doc.text(pdfSafe(field.label || 'Field').toUpperCase(), x, y);
+    doc.setFont('times', 'normal');
+    doc.setFontSize(11);
+    const lines = doc.splitTextToSize(pdfSafe(display(field, session.values[field.id])) || ' ', colW);
+    doc.text(lines.slice(0, 2), x, y + 0.18);
+    doc.setDrawColor(30);
+    doc.setLineWidth(0.01);
+    doc.line(x, y + 0.24, x + colW, y + 0.24);
+  };
+  const isShort = (field) => field && (field.type === 'text' || field.type === 'number' || field.type === 'date' || field.type === 'yesno' || field.type === 'passfail');
+  const fields = session.fields || [];
+  let index = 0;
+  while (index < fields.length) {
+    const field = fields[index];
+    if (isShort(field) && isShort(fields[index + 1])) {
+      ensure(0.46);
+      const colW = width / 2 - 0.18;
+      drawShort(left, field, colW);
+      drawShort(left + width / 2 + 0.08, fields[index + 1], colW);
+      y += 0.46;
+      index += 2;
+      continue;
+    }
+    if (isShort(field)) {
+      ensure(0.46);
+      drawShort(left, field, width / 2 - 0.18);
+      y += 0.46;
+      index += 1;
+      continue;
+    }
+    if (field.type === 'section' || (field.type === 'note' && field.label)) {
+      ensure(0.28);
+      y += 0.04;
+      doc.setFont('times', 'bold');
+      doc.setFontSize(field.type === 'section' ? 12 : 11);
+      doc.text(pdfSafe(field.label || ' '), left, y);
+      y += 0.2;
+      if (field.type === 'section') { index += 1; continue; }
+    }
+    if (field.type === 'note') {
+      const lines = doc.splitTextToSize(pdfSafe(field.text || ' '), width);
+      const need = lines.length * 0.15 + 0.08;
+      ensure(Math.min(need, 2.5));
+      doc.setFont('times', 'normal');
+      doc.setFontSize(9);
+      doc.text(lines, left, y);
+      y += need;
+      index += 1;
+      continue;
+    }
+    if (field.type === 'longtext') {
+      ensure(0.3);
+      doc.setFont('times', 'bold');
+      doc.setFontSize(10);
+      doc.text(pdfSafe(field.label || 'Notes'), left, y);
+      y += 0.08;
+      const lines = doc.splitTextToSize(pdfSafe(session.values[field.id] || ' '), width - 0.16);
+      const boxH = Math.max(0.42, lines.length * 0.16 + 0.14);
+      ensure(boxH);
+      doc.setFont('times', 'normal');
+      doc.rect(left, y, width, boxH);
+      doc.text(lines, left + 0.08, y + 0.18);
+      y += boxH + 0.16;
+      index += 1;
+      continue;
+    }
+    if (field.type === 'table') {
+      const cols = field.columns || [];
+      if (!cols.length) { index += 1; continue; }
+      ensure(0.3);
+      doc.setFont('times', 'bold');
+      doc.setFontSize(11);
+      doc.text(pdfSafe(field.label || 'Table'), left, y);
+      y += 0.08;
+      const colW = width / cols.length;
+      const paint = (cells, header) => {
+        const rowH = header ? 0.34 : 0.24;
+        ensure(rowH);
+        let x = left;
+        doc.setFont('times', header ? 'bold' : 'normal');
+        doc.setFontSize(cols.length > 6 ? 7 : (header ? 8 : 9));
+        cells.forEach(cell => {
+          doc.setDrawColor(30);
+          doc.setLineWidth(0.008);
+          doc.rect(x, y, colW, rowH);
+          const lines = doc.splitTextToSize(pdfSafe(cell) || ' ', colW - 0.06);
+          doc.text(lines.slice(0, 2), x + colW / 2, y + (header ? 0.14 : 0.15), { align: 'center' });
+          x += colW;
+        });
+        y += rowH;
+      };
+      paint(cols.map(col => col.label || ''), true);
+      const rows = (session.values && session.values[field.id]) || [];
+      (rows.length ? rows : [customBlankRow(field)]).forEach(row => {
+        paint(cols.map(col => {
+          const value = row && row[col.id] ? row[col.id] : '';
+          if (col.kind === 'passfail') return value === 'P' ? 'Pass' : (value === 'F' ? 'Fail' : '');
+          return value;
+        }), false);
+      });
+      y += 0.12;
+      index += 1;
+      continue;
+    }
+    index += 1;
+  }
+  if (session.footer) {
+    y += 0.06;
+    ensure(0.24);
+    doc.setFont('times', 'normal');
+    doc.setFontSize(9);
+    doc.text(pdfSafe(session.footer), 4.25, y, { align: 'center' });
+  }
+  return doc;
+}
+window.r18_exportCustomPdf = () => {
+  if (!customFormSession) return;
+  syncCustomSessionFromDom();
+  if (!window.jspdf || typeof window.jspdf.jsPDF !== 'function') {
+    toast('PDF export is still loading. Try again in a moment.');
+    return;
+  }
+  const btn = document.querySelector('#r18-custom-form button');
+  if (btn) btn.disabled = true;
+  try {
+    writeCustomPdf(customFormSession).save(customPdfName(customFormSession));
+    toast('PDF downloaded.');
+  } catch (e) {
+    console.error(e);
+    toast('Could not create the PDF.');
+  } finally {
+    if (btn) btn.disabled = false;
+  }
+};
+
 window.r18_openCompleteProcedureModal = (procedureId, back) => {
   const proc = state.procedures.find(p => p.id === procedureId);
   if (!proc) return;
   const eq = equipmentById(proc.equipmentId);
+  const template = procedureTemplate(proc);
+  if (proc.formTemplateId && !template) {
+    toast('The form on this procedure is no longer available. Attach another under Inventory → Procedure Forms.');
+  } else if (template) {
+    openCustomForm(proc, eq || {}, back || 'equipment', customDraft(proc.id, template.id), {});
+    return;
+  }
   if (procedureUsesCaliperForm(eq, proc)) {
     openCaliperForm(proc, eq || {}, back || 'equipment');
     return;
@@ -38201,7 +39363,7 @@ window.r18_openCompleteProcedureModal = (procedureId, back) => {
     <div class="p-5">
       <h2 class="text-xl serif font-semibold mb-1 ink">Complete Procedure</h2>
       <div class="text-sm ink-2 mb-4">${escapeHtml(eq?.name || '')} · ${escapeHtml(PROCEDURE_TYPE_LABEL[proc.procedureType])} — ${escapeHtml(proc.name)}</div>
-      <div class="text-sm ink-2 mb-4">This procedure does not have a built-in sheet yet. Record the result here until its form is added.</div>
+      <div class="text-sm ink-2 mb-4">This procedure does not have a form yet. Build one under Inventory → Procedure Forms, or record the result here.</div>
       ${proc.instructions ? `<div class="text-sm bg-paper-2 p-3 rounded mb-4 ink-2">${escapeHtml(proc.instructions)}</div>` : ''}
       <div class="grid gap-3">
         <div class="grid grid-cols-2 gap-3">
@@ -38278,6 +39440,11 @@ window.r18_openProcedureRecordDetail = (recordId) => {
     const data = caliperDataFrom(bag, eq, proc);
     data.result = r.result || '';
     showModal(caliperFormHtml(eq || {}, proc || { id: r.procedureId, name: 'Caliper Calibration' }, data, { readonly: true, recordId: r.id, back: 'equipment' }), { form: true, lock: true });
+    return;
+  }
+  if (bag.formId === 'custom' && Array.isArray(bag.fields)) {
+    const stub = proc || { id: r.procedureId, name: bag.templateName || 'Procedure', equipmentId: r.equipmentId, labId: r.labId, frequencyValue: 12, frequencyUnit: 'months' };
+    openCustomForm(stub, eq || {}, 'equipment', r, { readonly: bag.status === 'complete' });
     return;
   }
   showModal(`
