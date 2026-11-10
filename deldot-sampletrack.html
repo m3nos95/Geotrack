@@ -3506,8 +3506,11 @@ table.fc-borrow-tbl tr.fc-borrow-detail-row td{background:var(--surface);border-
 .r18-app .r18-cal-pill.soon { background: #fef3c7; color: #92400e; }
 .r18-app .r18-cal-pill.late { background: #fee2e2; color: #991b1b; }
 .r18-app .r18-cal-pill.none { background: #f1f5f9; color: #475569; }
-.r18-app .r18-sticker-preview { width: 1.85in; margin: 12px auto; text-align: center; border: 1px dashed #c5c0b4; padding: 8px 6px 6px; background: #fff; }
-.r18-app .r18-sticker-preview img, .r18-app .r18-sticker-preview canvas { width: 1.15in !important; height: 1.15in !important; }
+.r18-app .r18-sticker-preview { width: 1.5in; height: 1.5in; margin: 12px auto; box-sizing: border-box; padding: 0.06in 0.05in 0.04in; background: #fff; border: 1px dashed #c5c0b4; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; overflow: hidden; }
+.r18-app .r18-sticker-preview #r18-sticker-qr { display: flex; justify-content: center; align-items: center; }
+.r18-app .r18-sticker-preview img, .r18-app .r18-sticker-preview canvas, .r18-app .r18-sticker-preview table { width: 0.95in !important; height: 0.95in !important; margin: 0 auto; display: block; }
+.r18-app .r18-sticker-name { margin-top: 0.03in; font-size: 8px; font-weight: 700; line-height: 1.1; max-width: 1.38in; text-align: center; }
+.r18-app .r18-sticker-ref { font-size: 7px; line-height: 1.1; max-width: 1.38in; text-align: center; }
 .r18-app .toast { position: fixed; bottom: 20px; right: 20px; background: var(--r18-ink); color: white; padding: 10px 16px; border-radius: 6px; font-size: 13px; z-index: 10000; box-shadow: 0 6px 16px rgba(0,0,0,0.2); animation: r18-slideUp 0.2s ease-out; }
 @keyframes r18-slideUp  { from { transform: translateY(20px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
 @keyframes r18-fadeIn   { from { opacity: 0; } to { opacity: 1; } }
@@ -37034,14 +37037,14 @@ function renderQrDataUrl(text, size) {
 }
 
 function stickerDocument(body) {
-  return '<!DOCTYPE html><html><head><meta charset="utf-8"><title>Equipment QR</title><style>'
-    + '@page{margin:.35in}body{margin:0;font-family:Arial,sans-serif;color:#111}'
-    + '.r18-sticker{width:1.55in;height:1.72in;display:inline-block;vertical-align:top;text-align:center;margin:.06in;overflow:hidden;page-break-inside:avoid}'
-    + '.r18-sticker img{width:1.05in;height:1.05in}'
-    + '.r18-sticker-name{font-size:8pt;font-weight:700;line-height:1.15;margin-top:2px}'
-    + '.r18-sticker-ref{font-size:7pt;font-family:ui-monospace,Menlo,monospace}'
-    + '</style></head><body>' + body
-    + '<script>window.addEventListener("load",function(){setTimeout(function(){window.print()},250)})<' + '/script></body></html>';
+  return '<!DOCTYPE html><html><head><meta charset="utf-8"><title>Equipment sticker</title><style>'
+    + '@page{size:1.5in 1.5in;margin:0}'
+    + 'html,body{margin:0;padding:0;background:#fff;color:#111}'
+    + '.r18-sticker{width:1.5in;height:1.5in;box-sizing:border-box;padding:0.06in 0.05in 0.04in;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;overflow:hidden;page-break-after:always;break-after:page}'
+    + '.r18-sticker img{display:block;width:0.95in;height:0.95in;margin:0 auto}'
+    + '.r18-sticker-name{margin-top:0.03in;font:700 7pt/1.05 Arial,sans-serif;max-width:1.38in;text-align:center}'
+    + '.r18-sticker-ref{font:6.5pt/1.05 ui-monospace,Menlo,monospace;max-width:1.38in;text-align:center}'
+    + '</style></head><body>' + body + '</body></html>';
 }
 
 function stickerLabel(eq, src) {
@@ -37064,14 +37067,25 @@ async function stickerSheetHtml(list) {
 window.r18_stickerSheetHtml = stickerSheetHtml;
 
 function openStickerWindow(html) {
-  const w = window.open('', '_blank', 'noopener,width=740,height=900');
+  const blob = new Blob([html], { type: 'text/html;charset=utf-8' });
+  const url = URL.createObjectURL(blob);
+  const w = window.open(url, '_blank');
   if (!w) {
+    URL.revokeObjectURL(url);
     toast('Allow pop-ups to print the stickers.');
     return false;
   }
-  w.document.open();
-  w.document.write(html);
-  w.document.close();
+  let printed = false;
+  const print = () => {
+    if (printed) return;
+    printed = true;
+    setTimeout(() => {
+      try { w.focus(); w.print(); } catch (e) {}
+      setTimeout(() => URL.revokeObjectURL(url), 60000);
+    }, 200);
+  };
+  w.addEventListener('load', print);
+  setTimeout(print, 800);
   return true;
 }
 
@@ -37179,17 +37193,17 @@ window.r18_openEquipmentQr = (id) => {
       <p class="text-sm ink-2 mt-1">Stick this on the equipment. A scan opens the calibration status in LabTrak.</p>
       <div class="r18-sticker-preview">
         <div id="r18-sticker-qr"></div>
-        <div style="font-size:11px;font-weight:700;margin-top:4px;line-height:1.2;">${escapeHtml(eq.name || '')}</div>
-        <div class="text-xs ink-2 mono">${escapeHtml(eq.refId || '')}</div>
+        <div class="r18-sticker-name">${escapeHtml(eq.name || '')}</div>
+        <div class="r18-sticker-ref ink-2 mono">${escapeHtml(eq.refId || '')}</div>
       </div>
       <div class="text-xs ink-3 mono" style="word-break:break-all;">${escapeHtml(url)}</div>
       <div class="flex justify-end gap-2 mt-4">
         <button class="btn btn-ghost" onclick="r18_closeModal()">Close</button>
-        <button class="btn btn-primary" onclick="r18_printEquipmentSticker('${eq.id}')">Print tiny sticker</button>
+        <button class="btn btn-primary" onclick="r18_printEquipmentSticker('${eq.id}')">Print sticker</button>
       </div>
     </div>
   `);
-  paintEquipmentQr(document.getElementById('r18-sticker-qr'), url, 148);
+  paintEquipmentQr(document.getElementById('r18-sticker-qr'), url, 96);
 };
 
 window.r18_openEquipmentFromLink = async (id) => {
