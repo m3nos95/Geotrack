@@ -3511,6 +3511,28 @@ table.fc-borrow-tbl tr.fc-borrow-detail-row td{background:var(--surface);border-
 .r18-app .r18-sticker-preview img, .r18-app .r18-sticker-preview canvas, .r18-app .r18-sticker-preview table { width: 0.95in !important; height: 0.95in !important; margin: 0 auto; display: block; }
 .r18-app .r18-sticker-name { margin-top: 0.03in; font-size: 8px; font-weight: 700; line-height: 1.1; max-width: 1.38in; text-align: center; }
 .r18-app .r18-sticker-ref { font-size: 7px; line-height: 1.1; max-width: 1.38in; text-align: center; }
+.r18-app .r18-eq-record-bar { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin-bottom: 14px; }
+.r18-app .r18-eq-record-title { font-family: 'Source Serif 4', Georgia, serif; font-size: 22px; font-weight: 650; color: var(--r18-ink); }
+.r18-app .r18-eq-detail { display: grid; grid-template-columns: 210px 1fr; gap: 20px; align-items: start; }
+.r18-app .r18-eq-side { text-align: center; }
+.r18-app .r18-eq-photo { width: 128px; height: 150px; margin: 0 auto 10px; border: 1px dashed #c5c0b4; border-radius: 10px; display: flex; align-items: center; justify-content: center; background: #f3f0e8; color: #8a8172; font-size: 13px; overflow: hidden; }
+.r18-app .r18-eq-photo img { width: 100%; height: 100%; object-fit: cover; }
+.r18-app .r18-eq-side-name { font-weight: 700; margin-bottom: 6px; color: var(--r18-ink); }
+.r18-app .r18-eq-tag { display: inline-block; background: #e39b12; color: #1c1404; font-size: 10px; font-weight: 800; letter-spacing: 0.04em; text-transform: uppercase; padding: 3px 8px; }
+.r18-app .r18-eq-service { margin-top: 10px; font-weight: 700; color: var(--r18-ink); }
+.r18-app .r18-eq-service-k { margin-top: 8px; font-size: 10px; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; color: var(--r18-ink-3); }
+.r18-app .r18-eq-service-date { font-size: 13px; color: var(--r18-ink-2); }
+.r18-app .r18-eq-actions { display: flex; flex-direction: column; gap: 8px; margin-top: 14px; }
+.r18-app .r18-eq-actions .btn { width: 100%; justify-content: center; }
+.r18-app .r18-eq-facts { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); border-top: 1px solid var(--r18-line); }
+.r18-app .r18-eq-fact { padding: 12px 10px; border-bottom: 1px solid var(--r18-line); min-width: 0; }
+.r18-app .r18-eq-fact-k { font-size: 10px; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; color: var(--r18-ink-3); }
+.r18-app .r18-eq-fact-v { margin-top: 4px; font-size: 14px; color: var(--r18-ink); word-break: break-word; }
+.r18-app .r18-eq-upcoming { grid-column: 1 / -1; }
+@media (max-width: 720px) {
+  .r18-app .r18-eq-detail { grid-template-columns: 1fr; }
+  .r18-app .r18-eq-facts { grid-template-columns: 1fr; }
+}
 .r18-app .toast { position: fixed; bottom: 20px; right: 20px; background: var(--r18-ink); color: white; padding: 10px 16px; border-radius: 6px; font-size: 13px; z-index: 10000; box-shadow: 0 6px 16px rgba(0,0,0,0.2); animation: r18-slideUp 0.2s ease-out; }
 @keyframes r18-slideUp  { from { transform: translateY(20px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
 @keyframes r18-fadeIn   { from { opacity: 0; } to { opacity: 1; } }
@@ -37134,46 +37156,124 @@ function procedureDueBadge(p) {
   return '<span class="text-xs ink-3">due ' + fmtDateShort(p.nextDueAt) + '</span>';
 }
 
-function showEquipmentStatusSheet(eq, procs, records) {
-  const interval = equipmentIntervalState(eq, procs);
-  const service = eq.status === 'in_service' ? 'In Service' : 'Out of Service';
-  const serviceClass = eq.status === 'in_service' ? 'badge-active' : 'badge-danger';
-  const activeProcs = (procs || []).filter(p => p && p.active !== false);
-  const recent = (records || []).slice().sort((a, b) => String(b.completedAt || '').localeCompare(String(a.completedAt || ''))).slice(0, 4);
-  showModal(`
-    <div class="p-5" id="r18-equip-status">
-      <div class="text-xs ink-3" style="letter-spacing:.06em;text-transform:uppercase;font-weight:700;">LabTrak equipment</div>
-      <h2 class="text-xl serif font-semibold ink mt-1">${escapeHtml(eq.name || 'Equipment')}</h2>
-      <div class="text-sm ink-2 mt-1">Ref ${escapeHtml(eq.refId || '—')}${eq.subLab ? ' · ' + escapeHtml(eq.subLab) : ''}${eq.manufacturer ? ' · ' + escapeHtml(eq.manufacturer) : ''}${eq.modelNumber ? ' · Model ' + escapeHtml(eq.modelNumber) : ''}</div>
-      <div class="mt-3 flex gap-2 flex-wrap items-center">
-        <span class="badge ${serviceClass}">${service}</span>
-        <span class="r18-cal-pill ${interval.kind}">${escapeHtml(interval.label)}</span>
-      </div>
-      <div class="card mt-4">
-        <div class="px-4 py-3 border-b border-line-2 flex justify-between gap-3"><span class="text-sm ink-2">Last calibration</span><span class="text-sm ink">${fmtDateShort(eq.lastCalibration)}</span></div>
-        <div class="px-4 py-3 flex justify-between gap-3"><span class="text-sm ink-2">Next calibration</span><span class="text-sm ink">${fmtDateShort(eq.nextCalibration)}</span></div>
-      </div>
-      <div class="text-sm font-semibold ink mt-4 mb-2">Procedures</div>
-      ${activeProcs.length === 0 ? '<div class="text-sm ink-2 italic">No procedures on this equipment.</div>' : `<div class="card">${activeProcs.map(p => `
-        <div class="px-4 py-3 border-b border-line-2 last:border-0 flex items-center justify-between gap-2">
-          <div class="min-w-0">
-            <div class="text-sm font-medium ink">${escapeHtml(PROCEDURE_TYPE_LABEL[p.procedureType] || p.procedureType)} — ${escapeHtml(p.name)}</div>
-            <div class="text-xs ink-2 mt-0.5">${freqLabel(p.frequencyValue, p.frequencyUnit)}${p.lastCompletedAt ? ' · last ' + fmtDateShort(p.lastCompletedAt) : ''}</div>
-          </div>
-          ${procedureDueBadge(p)}
-        </div>`).join('')}</div>`}
-      ${recent.length === 0 ? '' : `<div class="text-sm font-semibold ink mt-4 mb-2">Recent work</div><div class="card">${recent.map(r => `
-        <div class="px-4 py-3 border-b border-line-2 last:border-0 flex justify-between gap-3">
-          <div class="text-sm ink">${escapeHtml(r.completedBy || 'Completed')}${r.result ? ' · ' + escapeHtml(r.result) : ''}</div>
-          <div class="text-xs ink-3 mono">${fmtDateShort(r.completedAt)}</div>
-        </div>`).join('')}</div>`}
-      <div class="flex justify-end gap-2 mt-4">
-        <button class="btn btn-ghost" onclick="r18_closeModal()">Close</button>
-        <button class="btn btn-primary" onclick="r18_closeModal();r18_openEquipmentDetail('${eq.id}')">Open record</button>
-      </div>
-    </div>
-  `, { wide: true, sheet: true });
+function fmtDateNum(iso) {
+  const m = String(iso || '').match(/^(\d{4})-(\d{2})-(\d{2})/);
+  return m ? m[2] + '/' + m[3] + '/' + m[1] : '';
 }
+
+function equipmentFact(label, value) {
+  const shown = value == null || String(value).trim() === '' ? 'N/A' : String(value);
+  return '<div class="r18-eq-fact"><div class="r18-eq-fact-k">' + escapeHtml(label) + '</div><div class="r18-eq-fact-v">' + escapeHtml(shown) + '</div></div>';
+}
+
+function soonestProcedure(eq, procs) {
+  const rows = (procs || []).filter(p => p && p.active !== false && p.nextDueAt);
+  rows.sort((a, b) => String(a.nextDueAt).localeCompare(String(b.nextDueAt)));
+  if (rows.length) return rows[0];
+  if (eq && eq.nextCalibration) return { id: '', name: 'Calibration', nextDueAt: eq.nextCalibration };
+  return null;
+}
+
+function equipmentRecordHtml(eq, procs, records) {
+  const active = (procs || []).filter(p => p && p.active !== false);
+  const upcoming = soonestProcedure(eq, active);
+  const recent = (records || []).slice().sort((a, b) => String(b.completedAt || '').localeCompare(String(a.completedAt || ''))).slice(0, 8);
+  const inService = eq.status !== 'out_of_service';
+  const serial = eq.serialNumber || eq.refId || '';
+  const photo = eq.photo ? '<img src="' + eq.photo + '" alt="" />' : '<span>No Image</span>';
+  const cat = eq.category === 'measurement_standard' ? 'Measurement Standard' : 'Lab Equipment';
+  const upcomingDate = upcoming ? fmtDateNum(upcoming.nextDueAt) : fmtDateNum(eq.nextCalibration);
+  const perform = upcoming && upcoming.id
+    ? "r18_openCompleteProcedureModal('" + upcoming.id + "')"
+    : "r18_openProcedureModal(null, '" + eq.id + "')";
+  const statusBtn = inService
+    ? '<button class="btn btn-danger" onclick="r18_setEquipmentStatus(\'' + eq.id + '\',\'out_of_service\')">Take Out of Service</button>'
+    : '<button class="btn btn-primary" onclick="r18_setEquipmentStatus(\'' + eq.id + '\',\'in_service\')">Return to Service</button>';
+  return `
+    <div class="p-5 r18-eq-record" id="r18-equip-record">
+      <div class="r18-eq-record-bar">
+        <div>
+          <div class="r18-eq-record-title">${escapeHtml(eq.name || 'Equipment')}</div>
+          <div class="text-xs ink-3 mono">${escapeHtml(serial)}</div>
+        </div>
+        <button class="btn btn-ghost text-xs" onclick="r18_closeModal()">Close</button>
+      </div>
+      <div class="r18-eq-detail">
+        <div class="r18-eq-side">
+          <div class="r18-eq-photo">${photo}</div>
+          <div class="r18-eq-side-name">${escapeHtml(eq.name || '')}</div>
+          <div class="r18-eq-tag">${escapeHtml(cat)}</div>
+          <div class="r18-eq-service">${inService ? 'In Service' : 'Out of Service'}</div>
+          <div class="r18-eq-service-k">In Service Date</div>
+          <div class="r18-eq-service-date">${escapeHtml(fmtDateNum(eq.inServiceDate) || 'N/A')}</div>
+          <div class="r18-eq-actions">
+            <button class="btn btn-primary" onclick="r18_openEquipmentModal('${eq.id}')">Edit Info &amp; Procedures</button>
+            <button class="btn btn-primary" onclick="${perform}">Perform Procedures</button>
+            <button class="btn btn-primary" onclick="document.getElementById('r18-eq-history').scrollIntoView({block:'nearest'})">View Procedure History</button>
+            <button class="btn btn-ghost" onclick="r18_openEquipmentQr('${eq.id}')">Print sticker</button>
+            ${statusBtn}
+          </div>
+        </div>
+        <div>
+          <div class="r18-eq-facts">
+            ${equipmentFact('Equipment nickname', eq.name)}
+            ${equipmentFact('Internal reference ID', eq.refId)}
+            ${equipmentFact('Location', eq.subLab)}
+            ${equipmentFact('Model number', eq.modelNumber)}
+            ${equipmentFact('Serial number', serial)}
+            ${equipmentFact('Manufacturer', eq.manufacturer)}
+            ${equipmentFact('Date received', fmtDateNum(eq.dateReceived))}
+            ${equipmentFact('Condition received', eq.conditionReceived)}
+            ${equipmentFact('Initial cost', eq.initialCost)}
+            <div class="r18-eq-fact r18-eq-upcoming">
+              <div class="r18-eq-fact-k">Upcoming calibration</div>
+              <div class="r18-eq-fact-v">${escapeHtml(upcomingDate || 'N/A')}</div>
+              ${upcoming && upcoming.name ? `<div class="text-sm ink mt-1">${escapeHtml(upcoming.name)}</div>` : ''}
+            </div>
+          </div>
+          <div class="text-sm font-semibold ink mt-4 mb-2">Procedures</div>
+          ${active.length === 0 ? '<div class="text-sm ink-2 italic">No procedures on this equipment.</div>' : `<div class="card">${active.map(p => `
+            <div class="px-4 py-3 border-b border-line-2 last:border-0 flex items-center justify-between gap-2">
+              <div class="min-w-0">
+                <div class="text-sm font-medium ink">${escapeHtml(PROCEDURE_TYPE_LABEL[p.procedureType] || p.procedureType)} — ${escapeHtml(p.name)}</div>
+                <div class="text-xs ink-2 mt-0.5">${freqLabel(p.frequencyValue, p.frequencyUnit)}${p.lastCompletedAt ? ' · last ' + fmtDateShort(p.lastCompletedAt) : ''}</div>
+              </div>
+              <div class="flex items-center gap-1 shrink-0">
+                ${procedureDueBadge(p)}
+                <button class="btn btn-primary text-xs" onclick="r18_openCompleteProcedureModal('${p.id}')">Complete</button>
+                <button class="btn btn-ghost text-xs" onclick="r18_openProcedureModal('${p.id}', '${eq.id}')">Edit</button>
+              </div>
+            </div>`).join('')}</div>`}
+          <div id="r18-eq-history" class="text-sm font-semibold ink mt-4 mb-2">Procedure history</div>
+          ${recent.length === 0 ? '<div class="text-sm ink-2 italic">No procedure history yet.</div>' : `<div class="card">${recent.map(r => `
+            <div class="px-4 py-3 border-b border-line-2 last:border-0 flex justify-between gap-3">
+              <div class="text-sm ink">${escapeHtml(r.completedBy || 'Completed')}${r.result ? ' · ' + escapeHtml(r.result) : ''}</div>
+              <div class="text-xs ink-3 mono">${fmtDateShort(r.completedAt)}</div>
+            </div>`).join('')}</div>`}
+        </div>
+      </div>
+    </div>`;
+}
+
+function showEquipmentStatusSheet(eq, procs, records) {
+  showModal(equipmentRecordHtml(eq, procs, records), { wide: true, sheet: true });
+}
+
+window.r18_setEquipmentStatus = async (id, status) => {
+  const eq = equipmentById(id);
+  if (!eq || (status !== 'in_service' && status !== 'out_of_service')) return;
+  const next = Object.assign({}, eq, { status });
+  try {
+    if (db && repo) await repo.put('equipment', next);
+  } catch (e) {
+    toast('Could not update service status');
+    return;
+  }
+  const i = state.equipment.findIndex(e => e.id === id);
+  if (i >= 0) state.equipment[i] = next;
+  renderView();
+  window.r18_openEquipmentDetail(id);
+};
 
 window.r18_showEquipmentStatus = (equipmentId) => {
   const eq = equipmentById(equipmentId);
@@ -37257,60 +37357,8 @@ window.r18_openEquipmentDetail = (equipmentId) => {
   const eq = equipmentById(equipmentId);
   if (!eq) return;
   const procs = proceduresForEquipment(equipmentId);
-  showModal(`
-    <div class="p-5">
-      <div class="flex items-start justify-between gap-3 mb-4">
-        <div>
-          <h2 class="text-xl serif font-semibold ink">${escapeHtml(eq.name)}</h2>
-          <div class="text-sm ink-2 mt-1">Ref ${escapeHtml(eq.refId || '—')}${eq.manufacturer ? ' · ' + escapeHtml(eq.manufacturer) : ''}${eq.modelNumber ? ' · Model ' + escapeHtml(eq.modelNumber) : ''}</div>
-          <div class="mt-2 flex gap-1.5 flex-wrap">
-            <span class="badge badge-secondary">${eq.category === 'measurement_standard' ? 'Measurement Standard' : 'Lab Equipment'}</span>
-            <span class="badge ${eq.status === 'in_service' ? 'badge-active' : 'badge-danger'}">${eq.status === 'in_service' ? 'In Service' : 'Out of Service'}</span>
-          </div>
-        </div>
-        <button class="btn btn-ghost text-xs" onclick="r18_openEquipmentModal('${eq.id}')">Edit Details</button>
-      </div>
-      <div class="r18-eq-link">
-        <div id="r18-eq-qr" class="r18-eq-qr"></div>
-        <div>
-          <div class="text-sm font-semibold ink">LabTrak sticker</div>
-          <div class="text-xs ink-2 mt-0.5">Scan the code on the equipment to open this calibration status in LabTrak.</div>
-          <button class="btn btn-primary text-xs mt-2" onclick="r18_openEquipmentQr('${eq.id}')">QR sticker</button>
-        </div>
-      </div>
-
-      <div class="flex items-center justify-between mb-2">
-        <div class="text-sm font-semibold ink">Equipment Procedures</div>
-        <button class="btn btn-primary text-xs" onclick="r18_openProcedureModal(null, '${eq.id}')">+ Add Procedure</button>
-      </div>
-      ${procs.length === 0 ? `<div class="text-sm ink-2 italic py-6 text-center bg-paper-2 rounded mb-4">No procedures attached. Add calibration, check, standardization, or maintenance schedules.</div>` : `
-        <div class="card mb-4">
-          ${procs.map(p => {
-            const days = daysFromNow(p.nextDueAt);
-            const status = days == null ? '' : days < 0 ? '<span class="badge badge-danger">past due</span>'
-              : days <= 7 ? `<span class="badge badge-warn">due ${days}d</span>`
-              : `<span class="text-xs ink-3">due ${fmtDateShort(p.nextDueAt)}</span>`;
-            return `
-              <div class="px-4 py-3 border-b border-line-2 last:border-0 flex items-center justify-between gap-2">
-                <div class="flex-1 min-w-0">
-                  <div class="text-sm font-medium ink">${escapeHtml(PROCEDURE_TYPE_LABEL[p.procedureType] || p.procedureType)} — ${escapeHtml(p.name)}</div>
-                  <div class="text-xs ink-2 mt-0.5">${freqLabel(p.frequencyValue, p.frequencyUnit)}${p.lastCompletedAt ? ' · last ' + fmtDateShort(p.lastCompletedAt) : ''}</div>
-                </div>
-                <div class="flex items-center gap-1 shrink-0">
-                  ${status}
-                  <button class="btn btn-primary text-xs" onclick="r18_openCompleteProcedureModal('${p.id}')">Complete</button>
-                  <button class="btn btn-ghost text-xs" onclick="r18_openProcedureModal('${p.id}', '${eq.id}')">Edit</button>
-                </div>
-              </div>`;
-          }).join('')}
-        </div>
-      `}
-      <div class="flex justify-end">
-        <button class="btn btn-ghost" onclick="r18_closeModal()">Close</button>
-      </div>
-    </div>
-  `, { wide: true });
-  paintEquipmentQr(document.getElementById('r18-eq-qr'), equipmentScanUrl(eq.id), 84);
+  const records = (state.procedureRecords || []).filter(r => r.equipmentId === eq.id);
+  showEquipmentStatusSheet(eq, procs, records);
 };
 
 window.r18_openProcedureModal = (procedureId, equipmentId) => {
