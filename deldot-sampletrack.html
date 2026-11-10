@@ -12586,7 +12586,9 @@ async function renderProjectCards(projects) {
 
   let counts = {};
   try {
-    let sampleQuery = db.from('samples').select('contract,status').or('archived.is.null,archived.eq.false');
+    let sampleQuery = samplesReadAllowed()
+      ? db.from('samples').select('contract,status').or('archived.is.null,archived.eq.false')
+      : null;
     if (currentUser?.role === 'pm') {
       const contracts = projects.map(p => p.contract).filter(Boolean);
       sampleQuery = contracts.length ? sampleQuery.in('contract', contracts) : null;
@@ -12644,11 +12646,11 @@ async function filterByProject(contract, name) {
   if (bcName) bcName.textContent = contract + (name ? ' — ' + name : '');
 
   // Load fresh samples then filter
-  if (!db) return;
+  if (!db || !samplesReadAllowed()) return;
   let query = db.from('samples').select('*').is('deleted_at', null).order('created_at', { ascending: false });
   if (!showingArchived) query = query.or('archived.is.null,archived.eq.false');
   const { data, error } = await query;
-  if (error) { showToast('Error loading samples: ' + error.message, 'error'); return; }
+  if (error) { reportSamplesLoadError(error); return; }
   allSamples = (data || []).filter(s => !s.deleted_at);
   // Refresh borrow report if visible
   if (document.getElementById('fc_borrow_body') && document.getElementById('fieldcontrol-view')?.classList.contains('active')) { renderBorrowCountReport(); }
@@ -16537,7 +16539,13 @@ async function connectSupabase(silent = false) {
     const linkResult = await consumeLabtrakAuthCallback();
     if (linkResult.error) window._authLinkError = linkResult.error;
     const authSession = _supabaseAuthSession || await restoreSupabaseAuthSession();
-    let { error } = await db.from('samples').select('id').limit(1);
+    let error = null;
+    if (authSession) {
+      const probe = await db.from('samples').select('id').limit(1);
+      error = probe.error;
+    } else {
+      window._anonBlocked = true;
+    }
 
     if (error && error.code === '42P01') {
       if (!silent) {
@@ -16547,8 +16555,6 @@ async function connectSupabase(silent = false) {
       setDbConnected(false);
       return;
     }
-
-    if (!authSession) await probeAnonAccess();
 
     const probeBlocked = !!(error && (isDbRlsError(error) || error.code === 'PGRST301' || /jwt|permission|not authorized/i.test(error.message || '')));
     if (error && isAuthRequired() && !authSession) {
@@ -16578,7 +16584,7 @@ async function connectSupabase(silent = false) {
     await flushBorelogSyncQueueFromLabtrak().catch(e => console.warn('borelog flush:', e));
 
     umRenderUsers();
-    loadSamples();
+    if (samplesReadAllowed()) loadSamples();
     loadProjects();
     if (typeof loadDensityRecords === 'function') loadDensityRecords();
     if (document.getElementById('setupOverlay')?.style.display !== 'none' && currentUser?.role === 'admin') {
@@ -17928,6 +17934,22 @@ window.addEventListener('resize', _tourOnResize);
 let allSamples = [];
 let _samplesLoadPromise = null;
 
+function signInOverlayOpen() {
+  const overlay = document.getElementById('userOverlay');
+  return !!(overlay && overlay.classList.contains('open'));
+}
+
+function samplesReadAllowed() {
+  if (!currentUser || signInOverlayOpen()) return false;
+  if ((isAuthRequired() || window._anonBlocked) && !_supabaseAuthSession?.user) return false;
+  return true;
+}
+
+function reportSamplesLoadError(error) {
+  if (!error || signInOverlayOpen() || !samplesReadAllowed()) return;
+  showToast('Error loading samples: ' + (error.message || 'permission denied'), 'error');
+}
+
 function refreshSampleDependentViews() {
   if (document.getElementById('soillab-view')?.classList.contains('active')) {
     if (typeof slRenderQueue === 'function') slRenderQueue();
@@ -18078,6 +18100,7 @@ async function loadSamples() {
 }
 
 async function _loadSamplesImpl() {
+  if (!samplesReadAllowed()) return;
   showTableSkeleton('sampleTableBody', 9, 6);
   if (!db) {
     offlineLoadCached();
@@ -18096,7 +18119,7 @@ async function _loadSamplesImpl() {
     query = query.eq('archived', true);
   }
   const { data, error } = await query;
-  if (error) { showToast('Error loading samples: ' + error.message, 'error'); return; }
+  if (error) { reportSamplesLoadError(error); return; }
   allSamples = (data || []).filter(s => !s.deleted_at);
 
   // If a project filter is active, apply it
@@ -24353,6 +24376,7 @@ function loginUser(user, silent = false) {
     if (g) _renderDashCal();
   });
   if (!silent) showToast(`Welcome, ${user.name} ✓`, 'success');
+  if (samplesReadAllowed()) loadSamples();
   refreshProjectAdminUI();
   if (db && typeof pullAndMergeConcreteSets === 'function') {
     flushConcreteSyncQueue()
