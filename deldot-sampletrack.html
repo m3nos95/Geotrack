@@ -37487,7 +37487,7 @@ window.r18_openProcedureModal = (procedureId, equipmentId) => {
           <label class="label">Procedure form</label>
           <select class="select" id="proc-form">
             <option value="">No custom form</option>
-            ${(state.formTemplates || []).filter(t => t.active !== false).map(t => `<option value="${t.id}" ${proc?.formTemplateId === t.id ? 'selected' : ''}>${escapeHtml(t.name)}</option>`).join('')}
+            ${(state.formTemplates || []).filter(t => { if (t.active === false) return false; const def = definitionObject(t); return !(def && def.formKey === CALIPER_FORM_ID); }).map(t => `<option value="${t.id}" ${proc?.formTemplateId === t.id ? 'selected' : ''}>${escapeHtml(t.name)}</option>`).join('')}
           </select>
           <div class="text-xs ink-2 mt-1">Build sheets under Inventory → Procedure Forms, then choose one here. ${proc?.formTemplateId ? '' : (procedureUsesCaliperForm(eq, proc || { name: eq.name }) ? 'Until you choose one, this equipment uses the built-in caliper sheet.' : 'Until you choose one, the tech gets the short completion screen.')}</div>
         </div>
@@ -37557,17 +37557,75 @@ window.r18_deleteProcedure = async (id, equipmentId) => {
 
 /* Built-in caliper sheet, plus forms a lab builds under Inventory → Procedure Forms. */
 const CALIPER_FORM_ID = 'caliper_calibration';
-const CALIPER_STEPS = [
-  'Calibrate annually, or when put into service, or when needed.',
-  'Inspect the measuring instrument and determine if it is in good working order.',
-  'Check the zero point. Record the measurement and adjust to zero if needed. <em>(Caliper must be verified/calibrated over the range of use).</em>',
-  'Wear gloves. Select the appropriate gage block or comparator.',
-  'Record the gage and certified value.',
-  'Measure the gage and record the value.',
-  'Calipers readable to 0.001 inch (0.025 mm) and within +/- 0.002 of gage blocks.',
-  'Repeat 4-7 with a second gage if it is judged necessary.',
-  'Adjust the instrument to read correctly. If it cannot be corrected, then send it out for repair or replacement. Do not use it until it is corrected.',
-];
+let caliperSheetReturn = null;
+function defaultCaliperSheet() {
+  return {
+    formKey: CALIPER_FORM_ID,
+    title: 'Calibration of Micrometers and Calipers',
+    footer: 'Calibration of Micrometers & Calipers – Updated May 7, 2025',
+    tolerance: 0.002,
+    note: 'Readable to 0.001 inch (0.025 mm). Each measurement must be within +/- 0.002 of the gage block.',
+    steps: [
+      'Calibrate annually, or when put into service, or when needed.',
+      'Inspect the measuring instrument and determine if it is in good working order.',
+      'Check the zero point. Record the measurement and adjust to zero if needed. (Caliper must be verified/calibrated over the range of use).',
+      'Wear gloves. Select the appropriate gage block or comparator.',
+      'Record the gage and certified value.',
+      'Measure the gage and record the value.',
+      'Calipers readable to 0.001 inch (0.025 mm) and within +/- 0.002 of gage blocks.',
+      'Repeat 4-7 with a second gage if it is judged necessary.',
+      'Adjust the instrument to read correctly. If it cannot be corrected, then send it out for repair or replacement. Do not use it until it is corrected.',
+    ],
+  };
+}
+function definitionObject(template) {
+  let def = template && template.definition;
+  if (typeof def === 'string') {
+    try { def = JSON.parse(def); } catch (e) { def = null; }
+  }
+  return def && typeof def === 'object' ? def : null;
+}
+function caliperTemplateRecord() {
+  return (state.formTemplates || []).find(t => {
+    const def = definitionObject(t);
+    return def && def.formKey === CALIPER_FORM_ID;
+  }) || null;
+}
+function normalizeCaliperSheet(raw) {
+  const base = defaultCaliperSheet();
+  const src = raw || {};
+  const steps = Array.isArray(src.steps) ? src.steps.map(step => String(step).replace(/<[^>]+>/g, '').trim()).filter(Boolean).slice(0, 30) : [];
+  const tolerance = Number(src.tolerance);
+  return {
+    formKey: CALIPER_FORM_ID,
+    title: String(src.title || base.title).trim() || base.title,
+    footer: String(src.footer || '').trim() || base.footer,
+    note: src.note == null ? base.note : String(src.note),
+    tolerance: Number.isFinite(tolerance) && tolerance > 0 ? tolerance : base.tolerance,
+    steps: steps.length ? steps : base.steps.slice(),
+  };
+}
+function caliperSheetDefinition() {
+  const saved = caliperTemplateRecord();
+  const def = saved ? definitionObject(saved) : null;
+  if (def && def.formKey === CALIPER_FORM_ID) return normalizeCaliperSheet(def);
+  return defaultCaliperSheet();
+}
+function formatCaliperTol(n) {
+  const num = Number(n);
+  if (!Number.isFinite(num) || num <= 0) return '0.002';
+  return String(Math.round(num * 1000000) / 1000000);
+}
+function caliperActiveTolerance() {
+  const root = document.getElementById('r18-cal-form');
+  const n = root ? parseFloat(root.dataset.tolerance) : NaN;
+  if (Number.isFinite(n) && n > 0) return n;
+  return caliperSheetDefinition().tolerance;
+}
+function sheetForCaliper(data) {
+  if (data && data.sheet && Array.isArray(data.sheet.steps) && data.sheet.steps.length) return normalizeCaliperSheet(data.sheet);
+  return caliperSheetDefinition();
+}
 
 function isoDay(iso) {
   const m = String(iso || '').match(/^(\d{4}-\d{2}-\d{2})/);
@@ -37671,7 +37729,10 @@ function caliperMeasureDelta(gauge, measure) {
   if (!Number.isFinite(g) || !Number.isFinite(m)) return null;
   return { delta: Math.abs(g - m) };
 }
-function caliperRowTolerance(row) {
+function caliperRowTolerance(row, tolerance) {
+  const given = Number(tolerance);
+  const limit = Number.isFinite(given) && given > 0 ? given : caliperActiveTolerance();
+  const label = formatCaliperTol(limit);
   const pairs = [[row.g1, row.m1, 'Gauge 1'], [row.g2, row.m2, 'Gauge 2'], [row.g3, row.m3, 'Gauge 3']];
   const notes = [];
   let outside = false;
@@ -37682,13 +37743,13 @@ function caliperRowTolerance(row) {
     if (!found) return;
     if (found.mixed) { notes.push(pair[2] + ' units differ'); return; }
     checked += 1;
-    if (found.delta > 0.002 + 1e-9) {
+    if (found.delta > limit + 1e-9) {
       outside = true;
       notes.push(pair[2] + ' is ' + found.delta.toFixed(3) + ' off');
     }
   });
-  if (!notes.length && checked) return { ok: true, text: 'Within ±0.002 of the gage block.' };
-  if (outside) return { ok: false, text: notes.join(' · ') + '. Outside ±0.002.' };
+  if (!notes.length && checked) return { ok: true, text: 'Within ±' + label + ' of the gage block.' };
+  if (outside) return { ok: false, text: notes.join(' · ') + '. Outside ±' + label + '.' };
   if (notes.length) return { ok: null, text: notes.join(' · ') + '.' };
   return { ok: null, text: '' };
 }
@@ -37764,8 +37825,8 @@ function caliperSideHtml(eq, proc) {
     line('Procedure name', proc && proc.name) +
     '</aside>';
 }
-function caliperTableRow(label, prefix, row, readonly) {
-  const tol = caliperRowTolerance(row);
+function caliperTableRow(label, prefix, row, readonly, tolerance) {
+  const tol = caliperRowTolerance(row, tolerance);
   const tolClass = tol.ok === true ? ' ok' : (tol.ok === false ? ' bad' : '');
   return '<tr><td class="r18-row-label">' + escapeHtml(label) + '</td>' +
     '<td>' + caliperCell('cal-' + prefix + '-g1', row.g1, readonly) + '</td>' +
@@ -37795,15 +37856,17 @@ function caliperFormHtml(eq, proc, data, opts) {
   const remarks = readonly
     ? '<div class="r18-paper-value" style="min-height:48px;white-space:pre-wrap;">' + escapeHtml(data.remarks || '—') + '</div>'
     : '<textarea class="r18-paper-area" id="cal-remarks">' + escapeHtml(data.remarks || '') + '</textarea>';
-  return '<div class="p-5" id="r18-cal-form" data-procedure-id="' + escapeHtml(proc && proc.id) + '" data-record-id="' + escapeHtml(recordId) + '" data-readonly="' + (readonly ? '1' : '0') + '" data-back="' + escapeHtml(back) + '">' +
+  const sheet = sheetForCaliper(data);
+  return '<div class="p-5" id="r18-cal-form" data-procedure-id="' + escapeHtml(proc && proc.id) + '" data-record-id="' + escapeHtml(recordId) + '" data-readonly="' + (readonly ? '1' : '0') + '" data-back="' + escapeHtml(back) + '" data-tolerance="' + escapeHtml(String(sheet.tolerance)) + '">' +
     '<div class="r18-form-top"><div><div class="r18-form-kicker">Calibration Procedure</div><h2 class="text-xl serif font-semibold ink">Caliper Calibration' + (result ? ' · ' + escapeHtml(result) : '') + '</h2><div class="text-sm ink-2">' + escapeHtml((eq && eq.name) || '') + '</div></div>' +
-    '<div class="flex gap-2"><button type="button" class="btn btn-ghost" id="cal-export-pdf" onclick="r18_exportCaliperPdf()">Export PDF</button>' +
+    '<div class="flex gap-2 flex-wrap"><button type="button" class="btn btn-ghost" id="cal-export-pdf" onclick="r18_exportCaliperPdf()">Export PDF</button>' +
     (readonly && recordId ? '<button type="button" class="btn btn-primary" onclick="r18_editCaliperRecord(\'' + recordId + '\')">Edit</button>' : '') +
+    '<button type="button" class="btn btn-ghost" onclick="r18_editCaliperSheet()">Edit form</button>' +
     '<button type="button" class="btn btn-ghost" onclick="' + leave + '">Close</button></div></div>' +
     '<div class="r18-perform-layout"><div><div class="r18-paper">' +
     '<div class="r18-paper-org">Delaware Department of Transportation</div>' +
     '<div class="r18-paper-sub">Materials &amp; Research Dover, Delaware</div>' +
-    '<div class="r18-paper-title">Calibration of Micrometers and Calipers</div>' +
+    '<div class="r18-paper-title">' + escapeHtml(sheet.title) + '</div>' +
     '<div class="r18-paper-grid">' +
     paperField('Instrument', 'cal-instrument', data.instrument, 'text', readonly) +
     paperField('Date', 'cal-date', data.date, 'date', readonly) +
@@ -37812,15 +37875,15 @@ function caliperFormHtml(eq, proc, data, opts) {
     paperField('Reason', 'cal-reason', data.reason, 'text', readonly) +
     paperField('Next Due', 'cal-next', data.nextDue, 'date', readonly) +
     '</div>' +
-    '<div class="r18-paper-h">Procedure</div><ol class="r18-paper-steps">' + CALIPER_STEPS.map(step => '<li>' + step + '</li>').join('') + '</ol>' +
+    '<div class="r18-paper-h">Procedure</div><ol class="r18-paper-steps">' + sheet.steps.map(step => '<li>' + escapeHtml(step) + '</li>').join('') + '</ol>' +
     '<div class="r18-paper-h">Calibration</div>' +
     '<div class="r18-gauge-line">' + paperField('Gauge 1', 'cal-g1-name', data.gauge1, 'text', readonly) + paperField('Serial Number', 'cal-g1-serial', data.gauge1Serial, 'text', readonly) + '</div>' +
     '<div class="r18-gauge-line">' + paperField('Gauge 2', 'cal-g2-name', data.gauge2, 'text', readonly) + paperField('Serial Number', 'cal-g2-serial', data.gauge2Serial, 'text', readonly) + '</div>' +
     '<div class="r18-cal-table-wrap"><table class="r18-cal-table"><thead><tr><th>-Zero-</th><th>Gauge 1 Value</th><th>Measure 1</th><th>Gauge 2 Value</th><th>Measure 2</th><th>Gauge 3 Value</th><th>Measure 3</th><th>Pass / Fail</th></tr></thead><tbody>' +
-    caliperTableRow('Zero', 'zero', data.rows.zero, readonly) +
-    caliperTableRow('Block', 'block', data.rows.block, readonly) +
+    caliperTableRow('Zero', 'zero', data.rows.zero, readonly, sheet.tolerance) +
+    caliperTableRow('Block', 'block', data.rows.block, readonly, sheet.tolerance) +
     '</tbody></table></div>' +
-    '<div class="text-xs ink-3 mt-2">Readable to 0.001 inch (0.025 mm). Each measurement must be within +/- 0.002 of the gage block.</div>' +
+    '<div class="text-xs ink-3 mt-2">' + escapeHtml(sheet.note) + '</div>' +
     '<div class="r18-paper-h">Remarks</div>' + remarks +
     '<div class="r18-paper-grid" style="margin-top:12px">' +
     paperField('Verified By', 'cal-verified', data.verifiedBy, 'text', readonly) +
@@ -37829,7 +37892,7 @@ function caliperFormHtml(eq, proc, data, opts) {
     paperField('Date', 'cal-approved-date', data.approvedDate, 'date', readonly) +
     '</div>' +
     (readonly ? '' : '<datalist id="r18-cal-names">' + names + '</datalist>') +
-    '<div class="r18-paper-foot">Calibration of Micrometers &amp; Calipers – Updated May 7, 2025</div>' +
+    '<div class="r18-paper-foot">' + escapeHtml(sheet.footer) + '</div>' +
     '</div>' + actions + approve + '</div>' + caliperSideHtml(eq, proc) + '</div>' +
     '<textarea id="r18-cal-data" hidden readonly>' + JSON.stringify(data).replace(/</g, '\\u003c') + '</textarea>' +
     '</div>';
@@ -37841,6 +37904,7 @@ function openCaliperForm(proc, eq, back, record, options) {
   const data = caliperDataFrom(bag, eq, proc);
   if (source && source.result) data.result = source.result;
   const complete = !!(bag && bag.status === 'complete');
+  data.sheet = (complete && bag && bag.sheet) ? normalizeCaliperSheet(bag.sheet) : (complete ? defaultCaliperSheet() : caliperSheetDefinition());
   showModal(caliperFormHtml(eq, proc, data, { back: back, recordId: source ? source.id : '', readonly: complete && !editing, editing: complete && editing }), {
     form: true,
     lock: true,
@@ -37922,11 +37986,12 @@ window.r18_saveCaliperForm = async (mode) => {
   if (!proc) return;
   const eq = equipmentById(proc.equipmentId);
   const data = readCaliperForm();
+  data.sheet = sheetForCaliper(currentCaliperDataFromStore());
   if (mode === 'complete') {
     const err = caliperCompleteError(data);
     if (err) return toast(err);
     const outsidePass = ['zero', 'block'].some(key => caliperRowTolerance(data.rows[key]).ok === false && data.rows[key].pf === 'P');
-    if (outsidePass && !confirm('A measurement is outside ±0.002 and marked Pass. Save it anyway?')) return;
+    if (outsidePass && !confirm('A measurement is outside ±' + formatCaliperTol(caliperActiveTolerance()) + ' and marked Pass. Save it anyway?')) return;
   } else if (!data.date) {
     return toast('Enter the date before saving progress.');
   }
@@ -38073,10 +38138,19 @@ function caliperPrintValue(value, type) {
   if (!value) return '';
   return type === 'date' ? (fmtDateNum(value) || value) : value;
 }
-function currentCaliperData() {
-  if (document.getElementById('cal-instrument')) return readCaliperForm();
+function currentCaliperDataFromStore() {
   const stored = document.getElementById('r18-cal-data');
-  return stored ? JSON.parse(stored.value || stored.textContent) : null;
+  if (!stored) return null;
+  try { return JSON.parse(stored.value || stored.textContent); } catch (e) { return null; }
+}
+function currentCaliperData() {
+  if (document.getElementById('cal-instrument')) {
+    const live = readCaliperForm();
+    const stored = currentCaliperDataFromStore();
+    if (stored && stored.sheet) live.sheet = stored.sheet;
+    return live;
+  }
+  return currentCaliperDataFromStore();
 }
 function caliperPdfName(data) {
   const serial = String((data && data.serialNumber) || 'calipers').replace(/[^\w.-]+/g, '-').replace(/-+/g, '-').slice(0, 40);
@@ -38119,10 +38193,11 @@ function writeCaliperPdf(data) {
     if (bLabel) draw(left + width / 2 + 0.08, bLabel, bValue);
     y += 0.42;
   };
+  const sheet = sheetForCaliper(data);
   center('Delaware Department of Transportation', 14, 'bold');
   center('Materials & Research Dover, Delaware', 10, 'normal');
   y += 0.02;
-  center('Calibration of Micrometers and Calipers', 13, 'bold');
+  center(pdfSafe(sheet.title) || 'Calibration of Micrometers and Calipers', 13, 'bold');
   y += 0.06;
   fieldPair('Instrument', shown(data.instrument), 'Date', shown(data.date, true));
   fieldPair('Serial Number', shown(data.serialNumber), 'Previous', shown(data.previous, true));
@@ -38135,8 +38210,8 @@ function writeCaliperPdf(data) {
   y += 0.2;
   doc.setFont('times', 'normal');
   doc.setFontSize(9);
-  CALIPER_STEPS.forEach((step, index) => {
-    const lines = doc.splitTextToSize((index + 1) + '. ' + step.replace(/<[^>]+>/g, ''), width);
+  (sheet.steps || []).forEach((step, index) => {
+    const lines = doc.splitTextToSize((index + 1) + '. ' + pdfSafe(step), width);
     ensure(lines.length * 0.145 + 0.02);
     doc.text(lines, left, y);
     y += lines.length * 0.145 + 0.03;
@@ -38176,7 +38251,9 @@ function writeCaliperPdf(data) {
   ensure(0.2);
   doc.setFont('times', 'italic');
   doc.setFontSize(8);
-  doc.text('Readable to 0.001 inch (0.025 mm). Each measurement must be within +/- 0.002 of the gage block.', left, y);
+  const noteLines = doc.splitTextToSize(pdfSafe(sheet.note) || ' ', width);
+  doc.text(noteLines, left, y);
+  y += Math.max(0, (noteLines.length - 1) * 0.14);
   y += 0.22;
   ensure(0.7);
   doc.setFont('times', 'bold');
@@ -38196,7 +38273,7 @@ function writeCaliperPdf(data) {
   ensure(0.2);
   doc.setFont('times', 'normal');
   doc.setFontSize(9);
-  doc.text('Calibration of Micrometers & Calipers - Updated May 7, 2025', 4.25, y, { align: 'center' });
+  doc.text(pdfSafe(sheet.footer) || ' ', 4.25, y, { align: 'center' });
   return doc;
 }
 window.r18_editCaliperRecord = (recordId) => {
@@ -38358,7 +38435,11 @@ function templateDefinition(template) {
 }
 function procedureTemplate(proc) {
   if (!proc || !proc.formTemplateId) return null;
-  return (state.formTemplates || []).find(t => t.id === proc.formTemplateId && t.active !== false) || null;
+  const found = (state.formTemplates || []).find(t => t.id === proc.formTemplateId && t.active !== false) || null;
+  if (!found) return null;
+  const def = definitionObject(found);
+  if (def && def.formKey === CALIPER_FORM_ID) return null;
+  return found;
 }
 function procedureFormLabel(proc) {
   const template = procedureTemplate(proc);
@@ -38515,7 +38596,11 @@ function renderProcedureFormsHtml() {
     return '<div class="p-8 text-sm ink-2">Checking the lab database…</div>';
   }
   if (!state.customFormsReady) return customFormsSchemaHtml();
-  const forms = (state.formTemplates || []).filter(t => t.active !== false);
+  const forms = (state.formTemplates || []).filter(t => {
+    if (t.active === false) return false;
+    const def = definitionObject(t);
+    return !(def && def.formKey === CALIPER_FORM_ID);
+  });
   const procs = state.procedures || [];
   const options = procs.map(p => '<option value="' + p.id + '">' + escapeHtml(procedureChoiceLabel(p)) + '</option>').join('');
   const rows = forms.map(t => {
@@ -38533,7 +38618,7 @@ function renderProcedureFormsHtml() {
         : '<div class="text-xs ink-2 mt-2">Add a procedure on a piece of equipment, then come back and attach this form.</div>') +
       '</div>';
   }).join('');
-  return '<div class="card mt-4"><div class="px-4 py-3 border-b border-line-2 flex justify-between items-center gap-3 flex-wrap">' +
+  return caliperFormLibraryCard() + '<div class="card mt-4"><div class="px-4 py-3 border-b border-line-2 flex justify-between items-center gap-3 flex-wrap">' +
     '<div><div class="text-sm font-semibold ink">Procedure forms (' + forms.length + ')</div>' +
     '<div class="text-xs ink-2">Build a sheet once, attach it to any procedure, and Perform Procedure opens it for the tech.</div></div>' +
     '<button type="button" class="btn btn-primary text-xs" onclick="r18_openFormBuilder()">+ New form</button></div>' +
@@ -38665,6 +38750,8 @@ window.r18_openFormBuilder = (id) => {
   if (!state.customFormsReady) return toast('Custom forms are not available until the database update is in place.');
   const existing = id ? (state.formTemplates || []).find(t => t.id === id) : null;
   if (id && !existing) return toast('That form is no longer in this lab.');
+  const existingDef = existing ? definitionObject(existing) : null;
+  if (existingDef && existingDef.formKey === CALIPER_FORM_ID) return window.r18_editCaliperSheet();
   const def = existing ? templateDefinition(existing) : { title: '', footer: '', fields: defaultCustomFields() };
   paintFormBuilder({
     id: existing ? existing.id : '',
@@ -39338,18 +39425,178 @@ window.r18_exportCustomPdf = () => {
   }
 };
 
+function caliperFormLibraryCard() {
+  const saved = caliperTemplateRecord();
+  const sheet = caliperSheetDefinition();
+  return '<div class="card mt-4"><div class="px-4 py-3 flex justify-between gap-3 flex-wrap items-start">' +
+    '<div><div class="text-sm font-medium ink">Caliper calibration</div>' +
+    '<div class="text-xs ink-2">' + escapeHtml(sheet.title) + ' · ' + sheet.steps.length + ' steps · ±' + escapeHtml(formatCaliperTol(sheet.tolerance)) +
+    (saved ? ' · saved for this lab' : ' · DelDOT wording') + '</div>' +
+    '<div class="text-xs ink-3 mt-1">Calipers and micrometers open this sheet. Edit it when the paper form changes. Completed calibrations keep the wording they were signed with.</div></div>' +
+    '<button type="button" class="btn btn-ghost text-xs" onclick="r18_editCaliperSheet()">Edit form</button></div></div>';
+}
+function paintCaliperSheetEditor(sheet) {
+  const host = document.getElementById('r18-caliper-steps');
+  if (!host) return;
+  host.innerHTML = (sheet.steps || []).map((step, index) =>
+    '<div class="r18-fb-field"><div class="r18-fb-top"><div class="text-xs font-medium ink-2">Step ' + (index + 1) + '</div>' +
+    '<div class="flex gap-1"><button type="button" class="btn btn-ghost text-xs" onclick="r18_moveCaliperStep(' + index + ',-1)">Up</button>' +
+    '<button type="button" class="btn btn-ghost text-xs" onclick="r18_moveCaliperStep(' + index + ',1)">Down</button>' +
+    '<button type="button" class="btn btn-ghost text-xs" onclick="r18_removeCaliperStep(' + index + ')">Remove</button></div></div>' +
+    '<textarea class="input w-full cal-step" rows="2">' + escapeHtml(step) + '</textarea></div>'
+  ).join('');
+}
+function readCaliperSheetEditor() {
+  const steps = [];
+  document.querySelectorAll('#r18-caliper-steps .cal-step').forEach(el => steps.push(el.value));
+  const tolerance = parseFloat((document.getElementById('cal-sheet-tol') || {}).value);
+  return {
+    title: ((document.getElementById('cal-sheet-title') || {}).value || '').trim(),
+    footer: ((document.getElementById('cal-sheet-foot') || {}).value || '').trim(),
+    note: (document.getElementById('cal-sheet-note') || {}).value || '',
+    tolerance: tolerance,
+    steps: steps,
+  };
+}
+function caliperSheetEditorHtml(sheet) {
+  return '<div class="p-5" id="r18-caliper-editor"><div class="r18-form-top"><div><div class="r18-form-kicker">Caliper sheet</div>' +
+    '<h2 class="text-xl serif font-semibold ink">Edit form</h2>' +
+    '<div class="text-sm ink-2">This changes the sheet the next time a caliper or micrometer procedure is performed. Calibrations already saved keep the wording they were signed with.</div></div>' +
+    '<div class="flex gap-2 flex-wrap"><button type="button" class="btn btn-ghost" onclick="r18_restoreCaliperSheet()">Restore DelDOT wording</button>' +
+    '<button type="button" class="btn btn-ghost" onclick="r18_closeCaliperSheetEditor()">Close</button></div></div>' +
+    '<div class="r18-fb-field"><div class="text-xs font-medium ink-2 mb-1">Title on the sheet</div><input class="input w-full" id="cal-sheet-title" value="' + escapeHtml(sheet.title) + '"></div>' +
+    '<div class="r18-fb-field"><div class="text-xs font-medium ink-2 mb-1">Tolerance the checker uses</div><input class="input w-full" id="cal-sheet-tol" inputmode="decimal" value="' + escapeHtml(formatCaliperTol(sheet.tolerance)) + '">' +
+    '<div class="text-xs ink-3 mt-1">0.002 means each measurement must be within ±0.002 of the gage block.</div></div>' +
+    '<div class="r18-fb-field"><div class="text-xs font-medium ink-2 mb-1">Sentence under the readings</div><textarea class="input w-full" id="cal-sheet-note" rows="2">' + escapeHtml(sheet.note) + '</textarea></div>' +
+    '<div class="r18-fb-field"><div class="text-xs font-medium ink-2 mb-1">Footer</div><input class="input w-full" id="cal-sheet-foot" value="' + escapeHtml(sheet.footer) + '"></div>' +
+    '<div id="r18-caliper-steps"></div>' +
+    '<button type="button" class="btn btn-ghost text-xs mt-2" onclick="r18_addCaliperStep()">+ Add step</button>' +
+    '<div class="r18-form-actions"><button type="button" class="btn btn-primary" onclick="r18_saveCaliperSheet()">Save form</button></div></div>';
+}
+window.r18_editCaliperSheet = () => {
+  const open = document.getElementById('r18-cal-form');
+  if (open) {
+    const dirty = open.dataset.readonly !== '1' && open._initial && JSON.stringify(readCaliperForm()) !== open._initial;
+    if (dirty && !confirm('Leave this calibration and edit the form? Readings on this screen will be kept only if you saved them.')) return;
+    caliperSheetReturn = {
+      procedureId: open.dataset.procedureId || '',
+      recordId: open.dataset.recordId || '',
+      back: open.dataset.back || '',
+    };
+  } else caliperSheetReturn = null;
+  const sheet = caliperSheetDefinition();
+  showModal(caliperSheetEditorHtml(sheet), {
+    wide: true, sheet: true,
+    onMount: () => paintCaliperSheetEditor(sheet),
+  });
+};
+window.r18_addCaliperStep = () => {
+  const draft = readCaliperSheetEditor();
+  draft.steps.push('');
+  paintCaliperSheetEditor(draft);
+};
+window.r18_removeCaliperStep = (index) => {
+  const draft = readCaliperSheetEditor();
+  draft.steps.splice(index, 1);
+  paintCaliperSheetEditor(draft);
+};
+window.r18_moveCaliperStep = (index, dir) => {
+  const draft = readCaliperSheetEditor();
+  const next = index + dir;
+  if (next < 0 || next >= draft.steps.length) return;
+  const moved = draft.steps.splice(index, 1)[0];
+  draft.steps.splice(next, 0, moved);
+  paintCaliperSheetEditor(draft);
+};
+window.r18_restoreCaliperSheet = () => {
+  const sheet = defaultCaliperSheet();
+  const title = document.getElementById('cal-sheet-title');
+  const foot = document.getElementById('cal-sheet-foot');
+  const note = document.getElementById('cal-sheet-note');
+  const tol = document.getElementById('cal-sheet-tol');
+  if (title) title.value = sheet.title;
+  if (foot) foot.value = sheet.footer;
+  if (note) note.value = sheet.note;
+  if (tol) tol.value = formatCaliperTol(sheet.tolerance);
+  paintCaliperSheetEditor(sheet);
+  toast('DelDOT wording is back in the editor. Save form to use it.');
+};
+window.r18_closeCaliperSheetEditor = () => {
+  const back = caliperSheetReturn;
+  caliperSheetReturn = null;
+  if (back && back.recordId) window.r18_openProcedureRecordDetail(back.recordId);
+  else if (back && back.procedureId) window.r18_openCompleteProcedureModal(back.procedureId, back.back);
+  else closeModal();
+};
+window.r18_saveCaliperSheet = async () => {
+  const draft = readCaliperSheetEditor();
+  const steps = draft.steps.map(step => String(step).trim()).filter(Boolean);
+  if (!draft.title) return toast('Enter the title on the sheet.');
+  if (!steps.length) return toast('Add at least one procedure step.');
+  if (!Number.isFinite(draft.tolerance) || draft.tolerance <= 0) return toast('Enter the tolerance, such as 0.002.');
+  if (!state.currentLabId) return toast('Choose a lab first.');
+  const existing = caliperTemplateRecord();
+  const row = {
+    id: existing ? existing.id : uuid(),
+    labId: state.currentLabId,
+    name: 'Caliper calibration',
+    definition: {
+      formKey: CALIPER_FORM_ID,
+      title: draft.title,
+      footer: draft.footer,
+      note: String(draft.note || '').trim(),
+      tolerance: draft.tolerance,
+      steps: steps,
+    },
+    active: true,
+  };
+  if (existing && existing.createdAt) row.createdAt = existing.createdAt;
+  try {
+    if (!db) throw new Error('Connect Supabase before saving this form.');
+    await repo.put('form_templates', row);
+    upsertById(state.formTemplates, row);
+    state.customFormsReady = true;
+    state.customFormsSchemaError = '';
+  } catch (e) {
+    const raw = String((e && (e.message || e.details)) || '');
+    const text = saveFailureText(e);
+    if (/form_templates|schema cache|relation|does not exist/i.test(raw + ' ' + text)) {
+      state.customFormsReady = false;
+      state.customFormsSchemaError = text;
+      toast('The lab database needs the procedure-forms update before this sheet can be saved. Inventory, Procedure Forms has the one-time SQL.');
+      return;
+    }
+    return toast('Could not save the form. ' + text);
+  }
+  try { await refreshAll(); } catch (e) { console.warn(e); }
+  if (!caliperTemplateRecord()) upsertById(state.formTemplates, row);
+  toast('Caliper form saved');
+  const back = caliperSheetReturn;
+  caliperSheetReturn = null;
+  if (back && back.recordId) window.r18_openProcedureRecordDetail(back.recordId);
+  else if (back && back.procedureId) window.r18_openCompleteProcedureModal(back.procedureId, back.back);
+  else {
+    closeModal();
+    state.currentTab = 'inventory';
+    state.inventorySubTab = 'procedure_forms';
+    renderView();
+  }
+};
 window.r18_openCompleteProcedureModal = (procedureId, back) => {
   const proc = state.procedures.find(p => p.id === procedureId);
   if (!proc) return;
   const eq = equipmentById(proc.equipmentId);
   const template = procedureTemplate(proc);
-  if (proc.formTemplateId && !template) {
+  const linked = proc.formTemplateId ? (state.formTemplates || []).find(t => t.id === proc.formTemplateId) : null;
+  const linkedDef = linked ? definitionObject(linked) : null;
+  const linkedCaliper = !!(linkedDef && linkedDef.formKey === CALIPER_FORM_ID);
+  if (proc.formTemplateId && !template && !linkedCaliper) {
     toast('The form on this procedure is no longer available. Attach another under Inventory → Procedure Forms.');
   } else if (template) {
     openCustomForm(proc, eq || {}, back || 'equipment', customDraft(proc.id, template.id), {});
     return;
   }
-  if (procedureUsesCaliperForm(eq, proc)) {
+  if (procedureUsesCaliperForm(eq, proc) || linkedCaliper) {
     openCaliperForm(proc, eq || {}, back || 'equipment');
     return;
   }
@@ -39439,6 +39686,7 @@ window.r18_openProcedureRecordDetail = (recordId) => {
   if (bag.formId === CALIPER_FORM_ID) {
     const data = caliperDataFrom(bag, eq, proc);
     data.result = r.result || '';
+    data.sheet = bag.sheet ? normalizeCaliperSheet(bag.sheet) : defaultCaliperSheet();
     showModal(caliperFormHtml(eq || {}, proc || { id: r.procedureId, name: 'Caliper Calibration' }, data, { readonly: true, recordId: r.id, back: 'equipment' }), { form: true, lock: true });
     return;
   }
