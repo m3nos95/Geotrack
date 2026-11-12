@@ -1247,6 +1247,70 @@ nav:not(#r18-nav), .nav-top-row { display: none !important; }
 .dd-rpt-approval { border-top: 2px solid #999; display: grid; grid-template-columns: 1fr 1fr; }
 .dd-rpt-pass { color: #166534; font-weight: 700; }
 .dd-rpt-fail { color: #991b1b; font-weight: 700; }
+.dd-rpt.car-rpt { max-width: 860px; border: 1px solid #e4ebf3; border-radius: 12px; overflow: hidden; box-shadow: 0 10px 28px rgba(0, 28, 61, 0.08); color: #122033; }
+.car-banner { position: relative; display: flex; align-items: center; gap: 16px; background: #002349; color: #fff; padding: 16px 20px 20px; }
+.car-banner::after { content: ""; position: absolute; left: 0; right: 0; bottom: 0; height: 7px; background: #f68304; }
+.car-lockup { height: 58px; width: auto; display: block; }
+.car-slash { width: 4px; height: 46px; background: #f68304; transform: skewX(-18deg); border-radius: 2px; flex: 0 0 auto; }
+.car-banner-name { font-weight: 750; letter-spacing: -0.02em; line-height: 1.05; font-size: 22px; }
+.car-banner-name div + div { font-size: 20px; font-weight: 650; }
+.car-title { display: grid; grid-template-columns: auto 1fr auto; gap: 14px; align-items: center; padding: 16px 18px 8px; }
+.car-mark { width: 36px; height: 36px; color: #f68304; }
+.car-title h1 { margin: 0; font-size: 26px; letter-spacing: 0.01em; color: #0b2344; font-weight: 800; }
+.car-title .car-sub { margin-top: 3px; font-size: 11px; letter-spacing: 0.04em; color: #5c6d80; font-weight: 650; }
+.car-meta { text-align: right; border-left: 3px solid #f68304; padding-left: 12px; color: #0b2344; font-weight: 750; font-size: 13px; line-height: 1.35; }
+.car-meta div:first-child { font-size: 14px; }
+.car-chips { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; padding: 8px 18px 14px; }
+.car-chip { display: flex; align-items: center; gap: 8px; border: 1px solid #d7e0ea; border-radius: 10px; padding: 8px 10px; font-size: 12.5px; color: #1c334d; background: #fff; min-width: 0; }
+.car-chip b { font-weight: 750; }
+.car-ico { width: 16px; height: 16px; flex: 0 0 auto; }
+.car-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; padding: 0 18px 12px; }
+.car-card { border: 1px solid #d7e0ea; border-radius: 10px; overflow: hidden; background: #fff; }
+.car-card-head, .car-sieve-head, .car-cert-head, .car-remarks-head { display: flex; align-items: center; gap: 8px; background: #002349; color: #fff; font-size: 12px; font-weight: 750; letter-spacing: 0.04em; padding: 8px 12px; border-bottom: 3px solid #f68304; }
+.car-row { display: grid; grid-template-columns: 1fr auto; gap: 12px; padding: 7px 12px; font-size: 12.5px; }
+.car-row:nth-child(even) { background: #f4f7fb; }
+.car-row span { color: #5c6d80; }
+.car-row b { color: #122033; font-weight: 750; text-align: right; }
+.car-sieve { margin: 0 18px 12px; border: 1px solid #d7e0ea; border-radius: 10px; overflow: hidden; }
+.car-sieve-head { justify-content: space-between; }
+.car-wt { background: #f68304; color: #fff; border-radius: 999px; padding: 3px 10px; font-size: 11px; letter-spacing: 0; font-weight: 700; }
+.car-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+.car-table th { background: #123a66; color: #fff; font-size: 11px; letter-spacing: 0.04em; padding: 8px 6px; text-align: center; font-weight: 750; }
+.car-table td { padding: 8px 6px; text-align: center; border-top: 1px solid #e6edf5; }
+.car-table tr:nth-child(even) td { background: #f7fafc; }
+.car-table td.car-pass-pct { font-weight: 800; }
+.car-status { font-weight: 800; letter-spacing: 0.02em; }
+.car-status.pass { color: #15803d; }
+.car-status.fail { color: #dc2626; }
+.car-split { display: grid; grid-template-columns: 1.15fr 0.85fr; gap: 12px; padding: 0 18px 12px; align-items: stretch; }
+.car-split.pass { grid-template-columns: 1fr; }
+.car-reject { display: flex; gap: 12px; align-items: flex-start; border: 2px solid #f3b4b0; background: #fff5f5; color: #b42318; border-radius: 12px; padding: 14px; }
+.car-reject strong { display: block; font-size: 15px; line-height: 1.25; margin-bottom: 6px; }
+.car-reject p { margin: 0; color: #6b7280; font-size: 13px; }
+.car-x { width: 28px; height: 28px; flex: 0 0 auto; }
+.car-remarks-body { padding: 10px 12px 12px; }
+.car-remark { display: grid; grid-template-columns: 22px 110px 1fr; gap: 6px; align-items: end; padding: 6px 0; font-size: 13px; }
+.car-remark span { color: #5c6d80; }
+.car-remark b { border-bottom: 1px solid #c5d0dc; padding-bottom: 2px; font-weight: 750; min-height: 18px; }
+.car-cert { margin: 0 18px 8px; border: 1px solid #d7e0ea; border-radius: 10px; overflow: hidden; }
+.car-cert-body { padding: 10px; }
+.car-warn { display: flex; align-items: center; gap: 8px; background: #fff6cc; border: 1px solid #f3d98a; color: #8a5a00; border-radius: 8px; padding: 8px 10px; font-size: 13px; }
+.car-sigs { display: grid; grid-template-columns: 1fr 1fr; gap: 28px; padding: 18px 28px 8px; }
+.car-sigs div { text-align: center; }
+.car-sigs i { display: block; border-bottom: 1.5px solid #1c334d; height: 22px; margin-bottom: 6px; font-style: normal; }
+.car-sigs b { font-size: 12px; letter-spacing: 0.06em; color: #0b2344; }
+.car-foot { display: flex; justify-content: space-between; gap: 12px; padding: 10px 18px 12px; color: #6b7c90; font-size: 11px; border-top: 1px solid #e6edf5; margin-top: 8px; }
+@media (max-width: 720px) {
+  .car-chips, .car-grid, .car-split { grid-template-columns: 1fr; }
+  .car-title { grid-template-columns: auto 1fr; }
+  .car-meta { grid-column: 1 / -1; text-align: left; border-left: 0; border-top: 3px solid #f68304; padding: 8px 0 0; }
+}
+@media print {
+  .dd-rpt.car-rpt { border: 1px solid #e4ebf3 !important; box-shadow: none !important; border-radius: 0; }
+  .car-banner, .car-card-head, .car-sieve-head, .car-table th, .car-cert-head, .car-remarks-head, .car-wt, .car-reject, .car-warn {
+    -webkit-print-color-adjust: exact; print-color-adjust: exact;
+  }
+}
 /* Concrete forms inside dd-rpt shell */
 .dd-rpt.dmf13, .dd-rpt.dmp15 { max-width: 1000px; font-size: 9pt; }
 .dd-rpt.dmf13,
@@ -21597,18 +21661,45 @@ function r18SoilLabReporter(sample) {
   }
   return String((sample && sample.reported_by) || (lab && lab.reported_by) || '').trim();
 }
-function r18ComplianceBlock(techName) {
+function carIcon(name) {
+  const paths = {
+    box: '<path d="M12 3.5 20 7.5 12 11.5 4 7.5Z"/><path d="M4 7.5v9L12 20.5"/><path d="M20 7.5v9L12 20.5"/>',
+    flask: '<path d="M10 3h4M11 3v6L7 19a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2l-4-10V3"/>',
+    clip: '<path d="M8 4h8v16H8z"/><path d="M10 8h4M10 12h4M10 16h3"/>',
+    target: '<circle cx="12" cy="12" r="7"/><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/>',
+    pin: '<path d="M12 21s7-6.2 7-11a7 7 0 1 0-14 0c0 4.8 7 11 7 11z"/><circle cx="12" cy="10" r="2.2"/>',
+    grid: '<path d="M4 4h7v7H4zM13 4h7v7h-7zM4 13h7v7H4zM13 13h7v7h-7z"/>',
+    gear: '<circle cx="12" cy="12" r="3"/><path d="M12 3v2M12 19v2M3 12h2M19 12h2M5.6 5.6l1.4 1.4M17 17l1.4 1.4M18.4 5.6 17 7M7 17l-1.4 1.4"/>',
+    chat: '<path d="M5 16.5 3 20l4-1.5A8 8 0 1 0 5 16.5z"/>',
+    pen: '<path d="M4 20h4l10-10-4-4L4 16v4z"/><path d="M13 7l4 4"/>',
+    user: '<circle cx="12" cy="8" r="3"/><path d="M5 19c1.2-3 3.4-4.5 7-4.5S17.8 16 19 19"/>',
+    info: '<circle cx="12" cy="12" r="8"/><path d="M12 11v5M12 8h.01"/>',
+    check: '<circle cx="12" cy="12" r="8"/><path d="M8.5 12.5 11 15l4.5-5"/>',
+    x: '<circle cx="12" cy="12" r="8"/><path d="M9 9l6 6M15 9l-6 6"/>',
+    cubes: '<path d="M12 3 17 6 12 9 7 6Z" fill="#f68304" stroke="none"/><path d="M6.5 10 11 13 6.5 16 2 13Z" fill="#ffb15a" stroke="none"/><path d="M17.5 10 22 13 17.5 16 13 13Z" fill="#e07000" stroke="none"/>',
+  };
+  return `<svg class="car-ico" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${paths[name] || ''}</svg>`;
+}
+function r18ComplianceBlock(techName, opts) {
+  opts = opts || {};
+  const coarse = !!opts.coarse;
   const name = String(techName || '').trim();
   if (!name) return '';
   const pack = window.__r18Compliance;
   if (!pack) return '';
   const person = r18MatchPerson(name, pack);
-  const wrap = (inner, border) => `<div class="dd-rpt-section" style="border:1px solid ${border};margin:8px 14px;padding:8px 10px;">
+  const wrap = (inner, border) => coarse
+    ? `<section class="car-cert"><div class="car-cert-head">${carIcon('gear')} TECHNICIAN CERTIFICATION AND EQUIPMENT</div><div class="car-cert-body">${inner}</div></section>`
+    : `<div class="dd-rpt-section" style="border:1px solid ${border};margin:8px 14px;padding:8px 10px;">
     <div style="font-size:8pt;font-weight:700;letter-spacing:.04em;margin-bottom:6px;">TECHNICIAN CERTIFICATION AND EQUIPMENT</div>
     ${inner}
   </div>`;
   if (!person) {
-    return wrap(`<div style="font-size:9pt;color:#92400e;background:#fffbeb;border:1px solid #fcd34d;padding:6px 8px;">No R18 roster link for ${r18Esc(name)}. Link this LabTrak user on the R18 roster.</div>`, '#fcd34d');
+    const msg = `No R18 roster link for ${r18Esc(name)}. Link this LabTrak user on the R18 roster.`;
+    const inner = coarse
+      ? `<div class="car-warn">${carIcon('info')} ${msg}</div>`
+      : `<div style="font-size:9pt;color:#92400e;background:#fffbeb;border:1px solid #fcd34d;padding:6px 8px;">${msg}</div>`;
+    return wrap(inner, '#fcd34d');
   }
   const certs = (pack.trainings || []).filter(t => t.userId === person.id);
   const gear = r18NormIds(person.assignedEquipment).map(id => (pack.equipment || []).find(e => String(e.id) === id)).filter(Boolean);
@@ -21667,68 +21758,111 @@ async function renderAggregateReport(sample, calc) {
   if (typeof r18_prepareCompliance === 'function') {
     try { await r18_prepareCompliance(); } catch (e) {}
   }
-  const aggType = sample.agg_type || sample.lab_data?.agg_type;
+  let lab = sample && sample.lab_data;
+  if (typeof lab === 'string') {
+    try { lab = JSON.parse(lab); } catch (e) { lab = null; }
+  }
+  const aggType = (sample && (sample.agg_type || (lab && lab.agg_type))) || '';
   const spec = AGG_TYPES[aggType] || {};
-  const conforms = calc.allPass;
-  const fv = v2 => v2 || '';
-  const dateRpt = sample.date_reported || new Date().toLocaleDateString('en-US');
-
-  // Build sieve table rows
+  const out = document.getElementById('lb44Output');
+  if (!calc || !calc.results) {
+    if (out) out.innerHTML = '<div class="dd-rpt car-rpt"><div class="car-foot">No coarse aggregate sieve data on this sample.</div></div>';
+    return;
+  }
+  const section = spec.section || sample.examined_for || '1004';
+  const examined = sample.examined_for || spec.section || '1004';
+  const sizeRaw = sample.size_no || spec.label || aggType || '';
+  const sizeNo = String(sizeRaw).replace(/^Size\s+/i, '') || '—';
+  const show = (value, fallback) => {
+    const text = String(value == null ? '' : value).trim();
+    if (text) return r18Esc(text);
+    return fallback == null ? '—' : r18Esc(fallback);
+  };
+  const row = (label, value, fallback) => `<div class="car-row"><span>${label}</span><b>${show(value, fallback)}</b></div>`;
+  const specText = (r) => (r.specMin == null ? '—' : r18Esc(r.specMin + ' – ' + r.specMax));
   const sieveRows = calc.results.map(r => `
     <tr>
-      <td class="dd-rpt-lbl">${r.label}</td>
-      <td class="dd-rpt-num">${r.accumRt}</td>
-      <td class="dd-rpt-num" style="font-weight:700;">${r.pctPass}%</td>
-      <td class="dd-rpt-num" style="color:#555;">${r.specStr}</td>
-      <td class="dd-rpt-num ${r.passes ? 'dd-rpt-pass' : 'dd-rpt-fail'}">${r.passes ? '✓ PASS' : '✗ FAIL'}</td>
+      <td>${r18Esc(r.label)}</td>
+      <td>${r18Esc(r.accumRt)}</td>
+      <td class="car-pass-pct">${r18Esc(r.pctPass)}%</td>
+      <td>${specText(r)}</td>
+      <td class="car-status ${r.passes ? 'pass' : 'fail'}">${carIcon(r.passes ? 'check' : 'x')} ${r.passes ? 'PASS' : 'FAIL'}</td>
     </tr>`).join('');
-
-  const infoPairs = [
-    ['Material:', sample.material_type || 'Stone'],
-    ['Est. Quantity:', sample.est_quantity || ''],
-    ['Sampled At:', sample.sampled_at || sample.location || ''],
-    ['Examined For:', sample.examined_for || spec.section || '1004'],
-    ['Sampled From:', sample.sampled_from || 'Stockpile'],
-    ['Contract:', sample.contract || ''],
-    ['Source / Supplied By:', sample.supplied_by || sample.source || ''],
-    ['Supply Location:', sample.supply_location || ''],
-    ['Contractor:', sample.contractor || ''],
-    ['Sampled By:', sample.sampled_by || ''],
-    ['Date Sampled:', sample.date_sampled || ''],
-    ['Date Received:', sample.date_received || ''],
-    ['Date Tested:', sample.date_tested || ''],
-    ['Date Reported:', dateRpt],
-    ['Testing Lab:', 'DOVER'],
-    ['GPS:', sample.gps_coordinates || ''],
-  ];
-
-  const reportHTML = ddRptWrap('LB-67', `
-    ${ddRptBanner('COARSE AGGREGATE REPORT', `AASHTO T-11 / T-27<br>Section ${spec.section || '1004'}<br>Form LB-67`)}
-    ${ddRptSubbar([
-      `Size No.: ${sample.size_no || spec.label || aggType}`,
-      `Lab No.: ${sample.lab_no || sample.test_no}`,
-      `TEST NO.: ${sample.test_no}`,
-      `Examined For: ${sample.examined_for || spec.section || '1004'}`,
-    ])}
-    ${ddRptKvGrid(infoPairs)}
-    <div class="dd-rpt-section">
-      <div class="dd-rpt-section-head">SIEVE ANALYSIS — AASHTO T-11 / AASHTO T-27 &nbsp;&nbsp; Wt. of Total Sample: <strong>${calc.total.toFixed(1)}</strong>g</div>
-      <table class="dd-rpt-table">
-        <thead><tr>
-          <th style="text-align:left;">SIEVE</th><th>ACCUM. RT. WT.</th><th>% PASSING</th><th>SPECIFICATION</th><th>STATUS</th>
-        </tr></thead>
+  const lockup = (document.querySelector('.r18-side-logo') || document.querySelector('.r18-header-logo') || {}).src || '';
+  const dateRpt = sample.date_reported || new Date().toISOString().slice(0, 10);
+  const reject = calc.allPass ? '' : `<div class="car-reject">${carIcon('x').replace('car-ico', 'car-ico car-x')}
+      <div><strong>This sample DOES NOT conform with the requirements of the specifications.</strong>
+      <p>Material represented by this sample has been REJECTED for use.</p></div></div>`;
+  const reportHTML = `<div class="dd-rpt car-rpt" data-form="LB-67">
+    <header class="car-banner">
+      ${lockup ? `<img class="car-lockup" alt="DelDOT" src="${lockup}">` : ''}
+      <div class="car-slash"></div>
+      <div class="car-banner-name"><div>Materials &amp; Research</div><div>Laboratory</div></div>
+    </header>
+    <div class="car-title">
+      ${carIcon('cubes').replace('width="16" height="16"', 'width="36" height="36"').replace('class="car-ico"', 'class="car-mark"')}
+      <div>
+        <h1>COARSE AGGREGATE REPORT</h1>
+        <div class="car-sub">DELAWARE DEPARTMENT OF TRANSPORTATION | MATERIALS AND RESEARCH LABORATORY</div>
+      </div>
+      <div class="car-meta">
+        <div>AASHTO T-11 / T-27</div>
+        <div>Section ${r18Esc(section)}</div>
+        <div>Form LB-67</div>
+      </div>
+    </div>
+    <div class="car-chips">
+      <div class="car-chip">${carIcon('box')} <span>Size No.: <b>${r18Esc(sizeNo)}</b></span></div>
+      <div class="car-chip">${carIcon('flask')} <span>Lab No.: <b>${show(sample.lab_no || sample.test_no)}</b></span></div>
+      <div class="car-chip">${carIcon('clip')} <span>Test No.: <b>${show(sample.test_no)}</b></span></div>
+      <div class="car-chip">${carIcon('target')} <span>Examined For: <b>${r18Esc(examined)}</b></span></div>
+    </div>
+    <div class="car-grid">
+      <section class="car-card">
+        <div class="car-card-head">${carIcon('box')} MATERIAL INFORMATION</div>
+        ${row('Material:', sample.material_type, 'Stone')}
+        ${row('Sampled At:', sample.sampled_at || sample.location)}
+        ${row('Sampled From:', sample.sampled_from, 'Stockpile')}
+        ${row('Source / Supplied By:', sample.supplied_by || sample.source)}
+        ${row('Contractor:', sample.contractor)}
+        ${row('Testing Lab:', sample.testing_lab, 'Dover')}
+      </section>
+      <section class="car-card">
+        <div class="car-card-head">${carIcon('pin')} SAMPLE DETAILS</div>
+        ${row('Est. Quantity:', sample.est_quantity)}
+        ${row('Examined For:', examined)}
+        ${row('Contract:', sample.contract)}
+        ${row('Supply Location:', sample.supply_location)}
+        ${row('Sampled By:', sample.sampled_by)}
+        ${row('Date Sampled:', sample.date_sampled)}
+        ${row('Date Received:', sample.date_received)}
+        ${row('Date Tested:', sample.date_tested)}
+        ${row('Date Reported:', dateRpt)}
+        ${row('GPS:', sample.gps_coordinates)}
+      </section>
+    </div>
+    <section class="car-sieve">
+      <div class="car-sieve-head"><span>${carIcon('grid')} SIEVE ANALYSIS — AASHTO T-11 / AASHTO T-27</span><span class="car-wt">Wt. of Total Sample: ${r18Esc(calc.total.toFixed(1))} g</span></div>
+      <table class="car-table">
+        <thead><tr><th>SIEVE</th><th>ACCUM. RT. WT. (g)</th><th>% PASSING</th><th>SPECIFICATION</th><th>STATUS</th></tr></thead>
         <tbody>${sieveRows}</tbody>
       </table>
+    </section>
+    <div class="car-split${calc.allPass ? ' pass' : ''}">
+      ${reject}
+      <section class="car-card">
+        <div class="car-remarks-head">${carIcon('chat')} REMARKS</div>
+        <div class="car-remarks-body">
+          <div class="car-remark">${carIcon('pen')} <span>Reported By:</span><b>${show(sample.reported_by, '')}</b></div>
+          <div class="car-remark">${carIcon('user')} <span>Reviewed By:</span><b>${show(sample.reviewed_by, '')}</b></div>
+        </div>
+      </section>
     </div>
-    ${ddRptApproval(conforms, sample.lab_remarks || '', `
-      <div class="r-lbl">Reported By:</div><div class="r-val">${sample.reported_by || ''}</div>
-      <div class="r-lbl">Reviewed By:</div><div class="r-val">${sample.reviewed_by || ''}</div>`)}
-    ${r18ComplianceBlock(r18SoilLabReporter(sample))}
-    ${ddRptSignatures(['Soils Supervisor', 'Geotechnical Engineer'])}
-    ${ddRptFooter(`AASHTO T-11 / T-27 • Section ${spec.section || '1004'}`)}
-  `);
-
-  document.getElementById('lb44Output').innerHTML = reportHTML;
+    ${r18ComplianceBlock(r18SoilLabReporter(sample), { coarse: true })}
+    <div class="car-sigs"><div><i></i><b>SOILS SUPERVISOR</b></div><div><i></i><b>GEOTECHNICAL ENGINEER</b></div></div>
+    <div class="car-foot"><span>AASHTO T-11 / T-27 • Section ${r18Esc(section)}</span><span>Generated: ${ddRptGenerated()}</span></div>
+  </div>`;
+  if (out) out.innerHTML = reportHTML;
 }
 
 
