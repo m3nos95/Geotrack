@@ -37529,7 +37529,7 @@ window.r18_openProcedureModal = (procedureId, equipmentId) => {
             <option value="">No custom form</option>
             ${(state.formTemplates || []).filter(t => { if (t.active === false) return false; return !isDedicatedSheetDef(definitionObject(t)); }).map(t => `<option value="${t.id}" ${proc?.formTemplateId === t.id ? 'selected' : ''}>${escapeHtml(t.name)}</option>`).join('')}
           </select>
-          <div class="text-xs ink-2 mt-1">Build sheets under Inventory → Procedure Forms, then choose one here. ${proc?.formTemplateId ? '' : (procedureUsesGlassForm(eq, proc || { name: eq.name }) ? 'Until you choose one, this equipment uses the built-in glass plate sheet.' : (procedureUsesHydrometerForm(eq, proc || { name: eq.name }) ? 'Until you choose one, this equipment uses the built-in hydrometer sheet.' : (procedureUsesGroovingForm(eq, proc || { name: eq.name }) ? 'Until you choose one, this equipment uses the built-in grooving tool sheet.' : (procedureUsesSieveForm(eq, proc || { name: eq.name }) ? 'Until you choose one, this equipment uses the built-in sieve inspection sheet.' : (procedureUsesCaliperForm(eq, proc || { name: eq.name }) ? 'Until you choose one, this equipment uses the built-in caliper sheet.' : 'Until you choose one, the tech gets the short completion screen.')))))}</div>
+          <div class="text-xs ink-2 mt-1">Build sheets under Inventory → Procedure Forms, then choose one here. ${proc?.formTemplateId ? '' : (procedureUsesPycnometerForm(eq, proc || { name: eq.name }) ? 'Until you choose one, this equipment uses the built-in pycnometer sheet.' : (procedureUsesGlassForm(eq, proc || { name: eq.name }) ? 'Until you choose one, this equipment uses the built-in glass plate sheet.' : (procedureUsesHydrometerForm(eq, proc || { name: eq.name }) ? 'Until you choose one, this equipment uses the built-in hydrometer sheet.' : (procedureUsesGroovingForm(eq, proc || { name: eq.name }) ? 'Until you choose one, this equipment uses the built-in grooving tool sheet.' : (procedureUsesSieveForm(eq, proc || { name: eq.name }) ? 'Until you choose one, this equipment uses the built-in sieve inspection sheet.' : (procedureUsesCaliperForm(eq, proc || { name: eq.name }) ? 'Until you choose one, this equipment uses the built-in caliper sheet.' : 'Until you choose one, the tech gets the short completion screen.'))))))}</div>
         </div>
         ${isEdit ? `<div><label class="label">Status</label><select class="select" id="proc-active"><option value="true" ${proc.active !== false ? 'selected' : ''}>Active</option><option value="false" ${proc.active === false ? 'selected' : ''}>Inactive</option></select></div>` : ''}
       </div>
@@ -37601,6 +37601,7 @@ const SIEVE_FORM_ID = 'sieve_inspection';
 const GROOVE_FORM_ID = 'grooving_tool';
 const HYDRO_FORM_ID = 'hydrometer_inspection';
 const GLASS_FORM_ID = 'glass_plate';
+const PYC_FORM_ID = 'pycnometer_calibration';
 let caliperSheetReturn = null;
 function caliperCleanText(value, fallback) {
   const text = String(value == null ? '' : value).replace(/<[^>]+>/g, '').replace(/\s+/g, ' ').trim();
@@ -37826,8 +37827,12 @@ function procedureUsesGlassForm(eq, proc) {
   const hay = [eq && eq.name, eq && eq.nickname, eq && eq.modelNumber, proc && proc.name].join(' ').toLowerCase();
   return /glass\s*plate/.test(hay);
 }
+function procedureUsesPycnometerForm(eq, proc) {
+  const hay = [eq && eq.name, eq && eq.nickname, eq && eq.modelNumber, proc && proc.name].join(' ').toLowerCase();
+  return /pycnometer/.test(hay);
+}
 function isDedicatedSheetDef(def) {
-  return !!(def && (def.formKey === CALIPER_FORM_ID || def.formKey === SIEVE_FORM_ID || def.formKey === GROOVE_FORM_ID || def.formKey === HYDRO_FORM_ID || def.formKey === GLASS_FORM_ID));
+  return !!(def && (def.formKey === CALIPER_FORM_ID || def.formKey === SIEVE_FORM_ID || def.formKey === GROOVE_FORM_ID || def.formKey === HYDRO_FORM_ID || def.formKey === GLASS_FORM_ID || def.formKey === PYC_FORM_ID));
 }
 function procedureDraft(procedureId) {
   const rows = (state.procedureRecords || []).filter(r => {
@@ -38187,8 +38192,8 @@ function performProceduresHtml(eq, procs) {
   const rows = (procs || []).map(p => {
     const due = fmtDateNum(p.nextDueAt) || 'N/A';
     const template = procedureTemplate(p);
-    const draft = procedureDraft(p.id) || sieveDraft(p.id) || grooveDraft(p.id) || hydroDraft(p.id) || glassDraft(p.id) || (template && customDraft(p.id, template.id));
-    const formNote = template ? template.name : (procedureUsesGlassForm(eq, p) ? 'Glass plate' : (procedureUsesHydrometerForm(eq, p) ? 'Hydrometer' : (procedureUsesGroovingForm(eq, p) ? 'Grooving tool' : (procedureUsesSieveForm(eq, p) ? 'Sieve inspection' : (procedureUsesCaliperForm(eq, p) ? 'Caliper sheet' : '')))));
+    const draft = procedureDraft(p.id) || sieveDraft(p.id) || grooveDraft(p.id) || hydroDraft(p.id) || glassDraft(p.id) || pycDraft(p.id) || (template && customDraft(p.id, template.id));
+    const formNote = template ? template.name : (procedureUsesPycnometerForm(eq, p) ? 'Pycnometer' : (procedureUsesGlassForm(eq, p) ? 'Glass plate' : (procedureUsesHydrometerForm(eq, p) ? 'Hydrometer' : (procedureUsesGroovingForm(eq, p) ? 'Grooving tool' : (procedureUsesSieveForm(eq, p) ? 'Sieve inspection' : (procedureUsesCaliperForm(eq, p) ? 'Caliper sheet' : ''))))));
     return '<button type="button" class="r18-perform-row" onclick="r18_openCompleteProcedureModal(\'' + p.id + '\',\'list\')">' +
       '<span class="r18-perform-row-main"><span class="r18-perform-name">' + escapeHtml(p.name) + '</span>' +
       '<span class="r18-perform-due">Due Date: ' + escapeHtml(due) + (formNote ? ' · ' + escapeHtml(formNote) : '') + '</span>' +
@@ -42311,6 +42316,1011 @@ window.r18_saveGlassSheet = async () => {
 };
 
 
+/* ---------- AGGREGATE PYCNOMETER CALIBRATION ---------- */
+let pycSheetReturn = null;
+function defaultPycLabels() {
+  return {
+    documentTitle: 'Document title',
+    date: 'Calibration date',
+    nextDue: 'Next due',
+    inspector: 'Inspector',
+    approved: 'Approved by',
+    approvedDate: 'Date approved',
+    thermometer: 'Thermometer',
+    purpose: 'Purpose',
+    scope: 'Scope',
+    method: 'Calibration method',
+    procedure: 'Procedure',
+    log: 'Pycnometer calibration log',
+    responsibilities: 'Responsibilities',
+    frequency: 'Frequency',
+    references: 'References',
+    notes: 'Notes',
+  };
+}
+function defaultPycColumns() {
+  return {
+    number: 'Pycnometer #',
+    empty: 'Empty weight (A, g)',
+    filled: 'Water-filled weight (B, g)',
+    capacity: 'Water capacity (B \u2212 A, g)',
+    temp: 'Water temperature (\u00b0C)',
+    t20: '20\u00b0',
+    t21: '21\u00b0',
+    t22: '22\u00b0',
+    t23: '23\u00b0',
+    accept: 'Accept',
+  };
+}
+function defaultPycSections() {
+  return [
+    { id: 'prep', heading: 'Preparation', steps: [
+      'Clean off debris, dust, and residue.',
+      'Dry the pycnometer and its lid. Make sure they are not damaged or distorted.',
+    ] },
+    { id: 'steps', heading: 'Calibration', steps: [
+      'Weigh the empty, dry pycnometer with its lid on a calibrated balance. Record weight A, in grams.',
+      'Fill it with room-temperature distilled water. Do not trap air. Let the water settle at the stated temperature (for example 23\u00b0C).',
+      'Weigh the pycnometer full of water, with the lid. Record weight B, in grams.',
+      'Record the water temperature in the matching column (20, 21, 22, or 23\u00b0C) so density can be corrected (AASHTO T 84).',
+      'Water capacity (g) = B \u2212 A.',
+      'Check the seal. There should be no leaks or air bubbles while filling and weighing.',
+    ] },
+    { id: 'accept', heading: 'Acceptance', steps: [
+      'Pass only if the water capacity is within the manufacturer tolerance or AASHTO T 84, and there are no leaks, air bubbles, or visible damage.',
+      'Reject a pycnometer that fails and flag it for repair or replacement.',
+    ] },
+    { id: 'docs', heading: 'Documentation', steps: [
+      'Record the results in the log.',
+      'Note repairs, replacements, or deviations.',
+      'Get supervisor approval.',
+    ] },
+  ];
+}
+function defaultPycRows() {
+  return [{ id: 'r1' }, { id: 'r2' }];
+}
+function defaultPycSheet() {
+  return {
+    formKey: PYC_FORM_ID,
+    title: 'Pycnometer Calibration',
+    subtitle: 'AASHTO T 84',
+    organization: 'Delaware Department of Transportation \u2013 Materials and Research Section, Dover',
+    documentTitle: 'Annual aggregate pycnometer calibration',
+    purpose: 'Annual calibration of aggregate pycnometers used for specific gravity and absorption of fine or coarse aggregate (AASHTO T 84).',
+    scope: 'All aggregate pycnometers in this lab for specific gravity and absorption, including fine aggregate.',
+    method: 'Weigh the pycnometer empty and filled with water on a calibrated balance.\nTake the readings at room temperature (20\u201325\u00b0C) and record the water temperature.\nCheck the capacity and the seal with distilled water.',
+    responsibilities: 'Calibrator: calibrate, measure, and record.\nSupervisor: review and approve the log.',
+    frequency: 'Calibrate annually, or sooner if AASHTO T 84 or lab policy requires it.',
+    references: 'AASHTO T 84, Specific Gravity and Absorption of Fine Aggregate.',
+    notesPrompt: 'Replace or repair any pycnometer that fails. Note pycnometers removed from service or added below. Use distilled water at 20\u201325\u00b0C and correct the density for the water temperature (AASHTO T 84).',
+    labels: defaultPycLabels(),
+    columns: defaultPycColumns(),
+    sections: defaultPycSections(),
+    rows: defaultPycRows(),
+  };
+}
+function normalizePycText(value, fallback) {
+  if (value == null) return fallback;
+  return String(value).replace(/<[^>]+>/g, '').trim();
+}
+function normalizePycLabels(raw) {
+  const base = defaultPycLabels();
+  const src = raw && typeof raw === 'object' ? raw : {};
+  const out = {};
+  Object.keys(base).forEach(key => { out[key] = caliperCleanText(src[key], base[key]); });
+  return out;
+}
+function normalizePycColumns(raw) {
+  const base = defaultPycColumns();
+  const src = raw && typeof raw === 'object' ? raw : {};
+  const out = {};
+  Object.keys(base).forEach(key => { out[key] = caliperCleanText(src[key], base[key]); });
+  return out;
+}
+function normalizePycSections(raw) {
+  const base = defaultPycSections();
+  if (!Array.isArray(raw) || !raw.length) return base;
+  const seen = {};
+  const list = [];
+  raw.slice(0, 8).forEach((item, index) => {
+    let id = caliperToken(item && item.id, 'sec' + (index + 1));
+    while (seen[id]) id = id + 'x';
+    seen[id] = true;
+    const steps = Array.isArray(item && item.steps) ? item.steps.map(step => String(step).replace(/<[^>]+>/g, '').trim()).filter(Boolean).slice(0, 12) : [];
+    if (!steps.length) return;
+    list.push({ id: id, heading: caliperCleanText(item && item.heading, 'Section ' + (index + 1)), steps: steps });
+  });
+  return list.length ? list : base;
+}
+function normalizePycRows(raw) {
+  const base = defaultPycRows();
+  if (!Array.isArray(raw) || !raw.length) return base;
+  const seen = {};
+  const list = [];
+  raw.slice(0, 24).forEach((item, index) => {
+    let id = caliperToken(item && item.id, 'r' + (index + 1));
+    while (seen[id]) id = id + 'x';
+    seen[id] = true;
+    list.push({ id: id });
+  });
+  return list.length ? list : base;
+}
+function normalizePycSheet(raw) {
+  const base = defaultPycSheet();
+  const src = raw || {};
+  return {
+    formKey: PYC_FORM_ID,
+    title: caliperCleanText(src.title, base.title),
+    subtitle: caliperCleanText(src.subtitle, base.subtitle),
+    organization: caliperCleanText(src.organization, base.organization),
+    documentTitle: caliperCleanText(src.documentTitle, base.documentTitle),
+    purpose: normalizePycText(src.purpose, base.purpose),
+    scope: normalizePycText(src.scope, base.scope),
+    method: normalizePycText(src.method, base.method),
+    responsibilities: normalizePycText(src.responsibilities, base.responsibilities),
+    frequency: normalizePycText(src.frequency, base.frequency),
+    references: normalizePycText(src.references, base.references),
+    notesPrompt: normalizePycText(src.notesPrompt, base.notesPrompt),
+    labels: normalizePycLabels(src.labels),
+    columns: normalizePycColumns(src.columns),
+    sections: normalizePycSections(src.sections),
+    rows: normalizePycRows(src.rows),
+  };
+}
+function pycTemplateRecord() {
+  return (state.formTemplates || []).find(t => {
+    const def = definitionObject(t);
+    return def && def.formKey === PYC_FORM_ID;
+  }) || null;
+}
+function pycSheetDefinition() {
+  const saved = pycTemplateRecord();
+  const def = saved ? definitionObject(saved) : null;
+  if (def && def.formKey === PYC_FORM_ID) return normalizePycSheet(def);
+  return defaultPycSheet();
+}
+function sheetForPyc(data) {
+  if (data && data.sheet && Array.isArray(data.sheet.rows) && data.sheet.rows.length) return normalizePycSheet(data.sheet);
+  return pycSheetDefinition();
+}
+function pycDraft(procedureId) {
+  const rows = (state.procedureRecords || []).filter(r => {
+    const bag = formBag(r);
+    return r && r.procedureId === procedureId && bag.formId === PYC_FORM_ID && bag.status === 'draft';
+  });
+  rows.sort((a, b) => String(b.updatedAt || b.completedAt || '').localeCompare(String(a.updatedAt || a.completedAt || '')));
+  return rows[0] || null;
+}
+function blankPycRow() {
+  return { number: '', empty: '', filled: '', capacity: '', t20: '', t21: '', t22: '', t23: '', accept: '' };
+}
+function pycDefaults(eq, proc, sheet) {
+  const today = todayInput();
+  const next = proc && proc.frequencyValue
+    ? addFrequency(today + 'T12:00:00', proc.frequencyValue, proc.frequencyUnit).slice(0, 10)
+    : (isoDay(proc && proc.nextDueAt) || '');
+  const rows = {};
+  ((sheet && sheet.rows) || defaultPycRows()).forEach(row => { rows[row.id] = blankPycRow(); });
+  return {
+    date: today,
+    nextDue: next,
+    inspector: viewerName(),
+    approvedBy: '',
+    approvedDate: '',
+    thermometer: '',
+    notes: '',
+    rows: rows,
+  };
+}
+function pycDataFrom(raw, eq, proc, sheet) {
+  const active = sheet || pycSheetDefinition();
+  const base = pycDefaults(eq, proc, active);
+  const src = raw || {};
+  const rows = {};
+  (active.rows || []).forEach(def => {
+    rows[def.id] = Object.assign(blankPycRow(), (src.rows && src.rows[def.id]) || {});
+  });
+  return Object.assign(base, src, { rows: rows });
+}
+function pycNumber(value) {
+  const text = String(value == null ? '' : value).trim();
+  if (!text) return null;
+  if (!/^[+-]?\d+(\.\d+)?$/.test(text)) return null;
+  const n = Number(text);
+  return Number.isFinite(n) ? n : null;
+}
+function pycCapacity(row) {
+  const a = pycNumber(row && row.empty);
+  const b = pycNumber(row && row.filled);
+  if (a == null || b == null) return '';
+  const n = Math.round((b - a) * 1000) / 1000;
+  return String(n);
+}
+function pycTempKeys() {
+  return ['t20', 't21', 't22', 't23'];
+}
+function pycParagraph(label, text) {
+  const body = String(text || '').split(/\n/).map(line => '<p>' + escapeHtml(line) + '</p>').join('');
+  return '<div class="r18-paper-h">' + escapeHtml(label) + '</div><div class="r18-note">' + body + '</div>';
+}
+function pycBullets(label, text) {
+  const items = String(text || '').split(/\n/).map(line => line.trim()).filter(Boolean);
+  return '<div class="r18-paper-h">' + escapeHtml(label) + '</div><ul class="r18-paper-steps r18-sieve-steps">' +
+    items.map(line => '<li>' + escapeHtml(line) + '</li>').join('') + '</ul>';
+}
+function pycSectionsHtml(sheet) {
+  const items = (sheet.sections || []).map(section =>
+    '<li><strong>' + escapeHtml(section.heading) + '</strong><ul class="r18-paper-steps r18-sieve-steps">' +
+    (section.steps || []).map(step => '<li>' + escapeHtml(step) + '</li>').join('') + '</ul></li>'
+  ).join('');
+  return '<div class="r18-paper-h">' + escapeHtml(sheet.labels.procedure) + '</div><ol class="r18-paper-steps">' + items + '</ol>';
+}
+function pycCell(id, value, readonly, key, type) {
+  if (readonly) {
+    const shown = type === 'date' ? (fmtDateNum(value) || value || '') : (value || '');
+    return escapeHtml(shown);
+  }
+  const hook = ' oninput="r18_pycCheckRow(this)"';
+  return '<input class="r18-cell-input" id="' + id + '" data-pyc-key="' + key + '" type="' + type + '" value="' + escapeHtml(value || '') + '" autocomplete="off"' + hook + ' />';
+}
+function pycAccept(id, value, readonly) {
+  if (readonly) return escapeHtml(value || '');
+  const opt = (v, label) => '<option value="' + v + '"' + (value === v ? ' selected' : '') + '>' + label + '</option>';
+  return '<select class="r18-cell-select" id="' + id + '" data-pyc-key="accept" onchange="r18_pycCheckRow(this)">' + opt('', '\u2014') + opt('P', 'P') + opt('F', 'F') + '</select>';
+}
+function pycTableHtml(sheet, data, readonly) {
+  const cols = sheet.columns;
+  let body = '';
+  (sheet.rows || []).forEach(def => {
+    const row = (data.rows && data.rows[def.id]) || blankPycRow();
+    const id = (key) => 'py-' + def.id + '-' + key;
+    const cap = pycCapacity(row) || row.capacity || '';
+    const capCell = readonly
+      ? escapeHtml(cap)
+      : '<span id="py-cap-' + escapeHtml(def.id) + '">' + escapeHtml(cap) + '</span>';
+    body += '<tr data-pyc-row="' + escapeHtml(def.id) + '">' +
+      '<td>' + pycCell(id('number'), row.number, readonly, 'number', 'text') + '</td>' +
+      '<td>' + pycCell(id('empty'), row.empty, readonly, 'empty', 'text') + '</td>' +
+      '<td>' + pycCell(id('filled'), row.filled, readonly, 'filled', 'text') + '</td>' +
+      '<td>' + capCell + '</td>' +
+      '<td>' + pycCell(id('t20'), row.t20, readonly, 't20', 'text') + '</td>' +
+      '<td>' + pycCell(id('t21'), row.t21, readonly, 't21', 'text') + '</td>' +
+      '<td>' + pycCell(id('t22'), row.t22, readonly, 't22', 'text') + '</td>' +
+      '<td>' + pycCell(id('t23'), row.t23, readonly, 't23', 'text') + '</td>' +
+      '<td>' + pycAccept(id('accept'), row.accept, readonly) + '</td></tr>';
+  });
+  const head = '<tr><th rowspan="2">' + escapeHtml(cols.number) + '</th><th rowspan="2">' + escapeHtml(cols.empty) + '</th><th rowspan="2">' + escapeHtml(cols.filled) + '</th><th rowspan="2">' + escapeHtml(cols.capacity) + '</th><th colspan="4">' + escapeHtml(cols.temp) + '</th><th rowspan="2">' + escapeHtml(cols.accept) + '</th></tr>' +
+    '<tr><th>' + escapeHtml(cols.t20) + '</th><th>' + escapeHtml(cols.t21) + '</th><th>' + escapeHtml(cols.t22) + '</th><th>' + escapeHtml(cols.t23) + '</th></tr>';
+  return '<div class="r18-paper-h">' + escapeHtml(sheet.labels.log) + '</div><div class="text-xs ink-3 mb-2">Water capacity (g) = B \u2212 A. Mark Accept when the capacity is within the manufacturer tolerance or AASHTO T 84 and the pycnometer has no leaks, air bubbles, or damage.</div><div class="r18-cal-table-wrap"><table class="r18-cal-table"><thead>' + head + '</thead><tbody>' + body + '</tbody></table></div>';
+}
+function pycFormHtml(eq, proc, data, opts) {
+  const readonly = !!(opts && opts.readonly);
+  const back = (opts && opts.back) || 'equipment';
+  const recordId = (opts && opts.recordId) || '';
+  const sheet = sheetForPyc(data);
+  const labels = sheet.labels;
+  const result = readonly ? (data.result || '') : '';
+  const leave = "r18_leavePycForm('" + (eq && eq.id ? eq.id : '') + "','" + back + "')";
+  const notes = readonly
+    ? '<div class="r18-paper-value" style="min-height:48px;white-space:pre-wrap;">' + escapeHtml(data.notes || '\u2014') + '</div>'
+    : '<textarea class="r18-paper-area" id="py-notes">' + escapeHtml(data.notes || '') + '</textarea>';
+  const approve = readonly && !data.approvedBy
+    ? '<div class="r18-form-actions"><label class="r18-paper-field" style="min-width:220px"><span>' + escapeHtml(labels.approved) + '</span><input class="r18-paper-input" id="py-approve-name" value="' + escapeHtml(viewerName()) + '" autocomplete="off" /></label><button type="button" class="btn btn-primary" onclick="r18_approvePycRecord(\'' + recordId + '\')">Approve</button></div>'
+    : '';
+  const actions = readonly
+    ? ''
+    : (opts && opts.editing
+      ? '<div class="r18-form-actions"><button type="button" class="btn btn-primary" id="py-save-complete" onclick="r18_savePycForm(\'complete\')">Save changes</button></div>'
+      : '<div class="r18-form-actions"><button type="button" class="btn btn-ghost" id="py-save-progress" onclick="r18_savePycForm(\'draft\')">Save Progress</button><button type="button" class="btn btn-primary" id="py-save-complete" onclick="r18_savePycForm(\'complete\')">Save and Complete</button></div>');
+  return '<div class="p-5" id="r18-pyc-form" data-procedure-id="' + escapeHtml(proc && proc.id) + '" data-record-id="' + escapeHtml(recordId) + '" data-readonly="' + (readonly ? '1' : '0') + '" data-back="' + escapeHtml(back) + '">' +
+    '<div class="r18-form-top"><div><div class="r18-form-kicker">Calibration Procedure</div><h2 class="text-xl serif font-semibold ink">' + escapeHtml(sheet.title) + (result ? ' \u00b7 ' + escapeHtml(result) : '') + '</h2><div class="text-sm ink-2">' + escapeHtml((eq && eq.name) || '') + '</div></div>' +
+    '<div class="flex gap-2 flex-wrap"><button type="button" class="btn btn-ghost" id="py-export-pdf" onclick="r18_exportPycPdf()">Export PDF</button>' +
+    (readonly && recordId ? '<button type="button" class="btn btn-primary" onclick="r18_editPycRecord(\'' + recordId + '\')">Edit</button>' : '') +
+    '<button type="button" class="btn btn-ghost" onclick="r18_editPycSheet()">Edit form</button>' +
+    '<button type="button" class="btn btn-ghost" onclick="' + leave + '">Close</button></div></div>' +
+    '<div class="r18-perform-layout">' + caliperSideHtml(eq, proc) + '<div><div class="r18-paper" id="py-paper">' +
+    '<div class="r18-paper-title" id="py-paper-title">' + escapeHtml(sheet.title) + '</div>' +
+    '<div class="r18-paper-sub">' + escapeHtml(sheet.subtitle) + '</div>' +
+    '<div class="r18-paper-sub">' + escapeHtml(sheet.organization) + '</div>' +
+    '<div class="r18-paper-sub" style="margin-bottom:12px">' + escapeHtml(sheet.documentTitle) + '</div>' +
+    '<div class="r18-paper-grid">' +
+    paperField(labels.date, 'py-date', data.date, 'date', readonly) +
+    paperField(labels.nextDue, 'py-next', data.nextDue, 'date', readonly) +
+    paperField(labels.inspector, 'py-inspector', data.inspector, 'text', readonly) +
+    paperField(labels.approved, 'py-approved', data.approvedBy, 'text', readonly) +
+    paperField(labels.approvedDate, 'py-approved-date', data.approvedDate, 'date', readonly) +
+    paperField(labels.thermometer, 'py-thermometer', data.thermometer, 'text', readonly) + '</div>' +
+    pycParagraph(labels.purpose, sheet.purpose) +
+    pycParagraph(labels.scope, sheet.scope) +
+    pycBullets(labels.method, sheet.method) +
+    pycSectionsHtml(sheet) +
+    pycTableHtml(sheet, data, readonly) +
+    pycBullets(labels.responsibilities, sheet.responsibilities) +
+    pycBullets(labels.frequency, sheet.frequency) +
+    pycBullets(labels.references, sheet.references) +
+    '<div class="r18-paper-h">' + escapeHtml(labels.notes) + '</div><div class="text-xs ink-3 mb-2">' + escapeHtml(sheet.notesPrompt) + '</div>' + notes +
+    '</div>' + actions + approve + '</div></div>' +
+    '<textarea id="r18-pyc-data" hidden readonly>' + JSON.stringify(data).replace(/</g, '\\u003c') + '</textarea></div>';
+}
+function openPycForm(proc, eq, back, record, options) {
+  const editing = !!(options && options.editing);
+  const source = record || pycDraft(proc.id);
+  const bag = source ? formBag(source) : null;
+  const complete = !!(bag && bag.status === 'complete');
+  const sheet = normalizePycSheet((complete && bag && bag.sheet) ? bag.sheet : (complete ? null : pycSheetDefinition()));
+  const data = pycDataFrom(bag, eq, proc, sheet);
+  if (source && source.result) data.result = source.result;
+  data.sheet = sheet;
+  showModal(pycFormHtml(eq, proc, data, { back: back, recordId: source ? source.id : '', readonly: complete && !editing, editing: complete && editing }), {
+    form: true,
+    lock: true,
+    onMount: () => {
+      const root = document.getElementById('r18-pyc-form');
+      if (root && document.getElementById('py-inspector')) root._initial = JSON.stringify(readPycForm());
+    },
+  });
+}
+function readPycForm() {
+  const v = (id) => {
+    const el = document.getElementById(id);
+    return el ? String(el.value || '').trim() : '';
+  };
+  const rows = {};
+  document.querySelectorAll('#r18-pyc-form [data-pyc-row]').forEach(tr => {
+    const id = tr.getAttribute('data-pyc-row');
+    const row = blankPycRow();
+    tr.querySelectorAll('[data-pyc-key]').forEach(el => { row[el.getAttribute('data-pyc-key')] = String(el.value || '').trim(); });
+    row.capacity = pycCapacity(row);
+    rows[id] = row;
+  });
+  return {
+    date: v('py-date'),
+    nextDue: v('py-next'),
+    inspector: v('py-inspector'),
+    approvedBy: v('py-approved'),
+    approvedDate: v('py-approved-date'),
+    thermometer: v('py-thermometer'),
+    notes: v('py-notes'),
+    rows: rows,
+  };
+}
+function pycRowStarted(row) {
+  return !!(row && (row.number || row.empty || row.filled || row.t20 || row.t21 || row.t22 || row.t23 || row.accept));
+}
+function pycRowTemps(row) {
+  return pycTempKeys().filter(key => row && String(row[key] || '').trim());
+}
+function pycCompleteError(data) {
+  const sheet = data.sheet ? normalizePycSheet(data.sheet) : pycSheetDefinition();
+  if (!data.inspector) return 'Enter the inspector.';
+  if (!data.date) return 'Enter the calibration date.';
+  if (!data.nextDue) return 'Enter the next due date.';
+  if (!String(data.thermometer || '').trim()) return 'Enter the thermometer used.';
+  let any = false;
+  const defs = sheet.rows || [];
+  for (let i = 0; i < defs.length; i++) {
+    const row = (data.rows || {})[defs[i].id] || {};
+    const line = 'line ' + (i + 1);
+    if (!pycRowStarted(row)) continue;
+    if (!row.number) return 'Enter the pycnometer number for ' + line + '.';
+    if (!row.empty) return 'Enter empty weight A for ' + line + '.';
+    if (pycNumber(row.empty) == null) return 'Enter a number for empty weight A on ' + line + '.';
+    if (!row.filled) return 'Enter water-filled weight B for ' + line + '.';
+    if (pycNumber(row.filled) == null) return 'Enter a number for water-filled weight B on ' + line + '.';
+    if (!pycRowTemps(row).length) return 'Record the water temperature in the 20, 21, 22, or 23 degree column for ' + line + '.';
+    if (row.accept !== 'P' && row.accept !== 'F') return 'Mark Accept Pass or Fail for ' + line + '.';
+    any = true;
+  }
+  if (!any) return 'Enter at least one pycnometer.';
+  return '';
+}
+function pycHasEntry(data) {
+  if (data.inspector || data.thermometer || data.notes) return true;
+  const sheet = data.sheet ? normalizePycSheet(data.sheet) : pycSheetDefinition();
+  return (sheet.rows || []).some(def => pycRowStarted((data.rows || {})[def.id]));
+}
+function pycResult(data) {
+  const sheet = data && data.sheet ? normalizePycSheet(data.sheet) : pycSheetDefinition();
+  for (const def of sheet.rows || []) {
+    const row = (data.rows || {})[def.id] || {};
+    if (!pycRowStarted(row)) continue;
+    if (row.accept === 'F') return 'fail';
+  }
+  return 'pass';
+}
+function currentPycDataFromStore() {
+  const stored = document.getElementById('r18-pyc-data');
+  if (!stored) return null;
+  try { return JSON.parse(stored.value || stored.textContent); } catch (e) { return null; }
+}
+function currentPycData() {
+  if (document.getElementById('py-inspector')) {
+    const live = readPycForm();
+    const stored = currentPycDataFromStore();
+    if (stored && stored.sheet) live.sheet = stored.sheet;
+    return live;
+  }
+  return currentPycDataFromStore();
+}
+window.r18_pycCheckRow = (el) => {
+  const tr = el && el.closest ? el.closest('[data-pyc-row]') : null;
+  if (!tr) return;
+  const id = tr.getAttribute('data-pyc-row');
+  const row = blankPycRow();
+  tr.querySelectorAll('[data-pyc-key]').forEach(input => { row[input.getAttribute('data-pyc-key')] = String(input.value || '').trim(); });
+  const cell = document.getElementById('py-cap-' + id);
+  if (cell) cell.textContent = pycCapacity(row);
+};
+function pycPdfName(data) {
+  const day = (data && (data.date || data.nextDue)) || todayInput();
+  return 'Pycnometer-Calibration-' + day + '.pdf';
+}
+function writePycPdf(data) {
+  const doc = new window.jspdf.jsPDF({ unit: 'in', format: 'letter', orientation: 'landscape' });
+  const left = 0.4;
+  const width = 10.2;
+  let y = 0.42;
+  const ensure = (need) => {
+    if (y + need <= 7.6) return;
+    doc.addPage();
+    y = 0.42;
+  };
+  const sheet = sheetForPyc(data);
+  const labels = sheet.labels;
+  const center = (text, size) => {
+    doc.setFont('times', 'bold');
+    doc.setFontSize(size);
+    const lines = doc.splitTextToSize(pdfSafe(text) || ' ', width);
+    ensure(lines.length * 0.18 + 0.04);
+    doc.text(lines, left + width / 2, y, { align: 'center' });
+    y += lines.length * 0.16 + 0.04;
+  };
+  const block = (heading, text, bullet) => {
+    ensure(0.22);
+    doc.setFont('times', 'bold');
+    doc.setFontSize(11);
+    doc.text(pdfSafe(heading) || ' ', left, y);
+    y += 0.16;
+    doc.setFont('times', 'normal');
+    doc.setFontSize(9);
+    String(text || '').split(/\n/).map(line => line.trim()).filter(Boolean).forEach(line => {
+      const lines = doc.splitTextToSize((bullet ? '\u2022 ' : '') + pdfSafe(line), width);
+      ensure(lines.length * 0.14 + 0.02);
+      doc.text(lines, left, y);
+      y += lines.length * 0.14 + 0.02;
+    });
+    y += 0.03;
+  };
+  center(sheet.title, 14);
+  center(sheet.subtitle, 11);
+  center(sheet.organization, 10);
+  center(sheet.documentTitle, 11);
+  ensure(0.34);
+  doc.setFont('times', 'normal');
+  doc.setFontSize(10);
+  doc.text(pdfSafe(labels.date) + ': ' + pdfSafe(fmtDateNum(data.date) || data.date) + '    ' + pdfSafe(labels.nextDue) + ': ' + pdfSafe(fmtDateNum(data.nextDue) || data.nextDue) + '    ' + pdfSafe(labels.inspector) + ': ' + pdfSafe(data.inspector), left, y);
+  y += 0.18;
+  doc.text(pdfSafe(labels.approved) + ': ' + pdfSafe(data.approvedBy) + '    ' + pdfSafe(labels.approvedDate) + ': ' + pdfSafe(fmtDateNum(data.approvedDate) || data.approvedDate) + '    ' + pdfSafe(labels.thermometer) + ': ' + pdfSafe(data.thermometer), left, y);
+  y += 0.2;
+  block(labels.purpose, sheet.purpose, false);
+  block(labels.scope, sheet.scope, false);
+  block(labels.method, sheet.method, true);
+  ensure(0.2);
+  doc.setFont('times', 'bold');
+  doc.setFontSize(11);
+  doc.text(pdfSafe(labels.procedure), left, y);
+  y += 0.16;
+  (sheet.sections || []).forEach((section, index) => {
+    ensure(0.18);
+    doc.setFont('times', 'bold');
+    doc.setFontSize(10);
+    doc.text((index + 1) + '. ' + pdfSafe(section.heading), left, y);
+    y += 0.14;
+    doc.setFont('times', 'normal');
+    doc.setFontSize(9);
+    (section.steps || []).forEach(step => {
+      const lines = doc.splitTextToSize('\u2022 ' + pdfSafe(step), width - 0.2);
+      ensure(lines.length * 0.13 + 0.02);
+      doc.text(lines, left + 0.16, y);
+      y += lines.length * 0.13 + 0.02;
+    });
+  });
+  y += 0.06;
+  ensure(0.2);
+  doc.setFont('times', 'bold');
+  doc.setFontSize(11);
+  doc.text(pdfSafe(labels.log), left, y);
+  y += 0.16;
+  const headers = [sheet.columns.number, 'A (g)', 'B (g)', 'B \u2212 A', sheet.columns.t20, sheet.columns.t21, sheet.columns.t22, sheet.columns.t23, sheet.columns.accept];
+  const cols = [1.35, 1.05, 1.05, 1.05, 0.85, 0.85, 0.85, 0.85, 0.9];
+  const paintRow = (cells, header) => {
+    const rowH = header ? 0.32 : 0.24;
+    ensure(rowH);
+    let x = left;
+    doc.setFont('times', header ? 'bold' : 'normal');
+    doc.setFontSize(header ? 8 : 8);
+    cells.forEach((cell, index) => {
+      doc.rect(x, y, cols[index], rowH);
+      const lines = doc.splitTextToSize(pdfSafe(cell), cols[index] - 0.06);
+      doc.text(lines.slice(0, 2), x + cols[index] / 2, y + 0.14, { align: 'center' });
+      x += cols[index];
+    });
+    y += rowH;
+  };
+  paintRow(headers, true);
+  (sheet.rows || []).forEach(def => {
+    const row = (data.rows && data.rows[def.id]) || {};
+    paintRow([
+      row.number || '',
+      row.empty || '',
+      row.filled || '',
+      pycCapacity(row) || row.capacity || '',
+      row.t20 || '',
+      row.t21 || '',
+      row.t22 || '',
+      row.t23 || '',
+      row.accept || '',
+    ], false);
+  });
+  y += 0.08;
+  block(labels.responsibilities, sheet.responsibilities, true);
+  block(labels.frequency, sheet.frequency, true);
+  block(labels.references, sheet.references, true);
+  block(labels.notes, sheet.notesPrompt, false);
+  ensure(0.4);
+  doc.setFont('times', 'normal');
+  doc.setFontSize(10);
+  const noteLines = doc.splitTextToSize(pdfSafe(data.notes) || ' ', width - 0.12);
+  const noteH = Math.max(0.4, noteLines.length * 0.15 + 0.12);
+  ensure(noteH);
+  doc.rect(left, y, width, noteH);
+  if (data.notes) doc.text(noteLines, left + 0.06, y + 0.16);
+  return doc;
+}
+window.r18_leavePycForm = (equipmentId, back) => {
+  const root = document.getElementById('r18-pyc-form');
+  const dirty = root && root.dataset.readonly !== '1' && root._initial && JSON.stringify(readPycForm()) !== root._initial;
+  if (dirty && !confirm('Leave this calibration without saving?')) return;
+  if (back === 'list' && equipmentId) window.r18_openPerformProcedures(equipmentId);
+  else if (equipmentId) window.r18_openEquipmentDetail(equipmentId);
+  else closeModal();
+};
+window.r18_savePycForm = async (mode) => {
+  const root = document.getElementById('r18-pyc-form');
+  if (!root) return;
+  const proc = state.procedures.find(p => p.id === root.dataset.procedureId);
+  if (!proc) return;
+  const eq = equipmentById(proc.equipmentId);
+  const data = readPycForm();
+  data.sheet = sheetForPyc(currentPycDataFromStore());
+  if (mode === 'complete') {
+    const err = pycCompleteError(data);
+    if (err) return toast(err);
+  } else if (!pycHasEntry(data)) {
+    return toast('Enter the inspector or a weight before saving progress.');
+  }
+  const day = data.date || todayInput();
+  const completedAt = new Date(day + 'T12:00:00').toISOString();
+  const nextDueAt = data.nextDue
+    ? new Date(data.nextDue + 'T12:00:00').toISOString()
+    : addFrequency(completedAt, proc.frequencyValue, proc.frequencyUnit);
+  const result = mode === 'complete' ? pycResult(data) : null;
+  const previous = (state.procedureRecords || []).find(r => r.id === root.dataset.recordId);
+  const record = {
+    id: root.dataset.recordId || uuid(),
+    labId: state.currentLabId || proc.labId,
+    equipmentId: proc.equipmentId,
+    procedureId: proc.id,
+    completedAt: completedAt,
+    completedBy: data.inspector,
+    result: result,
+    notes: data.notes,
+    certificateNumber: '',
+    formData: Object.assign({ formId: PYC_FORM_ID, status: mode === 'complete' ? 'complete' : 'draft', revision: 'pycnometer' }, data),
+    nextDueAt: nextDueAt,
+    createdAt: previous && previous.createdAt,
+  };
+  const btn = document.getElementById(mode === 'complete' ? 'py-save-complete' : 'py-save-progress');
+  if (btn) btn.disabled = true;
+  try {
+    if (!db) throw new Error('Connect Supabase before saving this calibration.');
+    await repo.put('procedure_records', calibrationRecordPayload(record));
+  } catch (e) {
+    if (btn) btn.disabled = false;
+    console.error(e);
+    toast(saveFailureText(e));
+    return;
+  }
+  root.dataset.recordId = record.id;
+  upsertById(state.procedureRecords, record);
+  if (mode !== 'complete') {
+    root._initial = JSON.stringify(readPycForm());
+    if (btn) btn.disabled = false;
+    toast('Progress saved in the lab database.');
+    return;
+  }
+  let scheduleSaved = true;
+  try {
+    await repo.put('procedures', procedureSchedulePayload(proc, completedAt, nextDueAt));
+    if (proc.procedureType === 'calibration' && eq) await repo.put('equipment', equipmentCalibrationPayload(eq, completedAt, nextDueAt));
+  } catch (e) {
+    scheduleSaved = false;
+    console.error(e);
+  }
+  upsertById(state.procedures, Object.assign({}, proc, { lastCompletedAt: completedAt, nextDueAt: nextDueAt }));
+  if (proc.procedureType === 'calibration' && eq) upsertById(state.equipment, Object.assign({}, eq, { lastCalibration: completedAt, nextCalibration: nextDueAt }));
+  try { await refreshAll(); } catch (e) { console.warn(e); }
+  renderView();
+  window.r18_openEquipmentDetail(proc.equipmentId);
+  toast(scheduleSaved
+    ? (result === 'fail' ? 'Saved in the lab database as a fail. Replace or repair the pycnometers that failed.' : 'Saved in the lab database. Next due ' + (fmtDateNum(data.nextDue) || fmtDateShort(nextDueAt)))
+    : 'The sheet is in the lab database. The next due date could not be updated.');
+};
+window.r18_editPycRecord = (recordId) => {
+  const record = (state.procedureRecords || []).find(r => r.id === recordId);
+  if (!record) return;
+  const proc = state.procedures.find(p => p.id === record.procedureId);
+  const eq = equipmentById(record.equipmentId) || {};
+  if (!proc) return toast('This procedure is no longer on the equipment.');
+  openPycForm(proc, eq, 'equipment', record, { editing: true });
+};
+window.r18_approvePycRecord = async (recordId) => {
+  const record = (state.procedureRecords || []).find(r => r.id === recordId);
+  if (!record) return;
+  const input = document.getElementById('py-approve-name');
+  const name = input ? input.value.trim() : '';
+  if (!name) return toast('Enter who approved this calibration.');
+  const bag = Object.assign({}, formBag(record), { approvedBy: name, approvedDate: todayInput() });
+  const next = Object.assign({}, record, { formData: bag });
+  try {
+    if (!db) throw new Error('Connect Supabase before saving this calibration.');
+    await repo.put('procedure_records', calibrationRecordPayload(next));
+  } catch (e) {
+    console.error(e);
+    toast('Could not save the approval.');
+    return;
+  }
+  upsertById(state.procedureRecords, next);
+  window.r18_openProcedureRecordDetail(record.id);
+  toast('Approval saved.');
+};
+window.r18_exportPycPdf = async () => {
+  const data = currentPycData();
+  if (!data) return;
+  const btn = document.getElementById('py-export-pdf');
+  if (!window.jspdf || typeof window.jspdf.jsPDF !== 'function') return toast('PDF export is still loading. Try again in a moment.');
+  if (btn) btn.disabled = true;
+  try {
+    writePycPdf(data).save(pycPdfName(data));
+    toast('PDF downloaded.');
+  } catch (e) {
+    console.error(e);
+    toast('Could not create the PDF.');
+  } finally {
+    if (btn) btn.disabled = false;
+  }
+};
+function pycFormLibraryCard() {
+  const saved = pycTemplateRecord();
+  const sheet = pycSheetDefinition();
+  return '<div class="card mt-4"><div class="px-4 py-3 flex justify-between gap-3 flex-wrap items-start">' +
+    '<div><div class="text-sm font-medium ink">Pycnometer calibration</div>' +
+    '<div class="text-xs ink-2">' + escapeHtml(sheet.title) + ' \u00b7 ' + sheet.rows.length + ' lines' + (saved ? ' \u00b7 saved for this lab' : ' \u00b7 DelDOT wording') + '</div>' +
+    '<div class="text-xs ink-3 mt-1">A pycnometer opens this sheet. Edit the whole form when the paper changes. A signed calibration stays on the sheet it was signed with.</div></div>' +
+    '<button type="button" class="btn btn-ghost text-xs" onclick="r18_editPycSheet()">Edit form</button></div></div>';
+}
+function pycEditorValue(id) {
+  const el = document.getElementById(id);
+  return el ? String(el.value || '') : '';
+}
+function setPycEditorValue(id, value) {
+  const el = document.getElementById(id);
+  if (el) el.value = value == null ? '' : String(value);
+}
+function pycEditorLabel(id, caption, value) {
+  return '<label class="grow"><div class="text-xs font-medium ink-2 mb-1">' + escapeHtml(caption) + '</div><input class="input w-full" id="' + id + '" value="' + escapeHtml(value || '') + '"></label>';
+}
+function paintPycSheetEditor(sheet) {
+  const sections = document.getElementById('r18-pyc-sections');
+  if (sections) {
+    sections.innerHTML = (sheet.sections || []).map((section, index) => {
+      const steps = (section.steps || []).map((step, stepIndex) =>
+        '<div class="r18-fb-top mt-2"><label class="grow"><textarea class="input w-full py-step" rows="2">' + escapeHtml(step) + '</textarea></label>' +
+        '<button type="button" class="btn btn-ghost text-xs" onclick="r18_movePycStep(' + index + ',' + stepIndex + ',-1)">Up</button>' +
+        '<button type="button" class="btn btn-ghost text-xs" onclick="r18_movePycStep(' + index + ',' + stepIndex + ',1)">Down</button>' +
+        '<button type="button" class="btn btn-ghost text-xs" onclick="r18_removePycStep(' + index + ',' + stepIndex + ')">Remove</button></div>'
+      ).join('');
+      return '<div class="r18-fb-field py-section"><div class="r18-fb-top"><label class="grow"><div class="text-xs font-medium ink-2 mb-1">Procedure section</div><input class="input w-full py-section-heading" value="' + escapeHtml(section.heading || '') + '"></label>' +
+        '<button type="button" class="btn btn-ghost text-xs" onclick="r18_movePycSection(' + index + ',-1)">Up</button>' +
+        '<button type="button" class="btn btn-ghost text-xs" onclick="r18_movePycSection(' + index + ',1)">Down</button>' +
+        '<button type="button" class="btn btn-ghost text-xs" onclick="r18_removePycSection(' + index + ')">Remove</button></div>' +
+        steps + '<button type="button" class="btn btn-ghost text-xs mt-2" onclick="r18_addPycStep(' + index + ')">+ Add step</button>' +
+        '<input type="hidden" class="py-section-id" value="' + escapeHtml(section.id || '') + '"></div>';
+    }).join('');
+  }
+  const rows = document.getElementById('r18-pyc-rows');
+  if (rows) {
+    rows.innerHTML = (sheet.rows || []).map((row, index) =>
+      '<div class="r18-fb-field py-line"><div class="r18-fb-top"><div class="grow text-sm ink">Pycnometer line ' + (index + 1) + '</div>' +
+      '<button type="button" class="btn btn-ghost text-xs" onclick="r18_movePycRow(' + index + ',-1)">Up</button>' +
+      '<button type="button" class="btn btn-ghost text-xs" onclick="r18_movePycRow(' + index + ',1)">Down</button>' +
+      '<button type="button" class="btn btn-ghost text-xs" onclick="r18_removePycRow(' + index + ')">Remove</button></div>' +
+      '<input type="hidden" class="py-line-id" value="' + escapeHtml(row.id || '') + '"></div>'
+    ).join('');
+  }
+}
+function readPycSheetEditor() {
+  const sections = [];
+  document.querySelectorAll('#r18-pyc-sections .py-section').forEach(el => {
+    const steps = [];
+    el.querySelectorAll('.py-step').forEach(step => steps.push(step.value));
+    sections.push({
+      id: (el.querySelector('.py-section-id') || {}).value || '',
+      heading: (el.querySelector('.py-section-heading') || {}).value || '',
+      steps: steps,
+    });
+  });
+  const rows = [];
+  document.querySelectorAll('#r18-pyc-rows .py-line').forEach(el => {
+    rows.push({ id: (el.querySelector('.py-line-id') || {}).value || '' });
+  });
+  const label = (id) => pycEditorValue(id).trim();
+  return {
+    formKey: PYC_FORM_ID,
+    title: pycEditorValue('py-sheet-title'),
+    subtitle: pycEditorValue('py-sheet-sub'),
+    organization: pycEditorValue('py-sheet-org'),
+    documentTitle: pycEditorValue('py-sheet-doc'),
+    purpose: pycEditorValue('py-purpose'),
+    scope: pycEditorValue('py-scope'),
+    method: pycEditorValue('py-method'),
+    responsibilities: pycEditorValue('py-responsibilities'),
+    frequency: pycEditorValue('py-frequency'),
+    references: pycEditorValue('py-references'),
+    notesPrompt: pycEditorValue('py-notes-prompt'),
+    labels: {
+      documentTitle: label('py-lab-doc'),
+      date: label('py-lab-date'),
+      nextDue: label('py-lab-next'),
+      inspector: label('py-lab-inspector'),
+      approved: label('py-lab-approved'),
+      approvedDate: label('py-lab-approved-date'),
+      thermometer: label('py-lab-thermometer'),
+      purpose: label('py-lab-purpose'),
+      scope: label('py-lab-scope'),
+      method: label('py-lab-method'),
+      procedure: label('py-lab-procedure'),
+      log: label('py-lab-log'),
+      responsibilities: label('py-lab-responsibilities'),
+      frequency: label('py-lab-frequency'),
+      references: label('py-lab-references'),
+      notes: label('py-lab-notes'),
+    },
+    columns: {
+      number: label('py-col-number'),
+      empty: label('py-col-empty'),
+      filled: label('py-col-filled'),
+      capacity: label('py-col-capacity'),
+      temp: label('py-col-temp'),
+      t20: label('py-col-t20'),
+      t21: label('py-col-t21'),
+      t22: label('py-col-t22'),
+      t23: label('py-col-t23'),
+      accept: label('py-col-accept'),
+    },
+    sections: sections,
+    rows: rows,
+  };
+}
+function pycSheetEditorHtml(sheet) {
+  const labels = sheet.labels;
+  const cols = sheet.columns;
+  const area = (id, caption, value) => '<div class="r18-fb-field"><div class="text-xs font-medium ink-2 mb-1">' + escapeHtml(caption) + '</div><textarea class="input w-full" id="' + id + '" rows="3">' + escapeHtml(value || '') + '</textarea></div>';
+  return '<div class="p-5" id="r18-pyc-editor"><div class="r18-form-top"><div><div class="r18-form-kicker">Pycnometer sheet</div>' +
+    '<h2 class="text-xl serif font-semibold ink">Edit form</h2>' +
+    '<div class="text-sm ink-2">This changes the whole sheet the next time a pycnometer is calibrated. A signed calibration stays on the sheet it was signed with.</div></div>' +
+    '<div class="flex gap-2 flex-wrap"><button type="button" class="btn btn-ghost" onclick="r18_restorePycSheet()">Restore DelDOT wording</button>' +
+    '<button type="button" class="btn btn-ghost" onclick="r18_closePycSheetEditor()">Close</button></div></div>' +
+    '<div class="r18-fb-field"><div class="text-xs font-medium ink-2 mb-1">Title on the sheet</div><input class="input w-full" id="py-sheet-title" value="' + escapeHtml(sheet.title) + '"></div>' +
+    '<div class="r18-fb-field"><div class="r18-fb-top">' + pycEditorLabel('py-sheet-sub', 'Subtitle', sheet.subtitle) + pycEditorLabel('py-sheet-org', 'Organization line', sheet.organization) + '</div></div>' +
+    '<div class="r18-fb-field"><div class="r18-fb-top">' + pycEditorLabel('py-lab-doc', 'Document title label', labels.documentTitle) + pycEditorLabel('py-sheet-doc', 'Document title', sheet.documentTitle) + '</div></div>' +
+    '<div class="text-sm font-medium ink mt-4">Header</div>' +
+    '<div class="r18-fb-field"><div class="r18-fb-top">' + pycEditorLabel('py-lab-date', 'Calibration date', labels.date) + pycEditorLabel('py-lab-next', 'Next due', labels.nextDue) + pycEditorLabel('py-lab-inspector', 'Inspector', labels.inspector) + '</div></div>' +
+    '<div class="r18-fb-field"><div class="r18-fb-top">' + pycEditorLabel('py-lab-approved', 'Approved by', labels.approved) + pycEditorLabel('py-lab-approved-date', 'Date approved', labels.approvedDate) + pycEditorLabel('py-lab-thermometer', 'Thermometer', labels.thermometer) + '</div></div>' +
+    '<div class="r18-fb-field"><div class="r18-fb-top">' + pycEditorLabel('py-lab-purpose', 'Purpose heading', labels.purpose) + pycEditorLabel('py-lab-scope', 'Scope heading', labels.scope) + pycEditorLabel('py-lab-method', 'Method heading', labels.method) + '</div></div>' +
+    area('py-purpose', 'Purpose', sheet.purpose) +
+    area('py-scope', 'Scope', sheet.scope) +
+    area('py-method', 'Calibration method, one line per bullet', sheet.method) +
+    '<div class="text-sm font-medium ink mt-4">Procedure</div>' +
+    '<div class="r18-fb-field"><div class="r18-fb-top">' + pycEditorLabel('py-lab-procedure', 'Procedure heading', labels.procedure) + '</div></div>' +
+    '<div id="r18-pyc-sections"></div>' +
+    '<button type="button" class="btn btn-ghost text-xs mt-2" onclick="r18_addPycSection()">+ Add section</button>' +
+    '<div class="text-sm font-medium ink mt-4">Calibration log</div>' +
+    '<div class="r18-fb-field"><div class="r18-fb-top">' + pycEditorLabel('py-lab-log', 'Log heading', labels.log) + pycEditorLabel('py-col-number', 'Pycnometer number', cols.number) + '</div></div>' +
+    '<div class="r18-fb-field"><div class="r18-fb-top">' + pycEditorLabel('py-col-empty', 'Empty weight A', cols.empty) + pycEditorLabel('py-col-filled', 'Water-filled weight B', cols.filled) + pycEditorLabel('py-col-capacity', 'Water capacity', cols.capacity) + '</div></div>' +
+    '<div class="r18-fb-field"><div class="r18-fb-top">' + pycEditorLabel('py-col-temp', 'Temperature group', cols.temp) + pycEditorLabel('py-col-t20', '20 degree column', cols.t20) + pycEditorLabel('py-col-t21', '21 degree column', cols.t21) + pycEditorLabel('py-col-t22', '22 degree column', cols.t22) + pycEditorLabel('py-col-t23', '23 degree column', cols.t23) + '</div></div>' +
+    '<div class="r18-fb-field"><div class="r18-fb-top">' + pycEditorLabel('py-col-accept', 'Accept', cols.accept) + '</div></div>' +
+    '<div id="r18-pyc-rows"></div>' +
+    '<button type="button" class="btn btn-ghost text-xs mt-2" onclick="r18_addPycRow()">+ Add pycnometer line</button>' +
+    '<div class="text-sm font-medium ink mt-4">Closing</div>' +
+    '<div class="r18-fb-field"><div class="r18-fb-top">' + pycEditorLabel('py-lab-responsibilities', 'Responsibilities heading', labels.responsibilities) + pycEditorLabel('py-lab-frequency', 'Frequency heading', labels.frequency) + pycEditorLabel('py-lab-references', 'References heading', labels.references) + pycEditorLabel('py-lab-notes', 'Notes heading', labels.notes) + '</div></div>' +
+    area('py-responsibilities', 'Responsibilities, one line per bullet', sheet.responsibilities) +
+    area('py-frequency', 'Frequency', sheet.frequency) +
+    area('py-references', 'References', sheet.references) +
+    area('py-notes-prompt', 'Sentence above the notes', sheet.notesPrompt) +
+    '<div class="r18-form-actions"><button type="button" class="btn btn-primary" onclick="r18_savePycSheet()">Save form</button></div></div>';
+}
+window.r18_editPycSheet = () => {
+  const open = document.getElementById('r18-pyc-form');
+  if (open) {
+    const dirty = open.dataset.readonly !== '1' && open._initial && JSON.stringify(readPycForm()) !== open._initial;
+    if (dirty && !confirm('Leave this calibration and edit the form? Readings on this screen will be kept only if you saved them.')) return;
+    pycSheetReturn = { procedureId: open.dataset.procedureId || '', recordId: open.dataset.recordId || '', back: open.dataset.back || '' };
+  } else pycSheetReturn = null;
+  const sheet = pycSheetDefinition();
+  showModal(pycSheetEditorHtml(sheet), { wide: true, sheet: true, onMount: () => paintPycSheetEditor(sheet) });
+};
+window.r18_addPycSection = () => {
+  const draft = readPycSheetEditor();
+  if (draft.sections.length >= 8) return toast('This sheet holds eight procedure sections.');
+  draft.sections.push({ id: 'sec' + (draft.sections.length + 1), heading: 'Section', steps: [''] });
+  paintPycSheetEditor(draft);
+};
+window.r18_removePycSection = (index) => {
+  const draft = readPycSheetEditor();
+  if (draft.sections.length <= 1) return toast('Keep at least one procedure section.');
+  draft.sections.splice(index, 1);
+  paintPycSheetEditor(draft);
+};
+window.r18_movePycSection = (index, dir) => {
+  const draft = readPycSheetEditor();
+  if (sieveEditorListMove(draft.sections, index, dir)) paintPycSheetEditor(draft);
+};
+window.r18_addPycStep = (index) => {
+  const draft = readPycSheetEditor();
+  const section = draft.sections[index];
+  if (!section) return;
+  if (section.steps.length >= 12) return toast('This section holds twelve steps.');
+  section.steps.push('');
+  paintPycSheetEditor(draft);
+};
+window.r18_removePycStep = (index, stepIndex) => {
+  const draft = readPycSheetEditor();
+  const section = draft.sections[index];
+  if (!section) return;
+  if (section.steps.length <= 1) return toast('Keep at least one step in this section.');
+  section.steps.splice(stepIndex, 1);
+  paintPycSheetEditor(draft);
+};
+window.r18_movePycStep = (index, stepIndex, dir) => {
+  const draft = readPycSheetEditor();
+  const section = draft.sections[index];
+  if (section && sieveEditorListMove(section.steps, stepIndex, dir)) paintPycSheetEditor(draft);
+};
+window.r18_addPycRow = () => {
+  const draft = readPycSheetEditor();
+  if (draft.rows.length >= 24) return toast('This sheet holds 24 pycnometer lines.');
+  const used = {};
+  draft.rows.forEach(row => { used[row.id] = true; });
+  let n = draft.rows.length + 1;
+  while (used['r' + n]) n += 1;
+  draft.rows.push({ id: 'r' + n });
+  paintPycSheetEditor(draft);
+};
+window.r18_removePycRow = (index) => {
+  const draft = readPycSheetEditor();
+  if (draft.rows.length <= 1) return toast('Keep at least one pycnometer line.');
+  draft.rows.splice(index, 1);
+  paintPycSheetEditor(draft);
+};
+window.r18_movePycRow = (index, dir) => {
+  const draft = readPycSheetEditor();
+  if (sieveEditorListMove(draft.rows, index, dir)) paintPycSheetEditor(draft);
+};
+window.r18_restorePycSheet = () => {
+  const sheet = defaultPycSheet();
+  const labels = sheet.labels;
+  const cols = sheet.columns;
+  setPycEditorValue('py-sheet-title', sheet.title);
+  setPycEditorValue('py-sheet-sub', sheet.subtitle);
+  setPycEditorValue('py-sheet-org', sheet.organization);
+  setPycEditorValue('py-sheet-doc', sheet.documentTitle);
+  setPycEditorValue('py-purpose', sheet.purpose);
+  setPycEditorValue('py-scope', sheet.scope);
+  setPycEditorValue('py-method', sheet.method);
+  setPycEditorValue('py-responsibilities', sheet.responsibilities);
+  setPycEditorValue('py-frequency', sheet.frequency);
+  setPycEditorValue('py-references', sheet.references);
+  setPycEditorValue('py-notes-prompt', sheet.notesPrompt);
+  setPycEditorValue('py-lab-doc', labels.documentTitle);
+  setPycEditorValue('py-lab-date', labels.date);
+  setPycEditorValue('py-lab-next', labels.nextDue);
+  setPycEditorValue('py-lab-inspector', labels.inspector);
+  setPycEditorValue('py-lab-approved', labels.approved);
+  setPycEditorValue('py-lab-approved-date', labels.approvedDate);
+  setPycEditorValue('py-lab-thermometer', labels.thermometer);
+  setPycEditorValue('py-lab-purpose', labels.purpose);
+  setPycEditorValue('py-lab-scope', labels.scope);
+  setPycEditorValue('py-lab-method', labels.method);
+  setPycEditorValue('py-lab-procedure', labels.procedure);
+  setPycEditorValue('py-lab-log', labels.log);
+  setPycEditorValue('py-lab-responsibilities', labels.responsibilities);
+  setPycEditorValue('py-lab-frequency', labels.frequency);
+  setPycEditorValue('py-lab-references', labels.references);
+  setPycEditorValue('py-lab-notes', labels.notes);
+  setPycEditorValue('py-col-number', cols.number);
+  setPycEditorValue('py-col-empty', cols.empty);
+  setPycEditorValue('py-col-filled', cols.filled);
+  setPycEditorValue('py-col-capacity', cols.capacity);
+  setPycEditorValue('py-col-temp', cols.temp);
+  setPycEditorValue('py-col-t20', cols.t20);
+  setPycEditorValue('py-col-t21', cols.t21);
+  setPycEditorValue('py-col-t22', cols.t22);
+  setPycEditorValue('py-col-t23', cols.t23);
+  setPycEditorValue('py-col-accept', cols.accept);
+  paintPycSheetEditor(sheet);
+  toast('DelDOT wording is back in the editor. Save form to use it.');
+};
+window.r18_closePycSheetEditor = () => {
+  const back = pycSheetReturn;
+  pycSheetReturn = null;
+  if (back && back.recordId) window.r18_openProcedureRecordDetail(back.recordId);
+  else if (back && back.procedureId) window.r18_openCompleteProcedureModal(back.procedureId, back.back);
+  else closeModal();
+};
+window.r18_savePycSheet = async () => {
+  const draft = readPycSheetEditor();
+  const sections = (draft.sections || []).map(section => Object.assign({}, section, {
+    steps: (section.steps || []).map(step => String(step).trim()).filter(Boolean),
+  })).filter(section => section.steps.length);
+  if (!String(draft.title || '').trim()) return toast('Enter the title on the sheet.');
+  if (!sections.length) return toast('Add at least one procedure step.');
+  if (!draft.rows.length) return toast('Add at least one pycnometer line.');
+  if (!state.currentLabId) return toast('Choose a lab first.');
+  const existing = pycTemplateRecord();
+  const sheet = normalizePycSheet(Object.assign({}, draft, { sections: sections }));
+  const row = {
+    id: existing ? existing.id : uuid(),
+    labId: state.currentLabId,
+    name: 'Pycnometer calibration',
+    definition: sheet,
+    active: true,
+  };
+  if (existing && existing.createdAt) row.createdAt = existing.createdAt;
+  try {
+    if (!db) throw new Error('Connect Supabase before saving this form.');
+    await repo.put('form_templates', row);
+    upsertById(state.formTemplates, row);
+    state.customFormsReady = true;
+    state.customFormsSchemaError = '';
+  } catch (e) {
+    const raw = String((e && (e.message || e.details)) || '');
+    const text = saveFailureText(e);
+    if (/form_templates|schema cache|relation|does not exist/i.test(raw + ' ' + text)) {
+      state.customFormsReady = false;
+      state.customFormsSchemaError = text;
+      toast('The lab database needs the procedure-forms update before this sheet can be saved. Inventory, Procedure Forms has the one-time SQL.');
+      return;
+    }
+    return toast('Could not save the form. ' + text);
+  }
+  try { await refreshAll(); } catch (e) { console.warn(e); }
+  if (!pycTemplateRecord()) upsertById(state.formTemplates, row);
+  toast('Pycnometer form saved');
+  const back = pycSheetReturn;
+  pycSheetReturn = null;
+  if (back && back.recordId) window.r18_openProcedureRecordDetail(back.recordId);
+  else if (back && back.procedureId) window.r18_openCompleteProcedureModal(back.procedureId, back.back);
+  else {
+    closeModal();
+    state.currentTab = 'inventory';
+    state.inventorySubTab = 'procedure_forms';
+    renderView();
+  }
+};
+
+
 /* ---------- CUSTOM PROCEDURE FORMS ---------- */
 let customFormSession = null;
 const CUSTOM_FIELD_TYPES = ['text', 'number', 'date', 'longtext', 'yesno', 'passfail', 'section', 'note', 'table'];
@@ -42451,6 +43461,7 @@ function procedureFormLabel(proc) {
   const template = procedureTemplate(proc);
   if (template) return template.name;
   const eq = equipmentById(proc && proc.equipmentId);
+  if (procedureUsesPycnometerForm(eq, proc)) return 'Pycnometer';
   if (procedureUsesGlassForm(eq, proc)) return 'Glass plate';
   if (procedureUsesHydrometerForm(eq, proc)) return 'Hydrometer';
   if (procedureUsesGroovingForm(eq, proc)) return 'Grooving tool';
@@ -42628,7 +43639,7 @@ function renderProcedureFormsHtml() {
         : '<div class="text-xs ink-2 mt-2">Add a procedure on a piece of equipment, then come back and attach this form.</div>') +
       '</div>';
   }).join('');
-  return caliperFormLibraryCard() + sieveFormLibraryCard() + grooveFormLibraryCard() + hydroFormLibraryCard() + glassFormLibraryCard() + '<div class="card mt-4"><div class="px-4 py-3 border-b border-line-2 flex justify-between items-center gap-3 flex-wrap">' +
+  return caliperFormLibraryCard() + sieveFormLibraryCard() + grooveFormLibraryCard() + hydroFormLibraryCard() + glassFormLibraryCard() + pycFormLibraryCard() + '<div class="card mt-4"><div class="px-4 py-3 border-b border-line-2 flex justify-between items-center gap-3 flex-wrap">' +
     '<div><div class="text-sm font-semibold ink">Procedure forms (' + forms.length + ')</div>' +
     '<div class="text-xs ink-2">Build a sheet once, attach it to any procedure, and Perform Procedure opens it for the tech.</div></div>' +
     '<button type="button" class="btn btn-primary text-xs" onclick="r18_openFormBuilder()">+ New form</button></div>' +
@@ -42766,6 +43777,7 @@ window.r18_openFormBuilder = (id) => {
   if (existingDef && existingDef.formKey === GROOVE_FORM_ID) return window.r18_editGrooveSheet();
   if (existingDef && existingDef.formKey === HYDRO_FORM_ID) return window.r18_editHydroSheet();
   if (existingDef && existingDef.formKey === GLASS_FORM_ID) return window.r18_editGlassSheet();
+  if (existingDef && existingDef.formKey === PYC_FORM_ID) return window.r18_editPycSheet();
   const def = existing ? templateDefinition(existing) : { title: '', footer: '', fields: defaultCustomFields() };
   paintFormBuilder({
     id: existing ? existing.id : '',
@@ -43820,10 +44832,15 @@ window.r18_openCompleteProcedureModal = (procedureId, back) => {
   const linkedGroove = !!(linkedDef && linkedDef.formKey === GROOVE_FORM_ID);
   const linkedHydro = !!(linkedDef && linkedDef.formKey === HYDRO_FORM_ID);
   const linkedGlass = !!(linkedDef && linkedDef.formKey === GLASS_FORM_ID);
-  if (proc.formTemplateId && !template && !linkedCaliper && !linkedSieve && !linkedGroove && !linkedHydro && !linkedGlass) {
+  const linkedPyc = !!(linkedDef && linkedDef.formKey === PYC_FORM_ID);
+  if (proc.formTemplateId && !template && !linkedCaliper && !linkedSieve && !linkedGroove && !linkedHydro && !linkedGlass && !linkedPyc) {
     toast('The form on this procedure is no longer available. Attach another under Inventory → Procedure Forms.');
   } else if (template) {
     openCustomForm(proc, eq || {}, back || 'equipment', customDraft(proc.id, template.id), {});
+    return;
+  }
+  if (procedureUsesPycnometerForm(eq, proc) || linkedPyc) {
+    openPycForm(proc, eq || {}, back || 'equipment');
     return;
   }
   if (procedureUsesGlassForm(eq, proc) || linkedGlass) {
@@ -43925,6 +44942,18 @@ window.r18_openProcedureRecordDetail = (recordId) => {
   const bag = formBag(r);
   const proc = state.procedures.find(p => p.id === r.procedureId);
   const eq = equipmentById(r.equipmentId);
+  if (bag.formId === PYC_FORM_ID && bag.status === 'draft') {
+    if (proc) openPycForm(proc, eq || {}, 'equipment');
+    return;
+  }
+  if (bag.formId === PYC_FORM_ID) {
+    const sheet = bag.sheet ? normalizePycSheet(bag.sheet) : defaultPycSheet();
+    const data = pycDataFrom(bag, eq, proc, sheet);
+    data.result = r.result || '';
+    data.sheet = sheet;
+    showModal(pycFormHtml(eq || {}, proc || { id: r.procedureId, name: 'Pycnometer Calibration' }, data, { readonly: true, recordId: r.id, back: 'equipment' }), { form: true, lock: true });
+    return;
+  }
   if (bag.formId === GLASS_FORM_ID && bag.status === 'draft') {
     if (proc) openGlassForm(proc, eq || {}, 'equipment');
     return;
