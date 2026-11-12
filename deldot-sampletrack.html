@@ -37529,7 +37529,7 @@ window.r18_openProcedureModal = (procedureId, equipmentId) => {
             <option value="">No custom form</option>
             ${(state.formTemplates || []).filter(t => { if (t.active === false) return false; return !isDedicatedSheetDef(definitionObject(t)); }).map(t => `<option value="${t.id}" ${proc?.formTemplateId === t.id ? 'selected' : ''}>${escapeHtml(t.name)}</option>`).join('')}
           </select>
-          <div class="text-xs ink-2 mt-1">Build sheets under Inventory → Procedure Forms, then choose one here. ${proc?.formTemplateId ? '' : (procedureUsesGroovingForm(eq, proc || { name: eq.name }) ? 'Until you choose one, this equipment uses the built-in grooving tool sheet.' : (procedureUsesSieveForm(eq, proc || { name: eq.name }) ? 'Until you choose one, this equipment uses the built-in sieve inspection sheet.' : (procedureUsesCaliperForm(eq, proc || { name: eq.name }) ? 'Until you choose one, this equipment uses the built-in caliper sheet.' : 'Until you choose one, the tech gets the short completion screen.')))}</div>
+          <div class="text-xs ink-2 mt-1">Build sheets under Inventory → Procedure Forms, then choose one here. ${proc?.formTemplateId ? '' : (procedureUsesHydrometerForm(eq, proc || { name: eq.name }) ? 'Until you choose one, this equipment uses the built-in hydrometer sheet.' : (procedureUsesGroovingForm(eq, proc || { name: eq.name }) ? 'Until you choose one, this equipment uses the built-in grooving tool sheet.' : (procedureUsesSieveForm(eq, proc || { name: eq.name }) ? 'Until you choose one, this equipment uses the built-in sieve inspection sheet.' : (procedureUsesCaliperForm(eq, proc || { name: eq.name }) ? 'Until you choose one, this equipment uses the built-in caliper sheet.' : 'Until you choose one, the tech gets the short completion screen.'))))}</div>
         </div>
         ${isEdit ? `<div><label class="label">Status</label><select class="select" id="proc-active"><option value="true" ${proc.active !== false ? 'selected' : ''}>Active</option><option value="false" ${proc.active === false ? 'selected' : ''}>Inactive</option></select></div>` : ''}
       </div>
@@ -37599,6 +37599,7 @@ window.r18_deleteProcedure = async (id, equipmentId) => {
 const CALIPER_FORM_ID = 'caliper_calibration';
 const SIEVE_FORM_ID = 'sieve_inspection';
 const GROOVE_FORM_ID = 'grooving_tool';
+const HYDRO_FORM_ID = 'hydrometer_inspection';
 let caliperSheetReturn = null;
 function caliperCleanText(value, fallback) {
   const text = String(value == null ? '' : value).replace(/<[^>]+>/g, '').replace(/\s+/g, ' ').trim();
@@ -37816,8 +37817,12 @@ function procedureUsesGroovingForm(eq, proc) {
   const hay = [eq && eq.name, eq && eq.nickname, eq && eq.modelNumber, proc && proc.name].join(' ').toLowerCase();
   return /groov/.test(hay);
 }
+function procedureUsesHydrometerForm(eq, proc) {
+  const hay = [eq && eq.name, eq && eq.nickname, eq && eq.modelNumber, proc && proc.name].join(' ').toLowerCase();
+  return /hydrometer/.test(hay);
+}
 function isDedicatedSheetDef(def) {
-  return !!(def && (def.formKey === CALIPER_FORM_ID || def.formKey === SIEVE_FORM_ID || def.formKey === GROOVE_FORM_ID));
+  return !!(def && (def.formKey === CALIPER_FORM_ID || def.formKey === SIEVE_FORM_ID || def.formKey === GROOVE_FORM_ID || def.formKey === HYDRO_FORM_ID));
 }
 function procedureDraft(procedureId) {
   const rows = (state.procedureRecords || []).filter(r => {
@@ -38177,8 +38182,8 @@ function performProceduresHtml(eq, procs) {
   const rows = (procs || []).map(p => {
     const due = fmtDateNum(p.nextDueAt) || 'N/A';
     const template = procedureTemplate(p);
-    const draft = procedureDraft(p.id) || sieveDraft(p.id) || grooveDraft(p.id) || (template && customDraft(p.id, template.id));
-    const formNote = template ? template.name : (procedureUsesGroovingForm(eq, p) ? 'Grooving tool' : (procedureUsesSieveForm(eq, p) ? 'Sieve inspection' : (procedureUsesCaliperForm(eq, p) ? 'Caliper sheet' : '')));
+    const draft = procedureDraft(p.id) || sieveDraft(p.id) || grooveDraft(p.id) || hydroDraft(p.id) || (template && customDraft(p.id, template.id));
+    const formNote = template ? template.name : (procedureUsesHydrometerForm(eq, p) ? 'Hydrometer' : (procedureUsesGroovingForm(eq, p) ? 'Grooving tool' : (procedureUsesSieveForm(eq, p) ? 'Sieve inspection' : (procedureUsesCaliperForm(eq, p) ? 'Caliper sheet' : ''))));
     return '<button type="button" class="r18-perform-row" onclick="r18_openCompleteProcedureModal(\'' + p.id + '\',\'list\')">' +
       '<span class="r18-perform-row-main"><span class="r18-perform-name">' + escapeHtml(p.name) + '</span>' +
       '<span class="r18-perform-due">Due Date: ' + escapeHtml(due) + (formNote ? ' · ' + escapeHtml(formNote) : '') + '</span>' +
@@ -40325,6 +40330,939 @@ window.r18_saveGrooveSheet = async () => {
 };
 
 
+/* ---------- HYDROMETER VERIFICATION ---------- */
+let hydroSheetReturn = null;
+function defaultHydroLabels() {
+  return {
+    documentTitle: 'Document Title',
+    date: 'Date',
+    nextDue: 'Next Due',
+    inspector: 'Inspector/Verifier',
+    approved: 'Approved By',
+    approvedDate: 'Date Approved',
+    purpose: 'Purpose',
+    scope: 'Scope',
+    method: 'Verification Method',
+    procedure: 'Procedure',
+    log: 'Hydrometer Verification Log',
+    frequency: 'Frequency',
+    signature: 'Signature',
+  };
+}
+function defaultHydroColumns() {
+  return {
+    number: 'Hydrometer #',
+    stem: 'Stem Length (mm)',
+    bulb: 'Bulb Diameter (mm)',
+    dia: 'Stem Diameter (mm)',
+    pf: 'Pass/Fail',
+  };
+}
+function defaultHydroSections() {
+  return [
+    { id: 'prep', heading: 'Preparation:', note: '', steps: [
+      'Clean the hydrometer thoroughly to remove any debris, dust, or residue that may affect verification accuracy.',
+      'Ensure the hydrometer is dry and free from damage or distortion.',
+    ] },
+    { id: 'steps', heading: 'Verification Steps:', note: '', steps: [
+      'Measure the total length of the stem (A), bulb diameter (B), and stem diameter (C) using calipers or a ruler.',
+      'Record measurements in the table below.',
+    ] },
+    { id: 'accept', heading: 'Acceptance Criteria:', note: 'Reject hydrometers that fail these criteria and flag for repair or replacement.', steps: [
+      'The effective length and dimensions are within manufacturer-specified tolerances or meet AASHTO T 88 requirements.',
+      'No visible damage, cracks, or etching on graduations.',
+      'Composite correction within \u00b10.001 specific gravity units.',
+    ] },
+    { id: 'docs', heading: 'Documentation:', note: '', steps: [
+      'Record verification results in the Hydrometer Verification Log below.',
+      'Note any repairs, replacements, or deviations from standards.',
+      'Obtain supervisor approval for verified hydrometers.',
+    ] },
+  ];
+}
+function defaultHydroRows() {
+  return [
+    { id: 'h1', label: '1' },
+    { id: 'h2', label: '2' },
+    { id: 'h3', label: '3' },
+    { id: 'h4', label: '4' },
+    { id: 'h5', label: '5' },
+  ];
+}
+function defaultHydroSheet() {
+  return {
+    formKey: HYDRO_FORM_ID,
+    title: 'HYDROMETER VERIFICATION FORM',
+    subtitle: '(AASHTO T 88 Compliance)',
+    organization: 'Delaware Department of Transportation \u2013 Materials and Research Section, Dover',
+    documentTitle: 'Annual Verification of Hydrometers',
+    purpose: 'This form documents the annual verification and calibration of hydrometers used for particle size analysis of soils, ensuring compliance with AASHTO T 88, as applicable.',
+    scope: 'This form applies to all hydrometers maintained by the Delaware DOT Materials and Research Section for specific gravity and particle size testing.',
+    method: 'Use a calibrated balance to measure the hydrometer\'s effective length and bulb dimensions.\nPerform composite corrections for temperature, meniscus, and dispersing agent as per AASHTO T 88.',
+    frequency: 'Perform this verification annually or as required by AASHTO T 88 and departmental policies.',
+    labels: defaultHydroLabels(),
+    columns: defaultHydroColumns(),
+    sections: defaultHydroSections(),
+    rows: defaultHydroRows(),
+  };
+}
+function normalizeHydroText(value, fallback) {
+  if (value == null) return fallback;
+  return String(value).replace(/<[^>]+>/g, '').trim();
+}
+function normalizeHydroLabels(raw) {
+  const base = defaultHydroLabels();
+  const src = raw && typeof raw === 'object' ? raw : {};
+  const out = {};
+  Object.keys(base).forEach(key => { out[key] = caliperCleanText(src[key], base[key]); });
+  return out;
+}
+function normalizeHydroColumns(raw) {
+  const base = defaultHydroColumns();
+  const src = raw && typeof raw === 'object' ? raw : {};
+  const out = {};
+  Object.keys(base).forEach(key => { out[key] = caliperCleanText(src[key], base[key]); });
+  return out;
+}
+function normalizeHydroSections(raw) {
+  const base = defaultHydroSections();
+  if (!Array.isArray(raw) || !raw.length) return base;
+  const seen = {};
+  const list = [];
+  raw.slice(0, 8).forEach((item, index) => {
+    let id = caliperToken(item && item.id, 'sec' + (index + 1));
+    while (seen[id]) id = id + 'x';
+    seen[id] = true;
+    const steps = Array.isArray(item && item.steps) ? item.steps.map(step => String(step).replace(/<[^>]+>/g, '').trim()).filter(Boolean).slice(0, 12) : [];
+    if (!steps.length) return;
+    list.push({
+      id: id,
+      heading: caliperCleanText(item && item.heading, 'Section ' + (index + 1)),
+      note: String(item && item.note || '').replace(/<[^>]+>/g, '').trim(),
+      steps: steps,
+    });
+  });
+  return list.length ? list : base;
+}
+function normalizeHydroRows(raw) {
+  const base = defaultHydroRows();
+  if (!Array.isArray(raw) || !raw.length) return base;
+  const seen = {};
+  const list = [];
+  raw.slice(0, 24).forEach((item, index) => {
+    let id = caliperToken(item && item.id, 'h' + (index + 1));
+    while (seen[id]) id = id + 'x';
+    seen[id] = true;
+    list.push({ id: id, label: caliperCleanText(item && item.label, String(index + 1)) });
+  });
+  return list.length ? list : base;
+}
+function normalizeHydroSheet(raw) {
+  const base = defaultHydroSheet();
+  const src = raw || {};
+  return {
+    formKey: HYDRO_FORM_ID,
+    title: caliperCleanText(src.title, base.title),
+    subtitle: caliperCleanText(src.subtitle, base.subtitle),
+    organization: caliperCleanText(src.organization, base.organization),
+    documentTitle: caliperCleanText(src.documentTitle, base.documentTitle),
+    purpose: normalizeHydroText(src.purpose, base.purpose),
+    scope: normalizeHydroText(src.scope, base.scope),
+    method: normalizeHydroText(src.method, base.method),
+    frequency: normalizeHydroText(src.frequency, base.frequency),
+    labels: normalizeHydroLabels(src.labels),
+    columns: normalizeHydroColumns(src.columns),
+    sections: normalizeHydroSections(src.sections),
+    rows: normalizeHydroRows(src.rows),
+  };
+}
+function hydroTemplateRecord() {
+  return (state.formTemplates || []).find(t => {
+    const def = definitionObject(t);
+    return def && def.formKey === HYDRO_FORM_ID;
+  }) || null;
+}
+function hydroSheetDefinition() {
+  const saved = hydroTemplateRecord();
+  const def = saved ? definitionObject(saved) : null;
+  if (def && def.formKey === HYDRO_FORM_ID) return normalizeHydroSheet(def);
+  return defaultHydroSheet();
+}
+function sheetForHydro(data) {
+  if (data && data.sheet && Array.isArray(data.sheet.rows) && data.sheet.rows.length) return normalizeHydroSheet(data.sheet);
+  return hydroSheetDefinition();
+}
+function hydroDraft(procedureId) {
+  const rows = (state.procedureRecords || []).filter(r => {
+    const bag = formBag(r);
+    return r && r.procedureId === procedureId && bag.formId === HYDRO_FORM_ID && bag.status === 'draft';
+  });
+  rows.sort((a, b) => String(b.updatedAt || b.completedAt || '').localeCompare(String(a.updatedAt || a.completedAt || '')));
+  return rows[0] || null;
+}
+function blankHydroRow() {
+  return { stem: '', bulb: '', dia: '', pf: '' };
+}
+function hydroDefaults(eq, proc, sheet) {
+  const today = todayInput();
+  const next = proc && proc.frequencyValue
+    ? addFrequency(today + 'T12:00:00', proc.frequencyValue, proc.frequencyUnit).slice(0, 10)
+    : (isoDay(proc && proc.nextDueAt) || '');
+  const rows = {};
+  ((sheet && sheet.rows) || defaultHydroRows()).forEach(row => { rows[row.id] = blankHydroRow(); });
+  return {
+    date: today,
+    nextDue: next,
+    inspector: viewerName(),
+    approvedBy: '',
+    approvedDate: '',
+    signature: '',
+    rows: rows,
+  };
+}
+function hydroDataFrom(raw, eq, proc, sheet) {
+  const active = sheet || hydroSheetDefinition();
+  const base = hydroDefaults(eq, proc, active);
+  const src = raw || {};
+  const rows = {};
+  (active.rows || []).forEach(def => {
+    rows[def.id] = Object.assign(blankHydroRow(), (src.rows && src.rows[def.id]) || {});
+  });
+  return Object.assign(base, src, { rows: rows });
+}
+function hydroParagraph(label, text) {
+  const body = String(text || '').split(/\n/).map(line => '<p>' + escapeHtml(line) + '</p>').join('');
+  return '<div class="r18-paper-h">' + escapeHtml(label) + '</div><div class="r18-note">' + body + '</div>';
+}
+function hydroBullets(label, text) {
+  const items = String(text || '').split(/\n/).map(line => line.trim()).filter(Boolean);
+  return '<div class="r18-paper-h">' + escapeHtml(label) + '</div><ul class="r18-paper-steps r18-sieve-steps">' +
+    items.map(line => '<li>' + escapeHtml(line) + '</li>').join('') + '</ul>';
+}
+function hydroSectionsHtml(sheet) {
+  const items = (sheet.sections || []).map(section => {
+    const steps = '<ul class="r18-paper-steps r18-sieve-steps">' + (section.steps || []).map(step => '<li>' + escapeHtml(step) + '</li>').join('') + '</ul>';
+    const note = section.note ? '<p class="r18-note">' + escapeHtml(section.note) + '</p>' : '';
+    return '<li><strong>' + escapeHtml(section.heading) + '</strong>' + steps + note + '</li>';
+  }).join('');
+  return '<div class="r18-paper-h">' + escapeHtml(sheet.labels.procedure) + '</div><ol class="r18-paper-steps">' + items + '</ol>';
+}
+function hydroPf(id, value, readonly) {
+  if (readonly) return escapeHtml(value || '');
+  const opt = (v, label) => '<option value="' + v + '"' + (value === v ? ' selected' : '') + '>' + label + '</option>';
+  return '<select class="r18-cell-select" id="' + id + '" data-hydro-key="pf">' + opt('', '\u2014') + opt('P', 'P') + opt('F', 'F') + '</select>';
+}
+function hydroCell(id, value, readonly, key) {
+  if (readonly) return escapeHtml(value || '');
+  return '<input class="r18-cell-input" id="' + id + '" data-hydro-key="' + key + '" type="text" value="' + escapeHtml(value || '') + '" autocomplete="off" />';
+}
+function hydroTableHtml(sheet, data, readonly) {
+  const cols = sheet.columns;
+  const body = (sheet.rows || []).map(def => {
+    const row = (data.rows && data.rows[def.id]) || blankHydroRow();
+    const id = (key) => 'hy-' + def.id + '-' + key;
+    return '<tr data-hydro-row="' + escapeHtml(def.id) + '"><td class="r18-row-label">' + escapeHtml(def.label) + '</td>' +
+      '<td>' + hydroCell(id('stem'), row.stem, readonly, 'stem') + '</td>' +
+      '<td>' + hydroCell(id('bulb'), row.bulb, readonly, 'bulb') + '</td>' +
+      '<td>' + hydroCell(id('dia'), row.dia, readonly, 'dia') + '</td>' +
+      '<td>' + hydroPf(id('pf'), row.pf, readonly) + '</td></tr>';
+  }).join('');
+  const head = '<tr><th>' + escapeHtml(cols.number) + '</th><th>' + escapeHtml(cols.stem) + '</th><th>' + escapeHtml(cols.bulb) + '</th><th>' + escapeHtml(cols.dia) + '</th><th>' + escapeHtml(cols.pf) + '</th></tr>';
+  return '<div class="r18-paper-h">' + escapeHtml(sheet.labels.log) + '</div><div class="r18-cal-table-wrap"><table class="r18-cal-table"><thead>' + head + '</thead><tbody>' + body + '</tbody></table></div>';
+}
+function hydroFormHtml(eq, proc, data, opts) {
+  const readonly = !!(opts && opts.readonly);
+  const back = (opts && opts.back) || 'equipment';
+  const recordId = (opts && opts.recordId) || '';
+  const sheet = sheetForHydro(data);
+  const labels = sheet.labels;
+  const result = readonly ? (data.result || '') : '';
+  const leave = "r18_leaveHydroForm('" + (eq && eq.id ? eq.id : '') + "','" + back + "')";
+  const approve = readonly && !data.approvedBy
+    ? '<div class="r18-form-actions"><label class="r18-paper-field" style="min-width:220px"><span>' + escapeHtml(labels.approved) + '</span><input class="r18-paper-input" id="hy-approve-name" value="' + escapeHtml(viewerName()) + '" autocomplete="off" /></label><button type="button" class="btn btn-primary" onclick="r18_approveHydroRecord(\'' + recordId + '\')">Approve</button></div>'
+    : '';
+  const actions = readonly
+    ? ''
+    : (opts && opts.editing
+      ? '<div class="r18-form-actions"><button type="button" class="btn btn-primary" id="hy-save-complete" onclick="r18_saveHydroForm(\'complete\')">Save changes</button></div>'
+      : '<div class="r18-form-actions"><button type="button" class="btn btn-ghost" id="hy-save-progress" onclick="r18_saveHydroForm(\'draft\')">Save Progress</button><button type="button" class="btn btn-primary" id="hy-save-complete" onclick="r18_saveHydroForm(\'complete\')">Save and Complete</button></div>');
+  return '<div class="p-5" id="r18-hydro-form" data-procedure-id="' + escapeHtml(proc && proc.id) + '" data-record-id="' + escapeHtml(recordId) + '" data-readonly="' + (readonly ? '1' : '0') + '" data-back="' + escapeHtml(back) + '">' +
+    '<div class="r18-form-top"><div><div class="r18-form-kicker">Verification Procedure</div><h2 class="text-xl serif font-semibold ink">' + escapeHtml(sheet.title) + (result ? ' \u00b7 ' + escapeHtml(result) : '') + '</h2><div class="text-sm ink-2">' + escapeHtml((eq && eq.name) || '') + '</div></div>' +
+    '<div class="flex gap-2 flex-wrap"><button type="button" class="btn btn-ghost" id="hy-export-pdf" onclick="r18_exportHydroPdf()">Export PDF</button>' +
+    (readonly && recordId ? '<button type="button" class="btn btn-primary" onclick="r18_editHydroRecord(\'' + recordId + '\')">Edit</button>' : '') +
+    '<button type="button" class="btn btn-ghost" onclick="r18_editHydroSheet()">Edit form</button>' +
+    '<button type="button" class="btn btn-ghost" onclick="' + leave + '">Close</button></div></div>' +
+    '<div class="r18-perform-layout">' + caliperSideHtml(eq, proc) + '<div><div class="r18-paper" id="hy-paper">' +
+    '<div class="r18-paper-title" id="hy-paper-title">' + escapeHtml(sheet.title) + '</div>' +
+    '<div class="r18-paper-sub">' + escapeHtml(sheet.subtitle) + '</div>' +
+    '<div class="r18-paper-sub">' + escapeHtml(sheet.organization) + '</div>' +
+    '<div class="r18-paper-sub" style="margin-bottom:12px"><strong>' + escapeHtml(labels.documentTitle) + ':</strong> ' + escapeHtml(sheet.documentTitle) + '</div>' +
+    '<div class="r18-paper-grid">' +
+    paperField(labels.date, 'hy-date', data.date, 'date', readonly) +
+    paperField(labels.nextDue, 'hy-next', data.nextDue, 'date', readonly) +
+    paperField(labels.inspector, 'hy-inspector', data.inspector, 'text', readonly) +
+    paperField(labels.approved, 'hy-approved', data.approvedBy, 'text', readonly) +
+    paperField(labels.approvedDate, 'hy-approved-date', data.approvedDate, 'date', readonly) +
+    '<div></div></div>' +
+    hydroParagraph(labels.purpose, sheet.purpose) +
+    hydroParagraph(labels.scope, sheet.scope) +
+    hydroBullets(labels.method, sheet.method) +
+    hydroSectionsHtml(sheet) +
+    hydroTableHtml(sheet, data, readonly) +
+    hydroBullets(labels.frequency, sheet.frequency) +
+    '<div class="r18-paper-grid" style="margin-top:12px">' + paperField(labels.signature, 'hy-signature', data.signature, 'text', readonly) + '<div></div></div>' +
+    '</div>' + actions + approve + '</div></div>' +
+    '<textarea id="r18-hydro-data" hidden readonly>' + JSON.stringify(data).replace(/</g, '\\u003c') + '</textarea></div>';
+}
+function openHydroForm(proc, eq, back, record, options) {
+  const editing = !!(options && options.editing);
+  const source = record || hydroDraft(proc.id);
+  const bag = source ? formBag(source) : null;
+  const complete = !!(bag && bag.status === 'complete');
+  const sheet = normalizeHydroSheet((complete && bag && bag.sheet) ? bag.sheet : (complete ? null : hydroSheetDefinition()));
+  const data = hydroDataFrom(bag, eq, proc, sheet);
+  if (source && source.result) data.result = source.result;
+  data.sheet = sheet;
+  showModal(hydroFormHtml(eq, proc, data, { back: back, recordId: source ? source.id : '', readonly: complete && !editing, editing: complete && editing }), {
+    form: true,
+    lock: true,
+    onMount: () => {
+      const root = document.getElementById('r18-hydro-form');
+      if (root && document.getElementById('hy-inspector')) root._initial = JSON.stringify(readHydroForm());
+    },
+  });
+}
+function readHydroForm() {
+  const v = (id) => {
+    const el = document.getElementById(id);
+    return el ? String(el.value || '').trim() : '';
+  };
+  const rows = {};
+  document.querySelectorAll('#r18-hydro-form [data-hydro-row]').forEach(tr => {
+    const id = tr.getAttribute('data-hydro-row');
+    const row = blankHydroRow();
+    tr.querySelectorAll('[data-hydro-key]').forEach(el => { row[el.getAttribute('data-hydro-key')] = String(el.value || '').trim(); });
+    rows[id] = row;
+  });
+  return {
+    date: v('hy-date'),
+    nextDue: v('hy-next'),
+    inspector: v('hy-inspector'),
+    approvedBy: v('hy-approved'),
+    approvedDate: v('hy-approved-date'),
+    signature: v('hy-signature'),
+    rows: rows,
+  };
+}
+function hydroCompleteError(data) {
+  const sheet = data.sheet ? normalizeHydroSheet(data.sheet) : hydroSheetDefinition();
+  if (!data.inspector) return 'Enter the inspector.';
+  if (!data.date) return 'Enter the date.';
+  if (!data.nextDue) return 'Enter the next due date.';
+  if (!data.signature) return 'Enter the signature.';
+  for (const def of sheet.rows || []) {
+    const row = (data.rows || {})[def.id] || {};
+    const name = 'hydrometer ' + def.label;
+    if (!String(row.stem || '').trim()) return 'Enter the stem length for ' + name + '.';
+    if (!String(row.bulb || '').trim()) return 'Enter the bulb diameter for ' + name + '.';
+    if (!String(row.dia || '').trim()) return 'Enter the stem diameter for ' + name + '.';
+    if (row.pf !== 'P' && row.pf !== 'F') return 'Mark Pass or Fail for ' + name + '.';
+  }
+  return '';
+}
+function hydroHasEntry(data) {
+  if (data.inspector || data.signature) return true;
+  const sheet = data.sheet ? normalizeHydroSheet(data.sheet) : hydroSheetDefinition();
+  return (sheet.rows || []).some(def => {
+    const row = (data.rows || {})[def.id] || {};
+    return row.stem || row.bulb || row.dia || row.pf;
+  });
+}
+function hydroResult(data) {
+  const sheet = data && data.sheet ? normalizeHydroSheet(data.sheet) : hydroSheetDefinition();
+  return (sheet.rows || []).some(def => ((data.rows || {})[def.id] || {}).pf === 'F') ? 'fail' : 'pass';
+}
+function currentHydroDataFromStore() {
+  const stored = document.getElementById('r18-hydro-data');
+  if (!stored) return null;
+  try { return JSON.parse(stored.value || stored.textContent); } catch (e) { return null; }
+}
+function currentHydroData() {
+  if (document.getElementById('hy-inspector')) {
+    const live = readHydroForm();
+    const stored = currentHydroDataFromStore();
+    if (stored && stored.sheet) live.sheet = stored.sheet;
+    return live;
+  }
+  return currentHydroDataFromStore();
+}
+function hydroPdfName(data) {
+  const day = (data && (data.date || data.nextDue)) || todayInput();
+  return 'Hydrometer-Verification-' + day + '.pdf';
+}
+function writeHydroPdf(data) {
+  const doc = new window.jspdf.jsPDF({ unit: 'in', format: 'letter' });
+  const left = 0.5;
+  const width = 7.5;
+  let y = 0.48;
+  const ensure = (need) => {
+    if (y + need <= 10.6) return;
+    doc.addPage();
+    y = 0.5;
+  };
+  const sheet = sheetForHydro(data);
+  const labels = sheet.labels;
+  const center = (text, size) => {
+    doc.setFont('times', 'bold');
+    doc.setFontSize(size);
+    const lines = doc.splitTextToSize(pdfSafe(text) || ' ', width);
+    ensure(lines.length * (size / 72 + 0.06));
+    doc.text(lines, 4.25, y, { align: 'center' });
+    y += lines.length * (size / 72 + 0.04) + 0.06;
+  };
+  const paragraph = (heading, text) => {
+    ensure(0.24);
+    doc.setFont('times', 'bold');
+    doc.setFontSize(11);
+    doc.text(pdfSafe(heading) || ' ', left, y);
+    y += 0.16;
+    doc.setFont('times', 'normal');
+    doc.setFontSize(9);
+    String(text || '').split(/\n/).forEach(line => {
+      const lines = doc.splitTextToSize(pdfSafe(line) || ' ', width);
+      ensure(lines.length * 0.14 + 0.03);
+      doc.text(lines, left, y);
+      y += lines.length * 0.14 + 0.03;
+    });
+    y += 0.04;
+  };
+  const bullets = (heading, text) => {
+    ensure(0.24);
+    doc.setFont('times', 'bold');
+    doc.setFontSize(11);
+    doc.text(pdfSafe(heading) || ' ', left, y);
+    y += 0.16;
+    doc.setFont('times', 'normal');
+    doc.setFontSize(9);
+    String(text || '').split(/\n/).map(line => line.trim()).filter(Boolean).forEach(line => {
+      const lines = doc.splitTextToSize('\u2022 ' + pdfSafe(line), width - 0.1);
+      ensure(lines.length * 0.14 + 0.02);
+      doc.text(lines, left + 0.08, y);
+      y += lines.length * 0.14 + 0.02;
+    });
+    y += 0.04;
+  };
+  center(sheet.title, 14);
+  center(sheet.subtitle, 11);
+  center(sheet.organization, 10);
+  ensure(0.2);
+  doc.setFont('times', 'bold');
+  doc.setFontSize(11);
+  doc.text(pdfSafe(labels.documentTitle) + ': ' + pdfSafe(sheet.documentTitle), 4.25, y, { align: 'center' });
+  y += 0.24;
+  const pair = (aLabel, aValue, bLabel, bValue) => {
+    ensure(0.36);
+    doc.setFont('times', 'bold');
+    doc.setFontSize(8);
+    doc.text(pdfSafe(aLabel).toUpperCase(), left, y);
+    if (bLabel) doc.text(pdfSafe(bLabel).toUpperCase(), left + width / 2, y);
+    doc.setFont('times', 'normal');
+    doc.setFontSize(11);
+    doc.text(pdfSafe(caliperPrintValue(aValue, String(aLabel).toLowerCase().indexOf('date') >= 0 || aLabel === labels.date || aLabel === labels.nextDue ? 'date' : 'text')), left, y + 0.16);
+    if (bLabel) doc.text(pdfSafe(caliperPrintValue(bValue, String(bLabel).toLowerCase().indexOf('date') >= 0 || bLabel === labels.approvedDate ? 'date' : 'text')), left + width / 2, y + 0.16);
+    y += 0.34;
+  };
+  pair(labels.date, data.date, labels.nextDue, data.nextDue);
+  pair(labels.inspector, data.inspector, labels.approved, data.approvedBy);
+  pair(labels.approvedDate, data.approvedDate, '', '');
+  paragraph(labels.purpose, sheet.purpose);
+  paragraph(labels.scope, sheet.scope);
+  bullets(labels.method, sheet.method);
+  ensure(0.22);
+  doc.setFont('times', 'bold');
+  doc.setFontSize(12);
+  doc.text(pdfSafe(labels.procedure), left, y);
+  y += 0.18;
+  (sheet.sections || []).forEach((section, index) => {
+    ensure(0.2);
+    doc.setFont('times', 'bold');
+    doc.setFontSize(10);
+    doc.text((index + 1) + '.  ' + pdfSafe(section.heading), left, y);
+    y += 0.15;
+    doc.setFont('times', 'normal');
+    doc.setFontSize(9);
+    (section.steps || []).forEach(step => {
+      const lines = doc.splitTextToSize('\u2022 ' + pdfSafe(step), width - 0.25);
+      ensure(lines.length * 0.14 + 0.02);
+      doc.text(lines, left + 0.22, y);
+      y += lines.length * 0.14 + 0.02;
+    });
+    if (section.note) {
+      const lines = doc.splitTextToSize(pdfSafe(section.note), width - 0.2);
+      ensure(lines.length * 0.14 + 0.02);
+      doc.text(lines, left + 0.22, y);
+      y += lines.length * 0.14 + 0.02;
+    }
+    y += 0.04;
+  });
+  ensure(0.22);
+  doc.setFont('times', 'bold');
+  doc.setFontSize(12);
+  doc.text(pdfSafe(labels.log), left, y);
+  y += 0.08;
+  const headers = [sheet.columns.number, sheet.columns.stem, sheet.columns.bulb, sheet.columns.dia, sheet.columns.pf];
+  const cols = [1.2, 1.55, 1.7, 1.7, 1.35];
+  const paintRow = (cells, header) => {
+    const rowH = header ? 0.36 : 0.24;
+    ensure(rowH);
+    let x = left;
+    doc.setFont('times', header ? 'bold' : 'normal');
+    doc.setFontSize(header ? 8 : 9);
+    cells.forEach((cell, index) => {
+      doc.rect(x, y, cols[index], rowH);
+      const lines = doc.splitTextToSize(pdfSafe(cell), cols[index] - 0.06);
+      doc.text(lines.slice(0, 2), x + cols[index] / 2, y + (header ? 0.14 : 0.15), { align: 'center' });
+      x += cols[index];
+    });
+    y += rowH;
+  };
+  paintRow(headers, true);
+  (sheet.rows || []).forEach(def => {
+    const row = (data.rows && data.rows[def.id]) || {};
+    paintRow([def.label, row.stem || '', row.bulb || '', row.dia || '', row.pf || ''], false);
+  });
+  y += 0.14;
+  bullets(labels.frequency, sheet.frequency);
+  ensure(0.3);
+  doc.setFont('times', 'bold');
+  doc.setFontSize(10);
+  doc.text(pdfSafe(labels.signature) + ':  ' + pdfSafe(data.signature), left, y);
+  return doc;
+}
+window.r18_leaveHydroForm = (equipmentId, back) => {
+  const root = document.getElementById('r18-hydro-form');
+  const dirty = root && root.dataset.readonly !== '1' && root._initial && JSON.stringify(readHydroForm()) !== root._initial;
+  if (dirty && !confirm('Leave this verification without saving?')) return;
+  if (back === 'list' && equipmentId) window.r18_openPerformProcedures(equipmentId);
+  else if (equipmentId) window.r18_openEquipmentDetail(equipmentId);
+  else closeModal();
+};
+window.r18_saveHydroForm = async (mode) => {
+  const root = document.getElementById('r18-hydro-form');
+  if (!root) return;
+  const proc = state.procedures.find(p => p.id === root.dataset.procedureId);
+  if (!proc) return;
+  const eq = equipmentById(proc.equipmentId);
+  const data = readHydroForm();
+  data.sheet = sheetForHydro(currentHydroDataFromStore());
+  if (mode === 'complete') {
+    const err = hydroCompleteError(data);
+    if (err) return toast(err);
+  } else if (!hydroHasEntry(data)) {
+    return toast('Enter the inspector or a measurement before saving progress.');
+  }
+  const day = data.date || todayInput();
+  const completedAt = new Date(day + 'T12:00:00').toISOString();
+  const nextDueAt = data.nextDue
+    ? new Date(data.nextDue + 'T12:00:00').toISOString()
+    : addFrequency(completedAt, proc.frequencyValue, proc.frequencyUnit);
+  const result = mode === 'complete' ? hydroResult(data) : null;
+  const previous = (state.procedureRecords || []).find(r => r.id === root.dataset.recordId);
+  const record = {
+    id: root.dataset.recordId || uuid(),
+    labId: state.currentLabId || proc.labId,
+    equipmentId: proc.equipmentId,
+    procedureId: proc.id,
+    completedAt: completedAt,
+    completedBy: data.inspector,
+    result: result,
+    notes: '',
+    certificateNumber: '',
+    formData: Object.assign({ formId: HYDRO_FORM_ID, status: mode === 'complete' ? 'complete' : 'draft', revision: 'hydrometer-inspection' }, data),
+    nextDueAt: nextDueAt,
+    createdAt: previous && previous.createdAt,
+  };
+  const btn = document.getElementById(mode === 'complete' ? 'hy-save-complete' : 'hy-save-progress');
+  if (btn) btn.disabled = true;
+  try {
+    if (!db) throw new Error('Connect Supabase before saving this verification.');
+    await repo.put('procedure_records', calibrationRecordPayload(record));
+  } catch (e) {
+    if (btn) btn.disabled = false;
+    console.error(e);
+    toast(saveFailureText(e));
+    return;
+  }
+  root.dataset.recordId = record.id;
+  upsertById(state.procedureRecords, record);
+  if (mode !== 'complete') {
+    root._initial = JSON.stringify(readHydroForm());
+    if (btn) btn.disabled = false;
+    toast('Progress saved in the lab database.');
+    return;
+  }
+  let scheduleSaved = true;
+  try {
+    await repo.put('procedures', procedureSchedulePayload(proc, completedAt, nextDueAt));
+    if (proc.procedureType === 'calibration' && eq) await repo.put('equipment', equipmentCalibrationPayload(eq, completedAt, nextDueAt));
+  } catch (e) {
+    scheduleSaved = false;
+    console.error(e);
+  }
+  upsertById(state.procedures, Object.assign({}, proc, { lastCompletedAt: completedAt, nextDueAt: nextDueAt }));
+  if (proc.procedureType === 'calibration' && eq) upsertById(state.equipment, Object.assign({}, eq, { lastCalibration: completedAt, nextCalibration: nextDueAt }));
+  try { await refreshAll(); } catch (e) { console.warn(e); }
+  renderView();
+  window.r18_openEquipmentDetail(proc.equipmentId);
+  toast(scheduleSaved
+    ? (result === 'fail' ? 'Saved in the lab database as a fail. Replace or repair the hydrometers that failed.' : 'Saved in the lab database. Next due ' + (fmtDateNum(data.nextDue) || fmtDateShort(nextDueAt)))
+    : 'The sheet is in the lab database. The next due date could not be updated.');
+};
+window.r18_editHydroRecord = (recordId) => {
+  const record = (state.procedureRecords || []).find(r => r.id === recordId);
+  if (!record) return;
+  const proc = state.procedures.find(p => p.id === record.procedureId);
+  const eq = equipmentById(record.equipmentId) || {};
+  if (!proc) return toast('This procedure is no longer on the equipment.');
+  openHydroForm(proc, eq, 'equipment', record, { editing: true });
+};
+window.r18_approveHydroRecord = async (recordId) => {
+  const record = (state.procedureRecords || []).find(r => r.id === recordId);
+  if (!record) return;
+  const input = document.getElementById('hy-approve-name');
+  const name = input ? input.value.trim() : '';
+  if (!name) return toast('Enter who approved this verification.');
+  const bag = Object.assign({}, formBag(record), { approvedBy: name, approvedDate: todayInput() });
+  const next = Object.assign({}, record, { formData: bag });
+  try {
+    if (!db) throw new Error('Connect Supabase before saving this verification.');
+    await repo.put('procedure_records', calibrationRecordPayload(next));
+  } catch (e) {
+    console.error(e);
+    toast('Could not save the approval.');
+    return;
+  }
+  upsertById(state.procedureRecords, next);
+  window.r18_openProcedureRecordDetail(record.id);
+  toast('Approval saved.');
+};
+window.r18_exportHydroPdf = async () => {
+  const data = currentHydroData();
+  if (!data) return;
+  const btn = document.getElementById('hy-export-pdf');
+  if (!window.jspdf || typeof window.jspdf.jsPDF !== 'function') return toast('PDF export is still loading. Try again in a moment.');
+  if (btn) btn.disabled = true;
+  try {
+    writeHydroPdf(data).save(hydroPdfName(data));
+    toast('PDF downloaded.');
+  } catch (e) {
+    console.error(e);
+    toast('Could not create the PDF.');
+  } finally {
+    if (btn) btn.disabled = false;
+  }
+};
+function hydroFormLibraryCard() {
+  const saved = hydroTemplateRecord();
+  const sheet = hydroSheetDefinition();
+  return '<div class="card mt-4"><div class="px-4 py-3 flex justify-between gap-3 flex-wrap items-start">' +
+    '<div><div class="text-sm font-medium ink">Hydrometer inspection</div>' +
+    '<div class="text-xs ink-2">' + escapeHtml(sheet.title) + ' \u00b7 ' + sheet.rows.length + ' hydrometers' + (saved ? ' \u00b7 saved for this lab' : ' \u00b7 DelDOT wording') + '</div>' +
+    '<div class="text-xs ink-3 mt-1">A hydrometer opens this sheet. Edit the whole form when the paper changes. A signed verification stays on the sheet it was signed with.</div></div>' +
+    '<button type="button" class="btn btn-ghost text-xs" onclick="r18_editHydroSheet()">Edit form</button></div></div>';
+}
+function hydroEditorValue(id) {
+  const el = document.getElementById(id);
+  return el ? String(el.value || '') : '';
+}
+function setHydroEditorValue(id, value) {
+  const el = document.getElementById(id);
+  if (el) el.value = value == null ? '' : String(value);
+}
+function hydroEditorLabel(id, caption, value) {
+  return '<label class="grow"><div class="text-xs font-medium ink-2 mb-1">' + escapeHtml(caption) + '</div><input class="input w-full" id="' + id + '" value="' + escapeHtml(value || '') + '"></label>';
+}
+function paintHydroSheetEditor(sheet) {
+  const sections = document.getElementById('r18-hydro-sections');
+  if (sections) {
+    sections.innerHTML = (sheet.sections || []).map((section, index) => {
+      const steps = (section.steps || []).map((step, stepIndex) =>
+        '<div class="r18-fb-top mt-2"><label class="grow"><textarea class="input w-full hy-step" rows="2">' + escapeHtml(step) + '</textarea></label>' +
+        '<button type="button" class="btn btn-ghost text-xs" onclick="r18_moveHydroStep(' + index + ',' + stepIndex + ',-1)">Up</button>' +
+        '<button type="button" class="btn btn-ghost text-xs" onclick="r18_moveHydroStep(' + index + ',' + stepIndex + ',1)">Down</button>' +
+        '<button type="button" class="btn btn-ghost text-xs" onclick="r18_removeHydroStep(' + index + ',' + stepIndex + ')">Remove</button></div>'
+      ).join('');
+      return '<div class="r18-fb-field hy-section"><div class="r18-fb-top"><label class="grow"><div class="text-xs font-medium ink-2 mb-1">Procedure section</div><input class="input w-full hy-section-heading" value="' + escapeHtml(section.heading || '') + '"></label>' +
+        '<button type="button" class="btn btn-ghost text-xs" onclick="r18_moveHydroSection(' + index + ',-1)">Up</button>' +
+        '<button type="button" class="btn btn-ghost text-xs" onclick="r18_moveHydroSection(' + index + ',1)">Down</button>' +
+        '<button type="button" class="btn btn-ghost text-xs" onclick="r18_removeHydroSection(' + index + ')">Remove</button></div>' +
+        steps +
+        '<label class="block mt-2"><div class="text-xs font-medium ink-2 mb-1">Sentence after the steps</div><textarea class="input w-full hy-section-note" rows="2">' + escapeHtml(section.note || '') + '</textarea></label>' +
+        '<button type="button" class="btn btn-ghost text-xs mt-2" onclick="r18_addHydroStep(' + index + ')">+ Add step</button>' +
+        '<input type="hidden" class="hy-section-id" value="' + escapeHtml(section.id || '') + '"></div>';
+    }).join('');
+  }
+  const rows = document.getElementById('r18-hydro-rows');
+  if (rows) {
+    rows.innerHTML = (sheet.rows || []).map((row, index) =>
+      '<div class="r18-fb-field hy-hydro-row"><div class="r18-fb-top"><label class="grow"><div class="text-xs font-medium ink-2 mb-1">Hydrometer ' + (index + 1) + '</div><input class="input w-full hy-hydro-label" value="' + escapeHtml(row.label || '') + '"></label>' +
+      '<button type="button" class="btn btn-ghost text-xs" onclick="r18_moveHydroRow(' + index + ',-1)">Up</button>' +
+      '<button type="button" class="btn btn-ghost text-xs" onclick="r18_moveHydroRow(' + index + ',1)">Down</button>' +
+      '<button type="button" class="btn btn-ghost text-xs" onclick="r18_removeHydroRow(' + index + ')">Remove</button></div>' +
+      '<input type="hidden" class="hy-hydro-id" value="' + escapeHtml(row.id || '') + '"></div>'
+    ).join('');
+  }
+}
+function readHydroSheetEditor() {
+  const sections = [];
+  document.querySelectorAll('#r18-hydro-sections .hy-section').forEach(el => {
+    const steps = [];
+    el.querySelectorAll('.hy-step').forEach(step => steps.push(step.value));
+    sections.push({
+      id: (el.querySelector('.hy-section-id') || {}).value || '',
+      heading: (el.querySelector('.hy-section-heading') || {}).value || '',
+      note: (el.querySelector('.hy-section-note') || {}).value || '',
+      steps: steps,
+    });
+  });
+  const rows = [];
+  document.querySelectorAll('#r18-hydro-rows .hy-hydro-row').forEach(el => {
+    rows.push({
+      id: (el.querySelector('.hy-hydro-id') || {}).value || '',
+      label: (el.querySelector('.hy-hydro-label') || {}).value || '',
+    });
+  });
+  const label = (id) => hydroEditorValue(id).trim();
+  return {
+    formKey: HYDRO_FORM_ID,
+    title: hydroEditorValue('hy-sheet-title'),
+    subtitle: hydroEditorValue('hy-sheet-sub'),
+    organization: hydroEditorValue('hy-sheet-org'),
+    documentTitle: hydroEditorValue('hy-sheet-doc'),
+    purpose: hydroEditorValue('hy-purpose'),
+    scope: hydroEditorValue('hy-scope'),
+    method: hydroEditorValue('hy-method'),
+    frequency: hydroEditorValue('hy-frequency'),
+    labels: {
+      documentTitle: label('hy-lab-doc'),
+      date: label('hy-lab-date'),
+      nextDue: label('hy-lab-next'),
+      inspector: label('hy-lab-inspector'),
+      approved: label('hy-lab-approved'),
+      approvedDate: label('hy-lab-approved-date'),
+      purpose: label('hy-lab-purpose'),
+      scope: label('hy-lab-scope'),
+      method: label('hy-lab-method'),
+      procedure: label('hy-lab-procedure'),
+      log: label('hy-lab-log'),
+      frequency: label('hy-lab-frequency'),
+      signature: label('hy-lab-signature'),
+    },
+    columns: {
+      number: label('hy-col-number'),
+      stem: label('hy-col-stem'),
+      bulb: label('hy-col-bulb'),
+      dia: label('hy-col-dia'),
+      pf: label('hy-col-pf'),
+    },
+    sections: sections,
+    rows: rows,
+  };
+}
+function hydroSheetEditorHtml(sheet) {
+  const labels = sheet.labels;
+  const cols = sheet.columns;
+  const area = (id, caption, value) => '<div class="r18-fb-field"><div class="text-xs font-medium ink-2 mb-1">' + escapeHtml(caption) + '</div><textarea class="input w-full" id="' + id + '" rows="3">' + escapeHtml(value || '') + '</textarea></div>';
+  return '<div class="p-5" id="r18-hydro-editor"><div class="r18-form-top"><div><div class="r18-form-kicker">Hydrometer sheet</div>' +
+    '<h2 class="text-xl serif font-semibold ink">Edit form</h2>' +
+    '<div class="text-sm ink-2">This changes the whole sheet the next time a hydrometer is verified. A signed verification stays on the sheet it was signed with.</div></div>' +
+    '<div class="flex gap-2 flex-wrap"><button type="button" class="btn btn-ghost" onclick="r18_restoreHydroSheet()">Restore DelDOT wording</button>' +
+    '<button type="button" class="btn btn-ghost" onclick="r18_closeHydroSheetEditor()">Close</button></div></div>' +
+    '<div class="r18-fb-field"><div class="text-xs font-medium ink-2 mb-1">Title on the sheet</div><input class="input w-full" id="hy-sheet-title" value="' + escapeHtml(sheet.title) + '"></div>' +
+    '<div class="r18-fb-field"><div class="r18-fb-top">' + hydroEditorLabel('hy-sheet-sub', 'Subtitle', sheet.subtitle) + hydroEditorLabel('hy-sheet-org', 'Organization line', sheet.organization) + '</div></div>' +
+    '<div class="r18-fb-field"><div class="r18-fb-top">' + hydroEditorLabel('hy-lab-doc', 'Document title label', labels.documentTitle) + hydroEditorLabel('hy-sheet-doc', 'Document title', sheet.documentTitle) + '</div></div>' +
+    '<div class="text-sm font-medium ink mt-4">Header</div>' +
+    '<div class="r18-fb-field"><div class="r18-fb-top">' + hydroEditorLabel('hy-lab-date', 'Date', labels.date) + hydroEditorLabel('hy-lab-next', 'Next due', labels.nextDue) + hydroEditorLabel('hy-lab-inspector', 'Inspector', labels.inspector) + '</div></div>' +
+    '<div class="r18-fb-field"><div class="r18-fb-top">' + hydroEditorLabel('hy-lab-approved', 'Approved by', labels.approved) + hydroEditorLabel('hy-lab-approved-date', 'Date approved', labels.approvedDate) + hydroEditorLabel('hy-lab-signature', 'Signature', labels.signature) + '</div></div>' +
+    '<div class="r18-fb-field"><div class="r18-fb-top">' + hydroEditorLabel('hy-lab-purpose', 'Purpose heading', labels.purpose) + hydroEditorLabel('hy-lab-scope', 'Scope heading', labels.scope) + hydroEditorLabel('hy-lab-method', 'Method heading', labels.method) + '</div></div>' +
+    area('hy-purpose', 'Purpose', sheet.purpose) +
+    area('hy-scope', 'Scope', sheet.scope) +
+    area('hy-method', 'Verification method, one line per bullet', sheet.method) +
+    '<div class="text-sm font-medium ink mt-4">Procedure</div>' +
+    '<div class="r18-fb-field"><div class="r18-fb-top">' + hydroEditorLabel('hy-lab-procedure', 'Procedure heading', labels.procedure) + '</div></div>' +
+    '<div id="r18-hydro-sections"></div>' +
+    '<button type="button" class="btn btn-ghost text-xs mt-2" onclick="r18_addHydroSection()">+ Add section</button>' +
+    '<div class="text-sm font-medium ink mt-4">Verification log</div>' +
+    '<div class="r18-fb-field"><div class="r18-fb-top">' + hydroEditorLabel('hy-lab-log', 'Log heading', labels.log) + hydroEditorLabel('hy-col-number', 'Hydrometer number', cols.number) + '</div></div>' +
+    '<div class="r18-fb-field"><div class="r18-fb-top">' + hydroEditorLabel('hy-col-stem', 'Stem length', cols.stem) + hydroEditorLabel('hy-col-bulb', 'Bulb diameter', cols.bulb) + hydroEditorLabel('hy-col-dia', 'Stem diameter', cols.dia) + hydroEditorLabel('hy-col-pf', 'Pass / Fail', cols.pf) + '</div></div>' +
+    '<div id="r18-hydro-rows"></div>' +
+    '<button type="button" class="btn btn-ghost text-xs mt-2" onclick="r18_addHydroRow()">+ Add hydrometer</button>' +
+    '<div class="text-sm font-medium ink mt-4">Closing</div>' +
+    '<div class="r18-fb-field"><div class="r18-fb-top">' + hydroEditorLabel('hy-lab-frequency', 'Frequency heading', labels.frequency) + '</div></div>' +
+    area('hy-frequency', 'Frequency', sheet.frequency) +
+    '<div class="r18-form-actions"><button type="button" class="btn btn-primary" onclick="r18_saveHydroSheet()">Save form</button></div></div>';
+}
+window.r18_editHydroSheet = () => {
+  const open = document.getElementById('r18-hydro-form');
+  if (open) {
+    const dirty = open.dataset.readonly !== '1' && open._initial && JSON.stringify(readHydroForm()) !== open._initial;
+    if (dirty && !confirm('Leave this verification and edit the form? Readings on this screen will be kept only if you saved them.')) return;
+    hydroSheetReturn = { procedureId: open.dataset.procedureId || '', recordId: open.dataset.recordId || '', back: open.dataset.back || '' };
+  } else hydroSheetReturn = null;
+  const sheet = hydroSheetDefinition();
+  showModal(hydroSheetEditorHtml(sheet), { wide: true, sheet: true, onMount: () => paintHydroSheetEditor(sheet) });
+};
+window.r18_addHydroSection = () => {
+  const draft = readHydroSheetEditor();
+  if (draft.sections.length >= 8) return toast('This sheet holds eight procedure sections.');
+  draft.sections.push({ id: 'sec' + (draft.sections.length + 1), heading: 'Section', note: '', steps: [''] });
+  paintHydroSheetEditor(draft);
+};
+window.r18_removeHydroSection = (index) => {
+  const draft = readHydroSheetEditor();
+  if (draft.sections.length <= 1) return toast('Keep at least one procedure section.');
+  draft.sections.splice(index, 1);
+  paintHydroSheetEditor(draft);
+};
+window.r18_moveHydroSection = (index, dir) => {
+  const draft = readHydroSheetEditor();
+  if (sieveEditorListMove(draft.sections, index, dir)) paintHydroSheetEditor(draft);
+};
+window.r18_addHydroStep = (index) => {
+  const draft = readHydroSheetEditor();
+  const section = draft.sections[index];
+  if (!section) return;
+  if (section.steps.length >= 12) return toast('This section holds twelve steps.');
+  section.steps.push('');
+  paintHydroSheetEditor(draft);
+};
+window.r18_removeHydroStep = (index, stepIndex) => {
+  const draft = readHydroSheetEditor();
+  const section = draft.sections[index];
+  if (!section) return;
+  if (section.steps.length <= 1) return toast('Keep at least one step in this section.');
+  section.steps.splice(stepIndex, 1);
+  paintHydroSheetEditor(draft);
+};
+window.r18_moveHydroStep = (index, stepIndex, dir) => {
+  const draft = readHydroSheetEditor();
+  const section = draft.sections[index];
+  if (section && sieveEditorListMove(section.steps, stepIndex, dir)) paintHydroSheetEditor(draft);
+};
+window.r18_addHydroRow = () => {
+  const draft = readHydroSheetEditor();
+  if (draft.rows.length >= 24) return toast('This sheet holds 24 hydrometers.');
+  const used = {};
+  draft.rows.forEach(row => { used[row.id] = true; });
+  let n = draft.rows.length + 1;
+  while (used['h' + n]) n += 1;
+  draft.rows.push({ id: 'h' + n, label: String(n) });
+  paintHydroSheetEditor(draft);
+};
+window.r18_removeHydroRow = (index) => {
+  const draft = readHydroSheetEditor();
+  if (draft.rows.length <= 1) return toast('Keep at least one hydrometer.');
+  draft.rows.splice(index, 1);
+  paintHydroSheetEditor(draft);
+};
+window.r18_moveHydroRow = (index, dir) => {
+  const draft = readHydroSheetEditor();
+  if (sieveEditorListMove(draft.rows, index, dir)) paintHydroSheetEditor(draft);
+};
+window.r18_restoreHydroSheet = () => {
+  const sheet = defaultHydroSheet();
+  const labels = sheet.labels;
+  const cols = sheet.columns;
+  setHydroEditorValue('hy-sheet-title', sheet.title);
+  setHydroEditorValue('hy-sheet-sub', sheet.subtitle);
+  setHydroEditorValue('hy-sheet-org', sheet.organization);
+  setHydroEditorValue('hy-sheet-doc', sheet.documentTitle);
+  setHydroEditorValue('hy-purpose', sheet.purpose);
+  setHydroEditorValue('hy-scope', sheet.scope);
+  setHydroEditorValue('hy-method', sheet.method);
+  setHydroEditorValue('hy-frequency', sheet.frequency);
+  setHydroEditorValue('hy-lab-doc', labels.documentTitle);
+  setHydroEditorValue('hy-lab-date', labels.date);
+  setHydroEditorValue('hy-lab-next', labels.nextDue);
+  setHydroEditorValue('hy-lab-inspector', labels.inspector);
+  setHydroEditorValue('hy-lab-approved', labels.approved);
+  setHydroEditorValue('hy-lab-approved-date', labels.approvedDate);
+  setHydroEditorValue('hy-lab-signature', labels.signature);
+  setHydroEditorValue('hy-lab-purpose', labels.purpose);
+  setHydroEditorValue('hy-lab-scope', labels.scope);
+  setHydroEditorValue('hy-lab-method', labels.method);
+  setHydroEditorValue('hy-lab-procedure', labels.procedure);
+  setHydroEditorValue('hy-lab-log', labels.log);
+  setHydroEditorValue('hy-lab-frequency', labels.frequency);
+  setHydroEditorValue('hy-col-number', cols.number);
+  setHydroEditorValue('hy-col-stem', cols.stem);
+  setHydroEditorValue('hy-col-bulb', cols.bulb);
+  setHydroEditorValue('hy-col-dia', cols.dia);
+  setHydroEditorValue('hy-col-pf', cols.pf);
+  paintHydroSheetEditor(sheet);
+  toast('DelDOT wording is back in the editor. Save form to use it.');
+};
+window.r18_closeHydroSheetEditor = () => {
+  const back = hydroSheetReturn;
+  hydroSheetReturn = null;
+  if (back && back.recordId) window.r18_openProcedureRecordDetail(back.recordId);
+  else if (back && back.procedureId) window.r18_openCompleteProcedureModal(back.procedureId, back.back);
+  else closeModal();
+};
+window.r18_saveHydroSheet = async () => {
+  const draft = readHydroSheetEditor();
+  const sections = (draft.sections || []).map(section => Object.assign({}, section, {
+    steps: (section.steps || []).map(step => String(step).trim()).filter(Boolean),
+    note: String(section.note || '').trim(),
+  })).filter(section => section.steps.length);
+  if (!String(draft.title || '').trim()) return toast('Enter the title on the sheet.');
+  if (!sections.length) return toast('Add at least one procedure step.');
+  if (!draft.rows.length) return toast('Add at least one hydrometer.');
+  if (draft.rows.some(row => !String(row.label || '').trim())) return toast('Name every hydrometer line.');
+  if (!state.currentLabId) return toast('Choose a lab first.');
+  const existing = hydroTemplateRecord();
+  const sheet = normalizeHydroSheet(Object.assign({}, draft, { sections: sections }));
+  const row = {
+    id: existing ? existing.id : uuid(),
+    labId: state.currentLabId,
+    name: 'Hydrometer verification',
+    definition: sheet,
+    active: true,
+  };
+  if (existing && existing.createdAt) row.createdAt = existing.createdAt;
+  try {
+    if (!db) throw new Error('Connect Supabase before saving this form.');
+    await repo.put('form_templates', row);
+    upsertById(state.formTemplates, row);
+    state.customFormsReady = true;
+    state.customFormsSchemaError = '';
+  } catch (e) {
+    const raw = String((e && (e.message || e.details)) || '');
+    const text = saveFailureText(e);
+    if (/form_templates|schema cache|relation|does not exist/i.test(raw + ' ' + text)) {
+      state.customFormsReady = false;
+      state.customFormsSchemaError = text;
+      toast('The lab database needs the procedure-forms update before this sheet can be saved. Inventory, Procedure Forms has the one-time SQL.');
+      return;
+    }
+    return toast('Could not save the form. ' + text);
+  }
+  try { await refreshAll(); } catch (e) { console.warn(e); }
+  if (!hydroTemplateRecord()) upsertById(state.formTemplates, row);
+  toast('Hydrometer form saved');
+  const back = hydroSheetReturn;
+  hydroSheetReturn = null;
+  if (back && back.recordId) window.r18_openProcedureRecordDetail(back.recordId);
+  else if (back && back.procedureId) window.r18_openCompleteProcedureModal(back.procedureId, back.back);
+  else {
+    closeModal();
+    state.currentTab = 'inventory';
+    state.inventorySubTab = 'procedure_forms';
+    renderView();
+  }
+};
+
+
 /* ---------- CUSTOM PROCEDURE FORMS ---------- */
 let customFormSession = null;
 const CUSTOM_FIELD_TYPES = ['text', 'number', 'date', 'longtext', 'yesno', 'passfail', 'section', 'note', 'table'];
@@ -40465,6 +41403,7 @@ function procedureFormLabel(proc) {
   const template = procedureTemplate(proc);
   if (template) return template.name;
   const eq = equipmentById(proc && proc.equipmentId);
+  if (procedureUsesHydrometerForm(eq, proc)) return 'Hydrometer';
   if (procedureUsesGroovingForm(eq, proc)) return 'Grooving tool';
   if (procedureUsesSieveForm(eq, proc)) return 'Sieve inspection';
   if (procedureUsesCaliperForm(eq, proc)) return 'Caliper sheet';
@@ -40640,7 +41579,7 @@ function renderProcedureFormsHtml() {
         : '<div class="text-xs ink-2 mt-2">Add a procedure on a piece of equipment, then come back and attach this form.</div>') +
       '</div>';
   }).join('');
-  return caliperFormLibraryCard() + sieveFormLibraryCard() + grooveFormLibraryCard() + '<div class="card mt-4"><div class="px-4 py-3 border-b border-line-2 flex justify-between items-center gap-3 flex-wrap">' +
+  return caliperFormLibraryCard() + sieveFormLibraryCard() + grooveFormLibraryCard() + hydroFormLibraryCard() + '<div class="card mt-4"><div class="px-4 py-3 border-b border-line-2 flex justify-between items-center gap-3 flex-wrap">' +
     '<div><div class="text-sm font-semibold ink">Procedure forms (' + forms.length + ')</div>' +
     '<div class="text-xs ink-2">Build a sheet once, attach it to any procedure, and Perform Procedure opens it for the tech.</div></div>' +
     '<button type="button" class="btn btn-primary text-xs" onclick="r18_openFormBuilder()">+ New form</button></div>' +
@@ -40776,6 +41715,7 @@ window.r18_openFormBuilder = (id) => {
   if (existingDef && existingDef.formKey === CALIPER_FORM_ID) return window.r18_editCaliperSheet();
   if (existingDef && existingDef.formKey === SIEVE_FORM_ID) return window.r18_editSieveSheet();
   if (existingDef && existingDef.formKey === GROOVE_FORM_ID) return window.r18_editGrooveSheet();
+  if (existingDef && existingDef.formKey === HYDRO_FORM_ID) return window.r18_editHydroSheet();
   const def = existing ? templateDefinition(existing) : { title: '', footer: '', fields: defaultCustomFields() };
   paintFormBuilder({
     id: existing ? existing.id : '',
@@ -41828,10 +42768,15 @@ window.r18_openCompleteProcedureModal = (procedureId, back) => {
   const linkedCaliper = !!(linkedDef && linkedDef.formKey === CALIPER_FORM_ID);
   const linkedSieve = !!(linkedDef && linkedDef.formKey === SIEVE_FORM_ID);
   const linkedGroove = !!(linkedDef && linkedDef.formKey === GROOVE_FORM_ID);
-  if (proc.formTemplateId && !template && !linkedCaliper && !linkedSieve && !linkedGroove) {
+  const linkedHydro = !!(linkedDef && linkedDef.formKey === HYDRO_FORM_ID);
+  if (proc.formTemplateId && !template && !linkedCaliper && !linkedSieve && !linkedGroove && !linkedHydro) {
     toast('The form on this procedure is no longer available. Attach another under Inventory → Procedure Forms.');
   } else if (template) {
     openCustomForm(proc, eq || {}, back || 'equipment', customDraft(proc.id, template.id), {});
+    return;
+  }
+  if (procedureUsesHydrometerForm(eq, proc) || linkedHydro) {
+    openHydroForm(proc, eq || {}, back || 'equipment');
     return;
   }
   if (procedureUsesGroovingForm(eq, proc) || linkedGroove) {
@@ -41925,6 +42870,18 @@ window.r18_openProcedureRecordDetail = (recordId) => {
   const bag = formBag(r);
   const proc = state.procedures.find(p => p.id === r.procedureId);
   const eq = equipmentById(r.equipmentId);
+  if (bag.formId === HYDRO_FORM_ID && bag.status === 'draft') {
+    if (proc) openHydroForm(proc, eq || {}, 'equipment');
+    return;
+  }
+  if (bag.formId === HYDRO_FORM_ID) {
+    const sheet = bag.sheet ? normalizeHydroSheet(bag.sheet) : defaultHydroSheet();
+    const data = hydroDataFrom(bag, eq, proc, sheet);
+    data.result = r.result || '';
+    data.sheet = sheet;
+    showModal(hydroFormHtml(eq || {}, proc || { id: r.procedureId, name: 'Hydrometer Verification' }, data, { readonly: true, recordId: r.id, back: 'equipment' }), { form: true, lock: true });
+    return;
+  }
   if (bag.formId === GROOVE_FORM_ID && bag.status === 'draft') {
     if (proc) openGrooveForm(proc, eq || {}, 'equipment');
     return;
