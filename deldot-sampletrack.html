@@ -37529,7 +37529,7 @@ window.r18_openProcedureModal = (procedureId, equipmentId) => {
             <option value="">No custom form</option>
             ${(state.formTemplates || []).filter(t => { if (t.active === false) return false; return !isDedicatedSheetDef(definitionObject(t)); }).map(t => `<option value="${t.id}" ${proc?.formTemplateId === t.id ? 'selected' : ''}>${escapeHtml(t.name)}</option>`).join('')}
           </select>
-          <div class="text-xs ink-2 mt-1">Build sheets under Inventory → Procedure Forms, then choose one here. ${proc?.formTemplateId ? '' : (procedureUsesSieveForm(eq, proc || { name: eq.name }) ? 'Until you choose one, this equipment uses the built-in sieve inspection sheet.' : (procedureUsesCaliperForm(eq, proc || { name: eq.name }) ? 'Until you choose one, this equipment uses the built-in caliper sheet.' : 'Until you choose one, the tech gets the short completion screen.'))}</div>
+          <div class="text-xs ink-2 mt-1">Build sheets under Inventory → Procedure Forms, then choose one here. ${proc?.formTemplateId ? '' : (procedureUsesGroovingForm(eq, proc || { name: eq.name }) ? 'Until you choose one, this equipment uses the built-in grooving tool sheet.' : (procedureUsesSieveForm(eq, proc || { name: eq.name }) ? 'Until you choose one, this equipment uses the built-in sieve inspection sheet.' : (procedureUsesCaliperForm(eq, proc || { name: eq.name }) ? 'Until you choose one, this equipment uses the built-in caliper sheet.' : 'Until you choose one, the tech gets the short completion screen.')))}</div>
         </div>
         ${isEdit ? `<div><label class="label">Status</label><select class="select" id="proc-active"><option value="true" ${proc.active !== false ? 'selected' : ''}>Active</option><option value="false" ${proc.active === false ? 'selected' : ''}>Inactive</option></select></div>` : ''}
       </div>
@@ -37598,6 +37598,7 @@ window.r18_deleteProcedure = async (id, equipmentId) => {
 /* Built-in procedure sheets, plus forms a lab builds under Inventory → Procedure Forms. */
 const CALIPER_FORM_ID = 'caliper_calibration';
 const SIEVE_FORM_ID = 'sieve_inspection';
+const GROOVE_FORM_ID = 'grooving_tool';
 let caliperSheetReturn = null;
 function caliperCleanText(value, fallback) {
   const text = String(value == null ? '' : value).replace(/<[^>]+>/g, '').replace(/\s+/g, ' ').trim();
@@ -37811,8 +37812,12 @@ function procedureUsesSieveForm(eq, proc) {
   const hay = [eq && eq.name, eq && eq.nickname, eq && eq.modelNumber, proc && proc.name].join(' ').toLowerCase();
   return /sieve/.test(hay);
 }
+function procedureUsesGroovingForm(eq, proc) {
+  const hay = [eq && eq.name, eq && eq.nickname, eq && eq.modelNumber, proc && proc.name].join(' ').toLowerCase();
+  return /groov/.test(hay);
+}
 function isDedicatedSheetDef(def) {
-  return !!(def && (def.formKey === CALIPER_FORM_ID || def.formKey === SIEVE_FORM_ID));
+  return !!(def && (def.formKey === CALIPER_FORM_ID || def.formKey === SIEVE_FORM_ID || def.formKey === GROOVE_FORM_ID));
 }
 function procedureDraft(procedureId) {
   const rows = (state.procedureRecords || []).filter(r => {
@@ -38172,8 +38177,8 @@ function performProceduresHtml(eq, procs) {
   const rows = (procs || []).map(p => {
     const due = fmtDateNum(p.nextDueAt) || 'N/A';
     const template = procedureTemplate(p);
-    const draft = procedureDraft(p.id) || sieveDraft(p.id) || (template && customDraft(p.id, template.id));
-    const formNote = template ? template.name : (procedureUsesSieveForm(eq, p) ? 'Sieve inspection' : (procedureUsesCaliperForm(eq, p) ? 'Caliper sheet' : ''));
+    const draft = procedureDraft(p.id) || sieveDraft(p.id) || grooveDraft(p.id) || (template && customDraft(p.id, template.id));
+    const formNote = template ? template.name : (procedureUsesGroovingForm(eq, p) ? 'Grooving tool' : (procedureUsesSieveForm(eq, p) ? 'Sieve inspection' : (procedureUsesCaliperForm(eq, p) ? 'Caliper sheet' : '')));
     return '<button type="button" class="r18-perform-row" onclick="r18_openCompleteProcedureModal(\'' + p.id + '\',\'list\')">' +
       '<span class="r18-perform-row-main"><span class="r18-perform-name">' + escapeHtml(p.name) + '</span>' +
       '<span class="r18-perform-due">Due Date: ' + escapeHtml(due) + (formNote ? ' · ' + escapeHtml(formNote) : '') + '</span>' +
@@ -39544,6 +39549,782 @@ window.r18_saveSieveSheet = async () => {
   }
 };
 
+/* ---------- GROOVING TOOL VERIFICATION ---------- */
+let grooveSheetReturn = null;
+function defaultGrooveSteps() {
+  return [
+    'Verify annually or when put into service.',
+    'Using a caliper, measure the thickness, cutting edge and depth of the grooving tool',
+    'Compare results to T-89 Figure 1 and remove from service if not in tolerance.',
+  ];
+}
+function defaultGrooveColumns() {
+  return [
+    { id: 'labid', label: 'Lab ID', kind: 'text' },
+    { id: 'thickness', label: 'Thickness', kind: 'text' },
+    { id: 'edge', label: 'Cutting Edge', kind: 'text' },
+    { id: 'depth', label: 'Depth', kind: 'text' },
+    { id: 'date', label: 'Date', kind: 'date' },
+  ];
+}
+function defaultGrooveRows() {
+  const rows = [];
+  for (let n = 1; n <= 8; n++) rows.push({ id: 'r' + n });
+  return rows;
+}
+function defaultGrooveSheet() {
+  return {
+    formKey: GROOVE_FORM_ID,
+    title: 'Grooving Tool Verification',
+    organization: 'Delaware Department of Transportation',
+    department: 'Materials and Research',
+    place: 'Dover, DE',
+    footer: 'Updated 10/12/23',
+    reasonLabel: 'Reason:',
+    caliperLabel: 'Caliper:',
+    procedureLabel: 'PROCEDURE',
+    verificationLabel: 'Verification',
+    remarksLabel: 'Remarks:',
+    verifiedLabel: 'Verified By:',
+    approvedLabel: 'Approved By:',
+    steps: defaultGrooveSteps(),
+    columns: defaultGrooveColumns(),
+    rows: defaultGrooveRows(),
+  };
+}
+function normalizeGrooveSteps(raw) {
+  const base = defaultGrooveSteps();
+  if (!Array.isArray(raw)) return base;
+  const steps = raw.map(step => String(step).replace(/<[^>]+>/g, '').trim()).filter(Boolean).slice(0, 12);
+  return steps.length ? steps : base;
+}
+function normalizeGrooveColumns(raw) {
+  const base = defaultGrooveColumns();
+  if (!Array.isArray(raw) || !raw.length) return base;
+  const seen = {};
+  const list = [];
+  raw.slice(0, 8).forEach((item, index) => {
+    let id = caliperToken(item && item.id, 'c' + (index + 1));
+    while (seen[id]) id = id + 'x';
+    seen[id] = true;
+    list.push({
+      id: id,
+      label: caliperCleanText(item && item.label, 'Column ' + (index + 1)),
+      kind: item && item.kind === 'date' ? 'date' : 'text',
+    });
+  });
+  return list.length ? list : base;
+}
+function normalizeGrooveRows(raw) {
+  const base = defaultGrooveRows();
+  if (!Array.isArray(raw) || !raw.length) return base;
+  const seen = {};
+  const list = [];
+  raw.slice(0, 16).forEach((item, index) => {
+    let id = caliperToken(item && item.id, 'r' + (index + 1));
+    while (seen[id]) id = id + 'x';
+    seen[id] = true;
+    list.push({ id: id });
+  });
+  return list.length ? list : base;
+}
+function normalizeGrooveSheet(raw) {
+  const base = defaultGrooveSheet();
+  const src = raw || {};
+  return {
+    formKey: GROOVE_FORM_ID,
+    title: caliperCleanText(src.title, base.title),
+    organization: caliperCleanText(src.organization, base.organization),
+    department: caliperCleanText(src.department, base.department),
+    place: caliperCleanText(src.place, base.place),
+    footer: caliperCleanText(src.footer, base.footer),
+    reasonLabel: caliperCleanText(src.reasonLabel, base.reasonLabel),
+    caliperLabel: caliperCleanText(src.caliperLabel, base.caliperLabel),
+    procedureLabel: caliperCleanText(src.procedureLabel, base.procedureLabel),
+    verificationLabel: caliperCleanText(src.verificationLabel, base.verificationLabel),
+    remarksLabel: caliperCleanText(src.remarksLabel, base.remarksLabel),
+    verifiedLabel: caliperCleanText(src.verifiedLabel, base.verifiedLabel),
+    approvedLabel: caliperCleanText(src.approvedLabel, base.approvedLabel),
+    steps: normalizeGrooveSteps(src.steps),
+    columns: normalizeGrooveColumns(src.columns),
+    rows: normalizeGrooveRows(src.rows),
+  };
+}
+function grooveTemplateRecord() {
+  return (state.formTemplates || []).find(t => {
+    const def = definitionObject(t);
+    return def && def.formKey === GROOVE_FORM_ID;
+  }) || null;
+}
+function grooveSheetDefinition() {
+  const saved = grooveTemplateRecord();
+  const def = saved ? definitionObject(saved) : null;
+  if (def && def.formKey === GROOVE_FORM_ID) return normalizeGrooveSheet(def);
+  return defaultGrooveSheet();
+}
+function sheetForGroove(data) {
+  if (data && data.sheet && Array.isArray(data.sheet.rows) && data.sheet.rows.length) return normalizeGrooveSheet(data.sheet);
+  return grooveSheetDefinition();
+}
+function grooveDraft(procedureId) {
+  const rows = (state.procedureRecords || []).filter(r => {
+    const bag = formBag(r);
+    return r && r.procedureId === procedureId && bag.formId === GROOVE_FORM_ID && bag.status === 'draft';
+  });
+  rows.sort((a, b) => String(b.updatedAt || b.completedAt || '').localeCompare(String(a.updatedAt || a.completedAt || '')));
+  return rows[0] || null;
+}
+function blankGrooveCells(columns) {
+  const row = {};
+  (columns || defaultGrooveColumns()).forEach(col => { row[col.id] = ''; });
+  return row;
+}
+function grooveDefaults(eq, proc, sheet) {
+  const rows = {};
+  (sheet && sheet.rows || defaultGrooveRows()).forEach(row => { rows[row.id] = blankGrooveCells(sheet && sheet.columns); });
+  return {
+    reason: '',
+    caliper: '',
+    remarks: '',
+    verifiedBy: viewerName(),
+    approvedBy: '',
+    approvedDate: '',
+    rows: rows,
+  };
+}
+function grooveDataFrom(raw, eq, proc, sheet) {
+  const active = sheet || grooveSheetDefinition();
+  const base = grooveDefaults(eq, proc, active);
+  const src = raw || {};
+  const rows = {};
+  (active.rows || []).forEach(def => {
+    rows[def.id] = Object.assign(blankGrooveCells(active.columns), (src.rows && src.rows[def.id]) || {});
+  });
+  return Object.assign(base, src, { rows: rows });
+}
+function grooveInput(id, value, readonly, key, type) {
+  if (readonly) {
+    const shown = type === 'date' ? (fmtDateNum(value) || value || '') : (value || '');
+    return escapeHtml(shown);
+  }
+  return '<input class="r18-cell-input" id="' + id + '" data-groove-key="' + escapeHtml(key) + '" type="' + type + '" value="' + escapeHtml(value || '') + '" autocomplete="off" />';
+}
+function grooveTableHtml(sheet, data, readonly) {
+  const head = '<tr>' + (sheet.columns || []).map(col => '<th>' + escapeHtml(col.label) + '</th>').join('') + '</tr>';
+  const body = (sheet.rows || []).map(def => {
+    const row = (data.rows && data.rows[def.id]) || blankGrooveCells(sheet.columns);
+    const cells = (sheet.columns || []).map(col =>
+      '<td>' + grooveInput('gv-' + def.id + '-' + col.id, row[col.id], readonly, col.id, col.kind === 'date' ? 'date' : 'text') + '</td>'
+    ).join('');
+    return '<tr data-groove-row="' + escapeHtml(def.id) + '">' + cells + '</tr>';
+  }).join('');
+  return '<div class="r18-paper-h" style="text-align:center">' + escapeHtml(sheet.verificationLabel) + '</div>' +
+    '<div class="r18-cal-table-wrap"><table class="r18-cal-table"><thead>' + head + '</thead><tbody>' + body + '</tbody></table></div>';
+}
+function grooveFormHtml(eq, proc, data, opts) {
+  const readonly = !!(opts && opts.readonly);
+  const back = (opts && opts.back) || 'equipment';
+  const recordId = (opts && opts.recordId) || '';
+  const sheet = sheetForGroove(data);
+  const leave = "r18_leaveGrooveForm('" + (eq && eq.id ? eq.id : '') + "','" + back + "')";
+  const approve = readonly && !data.approvedBy
+    ? '<div class="r18-form-actions"><label class="r18-paper-field" style="min-width:220px"><span>' + escapeHtml(sheet.approvedLabel) + '</span><input class="r18-paper-input" id="gv-approve-name" value="' + escapeHtml(viewerName()) + '" autocomplete="off" /></label><button type="button" class="btn btn-primary" onclick="r18_approveGrooveRecord(\'' + recordId + '\')">Approve</button></div>'
+    : '';
+  const actions = readonly
+    ? ''
+    : (opts && opts.editing
+      ? '<div class="r18-form-actions"><button type="button" class="btn btn-primary" id="gv-save-complete" onclick="r18_saveGrooveForm(\'complete\')">Save changes</button></div>'
+      : '<div class="r18-form-actions"><button type="button" class="btn btn-ghost" id="gv-save-progress" onclick="r18_saveGrooveForm(\'draft\')">Save Progress</button><button type="button" class="btn btn-primary" id="gv-save-complete" onclick="r18_saveGrooveForm(\'complete\')">Save and Complete</button></div>');
+  return '<div class="p-5" id="r18-groove-form" data-procedure-id="' + escapeHtml(proc && proc.id) + '" data-record-id="' + escapeHtml(recordId) + '" data-readonly="' + (readonly ? '1' : '0') + '" data-back="' + escapeHtml(back) + '">' +
+    '<div class="r18-form-top"><div><div class="r18-form-kicker">Verification Procedure</div><h2 class="text-xl serif font-semibold ink">' + escapeHtml(sheet.title) + '</h2><div class="text-sm ink-2">' + escapeHtml((eq && eq.name) || '') + '</div></div>' +
+    '<div class="flex gap-2 flex-wrap"><button type="button" class="btn btn-ghost" id="gv-export-pdf" onclick="r18_exportGroovePdf()">Export PDF</button>' +
+    (readonly && recordId ? '<button type="button" class="btn btn-primary" onclick="r18_editGrooveRecord(\'' + recordId + '\')">Edit</button>' : '') +
+    '<button type="button" class="btn btn-ghost" onclick="r18_editGrooveSheet()">Edit form</button>' +
+    '<button type="button" class="btn btn-ghost" onclick="' + leave + '">Close</button></div></div>' +
+    '<div class="r18-perform-layout">' + caliperSideHtml(eq, proc) + '<div><div class="r18-paper" id="gv-paper">' +
+    '<div class="r18-paper-org">' + escapeHtml(sheet.organization) + '</div>' +
+    '<div class="r18-paper-sub">' + escapeHtml(sheet.department) + '</div>' +
+    '<div class="r18-paper-sub">' + escapeHtml(sheet.place) + '</div>' +
+    '<div class="r18-paper-title" id="gv-paper-title">' + escapeHtml(sheet.title) + '</div>' +
+    '<div class="r18-paper-grid">' +
+    paperField(sheet.reasonLabel, 'gv-reason', data.reason, 'text', readonly) +
+    paperField(sheet.caliperLabel, 'gv-caliper', data.caliper, 'text', readonly) +
+    '</div>' +
+    '<div class="r18-paper-h" style="text-align:center">' + escapeHtml(sheet.procedureLabel) + '</div>' +
+    '<ol class="r18-paper-steps">' + (sheet.steps || []).map(step => '<li>' + escapeHtml(step) + '</li>').join('') + '</ol>' +
+    grooveTableHtml(sheet, data, readonly) +
+    '<div class="r18-paper-grid" style="margin-top:14px">' +
+    '<div style="grid-column:1 / -1">' + paperField(sheet.remarksLabel, 'gv-remarks', data.remarks, 'text', readonly) + '</div>' +
+    paperField(sheet.verifiedLabel, 'gv-verified', data.verifiedBy, 'text', readonly) +
+    paperField(sheet.approvedLabel, 'gv-approved', data.approvedBy, 'text', readonly) +
+    '</div>' +
+    '<div class="r18-paper-foot" style="text-align:right">' + escapeHtml(sheet.footer) + '</div>' +
+    '</div>' + actions + approve + '</div></div>' +
+    '<textarea id="r18-groove-data" hidden readonly>' + JSON.stringify(data).replace(/</g, '\\u003c') + '</textarea></div>';
+}
+function openGrooveForm(proc, eq, back, record, options) {
+  const editing = !!(options && options.editing);
+  const source = record || grooveDraft(proc.id);
+  const bag = source ? formBag(source) : null;
+  const complete = !!(bag && bag.status === 'complete');
+  const sheet = normalizeGrooveSheet((complete && bag && bag.sheet) ? bag.sheet : (complete ? null : grooveSheetDefinition()));
+  const data = grooveDataFrom(bag, eq, proc, sheet);
+  if (source && source.result) data.result = source.result;
+  data.sheet = sheet;
+  showModal(grooveFormHtml(eq, proc, data, { back: back, recordId: source ? source.id : '', readonly: complete && !editing, editing: complete && editing }), {
+    form: true,
+    lock: true,
+    onMount: () => {
+      const root = document.getElementById('r18-groove-form');
+      if (root && document.getElementById('gv-verified')) root._initial = JSON.stringify(readGrooveForm());
+    },
+  });
+}
+function readGrooveForm() {
+  const v = (id) => {
+    const el = document.getElementById(id);
+    return el ? String(el.value || '').trim() : '';
+  };
+  const rows = {};
+  document.querySelectorAll('#r18-groove-form [data-groove-row]').forEach(tr => {
+    const id = tr.getAttribute('data-groove-row');
+    const row = {};
+    tr.querySelectorAll('[data-groove-key]').forEach(el => { row[el.getAttribute('data-groove-key')] = String(el.value || '').trim(); });
+    rows[id] = row;
+  });
+  return {
+    reason: v('gv-reason'),
+    caliper: v('gv-caliper'),
+    remarks: v('gv-remarks'),
+    verifiedBy: v('gv-verified'),
+    approvedBy: v('gv-approved'),
+    rows: rows,
+  };
+}
+function grooveRowStarted(row, columns) {
+  return (columns || []).some(col => String((row && row[col.id]) || '').trim());
+}
+function grooveRowComplete(row, columns) {
+  return (columns || []).length > 0 && (columns || []).every(col => String((row && row[col.id]) || '').trim());
+}
+function grooveCompleteError(data) {
+  const sheet = data.sheet ? normalizeGrooveSheet(data.sheet) : grooveSheetDefinition();
+  if (!String(data.verifiedBy || '').trim()) return 'Enter who verified this sheet.';
+  if (!String(data.caliper || '').trim()) return 'Enter the caliper used for the measurements.';
+  const columns = sheet.columns || [];
+  let any = false;
+  const defs = sheet.rows || [];
+  for (let i = 0; i < defs.length; i++) {
+    const row = (data.rows || {})[defs[i].id] || {};
+    if (grooveRowComplete(row, columns)) any = true;
+    else if (grooveRowStarted(row, columns)) return 'Finish line ' + (i + 1) + '. Every column on a started line needs a value.';
+  }
+  if (!any) return 'Enter at least one complete verification line.';
+  return '';
+}
+function grooveHasEntry(data) {
+  if (String(data.reason || '').trim() || String(data.caliper || '').trim() || String(data.remarks || '').trim()) return true;
+  const sheet = data.sheet ? normalizeGrooveSheet(data.sheet) : grooveSheetDefinition();
+  return (sheet.rows || []).some(def => grooveRowStarted((data.rows || {})[def.id], sheet.columns));
+}
+function grooveCompletedDay(data) {
+  const sheet = data && data.sheet ? normalizeGrooveSheet(data.sheet) : grooveSheetDefinition();
+  const dateCols = (sheet.columns || []).filter(col => col.kind === 'date').map(col => col.id);
+  const dates = [];
+  (sheet.rows || []).forEach(def => {
+    const row = (data.rows || {})[def.id] || {};
+    dateCols.forEach(key => { if (row[key]) dates.push(row[key]); });
+  });
+  dates.sort();
+  return dates.length ? dates[dates.length - 1] : todayInput();
+}
+function currentGrooveDataFromStore() {
+  const stored = document.getElementById('r18-groove-data');
+  if (!stored) return null;
+  try { return JSON.parse(stored.value || stored.textContent); } catch (e) { return null; }
+}
+function currentGrooveData() {
+  if (document.getElementById('gv-verified')) {
+    const live = readGrooveForm();
+    const stored = currentGrooveDataFromStore();
+    if (stored && stored.sheet) live.sheet = stored.sheet;
+    if (stored && stored.approvedDate) live.approvedDate = stored.approvedDate;
+    return live;
+  }
+  return currentGrooveDataFromStore();
+}
+function groovePdfName(data) {
+  const day = grooveCompletedDay(data);
+  return 'Grooving-Tool-Verification-' + day + '.pdf';
+}
+function writeGroovePdf(data) {
+  const doc = new window.jspdf.jsPDF({ unit: 'in', format: 'letter' });
+  const left = 0.55;
+  const width = 7.4;
+  let y = 0.55;
+  const ensure = (need) => {
+    if (y + need <= 10.5) return;
+    doc.addPage();
+    y = 0.55;
+  };
+  const sheet = sheetForGroove(data);
+  const center = (text, size, bold) => {
+    doc.setFont('times', bold ? 'bold' : 'normal');
+    doc.setFontSize(size);
+    const lines = doc.splitTextToSize(pdfSafe(text) || ' ', width);
+    ensure(lines.length * (size / 72 + 0.06));
+    doc.text(lines, 4.25, y, { align: 'center' });
+    y += lines.length * (size / 72 + 0.04) + 0.08;
+  };
+  center(sheet.organization, 14, true);
+  center(sheet.department, 12, true);
+  center(sheet.place, 12, false);
+  center(sheet.title, 16, true);
+  y += 0.08;
+  ensure(0.4);
+  doc.setFont('times', 'normal');
+  doc.setFontSize(11);
+  doc.text(pdfSafe(sheet.reasonLabel) + '  ' + pdfSafe(data.reason), left, y);
+  doc.text(pdfSafe(sheet.caliperLabel) + '  ' + pdfSafe(data.caliper), left + width / 2, y);
+  y += 0.36;
+  ensure(0.28);
+  doc.setFont('times', 'bold');
+  doc.setFontSize(12);
+  doc.text(pdfSafe(sheet.procedureLabel), 4.25, y, { align: 'center' });
+  y += 0.22;
+  doc.setFont('times', 'normal');
+  doc.setFontSize(11);
+  (sheet.steps || []).forEach((step, index) => {
+    const lines = doc.splitTextToSize((index + 1) + '.  ' + pdfSafe(step), width - 0.3);
+    ensure(lines.length * 0.18 + 0.04);
+    doc.text(lines, left + 0.2, y);
+    y += lines.length * 0.18 + 0.04;
+  });
+  y += 0.12;
+  ensure(0.24);
+  doc.setFont('times', 'bold');
+  doc.setFontSize(12);
+  doc.text(pdfSafe(sheet.verificationLabel), 4.25, y, { align: 'center' });
+  y += 0.1;
+  const headers = (sheet.columns || []).map(col => col.label);
+  const colW = width / Math.max(headers.length, 1);
+  const paintRow = (cells, header) => {
+    const rowH = header ? 0.32 : 0.28;
+    ensure(rowH);
+    let x = left;
+    doc.setFont('times', header ? 'bold' : 'normal');
+    doc.setFontSize(header ? 9 : 10);
+    cells.forEach(cell => {
+      doc.rect(x, y, colW, rowH);
+      const lines = doc.splitTextToSize(pdfSafe(cell), colW - 0.08);
+      doc.text(lines.slice(0, 2), x + colW / 2, y + (header ? 0.18 : 0.17), { align: 'center' });
+      x += colW;
+    });
+    y += rowH;
+  };
+  paintRow(headers, true);
+  (sheet.rows || []).forEach(def => {
+    const row = (data.rows && data.rows[def.id]) || {};
+    paintRow((sheet.columns || []).map(col => {
+      const value = row[col.id] || '';
+      return col.kind === 'date' && value ? (fmtDateNum(value) || value) : value;
+    }), false);
+  });
+  y += 0.28;
+  const line = (label, value) => {
+    ensure(0.28);
+    doc.setFont('times', 'normal');
+    doc.setFontSize(11);
+    doc.text(pdfSafe(label) + '  ' + pdfSafe(value), left, y);
+    y += 0.28;
+  };
+  line(sheet.remarksLabel, data.remarks);
+  line(sheet.verifiedLabel, data.verifiedBy);
+  line(sheet.approvedLabel, data.approvedBy);
+  y += 0.16;
+  ensure(0.25);
+  doc.setFont('times', 'normal');
+  doc.setFontSize(10);
+  doc.text(pdfSafe(sheet.footer), left + width, y, { align: 'right' });
+  return doc;
+}
+window.r18_leaveGrooveForm = (equipmentId, back) => {
+  const root = document.getElementById('r18-groove-form');
+  const dirty = root && root.dataset.readonly !== '1' && root._initial && JSON.stringify(readGrooveForm()) !== root._initial;
+  if (dirty && !confirm('Leave this verification without saving?')) return;
+  if (back === 'list' && equipmentId) window.r18_openPerformProcedures(equipmentId);
+  else if (equipmentId) window.r18_openEquipmentDetail(equipmentId);
+  else closeModal();
+};
+window.r18_saveGrooveForm = async (mode) => {
+  const root = document.getElementById('r18-groove-form');
+  if (!root) return;
+  const proc = state.procedures.find(p => p.id === root.dataset.procedureId);
+  if (!proc) return;
+  const eq = equipmentById(proc.equipmentId);
+  const data = readGrooveForm();
+  data.sheet = sheetForGroove(currentGrooveDataFromStore());
+  const stored = currentGrooveDataFromStore();
+  if (stored && stored.approvedDate && !data.approvedDate) data.approvedDate = stored.approvedDate;
+  if (mode === 'complete') {
+    const err = grooveCompleteError(data);
+    if (err) return toast(err);
+  } else if (!grooveHasEntry(data)) {
+    return toast('Enter a reading or a remark before saving progress.');
+  }
+  const day = grooveCompletedDay(data);
+  const completedAt = new Date((day || todayInput()) + 'T12:00:00').toISOString();
+  const nextDueAt = addFrequency(completedAt, proc.frequencyValue, proc.frequencyUnit);
+  const result = mode === 'complete' ? 'pass' : null;
+  const previous = (state.procedureRecords || []).find(r => r.id === root.dataset.recordId);
+  const record = {
+    id: root.dataset.recordId || uuid(),
+    labId: state.currentLabId || proc.labId,
+    equipmentId: proc.equipmentId,
+    procedureId: proc.id,
+    completedAt: completedAt,
+    completedBy: data.verifiedBy,
+    result: result,
+    notes: data.remarks,
+    certificateNumber: '',
+    formData: Object.assign({ formId: GROOVE_FORM_ID, status: mode === 'complete' ? 'complete' : 'draft', revision: 'grooving-tool' }, data),
+    nextDueAt: nextDueAt,
+    createdAt: previous && previous.createdAt,
+  };
+  const btn = document.getElementById(mode === 'complete' ? 'gv-save-complete' : 'gv-save-progress');
+  if (btn) btn.disabled = true;
+  try {
+    if (!db) throw new Error('Connect Supabase before saving this verification.');
+    await repo.put('procedure_records', calibrationRecordPayload(record));
+  } catch (e) {
+    if (btn) btn.disabled = false;
+    console.error(e);
+    toast(saveFailureText(e));
+    return;
+  }
+  root.dataset.recordId = record.id;
+  upsertById(state.procedureRecords, record);
+  if (mode !== 'complete') {
+    root._initial = JSON.stringify(readGrooveForm());
+    if (btn) btn.disabled = false;
+    toast('Progress saved in the lab database.');
+    return;
+  }
+  let scheduleSaved = true;
+  try {
+    await repo.put('procedures', procedureSchedulePayload(proc, completedAt, nextDueAt));
+    if (proc.procedureType === 'calibration' && eq) await repo.put('equipment', equipmentCalibrationPayload(eq, completedAt, nextDueAt));
+  } catch (e) {
+    scheduleSaved = false;
+    console.error(e);
+  }
+  upsertById(state.procedures, Object.assign({}, proc, { lastCompletedAt: completedAt, nextDueAt: nextDueAt }));
+  if (proc.procedureType === 'calibration' && eq) upsertById(state.equipment, Object.assign({}, eq, { lastCalibration: completedAt, nextCalibration: nextDueAt }));
+  try { await refreshAll(); } catch (e) { console.warn(e); }
+  renderView();
+  window.r18_openEquipmentDetail(proc.equipmentId);
+  toast(scheduleSaved
+    ? 'Saved in the lab database. Next due ' + fmtDateShort(nextDueAt) + '. If a line is outside T-89 Figure 1, remove that tool from service.'
+    : 'The sheet is in the lab database. The next due date could not be updated.');
+};
+window.r18_editGrooveRecord = (recordId) => {
+  const record = (state.procedureRecords || []).find(r => r.id === recordId);
+  if (!record) return;
+  const proc = state.procedures.find(p => p.id === record.procedureId);
+  const eq = equipmentById(record.equipmentId) || {};
+  if (!proc) return toast('This procedure is no longer on the equipment.');
+  openGrooveForm(proc, eq, 'equipment', record, { editing: true });
+};
+window.r18_approveGrooveRecord = async (recordId) => {
+  const record = (state.procedureRecords || []).find(r => r.id === recordId);
+  if (!record) return;
+  const input = document.getElementById('gv-approve-name');
+  const name = input ? input.value.trim() : '';
+  if (!name) return toast('Enter who approved this verification.');
+  const bag = Object.assign({}, formBag(record), { approvedBy: name, approvedDate: todayInput() });
+  const next = Object.assign({}, record, { formData: bag });
+  try {
+    if (!db) throw new Error('Connect Supabase before saving this verification.');
+    await repo.put('procedure_records', calibrationRecordPayload(next));
+  } catch (e) {
+    console.error(e);
+    toast('Could not save the approval.');
+    return;
+  }
+  upsertById(state.procedureRecords, next);
+  window.r18_openProcedureRecordDetail(record.id);
+  toast('Approval saved.');
+};
+window.r18_exportGroovePdf = async () => {
+  const data = currentGrooveData();
+  if (!data) return;
+  const btn = document.getElementById('gv-export-pdf');
+  if (!window.jspdf || typeof window.jspdf.jsPDF !== 'function') return toast('PDF export is still loading. Try again in a moment.');
+  if (btn) btn.disabled = true;
+  try {
+    writeGroovePdf(data).save(groovePdfName(data));
+    toast('PDF downloaded.');
+  } catch (e) {
+    console.error(e);
+    toast('Could not create the PDF.');
+  } finally {
+    if (btn) btn.disabled = false;
+  }
+};
+function grooveFormLibraryCard() {
+  const saved = grooveTemplateRecord();
+  const sheet = grooveSheetDefinition();
+  return '<div class="card mt-4"><div class="px-4 py-3 flex justify-between gap-3 flex-wrap items-start">' +
+    '<div><div class="text-sm font-medium ink">Grooving tool</div>' +
+    '<div class="text-xs ink-2">' + escapeHtml(sheet.title) + ' · ' + sheet.rows.length + ' lines' + (saved ? ' · saved for this lab' : ' · DelDOT wording') + '</div>' +
+    '<div class="text-xs ink-3 mt-1">A grooving tool opens this sheet. Edit the whole form when the paper changes. A signed verification stays on the sheet it was signed with.</div></div>' +
+    '<button type="button" class="btn btn-ghost text-xs" onclick="r18_editGrooveSheet()">Edit form</button></div></div>';
+}
+function grooveEditorValue(id) {
+  const el = document.getElementById(id);
+  return el ? String(el.value || '') : '';
+}
+function setGrooveEditorValue(id, value) {
+  const el = document.getElementById(id);
+  if (el) el.value = value == null ? '' : String(value);
+}
+function grooveEditorLabel(id, caption, value) {
+  return '<label class="grow"><div class="text-xs font-medium ink-2 mb-1">' + escapeHtml(caption) + '</div><input class="input w-full" id="' + id + '" value="' + escapeHtml(value || '') + '"></label>';
+}
+function paintGrooveSheetEditor(sheet) {
+  const steps = document.getElementById('r18-groove-steps');
+  if (steps) {
+    steps.innerHTML = (sheet.steps || []).map((step, index) =>
+      '<div class="r18-fb-top mt-2"><label class="grow"><textarea class="input w-full gv-step" rows="2">' + escapeHtml(step) + '</textarea></label>' +
+      '<button type="button" class="btn btn-ghost text-xs" onclick="r18_moveGrooveStep(' + index + ',-1)">Up</button>' +
+      '<button type="button" class="btn btn-ghost text-xs" onclick="r18_moveGrooveStep(' + index + ',1)">Down</button>' +
+      '<button type="button" class="btn btn-ghost text-xs" onclick="r18_removeGrooveStep(' + index + ')">Remove</button></div>'
+    ).join('');
+  }
+  const columns = document.getElementById('r18-groove-columns');
+  if (columns) {
+    columns.innerHTML = (sheet.columns || []).map((col, index) =>
+      '<div class="r18-fb-field gv-col"><div class="r18-fb-top"><label class="grow"><div class="text-xs font-medium ink-2 mb-1">Column ' + (index + 1) + '</div><input class="input w-full gv-col-label" value="' + escapeHtml(col.label || '') + '"></label>' +
+      '<label class="text-xs ink-2">Kind<select class="select gv-col-kind"><option value="text"' + (col.kind !== 'date' ? ' selected' : '') + '>Text</option><option value="date"' + (col.kind === 'date' ? ' selected' : '') + '>Date</option></select></label>' +
+      '<button type="button" class="btn btn-ghost text-xs" onclick="r18_moveGrooveColumn(' + index + ',-1)">Up</button>' +
+      '<button type="button" class="btn btn-ghost text-xs" onclick="r18_moveGrooveColumn(' + index + ',1)">Down</button>' +
+      '<button type="button" class="btn btn-ghost text-xs" onclick="r18_removeGrooveColumn(' + index + ')">Remove</button></div>' +
+      '<input type="hidden" class="gv-col-id" value="' + escapeHtml(col.id || '') + '"></div>'
+    ).join('');
+  }
+  const rows = document.getElementById('r18-groove-rows');
+  if (rows) {
+    rows.innerHTML = (sheet.rows || []).map((row, index) =>
+      '<div class="r18-fb-field gv-row"><div class="r18-fb-top"><div class="grow text-sm ink">Blank line ' + (index + 1) + '</div>' +
+      '<button type="button" class="btn btn-ghost text-xs" onclick="r18_moveGrooveRow(' + index + ',-1)">Up</button>' +
+      '<button type="button" class="btn btn-ghost text-xs" onclick="r18_moveGrooveRow(' + index + ',1)">Down</button>' +
+      '<button type="button" class="btn btn-ghost text-xs" onclick="r18_removeGrooveRow(' + index + ')">Remove</button></div>' +
+      '<input type="hidden" class="gv-row-id" value="' + escapeHtml(row.id || '') + '"></div>'
+    ).join('');
+  }
+}
+function readGrooveSheetEditor() {
+  const steps = [];
+  document.querySelectorAll('#r18-groove-steps .gv-step').forEach(el => steps.push(el.value));
+  const columns = [];
+  document.querySelectorAll('#r18-groove-columns .gv-col').forEach(el => {
+    const kindEl = el.querySelector('.gv-col-kind');
+    columns.push({
+      id: (el.querySelector('.gv-col-id') || {}).value || '',
+      label: (el.querySelector('.gv-col-label') || {}).value || '',
+      kind: kindEl && kindEl.value === 'date' ? 'date' : 'text',
+    });
+  });
+  const rows = [];
+  document.querySelectorAll('#r18-groove-rows .gv-row').forEach(el => {
+    rows.push({ id: (el.querySelector('.gv-row-id') || {}).value || '' });
+  });
+  return {
+    formKey: GROOVE_FORM_ID,
+    title: grooveEditorValue('gv-sheet-title'),
+    organization: grooveEditorValue('gv-sheet-org'),
+    department: grooveEditorValue('gv-sheet-dept'),
+    place: grooveEditorValue('gv-sheet-place'),
+    footer: grooveEditorValue('gv-sheet-footer'),
+    reasonLabel: grooveEditorValue('gv-lab-reason'),
+    caliperLabel: grooveEditorValue('gv-lab-caliper'),
+    procedureLabel: grooveEditorValue('gv-lab-procedure'),
+    verificationLabel: grooveEditorValue('gv-lab-verification'),
+    remarksLabel: grooveEditorValue('gv-lab-remarks'),
+    verifiedLabel: grooveEditorValue('gv-lab-verified'),
+    approvedLabel: grooveEditorValue('gv-lab-approved'),
+    steps: steps,
+    columns: columns,
+    rows: rows,
+  };
+}
+function grooveSheetEditorHtml(sheet) {
+  return '<div class="p-5" id="r18-groove-editor"><div class="r18-form-top"><div><div class="r18-form-kicker">Grooving tool sheet</div>' +
+    '<h2 class="text-xl serif font-semibold ink">Edit form</h2>' +
+    '<div class="text-sm ink-2">This changes the whole sheet the next time a grooving tool is verified. A signed verification stays on the sheet it was signed with.</div></div>' +
+    '<div class="flex gap-2 flex-wrap"><button type="button" class="btn btn-ghost" onclick="r18_restoreGrooveSheet()">Restore DelDOT wording</button>' +
+    '<button type="button" class="btn btn-ghost" onclick="r18_closeGrooveSheetEditor()">Close</button></div></div>' +
+    '<div class="r18-fb-field"><div class="text-xs font-medium ink-2 mb-1">Title on the sheet</div><input class="input w-full" id="gv-sheet-title" value="' + escapeHtml(sheet.title) + '"></div>' +
+    '<div class="r18-fb-field"><div class="r18-fb-top">' + grooveEditorLabel('gv-sheet-org', 'Organization', sheet.organization) + grooveEditorLabel('gv-sheet-dept', 'Department', sheet.department) + grooveEditorLabel('gv-sheet-place', 'Place', sheet.place) + '</div></div>' +
+    '<div class="r18-fb-field"><div class="r18-fb-top">' + grooveEditorLabel('gv-sheet-footer', 'Footer', sheet.footer) + '</div></div>' +
+    '<div class="text-sm font-medium ink mt-4">Header lines</div>' +
+    '<div class="r18-fb-field"><div class="r18-fb-top">' + grooveEditorLabel('gv-lab-reason', 'Reason', sheet.reasonLabel) + grooveEditorLabel('gv-lab-caliper', 'Caliper', sheet.caliperLabel) + '</div></div>' +
+    '<div class="text-sm font-medium ink mt-4">Procedure</div>' +
+    '<div class="r18-fb-field"><div class="r18-fb-top">' + grooveEditorLabel('gv-lab-procedure', 'Procedure heading', sheet.procedureLabel) + '</div></div>' +
+    '<div id="r18-groove-steps"></div>' +
+    '<button type="button" class="btn btn-ghost text-xs mt-2" onclick="r18_addGrooveStep()">+ Add step</button>' +
+    '<div class="text-sm font-medium ink mt-4">Verification table</div>' +
+    '<div class="r18-fb-field"><div class="r18-fb-top">' + grooveEditorLabel('gv-lab-verification', 'Table heading', sheet.verificationLabel) + '</div></div>' +
+    '<div id="r18-groove-columns"></div>' +
+    '<button type="button" class="btn btn-ghost text-xs mt-2" onclick="r18_addGrooveColumn()">+ Add column</button>' +
+    '<div id="r18-groove-rows"></div>' +
+    '<button type="button" class="btn btn-ghost text-xs mt-2" onclick="r18_addGrooveRow()">+ Add line</button>' +
+    '<div class="text-sm font-medium ink mt-4">Closing lines</div>' +
+    '<div class="r18-fb-field"><div class="r18-fb-top">' + grooveEditorLabel('gv-lab-remarks', 'Remarks', sheet.remarksLabel) + grooveEditorLabel('gv-lab-verified', 'Verified by', sheet.verifiedLabel) + grooveEditorLabel('gv-lab-approved', 'Approved by', sheet.approvedLabel) + '</div></div>' +
+    '<div class="r18-form-actions"><button type="button" class="btn btn-primary" onclick="r18_saveGrooveSheet()">Save form</button></div></div>';
+}
+window.r18_editGrooveSheet = () => {
+  const open = document.getElementById('r18-groove-form');
+  if (open) {
+    const dirty = open.dataset.readonly !== '1' && open._initial && JSON.stringify(readGrooveForm()) !== open._initial;
+    if (dirty && !confirm('Leave this verification and edit the form? Readings on this screen will be kept only if you saved them.')) return;
+    grooveSheetReturn = { procedureId: open.dataset.procedureId || '', recordId: open.dataset.recordId || '', back: open.dataset.back || '' };
+  } else grooveSheetReturn = null;
+  const sheet = grooveSheetDefinition();
+  showModal(grooveSheetEditorHtml(sheet), { wide: true, sheet: true, onMount: () => paintGrooveSheetEditor(sheet) });
+};
+window.r18_addGrooveStep = () => {
+  const draft = readGrooveSheetEditor();
+  if (draft.steps.length >= 12) return toast('This sheet holds twelve steps.');
+  draft.steps.push('');
+  paintGrooveSheetEditor(draft);
+};
+window.r18_removeGrooveStep = (index) => {
+  const draft = readGrooveSheetEditor();
+  if (draft.steps.length <= 1) return toast('Keep at least one step.');
+  draft.steps.splice(index, 1);
+  paintGrooveSheetEditor(draft);
+};
+window.r18_moveGrooveStep = (index, dir) => {
+  const draft = readGrooveSheetEditor();
+  if (sieveEditorListMove(draft.steps, index, dir)) paintGrooveSheetEditor(draft);
+};
+window.r18_addGrooveColumn = () => {
+  const draft = readGrooveSheetEditor();
+  if (draft.columns.length >= 8) return toast('This sheet holds eight columns.');
+  const used = {};
+  draft.columns.forEach(col => { used[col.id] = true; });
+  let n = draft.columns.length + 1;
+  while (used['c' + n]) n += 1;
+  draft.columns.push({ id: 'c' + n, label: 'Column', kind: 'text' });
+  paintGrooveSheetEditor(draft);
+};
+window.r18_removeGrooveColumn = (index) => {
+  const draft = readGrooveSheetEditor();
+  if (draft.columns.length <= 1) return toast('Keep at least one column.');
+  draft.columns.splice(index, 1);
+  paintGrooveSheetEditor(draft);
+};
+window.r18_moveGrooveColumn = (index, dir) => {
+  const draft = readGrooveSheetEditor();
+  if (sieveEditorListMove(draft.columns, index, dir)) paintGrooveSheetEditor(draft);
+};
+window.r18_addGrooveRow = () => {
+  const draft = readGrooveSheetEditor();
+  if (draft.rows.length >= 16) return toast('This sheet holds 16 lines.');
+  const used = {};
+  draft.rows.forEach(row => { used[row.id] = true; });
+  let n = draft.rows.length + 1;
+  while (used['r' + n]) n += 1;
+  draft.rows.push({ id: 'r' + n });
+  paintGrooveSheetEditor(draft);
+};
+window.r18_removeGrooveRow = (index) => {
+  const draft = readGrooveSheetEditor();
+  if (draft.rows.length <= 1) return toast('Keep at least one line.');
+  draft.rows.splice(index, 1);
+  paintGrooveSheetEditor(draft);
+};
+window.r18_moveGrooveRow = (index, dir) => {
+  const draft = readGrooveSheetEditor();
+  if (sieveEditorListMove(draft.rows, index, dir)) paintGrooveSheetEditor(draft);
+};
+window.r18_restoreGrooveSheet = () => {
+  const sheet = defaultGrooveSheet();
+  setGrooveEditorValue('gv-sheet-title', sheet.title);
+  setGrooveEditorValue('gv-sheet-org', sheet.organization);
+  setGrooveEditorValue('gv-sheet-dept', sheet.department);
+  setGrooveEditorValue('gv-sheet-place', sheet.place);
+  setGrooveEditorValue('gv-sheet-footer', sheet.footer);
+  setGrooveEditorValue('gv-lab-reason', sheet.reasonLabel);
+  setGrooveEditorValue('gv-lab-caliper', sheet.caliperLabel);
+  setGrooveEditorValue('gv-lab-procedure', sheet.procedureLabel);
+  setGrooveEditorValue('gv-lab-verification', sheet.verificationLabel);
+  setGrooveEditorValue('gv-lab-remarks', sheet.remarksLabel);
+  setGrooveEditorValue('gv-lab-verified', sheet.verifiedLabel);
+  setGrooveEditorValue('gv-lab-approved', sheet.approvedLabel);
+  paintGrooveSheetEditor(sheet);
+  toast('DelDOT wording is back in the editor. Save form to use it.');
+};
+window.r18_closeGrooveSheetEditor = () => {
+  const back = grooveSheetReturn;
+  grooveSheetReturn = null;
+  if (back && back.recordId) window.r18_openProcedureRecordDetail(back.recordId);
+  else if (back && back.procedureId) window.r18_openCompleteProcedureModal(back.procedureId, back.back);
+  else closeModal();
+};
+window.r18_saveGrooveSheet = async () => {
+  const draft = readGrooveSheetEditor();
+  const steps = (draft.steps || []).map(step => String(step).trim()).filter(Boolean);
+  if (!String(draft.title || '').trim()) return toast('Enter the title on the sheet.');
+  if (!steps.length) return toast('Add at least one procedure step.');
+  if (!draft.columns.length) return toast('Add at least one column.');
+  if (draft.columns.some(col => !String(col.label || '').trim())) return toast('Name every column.');
+  if (!draft.rows.length) return toast('Add at least one line.');
+  if (!state.currentLabId) return toast('Choose a lab first.');
+  const existing = grooveTemplateRecord();
+  const sheet = normalizeGrooveSheet(Object.assign({}, draft, { steps: steps }));
+  const row = {
+    id: existing ? existing.id : uuid(),
+    labId: state.currentLabId,
+    name: 'Grooving tool verification',
+    definition: sheet,
+    active: true,
+  };
+  if (existing && existing.createdAt) row.createdAt = existing.createdAt;
+  try {
+    if (!db) throw new Error('Connect Supabase before saving this form.');
+    await repo.put('form_templates', row);
+    upsertById(state.formTemplates, row);
+    state.customFormsReady = true;
+    state.customFormsSchemaError = '';
+  } catch (e) {
+    const raw = String((e && (e.message || e.details)) || '');
+    const text = saveFailureText(e);
+    if (/form_templates|schema cache|relation|does not exist/i.test(raw + ' ' + text)) {
+      state.customFormsReady = false;
+      state.customFormsSchemaError = text;
+      toast('The lab database needs the procedure-forms update before this sheet can be saved. Inventory, Procedure Forms has the one-time SQL.');
+      return;
+    }
+    return toast('Could not save the form. ' + text);
+  }
+  try { await refreshAll(); } catch (e) { console.warn(e); }
+  if (!grooveTemplateRecord()) upsertById(state.formTemplates, row);
+  toast('Grooving tool form saved');
+  const back = grooveSheetReturn;
+  grooveSheetReturn = null;
+  if (back && back.recordId) window.r18_openProcedureRecordDetail(back.recordId);
+  else if (back && back.procedureId) window.r18_openCompleteProcedureModal(back.procedureId, back.back);
+  else {
+    closeModal();
+    state.currentTab = 'inventory';
+    state.inventorySubTab = 'procedure_forms';
+    renderView();
+  }
+};
+
+
 /* ---------- CUSTOM PROCEDURE FORMS ---------- */
 let customFormSession = null;
 const CUSTOM_FIELD_TYPES = ['text', 'number', 'date', 'longtext', 'yesno', 'passfail', 'section', 'note', 'table'];
@@ -39684,6 +40465,8 @@ function procedureFormLabel(proc) {
   const template = procedureTemplate(proc);
   if (template) return template.name;
   const eq = equipmentById(proc && proc.equipmentId);
+  if (procedureUsesGroovingForm(eq, proc)) return 'Grooving tool';
+  if (procedureUsesSieveForm(eq, proc)) return 'Sieve inspection';
   if (procedureUsesCaliperForm(eq, proc)) return 'Caliper sheet';
   return '';
 }
@@ -39857,7 +40640,7 @@ function renderProcedureFormsHtml() {
         : '<div class="text-xs ink-2 mt-2">Add a procedure on a piece of equipment, then come back and attach this form.</div>') +
       '</div>';
   }).join('');
-  return caliperFormLibraryCard() + sieveFormLibraryCard() + '<div class="card mt-4"><div class="px-4 py-3 border-b border-line-2 flex justify-between items-center gap-3 flex-wrap">' +
+  return caliperFormLibraryCard() + sieveFormLibraryCard() + grooveFormLibraryCard() + '<div class="card mt-4"><div class="px-4 py-3 border-b border-line-2 flex justify-between items-center gap-3 flex-wrap">' +
     '<div><div class="text-sm font-semibold ink">Procedure forms (' + forms.length + ')</div>' +
     '<div class="text-xs ink-2">Build a sheet once, attach it to any procedure, and Perform Procedure opens it for the tech.</div></div>' +
     '<button type="button" class="btn btn-primary text-xs" onclick="r18_openFormBuilder()">+ New form</button></div>' +
@@ -39992,6 +40775,7 @@ window.r18_openFormBuilder = (id) => {
   const existingDef = existing ? definitionObject(existing) : null;
   if (existingDef && existingDef.formKey === CALIPER_FORM_ID) return window.r18_editCaliperSheet();
   if (existingDef && existingDef.formKey === SIEVE_FORM_ID) return window.r18_editSieveSheet();
+  if (existingDef && existingDef.formKey === GROOVE_FORM_ID) return window.r18_editGrooveSheet();
   const def = existing ? templateDefinition(existing) : { title: '', footer: '', fields: defaultCustomFields() };
   paintFormBuilder({
     id: existing ? existing.id : '',
@@ -41043,10 +41827,15 @@ window.r18_openCompleteProcedureModal = (procedureId, back) => {
   const linkedDef = linked ? definitionObject(linked) : null;
   const linkedCaliper = !!(linkedDef && linkedDef.formKey === CALIPER_FORM_ID);
   const linkedSieve = !!(linkedDef && linkedDef.formKey === SIEVE_FORM_ID);
-  if (proc.formTemplateId && !template && !linkedCaliper && !linkedSieve) {
+  const linkedGroove = !!(linkedDef && linkedDef.formKey === GROOVE_FORM_ID);
+  if (proc.formTemplateId && !template && !linkedCaliper && !linkedSieve && !linkedGroove) {
     toast('The form on this procedure is no longer available. Attach another under Inventory → Procedure Forms.');
   } else if (template) {
     openCustomForm(proc, eq || {}, back || 'equipment', customDraft(proc.id, template.id), {});
+    return;
+  }
+  if (procedureUsesGroovingForm(eq, proc) || linkedGroove) {
+    openGrooveForm(proc, eq || {}, back || 'equipment');
     return;
   }
   if (procedureUsesSieveForm(eq, proc) || linkedSieve) {
@@ -41136,6 +41925,18 @@ window.r18_openProcedureRecordDetail = (recordId) => {
   const bag = formBag(r);
   const proc = state.procedures.find(p => p.id === r.procedureId);
   const eq = equipmentById(r.equipmentId);
+  if (bag.formId === GROOVE_FORM_ID && bag.status === 'draft') {
+    if (proc) openGrooveForm(proc, eq || {}, 'equipment');
+    return;
+  }
+  if (bag.formId === GROOVE_FORM_ID) {
+    const sheet = bag.sheet ? normalizeGrooveSheet(bag.sheet) : defaultGrooveSheet();
+    const data = grooveDataFrom(bag, eq, proc, sheet);
+    data.result = r.result || '';
+    data.sheet = sheet;
+    showModal(grooveFormHtml(eq || {}, proc || { id: r.procedureId, name: 'Grooving Tool Verification' }, data, { readonly: true, recordId: r.id, back: 'equipment' }), { form: true, lock: true });
+    return;
+  }
   if (bag.formId === SIEVE_FORM_ID && bag.status === 'draft') {
     if (proc) openSieveForm(proc, eq || {}, 'equipment');
     return;
