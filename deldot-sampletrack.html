@@ -1306,7 +1306,38 @@ nav:not(#r18-nav), .nav-top-row { display: none !important; }
   .car-meta { grid-column: 1 / -1; text-align: left; border-left: 0; border-top: 3px solid #f68304; padding: 8px 0 0; }
 }
 @media print {
-  .dd-rpt.car-rpt { border: 1px solid #e4ebf3 !important; box-shadow: none !important; border-radius: 0; }
+  .dd-rpt.car-rpt {
+    border: 1px solid #e4ebf3 !important;
+    box-shadow: none !important;
+    border-radius: 0;
+    zoom: 0.86;
+    page-break-inside: avoid;
+    break-inside: avoid;
+  }
+  .dd-rpt.car-rpt .car-banner { padding: 8px 12px 12px; }
+  .dd-rpt.car-rpt .car-lockup { height: 42px; }
+  .dd-rpt.car-rpt .car-banner-name { font-size: 16px; }
+  .dd-rpt.car-rpt .car-banner-name div + div { font-size: 15px; }
+  .dd-rpt.car-rpt .car-title { padding: 8px 12px 2px; gap: 8px; }
+  .dd-rpt.car-rpt .car-title h1 { font-size: 18px; }
+  .dd-rpt.car-rpt .car-mark { width: 26px; height: 26px; }
+  .dd-rpt.car-rpt .car-chips { gap: 6px; padding: 4px 12px 8px; grid-template-columns: repeat(4, minmax(0, 1fr)); }
+  .dd-rpt.car-rpt .car-chip { padding: 4px 8px; font-size: 11px; }
+  .dd-rpt.car-rpt .car-grid { gap: 8px; padding: 0 12px 8px; grid-template-columns: 1fr 1fr; }
+  .dd-rpt.car-rpt .car-row { padding: 3px 8px; font-size: 11px; }
+  .dd-rpt.car-rpt .car-sieve { margin: 0 12px 8px; }
+  .dd-rpt.car-rpt .car-table th,
+  .dd-rpt.car-rpt .car-table td { padding: 3px 4px; font-size: 10px; }
+  .dd-rpt.car-rpt table,
+  .dd-rpt.car-rpt tr { page-break-inside: auto; break-inside: auto; }
+  .dd-rpt.car-rpt .car-split { gap: 8px; padding: 0 12px 6px; }
+  .dd-rpt.car-rpt .car-split:not(.pass) { grid-template-columns: 1.15fr 0.85fr; }
+  .dd-rpt.car-rpt .car-reject { padding: 8px; }
+  .dd-rpt.car-rpt .car-reject strong { font-size: 13px; }
+  .dd-rpt.car-rpt .car-cert { margin: 0 12px 4px; }
+  .dd-rpt.car-rpt .car-sigs { padding: 8px 18px 2px; gap: 16px; }
+  .dd-rpt.car-rpt .car-sigs i { height: 16px; }
+  .dd-rpt.car-rpt .car-foot { margin-top: 2px; padding: 4px 12px 6px; }
   .car-banner, .car-card-head, .car-sieve-head, .car-table th, .car-cert-head, .car-remarks-head, .car-wt, .car-reject, .car-warn {
     -webkit-print-color-adjust: exact; print-color-adjust: exact;
   }
@@ -1328,7 +1359,8 @@ nav:not(#r18-nav), .nav-top-row { display: none !important; }
   @page { size: letter portrait; margin: 0.2in; }
   body { background: white !important; background-image: none !important; }
   html, #app, #report-view, #report-view > div { background: white !important; }
-  #topbar, #navRail, nav, #field-view, #dashboard-view, #scan-view, #lab-view,
+  #topbar, #navRail, nav, #phoneTabBar, #phoneModuleBar, #mobileNav, #offlineBanner,
+  #field-view, #dashboard-view, #scan-view, #lab-view,
   .report-toolbar, .toast, .lab-mode-tabs, #csub-intake, #csub-log,
   #csub-schedule, #csub-break, #rpt-approved-notice, #rpt-pending-notice { display: none !important; }
   #app { display: block !important; height: auto !important; overflow: visible !important; position: static !important; }
@@ -49123,6 +49155,8 @@ html.comfort-mode .rail-label {
   .phone-tab svg { width: 22px; height: 22px; }
   .phone-tab.active { color: #2ee0c8; }
   .view.active { top: 48px; bottom: 64px; }
+  #app:has(#report-view.active) #phoneTabBar { display: none !important; }
+  #app:has(#report-view.active) #report-view.active { bottom: 0; }
   #app.on-home .view.active { top: 0; bottom: 64px; }
   #app.on-home #home-view,
   #app.on-home #home-view.active {
