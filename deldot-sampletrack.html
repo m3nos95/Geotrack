@@ -76,14 +76,14 @@ _loadScript(
 
 <style>
 :root {
-  --bg:      #0d1524;
-  --surface: #121b2c;
-  --panel:   #182433;
-  --border:  #2a3a52;
-  --accent:  #0f766e;
-  --accent2: #2ee0c8;
-  --gold:    #2ee0c8;
-  --on-accent: #04222a;
+  --bg:      #041428;
+  --surface: #071e3a;
+  --panel:   #0b2748;
+  --border:  #1e4a78;
+  --accent:  #f77706;
+  --accent2: #ff8d2a;
+  --gold:    #ffb15a;
+  --on-accent: #fff;
   --green:   #1a6644;
   --green2:  #2ecc78;
   --red:     #8b2020;
@@ -2368,17 +2368,17 @@ nav:not(#r18-nav), .nav-top-row { display: none !important; }
 /* ── Refined variables ── */
 :root {
   --sans: 'Inter', 'DM Sans', sans-serif;
-  --bg:       #0d1524;
-  --surface:  #121b2c;
-  --panel:    #182433;
-  --panel-2:  #1e2c3e;
-  --border:   #2a3a52;
-  --border-2: #3a4d68;
-  --accent:   #0f766e;
-  --accent2:  #2ee0c8;
-  --accent3:  #99f6e4;
-  --gold:     #2ee0c8;
-  --on-accent:#04222a;
+  --bg:       #041428;
+  --surface:  #071e3a;
+  --panel:    #0b2748;
+  --panel-2:  #123258;
+  --border:   #1e4a78;
+  --border-2: #24588a;
+  --accent:   #f77706;
+  --accent2:  #ff8d2a;
+  --accent3:  #ffb15a;
+  --gold:     #ffb15a;
+  --on-accent:#fff;
   --green2:   #22d370;
   --red2:     #e05555;
   --blue2:    #4a90e2;
@@ -5289,6 +5289,13 @@ END $$;
     <div class="dash-container">
 
       <!-- Greeting + Quick Actions -->
+      <div class="lt-banner">
+        <img class="lt-bridge" alt="">
+        <div class="lt-banner-copy">
+          <div class="lt-kicker">Materials &amp; Research</div>
+          <div class="lt-title"><span>Lab</span>Trak</div>
+        </div>
+      </div>
       <div class="dash-header">
         <div>
           <div class="dash-greet-main" id="dashGreeting">Good morning</div>
@@ -8050,6 +8057,13 @@ END $$;
   <!-- ── FIELD CONTROL ── -->
   <div class="view" id="fieldhub-view">
     <div class="hub-wrap">
+      <div class="lt-banner">
+        <img class="lt-bridge" alt="">
+        <div class="lt-banner-copy">
+          <div class="lt-kicker">Materials &amp; Research</div>
+          <div class="lt-title"><span>Field</span> Control</div>
+        </div>
+      </div>
       <div class="hub-header" data-tour="fieldhub-header" data-guide="fieldhub-home">
         <div>
           <div class="hub-greet" id="fhub_greet">Good morning</div>
@@ -8170,6 +8184,13 @@ END $$;
   <!-- ── SOIL LAB ── -->
   <div class="view" id="labhub-view">
     <div class="hub-wrap">
+      <div class="lt-banner">
+        <img class="lt-bridge" alt="">
+        <div class="lt-banner-copy">
+          <div class="lt-kicker">Materials &amp; Research</div>
+          <div class="lt-title"><span>Soil</span> &amp; Agg</div>
+        </div>
+      </div>
       <div class="hub-header" data-tour="labhub-header">
         <div>
           <div class="hub-greet" id="lhub_greet">Good morning</div>
@@ -8220,6 +8241,13 @@ END $$;
   <!-- ── CONCRETE HUB ── -->
   <div class="view" id="conchub-view">
     <div class="hub-wrap">
+      <div class="lt-banner">
+        <img class="lt-bridge" alt="">
+        <div class="lt-banner-copy">
+          <div class="lt-kicker">Materials &amp; Research</div>
+          <div class="lt-title"><span>Concrete</span></div>
+        </div>
+      </div>
       <div class="hub-header" data-tour="conchub-header" data-guide="conchub-home">
         <div>
           <div class="hub-greet" id="chub_greet">Good morning</div>
@@ -49815,6 +49843,114 @@ html:not([data-skin="retro"]) #cmdPalette button {
   }
 }
 
+
+/* LabTrak shares the R-18 shell: navy, orange selection, thin outlines, bridge header.
+   R-18's own rules stay under .r18-app. */
+.lt-banner {
+  position: relative;
+  display: flex;
+  align-items: center;
+  height: 84px;
+  margin: 0 0 16px;
+  border-radius: 16px;
+  overflow: hidden;
+  border: 1px solid #1e4a78;
+  background: #041428;
+}
+.lt-bridge { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; object-position: 36% center; }
+.lt-banner::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(90deg, #041428 0%, #041428 46%, rgba(4,20,40,0.04) 58%, rgba(4,20,40,0.2) 68%, #041428 76%);
+  pointer-events: none;
+}
+#app.on-home #home-app-dash {
+  background: #0b2748;
+  border-color: #1e4a78;
+}
+.lt-banner-copy { position: relative; z-index: 1; min-width: 0; padding: 0 16px; }
+.lt-kicker { font-size: 12px; color: #fff; line-height: 1.2; }
+.lt-title { font-size: 22px; font-weight: 800; color: #fff; letter-spacing: -0.02em; line-height: 1.05; }
+.lt-title span { color: #f77706; }
+#app.on-home .dash-greet-main { font-size: 28px; font-weight: 700; letter-spacing: -0.02em; }
+#app.on-home .dash-greet-sub { color: #8ea4c2; font-size: 14px; }
+.home-app {
+  background: #0b2748;
+  border: 1px solid #1e4a78;
+  border-radius: 16px;
+  color: #eef6ff;
+}
+.home-app:hover, .home-app:focus-visible {
+  border-color: #f77706;
+  box-shadow: 0 0 0 1px #f77706;
+}
+.home-app-icon svg { color: #d5e4f5; }
+#topbar { background: #041428; border-bottom: 1px solid #1e4a78; box-shadow: none; }
+#phoneModuleBar { background: #041428; border-bottom: 1px solid #1e4a78; }
+.phone-tab.active { color: #f77706; }
+#fieldhub-view .hub-kpi-card,
+#labhub-view .hub-kpi-card,
+#conchub-view .hub-kpi-card,
+#fieldhub-view .hub-panel,
+#labhub-view .hub-panel,
+#conchub-view .hub-panel,
+#fieldhub-view .hub-action-btn,
+#labhub-view .hub-action-btn,
+#conchub-view .hub-action-btn,
+#conchub-view .concrete-guide-toggle,
+.borelog-launch-card {
+  background: #0b2748;
+  border: 1px solid #1e4a78;
+  color: #eef6ff;
+  border-radius: 14px;
+}
+#fieldhub-view .hub-action-btn.primary,
+#labhub-view .hub-action-btn.primary,
+#conchub-view .hub-action-btn.primary {
+  background: #f77706;
+  color: #fff;
+  border-color: transparent;
+}
+#fieldhub-view .hub-action-btn.primary:hover,
+#labhub-view .hub-action-btn.primary:hover,
+#conchub-view .hub-action-btn.primary:hover { background: #ff8d2a; color: #fff; }
+html:not([data-skin="retro"]) #userOverlay .user-select-wrap {
+  background: #0b2748;
+  border: 1px solid #1e4a78;
+  border-radius: 18px;
+}
+html:not([data-skin="retro"]) #userOverlay .user-select-title {
+  color: #fff !important;
+  font-size: 20px !important;
+  font-weight: 800;
+  letter-spacing: -0.02em !important;
+}
+html:not([data-skin="retro"]) #userOverlay input {
+  background: #071e3a !important;
+  border: 1px solid #1e4a78 !important;
+  border-radius: 12px !important;
+  color: #eef6ff !important;
+}
+html:not([data-skin="retro"]) #userOverlay .pin-key.ok,
+html:not([data-skin="retro"]) #userOverlay button.pin-key.ok {
+  background: #f77706 !important;
+  border-color: transparent !important;
+  color: #fff !important;
+  border-radius: 12px !important;
+}
+@media (max-width: 820px) {
+  .lt-banner { height: 72px; margin-bottom: 12px; }
+  .lt-title { font-size: 18px; }
+  .lt-kicker { font-size: 11px; }
+  #phoneTabBar { background: #071e3a; border-top: 1px solid #1e4a78; }
+  .phone-tab { color: #8ea4c2; }
+  .phone-tab.active { color: #f77706; }
+  #app.on-home .dash-greet-main { font-size: 22px; }
+  #conchub-view .hub-action-btn.primary,
+  #fieldhub-view .hub-action-btn.primary,
+  #labhub-view .hub-action-btn.primary { background: #f77706; color: #fff; }
+}
 </style>
 
 <script id="motion-js">
@@ -49906,5 +50042,19 @@ html:not([data-skin="retro"]) #cmdPalette button {
     <button onclick="document.getElementById('offlineBanner').classList.remove('visible')"
       style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:14px;margin-left:4px;">✕</button>
   </div>
+<script>
+(function () {
+  function paintLabTrakBridges() {
+    var src = document.querySelector('.r18-bridge');
+    if (!src || !src.getAttribute('src')) return;
+    document.querySelectorAll('.lt-bridge').forEach(function (img) {
+      if (!img.getAttribute('src')) img.src = src.src;
+    });
+  }
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', paintLabTrakBridges);
+  else paintLabTrakBridges();
+})();
+</script>
+
 </body>
 </html>
