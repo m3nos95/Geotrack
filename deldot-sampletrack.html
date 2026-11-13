@@ -3105,7 +3105,7 @@ h2 { font-family: var(--display); font-size: 20px; font-weight: 700; color: var(
 .toast.info    { border-left-color: var(--blue2); }
 
 /* ── Overlays / modals ── */
-.project-overlay, [id$="Overlay"]:not(#setupOverlay):not(#userOverlay):not(#calNoteModal) {
+.project-overlay, [id$="Overlay"]:not(#setupOverlay):not(#userOverlay):not(#calNoteModal):not(#tourOverlay) {
   backdrop-filter: blur(4px);
 }
 .overlay-card {
@@ -48717,44 +48717,30 @@ html.konami-flash body {
   animation: konami-flash 0.9s steps(4, end);
 }
 
-/* ══ Guided tour (spotlight) — crisp cutout, no blur on target ══ */
+/* ══ Guided tour — a ring on the control, no dim and no blur ══ */
 #tourOverlay {
   display: none;
   position: fixed;
   inset: 0;
   z-index: 10050;
   pointer-events: none;
+  background: transparent;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
 }
 #tourOverlay.active { display: block; }
-.tour-mask-svg {
-  position: fixed;
-  inset: 0;
-  width: 100%;
-  height: 100%;
-  z-index: 10050;
-  pointer-events: none;
-}
-#tourOverlay.center-step #tourMaskDim {
-  fill: rgba(6, 10, 18, 0.58);
-  mask: none;
-}
-#tourOverlay.center-step #tourBackdrop { background: transparent; }
+.tour-mask-svg { display: none; }
 #tourBackdrop {
-  position: fixed;
-  inset: 0;
-  background: transparent;
-  z-index: 10050;
-  pointer-events: none;
+  display: none;
 }
 #tourSpotlight {
   position: fixed;
   border-radius: 10px;
-  box-shadow:
-    0 0 0 3px #f0a84e,
-    0 0 0 6px rgba(240, 168, 78, 0.45),
-    0 0 28px rgba(240, 168, 78, 0.35);
+  box-shadow: 0 0 0 2px #f0a84e;
   border: none;
   background: transparent;
+  filter: none;
+  backdrop-filter: none;
   transition: top 0.22s ease, left 0.22s ease, width 0.22s ease, height 0.22s ease, opacity 0.18s;
   pointer-events: none;
   z-index: 10052;
@@ -50294,6 +50280,15 @@ html:not([data-skin="retro"]) #userOverlay button.pin-key.ok {
     gap: 18px;
   }
   #app.on-home .home-app { max-width: none; }
+  #app.on-home .home-app-icon {
+    width: 132px;
+    height: 132px;
+  }
+  #app.on-home .home-app-icon svg,
+  #app.on-home .home-app-icon img {
+    width: 120px;
+    height: 120px;
+  }
 }
 </style>
 
