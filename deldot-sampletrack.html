@@ -2781,8 +2781,13 @@ body.field-guide-on #fieldhub-view { padding-bottom: 150px; }
   font-family: var(--sans); font-size: 12px; color: var(--muted); margin: 6px 0 0;
   display: none;
 }
-body.concrete-guide-on .guide-voice-hint,
-body.field-guide-on .guide-voice-hint { display: block; }
+body.concrete-guide-on.guide-speak-on .guide-voice-hint,
+body.field-guide-on.guide-speak-on .guide-voice-hint { display: block; }
+/* Speak stays out of the UI unless the stored flag is explicitly on. */
+body:not(.guide-speak-on) .guide-voice-fab,
+body:not(.guide-speak-on) .guide-voice-hint,
+body:not(.guide-speak-on) .cg-btn.voice,
+body:not(.guide-speak-on) .guide-voice-status { display: none !important; }
 .guide-voice-status {
   font-family: var(--sans); font-size: 12px; font-weight: 600; color: var(--accent2);
   min-height: 16px; margin-top: 4px;
@@ -15661,6 +15666,18 @@ function isAnyGuidedModeOn() {
     || (typeof isFieldGuidedMode === 'function' && isFieldGuidedMode());
 }
 
+const GUIDE_SPEAK_KEY = 'labtrak_guide_speak';
+
+function isGuideSpeakEnabled() {
+  try { return localStorage.getItem(GUIDE_SPEAK_KEY) === '1'; } catch (e) { return false; }
+}
+
+function applyGuideSpeakSetting() {
+  // Other code still reads labtrak_guide_speak. It stays off, and Settings does not show a Speak control.
+  try { localStorage.setItem(GUIDE_SPEAK_KEY, '0'); } catch (e) {}
+  document.body.classList.remove('guide-speak-on');
+}
+
 function guideVoiceSupported() {
   return !!(window.SpeechRecognition || window.webkitSpeechRecognition);
 }
@@ -15824,7 +15841,7 @@ function guideVoiceApplyToInput(el, spoken) {
 
 function guideVoicePositionFab(el) {
   const fab = document.getElementById('guideVoiceFab');
-  if (!fab || !el || !isAnyGuidedModeOn()) {
+  if (!fab || !el || !isAnyGuidedModeOn() || !isGuideSpeakEnabled()) {
     if (fab) fab.classList.remove('visible');
     return;
   }
@@ -15851,7 +15868,7 @@ function guideVoiceHideFab() {
 }
 
 function guideVoiceOnFocusIn(e) {
-  if (!isAnyGuidedModeOn()) return;
+  if (!isGuideSpeakEnabled() || !isAnyGuidedModeOn()) return;
   const el = e.target;
   if (!guideVoiceIsFillable(el)) return;
   _guideVoiceTarget = el;
@@ -15879,6 +15896,7 @@ function guideVoiceToggle() {
 }
 
 function guideVoiceStart() {
+  if (!isGuideSpeakEnabled()) return;
   if (!isAnyGuidedModeOn()) {
     if (typeof showToast === 'function') showToast('Turn on Guided Mode to use Speak', 'info');
     return;
@@ -15963,6 +15981,7 @@ function guideVoiceStart() {
 }
 
 function initGuideVoice() {
+  applyGuideSpeakSetting();
   guideVoiceUpdateButtons();
   document.addEventListener('focusin', guideVoiceOnFocusIn, true);
   window.addEventListener('scroll', () => {
@@ -15996,7 +16015,7 @@ const CONCRETE_GUIDE_STEPS = [
     view: 'conchub',
     guide: 'conchub-home',
     title: 'Welcome — Concrete Guided Mode',
-    body: 'This coach walks you through a pour from start to finish in plain steps. Tap a field, then Speak, and say the value (for example “four” for slump). The program still works the same when Guided Mode is off.'
+    body: 'This coach walks you through a pour from start to finish in plain steps. The program still works the same when Guided Mode is off.'
   },
   {
     id: 'new-pour',
@@ -17341,7 +17360,17 @@ function helpViewTitle(viewName) {
     scan: 'QR Scanner',
     labarrival: 'Lab Sample Arrival',
     soillab: 'Soil & Aggregate Lab',
-    concrete: 'Concrete Module',
+    concrete: 'Cylinder intake',
+    'concrete-mixes': 'Mix designs',
+    'concrete-approved': 'Approved mixes',
+    'concrete-log': 'Cylinder log',
+    'concrete-schedule': 'Break schedule',
+    'concrete-break': 'Break entry',
+    'concrete-report': 'Concrete report',
+    'fieldcontrol-proctor': 'Proctor tests',
+    'fieldcontrol-foc': 'Family of curves',
+    'fieldcontrol-core': 'Core drill',
+    report: 'Soil lab report',
     labhub: 'Soil Lab Hub',
     fieldhub: 'Field Control Hub',
     conchub: 'Concrete Hub',
@@ -17468,6 +17497,15 @@ const HELP_FIELD_REGISTRY = {
   ci_mix_design: { title: 'Mix design / class', body: 'Pick an approved design to fill the mix, or type one. The pour keeps its own copy.' },
   ci_pour_location: { title: 'Pour location', body: 'Structure, span, or station limits for the placement.' },
   ci_gps: { title: 'Pour GPS', body: 'Tap to capture GPS at the pour for map display.' },
+  md_name: { title: 'Mix name', body: 'Name of this design, such as the class and strength.' },
+  md_supplier: { title: 'Mix supplier', body: 'Plant or company that owns this design.' },
+  md_class: { title: 'Mix class', body: 'DelDOT concrete class for this design.' },
+  md_required_fc: { title: "Required f'c", body: 'Specified compressive strength in psi.' },
+  md_cement_sks: { title: 'Cement content', body: 'Cement in sacks per cubic yard.' },
+  md_plant: { title: 'Plant', body: 'Batch plant that produces this mix.' },
+  md_cement1: { title: 'Cement brand', body: 'Primary cement brand in the design.' },
+  md_fine_agg: { title: 'Fine aggregate', body: 'Sand source used in the design.' },
+  md_coarse_agg: { title: 'Coarse aggregate', body: 'Stone source used in the design.' },
   sbUrl: { title: 'Supabase URL', body: 'Your project API URL from Supabase → Settings → API. Required for cloud sync.' },
   sbKey: { title: 'Supabase anon key', body: 'Public anon key for browser access. Never paste the service_role key here.' }
 };
@@ -17486,11 +17524,10 @@ const CONTEXT_HELP_VIEWS = {
     ]
   },
   home: {
-    title: 'Dashboard / Home',
-    intro: 'Launch pad for each major DelDOT materials module and quick KPIs.',
+    title: 'Home',
+    intro: 'Open a module from the cards. Search narrows the list.',
     sections: [
-      { tour: 'dash-modules', title: 'Module cards', body: 'Open Soil Lab hub, Concrete hub, Field Control hub, or planned modules (Hot Mix, Pre-Cast, Chem).' },
-      { tour: 'planned-module', title: 'Planned modules', body: 'Grayed modules are on the roadmap — opening them shows a coming-soon notice.' }
+      { tour: 'dash-modules', title: 'Module cards', body: 'Soil & Agg, Concrete, Field Control, Projects, Sources, Scan, Map, R-18, All Samples, Lab Arrival, and the calendar. ConTrak shows for admins.' }
     ]
   },
   projects: {
@@ -17518,10 +17555,10 @@ const CONTEXT_HELP_VIEWS = {
     fieldOrder: ['src-search', 'src-filter-mat', 'src-filter-status', 'src-new-loc', 'src-new-source', 'src-modal-sample-date', 'src-modal-expire-date', 'src-modal-status', 'src-modal-sample-no', 'src-modal-notes', 'src-new-mat-name', 'src-new-mat-days']
   },
   fieldcontrol: {
-    title: 'Field Control',
-    intro: 'Start field events, log density and lab samples, drill pavement cores, and resume open sessions.',
+    title: 'Field event',
+    intro: 'Start a density or lab-sample event, or resume one that is still open.',
     sections: [
-      { tour: 'field-start', title: 'Field Control home', body: 'Test number tracker, new event wizard, core drill, resume, and open sessions.' }
+      { tour: 'field-start', title: 'Field event', body: 'Pick density, a lab sample, or both, then start the session. Proctor, family of curves, and core drill are the other tabs.' }
     ],
     fieldOrder: [
       'fc_intent_density', 'fc_intent_lab', 'fc_intent_both',
@@ -17557,12 +17594,79 @@ const CONTEXT_HELP_VIEWS = {
     ]
   },
   concrete: {
-    title: 'Concrete Module',
-    intro: 'Cylinder intake, fresh properties, break scheduling, and DMP/DMF reports.',
+    title: 'Cylinder intake',
+    intro: 'Enter a new pour: job info, fresh tests, and the cylinders cast.',
     sections: [
-      { tour: 'concrete-tabs', title: 'Concrete tabs', body: 'Switch between cast intake, cylinder log, breaks, and report views.' }
+      { tour: 'concrete-tabs', title: 'Concrete tabs', body: 'This tab is the pour. Log, schedule, break, and report follow the cylinders. Mix designs is the library, not this form.' }
     ],
     fieldOrder: ['ci_set_id', 'ci_contract', 'ci_fa_project', 'ci_contractor', 'ci_supplier', 'ci_mix_design', 'ci_pour_location', 'ci_gps']
+  },
+  'concrete-mixes': {
+    title: 'Mix designs',
+    intro: 'Search the design library, or add a mix and submit it for approval. An approved design can fill a new pour.',
+    sections: [
+      { tour: 'concrete-tabs', title: 'This tab', body: 'Mix designs is the library. Intake, log, schedule, break, and report are the cylinder pour.' }
+    ],
+    fieldOrder: ['md-search', 'md_name', 'md_supplier', 'md_class', 'md_required_fc', 'md_cement_sks', 'md_plant', 'md_cement1', 'md_fine_agg', 'md_coarse_agg']
+  },
+  'concrete-approved': {
+    title: 'Approved mixes',
+    intro: 'Designs that have been approved. Open one to see the materials and strength on file.',
+    sections: [
+      { tour: 'concrete-tabs', title: 'This tab', body: 'Approved mixes are the official list. Mix designs is where a supplier submits a new one.' }
+    ]
+  },
+  'concrete-log': {
+    title: 'Cylinder log',
+    intro: 'Find a cast set and open it to review the pour, breaks, and report.',
+    sections: [
+      { tour: 'concrete-tabs', title: 'This tab', body: 'The log lists sets. Intake is where a set is created.' }
+    ]
+  },
+  'concrete-schedule': {
+    title: 'Break schedule',
+    intro: 'Cylinders that are due, including today and overdue breaks.',
+    sections: [
+      { tour: 'concrete-tabs', title: 'This tab', body: 'The schedule is the due list. Break entry is where you record the load.' }
+    ]
+  },
+  'concrete-break': {
+    title: 'Break entry',
+    intro: 'Pick a set and record the break load and age for a cylinder.',
+    sections: [
+      { tour: 'concrete-tabs', title: 'This tab', body: 'This is the break form. The schedule shows what is due.' }
+    ]
+  },
+  'concrete-report': {
+    title: 'Concrete report',
+    intro: 'Open a set and print or export the DMP/DMF report.',
+    sections: [
+      { tour: 'concrete-tabs', title: 'This tab', body: 'The report is the finished cylinder record. Intake is where the pour was entered.' }
+    ]
+  },
+  'fieldcontrol-proctor': {
+    title: 'Proctor tests',
+    intro: 'Enter a moisture–density curve. Mark it complete to add it to a family of curves.',
+    sections: [
+      { id: 'fcModuleModeTabs', title: 'Field Control tabs', body: 'This tab is Proctor. Field event, family of curves, and core drill are the other screens.' }
+    ],
+    fieldOrder: ['pr_name', 'pr_contract', 'pr_material', 'pr_source', 'pr_date', 'pr_tech', 'pr_curve_no', 'pr_spec']
+  },
+  'fieldcontrol-foc': {
+    title: 'Family of curves',
+    intro: 'Group completed Proctor curves. A field density test can pick the family that fits.',
+    sections: [
+      { id: 'fcModuleModeTabs', title: 'Field Control tabs', body: 'This tab is the family chart. Add curves from completed Proctors.' }
+    ],
+    fieldOrder: ['foc_name', 'foc_contract', 'foc_material', 'foc_notes']
+  },
+  'fieldcontrol-core': {
+    title: 'Core drill',
+    intro: 'Log pavement cores: number, location, thickness, and photos. This is separate from a field event.',
+    sections: [
+      { id: 'fcModuleModeTabs', title: 'Field Control tabs', body: 'Core drill is its own screen. Field event is density and lab samples.' }
+    ],
+    fieldOrder: ['fc_cd_coreno', 'fc_cd_contract', 'fc_cd_location', 'fc_cd_material', 'fc_cd_tech', 'fc_cd_road', 'fc_cd_date', 'fc_core_station', 'fc_core_thickness']
   },
   labhub: {
     title: 'Soil Lab Hub',
@@ -17577,7 +17681,7 @@ const CONTEXT_HELP_VIEWS = {
     title: 'Field Control Hub',
     intro: 'Field technician home — sessions, calendar, and quick actions.',
     sections: [
-      { tour: 'fieldhub-header', title: 'Field hub header', body: 'Open sessions, weather, and shortcuts to Field Control and QR scan.' }
+      { tour: 'fieldhub-header', title: 'Field hub header', body: 'Open a new test, Proctor, family of curves, core drill, or lab arrival.' }
     ]
   },
   conchub: {
@@ -17603,9 +17707,27 @@ const CONTEXT_HELP_VIEWS = {
       { tour: 'r18-nav', title: 'R-18 sections', body: 'Navigate calibration sections, complete procedure forms, and export records.' }
     ]
   },
-  hotmix: { title: 'Hot Mix Asphalt', intro: 'Planned module — not yet live. Use the dashboard notice for updates.', sections: [] },
-  precast: { title: 'Pre-Cast Concrete', intro: 'Planned module — not yet live.', sections: [] },
-  chemlab: { title: 'Chemistry Lab', intro: 'Planned module — not yet live.', sections: [] },
+  hotmix: { title: 'Hot Mix Asphalt', intro: 'Not live yet. This screen is only a notice.', sections: [] },
+  precast: { title: 'Pre-Cast Concrete', intro: 'Not live yet. This screen is only a notice.', sections: [] },
+  chemlab: { title: 'Chemistry Lab', intro: 'Not live yet. This screen is only a notice.', sections: [] },
+  labarrival: {
+    title: 'Lab arrival',
+    intro: 'Scan a bag, or type the test number, to log that the sample reached the lab.',
+    sections: [
+      { tour: 'la-scan-box', title: 'Arrival scanner', body: 'Each scan sets Date Received when it is still blank, and records who received it.' }
+    ],
+    fieldOrder: ['la_manual_testno']
+  },
+  calendar: {
+    title: 'Lab calendar',
+    intro: 'Cylinder breaks, pending lab samples, and notes for the month.',
+    sections: []
+  },
+  report: {
+    title: 'Soil lab report',
+    intro: 'The LB-44 for the sample you opened. Print it, or go back to the soil lab to edit.',
+    sections: []
+  },
   setup: {
     title: 'Settings',
     intro: 'Connection, appearance, account, and administration.',
@@ -17642,11 +17764,24 @@ function helpScanViewFields(viewEl, seen) {
   return steps;
 }
 
+function helpScreenKey(viewName) {
+  if (viewName === 'concrete' && typeof activeConcSubTab === 'string' && activeConcSubTab) {
+    const key = 'concrete-' + activeConcSubTab;
+    if (CONTEXT_HELP_VIEWS[key]) return key;
+  }
+  if (viewName === 'fieldcontrol' && typeof _fcModuleMode === 'string' && _fcModuleMode && _fcModuleMode !== 'event') {
+    const key = 'fieldcontrol-' + _fcModuleMode;
+    if (CONTEXT_HELP_VIEWS[key]) return key;
+  }
+  return viewName;
+}
+
 function buildContextHelpSteps(viewName) {
   const steps = [];
   const setupOpen = document.getElementById('setupOverlay')?.style.display !== 'none';
   const effectiveView = setupOpen ? 'setup' : viewName;
-  const def = CONTEXT_HELP_VIEWS[effectiveView] || CONTEXT_HELP_VIEWS._default;
+  const screenKey = setupOpen ? 'setup' : helpScreenKey(viewName);
+  const def = CONTEXT_HELP_VIEWS[screenKey] || CONTEXT_HELP_VIEWS[effectiveView] || CONTEXT_HELP_VIEWS._default;
   const viewEl = setupOpen ? document.getElementById('setupOverlay') : document.getElementById(effectiveView + '-view');
 
   if (!setupOpen) {
@@ -17760,7 +17895,7 @@ const LABTRAK_TOUR_STEPS = [
     view: 'home',
     tour: 'dash-modules',
     title: 'Dashboard — module launcher',
-    body: 'The home screen opens each major hub: Soil Lab, Concrete, Field Control, and planned modules (Hot Mix, Pre-Cast, Chem Lab).',
+    body: 'The home screen opens Soil & Agg, Concrete, Field Control, Projects, Sources, Scan, Map, R-18, All Samples, Lab Arrival, and the calendar.',
     placement: 'top',
     pad: 8
   },
@@ -17883,14 +18018,6 @@ const LABTRAK_TOUR_STEPS = [
     body: 'Navigate R-18 sections, complete procedure forms, and export or print when inspections require documented compliance.',
     placement: 'bottom',
     pad: 4
-  },
-  {
-    view: 'home',
-    tour: 'planned-module',
-    title: 'Planned modules',
-    body: 'Hot Mix Asphalt, Pre-Cast Concrete, and Chemistry Lab appear on the dashboard but are not live yet — you will see a notice if you open them.',
-    placement: 'top',
-    pad: 6
   },
   {
     view: 'labmap',
