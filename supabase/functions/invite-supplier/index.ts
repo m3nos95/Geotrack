@@ -60,12 +60,14 @@ function safeRedirect(raw: unknown): string {
   }
 }
 
-function portalRole(raw: unknown): "supplier" | "pm" {
-  return raw === "pm" ? "pm" : "supplier";
+function portalRole(raw: unknown): "supplier" | "pm" | "ccrl" {
+  if (raw === "pm") return "pm";
+  if (raw === "ccrl") return "ccrl";
+  return "supplier";
 }
 
-function appUserId(role: "supplier" | "pm"): string {
-  const prefix = role === "pm" ? "pm_" : "sup_";
+function appUserId(role: "supplier" | "pm" | "ccrl"): string {
+  const prefix = role === "pm" ? "pm_" : role === "ccrl" ? "ccrl_" : "sup_";
   return prefix + crypto.randomUUID().replace(/-/g, "").slice(0, 12);
 }
 
@@ -74,13 +76,14 @@ function passwordAlreadySet(user: { user_metadata?: Record<string, unknown> } | 
   return meta.password_set === true || meta.password_set === "true";
 }
 
-function portalAuthData(role: "supplier" | "pm", name: string, passwordSet: boolean) {
+function portalAuthData(role: "supplier" | "pm" | "ccrl", name: string, passwordSet: boolean) {
   const data: Record<string, unknown> = {
     labtrak_role: role,
     must_set_password: !passwordSet,
     password_set: passwordSet,
   };
   if (role === "pm") data.pm_name = name;
+  else if (role === "ccrl") data.assessor_name = name;
   else data.plant_name = name;
   return data;
 }
@@ -176,7 +179,7 @@ Deno.serve(async (req) => {
 
     const payload = await req.json().catch(() => null);
     const role = portalRole(payload?.role);
-    const who = role === "pm" ? "project manager" : "plant";
+    const who = role === "pm" ? "project manager" : role === "ccrl" ? "assessor" : "plant";
     const name = cleanName(payload?.name);
     const email = cleanEmail(payload?.email);
     if (!name || !email) {
@@ -261,7 +264,7 @@ Deno.serve(async (req) => {
       pin_hash: labRow?.pin_hash ?? null,
       recovery: labRow?.recovery ?? "",
       initials: labRow?.initials || initialsFor(name),
-      color: labRow?.color || (role === "pm" ? "#4a90e2" : "#d4a017"),
+      color: labRow?.color || (role === "pm" ? "#4a90e2" : role === "ccrl" ? "#0f6e6a" : "#d4a017"),
       can_approve_reports: false,
       restricted_hubs: null,
       assigned_tech_ids: [],
