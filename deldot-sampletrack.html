@@ -5510,7 +5510,7 @@ END $$;
       <div class="home-launcher" data-tour="dash-modules">
         <label class="home-search">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><circle cx="11" cy="11" r="6"/><path d="M16 16l4 4"/></svg>
-          <input id="homeSearch" type="search" placeholder="Search LabTrak…" oninput="filterHomeApps(this.value)" autocomplete="off">
+          <input id="homeSearch" type="search" placeholder="Search LabTrak…" oninput="homeSearchChanged(this.value)" onkeydown="if(event.key==='Enter'){event.preventDefault();homeSearchChanged(this.value);}" autocomplete="off">
         </label>
         <div class="home-app-grid">
           <button type="button" class="home-app" id="home-app-soil" data-view="labhub" onclick="switchView('labhub')">
@@ -19758,8 +19758,19 @@ function registryOpenAttrs(s) {
 
 function openRegistryRow(el) {
   if (!el || !el.getAttribute) return;
-  const source = el.getAttribute('data-source');
-  const id = el.getAttribute('data-source-id') || '';
+  openSearchRegistryRow({
+    _registrySource: el.getAttribute('data-source'),
+    _sourceId: el.getAttribute('data-source-id') || '',
+    _boringId: el.getAttribute('data-boring-id') || '',
+    _borelogProjectId: el.getAttribute('data-project-id') || '',
+    contract: el.getAttribute('data-contract') || '',
+  });
+}
+
+function openSearchRegistryRow(row) {
+  if (!row) return;
+  const source = row._registrySource || '';
+  const id = row._sourceId || row._concreteSetId || '';
   if (source === 'concrete') { openConcreteFromQueue(id); return; }
   if (source === 'core' || source === 'field_test') {
     switchView('fieldcontrol');
@@ -19769,11 +19780,13 @@ function openRegistryRow(el) {
   }
   if (source === 'borelog' && typeof openBoreLog === 'function') {
     openBoreLog({
-      boringId: el.getAttribute('data-boring-id') || '',
-      borelogProjectId: el.getAttribute('data-project-id') || '',
-      contract: el.getAttribute('data-contract') || '',
+      boringId: row._boringId || '',
+      borelogProjectId: row._borelogProjectId || '',
+      contract: row.contract || '',
     });
+    return;
   }
+  if (typeof openFoundSample === 'function') openFoundSample(row);
 }
 
 function _externalSampleRowHtml(s) {
@@ -19980,7 +19993,7 @@ function refreshSampleTypeFilters(rows) {
     const type = sel ? sel.value : current;
     chips.innerHTML = options.map(([v, , shortLabel]) => {
       const on = (v || '') === (type || '') ? ' class="on"' : '';
-      return `<button type="button"${on} data-value="${mapEscHtml(v)}" onclick="queueSetFilter('type',${JSON.stringify(v)},this)">${mapEscHtml(shortLabel)}</button>`;
+      return `<button type="button"${on} data-value="${mapEscHtml(v)}" onclick="queueSetFilter('type', this.dataset.value, this)">${mapEscHtml(shortLabel)}</button>`;
     }).join('');
   }
 }
@@ -20010,7 +20023,16 @@ function queueSetFilter(kind, value) {
     return;
   }
   const sel = document.getElementById(kind === 'type' ? 'queueTypeFilter' : 'queueStatusFilter');
-  if (sel) sel.value = value;
+  if (sel) {
+    const next = value || '';
+    if (next && ![...sel.options].some(o => o.value === next)) {
+      const opt = document.createElement('option');
+      opt.value = next;
+      opt.textContent = next;
+      sel.appendChild(opt);
+    }
+    sel.value = next;
+  }
   renderSampleQueue(window._queueSamples);
 }
 
@@ -20178,6 +20200,16 @@ function filterHomeApps(q) {
     }
     btn.hidden = !!(query && !btn.textContent.toLowerCase().includes(query));
   });
+}
+
+function homeSearchChanged(value) {
+  const q = String(value || '');
+  filterHomeApps(q);
+  if (q.trim().length < 2) {
+    if (typeof closePalette === 'function') closePalette();
+    return;
+  }
+  if (typeof searchLabTrak === 'function') searchLabTrak(q);
 }
 
 function ctEsc(s) {
@@ -47999,14 +48031,19 @@ let _rows      = [];
 
 // ── Open / close ───────────────────────────────────────────────
 window.openPalette = function() {
+  if (typeof searchLabTrak === 'function') searchLabTrak('');
+};
+
+window.searchLabTrak = function(q) {
   if (typeof ccrlAssessor === 'function' && ccrlAssessor()) return;
+  const text = String(q || '');
   _open = true;
   document.getElementById('cmdOverlay').classList.add('open');
   const inp = document.getElementById('cmdQ');
-  inp.value = '';
-  inp.focus();
+  if (inp && inp.value !== text) inp.value = text;
+  if (inp) inp.focus();
   _focus = -1; _rows = [];
-  _render('');
+  _render(text);
 };
 
 window.closePalette = function() {
@@ -48108,7 +48145,7 @@ async function _render(q) {
 
   // PROJECTS (in-memory)
   const pFields = ['contract','road','description','contractor','fa_project'];
-  const pMatches = (window.allProjects || []).filter(p => _any(p, pFields, qt)).slice(0, 4);
+  const pMatches = (Array.isArray(allProjects) ? allProjects : []).filter(p => _any(p, pFields, qt)).slice(0, 4);
   const pg = _group('PROJECTS', pMatches.map(p =>
     _row('t-project', '📁',
       p.contract || 'No Contract',
@@ -48126,17 +48163,53 @@ async function _render(q) {
   ));
   if (pg) res.appendChild(pg);
 
-  // SAMPLES (in-memory)
-  const sFields = ['test_no','contract','fa_project','material_type','location','source','contractor'];
-  const sMatches = (window.allSamples || []).filter(s => _any(s, sFields, qt)).slice(0, 6);
-  const sg = _group('SAMPLES', sMatches.map(s =>
-    _row('t-sample', '⚗',
+  // Samples from the same registry the queue uses: soil, aggregate, cores, bore log, and field.
+  // allSamples is a lexical binding, so window.allSamples does not see it.
+  const registryToken = Date.now();
+  _liveToken = registryToken;
+  if (typeof loadSampleRegistryExtras === 'function' && allSamples.length && (!sampleRegistryExtras || !sampleRegistryExtras.length) && !loadSampleRegistryExtras._searchTried) {
+    loadSampleRegistryExtras._searchTried = true;
+    try { await loadSampleRegistryExtras(); } catch (e) {}
+    if (_liveToken !== registryToken) return;
+  }
+  const registry = (Array.isArray(allSamples) ? allSamples : [])
+    .concat(Array.isArray(sampleRegistryExtras) ? sampleRegistryExtras : []);
+  const sFields = ['test_no','contract','fa_project','material_type','location','source','contractor','sampled_by'];
+  const seenIds = new Set();
+  const buckets = { sample: [], core: [], borelog: [], field_test: [] };
+  registry.forEach(s => {
+    if (!s || s._registrySource === 'concrete') return;
+    const id = String(s.id || '');
+    if (!id || seenIds.has(id)) return;
+    const typeName = (typeof queueTypeLabel === 'function') ? queueTypeLabel(s) : '';
+    if (!_any(s, sFields, qt) && !_fuzzy(typeName, qt)) return;
+    seenIds.add(id);
+    const source = s._registrySource || '';
+    if (source === 'core') buckets.core.push(s);
+    else if (source === 'borelog') buckets.borelog.push(s);
+    else if (source === 'field_test') buckets.field_test.push(s);
+    else buckets.sample.push(s);
+  });
+  const sampleRow = (s) => {
+    const typeName = (typeof queueTypeLabel === 'function') ? queueTypeLabel(s) : '';
+    return _row('t-sample', '⚗',
       s.test_no || s.id,
-      _sub([s.contract, s.material_type, s.location || s.source]),
+      _sub([s.contract, typeName, s.material_type, s.location || s.source]),
       _statusBadge(s.status),
-      () => openFoundSample(s))
-  ));
+      () => {
+        if (typeof openSearchRegistryRow === 'function') openSearchRegistryRow(s);
+        else openFoundSample(s);
+      });
+  };
+  const sg = _group('SAMPLES', buckets.sample.slice(0, 8).map(sampleRow));
   if (sg) res.appendChild(sg);
+  const coreG = _group('CORES', buckets.core.slice(0, 6).map(sampleRow));
+  if (coreG) res.appendChild(coreG);
+  const boreG = _group('BORE LOG', buckets.borelog.slice(0, 6).map(sampleRow));
+  if (boreG) res.appendChild(boreG);
+  const fieldG = _group('FIELD', buckets.field_test.slice(0, 6).map(sampleRow));
+  if (fieldG) res.appendChild(fieldG);
+  const sMatches = buckets.sample.concat(buckets.core, buckets.borelog, buckets.field_test);
 
   // CONCRETE SETS (localStorage)
   const cSets   = (typeof loadConcreteSets === 'function') ? loadConcreteSets() : [];
@@ -48151,9 +48224,9 @@ async function _render(q) {
   }));
   if (cg) res.appendChild(cg);
 
-  // LIVE SUPABASE FALLBACK (when in-memory hits are sparse)
-  const inMemHits = pMatches.length + sMatches.length + cMatches.length;
-  if (inMemHits < 3 && typeof db !== 'undefined' && db) {
+  // Concrete hits must not hide soil, aggregate, cores, bore log, or field.
+  const missingStore = !buckets.sample.length || !buckets.core.length || !buckets.borelog.length || !buckets.field_test.length;
+  if (missingStore && typeof db !== 'undefined' && db) {
     const loadEl = document.createElement('div');
     loadEl.className = 'cmd-loading';
     loadEl.innerHTML = '<div class="cmd-spinner"></div> Searching database…';
@@ -48163,30 +48236,116 @@ async function _render(q) {
     _liveToken = token;
 
     try {
-      // Live samples query
-      const { data: liveSamples } = await db
-        .from('samples')
-        .select('id,test_no,contract,fa_project,material_type,location,status,source')
-        .or(['test_no','contract','fa_project','material_type','location']
-          .map(f => `${f}.ilike.%${qt}%`).join(','))
-        .order('created_at', { ascending: false })
-        .limit(8);
-
       if (_liveToken !== token) return;
       if (res.contains(loadEl)) res.removeChild(loadEl);
 
-      const knownIds = new Set((window.allSamples || []).map(s => s.id));
-      const freshS   = (liveSamples || []).filter(s => !knownIds.has(s.id));
+      // Live samples query, only when the registry has none for this search.
+      if (!buckets.sample.length) {
+        const { data: liveSamples } = await db
+          .from('samples')
+          .select('id,test_no,contract,fa_project,material_type,location,status,source')
+          .or(['test_no','contract','fa_project','material_type','location']
+            .map(f => `${f}.ilike.%${qt}%`).join(','))
+          .order('created_at', { ascending: false })
+          .limit(8);
 
-      if (freshS.length) {
-        const lg = _group('MORE SAMPLES \u2014 live', freshS.map(s =>
-          _row('t-sample', '⚗',
-            s.test_no || s.id,
-            _sub([s.contract, s.material_type, s.location || s.source]),
-            '<span class="cmd-badge b-live">↻ Live</span>',
-            () => openFoundSample(s))
-        ));
-        if (lg) res.appendChild(lg);
+        if (_liveToken !== token) return;
+
+        const knownIds = new Set(seenIds);
+        (Array.isArray(allSamples) ? allSamples : []).forEach(s => { if (s && s.id) knownIds.add(String(s.id)); });
+        const freshS   = (liveSamples || []).filter(s => s && !knownIds.has(String(s.id)));
+
+        if (freshS.length) {
+          const lg = _group('MORE SAMPLES \u2014 live', freshS.map(s =>
+            _row('t-sample', '⚗',
+              s.test_no || s.id,
+              _sub([s.contract, s.material_type, s.location || s.source]),
+              '<span class="cmd-badge b-live">↻ Live</span>',
+              () => openFoundSample(s))
+          ));
+          if (lg) res.appendChild(lg);
+        }
+      }
+
+      if (!buckets.core.length) {
+        const { data: liveCores } = await db.from('core_drills')
+          .select('id,test_no,contract,station,location,road,layer_type,core_no')
+          .or(['test_no','contract','location','road'].map(f => `${f}.ilike.%${qt}%`).join(','))
+          .limit(6);
+        if (_liveToken !== token) return;
+        const cores = (liveCores || []).filter(c => c && c.id && !seenIds.has('core:' + c.id)).map(c => ({
+          _registrySource: 'core',
+          _sourceId: c.id,
+          id: 'core:' + c.id,
+          test_no: c.test_no || (c.core_no ? ('Core ' + c.core_no) : 'Core'),
+          contract: c.contract || '',
+          location: [c.station, c.location, c.road].filter(Boolean).join(' · '),
+          material_type: c.layer_type || 'Core',
+          status: 'complete',
+          test_category: 'core',
+        }));
+        const liveCoreG = _group('CORES', cores.map(sampleRow));
+        if (liveCoreG) res.appendChild(liveCoreG);
+      }
+
+      if (!buckets.field_test.length) {
+        const { data: liveField } = await db.from('field_tests')
+          .select('id,test_no,contract,location,material_type,status,sample_id')
+          .or(['test_no','contract','location'].map(f => `${f}.ilike.%${qt}%`).join(','))
+          .is('sample_id', null)
+          .limit(6);
+        if (_liveToken !== token) return;
+        const fields = (liveField || []).filter(t => t && t.id && !t.sample_id && !seenIds.has('field_test:' + t.id)).map(t => ({
+          _registrySource: 'field_test',
+          _sourceId: t.id,
+          id: 'field_test:' + t.id,
+          test_no: t.test_no || 'Field test',
+          contract: t.contract || '',
+          location: t.location || '',
+          material_type: t.material_type || 'Field test',
+          status: t.status || 'open',
+          test_category: 'field_test',
+        }));
+        const liveFieldG = _group('FIELD', fields.map(sampleRow));
+        if (liveFieldG) res.appendChild(liveFieldG);
+      }
+
+      if (!buckets.borelog.length) {
+        const { data: liveBoreProjects } = await db.from('borelog_projects')
+          .select('id,contract,name,location')
+          .or(['contract','name'].map(f => `${f}.ilike.%${qt}%`).join(','))
+          .limit(6);
+        if (_liveToken !== token) return;
+        const projectsById = {};
+        (liveBoreProjects || []).forEach(p => { if (p && p.id) projectsById[p.id] = p; });
+        const projectIds = Object.keys(projectsById);
+        let boreRows = [];
+        if (projectIds.length) {
+          const { data: liveBoreSamples } = await db.from('borelog_samples')
+            .select('id,boring_id,project_id,sample_no,created_at,deleted_at')
+            .in('project_id', projectIds)
+            .is('deleted_at', null)
+            .limit(8);
+          if (_liveToken !== token) return;
+          boreRows = (liveBoreSamples || []).filter(s => s && s.id && !s.deleted_at && !seenIds.has('borelog:' + s.id)).map(s => {
+            const project = projectsById[s.project_id] || {};
+            return {
+              _registrySource: 'borelog',
+              _sourceId: s.id,
+              _boringId: s.boring_id || '',
+              _borelogProjectId: s.project_id || '',
+              id: 'borelog:' + s.id,
+              test_no: s.sample_no != null && s.sample_no !== '' ? ('S-' + s.sample_no) : 'Boring sample',
+              contract: project.contract || project.name || '',
+              location: project.location || '',
+              material_type: 'Boring sample',
+              status: 'complete',
+              test_category: 'borelog',
+            };
+          });
+        }
+        const liveBoreG = _group('BORE LOG', boreRows.map(sampleRow));
+        if (liveBoreG) res.appendChild(liveBoreG);
       }
 
       // Live projects query (only if no in-memory project hits)
@@ -48200,7 +48359,7 @@ async function _render(q) {
 
         if (_liveToken !== token) return;
 
-        const knownPIds = new Set((window.allProjects || []).map(p => p.id));
+        const knownPIds = new Set((Array.isArray(allProjects) ? allProjects : []).map(p => p.id));
         const freshP    = (liveProj || []).filter(p => !knownPIds.has(p.id));
 
         if (freshP.length) {
