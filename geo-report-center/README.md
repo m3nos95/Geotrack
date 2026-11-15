@@ -35,13 +35,14 @@ GeoTrak encodes key rules from **7 Del. Admin. Code §5101-11 & §5101-12** (Pos
 
 Screening still ≠ sealed design. Field ASTM D5126 tests and Delegated Agency approval control.
 
-1. Open https://m3nos95.github.io/Geotrack/geotrak/ in Chrome or Edge (**not** a downloaded double-clicked file).
-2. Sign in with your LabTrak / Supabase email and password  
+1. Sign in to [LabTrak](https://m3nos95.github.io/Geotrack/). GeoTrak is a home tile only after a LabTrak administrator or a GeoTrak admin grants it under Settings → GeoTrak access.
+2. Open the **GeoTrak** tile. That hands off to this app at https://m3nos95.github.io/Geotrack/geotrak/ (Chrome or Edge, **not** a downloaded double-clicked file). The address by itself does not open the map.
+3. Sign in with your LabTrak / Supabase email and password if the gate asks  
    (accounts are managed in Supabase; use **Connection settings → Reset to LabTrak project** if login fails).
-3. Click **I understand — continue** on the disclaimer if it appears.
-4. Click **Open project folder** and choose your local GeoTrak project folder (the one with `refs/` and `db.json`).
-5. Turn **Estimates** **ON** in the top bar when you want screening rates.
-6. Click the map → read **Site Intel** on the left — start with **Site**, **Septic**, **DGS**, **Borings**, **Hydro**, then **Infil**.
+4. Click **I understand — continue** on the disclaimer if it appears.
+5. Click **Open project folder** and choose your local GeoTrak project folder (the one with `refs/` and `db.json`). That folder is where the statewide reference data stays. It is not inside LabTrak and it is not on the GitHub Pages site.
+6. Turn **Estimates** **ON** in the top bar when you want screening rates.
+7. Click the map → read **Site Intel** on the left — start with **Site**, **Septic**, **DGS**, **Borings**, **Hydro**, then **Infil**.
 
 Without a local project folder, the map still works, but most soils / borings / rates will be empty.
 

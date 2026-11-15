@@ -16,7 +16,9 @@ DelDOT Materials & Research tools hosted on GitHub Pages.
 | **[geo-report-center/README.md](geo-report-center/README.md)** | Full box-by-box guide + screenshots |
 
 Local app file: `geo-report-center/Geo_Report_Center.html`  
-Open a project folder with `refs/` + `db.json` for full statewide data.
+Open a project folder with `refs/` + `db.json` for full statewide data. That folder is where the reference data stays. LabTrak does not include it, and the GitHub Pages deploy does not either.
+
+LabTrak shows a GeoTrak home tile only after GeoTrak access is granted (Settings → GeoTrak access, same idea as ConTrak). The tile opens the existing GeoTrak app.
 
 ## ConTrak
 

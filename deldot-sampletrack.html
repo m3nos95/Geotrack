@@ -4300,7 +4300,8 @@ table.fc-borrow-tbl tr.fc-borrow-detail-row td{background:var(--surface);border-
 #app.ccrl-mode #phoneTabBar,
 #app.ccrl-mode #phoneModuleBar,
 #app.ccrl-mode #home-app-dash,
-#app.ccrl-mode #home-app-contrak { display: none !important; }
+#app.ccrl-mode #home-app-contrak,
+#app.ccrl-mode #home-app-geotrak { display: none !important; }
 body:has(#app.ccrl-mode) #r18-view .btn-danger,
 body:has(#app.ccrl-mode) #r18-modal-root .btn-danger,
 body:has(#app.ccrl-mode) #r18-view button[onclick*="r18_save"],
@@ -4393,7 +4394,7 @@ body:has(#app.ccrl-mode) #r18-modal-root button[onclick*="r18_import"] {
     <div class="setup-steps">
       <p>
         LabTrak always requires email and password. That is what lets the database
-        enforce who can see samples, reports, and ConTrak books.
+        enforce who can see samples, reports, ConTrak books, and GeoTrak.
       </p>
     </div>
     <div class="setup-field">
@@ -4895,6 +4896,38 @@ END $$;
         COPY CONTRAK SQL
       </button>
       <pre id="contrakSql" style="display:none;"></pre>
+      </div>
+    </div>
+
+    <!-- GeoTrak access — LabTrak admin or GeoTrak admin -->
+    <div class="user-mgmt-section setup-collapse" id="geotrakAccessSection" data-setup-open="false" style="display:none;">
+      <button type="button" class="setup-collapse-hdr" onclick="toggleSetupSection(this)" aria-expanded="false">
+        <span class="setup-collapse-title">GeoTrak access</span>
+        <span class="setup-collapse-chevron" aria-hidden="true">▾</span>
+      </button>
+      <div class="setup-collapse-body">
+      <p style="font-family:var(--mono);font-size:10px;color:var(--muted);margin:0 0 12px;line-height:1.6;">
+        The GeoTrak admin sets this list.
+        A LabTrak administrator can open GeoTrak until their line is set to No GeoTrak.
+        Field control stays on No GeoTrak.
+        GeoTrak opens only after a LabTrak sign-in. The GeoTrak address by itself does not open the map.
+        Statewide reference data stays in the GeoTrak project folder on that computer (refs/ and db.json). It is not part of LabTrak and it is not published with this site.
+      </p>
+      <div id="geotrakAccessList"></div>
+      <p id="geotrakAccessNote" style="font-family:var(--mono);font-size:10px;color:var(--muted);margin:10px 0 0;line-height:1.5;"></p>
+      <button type="button" onclick="saveGeoTrakAccess()"
+        style="margin-top:12px;width:100%;background:var(--gold);color:#0a1628;border:none;
+               padding:10px;font-family:var(--mono);font-size:10px;letter-spacing:1.5px;
+               font-weight:700;border-radius:var(--radius);cursor:pointer;">
+        SAVE GEOTRAK ACCESS
+      </button>
+      <button type="button" onclick="copyGeoTrakSql()"
+        style="margin-top:8px;width:100%;background:var(--surface);border:1px solid var(--border);color:var(--text);
+               padding:10px;font-family:var(--mono);font-size:10px;letter-spacing:1px;
+               border-radius:var(--radius);cursor:pointer;">
+        COPY GEOTRAK SQL
+      </button>
+      <pre id="geotrakSql" style="display:none;"></pre>
       </div>
     </div>
 
@@ -5625,6 +5658,19 @@ END $$;
             <span class="home-app-copy">
               <span class="home-app-name">ConTrak</span>
               <span class="home-app-sub">Agreements, tasks, and invoices</span>
+            </span>
+          </button>
+          <button type="button" class="home-app" id="home-app-geotrak" hidden onclick="openGeoTrak()">
+            <span class="home-app-icon" aria-hidden="true">
+              <svg viewBox="0 0 64 64" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round" stroke-linecap="round">
+                <circle cx="32" cy="24" r="8"/>
+                <path d="M32 32c-8 8-14 14-14 20h28c0-6-6-12-14-20z"/>
+                <path d="M18 54h28"/>
+              </svg>
+            </span>
+            <span class="home-app-copy">
+              <span class="home-app-name">GeoTrak</span>
+              <span class="home-app-sub">Soils, borings, and site screening</span>
             </span>
           </button>
           <button type="button" class="home-app" id="home-app-r18" data-view="r18" onclick="switchView('r18')">
@@ -17194,13 +17240,13 @@ function showSetup() {
   updateComfortModeUI();
   const isAdmin = currentUser && currentUser.role === 'admin';
 
-  ['userMgmtSection','emailSettingsSection','manageTeamsSection','hubRestrictSection','approvalPathSection','teamAssignSection','contrakAccessSection']
+  ['userMgmtSection','emailSettingsSection','manageTeamsSection','hubRestrictSection','approvalPathSection','teamAssignSection','contrakAccessSection','geotrakAccessSection']
     .forEach(id => { const el = document.getElementById(id); if (el) el.style.display = 'none'; });
 
   showDataMaintenancePanel(isAdmin);
 
   if (isAdmin) applyPermissionUnlockUI();
-  else showContrakAccessSection();
+  else { showContrakAccessSection(); showGeoTrakAccessSection(); }
 
   const acct = document.getElementById('myAccountSection');
   if (acct) {
@@ -17293,6 +17339,7 @@ function applyPermissionUnlockUI() {
   if (teamSect && isAdmin) { teamSect.style.display = 'block'; renderTeamAssignments(); }
 
   showContrakAccessSection();
+  showGeoTrakAccessSection();
 }
 
 
@@ -17671,7 +17718,7 @@ const CONTEXT_HELP_VIEWS = {
     title: 'Home',
     intro: 'Open a module from the cards. Search narrows the list.',
     sections: [
-      { tour: 'dash-modules', title: 'Module cards', body: 'Soil & Agg, Concrete, Field Control, Projects, Sources, Scan, Map, R-18, All Samples, Lab Arrival, and the calendar. ConTrak shows for admins.' }
+      { tour: 'dash-modules', title: 'Module cards', body: 'Soil & Agg, Concrete, Field Control, Projects, Sources, Scan, Map, R-18, All Samples, Lab Arrival, and the calendar. ConTrak shows for admins. GeoTrak shows when it is assigned.' }
     ]
   },
   projects: {
@@ -20169,10 +20216,244 @@ function openConTrak() {
   window.location.href = 'psa/';
 }
 
+const GEOTRAK_ACCESS_KEY = 'labtrak_geotrak_access';
+const GEOTRAK_SQL = `-- GeoTrak access. Run once.
+-- geotrak_role: none | user | admin
+-- Statewide reference data is not stored here. It stays in the local
+-- GeoTrak project folder (refs/ and db.json).
+CREATE TABLE IF NOT EXISTS public.geotrak_access (
+  user_id TEXT PRIMARY KEY,
+  geotrak_role TEXT NOT NULL DEFAULT 'none',
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+ALTER TABLE public.geotrak_access ENABLE ROW LEVEL SECURITY;
+
+CREATE OR REPLACE FUNCTION public.geotrak_can_read_user(target TEXT)
+RETURNS BOOLEAN
+LANGUAGE SQL STABLE SECURITY DEFINER SET search_path = public
+AS $$
+  SELECT public.st_is_admin()
+    OR (target IS NOT NULL AND target = public.st_app_user_id())
+    OR EXISTS (
+      SELECT 1 FROM public.geotrak_access AS a
+      WHERE a.user_id = public.st_app_user_id()
+        AND a.geotrak_role = 'admin'
+    )
+$$;
+
+CREATE OR REPLACE FUNCTION public.geotrak_can_write_access()
+RETURNS BOOLEAN
+LANGUAGE SQL STABLE SECURITY DEFINER SET search_path = public
+AS $$
+  SELECT public.st_is_admin()
+    OR EXISTS (
+      SELECT 1 FROM public.geotrak_access AS a
+      WHERE a.user_id = public.st_app_user_id()
+        AND a.geotrak_role = 'admin'
+    )
+$$;
+
+DROP POLICY IF EXISTS "geotrak_access_all" ON public.geotrak_access;
+DROP POLICY IF EXISTS "geotrak_access read" ON public.geotrak_access;
+DROP POLICY IF EXISTS "geotrak_access write" ON public.geotrak_access;
+CREATE POLICY "geotrak_access read" ON public.geotrak_access
+  FOR SELECT TO authenticated USING (public.geotrak_can_read_user(user_id));
+CREATE POLICY "geotrak_access write" ON public.geotrak_access
+  FOR ALL TO authenticated
+  USING (public.geotrak_can_write_access())
+  WITH CHECK (public.geotrak_can_write_access());
+
+REVOKE ALL ON TABLE public.geotrak_access FROM anon;
+GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE public.geotrak_access TO authenticated;
+GRANT EXECUTE ON FUNCTION public.geotrak_can_read_user(TEXT) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.geotrak_can_write_access() TO authenticated;
+
+NOTIFY pgrst, 'reload schema';
+`;
+
+function readGeoTrakAccessMap() {
+  try { return JSON.parse(localStorage.getItem(GEOTRAK_ACCESS_KEY) || '{}'); }
+  catch (e) { return {}; }
+}
+function writeGeoTrakAccessMap(map) {
+  localStorage.setItem(GEOTRAK_ACCESS_KEY, JSON.stringify(map || {}));
+}
+function geotrakGrantFor(user) {
+  if (!user || !user.id) return null;
+  const row = readGeoTrakAccessMap()[user.id];
+  if (row && row.role === 'none') return null;
+  if (row && (row.role === 'admin' || row.role === 'user')) return row;
+  if (user.role === 'admin') return { role: 'admin' };
+  return null;
+}
+function userCanOpenGeoTrak(user) {
+  return !!geotrakGrantFor(user || (typeof currentUser === 'object' ? currentUser : null));
+}
+function userCanAssignGeoTrak(user) {
+  const u = user || currentUser;
+  if (!u) return false;
+  if (u.role === 'admin') return true;
+  const g = geotrakGrantFor(u);
+  return !!(g && g.role === 'admin');
+}
+function refreshGeoTrakTile() {
+  const tile = document.getElementById('home-app-geotrak');
+  if (tile) tile.hidden = !userCanOpenGeoTrak(currentUser);
+}
+function openGeoTrak() {
+  if (currentUser?.role === 'ccrl') return;
+  if (!userCanOpenGeoTrak(currentUser)) return;
+  window.location.href = 'geotrak/';
+}
+function geotrakSelectValue(row) {
+  if (!row || !row.role || row.role === 'none') return 'none';
+  if (row.role === 'admin') return 'admin';
+  return 'user';
+}
+function displayedGeoTrakGrant(user, map) {
+  if (map && map[user.id]) return map[user.id];
+  if (user.role === 'admin') return { role: 'admin' };
+  return { role: 'none' };
+}
+
+async function renderGeoTrakAccess() {
+  const el = document.getElementById('geotrakAccessList');
+  if (!el) return;
+  const users = (await getUsers()).filter(u => u && u.role !== 'supplier' && u.role !== 'pm');
+  const map = readGeoTrakAccessMap();
+  if (!users.length) {
+    el.innerHTML = '<div style="font-family:var(--mono);font-size:10px;color:var(--muted);">No people yet.</div>';
+    return;
+  }
+  el.innerHTML = users.map(u => {
+    const grant = displayedGeoTrakGrant(u, map);
+    const value = geotrakSelectValue(grant);
+    const opts = [
+      ['none', 'No GeoTrak'],
+      ['user', 'GeoTrak'],
+      ['admin', 'GeoTrak admin']
+    ].map(([v, label]) => '<option value="' + v + '"' + (v === value ? ' selected' : '') + '>' + label + '</option>').join('');
+    return '<div style="background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:12px;margin-bottom:10px;">' +
+      '<div style="font-family:var(--mono);font-size:12px;font-weight:700;color:var(--accent2);">' + ctEsc(u.name || u.id) + '</div>' +
+      '<div style="font-family:var(--mono);font-size:9px;color:var(--muted);margin-bottom:8px;">' + ctEsc((ROLE_DEFS[u.role] || {}).label || u.role || '') + '</div>' +
+      '<select data-gt-user="' + ctEsc(u.id) + '" data-gt-role="' + ctEsc(u.role || '') + '" ' +
+      'style="width:100%;background:var(--bg);color:var(--text);border:1px solid var(--border);border-radius:6px;padding:8px;font-family:var(--mono);font-size:11px;">' +
+      opts + '</select></div>';
+  }).join('');
+  const note = document.getElementById('geotrakAccessNote');
+  if (note) {
+    note.textContent = window.__geotrakSqlNeeded
+      ? 'Saved on this browser. Copy the GeoTrak SQL and run it once so a person on another computer can open GeoTrak after they sign in to LabTrak.'
+      : 'Copy the GeoTrak SQL and run it once in Supabase so GeoTrak stays closed until someone signs in to LabTrak. Save still copies this list to the server.';
+  }
+}
+
+async function saveGeoTrakAccess() {
+  const root = document.getElementById('geotrakAccessList');
+  if (!root) return;
+  const map = {};
+  root.querySelectorAll('select[data-gt-user]').forEach(sel => {
+    const id = sel.getAttribute('data-gt-user');
+    const v = sel.value;
+    if (v === 'none') {
+      if (sel.getAttribute('data-gt-role') === 'admin') map[id] = { role: 'none' };
+      return;
+    }
+    map[id] = { role: v === 'admin' ? 'admin' : 'user' };
+  });
+  writeGeoTrakAccessMap(map);
+  const pushed = await pushGeoTrakAccess(map);
+  refreshGeoTrakTile();
+  if (typeof applyRoleUI === 'function' && currentUser) applyRoleUI(currentUser.role);
+  const note = document.getElementById('geotrakAccessNote');
+  if (note) {
+    note.textContent = pushed
+      ? 'Saved. Assigned people see GeoTrak on the home screen.'
+      : 'Saved on this browser. Copy the GeoTrak SQL and run it once so a person on another computer can open GeoTrak after they sign in to LabTrak.';
+  }
+  if (typeof showToast === 'function') showToast(pushed ? 'GeoTrak access saved' : 'GeoTrak access saved on this browser', 'success');
+}
+
+async function pushGeoTrakAccess(map) {
+  if (typeof db === 'undefined' || !db) return false;
+  try {
+    const now = new Date().toISOString();
+    const rows = Object.keys(map).map(id => ({
+      user_id: id,
+      geotrak_role: map[id].role,
+      updated_at: now
+    }));
+    const existing = await db.from('geotrak_access').select('user_id');
+    if (existing.error) {
+      window.__geotrakSqlNeeded = true;
+      return false;
+    }
+    const keep = new Set(Object.keys(map));
+    const drop = (existing.data || []).map(r => r.user_id).filter(id => !keep.has(id));
+    if (drop.length) await db.from('geotrak_access').delete().in('user_id', drop);
+    if (rows.length) {
+      const up = await db.from('geotrak_access').upsert(rows, { onConflict: 'user_id' });
+      if (up.error) { window.__geotrakSqlNeeded = true; return false; }
+    }
+    window.__geotrakSqlNeeded = false;
+    return true;
+  } catch (e) {
+    window.__geotrakSqlNeeded = true;
+    return false;
+  }
+}
+
+async function pullGeoTrakAccess() {
+  if (typeof db === 'undefined' || !db) return;
+  try {
+    const res = await db.from('geotrak_access').select('user_id,geotrak_role');
+    if (res.error) { window.__geotrakSqlNeeded = true; return; }
+    window.__geotrakSqlNeeded = false;
+    if (!res.data || !res.data.length) return;
+    const map = {};
+    res.data.forEach(row => {
+      map[row.user_id] = { role: row.geotrak_role || 'none' };
+    });
+    writeGeoTrakAccessMap(map);
+    refreshGeoTrakTile();
+  } catch (e) {
+    window.__geotrakSqlNeeded = true;
+  }
+}
+
+function showGeoTrakAccessSection() {
+  const sect = document.getElementById('geotrakAccessSection');
+  if (!sect) return;
+  const show = userCanAssignGeoTrak(currentUser);
+  sect.style.display = show ? 'block' : 'none';
+  if (show) {
+    renderGeoTrakAccess();
+    pullGeoTrakAccess().then(() => { if (userCanAssignGeoTrak(currentUser)) renderGeoTrakAccess(); });
+  }
+}
+
+function copyGeoTrakSql() {
+  const pre = document.getElementById('geotrakSql');
+  if (pre) pre.textContent = GEOTRAK_SQL;
+  const done = () => { if (typeof showToast === 'function') showToast('GeoTrak SQL copied', 'success'); };
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(GEOTRAK_SQL).then(done).catch(() => {
+      if (pre) { pre.style.display = 'block'; }
+      done();
+    });
+  } else if (pre) {
+    pre.style.display = 'block';
+    done();
+  }
+}
+
 function filterHomeApps(q) {
   const query = String(q || '').trim().toLowerCase();
   document.querySelectorAll('#home-view .home-app').forEach(btn => {
-    if (btn.dataset.adminOnly === '1' && !userCanOpenConTrak(currentUser)) {
+    if (btn.id === 'home-app-geotrak') {
+      if (!userCanOpenGeoTrak(currentUser)) { btn.hidden = true; return; }
+    } else if (btn.dataset.adminOnly === '1' && !userCanOpenConTrak(currentUser)) {
       btn.hidden = true;
       return;
     }
@@ -25387,6 +25668,7 @@ function loginUser(user, silent = false) {
   ensureApprovalRoutes().then(() => refreshApprovalBadge()).catch(() => {});
   if (typeof loadRequestTags === 'function') loadRequestTags().catch(() => {});
   if (typeof loadMixDesigns === 'function') loadMixDesigns().catch(() => {});
+  if (typeof pullGeoTrakAccess === 'function') pullGeoTrakAccess();
   setTimeout(refreshApprovalBadge, 800);
   setTimeout(refreshApprovalBadge, 2500);
 }
@@ -25445,6 +25727,8 @@ function applyRoleUI(role) {
   });
   const contrakTile = document.getElementById('home-app-contrak');
   if (contrakTile) contrakTile.hidden = !userCanOpenConTrak(currentUser);
+  const geotrakTile = document.getElementById('home-app-geotrak');
+  if (geotrakTile) geotrakTile.hidden = !userCanOpenGeoTrak(currentUser);
 
   const specsBtn = document.getElementById('queueSpecsBtn');
   if (specsBtn) specsBtn.hidden = !roleCanUseSoilModule();
