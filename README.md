@@ -20,6 +20,8 @@ Open a project folder with `refs/` + `db.json` for full statewide data. That fol
 
 LabTrak shows a GeoTrak home tile only after GeoTrak access is granted (Settings → GeoTrak access, same idea as ConTrak). The tile opens the existing GeoTrak app.
 
+Opening the finished bore log (View Log) writes that boring to GeoTrak from the GPS or Delaware state-plane location already stored on the log. GeoTrak draws it as a boring marker. Those lab borings stay out of `db.json` and out of the Pages deploy. Run `supabase/migrations/20261116_geotrak_lab_borings.sql` once so another computer can see them.
+
 ## ConTrak
 
 IDIQ tracker for Materials & Research. Finance sets the agreement cap, term, and unit-price or lump-sum template. Project managers run Tasks and QPs (PSPM IDIQ task orders) inside that template.
