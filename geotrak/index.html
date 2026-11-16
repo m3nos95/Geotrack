@@ -21877,8 +21877,10 @@ table.list td{padding:5px 8px;border-bottom:1px solid rgba(46,58,72,.5);font-fam
 #authGate input:focus{outline:none;border-color:var(--amber)}
 #authGate .auth-err{min-height:1.2em;color:var(--red);font-size:12px;margin:10px 0 0}
 #authGate .auth-actions{display:flex;gap:8px;margin-top:14px}
-#authGate .auth-actions button{flex:1;padding:11px 12px;border:1px solid var(--amber);background:rgba(240,168,74,.12);
-  color:var(--amber);font-size:12px;letter-spacing:.08em;text-transform:uppercase;cursor:pointer;border-radius:3px}
+#authGate .auth-actions button,
+#authGate #gtGrantBlock a{flex:1;padding:11px 12px;border:1px solid var(--amber);background:rgba(240,168,74,.12);
+  color:var(--amber);font-size:12px;letter-spacing:.08em;text-transform:uppercase;cursor:pointer;border-radius:3px;text-align:center;text-decoration:none}
+#authGate #gtGrantBlock{display:none}
 #authGate .auth-actions button:hover{background:rgba(240,168,74,.22)}
 #authGate .auth-actions button:disabled{opacity:.5;cursor:wait}
 #authGate .auth-actions button.secondary{border-color:var(--line);color:var(--dim);background:transparent}
@@ -21911,6 +21913,12 @@ table.list td{padding:5px 8px;border-bottom:1px solid rgba(46,58,72,.5);font-fam
     <div id="authProtoWarn" class="auth-warn" style="display:none"></div>
     <div id="authConnStatus" class="auth-ok" style="display:none"></div>
     <p class="auth-sub" id="authSub">Sign in with your LabTrak / Supabase email and password. Passwords are verified by Supabase, not stored in this HTML file.</p>
+    <div id="gtGrantBlock">
+      <p class="auth-sub" id="gtGrantMsg"></p>
+      <div class="auth-actions">
+        <a id="gtGrantHome" href="../deldot-sampletrack.html">LabTrak</a>
+      </div>
+    </div>
     <label for="authEmail">Email</label>
     <input type="email" id="authEmail" autocomplete="username" placeholder="name@delaware.gov">
     <label for="authPassword">Password</label>
@@ -21966,6 +21974,7 @@ table.list td{padding:5px 8px;border-bottom:1px solid rgba(46,58,72,.5);font-fam
     <span class="nm" style="font-size:10px;color:var(--dim)">Auto-open</span>
   </label>
   <div id="hdrAuth" title="Supabase session">
+    <a href="../deldot-sampletrack.html" style="font-size:10px;color:var(--dim);text-decoration:none;letter-spacing:.06em">LabTrak</a>
     <span id="hdrAuthUser">signed out</span>
     <button type="button" class="hbtn" id="hdrAuthSignOut" style="display:none">Sign out</button>
   </div>
@@ -43247,6 +43256,66 @@ function gtResetLabtrakProject(){
   try{ gtCreateClient(); gtTestConnection(); }catch(e){ gtAuthErr(gtFriendlyAuthError(e)); }
   toast('Using LabTrak Supabase project', 3500);
 }
+const GT_ACCESS_KEY='labtrak_geotrak_access';
+function gtLabActor(){
+  try{
+    const u=JSON.parse(sessionStorage.getItem('st_current_user')||'null');
+    if(!u||!u.id) return null;
+    return u;
+  }catch(_){ return null; }
+}
+function gtReadAccess(){
+  try{ return JSON.parse(localStorage.getItem(GT_ACCESS_KEY)||'{}'); }
+  catch(_){ return {}; }
+}
+function gtGrantFor(user, map){
+  if(!user||!user.id) return null;
+  const row=(map||gtReadAccess())[user.id];
+  if(row&&row.role==='none') return null;
+  if(row&&(row.role==='admin'||row.role==='user')) return row;
+  if(user.role==='admin') return {role:'admin'};
+  return null;
+}
+function gtBlockGrant(kind){
+  const gate=$('authGate');
+  if(gate){
+    gate.classList.remove('hidden');
+    gate.querySelectorAll('label, #authSub, #authEmail, #authPassword, #authErr, #authHint, .auth-adv, #authProtoWarn, #authConnStatus').forEach(el=>{
+      el.style.display='none';
+    });
+    gate.querySelectorAll('.auth-actions').forEach(el=>{
+      if(!el.closest('#gtGrantBlock')) el.style.display='none';
+    });
+  }
+  const block=$('gtGrantBlock');
+  const msg=$('gtGrantMsg');
+  if(block) block.style.display='block';
+  if(msg){
+    msg.textContent=kind==='locked'
+      ? 'GeoTrak is not assigned to you. A GeoTrak admin turns it on under LabTrak settings, GeoTrak access.'
+      : 'GeoTrak opens from the LabTrak home screen after you sign in. This address does not open the map on its own.';
+  }
+}
+async function gtPullAccess(){
+  try{
+    if(!gtSb) gtCreateClient();
+    const {data:{session}}=await gtSb.auth.getSession();
+    if(!session) return;
+    const res=await gtSb.from('geotrak_access').select('user_id,geotrak_role');
+    if(!res||res.error||!res.data||!res.data.length) return;
+    const map={};
+    res.data.forEach(row=>{ map[row.user_id]={role:row.geotrak_role||'none'}; });
+    localStorage.setItem(GT_ACCESS_KEY, JSON.stringify(map));
+  }catch(_){}
+}
+async function gtEnsureGrant(){
+  const actor=gtLabActor();
+  if(!actor){ gtBlockGrant('signedOut'); return false; }
+  await gtPullAccess();
+  if(gtGrantFor(actor)) return true;
+  gtBlockGrant('locked');
+  return false;
+}
 function wireGeotrakAuth(){
   gtSyncAuthBrandLogo();
   gtShowProtoWarn();
@@ -43262,20 +43331,23 @@ function wireGeotrakAuth(){
   if($('hdrAuthSignOut')) $('hdrAuthSignOut').onclick=()=>gtSignOut();
   if($('authPassword')) $('authPassword').onkeydown=e=>{ if(e.key==='Enter') gtSignIn(); };
   if($('authEmail')) $('authEmail').onkeydown=e=>{ if(e.key==='Enter') ($('authPassword')||{focus(){}}).focus(); };
-  if(gtIsFileProtocol()){
-    gtAuthErr(gtFriendlyAuthError(new Error('Failed to fetch')));
-    const gate=$('authGate'); if(gate) gate.classList.remove('hidden');
-    return;
-  }
-  gtRestoreSession().then(sess=>{
-    if(!sess){
+  gtEnsureGrant().then(ok=>{
+    if(!ok) return;
+    if(gtIsFileProtocol()){
+      gtAuthErr(gtFriendlyAuthError(new Error('Failed to fetch')));
       const gate=$('authGate'); if(gate) gate.classList.remove('hidden');
-      setTimeout(()=>(($('authEmail')||{}).focus||(()=>{}))(), 200);
-      gtTestConnection();
+      return;
     }
-  }).catch(e=>{
-    gtAuthErr(gtFriendlyAuthError(e));
-    const gate=$('authGate'); if(gate) gate.classList.remove('hidden');
+    gtRestoreSession().then(sess=>{
+      if(!sess){
+        const gate=$('authGate'); if(gate) gate.classList.remove('hidden');
+        setTimeout(()=>(($('authEmail')||{}).focus||(()=>{}))(), 200);
+        gtTestConnection();
+      }
+    }).catch(e=>{
+      gtAuthErr(gtFriendlyAuthError(e));
+      const gate=$('authGate'); if(gate) gate.classList.remove('hidden');
+    });
   });
 }
 wireGeotrakAuth();
