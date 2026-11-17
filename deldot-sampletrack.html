@@ -1939,6 +1939,8 @@ nav:not(#r18-nav), .nav-top-row { display: none !important; }
   font-size:11px; letter-spacing:0.5px; transition:all 0.15s; white-space:nowrap;
 }
 .action-btn-main:hover { border-color:var(--accent2); color:var(--accent2); }
+.action-btn-main.danger { color:var(--red2); border-color:rgba(168,48,48,0.45); margin-left:6px; }
+.action-btn-main.danger:hover { color:var(--red2); border-color:var(--red2); }
 .action-menu {
   display:none; position:absolute; right:0; top:calc(100% + 4px);
   background:var(--surface); border:1px solid var(--border);
@@ -17216,7 +17218,10 @@ async function connectSupabase(silent = false) {
 function offlineLoadCached() {
   try {
     const cachedSamples = localStorage.getItem('labtrak_cached_samples');
-    if (cachedSamples) allSamples = JSON.parse(cachedSamples).filter(s => !s.deleted_at);
+    if (cachedSamples) {
+      const pendingGone = (typeof queuedDeletedSampleIds === 'function') ? queuedDeletedSampleIds() : new Set();
+      allSamples = JSON.parse(cachedSamples).filter(s => s && !s.deleted_at && !pendingGone.has(s.id));
+    }
   } catch(e) { allSamples = []; }
   try {
     const cachedProjects = localStorage.getItem('labtrak_cached_projects');
@@ -18772,9 +18777,9 @@ async function dmPurgeOrphanStubs() {
 
 let showingArchived = false;
 
-// All Samples reads every non-deleted row in public.samples. A module added later
-// shows up on its own when its rows live in that table — do not filter by module here.
-// Stores that keep samples somewhere else are listed in SAMPLE_REGISTRY_SOURCES.
+// All Samples reads every non-deleted row in public.samples, plus the stores in
+// SAMPLE_REGISTRY_SOURCES. Deleting a row removes it from the store that list reads.
+// A bore log deleted in the bore log module is dropped here, including any local copy.
 const SAMPLE_REGISTRY_SOURCES = [
   { id: 'concrete', load: loadConcreteRegistryRows },
   { id: 'core', load: loadCoreRegistryRows },
@@ -18812,8 +18817,103 @@ async function loadSampleRegistryExtras() {
       console.warn('sample registry ' + source.id, e);
     }
   }
-  sampleRegistryExtras = rows;
-  return rows;
+  sampleRegistryExtras = rows.filter(row => {
+    if (!row) return false;
+    if (row._registrySource === 'core' && registryIdHidden('core', row._sourceId)) return false;
+    if (row._registrySource === 'field_test' && registryIdHidden('field_test', row._sourceId)) return false;
+    return true;
+  });
+  return sampleRegistryExtras;
+}
+
+const REGISTRY_HIDE_KEY = 'labtrak_registry_hidden';
+
+function readRegistryHidden() {
+  try {
+    const raw = JSON.parse(localStorage.getItem(REGISTRY_HIDE_KEY) || '{}');
+    return raw && typeof raw === 'object' ? raw : {};
+  } catch (e) {
+    return {};
+  }
+}
+
+function registryIdHidden(source, id) {
+  if (!source || id == null || id === '') return false;
+  const list = readRegistryHidden()[source] || [];
+  return list.includes(id) || list.includes(String(id));
+}
+
+function hideRegistryId(source, id) {
+  if (!source || id == null || id === '') return;
+  const all = readRegistryHidden();
+  const list = Array.isArray(all[source]) ? all[source].slice() : [];
+  if (!list.includes(id) && !list.includes(String(id))) list.push(id);
+  all[source] = list.slice(-500);
+  try { localStorage.setItem(REGISTRY_HIDE_KEY, JSON.stringify(all)); } catch (e) {}
+}
+
+function _idInSet(set, id) {
+  if (!set || id == null || id === '') return false;
+  return set.has(id) || set.has(String(id));
+}
+
+function borelogSampleIsDeleted(sample, pending, cloudDeleted) {
+  if (!sample || !sample.id || sample.deleted_at) return true;
+  const pendingDel = pending || { borelog_samples: new Set(), borelog_borings: new Set(), borelog_projects: new Set() };
+  const cloud = cloudDeleted || { samples: new Set(), borings: new Set(), projects: new Set() };
+  if (_idInSet(pendingDel.borelog_samples, sample.id) || _idInSet(cloud.samples, sample.id)) return true;
+  if (sample.boring_id && (_idInSet(pendingDel.borelog_borings, sample.boring_id) || _idInSet(cloud.borings, sample.boring_id))) return true;
+  if (sample.project_id && (_idInSet(pendingDel.borelog_projects, sample.project_id) || _idInSet(cloud.projects, sample.project_id))) return true;
+  return false;
+}
+
+function queueBorelogTableDelete(table, id) {
+  if (!table || !id) return;
+  const q = readBorelogSyncQueue().filter(e => !(e.table === table && e.id === id));
+  q.push({ table, op: 'delete', id });
+  try { localStorage.setItem(BORELOG_SYNC_QUEUE_KEY, JSON.stringify(q)); } catch (e) {}
+}
+
+async function persistBorelogStoreCopy(store) {
+  if (!store) return;
+  const idb = await _readBorelogStoreFromIdb();
+  if (idb != null) {
+    await _writeBorelogKvToIdb(BORELOG_STORE_KEY, store);
+    try { localStorage.removeItem(BORELOG_STORE_KEY); } catch (e) {}
+  } else {
+    try { localStorage.setItem(BORELOG_STORE_KEY, JSON.stringify(store)); } catch (e) {}
+  }
+  invalidateBorelogStoreCache();
+}
+
+async function loadCloudDeletedBorelogIds() {
+  const out = { samples: new Set(), borings: new Set(), projects: new Set() };
+  if (typeof db === 'undefined' || !db) return out;
+  try {
+    const [sDel, bDel, pDel] = await Promise.all([
+      db.from('borelog_samples').select('id').not('deleted_at', 'is', null),
+      db.from('borelog_borings').select('id').not('deleted_at', 'is', null),
+      db.from('borelog_projects').select('id').not('deleted_at', 'is', null),
+    ]);
+    if (sDel && !sDel.error) (sDel.data || []).forEach(r => { if (r && r.id) out.samples.add(r.id); });
+    if (bDel && !bDel.error) (bDel.data || []).forEach(r => { if (r && r.id) out.borings.add(r.id); });
+    if (pDel && !pDel.error) (pDel.data || []).forEach(r => { if (r && r.id) out.projects.add(r.id); });
+  } catch (e) {}
+  return out;
+}
+
+async function purgeDeletedBorelogSamples(store, pending, cloudDeleted) {
+  if (!store) return false;
+  store.samples = store.samples || {};
+  let changed = false;
+  Object.keys(store.samples).forEach(sid => {
+    if (borelogSampleIsDeleted(store.samples[sid], pending, cloudDeleted)) {
+      delete store.samples[sid];
+      changed = true;
+    }
+  });
+  if (changed) await persistBorelogStoreCopy(store);
+  return changed;
 }
 
 function paintAllSamples() {
@@ -18854,7 +18954,9 @@ async function loadCoreRegistryRows() {
     } catch (e) {}
   }
   if (!loaded) rows = window.allCoreDrills || [];
-  return rows.filter(c => c && c.id).map(c => ({
+  rows = rows.filter(c => c && c.id && !registryIdHidden('core', c.id));
+  window.allCoreDrills = rows;
+  return rows.map(c => ({
     _registrySource: 'core',
     _sourceId: c.id,
     id: 'core:' + c.id,
@@ -18872,10 +18974,20 @@ async function loadCoreRegistryRows() {
 
 async function loadBorelogRegistryRows() {
   if (showingArchived) return [];
+  const pending = (typeof getBorelogPendingDeleteSets === 'function')
+    ? getBorelogPendingDeleteSets()
+    : { borelog_samples: new Set(), borelog_borings: new Set(), borelog_projects: new Set() };
+  const cloudDeleted = await loadCloudDeletedBorelogIds();
+  let store = null;
+  try {
+    if (typeof getAuthoritativeBorelogStore === 'function') store = await getAuthoritativeBorelogStore();
+  } catch (e) {}
+  if (store) await purgeDeletedBorelogSamples(store, pending, cloudDeleted);
+
   const byId = new Map();
   const add = (sample, project, boring) => {
-    if (!sample || !sample.id || sample.deleted_at) return;
-    const contract = (project && (project.contract || project.name)) || '';
+    if (borelogSampleIsDeleted(sample, pending, cloudDeleted)) return;
+    const contract = (project && (project.contract || project.contract_no || project.name)) || '';
     const boringNo = boring && (boring.boring_no || boring.boringNo || '');
     byId.set(String(sample.id), {
       _registrySource: 'borelog',
@@ -18894,14 +19006,9 @@ async function loadBorelogRegistryRows() {
       test_category: 'borelog',
     });
   };
-  try {
-    if (typeof getAuthoritativeBorelogStore === 'function') {
-      const store = await getAuthoritativeBorelogStore();
-      const projects = (store && store.projects) || {};
-      const borings = (store && store.borings) || {};
-      Object.values((store && store.samples) || {}).forEach(s => add(s, projects[s.project_id], borings[s.boring_id]));
-    }
-  } catch (e) {}
+  const projects = (store && store.projects) || {};
+  const borings = (store && store.borings) || {};
+  Object.values((store && store.samples) || {}).forEach(s => add(s, projects[s.project_id], borings[s.boring_id]));
   if (typeof db !== 'undefined' && db) {
     try {
       const [sRes, pRes, bRes] = await Promise.all([
@@ -18910,11 +19017,14 @@ async function loadBorelogRegistryRows() {
         db.from('borelog_borings').select('id,project_id,boring_no').is('deleted_at', null),
       ]);
       if (sRes && !sRes.error && pRes && !pRes.error && bRes && !bRes.error) {
-        const projects = {};
-        (pRes.data || []).forEach(p => { if (p && p.id) projects[p.id] = p; });
-        const borings = {};
-        (bRes.data || []).forEach(b => { if (b && b.id) borings[b.id] = b; });
-        (sRes.data || []).forEach(s => add(s, projects[s.project_id], borings[s.boring_id]));
+        const cloudProjects = {};
+        (pRes.data || []).forEach(p => { if (p && p.id) cloudProjects[p.id] = p; });
+        const cloudBorings = {};
+        (bRes.data || []).forEach(b => { if (b && b.id) cloudBorings[b.id] = b; });
+        (sRes.data || []).forEach(s => {
+          if (borelogSampleIsDeleted(s, pending, cloudDeleted)) return;
+          add(s, cloudProjects[s.project_id], cloudBorings[s.boring_id]);
+        });
       }
     } catch (e) {}
   }
@@ -18940,7 +19050,10 @@ async function loadUnlinkedFieldTestRows() {
     } catch (e) {}
   }
   if (!loaded) rows = (window.allFieldTests || []).filter(t => t && !t.sample_id);
-  return rows.filter(t => t && t.id && !t.sample_id && !linkedFieldIds.has(t.id)).map(t => ({
+  if (window.allFieldTests) {
+    window.allFieldTests = window.allFieldTests.filter(t => !(t && registryIdHidden('field_test', t.id)));
+  }
+  return rows.filter(t => t && t.id && !t.sample_id && !linkedFieldIds.has(t.id) && !registryIdHidden('field_test', t.id)).map(t => ({
     _registrySource: 'field_test',
     _sourceId: t.id,
     id: 'field_test:' + t.id,
@@ -18979,7 +19092,7 @@ async function _loadSamplesImpl() {
       reportSamplesLoadError(error);
       if (!allSamples || !allSamples.length) offlineLoadCached();
     } else {
-      allSamples = (data || []).filter(s => !s.deleted_at);
+      allSamples = (data || []).filter(s => !s.deleted_at && !queuedDeletedSampleIds().has(s.id));
       try { localStorage.setItem('labtrak_cached_samples', JSON.stringify(allSamples.slice(0, 300))); } catch (e) {}
     }
   }
@@ -19800,7 +19913,7 @@ function sampleTypeBadgeHtml(s) {
 }
 
 function registryOpenAttrs(s) {
-  return ` data-source="${mapEscHtml(s._registrySource || '')}" data-source-id="${mapEscHtml(s._sourceId || '')}" data-boring-id="${mapEscHtml(s._boringId || '')}" data-project-id="${mapEscHtml(s._borelogProjectId || '')}" data-contract="${mapEscHtml(s.contract || '')}"`;
+  return ` data-source="${mapEscHtml(s._registrySource || '')}" data-source-id="${mapEscHtml(s._sourceId || '')}" data-boring-id="${mapEscHtml(s._boringId || '')}" data-project-id="${mapEscHtml(s._borelogProjectId || '')}" data-contract="${mapEscHtml(s.contract || '')}" data-test-no="${mapEscHtml(s.test_no || '')}"`;
 }
 
 function openRegistryRow(el) {
@@ -19836,6 +19949,113 @@ function openSearchRegistryRow(row) {
   if (typeof openFoundSample === 'function') openFoundSample(row);
 }
 
+function deleteListedSample(el) {
+  if (!el || !el.getAttribute) return;
+  deleteSample(el.getAttribute('data-sample-id') || '', el.getAttribute('data-test-no') || '');
+}
+
+function forgetRegistryExtra(source, id) {
+  sampleRegistryExtras = (sampleRegistryExtras || []).filter(s => !(s && s._registrySource === source && String(s._sourceId) === String(id)));
+}
+
+async function deleteBorelogRegistrySample(sampleId) {
+  if (!sampleId) return;
+  let store = null;
+  try {
+    if (typeof getAuthoritativeBorelogStore === 'function') store = await getAuthoritativeBorelogStore();
+  } catch (e) {}
+  if (store) {
+    store.samples = store.samples || {};
+    if (store.samples[sampleId]) {
+      delete store.samples[sampleId];
+      await persistBorelogStoreCopy(store);
+    }
+  }
+  try {
+    const raw = localStorage.getItem(BORELOG_STORE_KEY);
+    if (raw) {
+      const mirror = JSON.parse(raw);
+      if (mirror && mirror.samples && mirror.samples[sampleId]) {
+        delete mirror.samples[sampleId];
+        localStorage.setItem(BORELOG_STORE_KEY, JSON.stringify(mirror));
+      }
+    }
+  } catch (e) {}
+  queueBorelogTableDelete('borelog_samples', sampleId);
+  if (typeof db !== 'undefined' && db) {
+    const now = new Date().toISOString();
+    try {
+      const { error } = await db.from('borelog_samples').update({ deleted_at: now, updated_at: now }).eq('id', sampleId);
+      if (error) console.warn('borelog registry delete', error);
+    } catch (e) {
+      console.warn('borelog registry delete', e);
+    }
+    if (typeof flushBorelogSyncQueueFromLabtrak === 'function') {
+      try { await flushBorelogSyncQueueFromLabtrak(); } catch (e) {}
+    }
+  }
+}
+
+async function deleteConcreteRegistrySample(id) {
+  if (!id || typeof loadConcreteSets !== 'function' || typeof saveConcreteSets !== 'function') return;
+  if (typeof unqueueConcreteUpsert === 'function') unqueueConcreteUpsert(id);
+  saveConcreteSets(loadConcreteSets().filter(s => s && s.id !== id));
+  if (typeof deleteConcreteSetFromCloud === 'function') await deleteConcreteSetFromCloud(id);
+  try { if (typeof renderConcreteLog === 'function') renderConcreteLog(); } catch (e) {}
+}
+
+async function deleteCoreRegistrySample(id) {
+  if (!id) return;
+  hideRegistryId('core', id);
+  if (window.allCoreDrills) window.allCoreDrills = window.allCoreDrills.filter(c => c && c.id !== id);
+  if (typeof activeFC_sessionCores !== 'undefined') {
+    activeFC_sessionCores = (activeFC_sessionCores || []).filter(c => c && c.id !== id);
+  }
+  if (typeof db !== 'undefined' && db) {
+    try {
+      const { error } = await db.from('core_drills').delete().eq('id', id);
+      if (error) console.warn('core registry delete', error);
+    } catch (e) {
+      console.warn('core registry delete', e);
+    }
+  }
+  try { if (typeof fcRenderCoreList === 'function') fcRenderCoreList(); } catch (e) {}
+}
+
+async function deleteFieldRegistrySample(id) {
+  if (!id) return;
+  hideRegistryId('field_test', id);
+  if (window.allFieldTests) window.allFieldTests = (window.allFieldTests || []).filter(t => t && t.id !== id);
+  if (typeof db !== 'undefined' && db) {
+    try {
+      const { error } = await db.from('field_tests').delete().eq('id', id);
+      if (error) console.warn('field registry delete', error);
+    } catch (e) {
+      console.warn('field registry delete', e);
+    }
+  }
+}
+
+async function deleteRegistryRow(el) {
+  if (!el || !el.getAttribute) return;
+  const source = el.getAttribute('data-source') || '';
+  const id = el.getAttribute('data-source-id') || '';
+  const testNo = el.getAttribute('data-test-no') || 'this sample';
+  if (!source || !id) return;
+  const labels = { borelog: 'bore log sample', concrete: 'concrete set', core: 'core', field_test: 'field test' };
+  const kind = labels[source] || 'sample';
+  if (!confirm('Delete ' + kind + ' ' + testNo + ' from All Samples?\n\nIt will be removed from this list.')) return;
+  if (source === 'borelog') await deleteBorelogRegistrySample(id);
+  else if (source === 'concrete') await deleteConcreteRegistrySample(id);
+  else if (source === 'core') await deleteCoreRegistrySample(id);
+  else if (source === 'field_test') await deleteFieldRegistrySample(id);
+  else return;
+  forgetRegistryExtra(source, id);
+  if (typeof paintAllSamples === 'function') paintAllSamples();
+  if (typeof updateTopbarStatus === 'function') updateTopbarStatus();
+  showToast(testNo + ' deleted', 'success');
+}
+
 function _externalSampleRowHtml(s) {
   return `<tr>
       <td class="test-no">${mapEscHtml(s.test_no || '')}</td>
@@ -19846,7 +20066,7 @@ function _externalSampleRowHtml(s) {
       <td>${mapEscHtml(s.sampled_by || '—')}</td>
       <td style="font-family:var(--mono);font-size:11px;">${mapEscHtml(s.date_sampled || '—')}</td>
       <td><span class="badge badge-${mapEscHtml(s.status || 'pending')}">${mapEscHtml((s.status || 'pending').toUpperCase())}</span></td>
-      <td><button type="button" class="action-btn-main"${registryOpenAttrs(s)} onclick="openRegistryRow(this)">Open</button></td>
+      <td class="sample-row-actions"><button type="button" class="action-btn-main"${registryOpenAttrs(s)} onclick="openRegistryRow(this)">Open</button><button type="button" class="action-btn-main danger"${registryOpenAttrs(s)} onclick="deleteRegistryRow(this)">Delete</button></td>
     </tr>`;
 }
 
@@ -19923,8 +20143,9 @@ function concreteSetsForQueue() {
   let sets = [];
   try { sets = loadConcreteSets() || []; } catch (e) { return []; }
   const archivedView = typeof showingArchived !== 'undefined' && showingArchived;
+  const pendingConcreteDeletes = (typeof getConcretePendingDeleteIds === 'function') ? getConcretePendingDeleteIds() : new Set();
   return sets.filter(set => {
-    if (!set || !set.id) return false;
+    if (!set || !set.id || pendingConcreteDeletes.has(set.id)) return false;
     if (!!set.archived !== archivedView) return false;
     return true;
   }).map(set => ({
@@ -19988,6 +20209,9 @@ function renderSampleQueue(samples) {
       const metaLine = [queueTypeLabel(s), s.material_type, queueDateLabel(s.date_sampled)].filter(Boolean).join(' · ');
       const open = s._registrySource ? 'openRegistryRow(this)' : `openSampleHub('${mapEscHtml(s.id)}')`;
       const attrs = s._registrySource ? registryOpenAttrs(s) : '';
+      const remove = s._registrySource
+        ? `<span role="button" tabindex="0" class="queue-card-delete"${registryOpenAttrs(s)} onclick="event.stopPropagation();event.preventDefault();deleteRegistryRow(this)">Delete</span>`
+        : `<span role="button" tabindex="0" class="queue-card-delete" data-sample-id="${mapEscHtml(s.id || '')}" data-test-no="${mapEscHtml(s.test_no || '')}" onclick="event.stopPropagation();event.preventDefault();deleteListedSample(this)">Delete</span>`;
       return `<button type="button" class="queue-card"${attrs} onclick="${open}">
         <div class="queue-card-top">
           <div class="queue-card-no">${mapEscHtml(s.test_no || 'Sample')}</div>
@@ -19995,6 +20219,7 @@ function renderSampleQueue(samples) {
         </div>
         <div class="queue-card-sub">${mapEscHtml(sub)}</div>
         <div class="queue-card-meta">${mapEscHtml(metaLine)}</div>
+        <div class="queue-card-actions">${remove}</div>
       </button>`;
     }).join('');
     syncQueueChips(rows.length);
@@ -20929,15 +21154,48 @@ async function archiveSample(id, testNo) {
   loadSamples();
 }
 
+function queuedDeletedSampleIds() {
+  const ids = new Set();
+  try {
+    const q = (typeof offlineQueueGet === 'function') ? offlineQueueGet() : [];
+    (q || []).forEach(op => {
+      if (op && op.table === 'samples' && op.op === 'update' && op.payload && op.payload.deleted_at && op.matchId) {
+        ids.add(op.matchId);
+      }
+    });
+  } catch (e) {}
+  return ids;
+}
+
+function dropSampleFromAllSamplesStore(id) {
+  if (!id) return;
+  allSamples = (allSamples || []).filter(s => s && s.id !== id);
+  try {
+    const raw = localStorage.getItem('labtrak_cached_samples');
+    if (!raw) return;
+    const rows = JSON.parse(raw).filter(s => s && s.id !== id);
+    localStorage.setItem('labtrak_cached_samples', JSON.stringify(rows));
+  } catch (e) {}
+}
+
 async function deleteSample(id, testNo) {
+  if (!id) return;
   if (!confirm(`Permanently delete sample ${testNo}?\n\nThis CANNOT be undone. Use Archive instead if you might need this data later.`)) return;
-  // Double confirmation for permanent delete
   if (!confirm(`Are you sure? Sample ${testNo} will be gone forever.`)) return;
-  const { error } = await db.from('samples').delete().eq('id', id);
-  if (error) { showToast('Delete failed: ' + error.message, 'error'); return; }
-  logSampleHistory({ sampleId: id, testNo, action: 'hard_deleted' });
-  showToast(`Sample ${testNo} permanently deleted`, 'success');
-  loadSamples();
+  const now = new Date().toISOString();
+  if (typeof db !== 'undefined' && db && navigator.onLine) {
+    const { error } = await db.from('samples').update({ deleted_at: now }).eq('id', id);
+    if (error) { showToast('Delete failed: ' + error.message, 'error'); return; }
+  } else if (typeof dbWrite === 'function') {
+    const result = await dbWrite('samples', 'update', { deleted_at: now }, id);
+    if (result && result.error) { showToast('Delete failed: ' + result.error.message, 'error'); return; }
+  }
+  dropSampleFromAllSamplesStore(id);
+  logSampleHistory({ sampleId: id, testNo, action: 'soft_deleted' });
+  showToast(`Sample ${testNo} deleted`, 'success');
+  if (typeof paintAllSamples === 'function') paintAllSamples();
+  if (typeof updateTopbarStatus === 'function') updateTopbarStatus();
+  if (typeof renderDashboard === 'function') renderDashboard();
 }
 
 // ══════════════════════════════════════════════
@@ -24896,8 +25154,8 @@ async function slConfirmDelete() {
   if (error) { showToast('Delete failed: ' + error.message, 'error'); return; }
   logSampleHistory({ sampleId: target.id, testNo, action: 'soft_deleted' });
 
-  // Remove from in-memory array immediately
-  if (allSamples) allSamples = allSamples.filter(function(s) { return s.id !== target.id; });
+  dropSampleFromAllSamplesStore(target.id);
+  if (typeof paintAllSamples === 'function') paintAllSamples();
 
   // Clear entry panel
   slCurrentSample = null;
@@ -34073,6 +34331,16 @@ function getConcretePendingUpsertIds() {
   return ids;
 }
 
+function getConcretePendingDeleteIds() {
+  const ids = new Set();
+  try {
+    JSON.parse(localStorage.getItem(CONCRETE_SYNC_QUEUE_KEY) || '[]').forEach(e => {
+      if (e.op === 'delete' && e.id) ids.add(e.id);
+    });
+  } catch (e) {}
+  return ids;
+}
+
 function mergeConcreteSets(localSets, cloudRows, cylinderRows) {
   const cylindersBySet = {};
   (cylinderRows || []).forEach(c => {
@@ -34083,8 +34351,10 @@ function mergeConcreteSets(localSets, cloudRows, cylinderRows) {
   const cloudSets = (cloudRows || []).map(row => concreteRowToSet(row, cylindersBySet[row.id] || [])).filter(Boolean);
   const byId = new Map();
   const pendingUpserts = getConcretePendingUpsertIds();
+  const pendingDeletes = getConcretePendingDeleteIds();
 
   cloudSets.forEach(s => {
+    if (pendingDeletes.has(s.id)) return;
     const cloudTs = s._cloudUpdatedAt ? new Date(s._cloudUpdatedAt).getTime() : 0;
     const copy = { ...s };
     delete copy._cloudUpdatedAt;
@@ -34092,6 +34362,7 @@ function mergeConcreteSets(localSets, cloudRows, cylinderRows) {
   });
 
   (localSets || []).forEach(s => {
+    if (!s || pendingDeletes.has(s.id)) return;
     const existing = byId.get(s.id);
     if (!existing) {
       // A set this browser already confirmed, and the cloud no longer has,
@@ -34131,7 +34402,7 @@ function queueConcreteSync(entry) {
     if (entry.op === 'upsert' && entry.set?.id) {
       q = q.filter(e => !(e.op === 'upsert' && e.set?.id === entry.set.id));
     } else if (entry.op === 'delete' && entry.id) {
-      q = q.filter(e => !(e.op === 'delete' && e.id === entry.id));
+      q = q.filter(e => !(e.op === 'delete' && e.id === entry.id) && !(e.op === 'upsert' && e.set && e.set.id === entry.id));
     }
     q.push({ ...entry, queued_at: new Date().toISOString() });
     localStorage.setItem(CONCRETE_SYNC_QUEUE_KEY, JSON.stringify(q.slice(-100)));
@@ -34239,10 +34510,9 @@ async function syncConcreteSetToCloud(set) {
 
 async function deleteConcreteSetFromCloud(id) {
   if (!id) return;
-  if (!db) {
-    queueConcreteSync({ op: 'delete', id });
-    return;
-  }
+  // Queue before the network call so a pull already in flight cannot put the set back.
+  queueConcreteSync({ op: 'delete', id });
+  if (!db) return;
   try {
     const { error: cylErr } = await db.from('concrete_cylinders').delete().eq('set_id', id);
     if (cylErr) throw cylErr;
@@ -34250,7 +34520,6 @@ async function deleteConcreteSetFromCloud(id) {
     if (error) throw error;
   } catch (e) {
     console.warn('deleteConcreteSetFromCloud:', e);
-    queueConcreteSync({ op: 'delete', id });
   }
 }
 
@@ -50350,6 +50619,12 @@ html.comfort-mode .rail-label {
   .queue-card-status.density { background: rgba(96, 165, 250, 0.16); color: #93c5fd; }
   .queue-card-sub { margin-top: 4px; color: #c5d0de; font-size: 14px; }
   .queue-card-meta { margin-top: 2px; color: #8ea0b5; font-size: 13px; }
+  .queue-card-actions { margin-top: 8px; display: flex; justify-content: flex-end; }
+  .queue-card-delete {
+    color: #f0a8a8; font-size: 12px; font-weight: 700;
+    border: 1px solid rgba(240, 168, 168, 0.45); border-radius: 999px;
+    padding: 4px 10px;
+  }
   .queue-empty { color: #8ea0b5; }
   #calendar-view .dash-cal-wrap { background: transparent; border: none; box-shadow: none; padding: 0; }
 
