@@ -374,6 +374,11 @@ nav:not(#r18-nav), .nav-top-row { display: none !important; }
 .sl-banner-testno { font-family: var(--mono); font-size: 17px; font-weight: 700; color: var(--accent2); line-height: 1.1; }
 .sl-banner-val { font-size: 12px; color: var(--text); font-weight: 500; margin-top: 1px; max-width: 160px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .sl-banner-actions { display: flex; gap: 7px; align-items: center; flex-shrink: 0; }
+.sl-testing-by { display: flex; gap: 12px; align-items: baseline; padding: 8px 20px; background: var(--panel); border-bottom: 1px solid var(--border); }
+.sl-testing-by-label { font-family: var(--mono); font-size: 9px; letter-spacing: 1px; text-transform: uppercase; color: var(--muted); flex-shrink: 0; }
+.sl-testing-by-names { font-size: 14px; font-weight: 650; color: var(--text); line-height: 1.35; }
+.sl-section-save { display: flex; align-items: center; gap: 10px; margin-top: 10px; flex-wrap: wrap; }
+.sl-section-save .hint { font-family: var(--mono); font-size: 10px; color: var(--muted); }
 .sl-entry-inner { padding: 14px 18px 48px; }
 .sl-mobile-back { display: none; }
 .sl-delete-modal {
@@ -7098,7 +7103,7 @@ END $$;
 
         <!-- MANUAL DATA ENTRY -->
         <div id="manualModePanel">
-          <div class="card">
+          <div class="card" data-lab-section="limits">
             <div class="card-title">Atterberg Limits — Liquid Limit (T-89)</div>
             <div class="manual-grid five">
               <div class="mf"><label>Bottle No.</label><input type="text" id="m_ll_bottle" placeholder="B"></div>
@@ -7109,7 +7114,7 @@ END $$;
             </div>
           </div>
 
-          <div class="card">
+          <div class="card" data-lab-section="limits">
             <div class="card-title">Atterberg Limits — Plastic Limit (T-90)</div>
             <div class="manual-grid" style="grid-template-columns:repeat(4,1fr);">
               <div class="mf"><label>Bottle No.</label><input type="text" id="m_pl_bottle" placeholder="C"></div>
@@ -7119,7 +7124,7 @@ END $$;
             </div>
           </div>
 
-          <div class="card">
+          <div class="card" data-lab-section="organic">
             <div class="card-title">Organic Content (T-267)</div>
             <div class="manual-grid" style="grid-template-columns:repeat(4,1fr);">
               <div class="mf"><label>Dish No.</label><input type="text" id="m_org_bottle" placeholder="3"></div>
@@ -7129,7 +7134,7 @@ END $$;
             </div>
           </div>
 
-          <div class="card">
+          <div class="card" data-lab-section="grain_size">
             <div class="card-title">Sieve Analysis</div>
             <div class="manual-grid two" style="margin-bottom:14px;">
               <div class="mf"><label>Wt. of Total Sample (g)</label><input type="number" step="0.1" id="m_total_wt" placeholder="1026.7"></div>
@@ -7158,7 +7163,7 @@ END $$;
 
           <!-- Aggregate manual entry -->
           <div id="aggManualPanel">
-            <div class="card">
+            <div class="card" data-lab-section="grain_size">
               <div class="card-title">Sieve Weights — Cumulative Retained</div>
               <p style="color:var(--muted);font-size:11px;font-family:var(--mono);margin-bottom:14px;">
                 Enter cumulative retained weights. PAN weight = total sample (all retained + pan catch).
@@ -7975,6 +7980,11 @@ END $$;
             </div>
           </div>
 
+          <div class="sl-testing-by" id="sl_testing_by_bar">
+            <div class="sl-testing-by-label">Testing By</div>
+            <div class="sl-testing-by-names" id="sl_testing_by">—</div>
+          </div>
+
           <!-- Entry inner scroll area -->
           <div class="sl-entry-inner">
 
@@ -8016,7 +8026,20 @@ END $$;
 
               <!-- Manual data entry -->
               <div id="sl_manual_panel">
-                <div class="card">
+                <div class="card" data-lab-section="moisture">
+                  <div class="card-title">Moisture Content (T-265)</div>
+                  <div class="manual-grid" style="grid-template-columns:repeat(4,1fr);">
+                    <div class="mf"><label>Tin No.</label><input type="text" id="sl_moist_tin" placeholder="M"></div>
+                    <div class="mf"><label>Wt. Wet Soil &amp; Tin</label><input type="number" step="0.01" id="sl_moist_wet" placeholder="42.18"></div>
+                    <div class="mf"><label>Wt. Dry Soil &amp; Tin</label><input type="number" step="0.01" id="sl_moist_dry" placeholder="38.40"></div>
+                    <div class="mf"><label>Wt. Tin (Tare)</label><input type="number" step="0.01" id="sl_moist_tare" placeholder="16.22"></div>
+                  </div>
+                  <div class="sl-section-save">
+                    <button type="button" class="btn btn-primary" style="font-size:10px;" onclick="slSaveLabSection('moisture')">Save moisture</button>
+                    <span class="hint">Moisture <strong id="sl_moist_pct" style="color:var(--text);font-weight:700;">—</strong></span>
+                  </div>
+                </div>
+                <div class="card" data-lab-section="limits">
                   <div class="card-title">Atterberg Limits — Liquid Limit (T-89)</div>
                   <div class="manual-grid five">
                     <div class="mf"><label>Bottle No.</label><input type="text" id="sl_ll_bottle" placeholder="B"></div>
@@ -8026,7 +8049,7 @@ END $$;
                     <div class="mf"><label>Blows for Closure</label><input type="number" id="sl_ll_blows" placeholder="25"></div>
                   </div>
                 </div>
-                <div class="card">
+                <div class="card" data-lab-section="limits">
                   <div class="card-title">Atterberg Limits — Plastic Limit (T-90)</div>
                   <div class="manual-grid" style="grid-template-columns:repeat(4,1fr);">
                     <div class="mf"><label>Bottle No.</label><input type="text" id="sl_pl_bottle" placeholder="C"></div>
@@ -8034,8 +8057,12 @@ END $$;
                     <div class="mf"><label>Wt. Dry Soil &amp; Bottle</label><input type="number" step="0.01" id="sl_pl_dry" placeholder="29.01"></div>
                     <div class="mf"><label>Wt. Bottle (Tare)</label><input type="number" step="0.01" id="sl_pl_tare" placeholder="20.10"></div>
                   </div>
+                  <div class="sl-section-save">
+                    <button type="button" class="btn btn-primary" style="font-size:10px;" onclick="slSaveLabSection('limits')">Save limits</button>
+                    <span class="hint">Saves liquid limit and plastic limit. Your name is added to Testing By.</span>
+                  </div>
                 </div>
-                <div class="card">
+                <div class="card" data-lab-section="organic">
                   <div class="card-title">Organic Content (T-267)</div>
                   <div class="manual-grid" style="grid-template-columns:repeat(4,1fr);">
                     <div class="mf"><label>Dish No.</label><input type="text" id="sl_org_bottle" placeholder="3"></div>
@@ -8044,8 +8071,8 @@ END $$;
                     <div class="mf"><label>Dish Tare</label><input type="number" step="0.01" id="sl_org_tare" placeholder="11.22"></div>
                   </div>
                 </div>
-                <div class="card">
-                  <div class="card-title">Sieve Analysis</div>
+                <div class="card" data-lab-section="grain_size">
+                  <div class="card-title">Grain Size — Sieve Analysis</div>
                   <div class="manual-grid two" style="margin-bottom:14px;">
                     <div class="mf"><label>Wt. of Total Sample (g)</label><input type="number" step="0.1" id="sl_total_wt" placeholder="1026.7"></div>
                     <div class="mf"><label>Wt. of Wash Sample (g)</label><input type="number" step="0.1" id="sl_wash_wt" placeholder="114.3"></div>
@@ -8059,6 +8086,10 @@ END $$;
                     <thead><tr><th>SIEVE</th><th>CUM. WT. RETAINED (g)</th></tr></thead>
                     <tbody id="sl_soil_sieve_tbody"></tbody>
                   </table>
+                  <div class="sl-section-save">
+                    <button type="button" class="btn btn-primary" style="font-size:10px;" onclick="slSaveLabSection('grain_size')">Save grain size</button>
+                    <span class="hint">Saves the sieve masses. Your name is added to Testing By.</span>
+                  </div>
                 </div>
               </div>
             </div><!-- end sl_soil_entry -->
@@ -8067,8 +8098,8 @@ END $$;
             <div id="sl_agg_entry" style="display:none;">
               <!-- Aggregate manual entry -->
               <div id="sl_agg_manual_panel">
-                <div class="card">
-                  <div class="card-title">Sieve Weights — Cumulative Retained</div>
+                <div class="card" data-lab-section="grain_size">
+                  <div class="card-title">Grain Size — Sieve Weights</div>
                   <p style="color:var(--muted);font-size:11px;font-family:var(--mono);margin-bottom:14px;">Enter cumulative retained weights. PAN = total sample weight.</p>
                   <div id="sl_agg_sieve_container">
                     <p style="color:var(--muted);font-family:var(--mono);font-size:11px;">Select a sample with an aggregate type to see sieve inputs.</p>
@@ -8077,6 +8108,10 @@ END $$;
                     <label style="font-family:var(--mono);font-size:9px;color:var(--gold);letter-spacing:1px;">PAN WT. = TOTAL SAMPLE (g)</label>
                     <input type="number" step="0.1" id="sl_agg_pan" placeholder="e.g. 6802.0"
                            style="background:rgba(200,167,67,0.1);border:1px solid var(--gold);border-radius:var(--radius);color:var(--text);padding:9px 11px;width:100%;font-family:var(--mono);font-size:14px;outline:none;">
+                  </div>
+                  <div class="sl-section-save">
+                    <button type="button" class="btn btn-primary" style="font-size:10px;" onclick="slSaveLabSection('grain_size')">Save grain size</button>
+                    <span class="hint">Saves the aggregate sieves. Your name is added to Testing By.</span>
                   </div>
                 </div>
               </div>
@@ -17487,7 +17522,10 @@ function switchView(name, opts) {
     if (typeof concreteGuideOnViewChange === 'function') concreteGuideOnViewChange();
   }
   if (name === 'soillab') { void loadSoilLab(); }
-  if (name !== 'soillab') stopSlTestScanner();
+  if (name !== 'soillab') {
+    stopSlTestScanner();
+    if (typeof slStopLabWatch === 'function') slStopLabWatch();
+  }
   if (name === 'appsources') { srcLoad(); }
   if (name === 'fieldhub') {
     void (async () => {
@@ -17660,6 +17698,11 @@ const HELP_FIELD_REGISTRY = {
   sl_pl_wet: { title: 'PL — wet soil + bottle', body: 'Wet mass for plastic limit moisture content.' },
   sl_pl_dry: { title: 'PL — dry soil + bottle', body: 'Dry mass for plastic limit moisture content.' },
   sl_pl_tare: { title: 'PL — bottle tare', body: 'Empty bottle tare weight (grams).' },
+  sl_moist_tin: { title: 'Moisture tin', body: 'Tin or can ID for the natural moisture test (T-265).' },
+  sl_moist_wet: { title: 'Moisture — wet soil and tin', body: 'Wet mass of the moisture specimen plus the tin.' },
+  sl_moist_dry: { title: 'Moisture — dry soil and tin', body: 'Oven-dry mass of the moisture specimen plus the tin.' },
+  sl_moist_tare: { title: 'Moisture — tin tare', body: 'Empty tin mass. Moisture percent is water weight divided by dry soil weight.' },
+  sl_testing_by: { title: 'Testing By', body: 'Every technician who saved moisture, Atterberg limits, or grain size on this sample. The line is built from those three saves.' },
   sl_org_bottle: { title: 'Organic dish number', body: 'Dish ID for ignition loss / organic content.' },
   sl_org_pre: { title: 'Pre-ignition mass', body: 'Mass of dish plus dry soil before furnace ignition.' },
   sl_org_post: { title: 'Post-ignition mass', body: 'Mass of dish plus soil after ignition to constant weight.' },
@@ -21799,6 +21842,7 @@ async function loadIntoLab(id) {
 
 function loadSampleIntoLab(sample) {
   currentSample = sample;
+  slDirtySections = new Set();
   document.getElementById('labNoSample').style.display = 'none';
   document.getElementById('labForm').style.display = 'block';
   document.getElementById('labSampleBanner').style.display = 'grid';
@@ -21978,14 +22022,19 @@ async function finishLabGeneration(parsed) {
     lab_remarks:   v('l_remarks'),
   };
 
-  await dbWrite('samples', 'update', labData, currentSample.id);
-
-  const calc = calculateSieve(parsed, currentSample?.soil_sieve_nest || parsed.soil_sieve_nest);
-  // Important: spread order ensures fresh parsed lab_data overrides any stale currentSample.lab_data
-  const merged = { ...currentSample, ...labData, lab_data: parsed };
-  // Also update currentSample in memory so subsequent edits use fresh data
-  currentSample = { ...currentSample, ...labData, lab_data: parsed };
-  await renderLB44(merged, parsed, calc);
+  let merged = { ...currentSample, ...labData, lab_data: parsed };
+  if (navigator.onLine && db) {
+    const saved = await slPersistMergedSample(currentSample.id, labData, slDirtySections);
+    if (!saved) return;
+    merged = saved;
+    slDirtySections = new Set();
+  } else {
+    await dbWrite('samples', 'update', labData, currentSample.id);
+  }
+  const reportLab = merged.lab_data || parsed;
+  const calc = calculateSieve(reportLab, currentSample?.soil_sieve_nest || reportLab.soil_sieve_nest);
+  currentSample = merged;
+  await renderLB44(merged, reportLab, calc);
   switchView('report');
   showToast('LB-44 generated ✓', 'success');
 }
@@ -22608,7 +22657,7 @@ async function generateAggregateReport() {
     sieveData[key] = val;
   }
 
-  const calc = calculateAggregate(sieveData, aggType);
+  let calc = calculateAggregate(sieveData, aggType);
   if (!calc) { showToast('Calculation error', 'error'); return; }
 
   const labData = {
@@ -22626,8 +22675,18 @@ async function generateAggregateReport() {
     lab_remarks: v('l_remarks'),
   };
 
-  await dbWrite('samples', 'update', labData, currentSample.id);
-  currentSample = { ...currentSample, ...labData };
+  let savedSample = { ...currentSample, ...labData };
+  if (navigator.onLine && db) {
+    const saved = await slPersistMergedSample(currentSample.id, labData, slDirtySections);
+    if (!saved) return;
+    savedSample = saved;
+    slDirtySections = new Set();
+    const freshCalc = calculateAggregate((saved.lab_data && saved.lab_data.sieve_data) || sieveData, (saved.lab_data && saved.lab_data.agg_type) || aggType);
+    if (freshCalc) calc = freshCalc;
+  } else {
+    await dbWrite('samples', 'update', labData, currentSample.id);
+  }
+  currentSample = savedSample;
 
   await renderAggregateReport(currentSample, calc);
   switchView('report');
@@ -22957,6 +23016,7 @@ async function renderAggregateReport(sample, calc) {
         ${row('Contract:', sample.contract)}
         ${row('Supply Location:', sample.supply_location)}
         ${row('Sampled By:', sample.sampled_by)}
+        ${row('Testing By:', labTestingByLine(lab))}
         ${row('Date Sampled:', sample.date_sampled)}
         ${row('Date Received:', sample.date_received)}
         ${row('Date Tested:', sample.date_tested)}
@@ -24499,6 +24559,7 @@ async function renderLB44(sample, labData, calc) {
       <div class="info-line"><div class="lbl">Type of Sample:</div><div class="val">${fv(sample.sample_type)}</div><div class="lbl">Remarks:</div><div class="val">${fv(sample.lab_remarks)}</div></div>
       <div class="info-line"><div class="lbl">REVIEWED BY:</div><div class="val">${fv(sample.reviewed_by)}</div><div class="lbl">Date Sampled:</div><div class="val">${fv(sample.date_sampled)}</div></div>
       <div class="info-line"><div class="lbl">Sampled By:</div><div class="val">${fv(sample.sampled_by)}</div><div class="lbl">Location of Lab:</div><div class="val">DOVER</div></div>
+      <div class="info-line"><div class="lbl">TESTING BY:</div><div class="val">${r18Esc(labTestingByLine(labData))}</div><div class="lbl">MOISTURE %:</div><div class="val">${(function () { const pct = labMoisturePercent(labData.moisture || {}); return pct == null ? '' : pct.toFixed(1) + '%'; })()}</div></div>
       <div class="info-line"><div class="lbl">Date Received:</div><div class="val">${fv(sample.date_received)}</div><div class="lbl">Date Tested:</div><div class="val">${fv(sample.date_tested)}</div></div>
       <div class="info-single"><div class="lbl">Date Reported:</div><div class="val">${dateRpt}</div></div>
     </div>
@@ -24688,6 +24749,216 @@ function pickSampleRowUpdates(updates) {
     if (SAMPLE_ROW_UPDATE_KEYS.has(k)) out[k] = updates[k];
   });
   return out;
+}
+
+// Moisture, Atterberg limits, and grain size are saved separately.
+// Testing By is every technician who saved one of those sections.
+const LAB_TESTING_SECTIONS = ['moisture', 'limits', 'grain_size'];
+
+let slDirtySections = new Set();
+let slLabWatchTimer = null;
+let slLabWatchId = null;
+let slLabSaveInFlight = false;
+
+function labCurrentTechName() {
+  const named = (currentUser && currentUser.name && String(currentUser.name).trim())
+    || (_authProfile && _authProfile.display_name && String(_authProfile.display_name).trim())
+    || '';
+  if (named) return named;
+  const email = (_supabaseAuthSession && _supabaseAuthSession.user && _supabaseAuthSession.user.email) || '';
+  return email ? email.split('@')[0] : '';
+}
+
+function labSectionLabel(section) {
+  if (section === 'moisture') return 'Moisture';
+  if (section === 'limits') return 'Atterberg limits';
+  if (section === 'grain_size') return 'Grain size';
+  if (section === 'organic') return 'Organic content';
+  return 'Lab data';
+}
+
+function labValuePresent(v) {
+  if (v == null || v === '') return false;
+  if (typeof v === 'number') return Number.isFinite(v);
+  if (typeof v === 'string') return v.trim().length > 0;
+  if (typeof v === 'boolean') return v;
+  if (Array.isArray(v)) return v.some(labValuePresent);
+  if (typeof v === 'object') return Object.keys(v).some(k => labValuePresent(v[k]));
+  return false;
+}
+
+function labHasOwn(obj, key) {
+  return !!obj && Object.prototype.hasOwnProperty.call(obj, key);
+}
+
+function labStable(v) {
+  if (Array.isArray(v)) return v.map(labStable);
+  if (v && typeof v === 'object') {
+    const out = {};
+    Object.keys(v).sort().forEach(k => { out[k] = labStable(v[k]); });
+    return out;
+  }
+  return v;
+}
+
+function labSame(a, b) {
+  return JSON.stringify(labStable(a)) === JSON.stringify(labStable(b));
+}
+
+function labSameStamp(a, b) {
+  if (!a || !b) return false;
+  if (a === b) return true;
+  const left = Date.parse(a);
+  const right = Date.parse(b);
+  return Number.isFinite(left) && left === right;
+}
+
+function labUnionNames(lists) {
+  const seen = new Set();
+  const out = [];
+  (lists || []).forEach(list => {
+    (Array.isArray(list) ? list : []).forEach(raw => {
+      const name = String(raw || '').trim();
+      if (!name) return;
+      const key = name.toLowerCase();
+      if (seen.has(key)) return;
+      seen.add(key);
+      out.push(name);
+    });
+  });
+  return out;
+}
+
+function labSectionMeasurement(lab, section) {
+  lab = lab || {};
+  if (section === 'moisture') return lab.moisture || null;
+  if (section === 'limits') return { liquid_limit: lab.liquid_limit || null, plastic_limit: lab.plastic_limit || null };
+  if (section === 'organic') return lab.organic || null;
+  if (section === 'grain_size') {
+    return {
+      sieves: lab.sieves || null,
+      sieve_data: lab.sieve_data || null,
+      total_sample_wt: lab.total_sample_wt == null ? null : lab.total_sample_wt,
+      wash_sample_wt: lab.wash_sample_wt == null ? null : lab.wash_sample_wt,
+      soil_sieve_nest: lab.soil_sieve_nest || null,
+      agg_type: lab.agg_type || null,
+    };
+  }
+  return null;
+}
+
+function labSectionHasEntry(lab, section) {
+  return labValuePresent(labSectionMeasurement(lab, section));
+}
+
+function labMoisturePercent(block) {
+  const wet = parseFloat(block && (block.wt_wet != null ? block.wt_wet : block.wt_wet_soil_bottle));
+  const dry = parseFloat(block && (block.wt_dry != null ? block.wt_dry : block.wt_dry_bottle));
+  const tare = parseFloat(block && (block.wt_tare != null ? block.wt_tare : block.wt_bottle));
+  if (![wet, dry, tare].every(Number.isFinite)) return null;
+  const water = wet - dry;
+  const drySoil = dry - tare;
+  if (!(drySoil > 0) || water < 0) return null;
+  return (water / drySoil) * 100;
+}
+
+function labTestingByNames(lab) {
+  lab = normalizeLabData(lab) || {};
+  const techs = (lab.section_techs && typeof lab.section_techs === 'object') ? lab.section_techs : {};
+  return labUnionNames(LAB_TESTING_SECTIONS.map(sec => techs[sec]));
+}
+
+function labTestingByLine(lab) {
+  return labTestingByNames(lab).join(', ');
+}
+
+function mergeLabSections(serverLab, localLab, dirtySections, techName) {
+  const server = normalizeLabData(serverLab) || {};
+  const local = normalizeLabData(localLab) || {};
+  const requested = dirtySections instanceof Set ? dirtySections : new Set(dirtySections || []);
+  const dirty = new Set();
+  ['moisture', 'limits', 'grain_size', 'organic'].forEach(sec => {
+    if (requested.has(sec) && labSectionHasEntry(local, sec)) dirty.add(sec);
+  });
+  const out = Object.assign({}, server);
+  if (dirty.has('moisture') && labHasOwn(local, 'moisture')) out.moisture = local.moisture;
+  if (dirty.has('limits')) {
+    if (labHasOwn(local, 'liquid_limit')) out.liquid_limit = local.liquid_limit;
+    if (labHasOwn(local, 'plastic_limit')) out.plastic_limit = local.plastic_limit;
+  }
+  if (dirty.has('organic') && labHasOwn(local, 'organic')) out.organic = local.organic;
+  if (dirty.has('grain_size')) {
+    if (labHasOwn(local, 'sieves')) out.sieves = local.sieves;
+    if (labHasOwn(local, 'soil_sieve_nest') && local.soil_sieve_nest) out.soil_sieve_nest = local.soil_sieve_nest;
+    if (labHasOwn(local, 'sieve_data')) out.sieve_data = local.sieve_data;
+    if (labHasOwn(local, 'agg_type') && local.agg_type) out.agg_type = local.agg_type;
+    if (labHasOwn(local, 'total_sample_wt') && local.total_sample_wt != null) out.total_sample_wt = local.total_sample_wt;
+    if (labHasOwn(local, 'wash_sample_wt') && local.wash_sample_wt != null) out.wash_sample_wt = local.wash_sample_wt;
+  }
+  const serverTechs = (server.section_techs && typeof server.section_techs === 'object') ? server.section_techs : {};
+  const localTechs = (local.section_techs && typeof local.section_techs === 'object') ? local.section_techs : {};
+  const techs = {};
+  LAB_TESTING_SECTIONS.forEach(sec => {
+    const prior = serverTechs[sec];
+    techs[sec] = dirty.has(sec)
+      ? labUnionNames([prior, localTechs[sec], techName ? [techName] : []])
+      : labUnionNames([prior]);
+  });
+  out.section_techs = techs;
+  if (!out.notes && local.notes) out.notes = local.notes;
+  return out;
+}
+
+function patchCachedSampleRow(row) {
+  if (!row || !row.id) return;
+  try {
+    const raw = localStorage.getItem('labtrak_cached_samples');
+    const rows = raw ? JSON.parse(raw) : [];
+    if (!Array.isArray(rows)) return;
+    const i = rows.findIndex(s => s && s.id === row.id);
+    if (i >= 0) rows[i] = Object.assign({}, rows[i], row);
+    else rows.unshift(row);
+    localStorage.setItem('labtrak_cached_samples', JSON.stringify(rows.slice(0, 300)));
+  } catch (e) {}
+}
+
+/** Re-read the sample, overlay only the sections this browser edited, and write that back. */
+async function slPersistMergedSample(id, updates, dirtySections) {
+  if (!id || !updates || !db) {
+    showToast('Not connected to database', 'error');
+    return null;
+  }
+  const techName = labCurrentTechName();
+  let lastError = null;
+  for (let attempt = 0; attempt < 5; attempt++) {
+    const read = await db.from('samples').select('*').eq('id', id).single();
+    if (read.error || !read.data) {
+      lastError = read.error || new Error('Sample not found');
+      break;
+    }
+    const fresh = read.data;
+    const localLab = updates.lab_data != null ? updates.lab_data : fresh.lab_data;
+    const merged = mergeLabSections(fresh.lab_data, localLab, dirtySections, techName);
+    const body = pickSampleRowUpdates(Object.assign({}, updates, { lab_data: sanitizeForJsonb(merged) }));
+    let query = db.from('samples').update(body).eq('id', id).select('*');
+    const locked = attempt < 4 && !!fresh.updated_at;
+    if (locked) query = query.eq('updated_at', fresh.updated_at);
+    const written = await query;
+    if (written.error) {
+      lastError = written.error;
+      continue;
+    }
+    const row = Array.isArray(written.data) ? written.data[0] : null;
+    if (!row) continue;
+    row.lab_data = normalizeLabData(row.lab_data);
+    upsertAllSample(row);
+    patchCachedSampleRow(row);
+    return row;
+  }
+  console.error('slPersistMergedSample:', lastError);
+  const detail = lastError && lastError.message ? lastError.message : 'another save landed first. Try again.';
+  showToast('Save failed: ' + detail, 'error');
+  return null;
 }
 
 /** Update a sample row and return the persisted row, or null on failure. */
@@ -24890,6 +25161,7 @@ const HISTORY_ACTION_LABELS = {
   fc_status: 'Field control status changed',
   lab_arrived: 'Received at lab',
   lab_testing_started: 'Testing started',
+  lab_section_saved: 'Lab section saved',
 };
 
 function showActiveSampleHistory() {
@@ -28091,6 +28363,7 @@ async function slLoadSample(id, opts) {
   const forceFresh = !opts.edit;
   let sample = await fetchSample(id, { forceFresh, requireLabData: !opts.edit });
   if (!sample) return;
+  slDirtySections = new Set();
   slCurrentSample = sample;
 
   // Refresh queue to show active highlight
@@ -28205,17 +28478,37 @@ async function slLoadSample(id, opts) {
     if (testedEl) testedEl.value = sample.date_tested;
   }
 
+  slRenderTestingBy(sample.lab_data);
+  slUpdateMoisturePreview();
+  slDirtySections = new Set();
+  slWatchOpenSample();
+
   // Scroll entry panel to top
   const panel = document.getElementById('sl_entry_panel');
   if (panel) panel.scrollTop = 0;
 }
 
 // ── Pre-fill form with existing lab data ───────────────────────
-function slPrefill(labData, isAgg, sample) {
+function slPrefill(labData, isAgg, sample, skipSections) {
+  const skip = skipSections || new Set();
   function se(id, val) { const el = document.getElementById(id); if (el && val != null && val !== '') el.value = val; }
+  function put(id, val) {
+    const el = document.getElementById(id);
+    if (!el) return;
+    el.value = val == null ? '' : val;
+  }
+  const write = skip.size ? put : se;
+  if (!skip.has('moisture')) {
+    const moist = labData.moisture || {};
+    write('sl_moist_tin', moist.container_no);
+    write('sl_moist_wet', moist.wt_wet);
+    write('sl_moist_dry', moist.wt_dry);
+    write('sl_moist_tare', moist.wt_tare);
+    slUpdateMoisturePreview();
+  }
   if (isAgg) {
     // Aggregate: pre-fill sieve weights
-    if (labData.sieve_data) {
+    if (!skip.has('grain_size') && labData.sieve_data) {
       const sd = labData.sieve_data;
       Object.keys(sd).forEach(key => {
         const el = document.getElementById('sl_agg_' + key);
@@ -28230,41 +28523,52 @@ function slPrefill(labData, isAgg, sample) {
     const pl  = labData.plastic_limit || {};
     const org = labData.organic       || {};
     const sv  = labData.sieves        || {};
-    se('sl_ll_bottle', ll.bottle_no);   se('sl_ll_wet', ll.wt_wet_soil_bottle);
-    se('sl_ll_dry', ll.wt_dry_bottle);  se('sl_ll_tare', ll.wt_bottle);
-    se('sl_ll_blows', ll.blows);
-    se('sl_pl_bottle', pl.bottle_no);   se('sl_pl_wet', pl.wt_wet_soil_bottle);
-    se('sl_pl_dry', pl.wt_dry_bottle);  se('sl_pl_tare', pl.wt_bottle);
-    se('sl_org_bottle', org.bottle_no); se('sl_org_pre', org.wt_wet_soil_bottle);
-    se('sl_org_post', org.wt_dry_bottle); se('sl_org_tare', org.wt_bottle);
-    se('sl_total_wt', labData.total_sample_wt);
-    se('sl_wash_wt',  labData.wash_sample_wt);
-    const nestId = sample.soil_sieve_nest || labData.soil_sieve_nest || Object.keys(SOIL_SIEVE_NESTS)[0] || 'deldot_two_split';
-    slRenderSoilSieveTable(nestId);
-    function rSv(k, legacy) {
-      const val = sv[k] != null ? sv[k] : (legacy ? sv[legacy] : null);
-      return val == null ? null : (typeof val === 'object' ? val.wt_retained : val);
+    if (!skip.has('limits')) {
+      write('sl_ll_bottle', ll.bottle_no);   write('sl_ll_wet', ll.wt_wet_soil_bottle);
+      write('sl_ll_dry', ll.wt_dry_bottle);  write('sl_ll_tare', ll.wt_bottle);
+      write('sl_ll_blows', ll.blows);
+      write('sl_pl_bottle', pl.bottle_no);   write('sl_pl_wet', pl.wt_wet_soil_bottle);
+      write('sl_pl_dry', pl.wt_dry_bottle);  write('sl_pl_tare', pl.wt_bottle);
     }
-    const nest = SOIL_SIEVE_NESTS[nestId];
-    if (nest) {
-      const legacyMap = { '2in': 'in2', '1in': 'in1', '0.375in': 'in38' };
-      [...(nest.split1 || []), ...(nest.split2 || [])].forEach(key => {
-        se(soilSieveFieldId(key), rSv(key, legacyMap[key]));
-      });
+    if (!skip.has('organic')) {
+      write('sl_org_bottle', org.bottle_no); write('sl_org_pre', org.wt_wet_soil_bottle);
+      write('sl_org_post', org.wt_dry_bottle); write('sl_org_tare', org.wt_bottle);
+    }
+    const nestId = sample.soil_sieve_nest || labData.soil_sieve_nest || Object.keys(SOIL_SIEVE_NESTS)[0] || 'deldot_two_split';
+    if (!skip.has('grain_size')) {
+      write('sl_total_wt', labData.total_sample_wt);
+      write('sl_wash_wt',  labData.wash_sample_wt);
+      slRenderSoilSieveTable(nestId);
+    }
+    if (!skip.has('grain_size')) {
+      function rSv(k, legacy) {
+        const val = sv[k] != null ? sv[k] : (legacy ? sv[legacy] : null);
+        return val == null ? null : (typeof val === 'object' ? val.wt_retained : val);
+      }
+      const nest = SOIL_SIEVE_NESTS[nestId];
+      if (nest) {
+        const legacyMap = { '2in': 'in2', '1in': 'in1', '0.375in': 'in38' };
+        [...(nest.split1 || []), ...(nest.split2 || [])].forEach(key => {
+          write(soilSieveFieldId(key), rSv(key, legacyMap[key]));
+        });
+      }
     }
   }
+  slRenderTestingBy(labData);
 
-  // Report fields — these live on the sample object, not inside lab_data
-  const s = sample || {};
-  se('sl_reported_by',   s.reported_by    || labData.reported_by);
-  se('sl_reviewed_by',   s.reviewed_by    || labData.reviewed_by);
-  se('sl_qa_sup',        s.qa_supervisor  || labData.qa_supervisor);
-  se('sl_ia_sup',        s.ia_supervisor  || labData.ia_supervisor);
-  se('sl_geo_eng',       s.geo_engineer   || labData.geo_engineer);
-  se('sl_date_received', s.date_received  || labData.date_received);
-  se('sl_date_tested',   s.date_tested    || labData.date_tested);
-  se('sl_date_reported', s.date_reported  || labData.date_reported);
-  se('sl_remarks',       s.lab_remarks    || labData.lab_remarks);
+  // Report fields live on the sample. A remote refresh must not overwrite them mid-edit.
+  if (!skipSections) {
+    const s = sample || {};
+    se('sl_reported_by',   s.reported_by    || labData.reported_by);
+    se('sl_reviewed_by',   s.reviewed_by    || labData.reviewed_by);
+    se('sl_qa_sup',        s.qa_supervisor  || labData.qa_supervisor);
+    se('sl_ia_sup',        s.ia_supervisor  || labData.ia_supervisor);
+    se('sl_geo_eng',       s.geo_engineer   || labData.geo_engineer);
+    se('sl_date_received', s.date_received  || labData.date_received);
+    se('sl_date_tested',   s.date_tested    || labData.date_tested);
+    se('sl_date_reported', s.date_reported  || labData.date_reported);
+    se('sl_remarks',       s.lab_remarks    || labData.lab_remarks);
+  }
 }
 
 // ── Aggregate sieve inputs ─────────────────────────────────────
@@ -28366,31 +28670,7 @@ async function slSubmitEntry() {
 // ── Soil manual entry → report ─────────────────────────────────
 async function slGenerateFromManual() {
   if (!slCurrentSample) { showToast('No sample loaded', 'error'); return; }
-  function gv(id) { const el = document.getElementById(id); return el ? (el.value.trim() || null) : null; }
-  function gn(id) { const el = document.getElementById(id); const v = parseFloat(el?.value); return isNaN(v) ? null : v; }
-
-  const parsed = {
-    total_sample_wt: gn('sl_total_wt'),
-    wash_sample_wt: isNoWashSplitNest() ? null : gn('sl_wash_wt'),
-    soil_sieve_nest: getActiveSoilSieveNestId(),
-    liquid_limit: {
-      bottle_no: gv('sl_ll_bottle'), wt_wet_soil_bottle: gn('sl_ll_wet'),
-      wt_dry_bottle: gn('sl_ll_dry'), wt_bottle: gn('sl_ll_tare'), blows: gn('sl_ll_blows'),
-    },
-    plastic_limit: {
-      bottle_no: gv('sl_pl_bottle'), wt_wet_soil_bottle: gn('sl_pl_wet'),
-      wt_dry_bottle: gn('sl_pl_dry'), wt_bottle: gn('sl_pl_tare'),
-    },
-    organic: {
-      bottle_no: gv('sl_org_bottle'), wt_wet_soil_bottle: gn('sl_org_pre'),
-      wt_dry_bottle: gn('sl_org_post'), wt_bottle: gn('sl_org_tare'),
-    },
-    sieves: collectSoilSieveValuesFromForm(),
-    notes: 'Manual entry — LabTrak soil lab'
-  };
-
-  if (!parsed.total_sample_wt) { showToast('Enter Total Sample Weight', 'error'); return; }
-  await slFinishLab(parsed);
+  await slFinishLab(slCollectSoilLab());
 }
 
 // ── Queue for approval or email immediately ────────────────────
@@ -28443,30 +28723,39 @@ async function slFinishLab(parsed) {
     showToast('This sample is already complete — use Edit Report to change data', 'error');
     return;
   }
-  slLastLabData = parsed;
-  const fields  = slReportFields();
   const nestId = getActiveSoilSieveNestId();
   parsed.soil_sieve_nest = nestId;
   if (isNoWashSplitNest(nestId)) parsed.wash_sample_wt = null;
-  const updates = { status: 'complete', lab_data: parsed, conforms: sampleReportConforms({ ...slCurrentSample, lab_data: parsed, test_category: slCurrentSample.test_category || 'soil' }) === false ? 'no' : 'yes', ...fields };
-  const saved = await slPersistSample(slCurrentSample.id, updates);
+  slLastLabData = parsed;
+  const dirty = new Set(slDirtySections);
+  const kept = await slPersistMergedSample(slCurrentSample.id, slSectionSaveUpdates(parsed), dirty);
+  if (!kept) return;
+  const keptLab = kept.lab_data || parsed;
+  const total = keptLab.total_sample_wt || (keptLab.sieve_data && keptLab.sieve_data.pan_weight);
+  if (!total) {
+    slAcceptSectionSave(kept, dirty);
+    showToast('Saved. Enter grain size before generating the report.', 'info');
+    return;
+  }
+  const fields = slReportFields();
+  const conforms = sampleReportConforms({ ...kept, lab_data: keptLab, test_category: kept.test_category || 'soil' }) === false ? 'no' : 'yes';
+  const saved = await slPersistMergedSample(kept.id, Object.assign({ status: 'complete', lab_data: parsed, conforms: conforms }, fields), dirty);
   if (!saved) return;
   if (!sampleHasLabData(saved)) {
     showToast('Lab data did not save — check connection and try again', 'error');
     return;
   }
-  logSampleHistory({ sampleId: slCurrentSample.id, testNo: slCurrentSample.test_no, action: 'lab_complete', details: { type: 'soil', status: 'complete' } });
-
-  const merged = saved;
-  currentSample = merged;
-  slCurrentSample = merged;
-
-  const calc = calculateSieve(parsed, parsed.soil_sieve_nest || nestId);
-  await renderLB44(merged, parsed, calc);
+  logSampleHistory({ sampleId: saved.id, testNo: saved.test_no, action: 'lab_complete', details: { type: 'soil', status: 'complete', testing_by: labTestingByLine(saved.lab_data) } });
+  slDirtySections = new Set();
+  currentSample = saved;
+  slCurrentSample = saved;
+  const reportLab = saved.lab_data || keptLab;
+  const calc = calculateSieve(reportLab, reportLab.soil_sieve_nest || nestId);
+  await renderLB44(saved, reportLab, calc);
   switchView('report');
   showToast('LB-44 generated ✓', 'success');
-  await slHandleDistribution(merged);
-  refreshReportEmailBtn(merged);
+  await slHandleDistribution(saved);
+  refreshReportEmailBtn(saved);
   slEditingComplete = false;
 }
 
@@ -28480,45 +28769,37 @@ async function slGenerateAggReport() {
   const aggType = slCurrentSample.agg_type;
   if (!aggType || !AGG_TYPES[aggType]) { showToast('No aggregate type on this sample', 'error'); return; }
 
-  const spec = AGG_TYPES[aggType];
-  function gn(id) { const v = parseFloat(document.getElementById(id)?.value); return isNaN(v) ? 0 : v; }
-
-  const sieveData = {};
-  for (const key of spec.sieves) {
-    sieveData[key] = gn('sl_agg_' + key);
+  const local = slCollectAggLab();
+  const dirty = new Set(slDirtySections);
+  const kept = await slPersistMergedSample(slCurrentSample.id, slSectionSaveUpdates(local), dirty);
+  if (!kept) return;
+  const keptLab = kept.lab_data || local;
+  const pan = (keptLab.sieve_data && keptLab.sieve_data.pan_weight) || keptLab.total_sample_wt;
+  if (!pan) {
+    slAcceptSectionSave(kept, dirty);
+    showToast('Saved. Enter the pan weight before generating the report.', 'info');
+    return;
   }
-  const totalWt = gn('sl_agg_pan');
-  if (!totalWt) { showToast('Enter PAN / total sample weight', 'error'); return; }
-  sieveData.pan_weight = totalWt;  // required by calculateAggregate
-
-  const labData = {
-    agg_type:         aggType,
-    sieve_data:       sieveData,
-    total_sample_wt:  totalWt,
-    notes: 'Manual entry — LabTrak soil lab'
-  };
-  const fields  = slReportFields();
-  const aggCalcPreview = calculateAggregate(sieveData, aggType);
-  const updates = { status: 'complete', lab_data: labData, conforms: aggCalcPreview && aggCalcPreview.allPass ? 'yes' : 'no', ...fields };
-  const saved = await slPersistSample(slCurrentSample.id, updates);
+  const fields = slReportFields();
+  const aggCalcPreview = calculateAggregate(keptLab.sieve_data, keptLab.agg_type || aggType);
+  const conforms = aggCalcPreview && aggCalcPreview.allPass ? 'yes' : 'no';
+  const saved = await slPersistMergedSample(kept.id, Object.assign({ status: 'complete', lab_data: local, conforms: conforms }, fields), dirty);
   if (!saved) return;
   if (!sampleHasLabData(saved)) {
     showToast('Lab data did not save — check connection and try again', 'error');
     return;
   }
-  logSampleHistory({ sampleId: slCurrentSample.id, testNo: slCurrentSample.test_no, action: 'lab_complete', details: { type: 'aggregate', status: 'complete', agg_type: aggType } });
-
-  const aggCalc = aggCalcPreview;
-  const merged  = saved;
-  currentSample = merged;
-  slCurrentSample = merged;
-
-  await renderAggregateReport(merged, aggCalc);
+  logSampleHistory({ sampleId: saved.id, testNo: saved.test_no, action: 'lab_complete', details: { type: 'aggregate', status: 'complete', agg_type: aggType, testing_by: labTestingByLine(saved.lab_data) } });
+  slDirtySections = new Set();
+  const reportLab = saved.lab_data || keptLab;
+  const aggCalc = calculateAggregate(reportLab.sieve_data, reportLab.agg_type || aggType) || aggCalcPreview;
+  currentSample = saved;
+  slCurrentSample = saved;
+  await renderAggregateReport(saved, aggCalc);
   switchView('report');
   showToast('Aggregate report generated ✓', 'success');
-  // Queue for approval or email immediately
-  await slHandleDistribution(merged);
-  refreshReportEmailBtn(merged);
+  await slHandleDistribution(saved);
+  refreshReportEmailBtn(saved);
   slEditingComplete = false;
 }
 
@@ -28750,16 +29031,234 @@ async function slCreateNewSample() {
   showToast(`Sample ${inserted.test_no} created and loaded ✓`, 'success');
 }
 
+function slFormText(id) {
+  const el = document.getElementById(id);
+  return el ? (String(el.value || '').trim() || null) : null;
+}
+
+function slFormNum(id) {
+  const el = document.getElementById(id);
+  const v = parseFloat(el && el.value);
+  return Number.isFinite(v) ? v : null;
+}
+
+function slCollectSoilLab() {
+  const cur = normalizeLabData(slCurrentSample && slCurrentSample.lab_data) || {};
+  const nestId = getActiveSoilSieveNestId();
+  return {
+    moisture: {
+      container_no: slFormText('sl_moist_tin'),
+      wt_wet: slFormNum('sl_moist_wet'),
+      wt_dry: slFormNum('sl_moist_dry'),
+      wt_tare: slFormNum('sl_moist_tare'),
+    },
+    liquid_limit: {
+      bottle_no: slFormText('sl_ll_bottle'),
+      wt_wet_soil_bottle: slFormNum('sl_ll_wet'),
+      wt_dry_bottle: slFormNum('sl_ll_dry'),
+      wt_bottle: slFormNum('sl_ll_tare'),
+      blows: slFormNum('sl_ll_blows'),
+    },
+    plastic_limit: {
+      bottle_no: slFormText('sl_pl_bottle'),
+      wt_wet_soil_bottle: slFormNum('sl_pl_wet'),
+      wt_dry_bottle: slFormNum('sl_pl_dry'),
+      wt_bottle: slFormNum('sl_pl_tare'),
+    },
+    organic: {
+      bottle_no: slFormText('sl_org_bottle'),
+      wt_wet_soil_bottle: slFormNum('sl_org_pre'),
+      wt_dry_bottle: slFormNum('sl_org_post'),
+      wt_bottle: slFormNum('sl_org_tare'),
+    },
+    sieves: collectSoilSieveValuesFromForm(),
+    total_sample_wt: slFormNum('sl_total_wt'),
+    wash_sample_wt: isNoWashSplitNest(nestId) ? null : slFormNum('sl_wash_wt'),
+    soil_sieve_nest: nestId,
+    section_techs: cur.section_techs || {},
+    notes: cur.notes || 'Manual entry — LabTrak soil lab',
+  };
+}
+
+function slCollectAggLab() {
+  const cur = normalizeLabData(slCurrentSample && slCurrentSample.lab_data) || {};
+  const aggType = (slCurrentSample && slCurrentSample.agg_type) || cur.agg_type || null;
+  const spec = aggType && AGG_TYPES[aggType];
+  const sieveData = {};
+  if (spec) {
+    spec.sieves.forEach(key => {
+      const v = slFormNum('sl_agg_' + key);
+      if (v != null) sieveData[key] = v;
+    });
+  }
+  const pan = slFormNum('sl_agg_pan');
+  if (pan != null) sieveData.pan_weight = pan;
+  return {
+    agg_type: aggType,
+    sieve_data: sieveData,
+    total_sample_wt: pan,
+    section_techs: cur.section_techs || {},
+    notes: cur.notes || 'Manual entry — LabTrak soil lab',
+  };
+}
+
+function slSectionSaveUpdates(lab) {
+  const updates = { lab_data: lab };
+  if (slCurrentSample && !slCurrentSample.date_tested) {
+    updates.date_tested = new Date().toISOString().slice(0, 10);
+  }
+  return updates;
+}
+
+function slRenderTestingBy(lab) {
+  const el = document.getElementById('sl_testing_by');
+  if (!el) return;
+  const line = labTestingByLine(lab);
+  el.textContent = line || '—';
+}
+
+function slUpdateMoisturePreview() {
+  const el = document.getElementById('sl_moist_pct');
+  if (!el) return;
+  const pct = labMoisturePercent({
+    wt_wet: slFormNum('sl_moist_wet'),
+    wt_dry: slFormNum('sl_moist_dry'),
+    wt_tare: slFormNum('sl_moist_tare'),
+  });
+  el.textContent = pct == null ? '—' : pct.toFixed(1) + '%';
+}
+
+function slAcceptSectionSave(saved, dirty) {
+  ['moisture', 'limits', 'grain_size', 'organic'].forEach(sec => {
+    if (dirty.has(sec)) slDirtySections.delete(sec);
+  });
+  slCurrentSample = saved;
+  currentSample = saved;
+  const isAgg = saved.test_category === 'aggregate';
+  slPrefill(saved.lab_data || {}, isAgg, saved, slDirtySections);
+  if (saved.date_tested) {
+    const testedEl = document.getElementById('sl_date_tested');
+    if (testedEl && !testedEl.value) testedEl.value = saved.date_tested;
+  }
+  slRenderQueue();
+}
+
+async function slSaveLabSection(section) {
+  if (!slCurrentSample) { showToast('No sample loaded', 'error'); return; }
+  if (slLabSaveInFlight) return;
+  const isAgg = slCurrentSample.test_category === 'aggregate';
+  if (isAgg && section !== 'grain_size') {
+    showToast('This aggregate sample saves grain size.', 'info');
+    return;
+  }
+  slDirtySections.add(section);
+  const local = isAgg ? slCollectAggLab() : slCollectSoilLab();
+  if (!labSectionHasEntry(local, section)) {
+    showToast('Enter ' + labSectionLabel(section).toLowerCase() + ' before saving.', 'error');
+    return;
+  }
+  slLabSaveInFlight = true;
+  try {
+    const dirty = new Set([section]);
+    const saved = await slPersistMergedSample(slCurrentSample.id, slSectionSaveUpdates(local), dirty);
+    if (!saved) return;
+    slAcceptSectionSave(saved, dirty);
+    const line = labTestingByLine(saved.lab_data);
+    showToast(labSectionLabel(section) + ' saved. Testing By: ' + (line || '—'), 'success');
+    logSampleHistory({
+      sampleId: saved.id,
+      testNo: saved.test_no,
+      action: 'lab_section_saved',
+      details: { section: section, tech: labCurrentTechName(), testing_by: line },
+    });
+  } finally {
+    slLabSaveInFlight = false;
+  }
+}
+
+function slNoteLabSectionInput(ev) {
+  const el = ev && ev.target;
+  if (!el || !el.closest) return;
+  const host = el.closest('[data-lab-section]');
+  if (!host) return;
+  const sec = host.getAttribute('data-lab-section');
+  if (!sec) return;
+  slDirtySections.add(sec);
+  if (sec === 'moisture') slUpdateMoisturePreview();
+}
+
+function slWatchOpenSample() {
+  slStopLabWatch();
+  if (!slCurrentSample || !slCurrentSample.id) return;
+  slLabWatchId = slCurrentSample.id;
+  slLabWatchTimer = setInterval(function () { void slPullOpenSample(); }, 4000);
+}
+
+function slStopLabWatch() {
+  if (slLabWatchTimer) clearInterval(slLabWatchTimer);
+  slLabWatchTimer = null;
+  slLabWatchId = null;
+}
+
+async function slPullOpenSample() {
+  try {
+  const id = slLabWatchId;
+  if (!id || slLabSaveInFlight || !db || document.hidden) return;
+  if (!slCurrentSample || slCurrentSample.id !== id) return;
+  const soillab = document.getElementById('soillab-view');
+  if (!soillab || !soillab.classList.contains('active')) return;
+  const read = await db.from('samples').select('*').eq('id', id);
+  if (!read || read.error || !read.data || !read.data.length) return;
+  const fresh = read.data[0];
+  fresh.lab_data = normalizeLabData(fresh.lab_data);
+  const prev = normalizeLabData(slCurrentSample.lab_data);
+  if (labSameStamp(fresh.updated_at, slCurrentSample.updated_at)) return;
+  if (labSame(prev, fresh.lab_data)) {
+    slCurrentSample = Object.assign({}, slCurrentSample, fresh, { lab_data: fresh.lab_data });
+    upsertAllSample(slCurrentSample);
+    return;
+  }
+  const beforeLine = labTestingByLine(prev);
+  const isAgg = fresh.test_category === 'aggregate';
+  slCurrentSample = Object.assign({}, slCurrentSample, fresh, { lab_data: fresh.lab_data });
+  currentSample = slCurrentSample;
+  upsertAllSample(slCurrentSample);
+  patchCachedSampleRow(slCurrentSample);
+  slPrefill(fresh.lab_data || {}, isAgg, slCurrentSample, slDirtySections);
+  const afterLine = labTestingByLine(fresh.lab_data);
+  if (afterLine !== beforeLine) showToast('Testing By: ' + (afterLine || '—'), 'info');
+  else showToast('Lab data updated from another device', 'info');
+  } catch (e) {
+    console.warn('slPullOpenSample', e);
+  }
+}
+
+document.addEventListener('input', slNoteLabSectionInput);
+document.addEventListener('change', slNoteLabSectionInput);
+document.addEventListener('visibilitychange', function () {
+  if (!document.hidden) void slPullOpenSample();
+});
+window.addEventListener('focus', function () { void slPullOpenSample(); });
+
 // ── Clear form ─────────────────────────────────────────────────
 function slClearEntry() {
-  ['sl_ll_bottle','sl_ll_wet','sl_ll_dry','sl_ll_tare','sl_ll_blows',
-   'sl_pl_bottle','sl_pl_wet','sl_pl_dry','sl_pl_tare',
-   'sl_org_bottle','sl_org_pre','sl_org_post','sl_org_tare',
-   'sl_total_wt','sl_wash_wt','sl_s_in2','sl_s_in1','sl_s_in38',
-   'sl_s_no4','sl_s_no10','sl_s_no40','sl_s_no200',
-   'sl_agg_pan'].forEach(id => { const el=document.getElementById(id); if(el) el.value=''; });
-  document.getElementById('sl_status').textContent = '';
-  showToast('Form cleared', 'success');
+  slDirtySections = new Set();
+  if (slCurrentSample && slCurrentSample.lab_data) {
+    slPrefill(slCurrentSample.lab_data, slCurrentSample.test_category === 'aggregate', slCurrentSample);
+  } else {
+    ['sl_moist_tin','sl_moist_wet','sl_moist_dry','sl_moist_tare',
+     'sl_ll_bottle','sl_ll_wet','sl_ll_dry','sl_ll_tare','sl_ll_blows',
+     'sl_pl_bottle','sl_pl_wet','sl_pl_dry','sl_pl_tare',
+     'sl_org_bottle','sl_org_pre','sl_org_post','sl_org_tare',
+     'sl_total_wt','sl_wash_wt','sl_s_in2','sl_s_in1','sl_s_in38',
+     'sl_s_no4','sl_s_no10','sl_s_no40','sl_s_no200',
+     'sl_agg_pan'].forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
+    slUpdateMoisturePreview();
+    slRenderTestingBy(null);
+  }
+  const status = document.getElementById('sl_status');
+  if (status) status.textContent = '';
+  showToast('Unsaved edits cleared', 'success');
 }
 </script>
 
