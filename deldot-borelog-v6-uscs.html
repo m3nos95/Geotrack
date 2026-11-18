@@ -1137,12 +1137,22 @@ function tombstoneBorelogProject(id) {
   _writeBorelogTombstones(ts);
 }
 
-/** Drop tombstones for ids that are still active in the cloud (false positives from old sync prune). */
-function clearBorelogTombstonesForActiveCloud(activeProjIds, activeBorIds) {
+/** Drop a project tombstone only after the cloud row is soft-deleted or absent.
+ *  While the row is still active, the tombstone stays so sync cannot restore a project
+ *  the user deleted. Boring tombstones that are still active in the cloud are dropped
+ *  (false positives from the old local prune). */
+function clearBorelogTombstonesForActiveCloud(activeProjIds, activeBorIds, deletedProjIds, keepProjectTombstones) {
   const ts = _readBorelogTombstonesRaw();
-  const nextProjects = ts.projects.filter(id => !activeProjIds.has(id));
+  const deleted = deletedProjIds || new Set();
+  const keep = keepProjectTombstones || new Set();
+  const nextProjects = ts.projects.filter(id => {
+    if (deleted.has(id)) return false;
+    if (keep.has(id)) return true;
+    return false;
+  });
   const nextBorings = ts.borings.filter(id => !activeBorIds.has(id));
-  if (nextProjects.length !== ts.projects.length || nextBorings.length !== ts.borings.length) {
+  if (nextProjects.length !== ts.projects.length || nextBorings.length !== ts.borings.length
+      || nextProjects.some((id, i) => id !== ts.projects[i])) {
     _writeBorelogTombstones({ projects: nextProjects, borings: nextBorings });
   }
 }
@@ -1258,23 +1268,29 @@ const store = {
     borelogQueueUpsert('borelog_projects', p);
   },
   delProject(id) {
-    const all = _storeCore._all();
-    if (all.samples) {
-      Object.values(all.samples).forEach(s => {
-        if (s?.project_id === id && s.id) borelogQueueDelete('borelog_samples', s.id);
-      });
+    beginBorelogQueueBatch();
+    try {
+      const all = _storeCore._all();
+      if (all.samples) {
+        Object.values(all.samples).forEach(s => {
+          if (s?.project_id === id && s.id) borelogQueueDelete('borelog_samples', s.id);
+        });
+      }
+      if (all.borings) {
+        Object.values(all.borings).forEach(b => {
+          if (b?.project_id === id && b.id) {
+            tombstoneBorelogBoring(b.id);
+            borelogQueueDelete('borelog_borings', b.id);
+          }
+        });
+      }
+      _storeCore.delProject(id);
+      tombstoneBorelogProject(id);
+      borelogQueueDelete('borelog_projects', id);
+    } finally {
+      endBorelogQueueBatch();
     }
-    if (all.borings) {
-      Object.values(all.borings).forEach(b => {
-        if (b?.project_id === id && b.id) {
-          tombstoneBorelogBoring(b.id);
-          borelogQueueDelete('borelog_borings', b.id);
-        }
-      });
-    }
-    _storeCore.delProject(id);
-    tombstoneBorelogProject(id);
-    borelogQueueDelete('borelog_projects', id);
+    if (_blDb && _queueBatchDepth === 0) flushBorelogSyncQueue();
   },
   getBorings: (projId) => _storeCore.getBorings(projId),
   getBoring: (id) => _storeCore.getBoring(id),
@@ -1497,12 +1513,68 @@ function borelogQueueDelete(table, id) {
   if (_blDb) flushBorelogSyncQueue();
 }
 
+function _borelogQueueEntryKey(e) {
+  return (e && e.table || '') + '\0' + (e && e.op || '') + '\0' + (e && e.id || '');
+}
+
+async function _borelogMarkRowsDeleted(db, table, ids) {
+  const unique = [...new Set((ids || []).filter(Boolean))];
+  if (!unique.length) return { updated: new Set(), error: null };
+  const now = new Date().toISOString();
+  const payload = { deleted_at: now, updated_at: now };
+  const res = unique.length === 1
+    ? await db.from(table).update(payload).eq('id', unique[0]).select('id')
+    : await db.from(table).update(payload).in('id', unique).select('id');
+  if (res.error) return { updated: new Set(), error: res.error };
+  return { updated: new Set((res.data || []).map(r => r.id)), error: null };
+}
+
+/** True when the row is gone or already has deleted_at. A still-active row did not delete. */
+async function _borelogRowDeleteLanded(db, table, id, updatedIds) {
+  if (updatedIds && updatedIds.has(id)) return true;
+  const res = await db.from(table).select('id, deleted_at').eq('id', id);
+  if (res.error) throw res.error;
+  const row = (res.data || [])[0];
+  if (!row) return true;
+  return !!row.deleted_at;
+}
+
+/**
+ * Soft-delete the project and its borings and samples.
+ * 'deleted' — the project row is gone or has deleted_at.
+ * 'offline' — no cloud client, or the request never reached the database.
+ * 'failed' — the database still has the project active.
+ */
+async function softDeleteBorelogProjectInDatabase(projectId) {
+  const db = getBorelogSupabaseClient();
+  if (!db) return 'offline';
+  const all = store._all();
+  const sampleIds = Object.values(all.samples || {}).filter(s => s && s.project_id === projectId).map(s => s.id);
+  const boringIds = Object.values(all.borings || {}).filter(b => b && b.project_id === projectId).map(b => b.id);
+  try {
+    const samples = await _borelogMarkRowsDeleted(db, 'borelog_samples', sampleIds);
+    if (samples.error) throw samples.error;
+    const borings = await _borelogMarkRowsDeleted(db, 'borelog_borings', boringIds);
+    if (borings.error) throw borings.error;
+    const project = await _borelogMarkRowsDeleted(db, 'borelog_projects', [projectId]);
+    if (project.error) throw project.error;
+    const landed = await _borelogRowDeleteLanded(db, 'borelog_projects', projectId, project.updated);
+    return landed ? 'deleted' : 'failed';
+  } catch (e) {
+    console.warn('softDeleteBorelogProjectInDatabase:', e);
+    const msg = String((e && (e.message || e)) || '');
+    if (/failed to fetch|network|offline|load failed|timeout/i.test(msg)) return 'offline';
+    return 'failed';
+  }
+}
+
 async function _flushBorelogSyncQueueCore() {
   const db = getBorelogSupabaseClient();
-  if (!db) return;
-  if (_queueBatchDepth > 0) return;
+  if (!db) return false;
+  if (_queueBatchDepth > 0) return false;
   let q = _readBorelogSyncQueue();
-  if (!q.length) return;
+  if (!q.length) return false;
+  const snapshotKeys = new Set(q.map(_borelogQueueEntryKey));
   const remaining = [];
   const synced = {
     borelog_projects: new Set(),
@@ -1512,9 +1584,10 @@ async function _flushBorelogSyncQueueCore() {
   for (const entry of q) {
     try {
       if (entry.op === 'delete') {
-        const now = new Date().toISOString();
-        const { error } = await db.from(entry.table).update({ deleted_at: now, updated_at: now }).eq('id', entry.id);
-        if (error) throw error;
+        const marked = await _borelogMarkRowsDeleted(db, entry.table, [entry.id]);
+        if (marked.error) throw marked.error;
+        const landed = await _borelogRowDeleteLanded(db, entry.table, entry.id, marked.updated);
+        if (!landed) throw new Error('borelog delete did not remove ' + entry.table + ' ' + entry.id);
       } else if (entry.op === 'upsert' && entry.entity) {
         let row;
         if (entry.table === 'borelog_projects') row = projectToRow(entry.entity);
@@ -1530,7 +1603,23 @@ async function _flushBorelogSyncQueueCore() {
       remaining.push(entry);
     }
   }
-  _writeBorelogSyncQueue(remaining);
+  const failedKeys = new Set(remaining.map(_borelogQueueEntryKey));
+  const latest = _readBorelogSyncQueue();
+  const next = [];
+  const seen = new Set();
+  const push = (e) => {
+    const k = _borelogQueueEntryKey(e);
+    if (!k || seen.has(k)) return;
+    seen.add(k);
+    next.push(e);
+  };
+  latest.forEach(e => {
+    const k = _borelogQueueEntryKey(e);
+    if (snapshotKeys.has(k) && !failedKeys.has(k)) return;
+    push(e);
+  });
+  remaining.forEach(push);
+  _writeBorelogSyncQueue(next);
   if (synced.borelog_projects.size || synced.borelog_borings.size || synced.borelog_samples.size) {
     const all = store._all();
     synced.borelog_projects.forEach(id => { if (all.projects[id]) all.projects[id]._cloudSynced = true; });
@@ -1538,11 +1627,18 @@ async function _flushBorelogSyncQueueCore() {
     synced.borelog_samples.forEach(id => { if (all.samples[id]) all.samples[id]._cloudSynced = true; });
     store._save(all);
   }
+  return next.some(e => !snapshotKeys.has(_borelogQueueEntryKey(e)));
 }
 
 async function flushBorelogSyncQueue() {
   if (_borelogFlushPromise) return _borelogFlushPromise;
-  _borelogFlushPromise = _flushBorelogSyncQueueCore().finally(() => { _borelogFlushPromise = null; });
+  _borelogFlushPromise = (async () => {
+    let guard = 0;
+    let more = false;
+    do {
+      more = await _flushBorelogSyncQueueCore();
+    } while (more && ++guard < 6);
+  })().finally(() => { _borelogFlushPromise = null; });
   return _borelogFlushPromise;
 }
 
@@ -1657,6 +1753,8 @@ async function pullAndMergeBorelog() {
   if (sDel.error) throw sDel.error;
 
   const pendingQueueDel = getBorelogQueueDeleteSets();
+  const tombProj = new Set((_readBorelogTombstonesRaw().projects) || []);
+  const keepProjectTombstones = new Set();
   const local = store._all();
   const merged = {
     projects: { ...(local.projects || {}) },
@@ -1676,7 +1774,10 @@ async function pullAndMergeBorelog() {
 
   (pRes.data || []).forEach(r => {
     const p = rowToProject(r);
-    if (pendingQueueDel.borelog_projects.has(p.id)) return;
+    if (pendingQueueDel.borelog_projects.has(p.id) || tombProj.has(p.id)) {
+      if (tombProj.has(p.id) && !cloudDeletedProj.has(p.id)) keepProjectTombstones.add(p.id);
+      return;
+    }
     if (cloudDeletedProj.has(p.id)) return;
     activeProjIds.add(p.id);
     const cur = merged.projects[p.id];
@@ -1684,6 +1785,7 @@ async function pullAndMergeBorelog() {
   });
   (bRes.data || []).forEach(r => {
     const b = rowToBoring(r);
+    if (tombProj.has(b.project_id) || pendingQueueDel.borelog_projects.has(b.project_id)) return;
     if (pendingQueueDel.borelog_borings.has(b.id)) return;
     if (cloudDeletedBor.has(b.id)) return;
     activeBorIds.add(b.id);
@@ -1692,6 +1794,7 @@ async function pullAndMergeBorelog() {
   });
   (sRes.data || []).forEach(r => {
     const s = rowToSample(r);
+    if (tombProj.has(s.project_id) || pendingQueueDel.borelog_projects.has(s.project_id)) return;
     if (pendingQueueDel.borelog_samples.has(s.id)) return;
     if (cloudDeletedSamp.has(s.id)) return;
     const bid = s.boring_id;
@@ -1701,7 +1804,12 @@ async function pullAndMergeBorelog() {
     if (!cur || _blTs(s.updated_at) >= _blTs(cur.updated_at)) merged.samples[s.id] = s;
   });
 
-  clearBorelogTombstonesForActiveCloud(activeProjIds, activeBorIds);
+  purgeBorelogPendingDeletes(merged, {
+    borelog_projects: tombProj,
+    borelog_borings: new Set(),
+    borelog_samples: new Set(),
+  });
+  clearBorelogTombstonesForActiveCloud(activeProjIds, activeBorIds, cloudDeletedProj, keepProjectTombstones);
   purgeBorelogPendingDeletes(merged, pendingQueueDel);
 
   store._save(merged);
@@ -3326,14 +3434,21 @@ function saveProjectModal(){
   toast(_editingProjectId ? 'Project updated' : 'Project created');
 }
 
-function deleteProject(id){
+async function deleteProject(id){
   const p = store.getProject(id);
+  if (!p) return;
   const bc = store.getBorings(id).length;
   const msg = bc > 0
     ? `Delete "${p.name}" and ALL ${bc} boring${bc===1?'':'s'} + samples? This cannot be undone.`
     : `Delete project "${p.name}"?`;
   if(!confirm(msg)) return;
+  const cloud = await softDeleteBorelogProjectInDatabase(id);
+  if (cloud === 'failed') {
+    toast('Could not delete that project from the database. It is still on this device.', true);
+    return;
+  }
   store.delProject(id);
+  await flushBorelogSyncQueue();
   renderProjects();
   toast('Project deleted');
 }
