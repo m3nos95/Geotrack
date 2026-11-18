@@ -254,45 +254,54 @@ nav{background:var(--surface);border-bottom:1px solid var(--border);box-shadow:0
   .print-page:last-child{page-break-after:auto;}
   @page{size:letter portrait;margin:0.4in;}
 }
-.bl-print{font-family:'Times New Roman',serif;color:#000;background:#fff;}
-.bl-header{border:2px solid #000;padding:0;display:grid;grid-template-columns:90px 1fr;align-items:stretch;}
-.bl-logo-cell{border-right:1px solid #000;padding:8px;display:flex;align-items:center;justify-content:center;background:#fff;}
-.bl-logo-cell img{max-width:78px;max-height:78px;display:block;}
-.bl-h-main{padding:8px 12px;}
-.bl-h-title{text-align:center;font-weight:bold;line-height:1.25;border-bottom:1px solid #000;padding-bottom:4px;margin-bottom:6px;}
-.bl-h-title .agency{font-size:10.5px;letter-spacing:0.5px;}
-.bl-h-title .agency.sub{font-size:9.5px;font-weight:normal;}
-.bl-h-title .boring{font-size:14px;letter-spacing:1px;margin-top:3px;}
-.bl-h-grid{display:grid;grid-template-columns:1fr 1fr;gap:2px 20px;font-size:9px;line-height:1.4;}
-.bl-h-row{display:flex;gap:6px;padding:1px 0;border-bottom:1px solid #ddd;}
-.bl-h-row .lbl{font-weight:bold;white-space:nowrap;color:#333;}
-.bl-h-row .val{flex:1;color:#000;}
-.bl-h-row:last-child{border-bottom:none;}
-
-.bl-equipment{border:1px solid #000;border-top:none;padding:5px 10px;font-size:8.5px;line-height:1.55;background:#fafafa;}
-.bl-equipment .eq-row{display:grid;grid-template-columns:repeat(3,1fr);gap:4px 14px;padding:1px 0;}
-.bl-equipment .eq-row.two{grid-template-columns:1fr 1fr;}
+.bl-print{font-family:'DM Sans',sans-serif;color:#122033;background:#fff;}
+.bl-banner{position:relative;display:flex;align-items:center;gap:14px;background:#002349;color:#fff;padding:12px 16px 16px;-webkit-print-color-adjust:exact;print-color-adjust:exact;}
+.bl-banner::after{content:"";position:absolute;left:0;right:0;bottom:0;height:6px;background:#f68304;}
+.bl-lockup{height:40px;width:auto;display:block;}
+.bl-banner-slim{padding:8px 14px 12px;}
+.bl-banner-slim .bl-lockup{height:26px;}
+.bl-banner-meta{margin-left:auto;font-size:11px;font-weight:650;line-height:1.3;text-align:right;}
+.bl-sheet-title{padding:12px 14px 4px;}
+.bl-sheet-title h1{margin:0;font-size:22px;line-height:1.1;letter-spacing:0.01em;color:#0b2344;font-weight:800;font-family:'DM Sans',sans-serif;}
+.bl-sheet-sub{margin-top:3px;font-size:10px;letter-spacing:0.04em;color:#5c6d80;font-weight:650;}
+.bl-h-grid{display:grid;grid-template-columns:1fr 1fr;gap:0;margin:8px 14px 0;border:1px solid #d7e0ea;border-radius:8px;overflow:hidden;font-size:11px;line-height:1.35;}
+.bl-h-row{display:flex;gap:8px;padding:4px 10px;border-bottom:1px solid #e6edf5;background:#fff;}
+.bl-h-row:nth-child(4n+3),.bl-h-row:nth-child(4n+4){background:#f4f7fb;}
+.bl-h-row .lbl{font-weight:650;white-space:nowrap;color:#5c6d80;}
+.bl-h-row .val{flex:1;color:#122033;font-weight:750;text-align:right;}
+.bl-equipment{margin:8px 14px 0;border:1px solid #d7e0ea;border-radius:8px;padding:6px 10px;font-size:10px;line-height:1.45;background:#f7fafc;}
+.bl-equipment .eq-row{display:grid;grid-template-columns:repeat(3,1fr);gap:3px 12px;padding:1px 0;}
+.bl-equipment .eq-row.two{grid-template-columns:1fr;}
 .bl-equipment .eq-cell{display:flex;gap:4px;}
-.bl-equipment .eq-cell .lbl{font-weight:bold;color:#333;white-space:nowrap;}
-.bl-equipment .eq-cell .val{color:#000;}
-.bl-equipment .eq-divider{border-top:1px solid #ddd;margin:3px 0;}
-
-.bl-body{border:1px solid #000;border-top:none;}
-.bl-body table{width:100%;border-collapse:collapse;font-size:8.5px;}
-.bl-body th{background:#e0e0e0;border:1px solid #000;padding:4px 2px;font-size:8px;font-weight:bold;text-align:center;line-height:1.15;letter-spacing:0.3px;}
-.bl-body td{border:1px solid #000;padding:2px 3px;font-size:8.5px;vertical-align:top;line-height:1.25;}
-.bl-body .col-depth{width:42px;background:#f5f5f5;padding:0;position:relative;}
-.bl-body .col-depth .dpt-from{position:absolute;top:2px;left:0;right:0;text-align:center;font-weight:bold;font-size:9px;}
-.bl-body .col-depth .dpt-to{position:absolute;bottom:2px;left:0;right:0;text-align:center;font-weight:bold;font-size:9px;}
-.bl-body .col-depth .dpt-tick{position:absolute;top:50%;left:50%;width:6px;height:1px;background:#666;transform:translate(-50%,-50%);}
-.bl-body .col-water{width:18px;text-align:center;}
-.bl-body .col-sno{width:24px;text-align:center;font-weight:bold;}
-.bl-body .col-blows{width:42px;text-align:center;}
-.bl-body .col-aashto{width:68px;text-align:center;font-weight:bold;}
-.bl-body .col-rem{width:90px;font-size:7.5px;}
-.bl-body .row-tall{height:56px;}
-.bl-page-num{font-size:8px;text-align:right;padding:2px 8px;border:1px solid #000;border-top:none;font-weight:bold;}
-.bl-footer{font-size:7.5px;color:#000;padding:4px 0;text-align:center;font-style:italic;}
+.bl-equipment .eq-cell .lbl{font-weight:650;color:#5c6d80;white-space:nowrap;}
+.bl-equipment .eq-cell .val{color:#122033;font-weight:700;}
+.bl-equipment .eq-divider{border-top:1px solid #e6edf5;margin:3px 0;}
+.bl-body{margin:8px 14px 0;border:1px solid #d7e0ea;border-radius:8px;overflow:hidden;}
+.bl-body table{width:100%;border-collapse:collapse;font-size:10px;}
+.bl-body th{background:#123a66;color:#fff;border:none;border-bottom:3px solid #f68304;padding:6px 3px;font-size:9px;font-weight:750;text-align:center;line-height:1.15;letter-spacing:0.03em;-webkit-print-color-adjust:exact;print-color-adjust:exact;}
+.bl-body td{border:none;border-top:1px solid #e6edf5;padding:3px 4px;font-size:10px;vertical-align:top;line-height:1.3;color:#122033;}
+.bl-body tbody tr:nth-child(even) td{background:#f7fafc;}
+.bl-body .col-depth{width:46px;padding:0;position:relative;background:#f4f7fb;}
+.bl-body .col-depth .dpt-from{position:absolute;top:3px;left:0;right:0;text-align:center;font-weight:750;font-size:10px;}
+.bl-body .col-depth .dpt-to{position:absolute;bottom:3px;left:0;right:0;text-align:center;font-weight:750;font-size:10px;}
+.bl-body .col-depth .dpt-tick{position:absolute;top:50%;left:50%;width:8px;height:1px;background:#8aa0b8;transform:translate(-50%,-50%);}
+.bl-body .col-water{width:22px;text-align:center;}
+.bl-body .col-sno{width:28px;text-align:center;font-weight:750;}
+.bl-body .col-blows{width:46px;text-align:center;}
+.bl-body .col-aashto{width:72px;text-align:center;font-weight:750;}
+.bl-body .col-rem{width:96px;font-size:9px;}
+.bl-body .row-tall{height:52px;}
+.bl-body .bl-end td{text-align:center;font-weight:750;color:#0b2344;background:#f4f7fb;padding:6px;}
+.bl-page-num{font-size:10px;text-align:right;padding:8px 14px 0;font-weight:750;letter-spacing:0.04em;color:#5c6d80;}
+.bl-footer{font-size:9px;color:#6b7c90;padding:4px 14px 10px;text-align:center;font-style:normal;}
+@media screen {
+  .print-view:has(.bl-print){font-family:'DM Sans',sans-serif;max-width:860px;padding:0;border-radius:12px;overflow:hidden;box-shadow:0 10px 28px rgba(0,28,61,0.08);}
+  .bl-print.print-page + .bl-print.print-page{margin-top:16px;border-top:1px solid #e6edf5;}
+}
+@media print {
+  .print-view:has(.bl-print){box-shadow:none;border-radius:0;max-width:none;overflow:visible;}
+  .bl-banner,.bl-body th{-webkit-print-color-adjust:exact;print-color-adjust:exact;}
+}
 .psd-print{font-family:'Times New Roman',serif;color:#000;background:#fff;padding:0;}
 .psd-print h3{text-align:center;font-size:14px;margin-bottom:8px;}
 .psd-print h4{text-align:center;font-size:10px;font-weight:normal;margin-bottom:12px;}
@@ -4259,23 +4268,19 @@ function renderPrintLog(){
   const hRow = (lbl, val) => `<div class="bl-h-row"><span class="lbl">${lbl}</span><span class="val">${escape(val||'')}</span></div>`;
   const eqCell = (lbl, val) => `<div class="eq-cell"><span class="lbl">${lbl}</span><span class="val">${escape(val||'')}</span></div>`;
 
+  const lockup = `<svg class="bl-lockup" xmlns="http://www.w3.org/2000/svg" viewBox="0.00 0.00 227.39 63.00" role="img" aria-label="DelDOT"> <g fill="#ffffff"> <path d="M 23.50 0.00 L 34.20 0.00 L 51.20 39.00 L 40.50 39.00 Z"/> <path d="M 37.20 0.00 L 47.90 0.00 L 64.90 39.00 L 54.20 39.00 Z"/> <path d="M 4.50 52.00 L 0.00 42.50 L 17.00 12.50 L 24.50 9.00 L 30.00 17.50 L 21.00 23.50 Z"/> <path d="M 10.70 63.00 L 6.20 53.50 L 23.20 23.50 L 30.70 20.00 L 36.20 28.50 L 27.20 34.50 Z"/> <path d="M 30.00 40.00 L 69.50 40.00 L 65.00 49.00 L 25.50 49.00 Z"/> <path d="M 24.00 52.00 L 63.50 52.00 L 59.00 61.00 L 19.50 61.00 Z"/> <g transform="translate(80.84 44.10) scale(0.017885 -0.017885)"> <path d="M1393 715Q1393 497 1307.5 334.5Q1222 172 1065.5 86.0Q909 0 707 0H137V1409H647Q1003 1409 1198.0 1229.5Q1393 1050 1393 715ZM1096 715Q1096 942 978.0 1061.5Q860 1181 641 1181H432V228H682Q872 228 984.0 359.0Q1096 490 1096 715Z" transform="translate(0.00 0)"/><path d="M586 -20Q342 -20 211.0 124.5Q80 269 80 546Q80 814 213.0 958.0Q346 1102 590 1102Q823 1102 946.0 947.5Q1069 793 1069 495V487H375Q375 329 433.5 248.5Q492 168 600 168Q749 168 788 297L1053 274Q938 -20 586 -20ZM586 925Q487 925 433.5 856.0Q380 787 377 663H797Q789 794 734.0 859.5Q679 925 586 925Z" transform="translate(1479.00 0)"/><path d="M143 0V1484H424V0Z" transform="translate(2618.00 0)"/><path d="M1393 715Q1393 497 1307.5 334.5Q1222 172 1065.5 86.0Q909 0 707 0H137V1409H647Q1003 1409 1198.0 1229.5Q1393 1050 1393 715ZM1096 715Q1096 942 978.0 1061.5Q860 1181 641 1181H432V228H682Q872 228 984.0 359.0Q1096 490 1096 715Z" transform="translate(3187.00 0)"/><path d="M1507 711Q1507 491 1420.0 324.0Q1333 157 1171.0 68.5Q1009 -20 793 -20Q461 -20 272.5 175.5Q84 371 84 711Q84 1050 272.0 1240.0Q460 1430 795 1430Q1130 1430 1318.5 1238.0Q1507 1046 1507 711ZM1206 711Q1206 939 1098.0 1068.5Q990 1198 795 1198Q597 1198 489.0 1069.5Q381 941 381 711Q381 479 491.5 345.5Q602 212 793 212Q991 212 1098.5 342.0Q1206 472 1206 711Z" transform="translate(4666.00 0)"/><path d="M773 1181V0H478V1181H23V1409H1229V1181Z" transform="translate(6259.00 0)"/> <g transform="translate(7590.0 775.0) scale(0.36)"> <path d="M1478 707Q1478 514 1381.5 345.5Q1285 177 1116.5 80.5Q948 -16 755 -16Q558 -16 388.5 84.5Q219 185 125.5 351.5Q32 518 32 707Q32 900 129.0 1068.0Q226 1236 394.0 1333.0Q562 1430 755 1430Q949 1430 1117.5 1332.5Q1286 1235 1382.0 1068.0Q1478 901 1478 707ZM1366 707Q1366 870 1284.0 1010.5Q1202 1151 1060.0 1233.0Q918 1315 755 1315Q598 1315 458.0 1237.0Q318 1159 232.5 1017.5Q147 876 147 707Q147 544 228.5 402.0Q310 260 450.5 178.0Q591 96 755 96Q919 96 1061.0 178.0Q1203 260 1284.5 402.0Q1366 544 1366 707ZM923 297 745 610H628V297H450V1112H780Q933 1112 1009.0 1047.5Q1085 983 1085 870Q1085 776 1037.0 717.0Q989 658 911 633L1124 297ZM905 868Q905 925 867.5 955.0Q830 985 761 985H628V739H772Q838 739 871.5 774.5Q905 810 905 868Z"/> </g> </g> </g> </svg>`;
   let html='';
   pages.forEach((ps, pi)=>{
     const isFirst = pi===0;
     html += `<div class="print-page bl-print">`;
     if(isFirst){
       html += `
-        <div class="bl-header">
-          <div class="bl-logo-cell">
-            <img src="${DELDOT_LOGO}" alt="DelDOT">
-          </div>
-          <div class="bl-h-main">
-            <div class="bl-h-title">
-              <div class="agency">STATE OF DELAWARE · DEPARTMENT OF TRANSPORTATION</div>
-              <div class="agency sub">MATERIALS AND RESEARCH</div>
-              <div class="boring">BORING ${escape(b.boring_no||'')}</div>
-            </div>
-            <div class="bl-h-grid">
+        <header class="bl-banner">${lockup}</header>
+        <div class="bl-sheet-title">
+          <h1>BORING ${escape(b.boring_no||'')}</h1>
+          <div class="bl-sheet-sub">DELAWARE DEPARTMENT OF TRANSPORTATION | MATERIALS AND RESEARCH</div>
+        </div>
+        <div class="bl-h-grid">
               ${hRow('Project Name:', p.name)}
               ${hRow('Location:', b.location||p.location)}
               ${hRow('State Contract #:', b.state_contract)}
@@ -4289,8 +4294,6 @@ function renderPrintLog(){
               ${hRow('Date Started:', fmtDate(b.date_started))}
               ${hRow('Date Completed:', fmtDate(b.date_completed))}
             </div>
-          </div>
-        </div>
         <div class="bl-equipment">
           <div class="eq-row">
             ${eqCell('Hammer Wt:', (b.hammer_wt||140)+' lbs')}
@@ -4316,15 +4319,7 @@ function renderPrintLog(){
           ${b.remarks?`<div class="eq-divider"></div><div class="eq-row two"><div class="eq-cell" style="grid-column:1 / -1;"><span class="lbl">Remarks:</span><span class="val">${escape(b.remarks)}</span></div></div>`:''}
         </div>`;
     } else {
-      html += `<div class="bl-header" style="grid-template-columns:60px 1fr;">
-        <div class="bl-logo-cell" style="padding:4px;"><img src="${DELDOT_LOGO}" alt="DelDOT" style="max-width:50px;max-height:50px;"></div>
-        <div class="bl-h-main" style="padding:6px 12px;">
-          <div class="bl-h-title" style="border-bottom:none;margin-bottom:0;padding-bottom:0;">
-            <div class="agency">STATE OF DELAWARE · DEPARTMENT OF TRANSPORTATION · MATERIALS AND RESEARCH</div>
-            <div class="boring">Project: ${escape(p.name||'')} · Boring: ${escape(b.boring_no||'')}</div>
-          </div>
-        </div>
-      </div>`;
+      html += `<header class="bl-banner bl-banner-slim">${lockup}<div class="bl-banner-meta">Project: ${escape(p.name||'')} · Boring: ${escape(b.boring_no||'')}</div></header>`;
     }
     html += `<div class="bl-body"><table>
       <thead><tr>
@@ -4365,7 +4360,7 @@ function renderPrintLog(){
           <td class="col-rem">${escape(rem)}</td>
         </tr>`;
       });
-      if(pi === total-1) html += `<tr><td colspan="7" style="text-align:center;font-weight:bold;padding:6px;background:#f5f5f5;">— End Boring —</td></tr>`;
+      if(pi === total-1) html += `<tr class="bl-end"><td colspan="7">— End Boring —</td></tr>`;
     }
     html += `</tbody></table></div>`;
     html += `<div class="bl-page-num">PAGE ${pi+1} OF ${total}</div>`;
