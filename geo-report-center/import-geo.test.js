@@ -373,6 +373,83 @@ check('a space-separated boring file keeps CONTRACT_NO', function () {
   assert.strictEqual(p.name, 'North Bethany RRFB');
 });
 
+check('the Bethany index name is the contract and each lab file stays on its sample', function () {
+  const gscomb = [
+    "00000000,SB-01, 1 (0.0'/24 in.)",
+    "00000001,SB-01, 2 (2.0'/24 in.)",
+    "00010000,SB-02, 1 (0.0'/24 in.)"
+  ].join('\n');
+  const limcomb = [
+    "00000000,SB-01, 1 (0.0'/24 in.)",
+    "00000001,SB-01, 2 (2.0'/24 in.)",
+    '10000,SB-02, 1 (0.0\'/24 in.)'
+  ].join('\n');
+  const boring = ['BORING', 'SB-01', 'PROJECT', 'North Bethany RRFB', 'LOCATION', 'Sussex County DE', 'SAMP_NUM', '1', '2', 'DEPTH', '2.0', '4.0', 'DESCRIPTION', 'SAND', 'SILT'].join(NUL);
+  const boring2 = ['BORING', 'SB-02', 'SAMP_NUM', '1', 'DEPTH', '2.0', 'DESCRIPTION', 'CLAY'].join(NUL);
+  const p = Geo.parseGeoBundle([
+    { name: 'T202270302Bethany.NDX', path: 'North Bethany RRFB.GEO/T202270302Bethany.NDX', text: 'SB-01' },
+    { name: 'T202270302Bethany.PDT', path: 'North Bethany RRFB.GEO/T202270302Bethany.PDT', text: '4000' },
+    { name: 'GSCOMB.MDT', path: 'North Bethany RRFB.GEO/GSCOMB.MDT', text: gscomb },
+    { name: 'LIMCOMB.MDT', path: 'North Bethany RRFB.GEO/LIMCOMB.MDT', text: limcomb },
+    { name: 'GSSettings.XML', path: 'North Bethany RRFB.GEO/GSSettings.XML', text: '<GS_PROGRAM_SETTINGS><PercentageDecimals set="1"/><ReportNumber200To1DecimalPlace set="no"/></GS_PROGRAM_SETTINGS>' },
+    { name: 'CommonSettings.xml', path: 'North Bethany RRFB.GEO/CommonSettings.xml', text: '<CommonSettings><PreferredClassification set="1"/></CommonSettings>' },
+    { name: '0001.$P$', path: 'North Bethany RRFB.GEO/0001.$P$', text: boring },
+    { name: '0002.$P$', path: 'North Bethany RRFB.GEO/0002.$P$', text: boring2 },
+    { name: '00000000.GS', path: 'North Bethany RRFB.GEO/00000000.GS', text: gs(100, 10, 90, 5, 20) },
+    { name: '00000000.LIM', path: 'North Bethany RRFB.GEO/00000000.LIM', text: LIM },
+    { name: '00000001.GS', path: 'North Bethany RRFB.GEO/00000001.GS', text: gs(100, 80, 20, 2, 18) },
+    { name: '00010000.GS', path: 'North Bethany RRFB.GEO/00010000.GS', text: gs(100, 50, 50, 10, 40) },
+    { name: '00010000.LIM', path: 'North Bethany RRFB.GEO/00010000.LIM', text: LIM }
+  ]).projects[0];
+  assert.strictEqual(p.contract, 'T202270302');
+  assert.strictEqual(p.name, 'North Bethany RRFB');
+  assert.ok(!/[\\/]/.test(p.name), p.name);
+  assert.strictEqual(p.labSettings.percentageDecimals, 1);
+  assert.strictEqual(p.labSettings.classification, '1');
+  const sb1 = p.borings.find(b => b.b === 'SB-01');
+  const sb2 = p.borings.find(b => b.b === 'SB-02');
+  assert.strictEqual(sb1.contract, 'T202270302');
+  assert.strictEqual(sb1.s[0].gs_file, '00000000.GS');
+  assert.strictEqual(sb1.s[0].lim_file, '00000000.LIM');
+  assert.strictEqual(sb1.s[0].p200, 70);
+  assert.strictEqual(sb1.s[0].ll, 42.9);
+  assert.strictEqual(sb1.s[1].gs_file, '00000001.GS');
+  assert.strictEqual(sb1.s[1].p200, 2);
+  assert.strictEqual(sb2.s[0].gs_file, '00010000.GS');
+  assert.strictEqual(sb2.s[0].lim_file, '00010000.LIM');
+  assert.strictEqual(sb2.s[0].p200, 10);
+});
+
+check('a glued index name supplies the contract and not the project name', function () {
+  const p = Geo.parseGeoBundle([
+    { name: 'T202270302Bethany.NDX', path: 'T202270302Bethany.GEO/T202270302Bethany.NDX', text: 'SB-01' },
+    { name: 'GSCOMB.MDT', path: 'T202270302Bethany.GEO/GSCOMB.MDT', text: "00000000,SB-01, 1 (2.0'/24 in.)\n" }
+  ]).projects[0];
+  assert.strictEqual(p.contract, 'T202270302');
+  assert.strictEqual(p.name, 'Bethany');
+});
+
+check('an index name does not replace a contract already in the project file', function () {
+  const p = Geo.parseGeoBundle([
+    { name: '9999.$P$', path: 'Pole Bridge Road.GEO/9999.$P$', text: ['PROJECT', 'Pole Bridge Road', 'STATE_CONTRACT', 'T202208302'].join(NUL) },
+    { name: 'T202270302Bethany.NDX', path: 'Pole Bridge Road.GEO/T202270302Bethany.NDX', text: 'B-1' },
+    { name: '0001.$P$', path: 'Pole Bridge Road.GEO/0001.$P$', text: ['BORING', 'B-1', 'SAMP_NUM', '1', 'DEPTH', '2.0', 'DESCRIPTION', 'SAND'].join(NUL) }
+  ]).projects[0];
+  assert.strictEqual(p.contract, 'T202208302');
+  assert.strictEqual(p.name, 'Pole Bridge Road');
+});
+
+check('grain size uses the decimals from GSSettings', function () {
+  const p = Geo.parseGeoBundle([
+    { name: 'GSCOMB.MDT', path: 'Job.GEO/GSCOMB.MDT', text: "00000000,SB-01, 1 (2.0'/18 in.)\n" },
+    { name: 'GSSettings.XML', path: 'Job.GEO/GSSettings.XML', text: '<GS_PROGRAM_SETTINGS><PercentageDecimals set="2"/><ReportNumber200To1DecimalPlace set="no"/></GS_PROGRAM_SETTINGS>' },
+    { name: '0001.$P$', path: 'Job.GEO/0001.$P$', text: ['BORING', 'SB-01', 'PROJECT', 'Job', 'SAMP_NUM', '1', 'DEPTH', '2.0', 'DESCRIPTION', 'SAND'].join(NUL) },
+    { name: '00000000.GS', path: 'Job.GEO/00000000.GS', text: gs(100, 33, 80, 10, 25) }
+  ]).projects[0];
+  assert.strictEqual(p.labSettings.percentageDecimals, 2);
+  assert.strictEqual(p.borings[0].s[0].p200, 46.06);
+});
+
 check('a file path is not stored as the project name', function () {
   const files = [
     { name: '9999.$P$', path: 'T202208302.GEO/9999.$P$', text: ['PROJECT', 'C:\\Users\\aaron\\Pole Bridge Road.dwg', 'STATE_CONTRACT', 'T202208302'].join(NUL) },
