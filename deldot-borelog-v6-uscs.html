@@ -3254,6 +3254,7 @@ function startApp(){
     purgeStaleBorelogLocalMirror();
     backfillBorelogTombstonesFromQueue();
     pruneOrphanBoringsInStore();
+    backfillBorelogContractIds();
     const tag = $('blBuildTag');
     if (tag) tag.textContent = 'M&R · ' + BORELOG_BUILD;
     const ol = $('setupOverlay');
@@ -3352,6 +3353,82 @@ function showView(name){
 /* ---------- PROJECTS ---------- */
 let _editingProjectId = null;
 
+function borelogContractToken(text) {
+  const m = String(text || '').match(/\bT\d{6,12}(?:\.\d+)?\b/i);
+  return m ? m[0].toUpperCase() : '';
+}
+
+function borelogLooksLikePath(text) {
+  const s = String(text || '');
+  return /[\\/]/.test(s) || /^[A-Za-z]:/.test(s);
+}
+
+function borelogRealName(name, contract) {
+  let s = String(name || '').replace(/\.geo$/i, '').trim();
+  if (!s || borelogLooksLikePath(s)) return '';
+  const token = borelogContractToken(s);
+  if ((contract && s.toUpperCase() === String(contract).toUpperCase()) || (token && s.toUpperCase() === token)) return '';
+  if (token) {
+    s = s.replace(new RegExp('\\b' + token.replace(/\./g, '\\.') + '\\b', 'ig'), ' ');
+    s = s.replace(/^[\s._-]+|[\s._-]+$/g, '').replace(/\s+/g, ' ').trim();
+  }
+  if (!s || borelogLooksLikePath(s)) return '';
+  return s;
+}
+
+function borelogResolvedContract(p, borings) {
+  const existing = String((p && p.contract_no) || '').trim();
+  if (existing) return existing;
+  const fromName = borelogContractToken(p && p.name);
+  if (fromName) return fromName;
+  const list = borings || [];
+  for (const b of list) {
+    const direct = String((b && b.state_contract) || '').trim();
+    if (direct) return direct;
+  }
+  for (const b of list) {
+    const token = borelogContractToken([(b && b.reference), (b && b.location), (b && b.remarks)].filter(Boolean).join(' '));
+    if (token) return token;
+  }
+  return borelogContractToken([(p && p.location), (p && p.route), (p && p.county)].filter(Boolean).join(' '));
+}
+
+function borelogProjectIdentity(p) {
+  const borings = p && p.id ? store.getBorings(p.id) : [];
+  const contract = borelogResolvedContract(p, borings);
+  const federal = String((p && p.federal_no) || '').trim();
+  const name = borelogRealName(p && p.name, contract);
+  const title = [contract, federal].filter(Boolean).join(' / ') || name;
+  return { contract, federal, name, title };
+}
+
+function backfillBorelogContractIds() {
+  Object.values(store.getProjects()).forEach(p => {
+    const borings = store.getBorings(p.id);
+    const contract = borelogResolvedContract(p, borings);
+    const realName = borelogRealName(p.name, contract);
+    let changed = false;
+    if (contract && !String(p.contract_no || '').trim()) {
+      p.contract_no = contract;
+      changed = true;
+    }
+    if (borelogLooksLikePath(p.name)) {
+      if (p.name !== realName) { p.name = realName; changed = true; }
+    } else if (realName && realName !== p.name && borelogContractToken(p.name)) {
+      p.name = realName;
+      changed = true;
+    }
+    if (changed) store.saveProject(p);
+    const use = String(p.contract_no || '').trim();
+    borings.forEach(b => {
+      if (use && !String(b.state_contract || '').trim()) {
+        b.state_contract = use;
+        store.saveBoring(b);
+      }
+    });
+  });
+}
+
 function renderProjects(){
   const list = $('projectList');
   const projects = Object.values(store.getProjects()).sort((a,b)=>
@@ -3362,11 +3439,12 @@ function renderProjects(){
   }
   list.innerHTML = projects.map(p=>{
     const bc = store.getBorings(p.id).length;
-    const contractNo = [p.contract_no, p.federal_no].filter(Boolean).join(' / ');
+    const idn = borelogProjectIdentity(p);
+    const subName = idn.contract && idn.name ? idn.name : '';
     return `<div class="list-card" onclick="openProject('${p.id}')">
       <div style="flex:1;min-width:0;">
-        <div class="lc-title">${escape(contractNo || p.name)}</div>
-        ${(contractNo && p.name) || p.contractor ? `<div class="lc-sub" style="margin-top:3px;font-size:11px;color:var(--muted);">${contractNo ? escape(p.name) : ''}${p.contractor ? (contractNo && p.name ? ' · ' : '') + escape(p.contractor) : ''}</div>` : ''}
+        <div class="lc-title">${escape(idn.title)}</div>
+        ${subName || p.contractor ? `<div class="lc-sub" style="margin-top:3px;font-size:11px;color:var(--muted);">${escape(subName)}${p.contractor ? (subName ? ' · ' : '') + escape(p.contractor) : ''}</div>` : ''}
       </div>
       <div class="lc-actions" onclick="event.stopPropagation()">
         <span class="lc-meta" style="margin-right:8px;">${bc} BORING${bc===1?'':'S'}</span>
@@ -3467,11 +3545,11 @@ function openProject(id){ currentProjectId=id; currentBoringId=null; showView('b
 /* ---------- BORINGS LIST ---------- */
 function renderBorings(){
   const proj = store.getProject(currentProjectId); if(!proj){ showView('projects'); return; }
-  $('bcProjName').textContent = proj.name;
-  $('boringsTitle').textContent = proj.name + ' — Borings';
-  const metaParts = [proj.contract_no, proj.federal_no].filter(Boolean).join(' / ');
+  const idn = borelogProjectIdentity(proj);
+  $('bcProjName').textContent = idn.title;
+  $('boringsTitle').textContent = idn.title + ' — Borings';
   const locParts  = [proj.county, proj.route].filter(Boolean).join(' · ') || proj.location || '';
-  $('boringsSub').textContent = [metaParts, locParts].filter(Boolean).join('  ·  ') || '—';
+  $('boringsSub').textContent = [idn.contract && idn.name ? idn.name : '', locParts].filter(Boolean).join('  ·  ') || '—';
   const borings = store.getBorings(currentProjectId);
   const list = $('boringList');
   if(!borings.length){ list.innerHTML = `<div class="empty-state"><div class="emoji">🪨</div>No borings yet.</div>`; return; }
@@ -3748,12 +3826,13 @@ function renderBoringEdit(){
   const b = store.getBoring(currentBoringId); const p = store.getProject(currentProjectId);
   if(!b){ showView('borings'); return; }
   ensureBoringMapCoords(b);
-  $('bcProjName2').textContent = p.name;
+  const idn = borelogProjectIdentity(p);
+  $('bcProjName2').textContent = idn.title;
   $('bcBoringNo').textContent = b.boring_no || '(no #)';
   $('editBoringTitle').textContent = b.boring_no || 'Boring';
   const f = (id,v) => $(id).value = v ?? '';
   f('bh_boring_no', b.boring_no); f('bh_location', b.location);
-  f('bh_state_contract', b.state_contract || p.contract_no);
+  f('bh_state_contract', String(b.state_contract || '').trim() || idn.contract);
   f('bh_federal_contract', b.federal_contract || p.federal_no); f('bh_station', b.station_offset);
   f('bh_reference', b.reference); f('bh_northing', b.northing); f('bh_easting', b.easting);
   f('bh_elev', b.surface_elev); f('bh_gps', boringGpsDisplay(b)); f('bh_date_start', b.date_started); f('bh_date_end', b.date_completed);
@@ -4383,6 +4462,10 @@ function renderPrintLog(){
   const hRow = (lbl, val) => `<div class="bl-h-row"><span class="lbl">${lbl}</span><span class="val">${escape(val||'')}</span></div>`;
   const eqCell = (lbl, val) => `<div class="eq-cell"><span class="lbl">${lbl}</span><span class="val">${escape(val||'')}</span></div>`;
 
+  const idn = borelogProjectIdentity(p);
+  const stateContract = String(b.state_contract || '').trim() || idn.contract;
+  const federalContract = String(b.federal_contract || '').trim() || idn.federal;
+  const projectName = idn.name;
   const lockup = `<svg class="bl-lockup" xmlns="http://www.w3.org/2000/svg" viewBox="0.00 0.00 227.39 63.00" role="img" aria-label="DelDOT"> <g fill="#ffffff"> <path d="M 23.50 0.00 L 34.20 0.00 L 51.20 39.00 L 40.50 39.00 Z"/> <path d="M 37.20 0.00 L 47.90 0.00 L 64.90 39.00 L 54.20 39.00 Z"/> <path d="M 4.50 52.00 L 0.00 42.50 L 17.00 12.50 L 24.50 9.00 L 30.00 17.50 L 21.00 23.50 Z"/> <path d="M 10.70 63.00 L 6.20 53.50 L 23.20 23.50 L 30.70 20.00 L 36.20 28.50 L 27.20 34.50 Z"/> <path d="M 30.00 40.00 L 69.50 40.00 L 65.00 49.00 L 25.50 49.00 Z"/> <path d="M 24.00 52.00 L 63.50 52.00 L 59.00 61.00 L 19.50 61.00 Z"/> <g transform="translate(80.84 44.10) scale(0.017885 -0.017885)"> <path d="M1393 715Q1393 497 1307.5 334.5Q1222 172 1065.5 86.0Q909 0 707 0H137V1409H647Q1003 1409 1198.0 1229.5Q1393 1050 1393 715ZM1096 715Q1096 942 978.0 1061.5Q860 1181 641 1181H432V228H682Q872 228 984.0 359.0Q1096 490 1096 715Z" transform="translate(0.00 0)"/><path d="M586 -20Q342 -20 211.0 124.5Q80 269 80 546Q80 814 213.0 958.0Q346 1102 590 1102Q823 1102 946.0 947.5Q1069 793 1069 495V487H375Q375 329 433.5 248.5Q492 168 600 168Q749 168 788 297L1053 274Q938 -20 586 -20ZM586 925Q487 925 433.5 856.0Q380 787 377 663H797Q789 794 734.0 859.5Q679 925 586 925Z" transform="translate(1479.00 0)"/><path d="M143 0V1484H424V0Z" transform="translate(2618.00 0)"/><path d="M1393 715Q1393 497 1307.5 334.5Q1222 172 1065.5 86.0Q909 0 707 0H137V1409H647Q1003 1409 1198.0 1229.5Q1393 1050 1393 715ZM1096 715Q1096 942 978.0 1061.5Q860 1181 641 1181H432V228H682Q872 228 984.0 359.0Q1096 490 1096 715Z" transform="translate(3187.00 0)"/><path d="M1507 711Q1507 491 1420.0 324.0Q1333 157 1171.0 68.5Q1009 -20 793 -20Q461 -20 272.5 175.5Q84 371 84 711Q84 1050 272.0 1240.0Q460 1430 795 1430Q1130 1430 1318.5 1238.0Q1507 1046 1507 711ZM1206 711Q1206 939 1098.0 1068.5Q990 1198 795 1198Q597 1198 489.0 1069.5Q381 941 381 711Q381 479 491.5 345.5Q602 212 793 212Q991 212 1098.5 342.0Q1206 472 1206 711Z" transform="translate(4666.00 0)"/><path d="M773 1181V0H478V1181H23V1409H1229V1181Z" transform="translate(6259.00 0)"/> <g transform="translate(7590.0 775.0) scale(0.36)"> <path d="M1478 707Q1478 514 1381.5 345.5Q1285 177 1116.5 80.5Q948 -16 755 -16Q558 -16 388.5 84.5Q219 185 125.5 351.5Q32 518 32 707Q32 900 129.0 1068.0Q226 1236 394.0 1333.0Q562 1430 755 1430Q949 1430 1117.5 1332.5Q1286 1235 1382.0 1068.0Q1478 901 1478 707ZM1366 707Q1366 870 1284.0 1010.5Q1202 1151 1060.0 1233.0Q918 1315 755 1315Q598 1315 458.0 1237.0Q318 1159 232.5 1017.5Q147 876 147 707Q147 544 228.5 402.0Q310 260 450.5 178.0Q591 96 755 96Q919 96 1061.0 178.0Q1203 260 1284.5 402.0Q1366 544 1366 707ZM923 297 745 610H628V297H450V1112H780Q933 1112 1009.0 1047.5Q1085 983 1085 870Q1085 776 1037.0 717.0Q989 658 911 633L1124 297ZM905 868Q905 925 867.5 955.0Q830 985 761 985H628V739H772Q838 739 871.5 774.5Q905 810 905 868Z"/> </g> </g> </g> </svg>`;
   let html='';
   pages.forEach((ps, pi)=>{
@@ -4396,10 +4479,10 @@ function renderPrintLog(){
           <div class="bl-sheet-sub">DELAWARE DEPARTMENT OF TRANSPORTATION | MATERIALS AND RESEARCH</div>
         </div>
         <div class="bl-h-grid">
-              ${hRow('Project Name:', p.name)}
+              ${hRow('Project Name:', projectName)}
               ${hRow('Location:', b.location||p.location)}
-              ${hRow('State Contract #:', b.state_contract)}
-              ${hRow('Federal Contract #:', b.federal_contract)}
+              ${hRow('State Contract #:', stateContract)}
+              ${hRow('Federal Contract #:', federalContract)}
               ${hRow('Station/Offset:', b.station_offset)}
               ${hRow('Reference:', b.reference)}
               ${hRow('Northing:', b.northing)}
@@ -4434,7 +4517,7 @@ function renderPrintLog(){
           ${b.remarks?`<div class="eq-divider"></div><div class="eq-row two"><div class="eq-cell" style="grid-column:1 / -1;"><span class="lbl">Remarks:</span><span class="val">${escape(b.remarks)}</span></div></div>`:''}
         </div>`;
     } else {
-      html += `<header class="bl-banner bl-banner-slim">${lockup}<div class="bl-banner-meta">Project: ${escape(p.name||'')} · Boring: ${escape(b.boring_no||'')}</div></header>`;
+      html += `<header class="bl-banner bl-banner-slim">${lockup}<div class="bl-banner-meta">Project: ${escape(stateContract || projectName)} · Boring: ${escape(b.boring_no||'')}</div></header>`;
     }
     html += `<div class="bl-body"><table>
       <thead><tr>
@@ -4487,6 +4570,7 @@ function renderPrintLog(){
 function renderPSDReport(){
   const b = store.getBoring(currentBoringId); const p = store.getProject(currentProjectId);
   if(!b){ showView('borings'); return; }
+  const psdProject = borelogProjectIdentity(p);
   const samples = store.getSamples(currentBoringId);
   samples.forEach(processSample);
   const withGrad = samples.filter(s => s.sieve_calc && s.sieve_calc.hasData);
@@ -4541,7 +4625,7 @@ function renderPSDReport(){
     html += `</tbody></table>
       <div class="psd-foot">
         <div class="agency">Delaware Department of Transportation · Materials and Research Laboratory</div>
-        <div>Project: ${escape(p.name||'')}</div>
+        <div>Project: ${escape(psdProject.contract || psdProject.name)}</div>
         <div style="text-align:right;">Page ${pi+1} of ${pages.length}</div>
       </div></div>`;
   });
@@ -5056,7 +5140,9 @@ async function handleGeoFiles(fileList) {
   const sampleCount = bundle.projects.reduce((n, p) => n + p.borings.reduce((m, b) => m + b.s.length, 0), 0);
   const boringCount = bundle.projects.reduce((n, p) => n + p.borings.length, 0);
   bundle.projects.forEach(p => {
-    geoLog('ok', `${escape(p.name)}${p.contract ? ' · ' + escape(p.contract) : ''} — ${p.borings.length} boring(s)`);
+    const label = p.contract || p.name;
+    const extra = p.contract && p.name ? ' · ' + p.name : '';
+    geoLog('ok', `${escape(label)}${escape(extra)} — ${p.borings.length} boring(s)`);
   });
   const res = $('geoResult');
   res.className = 'geo-result visible';
@@ -5089,15 +5175,29 @@ async function runGeoImport(){
     let totalSamples = 0;
     let boringCount = 0;
     for (const project of _geoBundle.projects) {
-      const existing = Object.values(store.getProjects()).find(p =>
-        p.name === project.name && String(p.contract_no || '') === String(project.contract || ''));
+      const importedContract = String(project.contract || '').trim();
+      const importedName = String(project.name || '').trim();
+      const existing = Object.values(store.getProjects()).find(p => {
+        const have = String(p.contract_no || '').trim();
+        const sameContract = !!(have && importedContract && have.toUpperCase() === importedContract.toUpperCase());
+        const left = borelogRealName(p.name, have || importedContract);
+        const right = borelogRealName(importedName, importedContract || have);
+        const sameName = !!(left && right && left.toLowerCase() === right.toLowerCase());
+        if (sameContract && (sameName || !right)) return true;
+        if (sameName && (!have || !importedContract)) return true;
+        return false;
+      });
+      const keptContract = (existing && String(existing.contract_no || '').trim()) || importedContract;
+      const keptName = borelogRealName(importedName, keptContract)
+        || (existing ? borelogRealName(existing.name, keptContract) : '')
+        || '';
       if (existing) store.delProject(existing.id);
       const projId = uid();
       if (!firstProjId) firstProjId = projId;
       store.saveProject({
         id: projId,
-        name: project.name,
-        contract_no: project.contract || '',
+        name: keptName,
+        contract_no: keptContract,
         federal_no: project.federal || '',
         location: project.location || '',
         county: '', route: '',
@@ -5109,7 +5209,7 @@ async function runGeoImport(){
         const boring = {
           id: boringId, project_id: projId,
           boring_no: b.b,
-          state_contract: project.contract || '',
+          state_contract: b.contract || keptContract || '',
           federal_contract: project.federal || '',
           location: b.location || '',
           station_offset: stationOffset,

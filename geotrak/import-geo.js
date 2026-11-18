@@ -36,7 +36,8 @@
     SAMP_REC: 1, SAMPLE_REC: 1, RECOVERY: 1,
     BLOWS1: 1, BLOWS2: 1, BLOWS3: 1, BLOWS4: 1,
     GDMID: 1, GDM_ID: 1, AASHTO_CLASS: 1, AASHTO: 1, DESCRIPTION: 1, WDEPTH1: 1,
-    ELEV: 1, ELEVATION: 1, COUNTY: 1, ROUTE: 1, JOB: 1, JOB_NO: 1, CLIENT: 1
+    ELEV: 1, ELEVATION: 1, COUNTY: 1, ROUTE: 1, JOB: 1, JOB_NO: 1, JOB_NUM: 1, JOBNUMBER: 1, CLIENT: 1,
+    CONTRACT: 1, CONTRACT_NO: 1, STATE_CONTRAC: 1, PROJECT_NUM: 1
   };
 
   function tooBigMessage(name) {
@@ -883,6 +884,41 @@ function firstChild(el, name) {
     return { unmatched: unmatched, attached: attached };
   }
 
+  var CONTRACT_FIELD_KEYS = ['STATE_CONTRACT', 'STATE_CONTRAC', 'PROJ_NUM', 'PROJECT_NUM', 'JOB_NO', 'JOB_NUM', 'JOBNUMBER', 'CONTRACT_NO', 'CONTRACT'];
+
+  function contractToken(text) {
+    var m = String(text || '').match(/\bT\d{6,12}(?:\.\d+)?\b/i);
+    return m ? m[0].toUpperCase() : '';
+  }
+
+  function looksLikePath(text) {
+    var s = String(text || '');
+    return /[\\/]/.test(s) || /^[A-Za-z]:/.test(s);
+  }
+
+  function explicitContract(raw) {
+    var cut = String(raw || '').split('$')[0].trim();
+    if (!cut || looksLikePath(cut)) return contractToken(cut);
+    return cut;
+  }
+
+  function contractFromFields(pd) {
+    return explicitContract(firstPd(pd || {}, CONTRACT_FIELD_KEYS));
+  }
+
+  function realProjectName(text, contract) {
+    var s = String(text || '').replace(/\.geo$/i, '').trim();
+    if (!s || looksLikePath(s)) return '';
+    var token = contractToken(s);
+    if ((contract && s.toUpperCase() === String(contract).toUpperCase()) || (token && s.toUpperCase() === token)) return '';
+    if (token) {
+      s = s.replace(new RegExp('\\b' + token.replace(/\./g, '\\.') + '\\b', 'ig'), ' ');
+      s = s.replace(/^[\s._-]+|[\s._-]+$/g, '').replace(/\s+/g, ' ').trim();
+    }
+    if (!s || looksLikePath(s)) return '';
+    return s;
+  }
+
   function parseOneProject(key, files, warnings) {
     var byName = fileByBase(files);
     var gsEntries = parseGeoMDT(textOf(byName['GSCOMB.MDT']));
@@ -914,8 +950,28 @@ function firstChild(el, name) {
 
     var ndx = files.filter(function (f) { return /\.ndx$/i.test(baseName(f.name || f.path)); })[0];
     var ndxStem = ndx ? baseName(ndx.name || ndx.path).replace(/\.ndx$/i, '') : '';
-    var name = firstPd(projFields, ['PROJECT']) || ndxStem || folderLabel(key);
-    var contract = firstPd(projFields, ['STATE_CONTRACT', 'PROJ_NUM']).split('$')[0].trim();
+    var contract = contractFromFields(projFields);
+    if (!contract) {
+      for (var ci = 0; ci < boringFiles.length; ci++) {
+        contract = contractFromFields(boringFiles[ci].pd);
+        if (contract) break;
+      }
+    }
+    if (!contract) {
+      contract = contractToken(ndxStem) || contractToken(folderLabel(key)) || contractToken(firstPd(projFields, ['PROJECT']));
+    }
+    var projectText = firstPd(projFields, ['PROJECT']);
+    if (!projectText || looksLikePath(projectText)) {
+      for (var ni = 0; ni < boringFiles.length; ni++) {
+        var named = firstPd(boringFiles[ni].pd, ['PROJECT']);
+        if (named && !looksLikePath(named)) { projectText = named; break; }
+      }
+    }
+    var name = realProjectName(projectText, contract) || realProjectName(ndxStem, contract) || realProjectName(folderLabel(key), contract);
+    if (!name && !contract) {
+      var fallback = projectText || ndxStem || folderLabel(key);
+      name = looksLikePath(fallback) ? '' : fallback;
+    }
     var location = firstPd(projFields, ['PROJ_LOC']);
     var projWarnings = [];
     var usedStems = {};
@@ -1103,6 +1159,7 @@ function firstChild(el, name) {
         });
       });
 
+      var ownContract = contractFromFields(pd);
       var east = num(firstPd(pd, ['EAST', 'EASTING']));
       var north = num(firstPd(pd, ['NORTH', 'NORTHING']));
       var lat = num(firstPd(pd, ['LATITUDE', 'LAT', 'LAT_DD']));
@@ -1137,6 +1194,7 @@ function firstChild(el, name) {
         logged_by: firstPd(pd, ['CHECKED_BY']),
         supervisor: firstPd(pd, ['SUPERVISOR']),
         remarks: firstPd(pd, ['NOTES']),
+        contract: ownContract || contract,
         warnings: bWarnings,
         s: samples
       };

@@ -320,6 +320,70 @@ check('a Python zip of the same project imports', async function () {
   fs.rmSync(dir, { recursive: true, force: true });
 });
 
+check('a boring file supplies the contract and the project name stays', function () {
+  const files = [
+    { name: '9999.$P$', path: 'North Bethany RRFB.GEO/9999.$P$', text: ['PROJECT', 'North Bethany RRFB', 'PROJ_LOC', 'Sussex County DE'].join(NUL) },
+    { name: '0001.$P$', path: 'North Bethany RRFB.GEO/0001.$P$', text: ['BORING', 'SB-01', 'STATE_CONTRACT', 'T201709502', 'LOCATION', 'Sussex County DE', 'SAMP_NUM', '1', 'DEPTH', '2.0', 'DESCRIPTION', 'SAND'].join(NUL) }
+  ];
+  const p = Geo.parseGeoBundle(files).projects[0];
+  assert.strictEqual(p.name, 'North Bethany RRFB');
+  assert.strictEqual(p.contract, 'T201709502');
+  assert.strictEqual(p.borings[0].contract, 'T201709502');
+});
+
+check('a folder contract number does not replace the project name', function () {
+  const files = [
+    { name: '9999.$P$', path: 'T201709502.GEO/9999.$P$', text: ['PROJECT', 'North Bethany RRFB'].join(NUL) },
+    { name: '0001.$P$', path: 'T201709502.GEO/0001.$P$', text: boringP() }
+  ];
+  const p = Geo.parseGeoBundle(files).projects[0];
+  assert.strictEqual(p.contract, 'T201709502');
+  assert.strictEqual(p.name, 'North Bethany RRFB');
+});
+
+check('JOB_NO on the boring is the contract', function () {
+  const files = [
+    { name: '0001.$P$', path: 'North Bethany RRFB.GEO/0001.$P$', text: ['BORING', 'SB-01', 'PROJECT', 'North Bethany RRFB', 'JOB_NO', 'T201709502', 'SAMP_NUM', '1', 'DEPTH', '2.0', 'DESCRIPTION', 'SAND'].join(NUL) }
+  ];
+  const p = Geo.parseGeoBundle(files).projects[0];
+  assert.strictEqual(p.contract, 'T201709502');
+  assert.strictEqual(p.name, 'North Bethany RRFB');
+});
+
+check('a contract beside the folder name stays the identifier', function () {
+  const files = [
+    { name: '0001.$P$', path: 'T201709502 North Bethany RRFB.GEO/0001.$P$', text: ['BORING', 'SB-01', 'SAMP_NUM', '1', 'DEPTH', '2.0', 'DESCRIPTION', 'SAND'].join(NUL) }
+  ];
+  const p = Geo.parseGeoBundle(files).projects[0];
+  assert.strictEqual(p.contract, 'T201709502');
+  assert.strictEqual(p.name, 'North Bethany RRFB');
+});
+
+check('a space-separated boring file keeps CONTRACT_NO', function () {
+  const text = [
+    'PROJECT   North Bethany RRFB',
+    'BORING   SB-01',
+    'CONTRACT_NO   T201709502',
+    'SAMP_NUM   1',
+    'DEPTH   2.0',
+    'DESCRIPTION   SAND'
+  ].join('\n');
+  const p = Geo.parseGeoBundle([{ name: '0001.$P$', path: 'North Bethany RRFB.GEO/0001.$P$', text }]).projects[0];
+  assert.strictEqual(p.contract, 'T201709502');
+  assert.strictEqual(p.name, 'North Bethany RRFB');
+});
+
+check('a file path is not stored as the project name', function () {
+  const files = [
+    { name: '9999.$P$', path: 'T202208302.GEO/9999.$P$', text: ['PROJECT', 'C:\\Users\\aaron\\Pole Bridge Road.dwg', 'STATE_CONTRACT', 'T202208302'].join(NUL) },
+    { name: '0001.$P$', path: 'T202208302.GEO/0001.$P$', text: ['BORING', 'B-1', 'SAMP_NUM', '1', 'DEPTH', '2.0', 'DESCRIPTION', 'SAND'].join(NUL) }
+  ];
+  const p = Geo.parseGeoBundle(files).projects[0];
+  assert.strictEqual(p.contract, 'T202208302');
+  assert.ok(!/[\\/]/.test(p.name), 'name was a path: ' + p.name);
+  assert.notStrictEqual(p.name, 'C:\\Users\\aaron\\Pole Bridge Road.dwg');
+});
+
 (async function () {
   let failed = 0;
   for (const t of tests) {
