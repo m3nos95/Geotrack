@@ -212,6 +212,97 @@ check('a zip that declares a huge member is refused before inflate', async funct
   assert.strictEqual(opened.files.length, 0);
 });
 
+function indexedField(name, pairs) {
+  let out = name + NUL + NUL + NUL;
+  pairs.forEach(function (pair) {
+    out += pair[1] + NUL + String.fromCharCode(pair[0]) + NUL + NUL;
+  });
+  return out;
+}
+
+check('indexed boring rows keep each lab file on its sample', function () {
+  const boring = [
+    'BORING' + NUL + NUL + NUL + 'B-1' + NUL + NUL + NUL,
+    'LOCATION' + NUL + NUL + NUL + 'New Castle County, DE' + NUL + NUL + NUL,
+    'EAST' + NUL + NUL + NUL + '556766.628' + NUL + NUL + NUL,
+    'NORTH' + NUL + NUL + NUL + '584724.564' + NUL + NUL + NUL,
+    indexedField('DEPTH', [[1, '0.0'], [2, '2.0'], [3, '4.0']]),
+    indexedField('SAMP_NUM', [[1, '1'], [2, '2']]),
+    indexedField('SAMP_REC', [[1, '24'], [2, '24']]),
+    indexedField('BLOWS1', [[1, '7'], [2, '1']]),
+    indexedField('BLOWS2', [[1, '8'], [2, '1']]),
+    indexedField('BLOWS3', [[1, '4'], [2, '2']]),
+    indexedField('BLOWS4', [[1, '4'], [2, '2']]),
+    indexedField('GDMID', [[1, '0'], [2, '1']]),
+    indexedField('DESCRIPTION', [
+      [1, 'Moist stiff orange coarse to fine sandy silt'],
+      [2, 'Moist soft orange sand'],
+      [3, 'End Boring']
+    ]),
+    indexedField('LL', [[1, '21.1'], [2, 'NV']]),
+    indexedField('PL', [[1, '16.7'], [2, 'NP']]),
+    indexedField('PI', [[1, '4.4'], [2, 'NP']]),
+    indexedField('NM', [[1, '9.8'], [2, '12.2']]),
+    indexedField('USCS', [[1, 'SC-SM'], [2, 'SM']]),
+    indexedField('AASHTO', [[1, 'A-4(0)'], [2, 'A-4(0)']]),
+    indexedField('PER200', [[1, '44.8'], [2, '38.2']]),
+    indexedField('PER10', [[1, '100.0'], [2, '100.0']]),
+    indexedField('PER40', [[1, '70.2'], [2, '59.8']]),
+    indexedField('PER4', [[1, '100.0'], [2, '100.0']])
+  ].join('');
+  const gs = `<?xml version="1.0"?><GEOTECHNICAL_PROJECT><GRAIN_SIZE><SieveTest>
+    <Sample><SampleWt>338.63<Tare wt="0"/></SampleWt></Sample>
+    <TestPoint><Sieve wtretained="0"><OpeningSize readable_size="#10"/></Sieve></TestPoint>
+    <Sample><SampleWt>116.1<Tare wt="0"/></SampleWt></Sample>
+    <TestPoint><Sieve wtretained="34.3"><OpeningSize readable_size="#40"/></Sieve></TestPoint>
+    <TestPoint><Sieve wtretained="64.1"><OpeningSize readable_size="#200"/></Sieve></TestPoint>
+  </SieveTest></GRAIN_SIZE></GEOTECHNICAL_PROJECT>`;
+  const lim = `<?xml version="1.0"?><GEOTECHNICAL_PROJECT><CLASSIFICATION>
+    <NATURAL_WATER_CONTENT wet="451.51" dry="418.22" tare="79.59">9.8</NATURAL_WATER_CONTENT>
+    <LIQUID_LIMIT><LLTestPoint><Blows>25</Blows><MOISTURE_DATA wet="33.32" dry="31.25" tare="21.42"/></LLTestPoint>21.1</LIQUID_LIMIT>
+    <PLASTIC_LIMIT><MOISTURE_DATA wet="30.02" dry="28.82" tare="21.65"/>16.7</PLASTIC_LIMIT>
+  </CLASSIFICATION></GEOTECHNICAL_PROJECT>`;
+  const other = `<?xml version="1.0"?><GEOTECHNICAL_PROJECT><GRAIN_SIZE><SieveTest>
+    <Sample><SampleWt>418.36</SampleWt></Sample>
+    <TestPoint><Sieve wtretained="0"><OpeningSize readable_size="#10"/></Sieve></TestPoint>
+    <Sample><SampleWt>105.4</SampleWt></Sample>
+    <TestPoint><Sieve wtretained="42.4"><OpeningSize readable_size="#40"/></Sieve></TestPoint>
+    <TestPoint><Sieve wtretained="65.1"><OpeningSize readable_size="#200"/></Sieve></TestPoint>
+  </SieveTest></GRAIN_SIZE></GEOTECHNICAL_PROJECT>`;
+  const bundle = Geo.parseGeoBundle([
+    { name: '0.$P$', path: 'County.GEO/0.$P$', text: boring },
+    { name: '00000007.GS', path: 'County.GEO/00000007.GS', text: gs },
+    { name: '00000007.LIM', path: 'County.GEO/00000007.LIM', text: lim },
+    { name: '00000008.GS', path: 'County.GEO/00000008.GS', text: other }
+  ]);
+  assert.strictEqual(bundle.errors.length, 0, bundle.errors.join('; '));
+  const b = bundle.projects[0].borings[0];
+  assert.strictEqual(b.b, 'B-1');
+  assert.strictEqual(b.eob, 4);
+  assert.strictEqual(b.s.length, 2);
+  assert.strictEqual(b.s[0].d, 2);
+  assert.strictEqual(b.s[0].depth_from, 0);
+  assert.strictEqual(b.s[0].desc, 'Moist stiff orange coarse to fine sandy silt');
+  assert.strictEqual(b.s[0].p200, 44.8);
+  assert.strictEqual(b.s[0].ll, 21.1);
+  assert.strictEqual(b.s[0].pi, 4.4);
+  assert.strictEqual(b.s[0].nm, 9.8);
+  assert.strictEqual(b.s[0].uscs, 'SC-SM');
+  assert.strictEqual(b.s[0].aashto, 'A-4(0)');
+  assert.strictEqual(b.s[0].n, 12);
+  assert.strictEqual(b.s[0].gs_file, '00000007.GS');
+  assert.strictEqual(b.s[0].lim_file, '00000007.LIM');
+  assert.strictEqual(b.s[0].sieve_inputs.total_wt, 338.63);
+  assert.strictEqual(b.s[1].d, 4);
+  assert.strictEqual(b.s[1].depth_from, 2);
+  assert.strictEqual(b.s[1].p200, 38.2);
+  assert.strictEqual(b.s[1].ll, 'NV');
+  assert.strictEqual(b.s[1].gs_file, '00000008.GS');
+  assert.strictEqual(b.s[1].lim_file, null);
+  assert.ok(b.lat > 39 && b.lat < 40, 'lat ' + b.lat);
+  assert.ok(bundle.warnings.length === 0, bundle.warnings.join(' '));
+});
+
 check('a Python zip of the same project imports', async function () {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'geo-zip-'));
   const zipPath = path.join(dir, 'bridge.zip');
