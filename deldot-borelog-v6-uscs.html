@@ -284,6 +284,7 @@ nav{background:var(--surface);border-bottom:1px solid var(--border);box-shadow:0
 .bl-body table{width:100%;border-collapse:collapse;font-size:10px;}
 .bl-body th{background:#123a66;color:#fff;border:1px solid #0b2344;border-bottom:3px solid #f68304;padding:6px 3px;font-size:9px;font-weight:750;text-align:center;line-height:1.15;letter-spacing:0.03em;-webkit-print-color-adjust:exact;print-color-adjust:exact;}
 .bl-body td{border:1px solid #1c334d;padding:3px 4px;font-size:10px;vertical-align:top;line-height:1.3;color:#122033;}
+.bl-body tr.sample-band td{border-bottom:3px solid #0b2344;}
 .bl-body tbody tr:nth-child(even) td{background:#f7fafc;}
 .bl-body .col-depth{width:46px;padding:0;position:relative;background:#f4f7fb;}
 .bl-body .col-depth .dpt-from{position:absolute;top:3px;left:0;right:0;text-align:center;font-weight:750;font-size:10px;}
@@ -4469,7 +4470,7 @@ function renderPrintLog(){
             <div class="dpt-tick"></div>
             <div class="dpt-to">${dt.toFixed(1)}</div>
           </td>`;
-        html += `<tr class="row-tall">
+        html += `<tr class="row-tall sample-band">
           ${depthCell}
           <td class="col-water">${wlm}</td>
           <td class="col-sno">${s.sample_no}</td>
