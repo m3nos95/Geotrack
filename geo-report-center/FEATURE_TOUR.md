@@ -86,7 +86,7 @@ Each left button is a different “deck” of information about **that exact spo
 |-----|---------|----------------------|
 | **Reference data** | Drop / load GeoJSON | Bring in FirstMap/DNREC soils, geology, flood, wetlands, anchors, DGS packs |
 | **Reference data** | Boring database | Local `db.json` of DelDOT borings + lab; export / purge out-of-state / feature store |
-| **Jobs** | Import Summary.xls + coordinates | Load a new job’s lab + locations into the DB |
+| **Jobs** | Import a .GEO folder or zip, or Summary.xls + coordinates | Load borings into `db.json` and the map. Large GEO.zip stays on disk (`import-geo-zips.bat`) |
 | **Report** | Generate .docx drafts | DelDOT geo memo or DNREC Soil Investigation draft (yellow = engineer still fills) |
 
 ---

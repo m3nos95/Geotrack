@@ -265,12 +265,17 @@ A PE letter that picks Case 7 on a hole with N = 2 / WH in the 5–25′ zone is
 
 | Box | Meaning | What you do |
 |-----|---------|-------------|
-| Job / project name | Name in the database | Type |
+| .GEO folder or zip | GeoSystem project (`.GEO` folder, or a zip of it) | Drop it, or Choose folder / Choose zip |
+| Preview table | Borings, sample counts, east/north, whether each point lands on the map | Read it before saving. Notes call out a depth or coordinate that had to be corrected |
+| **Add these borings to the database** | Merge into the same `db.json` as a Summary import | Click after the preview looks right. Re-importing the same job replaces those borings |
+| Job / project name | Name in the database | Type, for a Summary.XLS import |
 | State contract # | Contract identifier | Type |
 | Summary.XLS drop | GEOSYSTEM lab export | Drop the file |
 | Coordinates drop | Boring X/Y sheet | Drop .xls / .xlsx / .csv |
-| Boring / X / Y / CRS | Column mapping | Pick columns; CRS = DE State Plane ft or Lat/Lon |
+| Boring / X / Y / CRS | Column mapping | Pick columns; CRS = DE State Plane ft (Lambert) or Lat/Lon |
 | **Import job into database** | Merge into local `db.json` | Click |
+
+A statewide `GEO.zip` (about 4 GB) stays on disk. Run `import-geo-zips.bat` beside the archive. It writes `db.json` next to the zip, and it will not write that file into this git repo or into LabTrak. Open that folder as the GeoTrak project folder.
 
 ---
 
@@ -313,8 +318,10 @@ A PE letter that picks Case 7 on a hole with N = 2 / WH in the 5–25′ zone is
 4. Export the sheet · engineer confirms with M&R  
 
 ### D) Import a new job’s lab data
-1. **Jobs** tab → drop Summary + Coordinates → map columns → Import  
-2. **Map** → click near the borings → **Borings** / **Class** / **Infil**  
+1. **Jobs** tab → drop the `.GEO` folder or a zip of it → read the preview → **Add these borings to the database**
+2. Or drop Summary.XLS plus a coordinates sheet, map the columns, and import
+3. **Map** → click near the borings → **Borings** / **Class** / **Infil**
+4. For a multi-gigabyte `GEO.zip`, run `import-geo-zips.bat` on the computer that holds the archive. Do not drop that zip on the page.
 
 ---
 
@@ -335,7 +342,7 @@ Helpful scripts in this repo folder:
 | `download-all-refs.bat` | Pull public reference GeoJSON packs into `refs/` |
 | `import-infil-pdfs.bat` | Build `infil_anchors.json` from PDFs |
 | `download-dgir-wells.bat` / `download-dgir-geophys.bat` | DGS well inventory / geophys zones |
-| `import-geo-zips.bat` | Build/refresh boring DB from GEO.zip packs |
+| `import-geo-zips.bat` | Build `db.json` from a `.GEO` folder or `GEO.zip` beside the archive (not in git, not in LabTrak) |
 | `build-feature-store.bat` / `build-mukey-priors.bat` | DNA / analog libraries |
 
 ---
