@@ -5,6 +5,11 @@
  * 9999.$P$ (project), 0001.$P$ (one boring), and ########.GS / .LIM lab files.
  * Sample numbers in .$P$ and in the MDT index are the same number. GDMID
  * points at a DESCRIPTION line; it is not the lab-file number.
+ * A boring .$P$ may store each sample behind a one-byte index, with grain
+ * size and Atterberg results on that same index. DEPTH on that index is the
+ * top of the sample. The next depth, often an "End Boring" point, is the bottom.
+ * When the MDT index is missing, a .GS / .LIM file is attached to the sample
+ * whose stored results match that file.
  *
  * Browser builds must not read a statewide pack. import-geo-zips.py streams
  * that archive on disk and writes db.json beside it.
@@ -145,9 +150,70 @@
     return Object.prototype.hasOwnProperty.call(KNOWN_KEYS, String(tok || '').toUpperCase());
   }
 
+  function parseIndexedPDollar(raw) {
+    var KEY_RE = /^[A-Z][A-Z0-9_]{0,40}$/;
+    var result = {};
+    var indexed = {};
+    var i = 0;
+    var n = raw.length;
+    function keyAt(pos) {
+      if (pos >= n || raw.charAt(pos) === NUL) return null;
+      var j = pos;
+      while (j < n && raw.charAt(j) !== NUL) j++;
+      var token = raw.slice(pos, j);
+      if (!KEY_RE.test(token)) return null;
+      if (j + 2 < n && raw.charAt(j) === NUL && raw.charAt(j + 1) === NUL && raw.charAt(j + 2) === NUL) {
+        return { token: token, next: j + 3 };
+      }
+      return null;
+    }
+    while (i < n) {
+      while (i < n && raw.charAt(i) === NUL) i++;
+      if (i >= n) break;
+      var key = keyAt(i);
+      if (!key) { i++; continue; }
+      i = key.next;
+      var map = {};
+      var scalars = [];
+      var sawIndex = false;
+      while (i < n) {
+        while (i < n && raw.charAt(i) === NUL) i++;
+        if (i >= n || keyAt(i)) break;
+        var start = i;
+        while (i < n && raw.charAt(i) !== NUL) i++;
+        var val = raw.slice(start, i);
+        if (i < n && raw.charAt(i) === NUL) i++;
+        if (i < n && raw.charAt(i) !== NUL && (i + 1 >= n || raw.charAt(i + 1) === NUL)) {
+          sawIndex = true;
+          map[raw.charCodeAt(i)] = val;
+          i++;
+          continue;
+        }
+        scalars.push(val);
+        if (!sawIndex) break;
+      }
+      if (sawIndex) {
+        indexed[key.token] = map;
+        var max = 0;
+        Object.keys(map).forEach(function (k) {
+          var kn = parseInt(k, 10);
+          if (kn > max) max = kn;
+        });
+        var arr = [];
+        for (var s = 1; s <= max; s++) arr.push(map[s] != null ? map[s] : '');
+        result[key.token] = arr.join('   ');
+      } else if (scalars.length) {
+        result[key.token] = scalars.join('   ');
+      }
+    }
+    if (Object.keys(indexed).length) result.__indexed = indexed;
+    return result;
+  }
+
   function parseGeoPDollar(text) {
     var raw = String(text || '').replace(/^\uFEFF/, '');
     var tokens;
+    if (raw.indexOf(NUL) >= 0 && /[A-Z][A-Z0-9_]*\x00\x00\x00/.test(raw)) return parseIndexedPDollar(raw);
     if (raw.indexOf(NUL) >= 0) {
       tokens = raw.split(NUL).map(function (t) { return t.trim(); }).filter(Boolean);
     } else {
@@ -305,20 +371,49 @@ function firstChild(el, name) {
     return null;
   }
 
+  function sievePoint(tp) {
+    var sieve = firstChild(tp, 'Sieve') || findAll(tp.children || [], 'Sieve')[0];
+    var opening = firstChild(tp, 'OpeningSize') || findAll(tp.children || [], 'OpeningSize')[0];
+    if (!opening && sieve) opening = firstChild(sieve, 'OpeningSize') || findAll(sieve.children || [], 'OpeningSize')[0];
+    var wt = sieve ? attr(sieve, 'wtretained') : '';
+    var sz = opening ? attr(opening, 'readable_size') : '';
+    if (!sz || wt === '') return null;
+    return { sz: sz, wt: num(wt) };
+  }
+
+  function sieveBlocks(tree) {
+    var tests = findAll(tree, 'SieveTest');
+    var blocks = [];
+    tests.forEach(function (test) {
+      var current = null;
+      (test.children || []).forEach(function (k) {
+        if (!k || k.type !== 'el') return;
+        var nm = String(k.name).toLowerCase();
+        if (nm === 'sample') {
+          current = { el: k, points: [] };
+          findAll(k.children || [], 'TestPoint').forEach(function (tp) { current.points.push(tp); });
+          blocks.push(current);
+        } else if (nm === 'testpoint' && current) {
+          current.points.push(k);
+        }
+      });
+    });
+    if (blocks.length) return blocks;
+    return findAll(tree, 'Sample').map(function (sample) {
+      return { el: sample, points: findAll(sample.children || [], 'TestPoint') };
+    });
+  }
+
   function parseGeoGS(xmlText) {
-    var tree = parseXml(xmlText);
-    var samples = findAll(tree, 'Sample');
-    if (!samples.length) return null;
-    var total = num(childText(samples[0], 'SampleWt'));
-    var wash = samples[1] ? num(childText(samples[1], 'SampleWt')) : null;
+    var blocks = sieveBlocks(parseXml(xmlText));
+    if (!blocks.length) return null;
+    var total = num(childText(blocks[0].el, 'SampleWt'));
+    var wash = blocks[1] ? num(childText(blocks[1].el, 'SampleWt')) : null;
     var sieveMap = {};
-    samples.forEach(function (sample) {
-      findAll(sample.children || [], 'TestPoint').forEach(function (tp) {
-        var sieve = firstChild(tp, 'Sieve') || findAll(tp.children || [], 'Sieve')[0];
-        var opening = firstChild(tp, 'OpeningSize') || findAll(tp.children || [], 'OpeningSize')[0];
-        var wt = sieve ? attr(sieve, 'wtretained') : '';
-        var sz = opening ? attr(opening, 'readable_size') : '';
-        if (sz && wt !== '') sieveMap[sz] = num(wt);
+    blocks.forEach(function (block) {
+      block.points.forEach(function (tp) {
+        var pt = sievePoint(tp);
+        if (pt && pt.wt != null) sieveMap[pt.sz] = pt.wt;
       });
     });
     function gv(v) { return v == null || !isFinite(v) ? '' : v; }
@@ -576,6 +671,218 @@ function firstChild(el, name) {
     return f && f.text != null ? String(f.text) : '';
   }
 
+  function ixMap(pd, keys) {
+    var ix = pd && pd.__indexed;
+    if (!ix) return null;
+    for (var i = 0; i < keys.length; i++) if (ix[keys[i]]) return ix[keys[i]];
+    return null;
+  }
+
+  function ixText(map, slot) {
+    if (!map || map[slot] == null) return '';
+    return String(map[slot]).trim();
+  }
+
+  function ixNum(map, slot) {
+    var t = ixText(map, slot);
+    if (!t) return null;
+    if (/^(NV|NP)$/i.test(t)) return t.toUpperCase();
+    var f = parseFloat(t);
+    return isFinite(f) ? f : t;
+  }
+
+  function nextIndexedDepth(depthMap, slot, top, recoveryIn) {
+    var slotN = parseInt(slot, 10);
+    var later = Object.keys(depthMap || {}).map(function (k) { return parseInt(k, 10); })
+      .filter(function (k) { return k > slotN; })
+      .sort(function (a, b) { return a - b; });
+    if (later.length) {
+      var nxt = num(depthMap[later[0]]);
+      if (nxt != null && top != null && nxt > top) return nxt;
+    }
+    if (top == null) return null;
+    return top + Math.max((recoveryIn || 24) / 12, 0.5);
+  }
+
+  function indexedDesc(descMap, gdMap, slot) {
+    if (!descMap) return '';
+    var lines = Object.keys(descMap).map(function (k) { return parseInt(k, 10); })
+      .sort(function (a, b) { return a - b; })
+      .map(function (k) { return descMap[k]; });
+    var gd = gdMap && gdMap[slot] != null ? parseInt(gdMap[slot], 10) : null;
+    if (gd != null && lines[gd] != null) return lines[gd];
+    return descMap[slot] || '';
+  }
+
+  function holeBottom(pd) {
+    var depthMap = ixMap(pd, ['DEPTH']);
+    var sampMap = ixMap(pd, ['SAMP_NUM', 'SAMPLENUM', 'SAMPLE_NUM', 'SAMPLE_NO']);
+    if (!depthMap) return null;
+    var bottom = null;
+    Object.keys(depthMap).forEach(function (slot) {
+      if (sampMap && sampMap[slot] != null) return;
+      var v = num(depthMap[slot]);
+      if (v != null && (bottom == null || v > bottom)) bottom = v;
+    });
+    return bottom == null ? null : round1(bottom);
+  }
+
+  function fillIndexedByNum(pd, byNum) {
+    var sampMap = ixMap(pd, ['SAMP_NUM', 'SAMPLENUM', 'SAMPLE_NUM', 'SAMPLE_NO']);
+    if (!sampMap) return false;
+    var depthMap = ixMap(pd, ['DEPTH']) || {};
+    var recMap = ixMap(pd, ['SAMP_REC', 'SAMPLE_REC', 'RECOVERY']) || {};
+    var b1 = ixMap(pd, ['BLOWS1']) || {};
+    var b2 = ixMap(pd, ['BLOWS2']) || {};
+    var b3 = ixMap(pd, ['BLOWS3']) || {};
+    var b4 = ixMap(pd, ['BLOWS4']) || {};
+    var gdMap = ixMap(pd, ['GDMID', 'GDM_ID']) || {};
+    var classMap = ixMap(pd, ['AASHTO_CLASS', 'AASHTO']) || {};
+    var typeMap = ixMap(pd, ['SAMP_TYPE', 'SAMPLE_TYPE']) || {};
+    var descMap = ixMap(pd, ['DESCRIPTION']) || {};
+    var p200 = ixMap(pd, ['PER200']) || {};
+    var p10 = ixMap(pd, ['PER10']) || {};
+    var p40 = ixMap(pd, ['PER40']) || {};
+    var p4 = ixMap(pd, ['PER4']) || {};
+    var ll = ixMap(pd, ['LL']) || {};
+    var pi = ixMap(pd, ['PI']) || {};
+    var pl = ixMap(pd, ['PL']) || {};
+    var nm = ixMap(pd, ['NM']) || {};
+    var uscs = ixMap(pd, ['USCS']) || {};
+    Object.keys(sampMap).forEach(function (slot) {
+      var sNum = parseInt(sampMap[slot], 10);
+      if (!isFinite(sNum)) return;
+      var top = num(depthMap[slot]);
+      var recovery = num(recMap[slot]);
+      byNum[sNum] = {
+        idx: parseInt(slot, 10) - 1,
+        blows: [ixText(b1, slot), ixText(b2, slot), ixText(b3, slot), ixText(b4, slot)],
+        aashto: ixText(classMap, slot),
+        desc: indexedDesc(descMap, gdMap, slot),
+        recovery: recovery,
+        depth: nextIndexedDepth(depthMap, slot, top, recovery),
+        depthTop: top,
+        type: ixText(typeMap, slot),
+        stored: {
+          p200: ixNum(p200, slot),
+          p10: ixNum(p10, slot),
+          p40: ixNum(p40, slot),
+          p4: ixNum(p4, slot),
+          ll: ixNum(ll, slot),
+          pi: ixNum(pi, slot),
+          pl: ixNum(pl, slot),
+          nm: ixNum(nm, slot),
+          uscs: ixText(uscs, slot)
+        }
+      };
+    });
+    return true;
+  }
+
+  function labSignature(group) {
+    var sieve = group.GS ? parseGeoGS(textOf(group.GS)) : null;
+    var sv = sieve ? calcSieve(sieve) : null;
+    var at = group.LIM ? parseGeoLIM(textOf(group.LIM)) : null;
+    var nmv = null, llv = null, plv = null;
+    if (at) {
+      nmv = calcMoisture(at.nm_inputs.tare, at.nm_inputs.wet, at.nm_inputs.dry);
+      llv = at.ll_inputs.nv ? 'NV' : calcAtterbergPct(at.ll_inputs.tare, at.ll_inputs.wet, at.ll_inputs.dry);
+      plv = at.pl_inputs.np ? 'NP' : calcAtterbergPct(at.pl_inputs.tare, at.pl_inputs.wet, at.pl_inputs.dry);
+    }
+    var present = {};
+    if (sieve && sieve.sieves && sv) {
+      if (sieve.sieves.no200 !== '' && sieve.sieves.no200 != null) present.p200 = sv.pctPass200;
+      if (sieve.sieves.no10 !== '' && sieve.sieves.no10 != null) present.p10 = sv.pctPass10;
+      if (sieve.sieves.no40 !== '' && sieve.sieves.no40 != null) present.p40 = sv.pctPass40;
+      if (sieve.sieves.no4 !== '' && sieve.sieves.no4 != null) present.p4 = sv.pctPass4;
+    }
+    return { sieve: sieve, at: at, nm: nmv, ll: llv, pl: plv, present: present };
+  }
+
+  function labScore(sample, sig) {
+    var checks = 0, bad = 0, dist = 0;
+    function consider(fileVal, sampleVal) {
+      if (fileVal == null || sampleVal == null || sampleVal === '') return;
+      checks++;
+      if (typeof fileVal === 'number' && typeof sampleVal === 'number') {
+        var d = Math.abs(fileVal - sampleVal);
+        dist += d;
+        if (d > 0.6) bad++;
+      } else if (String(fileVal).toUpperCase() !== String(sampleVal).toUpperCase()) bad++;
+    }
+    if (sig.present.p200 != null) consider(sig.present.p200, sample.p200);
+    if (sig.present.p10 != null) consider(sig.present.p10, sample.p10);
+    if (sig.present.p40 != null) consider(sig.present.p40, sample.p40);
+    if (sig.present.p4 != null) consider(sig.present.p4, sample.p4);
+    if (sig.nm != null) consider(sig.nm, sample.nm);
+    if (sig.ll != null) consider(sig.ll, sample.ll);
+    if (sig.pl != null) consider(sig.pl, sample.pl);
+    if (!checks || bad) return null;
+    return { checks: checks, dist: dist };
+  }
+
+  function reported(stored, calc) {
+    if (stored == null || stored === '') return calc;
+    return typeof stored === 'number' ? round1(stored) : stored;
+  }
+
+  function attachLooseLabs(borings, byName, used) {
+    var groups = {};
+    Object.keys(byName).forEach(function (name) {
+      var m = /^(\d+)\.(GS|LIM)$/i.exec(name);
+      if (!m) return;
+      var stem = m[1];
+      if (used[stem]) return;
+      if (!groups[stem]) groups[stem] = { stem: stem };
+      groups[stem][m[2].toUpperCase()] = byName[name];
+    });
+    var pools = [];
+    borings.forEach(function (b) { (b.s || []).forEach(function (s) { pools.push(s); }); });
+    var unmatched = [];
+    var attached = 0;
+    Object.keys(groups).sort().forEach(function (stem) {
+      var sig = labSignature(groups[stem]);
+      var best = -1, bestScore = null, ties = 0;
+      pools.forEach(function (s, i) {
+        if (s.gs_file || s.lim_file) return;
+        var sc = labScore(s, sig);
+        if (!sc) return;
+        if (!bestScore || sc.checks > bestScore.checks || (sc.checks === bestScore.checks && sc.dist + 0.05 < bestScore.dist)) {
+          best = i; bestScore = sc; ties = 0;
+        } else if (bestScore && sc.checks === bestScore.checks && Math.abs(sc.dist - bestScore.dist) <= 0.05) {
+          ties++;
+        }
+      });
+      var g = groups[stem];
+      if (best < 0 || ties) {
+        if (g.GS) unmatched.push(baseName(g.GS.name || g.GS.path));
+        if (g.LIM) unmatched.push(baseName(g.LIM.name || g.LIM.path));
+        return;
+      }
+      var s = pools[best];
+      if (g.GS) {
+        if (sig.sieve) s.sieve_inputs = sig.sieve;
+        s.gs_file = baseName(g.GS.name || g.GS.path);
+      }
+      if (g.LIM && sig.at) {
+        s.nm_inputs = sig.at.nm_inputs;
+        s.ll_inputs = sig.at.ll_inputs;
+        s.pl_inputs = sig.at.pl_inputs;
+        s.lim_file = baseName(g.LIM.name || g.LIM.path);
+      }
+      if (s.p200 == null && sig.present.p200 != null) s.p200 = round1(sig.present.p200);
+      if (s.p10 == null && sig.present.p10 != null) s.p10 = round1(sig.present.p10);
+      if (s.p40 == null && sig.present.p40 != null) s.p40 = round1(sig.present.p40);
+      if (s.nm == null && sig.nm != null && isFinite(sig.nm)) s.nm = round1(sig.nm);
+      if (s.ll == null && sig.ll != null) s.ll = typeof sig.ll === 'number' ? round1(sig.ll) : sig.ll;
+      if ((s.pl == null || s.pl === '') && sig.pl != null) s.pl = typeof sig.pl === 'number' ? round1(sig.pl) : sig.pl;
+      if ((s.pi == null || s.pi === '') && typeof s.ll === 'number' && typeof s.pl === 'number') s.pi = round1(s.ll - s.pl);
+      if ((s.ll === 'NV' || s.pl === 'NP') && (s.pi == null || s.pi === '')) s.pi = 'NP';
+      attached++;
+    });
+    return { unmatched: unmatched, attached: attached };
+  }
+
   function parseOneProject(key, files, warnings) {
     var byName = fileByBase(files);
     var gsEntries = parseGeoMDT(textOf(byName['GSCOMB.MDT']));
@@ -596,7 +903,10 @@ function firstChild(el, name) {
       var pd = parseGeoPDollar(textOf(f));
       var boring = firstPd(pd, ['BORING']);
       if (/^9999/i.test(name) || (!boring && firstPd(pd, ['PROJECT']))) {
-        Object.keys(pd).forEach(function (k) { if (projFields[k] == null || projFields[k] === '') projFields[k] = pd[k]; });
+        Object.keys(pd).forEach(function (k) {
+          if (k.charAt(0) === '_') return;
+          if (projFields[k] == null || projFields[k] === '') projFields[k] = pd[k];
+        });
       } else if (boring) {
         boringFiles.push({ name: boring, pd: pd });
       }
@@ -608,9 +918,7 @@ function firstChild(el, name) {
     var contract = firstPd(projFields, ['STATE_CONTRACT', 'PROJ_NUM']).split('$')[0].trim();
     var location = firstPd(projFields, ['PROJ_LOC']);
     var projWarnings = [];
-    if (!byName['GSCOMB.MDT'] && !byName['LIMCOMB.MDT']) {
-      projWarnings.push('No GSCOMB.MDT or LIMCOMB.MDT — depths come from the boring file, and sieve files are not attached.');
-    }
+    var usedStems = {};
 
     var boringNames = boringFiles.map(function (b) { return b.name; });
     if (!boringNames.length) {
@@ -641,21 +949,23 @@ function firstChild(el, name) {
       var types = pdArray(pd, ['SAMP_TYPE', 'SAMPLE_TYPE']);
       var descs = splitPArray(pd.DESCRIPTION || '');
       var byNum = {};
-      sampNums.forEach(function (n, idx) {
-        var sNum = parseInt(n, 10);
-        if (!isFinite(sNum)) return;
-        var gd = gdmids[idx] != null ? parseInt(gdmids[idx], 10) : null;
-        var desc = (gd != null && descs[gd] != null) ? descs[gd] : (descs[idx] || '');
-        byNum[sNum] = {
-          idx: idx,
-          blows: [b1[idx] || '', b2[idx] || '', b3[idx] || '', b4[idx] || ''],
-          aashto: classes[idx] || '',
-          desc: desc,
-          recovery: num(recs[idx]),
-          depth: num(depths[idx]),
-          type: types[idx] || ''
-        };
-      });
+      if (!fillIndexedByNum(pd, byNum)) {
+        sampNums.forEach(function (n, idx) {
+          var sNum = parseInt(n, 10);
+          if (!isFinite(sNum)) return;
+          var gd = gdmids[idx] != null ? parseInt(gdmids[idx], 10) : null;
+          var desc = (gd != null && descs[gd] != null) ? descs[gd] : (descs[idx] || '');
+          byNum[sNum] = {
+            idx: idx,
+            blows: [b1[idx] || '', b2[idx] || '', b3[idx] || '', b4[idx] || ''],
+            aashto: classes[idx] || '',
+            desc: desc,
+            recovery: num(recs[idx]),
+            depth: num(depths[idx]),
+            type: types[idx] || ''
+          };
+        });
+      }
 
       var numbers = Object.keys(byNum).map(function (n) { return parseInt(n, 10); });
       Object.keys(index).forEach(function (k) {
@@ -677,7 +987,7 @@ function firstChild(el, name) {
       });
 
       var samples = [];
-      var eob = null;
+      var eob = holeBottom(pd);
       var prev = 0;
       var wdepth = num(pd.WDEPTH1);
       numbers.forEach(function (sNum) {
@@ -698,19 +1008,24 @@ function firstChild(el, name) {
           depthTo = prev + bump;
           bWarnings.push('Sample ' + sNum + ' depth ' + (was == null ? 'missing' : was) + ' did not move down the hole; stored bottom ' + round1(depthTo) + ' ft.');
         }
-        var depthFrom = prev;
+        var depthFrom = sd.depthTop != null ? sd.depthTop : prev;
         prev = depthTo;
         var lab = emptyLab();
         var fileIdx = hit ? hit.fileIdx : null;
+        var gsName = '';
+        var limName = '';
         if (fileIdx != null) {
           var stem = String(fileIdx).padStart(8, '0');
+          usedStems[stem] = 1;
           var gs = byName[stem + '.GS'];
           var lim = byName[stem + '.LIM'];
           if (gs) {
+            gsName = baseName(gs.name || gs.path);
             var sieve = parseGeoGS(textOf(gs));
             if (sieve) lab.sieve_inputs = sieve;
           }
           if (lim) {
+            limName = baseName(lim.name || lim.path);
             var at = parseGeoLIM(textOf(lim));
             lab.nm_inputs = at.nm_inputs;
             lab.ll_inputs = at.ll_inputs;
@@ -734,6 +1049,27 @@ function firstChild(el, name) {
           fines: sv.fines, gravel: sv.gravel, coarseSand: sv.coarseSand, fineSand: sv.fineSand,
           ll: ll === 'NV' ? null : llN, pi: pi === 'NP' ? null : piN
         }) : null;
+        var st = sd.stored || null;
+        var p10v = sv.hasData ? round1(sv.pctPass10) : null;
+        var p200v = sv.hasData ? round1(sv.pctPass200) : null;
+        var nmv = round1(nm);
+        var llv = ll == null ? null : (typeof ll === 'number' ? round1(ll) : ll);
+        var piv = pi == null ? null : (typeof pi === 'number' ? round1(pi) : pi);
+        var plv = pl == null ? null : (typeof pl === 'number' ? round1(pl) : pl);
+        var p40v = null;
+        var p4v = null;
+        if (st) {
+          p10v = reported(st.p10, p10v);
+          p200v = reported(st.p200, p200v);
+          p40v = reported(st.p40, p40v);
+          p4v = reported(st.p4, p4v);
+          nmv = reported(st.nm, nmv);
+          llv = reported(st.ll, llv);
+          piv = reported(st.pi, piv);
+          plv = reported(st.pl, plv);
+          if (st.uscs) uscs = st.uscs;
+          if (st.aashto) aashtoFull = st.aashto;
+        }
         var blows = [blowStored(sd.blows ? sd.blows[0] : ''), blowStored(sd.blows ? sd.blows[1] : ''), blowStored(sd.blows ? sd.blows[2] : ''), blowStored(sd.blows ? sd.blows[3] : '')];
         var desc = cleanDesc(descRaw);
         samples.push({
@@ -741,14 +1077,19 @@ function firstChild(el, name) {
           kind: sampleKind(sd.type || sNum, desc),
           d: round1(depthTo),
           desc: desc,
-          ll: ll == null ? null : (typeof ll === 'number' ? round1(ll) : ll),
-          pi: pi == null ? null : (typeof pi === 'number' ? round1(pi) : pi),
-          nm: round1(nm),
+          ll: llv,
+          pi: piv,
+          pl: plv,
+          nm: nmv,
           uscs: uscs,
           aashto: aashtoFull,
           aashto_file: aashtoFile,
-          p10: sv.hasData ? round1(sv.pctPass10) : null,
-          p200: sv.hasData ? round1(sv.pctPass200) : null,
+          p10: p10v,
+          p40: p40v,
+          p4: p4v,
+          p200: p200v,
+          gs_file: gsName || null,
+          lim_file: limName || null,
           blows: blows,
           n: nValue(blows),
           depth_from: round1(depthFrom),
@@ -800,6 +1141,15 @@ function firstChild(el, name) {
         s: samples
       };
     });
+
+    if (!byName['GSCOMB.MDT'] && !byName['LIMCOMB.MDT']) {
+      var loose = attachLooseLabs(borings, byName, usedStems);
+      if (loose.unmatched.length && !loose.attached) {
+        projWarnings.push('No GSCOMB.MDT or LIMCOMB.MDT — depths come from the boring file, and sieve files are not attached.');
+      } else if (loose.unmatched.length) {
+        projWarnings.push('No GSCOMB.MDT or LIMCOMB.MDT — these lab files did not match a sample: ' + loose.unmatched.join(', ') + '.');
+      }
+    }
 
     return {
       name: name,
