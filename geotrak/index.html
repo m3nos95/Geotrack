@@ -22052,7 +22052,7 @@ table.list td{padding:5px 8px;border-bottom:1px solid rgba(46,58,72,.5);font-fam
     <div class="hint" style="margin:0 0 8px">Toggle DelDOT borings, field anchors, DGS wells, and bridges. <b>Traffic counts / AADT</b> are under <b>Layers → DelDOT FirstMap</b> (road segments on the map — not this Markers list). Drag the map <b>Key</b> header to move it (double-click resets).</div>
     <label class="layerRow" style="margin:0"><input type="checkbox" id="showBoringMarkers" checked>
       <span class="nm">Show DelDOT soil boring markers</span></label>
-    <div class="hint" style="margin:4px 0 8px 2px">Quartered survey symbols from your project <code>db.json</code> (plus pavement cores). Turn off to declutter the map — Site Intel still uses the boring database.</div>
+    <div class="hint" style="margin:4px 0 8px 2px">Quartered survey symbols from your project <code>db.json</code> (plus pavement cores). A LabTrak bore log appears here after View Log, at the GPS or state-plane location already on that log. Statewide reference data stays in this project folder.</div>
     <label class="layerRow" style="margin:0"><input type="checkbox" id="showDgirMarkers">
       <span class="nm">Show DGS DGIR well markers</span></label>
     <div class="hint" style="margin:4px 0 8px 2px">Off by default — avoids thousands of teal dots. <code>dgir_wells.json</code> and geophys zones still load for Site Intel when you click the map.</div>
@@ -23324,10 +23324,18 @@ async function loadProject(){
     toastErr('Project load failed: '+e.message);
   }finally{
     projectLoading=false;
+    if(typeof refreshLabBorings==='function') refreshLabBorings();
   }
 }
+function dbWithoutLabBorings(){
+  return {
+    borings:(db.borings||[]).filter(r=>!r.labtrak),
+    cores:db.cores||[],
+    jobs:db.jobs||{}
+  };
+}
 async function saveDb(){
-  if(dirHandle){ await writeFile('db.json', JSON.stringify(db)); } // compact by default
+  if(dirHandle){ await writeFile('db.json', JSON.stringify(dbWithoutLabBorings())); } // compact by default
   renderAll();
 }
 
@@ -30955,6 +30963,11 @@ function boringDrawLatLon(r){
 function boringMapTooltip(r){
   const info=colocInfo(r);
   let t=`${r.b} · ${r.job}`;
+  if(r&&r.labtrak){
+    t+=' · LabTrak log';
+    if(r.completed) t+=' '+r.completed;
+    if(r.loc) t+=' · '+r.loc;
+  }
   if(info&&info.infilCompanion){
     t+=info.colocWith?` · infil hole (same GPS as ${info.colocWith})`:' · infil hole';
   } else if(info&&info.clusterSize>1){
@@ -41177,7 +41190,7 @@ $('buildFeatureStore')&&($('buildFeatureStore').onclick=async ()=>{
 
 $('exportDb').onclick=()=>{
   const a=document.createElement('a');
-  a.href=URL.createObjectURL(new Blob([JSON.stringify(db)],{type:'application/json'}));
+  a.href=URL.createObjectURL(new Blob([JSON.stringify(dbWithoutLabBorings())],{type:'application/json'}));
   a.download='db.json';a.click();
 };
 
@@ -43380,6 +43393,7 @@ function gtSetAuthUi(session){
     if(gate) gate.classList.add('hidden');
     if(userEl) userEl.textContent=email||'signed in';
     if(outBtn) outBtn.style.display='';
+    if(typeof refreshLabBorings==='function') refreshLabBorings();
   } else {
     if(gate) gate.classList.remove('hidden');
     if(userEl) userEl.textContent='signed out';
@@ -43575,6 +43589,89 @@ function wireGeotrakAuth(){
     });
   });
 }
+const GT_LAB_BORINGS_KEY='geotrak_lab_borings';
+let _labBoringRows=[];
+function readLocalLabBorings(){
+  try{
+    const raw=JSON.parse(localStorage.getItem(GT_LAB_BORINGS_KEY)||'{}');
+    if(!raw||typeof raw!=='object'||Array.isArray(raw)) return [];
+    return Object.values(raw);
+  }catch(_){ return []; }
+}
+function labRowToBoring(row){
+  if(!row) return null;
+  const payload=row.payload&&typeof row.payload==='object'?row.payload:(row.s?{s:row.s, job:row.job}: {});
+  const lat=Number(row.lat);
+  const lon=Number(row.lon);
+  if(!Number.isFinite(lat)||!Number.isFinite(lon)) return null;
+  const eob=row.eob!=null?Number(row.eob):null;
+  return {
+    id: row.id,
+    b: row.b||row.boring_no||'',
+    job: row.job||payload.job||row.contract||row.project_name||row.project||'LabTrak',
+    loc: row.loc||row.location||'',
+    lat, lon,
+    elev: row.elev||row.surface_elev||'',
+    completed: row.completed||row.date_completed||'',
+    eob: Number.isFinite(eob)?eob:null,
+    labtrak: true,
+    s: Array.isArray(payload.s)?payload.s:(Array.isArray(row.s)?row.s:[]),
+    updated_at: row.updated_at||''
+  };
+}
+function applyLabBorings(rows){
+  _labBoringRows=rows||[];
+  if(!db||!Array.isArray(db.borings)) db={borings:[],cores:[],jobs:{}};
+  db.borings=db.borings.filter(r=>!r.labtrak);
+  _labBoringRows.forEach(row=>{
+    const r=labRowToBoring(row);
+    if(r) db.borings.push(r);
+  });
+  if(typeof drawBorings==='function') drawBorings();
+  if(typeof updateHdrToolBadges==='function') updateHdrToolBadges();
+}
+async function refreshLabBorings(){
+  const byId={};
+  readLocalLabBorings().forEach(row=>{ if(row&&row.id) byId[row.id]=row; });
+  try{
+    if(!gtSb && typeof gtCreateClient==='function'){
+      try{ gtCreateClient(); }catch(_){}
+    }
+    if(gtSb){
+      const res=await gtSb.from('geotrak_lab_borings').select('id,boring_no,project_name,contract,location,lat,lon,surface_elev,date_completed,eob,payload,updated_at');
+      if(res&&!res.error&&Array.isArray(res.data)){
+        res.data.forEach(row=>{
+          const prev=byId[row.id];
+          const prevAt=prev?Date.parse(prev.updated_at)||0:0;
+          const nextAt=Date.parse(row.updated_at)||0;
+          if(!prev||nextAt>=prevAt){
+            byId[row.id]={
+              id: row.id,
+              b: row.boring_no||'',
+              job: (row.payload&&row.payload.job)||row.contract||row.project_name||'LabTrak',
+              project: row.project_name||'',
+              contract: row.contract||'',
+              loc: row.location||'',
+              lat: row.lat,
+              lon: row.lon,
+              elev: row.surface_elev||'',
+              completed: row.date_completed||'',
+              eob: row.eob,
+              s: row.payload&&Array.isArray(row.payload.s)?row.payload.s:[],
+              labtrak: true,
+              updated_at: row.updated_at||''
+            };
+          }
+        });
+        try{ localStorage.setItem(GT_LAB_BORINGS_KEY, JSON.stringify(byId)); }catch(_){}
+      }
+    }
+  }catch(_){}
+  applyLabBorings(Object.values(byId));
+}
+document.addEventListener('visibilitychange', ()=>{
+  if(document.visibilityState==='visible') refreshLabBorings();
+});
 wireGeotrakAuth();
 
 </script>
