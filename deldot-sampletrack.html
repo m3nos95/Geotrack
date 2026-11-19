@@ -1817,6 +1817,104 @@ nav:not(#r18-nav), .nav-top-row { display: none !important; }
   #mixApprovalSheet .dd-rpt-sigs { grid-template-columns: 1fr !important; }
   .mix-approval-stamp { flex-direction: column; align-items: flex-start; }
 }
+.mix-deldot-head {
+  position: relative;
+  display: flex;
+  align-items: center;
+  background: #041428;
+  padding: 12px 16px 16px;
+}
+.mix-deldot-head::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 4px;
+  background: #f77706;
+}
+.mix-deldot-lockup {
+  display: block;
+  height: 40px;
+  width: auto;
+  max-width: 220px;
+  background: none;
+  border: 0;
+  box-shadow: none;
+  border-radius: 0;
+}
+.mix-producer {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 12px 16px;
+  background: #fff;
+  border-bottom: 1px solid #999;
+}
+.mix-producer-logo {
+  display: block;
+  height: auto;
+  width: auto;
+  max-height: 56px;
+  max-width: 180px;
+  object-fit: contain;
+  background: transparent;
+  border: 0;
+  box-shadow: none;
+  border-radius: 0;
+}
+.mix-producer-name {
+  font-size: 11pt;
+  font-weight: 700;
+  color: #111;
+  line-height: 1.25;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.mix-rpt-title {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 12px;
+  padding: 8px 14px;
+  border-bottom: 1px solid #999;
+  background: #fff;
+  color: #111;
+}
+.mix-rpt-title .big { font-size: 13pt; font-weight: 700; letter-spacing: 1px; }
+.mix-rpt-title .id { font-size: 8pt; text-align: right; line-height: 1.35; }
+.mix-company-read {
+  background: #121b2c;
+  border: 1px solid #2a3a52;
+  border-radius: 16px;
+  padding: 14px 16px;
+  margin: 8px 0 16px;
+}
+.mix-company-read .mix-producer-logo { background: #fff; }
+.mix-company-read .mix-detail-row strong { white-space: pre-wrap; }
+#csub-company .form-grid { grid-template-columns: 1fr 1fr; }
+#csub-company .form-group.span2 { grid-column: 1 / -1; }
+#csub-company textarea,
+#csub-company input,
+#csub-company .btn { width: 100%; box-sizing: border-box; }
+#csub-company textarea { min-height: 72px; resize: vertical; }
+#csub-company .btn-row { flex-direction: column; }
+#csub-company .btn-row .btn { min-height: 48px; border-radius: 12px; justify-content: center; }
+.supplier-logo-preview {
+  background: #fff;
+  border-radius: 12px;
+  padding: 12px;
+  min-height: 72px;
+  margin-bottom: 8px;
+  display: flex;
+  align-items: center;
+}
+.supplier-logo-preview .mix-producer-logo { max-height: 64px; }
+.supplier-logo-empty { color: #5c6b7e; font: 500 13px var(--sans); }
+@media (max-width: 420px) {
+  #csub-company .form-grid { grid-template-columns: 1fr; }
+  .mix-producer { align-items: flex-start; }
+}
 .lab-mode-tab:hover:not(.active) { background:var(--border); color:var(--text); }
 .fc-core-icon { display:inline-flex; align-items:center; justify-content:center; vertical-align:-0.12em; line-height:0; flex-shrink:0; }
 .fc-core-icon img { display:block; object-fit:contain; border-radius:5px; }
@@ -4646,6 +4744,139 @@ BEGIN
   ON CONFLICT (id) DO NOTHING;
 END $$;
 </pre>
+      <p style="font-family:var(--mono);font-size:10px;color:var(--muted);margin:12px 0 0;line-height:1.6;">
+        One-time: copy the company profile SQL and run it in the Supabase SQL editor. That creates the shared plant profile. A supplier writes only their own plant. DelDOT staff who can read mixes can read it.
+      </p>
+      <button type="button" class="btn-um-add" id="siCopyProfileBtn" onclick="copySupplierProfileSql()" style="margin-top:8px;background:transparent;border:1px solid var(--border);color:var(--muted);">Copy company profile SQL</button>
+      <div id="siProfileMsg" class="si-action-msg" role="status" aria-live="polite"></div>
+      <pre id="siProfileSql" style="display:none;">-- One company profile per concrete supplier plant.
+-- LabTrak has no plant id that groups two supplier logins. Each invite
+-- gets its own app_user_id (sup_…), and mix designs are owned by that id.
+-- The invite screen says one login per plant, so this row uses that same
+-- id as plant_key. Every sign-in that already shares the plant's app user
+-- id shares this profile. A supplier can write only that row. DelDOT roles
+-- that can already read mix_designs can read every profile.
+-- Safe to run once. Running it again keeps existing rows.
+
+CREATE OR REPLACE FUNCTION public.st_current_role()
+RETURNS TEXT
+LANGUAGE SQL STABLE SECURITY DEFINER SET search_path = public
+AS $$
+  SELECT role FROM public.st_user_profiles
+  WHERE auth_user_id = auth.uid() AND active = TRUE
+  LIMIT 1
+$$;
+
+CREATE OR REPLACE FUNCTION public.st_app_user_id()
+RETURNS TEXT
+LANGUAGE SQL STABLE SECURITY DEFINER SET search_path = public
+AS $$
+  SELECT app_user_id FROM public.st_user_profiles
+  WHERE auth_user_id = auth.uid() AND active = TRUE
+  LIMIT 1
+$$;
+
+CREATE TABLE IF NOT EXISTS public.supplier_profiles (
+  plant_key        TEXT PRIMARY KEY,
+  company_name     TEXT NOT NULL,
+  address          TEXT NOT NULL,
+  phone            TEXT NOT NULL,
+  email            TEXT NOT NULL,
+  contact_name     TEXT NOT NULL,
+  logo_data        TEXT NOT NULL,
+  years_in_service INTEGER,
+  note             TEXT NOT NULL DEFAULT '',
+  updated_by       TEXT NOT NULL DEFAULT '',
+  created_at       TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at       TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  CONSTRAINT supplier_profiles_plant_key_check CHECK (
+    plant_key = btrim(plant_key)
+    AND length(plant_key) BETWEEN 1 AND 80
+  ),
+  CONSTRAINT supplier_profiles_company_check CHECK (
+    length(btrim(company_name)) BETWEEN 1 AND 120
+  ),
+  CONSTRAINT supplier_profiles_address_check CHECK (
+    length(btrim(address)) BETWEEN 1 AND 300
+  ),
+  CONSTRAINT supplier_profiles_phone_check CHECK (
+    length(regexp_replace(phone, '[^0-9]', '', 'g')) BETWEEN 7 AND 20
+    AND length(phone) <= 40
+  ),
+  CONSTRAINT supplier_profiles_email_check CHECK (
+    email = btrim(email)
+    AND length(email) <= 200
+    AND email ~* '^[^[:space:]@]+@[^[:space:]@]+\.[^[:space:]@]+$'
+  ),
+  CONSTRAINT supplier_profiles_contact_check CHECK (
+    length(btrim(contact_name)) BETWEEN 1 AND 80
+  ),
+  CONSTRAINT supplier_profiles_logo_check CHECK (
+    logo_data ~ '^data:image/(png|jpeg);base64,[A-Za-z0-9+/=]+$'
+    AND length(logo_data) BETWEEN 32 AND 700000
+  ),
+  CONSTRAINT supplier_profiles_years_check CHECK (
+    years_in_service IS NULL
+    OR (years_in_service >= 0 AND years_in_service <= 200)
+  ),
+  CONSTRAINT supplier_profiles_note_check CHECK (length(note) <= 500)
+);
+
+ALTER TABLE public.supplier_profiles ENABLE ROW LEVEL SECURITY;
+
+REVOKE ALL ON public.supplier_profiles FROM anon;
+GRANT SELECT, INSERT, UPDATE ON public.supplier_profiles TO authenticated;
+GRANT EXECUTE ON FUNCTION public.st_current_role() TO authenticated;
+GRANT EXECUTE ON FUNCTION public.st_app_user_id() TO authenticated;
+
+DROP POLICY IF EXISTS "supplier_profiles_supplier_read" ON public.supplier_profiles;
+CREATE POLICY "supplier_profiles_supplier_read" ON public.supplier_profiles
+  FOR SELECT TO authenticated
+  USING (
+    public.st_current_role() = 'supplier'
+    AND plant_key = public.st_app_user_id()
+  );
+
+DROP POLICY IF EXISTS "supplier_profiles_supplier_insert" ON public.supplier_profiles;
+CREATE POLICY "supplier_profiles_supplier_insert" ON public.supplier_profiles
+  FOR INSERT TO authenticated
+  WITH CHECK (
+    public.st_current_role() = 'supplier'
+    AND plant_key = public.st_app_user_id()
+  );
+
+DROP POLICY IF EXISTS "supplier_profiles_supplier_update" ON public.supplier_profiles;
+CREATE POLICY "supplier_profiles_supplier_update" ON public.supplier_profiles
+  FOR UPDATE TO authenticated
+  USING (
+    public.st_current_role() = 'supplier'
+    AND plant_key = public.st_app_user_id()
+  )
+  WITH CHECK (
+    public.st_current_role() = 'supplier'
+    AND plant_key = public.st_app_user_id()
+  );
+
+-- mix_designs_staff_all lets admin, section_admin, and concrete read every mix.
+-- mix_designs_approved_read lets every other signed-in role except supplier
+-- read approved mixes. Those same roles can read every company profile.
+DROP POLICY IF EXISTS "supplier_profiles_mix_reader" ON public.supplier_profiles;
+CREATE POLICY "supplier_profiles_mix_reader" ON public.supplier_profiles
+  FOR SELECT TO authenticated
+  USING (
+    public.st_current_role() IS NOT NULL
+    AND public.st_current_role() != 'supplier'
+  );
+
+DO $$
+BEGIN
+  IF to_regprocedure('public.set_updated_at()') IS NOT NULL THEN
+    EXECUTE 'DROP TRIGGER IF EXISTS trg_supplier_profiles_updated_at ON public.supplier_profiles';
+    EXECUTE 'CREATE TRIGGER trg_supplier_profiles_updated_at BEFORE UPDATE ON public.supplier_profiles FOR EACH ROW EXECUTE FUNCTION public.set_updated_at()';
+  END IF;
+END $$;
+
+NOTIFY pgrst, 'reload schema';</pre>
       </div>
     </div>
 
@@ -7306,6 +7537,7 @@ END $$;
         <button class="lab-mode-tab active" id="ctab-intake"   onclick="switchConcreteTab('intake')">Intake</button>
         <button class="lab-mode-tab"        id="ctab-mixes"    onclick="switchConcreteTab('mixes')">Mixes</button>
         <button class="lab-mode-tab"        id="ctab-approved" onclick="switchConcreteTab('approved')" style="display:none;">Approved</button>
+        <button class="lab-mode-tab"        id="ctab-company" onclick="switchConcreteTab('company')" style="display:none;">Company</button>
         <button class="lab-mode-tab"        id="ctab-log"      onclick="switchConcreteTab('log')">Log</button>
         <button class="lab-mode-tab"        id="ctab-schedule" onclick="switchConcreteTab('schedule')">Schedule</button>
         <button class="lab-mode-tab"        id="ctab-break"    onclick="switchConcreteTab('break')">Break</button>
@@ -7592,6 +7824,38 @@ END $$;
       </div>
       <input type="search" id="approved-mix-search" class="mix-phone-search" placeholder="Search supplier, product, class, plant…" oninput="renderApprovedMixes()">
       <div id="approvedMixList" style="margin-top:12px;"></div>
+    </div>
+
+    <!-- ── COMPANY PROFILE (one per supplier plant) ── -->
+    <div id="csub-company" class="mix-phone" style="display:none;">
+      <div class="mix-phone-head">
+        <div>
+          <div class="mix-phone-title">Company</div>
+          <div class="mix-phone-count">One profile for this plant. The logo prints on approved mix sheets.</div>
+        </div>
+      </div>
+      <p class="mix-phone-count" style="margin:0 2px 14px;">Company name, address, phone, email, primary contact, and a logo are required. Years in service and a note are optional.</p>
+      <div id="supplierProfileSyncNote" class="mix-phone-count" style="margin:0 2px 12px;"></div>
+      <form id="supplierProfileForm" onsubmit="return saveSupplierProfile(event)">
+        <div class="form-grid" style="margin-bottom:12px;">
+          <div class="form-group span2"><label for="sp_company">Company name</label><input type="text" id="sp_company" maxlength="120" autocomplete="organization"></div>
+          <div class="form-group span2"><label for="sp_address">Address</label><textarea id="sp_address" rows="3" maxlength="300"></textarea></div>
+          <div class="form-group"><label for="sp_phone">Phone</label><input type="tel" id="sp_phone" maxlength="40" autocomplete="tel"></div>
+          <div class="form-group"><label for="sp_email">Best email</label><input type="email" id="sp_email" maxlength="200" autocomplete="email"></div>
+          <div class="form-group"><label for="sp_contact">Primary contact</label><input type="text" id="sp_contact" maxlength="80" autocomplete="name"></div>
+          <div class="form-group"><label for="sp_years">Years in service</label><input type="number" id="sp_years" min="0" max="200" step="1" placeholder="Optional"></div>
+          <div class="form-group span2"><label for="sp_note">Note for DelDOT</label><textarea id="sp_note" rows="3" maxlength="500" placeholder="Optional"></textarea></div>
+        </div>
+        <div class="form-group">
+          <label for="sp_logo">Logo</label>
+          <div class="supplier-logo-preview" id="sp_logo_preview"><span class="supplier-logo-empty">No logo yet</span></div>
+          <input type="file" id="sp_logo" accept="image/png,image/jpeg,image/webp,image/gif,image/svg+xml" onchange="onSupplierLogoPicked(this)">
+        </div>
+        <div id="supplierProfileMsg" class="si-action-msg" role="status" aria-live="polite"></div>
+        <div class="btn-row" style="margin-top:14px;">
+          <button class="btn btn-success" type="submit" id="sp_save">Save company profile</button>
+        </div>
+      </form>
     </div>
 
     <!-- ── CYLINDER LOG ── -->
@@ -14996,6 +15260,29 @@ function copyMixDesignSql() {
   else failed();
 }
 
+function copySupplierProfileSql() {
+  const sql = (document.getElementById('siProfileSql')?.textContent || '').trim();
+  if (!sql || sql.indexOf('CREATE TABLE IF NOT EXISTS public.supplier_profiles') < 0) {
+    markSupplierSetupCopy('siCopyProfileBtn', 'Copy company profile SQL', 'siProfileMsg', false, 'The company profile SQL is missing from this page.');
+    return;
+  }
+  const copied = () => markSupplierSetupCopy('siCopyProfileBtn', 'Copy company profile SQL', 'siProfileMsg', true, 'Copied. Paste it into the Supabase SQL editor and click Run. Once is enough.');
+  const failed = () => {
+    const pre = document.getElementById('siProfileSql');
+    if (pre) pre.style.display = 'block';
+    markSupplierSetupCopy('siCopyProfileBtn', 'Copy company profile SQL', 'siProfileMsg', false, 'Could not copy automatically. The SQL is shown below. Select it and copy it.');
+  };
+  if (navigator.clipboard?.writeText) {
+    navigator.clipboard.writeText(sql).then(copied).catch(() => {
+      if (copyTextFallback(sql)) copied();
+      else failed();
+    });
+    return;
+  }
+  if (copyTextFallback(sql)) copied();
+  else failed();
+}
+
 async function inviteProjectManager() {
   const btn = document.getElementById('pmInviteBtn');
   const fail = (text) => {
@@ -17182,6 +17469,7 @@ async function connectSupabase(silent = false) {
     ensureApprovalRoutes().catch(() => {});
     if (typeof loadRequestTags === 'function') loadRequestTags().catch(() => {});
     if (typeof loadMixDesigns === 'function') loadMixDesigns().catch(() => {});
+    if (typeof loadSupplierProfiles === 'function') loadSupplierProfiles().catch(() => {});
     refreshAuthProvisionUI();
     offlineQueuePruneDeadOps();
     await flushSampleHistoryQueue();
@@ -17520,7 +17808,7 @@ function switchView(name, opts) {
   if (name === 'concrete') {
     refreshConcreteSetsIfConnected();
     switchConcreteTab(currentUser?.role === 'supplier'
-      ? (activeConcSubTab === 'approved' ? 'approved' : 'mixes')
+      ? ((activeConcSubTab === 'approved' || activeConcSubTab === 'company') ? activeConcSubTab : 'mixes')
       : (activeConcSubTab || 'intake'));
     if (currentProjectFilter) {
       const el = document.getElementById('ci_contract');
@@ -26237,6 +26525,7 @@ function loginUser(user, silent = false) {
   ensureApprovalRoutes().then(() => refreshApprovalBadge()).catch(() => {});
   if (typeof loadRequestTags === 'function') loadRequestTags().catch(() => {});
   if (typeof loadMixDesigns === 'function') loadMixDesigns().catch(() => {});
+  if (typeof loadSupplierProfiles === 'function') loadSupplierProfiles().catch(() => {});
   if (typeof pullGeoTrakAccess === 'function') pullGeoTrakAccess();
   setTimeout(refreshApprovalBadge, 800);
   setTimeout(refreshApprovalBadge, 2500);
@@ -35133,6 +35422,393 @@ function selectFractureType(type) {
 }
 
 // ══════════════════════════════════════════════════════════════
+// SUPPLIER COMPANY PROFILE
+// One row per plant. The plant key is the supplier app user id,
+// the same id mix designs store as owner_id. LabTrak has no
+// separate plant id that ties two logins together.
+// ══════════════════════════════════════════════════════════════
+const SUPPLIER_PROFILE_KEY = 'labtrak_supplier_profiles';
+let _supplierLogoDraft = '';
+
+function supplierPlantKey() {
+  return String(currentUser?.id || '').trim();
+}
+
+function supplierLogoSrc(value) {
+  const src = String(value || '');
+  if (/^data:image\/(png|jpeg);base64,[A-Za-z0-9+/=]+$/.test(src) && src.length <= 700000) return src;
+  return '';
+}
+
+function readSupplierProfileMap() {
+  try {
+    const raw = JSON.parse(localStorage.getItem(SUPPLIER_PROFILE_KEY) || '{}');
+    return raw && typeof raw === 'object' && !Array.isArray(raw) ? raw : {};
+  } catch (e) {
+    return {};
+  }
+}
+
+function writeSupplierProfileMap(map) {
+  try { localStorage.setItem(SUPPLIER_PROFILE_KEY, JSON.stringify(map || {})); } catch (e) {}
+}
+
+function supplierProfileFromRow(row) {
+  if (!row || !row.plant_key) return null;
+  const years = row.years_in_service;
+  const profile = {
+    plantKey: String(row.plant_key).trim(),
+    companyName: String(row.company_name || '').trim(),
+    address: String(row.address || '').trim(),
+    phone: String(row.phone || '').trim(),
+    email: String(row.email || '').trim(),
+    contactName: String(row.contact_name || '').trim(),
+    logoData: supplierLogoSrc(row.logo_data),
+    yearsInService: years == null || years === '' ? null : Number(years),
+    note: String(row.note || '').trim(),
+    updatedBy: String(row.updated_by || ''),
+    updatedAt: row.updated_at || ''
+  };
+  if (!profile.plantKey || !profile.logoData) return null;
+  return profile;
+}
+
+function supplierProfileToRow(profile) {
+  return {
+    plant_key: profile.plantKey,
+    company_name: profile.companyName,
+    address: profile.address,
+    phone: profile.phone,
+    email: profile.email,
+    contact_name: profile.contactName,
+    logo_data: profile.logoData,
+    years_in_service: profile.yearsInService,
+    note: profile.note || '',
+    updated_by: profile.updatedBy || '',
+    updated_at: profile.updatedAt || new Date().toISOString()
+  };
+}
+
+function supplierProfileCanRead() {
+  return mixDesignCanReview() || currentUser?.role === 'supplier';
+}
+
+function supplierProfileVisible(profile) {
+  if (!profile || !profile.plantKey) return false;
+  if (currentUser?.role === 'supplier') return profile.plantKey === supplierPlantKey();
+  return mixDesignCanReview();
+}
+
+function supplierProfiles() {
+  return Object.values(readSupplierProfileMap()).map(supplierProfileFromRow).filter(supplierProfileVisible);
+}
+
+function supplierProfileByKey(plantKey) {
+  const key = String(plantKey || '').trim();
+  if (!key) return null;
+  const profile = supplierProfileFromRow(readSupplierProfileMap()[key]);
+  return supplierProfileVisible(profile) ? profile : null;
+}
+
+function supplierProfileForDesign(design) {
+  return supplierProfileByKey(design && design.ownerId);
+}
+
+function rememberSupplierProfile(profile) {
+  const map = readSupplierProfileMap();
+  map[profile.plantKey] = supplierProfileToRow(profile);
+  writeSupplierProfileMap(map);
+}
+
+function supplierProfileReadBlock(profile) {
+  if (!mixDesignCanReview()) return '';
+  if (!profile) {
+    return '<div class="mix-company-read"><div class="mix-phone-count">This plant has not filled in a company profile.</div></div>';
+  }
+  const logo = supplierLogoSrc(profile.logoData);
+  const rows = [
+    ['Company', profile.companyName],
+    ['Address', profile.address],
+    ['Phone', profile.phone],
+    ['Email', profile.email],
+    ['Primary contact', profile.contactName]
+  ];
+  if (profile.yearsInService != null && Number.isFinite(profile.yearsInService)) {
+    rows.push(['Years in service', String(profile.yearsInService)]);
+  }
+  if (profile.note) rows.push(['Note', profile.note]);
+  return '<div class="mix-company-read">' +
+    '<div class="mix-phone-count" style="margin-bottom:8px;">Company profile</div>' +
+    (logo ? '<img class="mix-producer-logo" alt="" src="' + mixEsc(logo) + '">' : '') +
+    rows.map(([label, value]) => '<div class="mix-detail-row"><span>' + mixEsc(label) + '</span><strong>' + mixEsc(value) + '</strong></div>').join('') +
+    '</div>';
+}
+
+function deldotLockupSrc() {
+  const img = document.querySelector('.r18-side-logo') || document.querySelector('.r18-header-logo');
+  return (img && img.getAttribute('src')) || '';
+}
+
+function mixDeldotHeaderHtml() {
+  const lockup = deldotLockupSrc();
+  const mark = lockup
+    ? '<img class="mix-deldot-lockup" alt="DelDOT" src="' + mixEsc(lockup) + '">'
+    : '';
+  return '<header class="mix-deldot-head">' + mark + '</header>';
+}
+
+function mixProducerHtml(profile) {
+  if (!profile) return '';
+  const logo = supplierLogoSrc(profile.logoData);
+  if (!logo) return '';
+  const name = profile.companyName ? '<div class="mix-producer-name">' + mixEsc(profile.companyName) + '</div>' : '';
+  return '<div class="mix-producer"><img class="mix-producer-logo" alt="' + mixEsc((profile.companyName || 'Producer') + ' logo') + '" src="' + mixEsc(logo) + '">' + name + '</div>';
+}
+
+function paintSupplierLogoPreview(src) {
+  const box = document.getElementById('sp_logo_preview');
+  if (!box) return;
+  const logo = supplierLogoSrc(src);
+  box.innerHTML = logo
+    ? '<img class="mix-producer-logo" alt="Company logo preview" src="' + mixEsc(logo) + '">'
+    : '<span class="supplier-logo-empty">No logo yet</span>';
+}
+
+function renderSupplierProfileForm() {
+  if (currentUser?.role !== 'supplier') return;
+  const profile = supplierProfileByKey(supplierPlantKey());
+  const set = (id, value) => {
+    const el = document.getElementById(id);
+    if (el) el.value = value == null ? '' : String(value);
+  };
+  set('sp_company', profile?.companyName || currentUser?.name || '');
+  set('sp_address', profile?.address || '');
+  set('sp_phone', profile?.phone || '');
+  set('sp_email', profile?.email || (_supabaseAuthSession?.user?.email || ''));
+  set('sp_contact', profile?.contactName || '');
+  set('sp_years', profile && profile.yearsInService != null ? profile.yearsInService : '');
+  set('sp_note', profile?.note || '');
+  _supplierLogoDraft = profile?.logoData || '';
+  paintSupplierLogoPreview(_supplierLogoDraft);
+  const file = document.getElementById('sp_logo');
+  if (file) file.value = '';
+  const note = document.getElementById('supplierProfileSyncNote');
+  if (note) {
+    note.textContent = window._supplierProfileTableReady === false
+      ? 'Saved on this browser until an admin runs the company profile SQL in Settings.'
+      : '';
+  }
+  setSupplierActionMsg('supplierProfileMsg', '', '');
+}
+
+function supplierProfileProblems(draft) {
+  const missing = [];
+  if (!draft.companyName || draft.companyName.length > 120) missing.push('a company name');
+  if (!draft.address || draft.address.length > 300) missing.push('an address');
+  const digits = String(draft.phone || '').replace(/\D/g, '');
+  if (digits.length < 7 || digits.length > 20 || String(draft.phone || '').length > 40) missing.push('a phone number');
+  if (!draft.email || draft.email.length > 200 || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(draft.email)) missing.push('a valid email');
+  if (!draft.contactName || draft.contactName.length > 80) missing.push('a primary contact');
+  if (!supplierLogoSrc(draft.logoData)) missing.push('a logo');
+  if (draft.yearsInService != null && (!Number.isInteger(draft.yearsInService) || draft.yearsInService < 0 || draft.yearsInService > 200)) {
+    missing.push('years in service as a whole number from 0 to 200');
+  }
+  if ((draft.note || '').length > 500) missing.push('a shorter note');
+  return missing;
+}
+
+function readSupplierLogo(file) {
+  return new Promise((resolve, reject) => {
+    if (!file) {
+      reject(new Error('Choose a logo.'));
+      return;
+    }
+    if (file.size > 8 * 1024 * 1024) {
+      reject(new Error('That logo is too large.'));
+      return;
+    }
+    if (!/^image\/(png|jpeg|webp|gif|svg\+xml)$/.test(file.type || '')) {
+      reject(new Error('Use a PNG, JPG, WEBP, GIF, or SVG logo.'));
+      return;
+    }
+    const reader = new FileReader();
+    reader.onerror = () => reject(new Error('Could not read that logo.'));
+    reader.onload = () => {
+      const img = new Image();
+      img.onload = () => {
+        const maxEdge = 480;
+        const longest = Math.max(img.width || 1, img.height || 1);
+        const scale = Math.min(1, maxEdge / longest);
+        const w = Math.max(1, Math.round((img.width || 1) * scale));
+        const h = Math.max(1, Math.round((img.height || 1) * scale));
+        const canvas = document.createElement('canvas');
+        canvas.width = w;
+        canvas.height = h;
+        const ctx = canvas.getContext('2d');
+        if (!ctx) {
+          reject(new Error('Could not prepare that logo.'));
+          return;
+        }
+        ctx.imageSmoothingEnabled = true;
+        ctx.imageSmoothingQuality = 'high';
+        ctx.clearRect(0, 0, w, h);
+        ctx.drawImage(img, 0, 0, w, h);
+        let hasAlpha = false;
+        try {
+          const pixels = ctx.getImageData(0, 0, w, h).data;
+          for (let i = 3; i < pixels.length; i += 16) {
+            if (pixels[i] < 250) { hasAlpha = true; break; }
+          }
+        } catch (e) {
+          hasAlpha = true;
+        }
+        let out = '';
+        try {
+          out = hasAlpha ? canvas.toDataURL('image/png') : canvas.toDataURL('image/jpeg', 0.92);
+          if (!hasAlpha) {
+            const png = canvas.toDataURL('image/png');
+            if (png.length < out.length) out = png;
+          }
+        } catch (e) {
+          reject(new Error('Save the logo as a PNG or JPG.'));
+          return;
+        }
+        if (!supplierLogoSrc(out)) {
+          reject(new Error('That logo is too large. Use a simpler file.'));
+          return;
+        }
+        resolve(out);
+      };
+      img.onerror = () => reject(new Error('Could not read that logo.'));
+      img.src = String(reader.result || '');
+    };
+    reader.readAsDataURL(file);
+  });
+}
+
+async function onSupplierLogoPicked(input) {
+  const file = input && input.files && input.files[0];
+  if (!file) return;
+  try {
+    _supplierLogoDraft = await readSupplierLogo(file);
+    paintSupplierLogoPreview(_supplierLogoDraft);
+    setSupplierActionMsg('supplierProfileMsg', '', '');
+  } catch (e) {
+    showToast(e.message || 'Could not use that logo.', 'error');
+  }
+}
+
+function supplierProfileDraft() {
+  const yearsRaw = (document.getElementById('sp_years')?.value || '').trim();
+  let years = null;
+  if (yearsRaw !== '') {
+    const n = Number(yearsRaw);
+    years = Number.isFinite(n) ? n : NaN;
+  }
+  return {
+    plantKey: supplierPlantKey(),
+    companyName: (document.getElementById('sp_company')?.value || '').trim(),
+    address: (document.getElementById('sp_address')?.value || '').trim(),
+    phone: (document.getElementById('sp_phone')?.value || '').trim(),
+    email: (document.getElementById('sp_email')?.value || '').trim(),
+    contactName: (document.getElementById('sp_contact')?.value || '').trim(),
+    logoData: _supplierLogoDraft,
+    yearsInService: years,
+    note: (document.getElementById('sp_note')?.value || '').trim(),
+    updatedBy: currentUser?.name || supplierPlantKey(),
+    updatedAt: new Date().toISOString()
+  };
+}
+
+async function saveSupplierProfile(event) {
+  if (event && event.preventDefault) event.preventDefault();
+  if (currentUser?.role !== 'supplier') {
+    showToast('The plant fills in its own company profile.', 'error');
+    return false;
+  }
+  const draft = supplierProfileDraft();
+  if (!draft.plantKey) {
+    showToast('Sign in as the plant before saving the company profile.', 'error');
+    return false;
+  }
+  const problems = supplierProfileProblems(draft);
+  if (problems.length) {
+    const text = 'Add ' + problems.join(', ') + '.';
+    setSupplierActionMsg('supplierProfileMsg', text, 'bad');
+    showToast(text, 'error');
+    return false;
+  }
+  const btn = document.getElementById('sp_save');
+  if (btn) btn.disabled = true;
+  rememberSupplierProfile(draft);
+  let synced = !db;
+  try {
+    if (db && window._supplierProfileTableReady !== false) {
+      const saved = await db.from('supplier_profiles').upsert(supplierProfileToRow(draft), { onConflict: 'plant_key' });
+      if (saved.error) {
+        if (mixTableMissing(saved.error)) {
+          window._supplierProfileTableReady = false;
+          synced = false;
+        } else {
+          throw saved.error;
+        }
+      } else {
+        window._supplierProfileTableReady = true;
+        synced = true;
+      }
+    }
+  } catch (e) {
+    console.warn('saveSupplierProfile:', e);
+    if (btn) btn.disabled = false;
+    const text = 'Saved on this browser. The shared profile did not update.';
+    setSupplierActionMsg('supplierProfileMsg', text, 'bad');
+    showToast(text, 'error');
+    return false;
+  }
+  if (btn) btn.disabled = false;
+  const text = synced
+    ? 'Company profile saved for this plant.'
+    : 'Saved on this browser until an admin runs the company profile SQL in Settings.';
+  renderSupplierProfileForm();
+  setSupplierActionMsg('supplierProfileMsg', text, synced ? 'ok' : 'wait');
+  const note = document.getElementById('supplierProfileSyncNote');
+  if (note && !synced) note.textContent = '';
+  showToast(synced ? 'Company profile saved' : 'Saved on this browser', synced ? 'success' : 'info');
+  return false;
+}
+
+async function loadSupplierProfiles() {
+  const local = readSupplierProfileMap();
+  if (typeof db === 'undefined' || !db) return supplierProfiles();
+  try {
+    const table = await db.from('supplier_profiles').select('*');
+    if (table.error) {
+      if (mixTableMissing(table.error)) {
+        window._supplierProfileTableReady = false;
+        return supplierProfiles();
+      }
+      throw table.error;
+    }
+    window._supplierProfileTableReady = true;
+    const map = { ...local };
+    (table.data || []).forEach(row => {
+      const profile = supplierProfileFromRow(row);
+      if (!profile) return;
+      const previous = supplierProfileFromRow(map[profile.plantKey]);
+      if (!previous || String(profile.updatedAt || '') >= String(previous.updatedAt || '')) {
+        map[profile.plantKey] = supplierProfileToRow(profile);
+      }
+    });
+    writeSupplierProfileMap(map);
+    if (document.getElementById('csub-company')?.style.display !== 'none') renderSupplierProfileForm();
+    return supplierProfiles();
+  } catch (e) {
+    console.warn('loadSupplierProfiles:', e);
+    return supplierProfiles();
+  }
+}
+
+// ══════════════════════════════════════════════════════════════
 // MIX DESIGNS
 // Saved locally and shared in the mix_designs table.
 // Until that table exists, designs stay in lab_spec_config id mix_designs.
@@ -35293,6 +35969,8 @@ function applyMixDesignChrome() {
   });
   const approvedTab = document.getElementById('ctab-approved');
   if (approvedTab) approvedTab.style.display = supplier ? '' : 'none';
+  const companyTab = document.getElementById('ctab-company');
+  if (companyTab) companyTab.style.display = supplier ? '' : 'none';
   const guide = document.getElementById('btnConcreteGuidedTabs');
   if (guide) guide.style.display = supplier ? 'none' : '';
   const approveNow = document.getElementById('md_approve_now');
@@ -35436,7 +36114,8 @@ function closeMixDetail() {
   sheet.innerHTML = '';
 }
 
-function openMixRow(id) {
+async function openMixRow(id) {
+  try { await loadSupplierProfiles(); } catch (e) {}
   const design = mixDesigns().find(d => d.id === id);
   if (!design || !mixDesignVisible(design)) return;
   if (design.status === 'approved' && currentUser?.role === 'supplier') {
@@ -35472,6 +36151,7 @@ function openMixRow(id) {
   sheet.innerHTML = '<div class="mix-sheet-inner">' +
     '<button type="button" class="mix-sheet-back" onclick="closeMixDetail()">‹ Mix designs</button>' +
     '<h2 class="mix-detail-title">' + mixEsc(design.name) + '</h2>' +
+    supplierProfileReadBlock(supplierProfileForDesign(design)) +
     rows.map(([label, value]) => '<div class="mix-detail-row"><span>' + mixEsc(label) + '</span><strong>' + mixEsc(value) + '</strong></div>').join('') +
     note +
     (actions.length ? '<div class="mix-detail-actions">' + actions.join('') + '</div>' : '') +
@@ -35901,9 +36581,9 @@ function mixApprovalHtml(design) {
   const materialTable = '<table class="dd-rpt-table"><thead><tr><th style="text-align:left;">MATERIAL</th><th>VALUE</th></tr></thead><tbody>' +
     (lines.length ? lines.join('') : '<tr><td class="dd-rpt-lbl" colspan="2">No materials recorded</td></tr>') +
     '</tbody></table>';
-  const inner = ddRptBanner('MIX DESIGN APPROVAL', 'APPROVED<br>' + mixEsc(design.id), {
-    subtitle: 'MATERIALS AND RESEARCH LABORATORY<br>DELAWARE DEPARTMENT OF TRANSPORTATION'
-  }) +
+  const inner = mixDeldotHeaderHtml() +
+    mixProducerHtml(supplierProfileForDesign(design)) +
+    '<div class="mix-rpt-title"><div class="big">MIX DESIGN APPROVAL</div><div class="id">APPROVED<br>' + mixEsc(design.id) + '</div></div>' +
     ddRptSubbar([mixEsc(design.supplier || ''), mixEsc(klass), mixEsc(design.plant || '')].filter(Boolean)) +
     ddRptKvGrid([
       ['Mix name:', mixEsc(design.name)],
@@ -35929,7 +36609,8 @@ function mixApprovalHtml(design) {
   return ddRptWrap('mix-approval', inner);
 }
 
-function openMixApproval(id) {
+async function openMixApproval(id) {
+  try { await loadSupplierProfiles(); } catch (e) {}
   const design = mixDesigns().find(d => d.id === id);
   if (!design || design.status !== 'approved') return;
   if (!mixDesignCanReview() && !mixDesignVisible(design)) return;
@@ -35963,7 +36644,16 @@ function mixApprovalPrintCss() {
     .sig-lbl{font-size:7pt;text-transform:uppercase;}
     .mix-approval-stamp{display:flex;align-items:center;gap:14px;border:3px solid #166534;color:#166534;padding:10px 12px;margin-bottom:10px;}
     .mix-approval-mark{font-weight:800;letter-spacing:2px;font-size:16pt;border:2px solid #166534;padding:6px 10px;}
-    @media print{.dd-rpt-banner,.dd-rpt-section-head,.dd-rpt-subbar,.dd-rpt-footer,.mix-approval-stamp{-webkit-print-color-adjust:exact;print-color-adjust:exact;}}
+    .mix-deldot-head{position:relative;display:flex;align-items:center;background:#041428;padding:12px 16px 16px;-webkit-print-color-adjust:exact;print-color-adjust:exact;}
+    .mix-deldot-head::after{content:"";position:absolute;left:0;right:0;bottom:0;height:4px;background:#f77706;-webkit-print-color-adjust:exact;print-color-adjust:exact;}
+    .mix-deldot-lockup{display:block;height:40px;width:auto;max-width:220px;background:none;border:0;box-shadow:none;border-radius:0;}
+    .mix-producer{display:flex;align-items:center;gap:14px;padding:12px 16px;background:#fff;border-bottom:1px solid #999;}
+    .mix-producer-logo{display:block;height:auto;width:auto;max-height:56px;max-width:180px;object-fit:contain;background:transparent;border:0;box-shadow:none;border-radius:0;}
+    .mix-producer-name{font-size:11pt;font-weight:700;color:#111;line-height:1.25;}
+    .mix-rpt-title{display:flex;justify-content:space-between;align-items:baseline;gap:12px;padding:8px 14px;border-bottom:1px solid #999;background:#fff;color:#111;}
+    .mix-rpt-title .big{font-size:13pt;font-weight:700;letter-spacing:1px;}
+    .mix-rpt-title .id{font-size:8pt;text-align:right;line-height:1.35;}
+    @media print{.dd-rpt-banner,.dd-rpt-section-head,.dd-rpt-subbar,.dd-rpt-footer,.mix-approval-stamp,.mix-deldot-head,.mix-deldot-head::after{-webkit-print-color-adjust:exact;print-color-adjust:exact;}}
   `;
 }
 
@@ -35986,7 +36676,7 @@ function printMixApproval() {
 // ══════════════════════════════════════════════════════════════
 function switchConcreteTab(tab, opts) {
   opts = opts || {};
-  if (currentUser?.role === 'supplier' && tab !== 'approved') tab = 'mixes';
+  if (currentUser?.role === 'supplier' && tab !== 'approved' && tab !== 'company') tab = 'mixes';
   if (!opts.skipHistory && tab !== activeConcSubTab) navPushCurrent();
   activeConcSubTab = tab;
   closeMixApproval();
@@ -35995,7 +36685,7 @@ function switchConcreteTab(tab, opts) {
   closeConcreteSet();
   closeBreakSheet();
   closeReportSheet();
-  ['intake','log','schedule','break','report','mixes','approved'].forEach(t => {
+  ['intake','log','schedule','break','report','mixes','approved','company'].forEach(t => {
     const btn = document.getElementById('ctab-' + t);
     const sub = document.getElementById('csub-' + t);
     if (btn) btn.classList.toggle('active', t === tab);
@@ -36010,9 +36700,12 @@ function switchConcreteTab(tab, opts) {
   if (tab === 'report')   populateReportSetSelect();
   if (tab === 'mixes')    renderMixDesignLibrary();
   if (tab === 'approved') renderApprovedMixes();
+  if (tab === 'company')  renderSupplierProfileForm();
   if (currentUser?.role === 'supplier') {
     const titleEl = document.getElementById('phoneModuleTitle');
-    if (titleEl) titleEl.textContent = tab === 'approved' ? 'Approved mixes' : 'Mix designs';
+    if (titleEl) {
+      titleEl.textContent = tab === 'approved' ? 'Approved mixes' : (tab === 'company' ? 'Company' : 'Mix designs');
+    }
   }
   if (tab !== 'report' && _approvalTarget && _approvalTarget._approvalKind === 'concrete') _approvalTarget = null;
   if (typeof concreteGuideOnViewChange === 'function') concreteGuideOnViewChange();
