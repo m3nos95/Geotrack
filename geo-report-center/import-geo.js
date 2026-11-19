@@ -57,7 +57,7 @@
     if (/\.\$p\$$/.test(b)) return true;
     var dot = b.lastIndexOf('.');
     var ext = dot >= 0 ? b.slice(dot + 1) : '';
-    return ext === 'mdt' || ext === 'gs' || ext === 'lim' || ext === 'ndx' || ext === 'pdt';
+    return ext === 'mdt' || ext === 'gs' || ext === 'lim' || ext === 'ndx' || ext === 'pdt' || ext === 'xml';
   }
 
   function projectKey(path) {
@@ -887,7 +887,8 @@ function firstChild(el, name) {
   var CONTRACT_FIELD_KEYS = ['STATE_CONTRACT', 'STATE_CONTRAC', 'PROJ_NUM', 'PROJECT_NUM', 'JOB_NO', 'JOB_NUM', 'JOBNUMBER', 'CONTRACT_NO', 'CONTRACT'];
 
   function contractToken(text) {
-    var m = String(text || '').match(/\bT\d{6,12}(?:\.\d+)?\b/i);
+    // The index is often "T202270302Bethany" with no break after the number.
+    var m = String(text || '').match(/T\d{6,12}(?:\.\d+)?/i);
     return m ? m[0].toUpperCase() : '';
   }
 
@@ -909,14 +910,44 @@ function firstChild(el, name) {
   function realProjectName(text, contract) {
     var s = String(text || '').replace(/\.geo$/i, '').trim();
     if (!s || looksLikePath(s)) return '';
-    var token = contractToken(s);
-    if ((contract && s.toUpperCase() === String(contract).toUpperCase()) || (token && s.toUpperCase() === token)) return '';
+    var token = contract || contractToken(s);
+    if (token && s.toUpperCase() === String(token).toUpperCase()) return '';
     if (token) {
-      s = s.replace(new RegExp('\\b' + token.replace(/\./g, '\\.') + '\\b', 'ig'), ' ');
+      var at = s.toUpperCase().indexOf(String(token).toUpperCase());
+      if (at === 0) s = s.slice(token.length);
+      else if (at > 0 && !/[A-Za-z0-9]/.test(s.charAt(at - 1))) s = s.slice(0, at) + ' ' + s.slice(at + token.length);
       s = s.replace(/^[\s._-]+|[\s._-]+$/g, '').replace(/\s+/g, ' ').trim();
     }
     if (!s || looksLikePath(s)) return '';
     return s;
+  }
+
+  function xmlSet(text, tag) {
+    var m = String(text || '').match(new RegExp('<' + tag + '\\b[^>]*\\bset="([^"]*)"', 'i'));
+    return m ? m[1] : '';
+  }
+
+  function readLabSettings(files) {
+    var gs = '';
+    var common = '';
+    (files || []).forEach(function (f) {
+      var n = baseName(f.name || f.path);
+      if (/^gssettings.*\.xml$/i.test(n)) gs = textOf(f);
+      if (/^commonsettings.*\.xml$/i.test(n)) common = textOf(f);
+    });
+    var decimals = parseInt(xmlSet(gs, 'PercentageDecimals'), 10);
+    if (!isFinite(decimals) || decimals < 0 || decimals > 4) decimals = 1;
+    return {
+      percentageDecimals: decimals,
+      number200OneDecimal: /^yes$/i.test(xmlSet(gs, 'ReportNumber200To1DecimalPlace')),
+      classification: xmlSet(common, 'PreferredClassification')
+    };
+  }
+
+  function roundPct(v, digits) {
+    if (v == null || !isFinite(v)) return null;
+    var p = Math.pow(10, digits < 0 ? 0 : digits);
+    return Math.round(v * p) / p;
   }
 
   function parseOneProject(key, files, warnings) {
@@ -949,7 +980,10 @@ function firstChild(el, name) {
     });
 
     var ndx = files.filter(function (f) { return /\.ndx$/i.test(baseName(f.name || f.path)); })[0];
+    var pdt = files.filter(function (f) { return /\.pdt$/i.test(baseName(f.name || f.path)); })[0];
     var ndxStem = ndx ? baseName(ndx.name || ndx.path).replace(/\.ndx$/i, '') : '';
+    var pdtStem = pdt ? baseName(pdt.name || pdt.path).replace(/\.pdt$/i, '') : '';
+    var labSettings = readLabSettings(files);
     var contract = contractFromFields(projFields);
     if (!contract) {
       for (var ci = 0; ci < boringFiles.length; ci++) {
@@ -958,7 +992,7 @@ function firstChild(el, name) {
       }
     }
     if (!contract) {
-      contract = contractToken(ndxStem) || contractToken(folderLabel(key)) || contractToken(firstPd(projFields, ['PROJECT']));
+      contract = contractToken(ndxStem) || contractToken(pdtStem) || contractToken(folderLabel(key)) || contractToken(firstPd(projFields, ['PROJECT']));
     }
     var projectText = firstPd(projFields, ['PROJECT']);
     if (!projectText || looksLikePath(projectText)) {
@@ -967,9 +1001,9 @@ function firstChild(el, name) {
         if (named && !looksLikePath(named)) { projectText = named; break; }
       }
     }
-    var name = realProjectName(projectText, contract) || realProjectName(ndxStem, contract) || realProjectName(folderLabel(key), contract);
+    var name = realProjectName(projectText, contract) || realProjectName(folderLabel(key), contract) || realProjectName(ndxStem, contract) || realProjectName(pdtStem, contract);
     if (!name && !contract) {
-      var fallback = projectText || ndxStem || folderLabel(key);
+      var fallback = projectText || folderLabel(key) || ndxStem || pdtStem;
       name = looksLikePath(fallback) ? '' : fallback;
     }
     var location = firstPd(projFields, ['PROJ_LOC']);
@@ -1106,8 +1140,10 @@ function firstChild(el, name) {
           ll: ll === 'NV' ? null : llN, pi: pi === 'NP' ? null : piN
         }) : null;
         var st = sd.stored || null;
-        var p10v = sv.hasData ? round1(sv.pctPass10) : null;
-        var p200v = sv.hasData ? round1(sv.pctPass200) : null;
+        var pctDigits = labSettings.percentageDecimals;
+        var p200Digits = labSettings.number200OneDecimal ? 1 : pctDigits;
+        var p10v = sv.hasData ? roundPct(sv.pctPass10, pctDigits) : null;
+        var p200v = sv.hasData ? roundPct(sv.pctPass200, p200Digits) : null;
         var nmv = round1(nm);
         var llv = ll == null ? null : (typeof ll === 'number' ? round1(ll) : ll);
         var piv = pi == null ? null : (typeof pi === 'number' ? round1(pi) : pi);
@@ -1212,6 +1248,7 @@ function firstChild(el, name) {
     return {
       name: name,
       contract: contract,
+      labSettings: labSettings,
       location: location,
       federal: firstPd(projFields, ['FEDERAL_CONTRACT']),
       borings: borings,

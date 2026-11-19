@@ -3359,7 +3359,7 @@ function showView(name){
 let _editingProjectId = null;
 
 function borelogContractToken(text) {
-  const m = String(text || '').match(/\bT\d{6,12}(?:\.\d+)?\b/i);
+  const m = String(text || '').match(/T\d{6,12}(?:\.\d+)?/i);
   return m ? m[0].toUpperCase() : '';
 }
 
@@ -3371,10 +3371,12 @@ function borelogLooksLikePath(text) {
 function borelogRealName(name, contract) {
   let s = String(name || '').replace(/\.geo$/i, '').trim();
   if (!s || borelogLooksLikePath(s)) return '';
-  const token = borelogContractToken(s);
-  if ((contract && s.toUpperCase() === String(contract).toUpperCase()) || (token && s.toUpperCase() === token)) return '';
+  const token = contract || borelogContractToken(s);
+  if (token && s.toUpperCase() === String(token).toUpperCase()) return '';
   if (token) {
-    s = s.replace(new RegExp('\\b' + token.replace(/\./g, '\\.') + '\\b', 'ig'), ' ');
+    const at = s.toUpperCase().indexOf(String(token).toUpperCase());
+    if (at === 0) s = s.slice(token.length);
+    else if (at > 0 && !/[A-Za-z0-9]/.test(s.charAt(at - 1))) s = s.slice(0, at) + ' ' + s.slice(at + token.length);
     s = s.replace(/^[\s._-]+|[\s._-]+$/g, '').replace(/\s+/g, ' ').trim();
   }
   if (!s || borelogLooksLikePath(s)) return '';
@@ -5094,7 +5096,7 @@ async function geoRecordsFromFiles(fileList) {
       if (opened.tooBig) throw new Error(opened.message || GeoImport.tooBigMessage(f.name));
       if (opened.message && !opened.files.length) throw new Error(opened.message);
       records.push(...opened.files);
-    } else if (/\.(mdt|gs|lim|ndx|pdt)$/i.test(f.name) || /\.\$p\$$/i.test(f.name)) {
+    } else if (/\.(mdt|gs|lim|ndx|pdt|xml)$/i.test(f.name) || /\.\$p\$$/i.test(f.name)) {
       const path = f._geoPath || f.webkitRelativePath || f.name;
       records.push({ name: f.name, path: path, text: geoDecodeLatin1(buf) });
     }
