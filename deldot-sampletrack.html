@@ -2344,6 +2344,52 @@ nav:not(#r18-nav), .nav-top-row { display: none !important; }
 }
 .map-popup-action button:hover { background: rgba(34, 211, 238, 0.22); }
 
+/* MapTrak uses the BoreLog map box: same size, border, and Leaflet defaults.
+   The rules below put the stock Leaflet chrome back inside this map only. */
+#maptrak-view { background: transparent; }
+#maptrakBox {
+  background: var(--surface);
+  border-radius: 14px;
+  width: 100%;
+  max-width: 900px;
+  margin: 30px auto;
+  padding: 24px;
+  box-sizing: border-box;
+}
+#maptrakBox h3 { margin: 0 0 4px; font-size: 16px; color: var(--text); font-weight: 600; }
+#maptrakMap {
+  width: 100%;
+  height: 520px;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  margin-top: 14px;
+  background: #ddd;
+}
+#maptrak-view .map-toolbar { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-bottom: 10px; }
+#maptrak-view .map-no-coords {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 10px 14px;
+  font-size: 11px;
+  color: var(--muted);
+  margin-top: 6px;
+}
+#maptrak-view .btn-sm { padding: 6px 12px; font-size: 11px; }
+#maptrakMap.leaflet-container { background: #ddd; font-family: "Helvetica Neue", Arial, Helvetica, sans-serif; }
+#maptrakMap .leaflet-control-zoom a {
+  background: #fff;
+  color: #000;
+  border-color: #ccc;
+}
+#maptrakMap .leaflet-control-zoom a:hover { background: #f4f4f4; color: #000; }
+#maptrakMap .leaflet-control-attribution {
+  background: rgba(255, 255, 255, 0.8) !important;
+  color: #333 !important;
+  font-size: 11px !important;
+}
+#maptrakMap .leaflet-control-attribution a { color: #0078A8 !important; }
+
 /* ── LabTrak admin map view ── */
 #labmap-view { overflow: hidden; }
 #labmap-view.active { display: flex; flex-direction: column; overflow: hidden; }
@@ -5540,14 +5586,14 @@ NOTIFY pgrst, 'reload schema';</pre>
         <div class="rail-label">Dashboard</div>
       </div>
 
-      <div class="rail-item" data-view="labmap" id="ri-labmap" style="display:none;" onclick="switchView('labmap')">
+      <div class="rail-item" data-view="maptrak" id="ri-maptrak" style="display:none;" onclick="switchView('maptrak')">
         <div class="rail-icon-wrap">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="color:#38bdf8;">
             <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7z"/>
             <circle cx="12" cy="9" r="2.5"/>
           </svg>
         </div>
-        <div class="rail-label">Map</div>
+        <div class="rail-label">MapTrak</div>
       </div>
 
       <div class="rail-item" data-view="projects" id="ri-projects" onclick="switchView('projects')">
@@ -5873,7 +5919,7 @@ NOTIFY pgrst, 'reload schema';</pre>
               <span class="home-app-sub">QR code sample entry</span>
             </span>
           </button>
-          <button type="button" class="home-app" id="home-app-map" data-view="labmap" onclick="switchView('labmap')">
+          <button type="button" class="home-app" id="home-app-map" data-view="maptrak" onclick="switchView('maptrak')">
             <span class="home-app-icon" aria-hidden="true">
               <svg viewBox="0 0 64 64" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round" stroke-linecap="round">
                 <path d="M10 18l14-6 16 6 14-6v34l-14 6-16-6-14 6V18z"/>
@@ -5881,8 +5927,8 @@ NOTIFY pgrst, 'reload schema';</pre>
               </svg>
             </span>
             <span class="home-app-copy">
-              <span class="home-app-name">Map</span>
-              <span class="home-app-sub">Sample locations and GIS</span>
+              <span class="home-app-name">MapTrak</span>
+              <span class="home-app-sub">Field locations and bore logs</span>
             </span>
           </button>
           <button type="button" class="home-app" id="home-app-contrak" data-admin-only="1" hidden onclick="openConTrak()">
@@ -8908,6 +8954,23 @@ NOTIFY pgrst, 'reload schema';</pre>
           </div>
         </div>
       </div>
+    </div>
+  </div>
+
+  <!-- ── MAPTRAK — BoreLog map, LabTrak-wide ── -->
+  <div class="view" id="maptrak-view">
+    <div id="maptrakBox" data-tour="maptrak-box">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px;">
+        <h3>🗺 MapTrak</h3>
+      </div>
+      <div class="map-toolbar">
+        <span style="font-size:11px;color:var(--muted);">State Plane DE 700 · US Survey Feet → WGS84</span>
+        <button type="button" class="btn btn-ghost btn-sm" onclick="maptrakExportKML()" style="margin-left:auto;">⬇ Export KML</button>
+      </div>
+      <div id="maptrakNoCoordsWarn" class="map-no-coords" style="display:none;">
+        ⚠ Some field locations and borings are missing coordinates — only records with coordinates are shown.
+      </div>
+      <div id="maptrakMap"></div>
     </div>
   </div>
 
@@ -17766,6 +17829,7 @@ function switchView(name, opts) {
   if (currentUser?.role === 'supplier' && name !== 'concrete') name = 'concrete';
   if (currentUser?.role === 'pm' && name !== 'projects' && name !== 'report') name = 'projects';
   if (currentUser?.role === 'ccrl' && name !== 'r18') name = 'r18';
+  if (name === 'labmap') name = 'maptrak';
   if ((name === 'soillab' || name === 'labhub') && !roleCanUseSoilModule()) {
     const hint = currentUser?.role === 'field' ? ' Finished reports are on Field Control.' : '';
     showToast('The soil lab stays with the lab techs.' + hint, 'info');
@@ -17774,10 +17838,6 @@ function switchView(name, opts) {
   if (!opts.skipHistory && name !== currentView) navPushCurrent();
   if (PLANNED_MODULES[name]) {
     showPlannedModule(name);
-    return;
-  }
-  if (name === 'labmap' && !isLabMapAdmin()) {
-    showToast('LabTrak Map is for administrators only', 'error');
     return;
   }
   setActiveView(name);
@@ -17845,7 +17905,7 @@ function switchView(name, opts) {
     if (typeof concreteGuideOnViewChange === 'function') concreteGuideOnViewChange();
   }
   if (name === 'r18')     { if (typeof r18Init === 'function') r18Init(); }
-  if (name === 'labmap')  { initLabMapView(); }
+  if (name === 'maptrak') { initMapTrakView(); }
   // Reset scroll after browser has laid out the newly visible view
   window.scrollTo(0, 0);
   requestAnimationFrame(() => {
@@ -17903,7 +17963,8 @@ function helpViewTitle(viewName) {
     labhub: 'Soil Lab Hub',
     fieldhub: 'Field Control Hub',
     conchub: 'Concrete Hub',
-    labmap: 'Admin Map',
+    labmap: 'MapTrak',
+    maptrak: 'MapTrak',
     r18: 'R-18 Compliance',
     hotmix: 'Hot Mix Asphalt',
     precast: 'Pre-Cast Concrete',
@@ -18554,11 +18615,10 @@ const LABTRAK_TOUR_STEPS = [
     pad: 4
   },
   {
-    view: 'labmap',
-    tour: 'labmap-ui',
-    skipIf: () => typeof isLabMapAdmin !== 'function' || !isLabMapAdmin(),
-    title: 'Admin map',
-    body: 'Pan and zoom statewide, switch basemap styles, and toggle field samples, cores, concrete, and BoreLog boring pins.',
+    view: 'maptrak',
+    tour: 'maptrak-box',
+    title: 'MapTrak',
+    body: 'The BoreLog map for the whole lab. Field locations open their field report. Borings open that bore log.',
     placement: 'bottom',
     pad: 8
   },
@@ -25565,11 +25625,376 @@ function openFoundSample(sample) {
   switchView('soillab');
 }
 
+// ── MapTrak: BoreLog map for every LabTrak field location and boring ──
+let _maptrakMap = null;
+let _maptrakPoints = [];
+let _maptrakReturn = false;
+let _maptrakLoadToken = 0;
+
+function initMapTrakView() {
+  maptrakRender();
+}
+
+function maptrakClearMap() {
+  if (_maptrakMap) {
+    try { _maptrakMap.remove(); } catch (e) {}
+    _maptrakMap = null;
+  }
+  const host = document.getElementById('maptrakMap');
+  if (host) host.innerHTML = '';
+}
+
+async function maptrakFetchPaged(table, columns) {
+  if (typeof db === 'undefined' || !db) return null;
+  const pageSize = 1000;
+  const rows = [];
+  for (let from = 0; from < 50000; from += pageSize) {
+    const { data, error } = await db.from(table).select(columns).range(from, from + pageSize - 1);
+    if (error) throw error;
+    const batch = data || [];
+    rows.push(...batch);
+    if (batch.length < pageSize) break;
+  }
+  return rows;
+}
+
+function maptrakCoords(raw) {
+  if (raw == null || String(raw).trim() === '') return null;
+  const pt = typeof parseGpsOrStatePlane === 'function' ? parseGpsOrStatePlane(raw) : null;
+  if (!pt || !isFinite(pt.lat) || !isFinite(pt.lng)) return null;
+  return { lat: pt.lat, lng: pt.lng };
+}
+
+async function maptrakCollectField() {
+  const points = [];
+  let missing = 0;
+  let samples = null;
+  let cores = null;
+  try {
+    samples = await maptrakFetchPaged('samples', 'id,test_no,contract,location,road,material_type,gps_coordinates,date_sampled,status,record_kind,sample_type,deleted_at,archived');
+  } catch (e) {
+    console.warn('maptrak samples', e);
+  }
+  if (!samples && Array.isArray(allSamples)) samples = allSamples;
+  (samples || []).forEach(s => {
+    if (!s || s.deleted_at || s.archived === true) return;
+    const coords = maptrakCoords(s.gps_coordinates);
+    if (!coords) {
+      if (String(s.gps_coordinates || '').trim()) missing++;
+      return;
+    }
+    points.push({ kind: 'sample', lat: coords.lat, lng: coords.lng, record: s });
+  });
+  try {
+    cores = await maptrakFetchPaged('core_drills', 'id,test_no,contract,core_no,gps_coordinates,location,road,station,lane,layer_type,field_test_id');
+  } catch (e) {
+    console.warn('maptrak cores', e);
+  }
+  if (!cores && Array.isArray(window.allCoreDrills)) cores = window.allCoreDrills;
+  (cores || []).forEach(c => {
+    if (!c) return;
+    const coords = maptrakCoords(c.gps_coordinates);
+    if (!coords) {
+      if (String(c.gps_coordinates || '').trim()) missing++;
+      return;
+    }
+    points.push({ kind: 'core', lat: coords.lat, lng: coords.lng, record: c });
+  });
+  let concrete = null;
+  try {
+    concrete = await maptrakFetchPaged('concrete_sets', 'id,test_no,contract,pour_location,mix_design,gps_coordinates,station,materials');
+  } catch (e) {
+    console.warn('maptrak concrete', e);
+  }
+  if (!concrete && typeof loadConcreteSets === 'function') {
+    concrete = loadConcreteSets();
+  }
+  (concrete || []).forEach(row => {
+    const set = maptrakConcreteRecord(row);
+    if (!set || set.archived) return;
+    const coords = maptrakCoords(set.gps_coordinates);
+    if (!coords) {
+      if (String(set.gps_coordinates || '').trim()) missing++;
+      return;
+    }
+    points.push({ kind: 'concrete', lat: coords.lat, lng: coords.lng, record: set });
+  });
+  return { points, missing };
+}
+
+function maptrakConcreteRecord(row) {
+  if (!row) return null;
+  let materials = row.materials;
+  if (typeof materials === 'string') {
+    try { materials = JSON.parse(materials); } catch (e) { materials = null; }
+  }
+  const meta = materials && materials._labtrak;
+  return {
+    id: row.id,
+    test_no: row.test_no || row.testNo || '',
+    contract: row.contract || '',
+    pour_location: row.pour_location || row.pourLocation || '',
+    mix_design: row.mix_design || row.mixDesign || '',
+    gps_coordinates: row.gps_coordinates || '',
+    station: row.station || '',
+    archived: !!(row.archived || (meta && meta.archived))
+  };
+}
+
+function maptrakBoringDepth(b) {
+  const header = b && b._sourceRow && b._sourceRow.header_data;
+  const raw = (b && b.total_depth) || (header && typeof header === 'object' ? header.total_depth : '') || '';
+  return raw ? String(raw) + ' ft' : '—';
+}
+
+async function maptrakCollectBorings() {
+  let items = [];
+  try {
+    items = await collectBorelogBoringsFromLocal(null);
+  } catch (e) {
+    console.warn('maptrak borings', e);
+    return { points: [], missing: 0 };
+  }
+  const groups = {};
+  (items || []).forEach(b => {
+    const key = (b && b.project_id) || '_none';
+    (groups[key] = groups[key] || []).push(b);
+  });
+  const points = [];
+  let missing = 0;
+  Object.keys(groups).forEach(key => {
+    const group = groups[key];
+    const frame = pickBorelogAlignmentFrame(group);
+    group.forEach(b => {
+      const pt = resolveBorelogBoringCoords(b, frame, null);
+      if (!pt || !isFinite(pt.lat) || !isFinite(pt.lng)) {
+        missing++;
+        return;
+      }
+      points.push({ kind: 'boring', lat: pt.lat, lng: pt.lng, record: b, depth: maptrakBoringDepth(b) });
+    });
+  });
+  return { points, missing };
+}
+
+function maptrakPopupHtml(pt, index) {
+  const openLabel = pt.kind === 'boring' ? 'Open bore log' : 'Open field report';
+  const open = '<br><a href="#" onclick="maptrakOpenPoint(' + index + ');return false;">' + openLabel + '</a>';
+  if (pt.kind === 'boring') {
+    const b = pt.record || {};
+    return '<b><a href="#" onclick="maptrakOpenPoint(' + index + ');return false;">' + mapEscHtml(b.boring_no || '(no #)') + '</a></b><br>'
+      + mapEscHtml(b.location || '') + '<br>'
+      + 'N: ' + mapEscHtml(b.northing || '') + ' &nbsp; E: ' + mapEscHtml(b.easting || '') + '<br>'
+      + 'Depth: ' + mapEscHtml(pt.depth || '—') + open;
+  }
+  const s = pt.record || {};
+  const title = pt.kind === 'core'
+    ? ('Core ' + (s.core_no || s.test_no || '(no #)'))
+    : pt.kind === 'concrete'
+      ? (s.test_no || s.id || 'Concrete')
+      : (s.test_no || '(no #)');
+  const place = pt.kind === 'concrete' ? (s.pour_location || '') : (s.location || s.road || '');
+  const third = pt.kind === 'core'
+    ? [s.station, s.layer_type].filter(Boolean).join(' · ')
+    : (s.contract || '');
+  return '<b><a href="#" onclick="maptrakOpenPoint(' + index + ');return false;">' + mapEscHtml(title) + '</a></b><br>'
+    + mapEscHtml(place) + '<br>'
+    + mapEscHtml(third) + open;
+}
+
+async function maptrakRender() {
+  const token = ++_maptrakLoadToken;
+  const warn = document.getElementById('maptrakNoCoordsWarn');
+  const host = document.getElementById('maptrakMap');
+  if (!host) return;
+  maptrakClearMap();
+  host.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:100%;color:var(--muted);font-size:13px;">Loading locations…</div>';
+  const field = await maptrakCollectField();
+  const borings = await maptrakCollectBorings();
+  if (token !== _maptrakLoadToken || getActiveViewName() !== 'maptrak') return;
+  const points = field.points.concat(borings.points);
+  _maptrakPoints = points;
+  const missing = (field.missing || 0) + (borings.missing || 0);
+  if (warn) warn.style.display = missing > 0 ? '' : 'none';
+  maptrakClearMap();
+  if (typeof L === 'undefined') {
+    host.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:100%;color:var(--muted);font-size:13px;">Map library did not load.</div>';
+    return;
+  }
+  if (!points.length) {
+    host.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:100%;color:var(--muted);font-size:13px;">No field locations or borings have coordinates.</div>';
+    return;
+  }
+  const map = L.map('maptrakMap');
+  _maptrakMap = map;
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
+    maxZoom: 20
+  }).addTo(map);
+  const bounds = [];
+  points.forEach((pt, index) => {
+    bounds.push([pt.lat, pt.lng]);
+    const marker = L.marker([pt.lat, pt.lng]).addTo(map);
+    marker.bindPopup(maptrakPopupHtml(pt, index));
+  });
+  map.fitBounds(bounds, { padding: [40, 40] });
+  setTimeout(function () {
+    if (_maptrakMap !== map) return;
+    map.invalidateSize();
+    if (bounds.length) map.fitBounds(bounds, { padding: [40, 40] });
+  }, 80);
+}
+
+function maptrakEnterReport(sample) {
+  const editBtn = document.getElementById('rpt-soillab-edit-btn');
+  if (editBtn) editBtn.style.display = 'none';
+  switchView('report');
+  if (typeof syncReportChrome === 'function') syncReportChrome();
+  if (sample && typeof refreshReportEmailBtn === 'function') refreshReportEmailBtn(sample);
+}
+
+async function maptrakPresentFieldReport(sample) {
+  const densityRec = typeof fcResolveDensityRecordFromSample === 'function'
+    ? await fcResolveDensityRecordFromSample(sample)
+    : null;
+  const record = densityRec || sample;
+  try {
+    if (record && typeof fcHasDensityData === 'function' && fcHasDensityData(record)) {
+      const data = parseDensityData(record.density_data);
+      if (Array.isArray(data.rows)) {
+        _maptrakReturn = true;
+        await renderLB68(record, data);
+        const shaped = compactionApprovalSample({ ...record, density_data: record.density_data, _fc_table: record._fc_table || 'samples' });
+        _approvalTarget = shaped;
+        slCurrentSample = shaped;
+        currentSample = shaped;
+        maptrakEnterReport(shaped);
+        return;
+      }
+    }
+    if (record && typeof fcHasNuclearData === 'function' && fcHasNuclearData(record)) {
+      const nuclear = typeof record.nuclear_data === 'string' ? JSON.parse(record.nuclear_data) : record.nuclear_data;
+      _maptrakReturn = true;
+      await renderNuclearReport(record, nuclear);
+      currentSample = record;
+      slCurrentSample = record;
+      maptrakEnterReport(record);
+      return;
+    }
+  } catch (e) {
+    console.warn('maptrak field report', e);
+    _maptrakReturn = false;
+  }
+  if (sample && sample.status === 'complete' && typeof sampleHasLabData === 'function' && sampleHasLabData(sample)) {
+    _maptrakReturn = true;
+    await viewReport(sample.id);
+    if (typeof getActiveViewName === 'function' && getActiveViewName() !== 'report') _maptrakReturn = false;
+    return;
+  }
+  _maptrakReturn = false;
+  if (typeof fcResumeSessionById === 'function') return fcResumeSessionById(sample.id);
+  showToast('Field report not found', 'error');
+}
+
+async function maptrakOpenSample(summary) {
+  let sample = summary;
+  if (summary && summary.id && typeof fetchSample === 'function') {
+    try {
+      const full = await fetchSample(summary.id, { quiet: true });
+      if (full) sample = full;
+    } catch (e) {
+      console.warn('maptrak sample', e);
+    }
+  }
+  if (!sample || !sample.id) {
+    showToast('Field report not found', 'error');
+    return;
+  }
+  await maptrakPresentFieldReport(sample);
+}
+
+async function maptrakOpenConcrete(row) {
+  if (!row || !row.id) return;
+  try {
+    const pull = typeof refreshConcreteSetsIfConnected === 'function' ? refreshConcreteSetsIfConnected() : null;
+    if (pull && typeof pull.then === 'function') await pull;
+  } catch (e) {}
+  switchView('concrete');
+  if (typeof openConcreteReport === 'function') openConcreteReport(row.id);
+}
+
+async function maptrakOpenCore(core) {
+  if (!core) return;
+  if (core.field_test_id && typeof fcResumeSessionById === 'function') {
+    await fcResumeSessionById(core.field_test_id);
+    if (typeof fcLoadSessionCores === 'function') await fcLoadSessionCores(core.field_test_id);
+    if (typeof maptrakEditLoadedCore === 'function') maptrakEditLoadedCore(core.id);
+    return;
+  }
+  switchView('fieldcontrol');
+  if (typeof fcSetModuleMode === 'function') fcSetModuleMode('core');
+  showToast('Opened core ' + (core.core_no || core.test_no || ''), 'info');
+}
+
+function maptrakOpenBoring(b) {
+  if (!b || !b.id) return;
+  window._borelogMapById = window._borelogMapById || {};
+  window._borelogMapById[b.id] = b;
+  openBoreLog({
+    fromMapTrak: true,
+    boringId: b.id,
+    borelogProjectId: b.project_id || '',
+    contract: b.contract || '',
+    projectName: b.projectName || '',
+  });
+}
+
+function maptrakOpenPoint(index) {
+  const pt = _maptrakPoints[index];
+  if (!pt) return;
+  if (pt.kind === 'boring') return maptrakOpenBoring(pt.record);
+  if (pt.kind === 'core') return maptrakOpenCore(pt.record);
+  if (pt.kind === 'concrete') return maptrakOpenConcrete(pt.record);
+  return maptrakOpenSample(pt.record);
+}
+
+function maptrakExportKML() {
+  const placemarks = (_maptrakPoints || []).map(pt => {
+    const rec = pt.record || {};
+    const name = pt.kind === 'boring'
+      ? (rec.boring_no || '(no #)')
+      : pt.kind === 'core'
+        ? ('Core ' + (rec.core_no || rec.test_no || ''))
+        : pt.kind === 'concrete'
+          ? (rec.test_no || rec.id || 'Concrete')
+          : (rec.test_no || '(no #)');
+    const desc = pt.kind === 'boring'
+      ? ((rec.location || '') + (pt.depth ? ' · ' + pt.depth : ''))
+      : ((rec.pour_location || rec.location || rec.road || '') + (rec.contract ? ' · ' + rec.contract : ''));
+    return '  <Placemark>\n    <name>' + mapEscHtml(name) + '</name>\n    <description>' + mapEscHtml(desc) + '</description>\n    <Point><coordinates>' + pt.lng + ',' + pt.lat + ',0</coordinates></Point>\n  </Placemark>';
+  }).filter(Boolean).join('\n');
+  if (!placemarks) {
+    showToast('No coordinates to export', 'info');
+    return;
+  }
+  const kml = '<?xml version="1.0" encoding="UTF-8"?>\n<kml xmlns="http://www.opengis.net/kml/2.2">\n<Document>\n  <name>MapTrak</name>\n' + placemarks + '\n</Document>\n</kml>';
+  const a = document.createElement('a');
+  a.href = 'data:application/vnd.google-earth.kml+xml,' + encodeURIComponent(kml);
+  a.download = 'maptrak.kml';
+  a.click();
+}
+
 function leaveReport() {
+  const backToMap = _maptrakReturn;
+  _maptrakReturn = false;
   const compaction = isCompactionApprovalRecord(_approvalTarget || slCurrentSample);
   _approvalTarget = null;
   const btn = document.getElementById('rpt-soillab-edit-btn');
   if (btn) btn.style.display = 'none';
+  if (backToMap) {
+    switchView('maptrak');
+    return;
+  }
   if (currentUser?.role === 'pm') {
     switchView('projects');
     return;
@@ -26027,7 +26452,7 @@ const VIEW_LABELS = {
   home: 'Home', projects: 'Projects', dashboard: 'Samples', fieldcontrol: 'Field Control',
   scan: 'Scan', labarrival: 'Arrival', soillab: 'Soil', concrete: 'Concrete', appsources: 'Sources',
   fieldhub: 'Field Control', labhub: 'Lab', conchub: 'Concrete', hotmix: 'Hot Mix',
-  precast: 'Pre-Cast', chemlab: 'Chem', r18: 'R-18', labmap: 'Map', calendar: 'Calendar'
+  precast: 'Pre-Cast', chemlab: 'Chem', r18: 'R-18', labmap: 'MapTrak', maptrak: 'MapTrak', calendar: 'Calendar'
 };
 
 const MOBILE_NAV_ICONS = {
@@ -26048,6 +26473,7 @@ const MOBILE_NAV_ICONS = {
   precast: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="3" width="18" height="18" rx="2"/></svg>',
   chemlab: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M10 2v6l-4 10h12L14 8V2"/></svg>',
   labmap: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7z"/><circle cx="12" cy="9" r="2.5"/></svg>',
+  maptrak: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7z"/><circle cx="12" cy="9" r="2.5"/></svg>',
   more: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="5" cy="12" r="1.5"/><circle cx="12" cy="12" r="1.5"/><circle cx="19" cy="12" r="1.5"/></svg>',
   signout: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4"/><path d="M16 17l5-5-5-5"/><path d="M21 12H9"/></svg>'
 };
@@ -26176,7 +26602,7 @@ function openPhoneMore() {
     ['projects', 'Projects'],
     ['appsources', 'Sources'],
     ['scan', 'Scan'],
-    ['labmap', 'Map'],
+    ['maptrak', 'MapTrak'],
     ['r18', 'R-18'],
     ['labarrival', 'Lab Arrival']
   ];
@@ -26208,7 +26634,7 @@ function setActiveView(name) {
   }
   document.querySelectorAll('.rail-item').forEach(r => r.classList.toggle('active', r.dataset.view === name));
   document.querySelectorAll('.view').forEach(v => v.classList.toggle('active', v.id === name + '-view'));
-  const _sectionMap = {home:'',labmap:'Map',projects:'Projects',dashboard:'All samples',calendar:'Calendar',fieldcontrol:'Field control',scan:'Scan QR',labarrival:'Lab arrival',soillab:'Soil & aggregate',concrete:'Concrete',fieldhub:'Field control',labhub:'Soil lab',conchub:'Concrete hub',lab:'Lab entry',report:'Report',hotmix:'Hot mix asphalt',precast:'Pre-cast concrete',chemlab:'Chemistry lab',r18:'R-18 compliance'};
+  const _sectionMap = {home:'',labmap:'MapTrak',maptrak:'MapTrak',projects:'Projects',dashboard:'All samples',calendar:'Calendar',fieldcontrol:'Field control',scan:'Scan QR',labarrival:'Lab arrival',soillab:'Soil & aggregate',concrete:'Concrete',fieldhub:'Field control',labhub:'Soil lab',conchub:'Concrete hub',lab:'Lab entry',report:'Report',hotmix:'Hot mix asphalt',precast:'Pre-cast concrete',chemlab:'Chemistry lab',r18:'R-18 compliance'};
   const _sl = document.getElementById('ts-section-label');
   if (_sl) { const _lbl = _sectionMap[name]||''; _sl.textContent=_lbl; _sl.style.display=_lbl?'':'none'; }
   syncMobileNav();
@@ -26222,7 +26648,7 @@ function setActiveView(name) {
 // ══════════════════════════════════════════════════════════════
 
 const ROLE_DEFS = {
-  admin:         { label: 'Administrator',    color: '#e09848', tabs: ['home','labmap','projects','dashboard','fieldhub','labhub','conchub','hotmix','precast','chemlab','appsources','r18'] },
+  admin:         { label: 'Administrator',    color: '#e09848', tabs: ['home','projects','dashboard','fieldhub','labhub','conchub','hotmix','precast','chemlab','appsources','r18'] },
   section_admin: { label: 'Section Admin',    color: '#fb923c', tabs: [] }, // tabs come from restricted_hubs
   field:         { label: 'Field Technician', color: '#60a5fa', tabs: ['projects','fieldhub','labarrival','scan','r18'] },
   lab:           { label: 'Lab Technician',   color: '#34d399', tabs: ['projects','dashboard','labhub','labarrival','soillab','r18'] },
@@ -26541,16 +26967,20 @@ function applyRoleUI(role) {
 
   // Determine effective tabs:
   // section_admin and custom roles with restricted_hubs use per-user config
-  let effectiveTabs = rd.tabs;
+  let effectiveTabs = (rd.tabs || []).slice();
   if (role === 'ccrl') effectiveTabs = ['r18'];
   else if (currentUser && currentUser.restricted_hubs && currentUser.restricted_hubs.length > 0) {
     // Always include home + projects for navigation
     effectiveTabs = ['home', 'projects', ...currentUser.restricted_hubs];
   }
+  effectiveTabs = effectiveTabs.filter(t => t !== 'labmap');
+  if ((ROLE_HOME[role] || 'home') === 'home' && !effectiveTabs.includes('maptrak')) {
+    effectiveTabs.push('maptrak');
+  }
 
   // Map of view → rail item id
   const railMap = {
-    home: 'ri-home', labmap: 'ri-labmap', projects: 'ri-projects', dashboard: 'ri-dashboard',
+    home: 'ri-home', maptrak: 'ri-maptrak', projects: 'ri-projects', dashboard: 'ri-dashboard',
     fieldcontrol: 'ri-fieldcontrol', scan: 'ri-scan', labarrival: 'ri-labarrival',
     soillab: 'ri-soillab', concrete: 'ri-concrete', appsources: 'ri-appsources',
     fieldhub: 'ri-fieldhub', labhub: 'ri-labhub', conchub: 'ri-conchub',
@@ -26569,7 +26999,7 @@ function applyRoleUI(role) {
     'home-app-projects': ['projects'],
     'home-app-sources': ['appsources'],
     'home-app-scan': ['scan'],
-    'home-app-map': ['labmap'],
+    'home-app-map': ['maptrak'],
     'home-app-r18': ['r18'],
     'home-app-samples': ['dashboard'],
     'home-app-arrival': ['labarrival'],
@@ -33085,6 +33515,10 @@ function fcRenderCoreList() {
   }).join('');
 }
 
+function maptrakEditLoadedCore(id) {
+  if ((activeFC_sessionCores || []).some(c => c.id === id)) fcEditCore(id);
+}
+
 function fcEditCore(id) {
   const c = (activeFC_sessionCores || []).find(x => x.id === id);
   if (!c) return;
@@ -37909,7 +38343,8 @@ function getBoreLogContext() {
 
 function openBoreLog(opts) {
   if (currentUser?.role === 'ccrl') return;
-  if (!roleCanUseSoilModule()) {
+  const fromMapTrak = !!(opts && opts.fromMapTrak);
+  if (!fromMapTrak && !roleCanUseSoilModule()) {
     showToast('BoreLog stays with the soil lab.', 'info');
     return;
   }
