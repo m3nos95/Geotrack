@@ -2357,13 +2357,23 @@ nav:not(#r18-nav), .nav-top-row { display: none !important; }
   box-sizing: border-box;
 }
 #maptrakBox h3 { margin: 0 0 4px; font-size: 16px; color: var(--text); font-weight: 600; }
+#maptrakMapWrap { position: relative; margin-top: 14px; }
 #maptrakMap {
   width: 100%;
   height: 520px;
   border-radius: 10px;
   border: 1px solid var(--border);
-  margin-top: 14px;
+  margin-top: 0;
   background: #ddd;
+}
+#maptrakLayersPanel {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  bottom: 28px;
+  z-index: 500;
+  width: 252px;
+  max-height: none;
 }
 #maptrak-view .map-toolbar { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-bottom: 10px; }
 #maptrak-view .map-no-coords {
@@ -8965,12 +8975,24 @@ NOTIFY pgrst, 'reload schema';</pre>
       </div>
       <div class="map-toolbar">
         <span style="font-size:11px;color:var(--muted);">State Plane DE 700 · US Survey Feet → WGS84</span>
-        <button type="button" class="btn btn-ghost btn-sm" onclick="maptrakExportKML()" style="margin-left:auto;">⬇ Export KML</button>
+        <label class="labmap-contract-filter-wrap" style="margin-left:auto;">
+          <span>CONTRACT</span>
+          <select id="maptrakContractFilter" onchange="maptrakSetContractFilter(this.value)" aria-label="Show pins for a contract number">
+            <option value="">All contracts</option>
+          </select>
+        </label>
+        <button type="button" class="btn btn-ghost btn-sm" onclick="maptrakExportKML()">⬇ Export KML</button>
       </div>
       <div id="maptrakNoCoordsWarn" class="map-no-coords" style="display:none;">
         ⚠ Some field locations and borings are missing coordinates — only records with coordinates are shown.
       </div>
-      <div id="maptrakMap"></div>
+      <div id="maptrakMapWrap">
+        <div id="maptrakMap"></div>
+        <aside class="labmap-layers" id="maptrakLayersPanel" aria-label="Pin types">
+          <div class="labmap-layers-title">LAYERS</div>
+          <div id="maptrakLayerList"></div>
+        </aside>
+      </div>
     </div>
   </div>
 
@@ -12234,12 +12256,23 @@ function mapPinStylesLoad() {
   } catch (e) { return {}; }
 }
 
-const MAP_PIN_RESULT_LAYERS = { field_sample: true, density: true, concrete: true };
+const MAP_PIN_RESULT_LAYERS = { field_sample: true, other_field: true, aggregate: true, density: true, concrete: true };
+
+function mapPinLayerDef(layer) {
+  if (typeof LAB_MAP_LAYER_DEFS !== 'undefined' && LAB_MAP_LAYER_DEFS[layer]) return LAB_MAP_LAYER_DEFS[layer];
+  if (typeof MAPTRAK_LAYER_DEFS !== 'undefined' && MAPTRAK_LAYER_DEFS[layer]) return MAPTRAK_LAYER_DEFS[layer];
+  return { label: layer, color: '#94a3b8', shape: 'circle', symbol: '●' };
+}
+
+function mapPinLayerKnown(layer) {
+  return !!((typeof LAB_MAP_LAYER_DEFS !== 'undefined' && LAB_MAP_LAYER_DEFS[layer]) ||
+    (typeof MAPTRAK_LAYER_DEFS !== 'undefined' && MAPTRAK_LAYER_DEFS[layer]));
+}
 const MAP_PIN_PASS_COLOR = '#34d399';
 const MAP_PIN_FAIL_COLOR = '#f87171';
 
 function mapPinStyle(layer) {
-  const def = (typeof LAB_MAP_LAYER_DEFS !== 'undefined' && LAB_MAP_LAYER_DEFS[layer]) || { label: layer, color: '#94a3b8', shape: 'circle', symbol: '●' };
+  const def = mapPinLayerDef(layer);
   const saved = mapPinStylesLoad()[layer] || {};
   const shape = MAP_PIN_SHAPES.some(s => s.id === saved.shape) ? saved.shape : (def.shape || mapSymbolToShape(def.symbol));
   const style = { label: def.label, symbol: def.symbol, shape, color: mapPinSafeColor(saved.color || def.color) };
@@ -12410,6 +12443,20 @@ const LAB_MAP_LAYER_DEFS = {
   core_drill:   { label: 'Core Drill',   color: '#a855f7', symbol: '◇', shape: 'diamond' },
   concrete:     { label: 'Concrete',     color: '#60a5fa', symbol: '■', shape: 'square' },
 };
+const MAPTRAK_LAYER_DEFS = {
+  aggregate:  { label: 'Aggregate',    color: '#f97316', symbol: '⬡', shape: 'hex' },
+  borelog:    { label: 'Soil Boring',  color: '#14b8a6', symbol: '▲', shape: 'pin' },
+  other_field:{ label: 'Field Sample', color: '#94a3b8', symbol: '◎', shape: 'target' },
+};
+const MAPTRAK_LAYER_ROWS = [
+  { key: 'field_sample', label: 'Soil' },
+  { key: 'aggregate', label: 'Aggregate' },
+  { key: 'concrete', label: 'Concrete' },
+  { key: 'borelog', label: 'Soil Boring' },
+  { key: 'other_field', label: 'Field Sample' },
+  { key: 'density', label: 'Density' },
+  { key: 'core_drill', label: 'Core Drill' },
+];
 let labMapPinEditorLayer = '';
 
 function isLabMapAdmin() {
@@ -12623,7 +12670,7 @@ function labMapTogglePinEditor(layer) {
 }
 
 function labMapSetPinStyle(layer, patch) {
-  if (!LAB_MAP_LAYER_DEFS[layer]) return;
+  if (!mapPinLayerKnown(layer)) return;
   const cur = mapPinStyle(layer);
   const next = {
     color: mapPinSafeColor(patch.color != null ? patch.color : cur.color),
@@ -12634,7 +12681,7 @@ function labMapSetPinStyle(layer, patch) {
     next.failColor = mapPinSafeColor(patch.failColor != null ? patch.failColor : cur.failColor);
   }
   const all = mapPinStylesLoad();
-  const def = LAB_MAP_LAYER_DEFS[layer];
+  const def = mapPinLayerDef(layer);
   const colorDefault = next.color.toLowerCase() === def.color.toLowerCase();
   const shapeDefault = next.shape === (def.shape || mapSymbolToShape(def.symbol));
   const passDefault = !next.passColor || next.passColor.toLowerCase() === MAP_PIN_PASS_COLOR.toLowerCase();
@@ -12652,9 +12699,11 @@ function labMapSetPinStyle(layer, patch) {
   labMapRenderLayerPanel();
   labMapPlotMarkers(true);
   renderProjectMapLegend();
+  if (typeof maptrakOnPinStyleChange === 'function') maptrakOnPinStyleChange();
 }
 
 function labMapResetPinStyle(layer) {
+  if (!mapPinLayerKnown(layer)) return;
   const all = mapPinStylesLoad();
   delete all[layer];
   try { localStorage.setItem(MAP_PIN_STYLE_KEY, JSON.stringify(all)); } catch (e) {}
@@ -12662,6 +12711,7 @@ function labMapResetPinStyle(layer) {
   labMapRenderLayerPanel();
   labMapPlotMarkers(true);
   renderProjectMapLegend();
+  if (typeof maptrakOnPinStyleChange === 'function') maptrakOnPinStyleChange();
 }
 
 function labMapItemKey(layer, record) {
@@ -15808,6 +15858,7 @@ async function pullSharedOfficeSettings() {
   if (pins && pins.styles && typeof pins.styles === 'object') {
     try { localStorage.setItem(MAP_PIN_STYLE_KEY, JSON.stringify(pins.styles)); } catch (e) {}
     if (typeof labMapPlotMarkers === 'function' && labMap) labMapPlotMarkers(true);
+    if (typeof maptrakOnPinStyleChange === 'function') maptrakOnPinStyleChange();
   } else {
     const localPins = mapPinStylesLoad();
     if (localPins && Object.keys(localPins).length) sharedOfficeWrite('map_pins', { styles: localPins });
@@ -25627,15 +25678,28 @@ function openFoundSample(sample) {
 
 // ── MapTrak: BoreLog map for every LabTrak field location and boring ──
 let _maptrakMap = null;
+let _maptrakMarkers = [];
 let _maptrakPoints = [];
 let _maptrakReturn = false;
 let _maptrakLoadToken = 0;
+let maptrakContractFilter = '';
+let maptrakPinEditorLayer = '';
+const maptrakLayers = {
+  field_sample: true, aggregate: true, concrete: true, borelog: true,
+  other_field: true, density: true, core_drill: true
+};
 
 function initMapTrakView() {
   maptrakRender();
 }
 
+function maptrakClearMarkers() {
+  _maptrakMarkers.forEach(m => { try { m.remove(); } catch (e) {} });
+  _maptrakMarkers = [];
+}
+
 function maptrakClearMap() {
+  maptrakClearMarkers();
   if (_maptrakMap) {
     try { _maptrakMap.remove(); } catch (e) {}
     _maptrakMap = null;
@@ -25671,7 +25735,7 @@ async function maptrakCollectField() {
   let samples = null;
   let cores = null;
   try {
-    samples = await maptrakFetchPaged('samples', 'id,test_no,contract,location,road,material_type,gps_coordinates,date_sampled,status,record_kind,sample_type,deleted_at,archived');
+    samples = await maptrakFetchPaged('samples', 'id,test_no,contract,location,road,material_type,gps_coordinates,date_sampled,status,record_kind,sample_type,test_category,nuclear_data,deleted_at,archived');
   } catch (e) {
     console.warn('maptrak samples', e);
   }
@@ -25777,6 +25841,188 @@ async function maptrakCollectBorings() {
   return { points, missing };
 }
 
+function maptrakHasDensity(s) {
+  if (!s) return false;
+  if (s.record_kind === 'density_test' || s.sample_type === 'density_test' || s.sample_type === 'nuclear_placeholder' || s.status === 'density') return true;
+  const nuc = s.nuclear_data;
+  if (nuc == null || nuc === '') return false;
+  if (typeof nuc === 'object') return Object.keys(nuc).length > 0;
+  const text = String(nuc).trim();
+  return text !== '' && text !== '{}' && text !== 'null';
+}
+
+function maptrakLayerForPoint(pt) {
+  if (!pt) return 'other_field';
+  if (pt.kind === 'boring') return 'borelog';
+  if (pt.kind === 'core') return 'core_drill';
+  if (pt.kind === 'concrete') return 'concrete';
+  const s = pt.record || {};
+  const cat = String(s.test_category || '').trim().toLowerCase();
+  if (cat === 'aggregate' || s.sample_type === 'aggregate_placeholder') return 'aggregate';
+  if (maptrakHasDensity(s)) return 'density';
+  if (cat === 'soil' || cat === '') return 'field_sample';
+  return 'other_field';
+}
+
+function maptrakPointContract(pt) {
+  const rec = (pt && pt.record) || {};
+  return String(rec.contract || '').trim();
+}
+
+function maptrakContractMatch(pt) {
+  if (!maptrakContractFilter) return true;
+  return mapContractNorm(maptrakPointContract(pt)) === mapContractNorm(maptrakContractFilter);
+}
+
+function maptrakPointVisible(pt) {
+  if (!pt || !pt.layer) return false;
+  if (maptrakLayers[pt.layer] === false) return false;
+  return maptrakContractMatch(pt);
+}
+
+function maptrakFillContractFilter() {
+  const sel = document.getElementById('maptrakContractFilter');
+  if (!sel) return;
+  const seen = new Set();
+  const contracts = [];
+  (_maptrakPoints || []).forEach(pt => {
+    const label = maptrakPointContract(pt);
+    const key = mapContractNorm(label);
+    if (!key || seen.has(key)) return;
+    seen.add(key);
+    contracts.push(label);
+  });
+  contracts.sort((a, b) => String(a).localeCompare(String(b), undefined, { numeric: true, sensitivity: 'base' }));
+  if (maptrakContractFilter && !contracts.some(c => mapContractNorm(c) === mapContractNorm(maptrakContractFilter))) {
+    maptrakContractFilter = '';
+  }
+  const selected = contracts.find(c => mapContractNorm(c) === mapContractNorm(maptrakContractFilter)) || '';
+  maptrakContractFilter = selected;
+  sel.innerHTML = '<option value="">All contracts</option>' +
+    contracts.map(c => '<option value="' + mapRoadEscape(c) + '">' + mapRoadEscape(c) + '</option>').join('');
+  sel.value = selected;
+}
+
+function maptrakSetContractFilter(value) {
+  maptrakContractFilter = String(value || '').trim();
+  maptrakRenderLayerPanel();
+  maptrakPlot(false);
+}
+
+function maptrakToggleLayer(key) {
+  if (!Object.prototype.hasOwnProperty.call(maptrakLayers, key)) return;
+  maptrakLayers[key] = maptrakLayers[key] === false;
+  maptrakRenderLayerPanel();
+  maptrakPlot(true);
+}
+
+function maptrakTogglePinEditor(layer) {
+  maptrakPinEditorLayer = maptrakPinEditorLayer === layer ? '' : layer;
+  maptrakRenderLayerPanel();
+}
+
+function maptrakRenderLayerPanel() {
+  const list = document.getElementById('maptrakLayerList');
+  if (!list || typeof MAPTRAK_LAYER_ROWS === 'undefined') return;
+  const counts = {};
+  (_maptrakPoints || []).forEach(pt => {
+    if (!maptrakContractMatch(pt)) return;
+    counts[pt.layer] = (counts[pt.layer] || 0) + 1;
+  });
+  list.innerHTML = MAPTRAK_LAYER_ROWS.map(row => {
+    const key = row.key;
+    const on = maptrakLayers[key] !== false;
+    const count = counts[key] || 0;
+    const style = mapPinStyle(key);
+    const editing = maptrakPinEditorLayer === key;
+    const shapes = MAP_PIN_SHAPES.map(s => {
+      return '<button type="button" class="labmap-pin-shape ' + (style.shape === s.id ? 'on' : '') + '" title="' + s.label + '" aria-label="' + s.label + '" onclick="labMapSetPinStyle(\'' + key + '\', { shape: \'' + s.id + '\' })">' + mapPinShapeMarkup(s.id, style.color, 18) + '</button>';
+    }).join('');
+    const results = style.passColor
+      ? '<div class="labmap-layer-results"><span>' + mapPinShapeMarkup(style.shape, style.passColor, 12) + ' Pass</span><span>' + mapPinShapeMarkup(style.shape, style.failColor, 12) + ' Fail</span></div>'
+      : '';
+    const resultPickers = style.passColor
+      ? '<div class="labmap-pin-editor-row"><label for="maptrakPinPass-' + key + '">Pass</label><input id="maptrakPinPass-' + key + '" type="color" value="' + style.passColor + '" onchange="labMapSetPinStyle(\'' + key + '\', { passColor: this.value })"></div>' +
+        '<div class="labmap-pin-editor-row"><label for="maptrakPinFail-' + key + '">Fail</label><input id="maptrakPinFail-' + key + '" type="color" value="' + style.failColor + '" onchange="labMapSetPinStyle(\'' + key + '\', { failColor: this.value })"></div>'
+      : '';
+    const colorLabel = style.passColor ? 'Pending' : 'Color';
+    return '<div class="labmap-layer-row">' +
+      '<div class="labmap-layer-main">' +
+        '<button type="button" class="labmap-layer-btn ' + (on ? 'active' : 'off') + '" onclick="maptrakToggleLayer(\'' + key + '\')">' +
+          '<span class="labmap-layer-swatch">' + mapPinShapeMarkup(style.shape, style.color, 18) + '</span>' +
+          '<span class="labmap-layer-meta">' +
+            '<div class="labmap-layer-name">' + row.label + '</div>' +
+            '<div class="labmap-layer-count">' + count + ' pin' + (count === 1 ? '' : 's') + '</div>' +
+            results +
+          '</span>' +
+        '</button>' +
+        '<button type="button" class="labmap-layer-edit ' + (editing ? 'open' : '') + '" aria-expanded="' + (editing ? 'true' : 'false') + '" onclick="maptrakTogglePinEditor(\'' + key + '\')">Style</button>' +
+      '</div>' +
+      '<div class="labmap-pin-editor" ' + (editing ? '' : 'hidden') + '>' +
+        '<div class="labmap-pin-editor-row">' +
+          '<label for="maptrakPinColor-' + key + '">' + colorLabel + '</label>' +
+          '<input id="maptrakPinColor-' + key + '" type="color" value="' + style.color + '" onchange="labMapSetPinStyle(\'' + key + '\', { color: this.value })">' +
+        '</div>' +
+        resultPickers +
+        '<div class="labmap-pin-shapes">' + shapes + '</div>' +
+        '<button type="button" class="labmap-pin-reset" onclick="labMapResetPinStyle(\'' + key + '\')">Reset</button>' +
+      '</div>' +
+    '</div>';
+  }).join('');
+}
+
+function maptrakOnPinStyleChange() {
+  if (typeof getActiveViewName === 'function' && getActiveViewName() !== 'maptrak') return;
+  maptrakRenderLayerPanel();
+  if (_maptrakMap) maptrakPlot(true);
+}
+
+function maptrakEnsureMap() {
+  const host = document.getElementById('maptrakMap');
+  if (!host || typeof L === 'undefined') return null;
+  if (_maptrakMap) return _maptrakMap;
+  host.innerHTML = '';
+  const map = L.map('maptrakMap');
+  _maptrakMap = map;
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
+    maxZoom: 20
+  }).addTo(map);
+  return map;
+}
+
+function maptrakPlot(preserveView) {
+  const map = _maptrakMap;
+  if (!map || typeof L === 'undefined') return;
+  maptrakClearMarkers();
+  const bounds = [];
+  (_maptrakPoints || []).forEach((pt, index) => {
+    if (!maptrakPointVisible(pt)) return;
+    bounds.push([pt.lat, pt.lng]);
+    const style = mapPinStyle(pt.layer);
+    const verdict = typeof mapRecordPinVerdict === 'function' ? mapRecordPinVerdict(pt.layer, pt.record) : null;
+    const color = mapPinColorForResult(pt.layer, verdict);
+    const el = createMarkerEl(color, style.shape, false, false);
+    const drop = style.shape === 'pin';
+    const width = drop ? 24 : 28;
+    const height = drop ? 30 : 28;
+    const marker = L.marker([pt.lat, pt.lng], {
+      icon: labTrakPinIcon(el, width, height, drop ? [width / 2, height] : [width / 2, height / 2]),
+      keyboard: false,
+      riseOnHover: true
+    });
+    marker.bindPopup(maptrakPopupHtml(pt, index));
+    marker.addTo(map);
+    _maptrakMarkers.push(marker);
+  });
+  if (!preserveView && bounds.length) map.fitBounds(bounds, { padding: [40, 40] });
+  setTimeout(function () {
+    if (_maptrakMap !== map) return;
+    map.invalidateSize();
+    if (!preserveView && bounds.length) map.fitBounds(bounds, { padding: [40, 40] });
+  }, 80);
+}
+
 function maptrakPopupHtml(pt, index) {
   const openLabel = pt.kind === 'boring' ? 'Open bore log' : 'Open field report';
   const open = '<br><a href="#" onclick="maptrakOpenPoint(' + index + ');return false;">' + openLabel + '</a>';
@@ -25813,9 +26059,12 @@ async function maptrakRender() {
   const borings = await maptrakCollectBorings();
   if (token !== _maptrakLoadToken || getActiveViewName() !== 'maptrak') return;
   const points = field.points.concat(borings.points);
+  points.forEach(pt => { pt.layer = maptrakLayerForPoint(pt); });
   _maptrakPoints = points;
   const missing = (field.missing || 0) + (borings.missing || 0);
   if (warn) warn.style.display = missing > 0 ? '' : 'none';
+  maptrakFillContractFilter();
+  maptrakRenderLayerPanel();
   maptrakClearMap();
   if (typeof L === 'undefined') {
     host.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:100%;color:var(--muted);font-size:13px;">Map library did not load.</div>';
@@ -25825,24 +26074,8 @@ async function maptrakRender() {
     host.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:100%;color:var(--muted);font-size:13px;">No field locations or borings have coordinates.</div>';
     return;
   }
-  const map = L.map('maptrakMap');
-  _maptrakMap = map;
-  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-    attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
-    maxZoom: 20
-  }).addTo(map);
-  const bounds = [];
-  points.forEach((pt, index) => {
-    bounds.push([pt.lat, pt.lng]);
-    const marker = L.marker([pt.lat, pt.lng]).addTo(map);
-    marker.bindPopup(maptrakPopupHtml(pt, index));
-  });
-  map.fitBounds(bounds, { padding: [40, 40] });
-  setTimeout(function () {
-    if (_maptrakMap !== map) return;
-    map.invalidateSize();
-    if (bounds.length) map.fitBounds(bounds, { padding: [40, 40] });
-  }, 80);
+  maptrakEnsureMap();
+  maptrakPlot(false);
 }
 
 function maptrakEnterReport(sample) {
@@ -25960,6 +26193,7 @@ function maptrakOpenPoint(index) {
 
 function maptrakExportKML() {
   const placemarks = (_maptrakPoints || []).map(pt => {
+    if (!maptrakPointVisible(pt)) return '';
     const rec = pt.record || {};
     const name = pt.kind === 'boring'
       ? (rec.boring_no || '(no #)')
