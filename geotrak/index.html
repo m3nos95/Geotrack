@@ -23332,7 +23332,9 @@ async function saveDb(){
 }
 
 /* ---------- Delaware bounds / delete ---------- */
-const DE_RING=[[-75.789,39.720],[-75.750,39.839],[-75.550,39.830],[-75.400,39.750],[-75.200,39.550],[-75.080,39.300],[-75.040,38.900],[-75.070,38.451],[-75.300,38.451],[-75.550,38.500],[-75.720,38.700],[-75.789,39.000],[-75.789,39.720]];
+/* Southeast corner is east of the barrier beach. A -75.070 corner put Bethany
+   (about -75.06) outside the ring, and project load then deleted that boring. */
+const DE_RING=[[-75.789,39.720],[-75.750,39.839],[-75.550,39.830],[-75.400,39.750],[-75.200,39.550],[-75.080,39.300],[-75.040,38.900],[-75.040,38.451],[-75.300,38.451],[-75.550,38.500],[-75.720,38.700],[-75.789,39.000],[-75.789,39.720]];
 function pointInRing(lon,lat,ring){
   let inside=false;
   for(let i=0,j=ring.length-1;i<ring.length;j=i++){
