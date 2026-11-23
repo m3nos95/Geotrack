@@ -52,8 +52,8 @@
     return '';
   }
 
-  function qrDataUrl(section, reportId) {
-    if (typeof QRCode === 'undefined' || !Next) return '';
+  function qrImage(text) {
+    if (!text || typeof QRCode === 'undefined') return '';
     const holder = document.createElement('div');
     holder.setAttribute('aria-hidden', 'true');
     holder.style.position = 'absolute';
@@ -61,7 +61,7 @@
     document.body.appendChild(holder);
     try {
       new QRCode(holder, {
-        text: Next.payloadUrl(pageUrl(), section, reportId),
+        text: text,
         width: 180,
         height: 180,
         colorDark: '#111111',
@@ -79,12 +79,24 @@
     }
   }
 
-  window.ltNextQrHtml = function (section, reportId) {
-    const src = qrDataUrl(section, reportId);
+  function qrDataUrl(section, reportId) {
+    if (!Next) return '';
+    return qrImage(Next.payloadUrl(pageUrl(), section, reportId));
+  }
+
+  function thisCaption(section) {
+    if (section === 'concrete') return 'Scan to open this set in Concrete';
+    if (section === 'lab') return 'Scan to open this lab sample';
+    return 'Scan to open this sample in Field Control';
+  }
+
+  window.ltThisQrHtml = function (section, reportId) {
+    if (!Next || !String(reportId || '').trim()) return '';
+    const src = qrImage(Next.payloadThisUrl(pageUrl(), section, reportId));
     if (!src) return '';
-    const name = Next ? Next.sectionName(section) : 'this section';
-    return '<span class="lt-next-qr-wrap"><img class="lt-next-qr" alt="Scan for the next ' + esc(name) + ' sample" src="' + src + '">' +
-      '<span class="lt-next-qr-cap">Scan for the next sample in ' + esc(name) + '</span></span>';
+    const caption = thisCaption(section);
+    return '<span class="lt-next-qr-wrap"><img class="lt-next-qr" alt="Internal use only. ' + esc(caption) + '" src="' + src + '">' +
+      '<span class="lt-next-qr-cap"><span class="lt-next-qr-internal">Internal use only</span>' + esc(caption) + '</span></span>';
   };
 
   function setStatus(kind, text) {
@@ -430,7 +442,7 @@
     }
   };
 
-  function showNextMessage(msg) {
+  function showScanNote(msg) {
     if (typeof showToast === 'function') showToast(msg, 'info');
     if (typeof switchView === 'function') switchView('scan');
     const note = document.getElementById('scanNextNote');
@@ -467,17 +479,17 @@
   window.ltOpenNextSample = async function (section, reportId) {
     if (!Next) return;
     if (section !== 'field' && section !== 'concrete') {
-      showNextMessage('That code is not a Field Control or Concrete report.');
+      showScanNote('That code is not a Field Control or Concrete report.');
       return;
     }
     const items = section === 'concrete' ? await concreteList() : await fieldList();
     const result = Next.nextAfter(items, reportId);
     if (result.status === 'missing') {
-      showNextMessage(Next.missingMessage(section));
+      showScanNote(Next.missingMessage(section));
       return;
     }
     if (result.status !== 'next' || !result.item) {
-      showNextMessage(Next.noneMessage(section));
+      showScanNote(Next.noneMessage(section));
       return;
     }
     const note = document.getElementById('scanNextNote');
@@ -487,7 +499,7 @@
         ? loadConcreteSets().some(function (set) { return set.id === result.item.id; })
         : true;
       if (!loaded) {
-        showNextMessage('That concrete set is not on this phone yet.');
+        showScanNote('That concrete set is not on this phone yet.');
         return;
       }
       if (typeof switchView === 'function') switchView('concrete');
@@ -499,9 +511,53 @@
     if (typeof fcResumeSessionById === 'function') await fcResumeSessionById(result.item.id);
   };
 
+  window.ltOpenThisSample = async function (section, reportId) {
+    const id = String(reportId || '').trim();
+    if (section !== 'field' && section !== 'concrete' && section !== 'lab') {
+      showScanNote('That code is not a Field Control, Concrete, or lab report.');
+      return;
+    }
+    if (!id) {
+      showScanNote('That code does not name a sample.');
+      return;
+    }
+    const note = document.getElementById('scanNextNote');
+    if (note) note.hidden = true;
+    if (section === 'concrete') {
+      if (typeof pullAndMergeConcreteSets === 'function' && database()) {
+        try { await pullAndMergeConcreteSets(); } catch (e) {}
+      }
+      const loaded = typeof loadConcreteSets === 'function' && loadConcreteSets().some(function (set) { return set.id === id; });
+      if (!loaded) {
+        showScanNote('That set is not in Concrete.');
+        return;
+      }
+      if (typeof switchView === 'function') switchView('concrete');
+      if (typeof switchConcreteTab === 'function') switchConcreteTab('log');
+      if (typeof openConcreteSet === 'function') openConcreteSet(id);
+      if (typeof showToast === 'function') showToast('Opened this concrete set', 'success');
+      return;
+    }
+    if (section === 'lab') {
+      const sample = typeof fetchSample === 'function' ? await fetchSample(id) : null;
+      if (!sample || sample.deleted_at) {
+        showScanNote('That lab sample is not in LabTrak.');
+        return;
+      }
+      if (typeof switchView === 'function') switchView('soillab');
+      if (typeof slLoadSample === 'function') await slLoadSample(id);
+      return;
+    }
+    if (typeof fcResumeSessionById === 'function') await fcResumeSessionById(id);
+  };
+
   window.ltHandleScanText = async function (text) {
     if (!Next) return false;
     const parsed = Next.parseScan(text);
+    if (parsed.type === 'this') {
+      await window.ltOpenThisSample(parsed.section, parsed.report);
+      return true;
+    }
     if (parsed.type !== 'next') return false;
     await window.ltOpenNextSample(parsed.section, parsed.report);
     return true;

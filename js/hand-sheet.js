@@ -1,7 +1,7 @@
 /**
  * Predetermined handwritten sheets for Field Control and concrete.
  * One value per box. Contract number and sample number each have their own box.
- * The printed sheet carries the same next-sample QR as a printed report.
+ * The printed sheet can carry a next-sample QR. A finished report does not.
  */
 (function (root, factory) {
   const api = factory();

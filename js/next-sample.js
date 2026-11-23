@@ -1,7 +1,8 @@
 /**
- * Next-sample QR for printed Field Control and concrete reports.
- * The code names the report and the section. A scan opens the following
- * sample in that same section.
+ * QR payloads for LabTrak paper.
+ * A finished report names itself. A scan opens that same sample:
+ * field in Field Control, concrete in Concrete, lab in the lab sample.
+ * The handwritten sheet can still name the next sample in its section.
  */
 (function (root, factory) {
   const api = factory();
@@ -10,34 +11,52 @@
 })(typeof globalThis !== 'undefined' ? globalThis : this, function () {
   'use strict';
 
-  function sectionName(section) {
-    return section === 'concrete' ? 'Concrete' : 'Field Control';
+  function reportSection(section) {
+    if (section === 'concrete' || section === 'lab' || section === 'field') return section;
+    return '';
   }
 
-  function payloadUrl(pageUrl, section, reportId) {
+  function sectionName(section) {
+    if (section === 'concrete') return 'Concrete';
+    if (section === 'lab') return 'Lab';
+    return 'Field Control';
+  }
+
+  function codeUrl(pageUrl, flag, section, reportId) {
     const u = new URL(pageUrl, 'https://labtrak.local/');
     u.search = '';
     u.hash = '';
-    u.searchParams.set('ltnext', '1');
-    u.searchParams.set('section', section === 'concrete' ? 'concrete' : 'field');
+    u.searchParams.set(flag, '1');
+    u.searchParams.set('section', section || '');
     u.searchParams.set('report', reportId || '');
     return u.href;
+  }
+
+  function payloadUrl(pageUrl, section, reportId) {
+    return codeUrl(pageUrl, 'ltnext', section === 'concrete' ? 'concrete' : 'field', reportId);
+  }
+
+  function payloadThisUrl(pageUrl, section, reportId) {
+    return codeUrl(pageUrl, 'ltreport', reportSection(section), reportId);
+  }
+
+  function sectionFromParts(rawSection) {
+    return reportSection(rawSection);
   }
 
   function parseScan(text) {
     const raw = String(text || '').trim();
     if (!raw) return { type: 'sample', id: '' };
-    if (raw.indexOf('LTNEXT|') === 0) {
+    if (raw.indexOf('LTREPORT|') === 0 || raw.indexOf('LTNEXT|') === 0) {
       const parts = raw.split('|');
-      const section = parts[1] === 'concrete' ? 'concrete' : (parts[1] === 'field' ? 'field' : '');
-      return { type: 'next', section: section, report: parts[2] || '' };
+      const type = raw.indexOf('LTREPORT|') === 0 ? 'this' : 'next';
+      return { type: type, section: sectionFromParts(parts[1]), report: parts[2] || '' };
     }
     try {
       const u = new URL(raw);
-      if (u.searchParams.get('ltnext') === '1') {
-        const sectionParam = u.searchParams.get('section');
-        const section = sectionParam === 'concrete' ? 'concrete' : (sectionParam === 'field' ? 'field' : '');
-        return { type: 'next', section: section, report: u.searchParams.get('report') || '' };
+      if (u.searchParams.get('ltreport') === '1' || u.searchParams.get('ltnext') === '1') {
+        const type = u.searchParams.get('ltreport') === '1' ? 'this' : 'next';
+        return { type: type, section: sectionFromParts(u.searchParams.get('section')), report: u.searchParams.get('report') || '' };
       }
       const sample = u.searchParams.get('sample');
       if (sample) return { type: 'sample', id: sample };
@@ -104,6 +123,7 @@
   return {
     sectionName: sectionName,
     payloadUrl: payloadUrl,
+    payloadThisUrl: payloadThisUrl,
     parseScan: parseScan,
     isFieldSectionSample: isFieldSectionSample,
     sortFieldSamples: sortFieldSamples,
