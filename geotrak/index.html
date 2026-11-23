@@ -23227,12 +23227,20 @@ async function loadProject(){
           const back=GeoImport.restoreMissingBorings(db, projects);
           geoRestored=(back && back.restored) || [];
         }
+      }
+    }catch(e){ console.warn('geo restore', e); }
+    try{
+      if(typeof GeoImport!=='undefined'){
+        if(GeoImport.repairNorthBethany){
+          const fixed=GeoImport.repairNorthBethany(db);
+          if(fixed && fixed.restored && fixed.restored.length) geoRestored=geoRestored.concat(fixed.restored);
+        }
         if(GeoImport.replotStatePlane){
           const moved=GeoImport.replotStatePlane(db);
           if(moved && moved.moved && moved.moved.length) geoRestored=geoRestored.concat(moved.moved);
         }
       }
-    }catch(e){ console.warn('geo restore', e); }
+    }catch(e){ console.warn('geo replot', e); }
     refs=[];
     nrcsByMukey={}; nrcsMeta=null;
     mukeyPriorsByMukey={}; mukeyPriorsByHydGeo={}; mukeyPriorsBySiteDna={}; mukeyPriorsBySiteDnaGamma={}; mukeyPriorsByHyd={}; mukeyPriorsMeta=null; analogCells=[]; analogCellsMeta=null;
@@ -23339,14 +23347,14 @@ async function loadProject(){
         }
         if(geoInboxN && typeof GeoImport!=='undefined' && GeoImport.clearInbox) GeoImport.clearInbox();
         if(geoInboxN) loadMsg+=` · saved ${geoInboxN} boring(s) from a .GEO import`;
-        if(geoRestored.length) loadMsg+=` · restored ${geoRestored.length} boring(s) from the .GEO folder`;
+        if(geoRestored.length) loadMsg+=` · restored ${geoRestored.length} boring(s) onto the map`;
       }catch(e){
         loadMsg+=` · .GEO import is in memory but db.json was not saved (${e.message})`;
       }
     } else if(geoInboxN){
       loadMsg+=` · ${geoInboxN} boring(s) from a .GEO import are in memory`;
     } else if(geoRestored.length){
-      loadMsg+=` · restored ${geoRestored.length} boring(s) from the .GEO folder`;
+      loadMsg+=` · restored ${geoRestored.length} boring(s) onto the map`;
     }
     toast(loadMsg, 6500);
     if(db.borings.length && !mapped){
@@ -23415,12 +23423,36 @@ async function confirmDeleteBoring(job,b){
 }
 async function purgeOutsideDelaware(opts){
   opts=opts||{};
+  let replotted=false;
+  if(typeof GeoImport!=='undefined' && GeoImport.replotStatePlane && db){
+    try{
+      const moved=GeoImport.replotStatePlane(db);
+      replotted=!!(moved && moved.moved && moved.moved.length);
+    }catch(e){ console.warn('replot', e); }
+  }
   const fast=!!(opts.fast||opts.auto);
   const deOpts=fast?{fast:true}:null;
   const counts={borings:0, cores:0, anchors:0, dgir:0, geophys:0, refPoints:0};
   const examples=[];
+  function planeInside(r){
+    if(!r || r.e==null || r.n==null || typeof GeoImport==='undefined' || !GeoImport.delawareFtToLatLon) return false;
+    const pairs=[[+r.e,+r.n],[+r.n,+r.e]];
+    for(let i=0;i<pairs.length;i++){
+      const e=pairs[i][0], n=pairs[i][1];
+      if(!Number.isFinite(e)||!Number.isFinite(n)) continue;
+      const ll=GeoImport.delawareFtToLatLon(e,n);
+      if(ll && inDelaware(ll.lat,ll.lon,{fast:true})){
+        r.lat=+Number(ll.lat).toFixed(7);
+        r.lon=+Number(ll.lon).toFixed(7);
+        r.e=e; r.n=n;
+        replotted=true;
+        return true;
+      }
+    }
+    return false;
+  }
 
-  const badBor=db.borings.filter(r=>r.lat!=null&&r.lon!=null&&!inDelaware(r.lat,r.lon,deOpts));
+  const badBor=db.borings.filter(r=>r.lat!=null&&r.lon!=null&&!inDelaware(r.lat,r.lon,deOpts)&&!planeInside(r));
   const badCore=(db.cores||[]).filter(p=>p.lat!=null&&p.lon!=null&&!inDelaware(p.lat,p.lon,deOpts));
   const badAnc=(infilAnchors||[]).filter(a=>a.lat!=null&&a.lon!=null&&!inDelaware(a.lat,a.lon,deOpts));
   const badDgir=(dgirWells||[]).filter(w=>w.lat!=null&&w.lon!=null&&!inDelaware(w.lat,w.lon,deOpts));
@@ -23469,6 +23501,7 @@ async function purgeOutsideDelaware(opts){
   const unmapped=db.borings.filter(r=>r.lat==null||r.lon==null);
 
   if(!total){
+    if(replotted){ try{ await saveDb(); }catch(e){ console.warn('replot save', e); } }
     if(!opts.silent) toast('No mapped data outside Delaware'+(unmapped.length?` (${unmapped.length} unmapped borings kept)`:''));
     return {total:0, counts};
   }
@@ -23498,7 +23531,7 @@ async function purgeOutsideDelaware(opts){
   if(counts.dgir) dgirWells=(dgirWells||[]).filter(w=>w.lat==null||w.lon==null||inDelaware(w.lat,w.lon,deOpts));
   if(counts.geophys) dgirGeophysZones=(dgirGeophysZones||[]).filter(w=>w.lat==null||w.lon==null||inDelaware(w.lat,w.lon,deOpts));
 
-  if(counts.borings||counts.cores) await saveDb();
+  if(counts.borings||counts.cores||replotted) await saveDb();
   else if(!opts.silent) renderAll();
 
   if(dirHandle){
@@ -41512,7 +41545,7 @@ function parseSummaryRows(rows){
   }
   return out;
 }
-proj4.defs('DE_SPFT','+proj=lcc +lat_1=38.43333333333333 +lat_2=39.83333333333334 +lat_0=38 +lon_0=-75.41666666666667 +x_0=200000.0001016002 +y_0=0 +ellps=GRS80 +units=us-ft +no_defs');
+proj4.defs('DE_SPFT','+proj=tmerc +lat_0=38 +lon_0=-75.41666666666667 +k=0.999995 +x_0=200000 +y_0=0 +ellps=GRS80 +units=us-ft +no_defs');
 function spToLL(e,n){const [lon,lat]=proj4('DE_SPFT','WGS84',[e,n]);return [lat,lon];}
 function llToSP(lat,lon){const [e,n]=proj4('WGS84','DE_SPFT',[+lon,+lat]);return {easting:e, northing:n};}
 
@@ -41650,26 +41683,34 @@ async function projectGeoRecords(dir){
   if(!dir || typeof GeoImport==='undefined') return [];
   const files=[];
   const geoName=name=>/\.(mdt|gs|lim|ndx|pdt|xml)$/i.test(name) || /\.\$p\$$/i.test(name);
-  const zipName=name=>/\.zip$/i.test(name) && /geo/i.test(name);
+  const interesting=name=>/\.geo$/i.test(name) || /geo|bethany|t202270302/i.test(name || '');
   async function addFile(handle, path){
-    const file=await handle.getFile();
-    if(file.size>12*1024*1024) return;
-    try{ file._geoPath=path; }catch(e){}
-    files.push(file);
+    try{
+      const file=await handle.getFile();
+      const zip=/\.zip$/i.test(file.name);
+      const cap=zip && !/geo/i.test(file.name) ? 4*1024*1024 : 12*1024*1024;
+      if(file.size>cap) return;
+      const used=files.reduce((n,f)=>n+(f.size||0),0);
+      if(used+file.size>40*1024*1024) return;
+      try{ file._geoPath=path; }catch(e){}
+      files.push(file);
+    }catch(e){ console.warn('geo file', path, e); }
   }
-  async function addDir(handle, prefix){
+  async function walk(handle, prefix, depth){
+    if(depth>2) return;
     for await (const [name, h] of handle.entries()){
-      if(h.kind!=='file') continue;
-      if(!geoName(name) && !zipName(name)) continue;
-      await addFile(h, prefix ? prefix+'/'+name : name);
+      if(h.kind==='file'){
+        if(geoName(name) || /\.zip$/i.test(name)) await addFile(h, prefix ? prefix+'/'+name : name);
+      } else if(h.kind==='directory' && !/^refs$/i.test(name) && name!=='.git' && name!=='node_modules'){
+        if(depth===0 || interesting(name) || interesting(prefix)) await walk(h, prefix ? prefix+'/'+name : name, depth+1);
+      }
     }
   }
-  for await (const [name, h] of dir.entries()){
-    if(h.kind==='file' && (geoName(name) || zipName(name))) await addFile(h, name);
-    else if(h.kind==='directory' && /\.geo$/i.test(name)) await addDir(h, name);
-  }
+  try{ await walk(dir, '', 0); }
+  catch(e){ console.warn('geo scan', e); }
   if(!files.length) return [];
-  return geoRecordsFromFiles(files);
+  try{ return await geoRecordsFromFiles(files); }
+  catch(e){ console.warn('geo scan', e); return []; }
 }
 
 async function geoRecordsFromFiles(fileList) {

@@ -524,8 +524,8 @@ check('opening a saved Bethany project puts SB-02 back on the coast', function (
   assert.strictEqual(project.contract, 'T202270302');
   assert.strictEqual(project.name, 'Bethany');
   const parsed2 = project.borings.find(b => b.b === 'SB-02');
-  assert.ok(Math.abs(parsed2.lat - 38.5645092) < 0.00001, parsed2.lat);
-  assert.ok(Math.abs(parsed2.lon - (-75.0603015)) < 0.00001, parsed2.lon);
+  assert.ok(Math.abs(parsed2.lat - 38.564541) < 0.000001, parsed2.lat);
+  assert.ok(Math.abs(parsed2.lon - (-75.06031)) < 0.000001, parsed2.lon);
   const kept = project.borings.find(b => b.b === 'SB-01');
   const db = {
     borings: [{ job: 'Bethany', b: 'SB-01', lat: kept.lat, lon: kept.lon, e: kept.e, n: kept.n, s: [] }],
@@ -538,7 +538,7 @@ check('opening a saved Bethany project puts SB-02 back on the coast', function (
   assert.deepStrictEqual(again.restored, []);
   const rows = db.borings.filter(r => r.b === 'SB-02');
   assert.strictEqual(rows.length, 1);
-  assert.ok(Math.abs(rows[0].lat - 38.5645092) < 0.00001);
+  assert.ok(Math.abs(rows[0].lat - 38.564541) < 0.000001);
   assert.ok(rows[0].lon < -75.04 && rows[0].lon > -75.07);
   const drifted = {
     borings: [{ job: 'Bethany', b: 'SB-02', lat: 38.336, lon: -75.085, e: 758063.145, n: 205790.205, s: [] }],
@@ -547,7 +547,7 @@ check('opening a saved Bethany project puts SB-02 back on the coast', function (
   };
   const moved = Geo.replotStatePlane(drifted);
   assert.deepStrictEqual(moved.moved, ['Bethany/SB-02']);
-  assert.ok(Math.abs(drifted.borings[0].lat - 38.5645092) < 0.00001);
+  assert.ok(Math.abs(drifted.borings[0].lat - 38.564541) < 0.000001);
   const still = Geo.replotStatePlane(drifted);
   assert.deepStrictEqual(still.moved, []);
   const renamed = {
@@ -565,6 +565,46 @@ check('opening a saved Bethany project puts SB-02 back on the coast', function (
   const left = Geo.restoreMissingBorings(other, bundle.projects);
   assert.ok(left.restored.indexOf('Pole Bridge Road/SB-02') === -1);
   assert.strictEqual(other.borings.filter(r => r.job === 'Bethany' && r.b === 'SB-02').length, 1);
+});
+
+check('SB-02 state plane is the Coastal Highway median and survives a saved project', function () {
+  const loc = Geo.delawareFtToLatLon(758063.145, 205790.205);
+  assert.ok(Math.abs(loc.lat - 38.564541) < 1e-6, loc.lat);
+  assert.ok(Math.abs(loc.lon - (-75.06031)) < 1e-6, loc.lon);
+  assert.ok(loc.lat < 38.567, 'south of Fresh Pond');
+  assert.ok(loc.lon > -75.062, 'on the highway, east of Fresh Pond');
+  const sb01 = Geo.delawareFtToLatLon(757749.011, 212562.051);
+  assert.ok(Math.abs(sb01.lat - 38.583138) < 1e-6, sb01.lat);
+  assert.ok(Math.abs(sb01.lon - (-75.061317)) < 1e-6, sb01.lon);
+  const dover = Geo.delawareFtToLatLon(625703.7, 421790);
+  assert.ok(Math.abs(dover.lat - 39.1581) < 1e-4, dover.lat);
+  assert.ok(Math.abs(dover.lon + 75.5241) < 1e-4, dover.lon);
+  const db = {
+    borings: [{ job: 'N Bethany RRFB', b: 'SB-01', lat: sb01.lat, lon: sb01.lon, e: 757749.011, n: 212562.051, s: [] }],
+    cores: [],
+    jobs: { 'N Bethany RRFB': { contract: 'T202270302', source: 'geosystem' } }
+  };
+  const back = Geo.repairNorthBethany(db);
+  assert.deepStrictEqual(back.restored, ['N Bethany RRFB/SB-02']);
+  const pin = db.borings.find(r => r.b === 'SB-02');
+  assert.ok(Math.abs(pin.lat - 38.564541) < 1e-6, pin.lat);
+  assert.ok(Math.abs(pin.lon - (-75.06031)) < 1e-6, pin.lon);
+  assert.strictEqual(pin.e, 758063.145);
+  assert.strictEqual(pin.n, 205790.205);
+  assert.deepStrictEqual(Geo.repairNorthBethany(db).restored, []);
+  const named = {
+    borings: [{ job: 'Bethany', b: 'SB-01', lat: 38.58, lon: -75.06, e: 1, n: 2, s: [] }],
+    cores: [],
+    jobs: {}
+  };
+  assert.deepStrictEqual(Geo.repairNorthBethany(named).restored, ['Bethany/SB-02']);
+  const other = {
+    borings: [{ job: 'Pole Bridge Road', b: 'SB-01', lat: 39.1, lon: -75.5, e: 1, n: 2, s: [] }],
+    cores: [],
+    jobs: { 'Pole Bridge Road': { contract: 'T202208302' } }
+  };
+  assert.deepStrictEqual(Geo.repairNorthBethany(other).restored, []);
+  assert.strictEqual(other.borings.length, 1);
 });
 
 check('a file path is not stored as the project name', function () {

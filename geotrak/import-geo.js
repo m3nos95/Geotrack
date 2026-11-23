@@ -96,40 +96,67 @@
     return lat != null && lon != null && lat >= 36 && lat <= 42 && lon >= -77 && lon <= -73;
   }
 
-  /* NAD83 Delaware Lambert, US survey feet. False easting is 200000 meters. */
+  /* Delaware Coordinate System of 1983, Transverse Mercator, US survey feet.
+     Central meridian 75°25' W, origin 38° N, scale 0.999995, false easting
+     200000 meters. East 758063.145 / North 205790.205 is the median of
+     Coastal Highway at North Bethany, not Fresh Pond. */
   function delawareFtToLatLon(easting, northing) {
     var a = 6378137;
     var f = 1 / 298.257222101;
     var e2 = f * (2 - f);
-    var e = Math.sqrt(e2);
+    var ep2 = e2 / (1 - e2);
+    var k0 = 0.999995;
     var deg = Math.PI / 180;
-    function m(phi) { return Math.cos(phi) / Math.sqrt(1 - e2 * Math.sin(phi) * Math.sin(phi)); }
-    function tOf(phi) {
-      var s = Math.sin(phi);
-      return Math.tan(Math.PI / 4 - phi / 2) / Math.pow((1 - e * s) / (1 + e * s), e / 2);
-    }
-    var phi1 = (38 + 26 / 60) * deg;
-    var phi2 = (39 + 50 / 60) * deg;
-    var phi0 = 38 * deg;
     var lam0 = -(75 + 25 / 60) * deg;
-    var m1 = m(phi1), m2 = m(phi2);
-    var t0 = tOf(phi0), t1 = tOf(phi1), t2 = tOf(phi2);
-    var n = Math.log(m1 / m2) / Math.log(t1 / t2);
-    var F = m1 / (n * Math.pow(t1, n));
-    var rho0 = a * F * Math.pow(t0, n);
-    var E = easting * USFT;
-    var N = northing * USFT;
-    var x = E - 200000;
-    var y = rho0 - N;
-    var rho = (n < 0 ? -1 : 1) * Math.sqrt(x * x + y * y);
-    var theta = Math.atan2(x, y);
-    var ti = Math.pow(rho / (a * F), 1 / n);
-    var phi = Math.PI / 2 - 2 * Math.atan(ti);
-    for (var i = 0; i < 12; i++) {
-      var s = Math.sin(phi);
-      phi = Math.PI / 2 - 2 * Math.atan(ti * Math.pow((1 - e * s) / (1 + e * s), e / 2));
+    var phi0 = 38 * deg;
+    var falseEasting = 200000;
+    var e4 = e2 * e2;
+    var e6 = e4 * e2;
+    function meridian(phi) {
+      return a * (
+        (1 - e2 / 4 - 3 * e4 / 64 - 5 * e6 / 256) * phi
+        - (3 * e2 / 8 + 3 * e4 / 32 + 45 * e6 / 1024) * Math.sin(2 * phi)
+        + (15 * e4 / 256 + 45 * e6 / 1024) * Math.sin(4 * phi)
+        - (35 * e6 / 3072) * Math.sin(6 * phi)
+      );
     }
-    return { lat: phi / deg, lon: (theta / n + lam0) / deg };
+    var x = easting * USFT - falseEasting;
+    var y = northing * USFT;
+    var M1 = meridian(phi0) + y / k0;
+    var mu1 = M1 / (a * (1 - e2 / 4 - 3 * e4 / 64 - 5 * e6 / 256));
+    var e1 = (1 - Math.sqrt(1 - e2)) / (1 + Math.sqrt(1 - e2));
+    var e12 = e1 * e1;
+    var e13 = e12 * e1;
+    var e14 = e12 * e12;
+    var phi1 = mu1
+      + (3 * e1 / 2 - 27 * e13 / 32) * Math.sin(2 * mu1)
+      + (21 * e12 / 16 - 55 * e14 / 32) * Math.sin(4 * mu1)
+      + (151 * e13 / 96) * Math.sin(6 * mu1)
+      + (1097 * e14 / 512) * Math.sin(8 * mu1);
+    var sin1 = Math.sin(phi1);
+    var cos1 = Math.cos(phi1);
+    var tan1 = Math.tan(phi1);
+    var C1 = ep2 * cos1 * cos1;
+    var T1 = tan1 * tan1;
+    var N1 = a / Math.sqrt(1 - e2 * sin1 * sin1);
+    var R1 = a * (1 - e2) / Math.pow(1 - e2 * sin1 * sin1, 1.5);
+    var D = x / (N1 * k0);
+    var D2 = D * D;
+    var D3 = D2 * D;
+    var D4 = D2 * D2;
+    var D5 = D4 * D;
+    var D6 = D4 * D2;
+    var lat = phi1 - (N1 * tan1 / R1) * (
+      D2 / 2
+      - (5 + 3 * T1 + 10 * C1 - 4 * C1 * C1 - 9 * ep2) * D4 / 24
+      + (61 + 90 * T1 + 298 * C1 + 45 * T1 * T1 - 252 * ep2 - 3 * C1 * C1) * D6 / 720
+    );
+    var lon = lam0 + (
+      D
+      - (1 + 2 * T1 + C1) * D3 / 6
+      + (5 - 2 * C1 + 28 * T1 - 3 * C1 * C1 + 8 * ep2 + 24 * T1 * T1) * D5 / 120
+    ) / cos1;
+    return { lat: lat / deg, lon: lon / deg };
   }
 
   function locate(easting, northing) {
@@ -1437,6 +1464,61 @@ function firstChild(el, name) {
     return { moved: moved };
   }
 
+  /* Contract T202270302, North Bethany RRFB. GeoSystem and the Google Earth
+     callout both give SB-02 as East 758063.145 / North 205790.205. Opening the
+     project after the old coast line had deleted that row left no east/north
+     to plot, so put the hole back on the job that still belongs to this contract. */
+  function repairNorthBethany(db) {
+    if (!db || typeof db !== 'object') return { restored: [] };
+    db.borings = db.borings || [];
+    db.jobs = db.jobs || {};
+    var spec = { e: 758063.145, n: 205790.205 };
+    var loc = locate(spec.e, spec.n);
+    var restored = [];
+    var byJob = {};
+    db.borings.forEach(function (r) {
+      if (!r || !r.job) return;
+      if (!byJob[r.job]) byJob[r.job] = [];
+      byJob[r.job].push(r);
+    });
+    Object.keys(db.jobs).forEach(function (job) {
+      if (!byJob[job]) byJob[job] = [];
+    });
+    Object.keys(byJob).forEach(function (job) {
+      var rows = byJob[job];
+      var meta = db.jobs[job] || {};
+      var blob = (String(meta.contract || '') + ' ' + String(job || '')).toUpperCase();
+      var has01 = rows.some(function (r) { return /^SB-?0?1$/i.test(String(r.b || '')); });
+      var match = blob.indexOf('T202270302') >= 0 || (/BETHANY/.test(blob) && has01);
+      if (!match) return;
+      var row = null;
+      for (var i = 0; i < rows.length; i++) {
+        if (String(rows[i].b || '').toUpperCase() === 'SB-02') { row = rows[i]; break; }
+      }
+      if (!row) {
+        db.borings.push({
+          job: job, b: 'SB-02', lat: loc.lat, lon: loc.lon, e: spec.e, n: spec.n, eob: null, s: []
+        });
+        restored.push(job + '/SB-02');
+        return;
+      }
+      var near = row.lat != null && row.lon != null &&
+        Math.abs(row.lat - loc.lat) <= 0.0003 && Math.abs(row.lon - loc.lon) <= 0.0003;
+      if (near) {
+        if (row.e == null) row.e = spec.e;
+        if (row.n == null) row.n = spec.n;
+        return;
+      }
+      if (row.e != null && row.n != null) return;
+      row.e = spec.e;
+      row.n = spec.n;
+      row.lat = loc.lat;
+      row.lon = loc.lon;
+      restored.push(job + '/SB-02');
+    });
+    return { restored: restored };
+  }
+
   function previewRows(bundle) {
     var rows = [];
     ((bundle && bundle.projects) || []).forEach(function (p) {
@@ -1647,6 +1729,7 @@ function firstChild(el, name) {
     mergeProjectsIntoDb: mergeProjectsIntoDb,
     restoreMissingBorings: restoreMissingBorings,
     replotStatePlane: replotStatePlane,
+    repairNorthBethany: repairNorthBethany,
     toDbProjects: toDbProjects,
     previewRows: previewRows,
     delawareFtToLatLon: delawareFtToLatLon,
