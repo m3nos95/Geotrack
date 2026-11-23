@@ -23234,6 +23234,7 @@ async function loadProject(){
         if(GeoImport.repairNorthBethany){
           const fixed=GeoImport.repairNorthBethany(db);
           if(fixed && fixed.restored && fixed.restored.length) geoRestored=geoRestored.concat(fixed.restored);
+          if(fixed && fixed.removed && fixed.removed.length) geoRestored=geoRestored.concat(fixed.removed);
         }
         if(GeoImport.replotStatePlane){
           const moved=GeoImport.replotStatePlane(db);

@@ -1361,6 +1361,7 @@ function firstChild(el, name) {
         source: 'geosystem'
       };
     });
+    repairNorthBethany(db);
     return { added: added, replaced: replaced };
   }
 
@@ -1464,59 +1465,95 @@ function firstChild(el, name) {
     return { moved: moved };
   }
 
-  /* Contract T202270302, North Bethany RRFB. GeoSystem and the Google Earth
-     callout both give SB-02 as East 758063.145 / North 205790.205. Opening the
-     project after the old coast line had deleted that row left no east/north
-     to plot, so put the hole back on the job that still belongs to this contract. */
+  /* North Bethany RRFB, contract T202270302. One hole: SB-02 at East
+     758063.145 / North 205790.205. Opening or importing used to add that pin
+     again for every job whose name contained the contract, including Marsh Road. */
+  function isSb01Id(b) {
+    return /^SB-?0*1$/i.test(String(b || ''));
+  }
+  function isSb02Id(b) {
+    return /^SB-?0*2$/i.test(String(b || ''));
+  }
+  function bethanyJobName(job) {
+    return /bethany/i.test(String(job || '')) && !/marsh/i.test(String(job || ''));
+  }
+  function sameBethanyPoint(r, loc, spec) {
+    if (!r || isSb01Id(r.b)) return false;
+    var e = num(r.e);
+    var n = num(r.n);
+    if (e != null && n != null && Math.abs(e - spec.e) < 1 && Math.abs(n - spec.n) < 1) return true;
+    return r.lat != null && r.lon != null &&
+      Math.abs(r.lat - loc.lat) < 0.00006 && Math.abs(r.lon - loc.lon) < 0.00006;
+  }
+  function bethanyJobScore(db, job) {
+    var meta = (db.jobs && db.jobs[job]) || {};
+    var score = 0;
+    if (/T202270302/i.test(job) && /bethany/i.test(job)) score += 25;
+    if (/T202270302/i.test(job) || String(meta.contract || '').toUpperCase().indexOf('T202270302') >= 0) score += 30;
+    var rows = (db.borings || []).filter(function (r) { return r && r.job === job; });
+    if (rows.some(function (r) { return isSb02Id(r.b); })) score += 40;
+    if (rows.some(function (r) { return isSb01Id(r.b); })) score += 10;
+    return score;
+  }
   function repairNorthBethany(db) {
-    if (!db || typeof db !== 'object') return { restored: [] };
+    if (!db || typeof db !== 'object') return { restored: [], removed: [] };
     db.borings = db.borings || [];
     db.jobs = db.jobs || {};
     var spec = { e: 758063.145, n: 205790.205 };
     var loc = locate(spec.e, spec.n);
     var restored = [];
-    var byJob = {};
-    db.borings.forEach(function (r) {
-      if (!r || !r.job) return;
-      if (!byJob[r.job]) byJob[r.job] = [];
-      byJob[r.job].push(r);
+    var removed = [];
+    var names = {};
+    db.borings.forEach(function (r) { if (r && r.job) names[r.job] = 1; });
+    Object.keys(db.jobs).forEach(function (job) { names[job] = 1; });
+    var home = '';
+    var homeScore = -1;
+    Object.keys(names).forEach(function (job) {
+      if (!bethanyJobName(job)) return;
+      var score = bethanyJobScore(db, job);
+      if (score > homeScore) { homeScore = score; home = job; }
     });
-    Object.keys(db.jobs).forEach(function (job) {
-      if (!byJob[job]) byJob[job] = [];
+    var atPoint = db.borings.filter(function (r) { return sameBethanyPoint(r, loc, spec); });
+    var keeper = null;
+    atPoint.forEach(function (r) {
+      if (!isSb02Id(r.b) || !bethanyJobName(r.job)) return;
+      var betterJob = keeper && bethanyJobScore(db, r.job) > bethanyJobScore(db, keeper.job);
+      var sameJob = keeper && bethanyJobScore(db, r.job) === bethanyJobScore(db, keeper.job);
+      var betterSamples = keeper && (r.s || []).length > (keeper.s || []).length;
+      if (!keeper || betterJob || (sameJob && betterSamples)) keeper = r;
     });
-    Object.keys(byJob).forEach(function (job) {
-      var rows = byJob[job];
-      var meta = db.jobs[job] || {};
-      var blob = (String(meta.contract || '') + ' ' + String(job || '')).toUpperCase();
-      var has01 = rows.some(function (r) { return /^SB-?0?1$/i.test(String(r.b || '')); });
-      var match = blob.indexOf('T202270302') >= 0 || (/BETHANY/.test(blob) && has01);
-      if (!match) return;
-      var row = null;
-      for (var i = 0; i < rows.length; i++) {
-        if (String(rows[i].b || '').toUpperCase() === 'SB-02') { row = rows[i]; break; }
+    if (!keeper && home) {
+      for (var i = 0; i < db.borings.length; i++) {
+        var existing = db.borings[i];
+        if (existing && existing.job === home && isSb02Id(existing.b)) { keeper = existing; break; }
       }
-      if (!row) {
-        db.borings.push({
-          job: job, b: 'SB-02', lat: loc.lat, lon: loc.lon, e: spec.e, n: spec.n, eob: null, s: []
-        });
-        restored.push(job + '/SB-02');
-        return;
+      if (!keeper) {
+        keeper = { job: home, b: 'SB-02', lat: loc.lat, lon: loc.lon, e: spec.e, n: spec.n, eob: null, s: [] };
+        db.borings.push(keeper);
+        restored.push(home + '/SB-02');
       }
-      var near = row.lat != null && row.lon != null &&
-        Math.abs(row.lat - loc.lat) <= 0.0003 && Math.abs(row.lon - loc.lon) <= 0.0003;
-      if (near) {
-        if (row.e == null) row.e = spec.e;
-        if (row.n == null) row.n = spec.n;
-        return;
-      }
-      if (row.e != null && row.n != null) return;
-      row.e = spec.e;
-      row.n = spec.n;
-      row.lat = loc.lat;
-      row.lon = loc.lon;
-      restored.push(job + '/SB-02');
-    });
-    return { restored: restored };
+    }
+    if (keeper && !(keeper.s || []).length) {
+      var donor = null;
+      atPoint.forEach(function (r) {
+        if (r === keeper || !isSb02Id(r.b) || !bethanyJobName(r.job)) return;
+        if (!donor || (r.s || []).length > (donor.s || []).length) donor = r;
+      });
+      if (donor && (donor.s || []).length) keeper.s = donor.s;
+    }
+    if (keeper) {
+      keeper.b = 'SB-02';
+      keeper.lat = loc.lat;
+      keeper.lon = loc.lon;
+      keeper.e = spec.e;
+      keeper.n = spec.n;
+      db.borings = db.borings.filter(function (r) {
+        if (r === keeper || !sameBethanyPoint(r, loc, spec)) return true;
+        removed.push((r.job || '') + '/' + (r.b || ''));
+        return false;
+      });
+    }
+    return { restored: restored, removed: removed };
   }
 
   function previewRows(bundle) {
