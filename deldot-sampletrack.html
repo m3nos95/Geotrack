@@ -9367,7 +9367,7 @@ NOTIFY pgrst, 'reload schema';</pre>
 // GLOBALS
 // ══════════════════════════════════════════════
 let db = null;
-const APP_BUILD = '2026.11.23-soil-agg-sheets';
+const APP_BUILD = '2026.11.23-photo-choice';
 const FC_CORE_ICON_SRC = 'docs/r18-reference/core-drill-icon-128.png';
 const BORELOG_ICON_SRC = 'docs/r18-reference/borelog-icon.webp';
 const BORELOG_PATH = 'deldot-borelog-v6-uscs.html';
@@ -54096,6 +54096,17 @@ html:not([data-skin="retro"]) #app #soillab-view .card-title {
     <button onclick="document.getElementById('offlineBanner').classList.remove('visible')"
       style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:14px;margin-left:4px;">✕</button>
   </div>
+<div id="hsPhotoChoice" class="hs-review" hidden>
+  <div class="hs-review-card" role="dialog" aria-labelledby="hsPhotoChoiceTitle" aria-modal="true">
+    <h2 id="hsPhotoChoiceTitle">Photograph sheet</h2>
+    <p>Open the camera, or browse for a photo you already have. Nothing is saved until you confirm the read.</p>
+    <div class="btn-row">
+      <button type="button" class="btn btn-primary" onclick="hsChoosePhoto('camera')">Open camera</button>
+      <button type="button" class="btn btn-primary" onclick="hsChoosePhoto('file')">Browse a file</button>
+      <button type="button" class="btn btn-ghost" onclick="hsClosePhotoChoice()">Cancel</button>
+    </div>
+  </div>
+</div>
 <div id="hsReview" class="hs-review" hidden>
   <div class="hs-review-card" role="dialog" aria-labelledby="hsReviewTitle" aria-modal="true">
     <h2 id="hsReviewTitle">Review the read</h2>
@@ -54109,7 +54120,7 @@ html:not([data-skin="retro"]) #app #soillab-view .card-title {
 </div>
 <script src="js/next-sample.js?v=20261123a"></script>
 <script src="js/hand-sheet.js?v=20261123c"></script>
-<script src="js/hand-sheet-page.js?v=20261123c"></script>
+<script src="js/hand-sheet-page.js?v=20261123d"></script>
 <script>
 (function () {
   function paintLabTrakLockup() {
