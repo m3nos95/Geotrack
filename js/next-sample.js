@@ -2,7 +2,8 @@
  * QR payloads for LabTrak paper.
  * A finished report names itself. A scan opens that same sample:
  * field in Field Control, concrete in Concrete, lab in the lab sample.
- * The handwritten sheet can still name the next sample in its section.
+ * The handwritten sheet's next-sample code opens a new sample.
+ * Its number is the next consecutive number, one past the highest already used.
  */
 (function (root, factory) {
   const api = factory();
@@ -32,8 +33,16 @@
     return u.href;
   }
 
-  function payloadUrl(pageUrl, section, reportId) {
-    return codeUrl(pageUrl, 'ltnext', section === 'concrete' ? 'concrete' : 'field', reportId);
+  function sheetKind(raw) {
+    if (raw === 'soil' || raw === 'aggregate' || raw === 'concrete') return raw;
+    return '';
+  }
+
+  function payloadUrl(pageUrl, section, reportId, kind) {
+    const u = new URL(codeUrl(pageUrl, 'ltnext', section === 'concrete' ? 'concrete' : 'field', reportId));
+    const named = sheetKind(kind);
+    if (named) u.searchParams.set('kind', named);
+    return u.href;
   }
 
   function payloadThisUrl(pageUrl, section, reportId) {
@@ -50,13 +59,18 @@
     if (raw.indexOf('LTREPORT|') === 0 || raw.indexOf('LTNEXT|') === 0) {
       const parts = raw.split('|');
       const type = raw.indexOf('LTREPORT|') === 0 ? 'this' : 'next';
-      return { type: type, section: sectionFromParts(parts[1]), report: parts[2] || '' };
+      return { type: type, section: sectionFromParts(parts[1]), report: parts[2] || '', kind: sheetKind(parts[3]) };
     }
     try {
       const u = new URL(raw);
       if (u.searchParams.get('ltreport') === '1' || u.searchParams.get('ltnext') === '1') {
         const type = u.searchParams.get('ltreport') === '1' ? 'this' : 'next';
-        return { type: type, section: sectionFromParts(u.searchParams.get('section')), report: u.searchParams.get('report') || '' };
+        return {
+          type: type,
+          section: sectionFromParts(u.searchParams.get('section')),
+          report: u.searchParams.get('report') || '',
+          kind: sheetKind(u.searchParams.get('kind'))
+        };
       }
       const sample = u.searchParams.get('sample');
       if (sample) return { type: 'sample', id: sample };
@@ -112,6 +126,46 @@
     return { status: 'next', item: list[idx + 1] };
   }
 
+  function sequenceNumber(value) {
+    if (value && typeof value === 'object') {
+      const fromTest = sequenceNumber(value.testNo || value.test_no);
+      if (fromTest != null) return fromTest;
+      return sequenceNumber(value.id);
+    }
+    const text = String(value == null ? '' : value).trim();
+    if (/^\d+$/.test(text)) return parseInt(text, 10);
+    const tail = text.match(/-(\d+)$/);
+    return tail ? parseInt(tail[1], 10) : null;
+  }
+
+  function nextConsecutive(values) {
+    let max = 0;
+    let found = false;
+    (values || []).forEach(function (value) {
+      const n = sequenceNumber(value);
+      if (n == null) return;
+      found = true;
+      if (n > max) max = n;
+    });
+    return found ? max + 1 : 1;
+  }
+
+  function formatConcreteNumber(sets, nextNumber) {
+    let width = 0;
+    let prefix = '';
+    (sets || []).forEach(function (set) {
+      const id = String(set && set.id || '');
+      const match = id.match(/^(.*-)(\d+)$/);
+      if (!match) return;
+      if (match[2].length >= width) {
+        width = match[2].length;
+        prefix = match[1];
+      }
+    });
+    if (!prefix) return String(nextNumber);
+    return prefix + String(nextNumber).padStart(width, '0');
+  }
+
   function noneMessage(section) {
     return 'No next sample in ' + sectionName(section) + '.';
   }
@@ -129,6 +183,8 @@
     sortFieldSamples: sortFieldSamples,
     sortConcreteSets: sortConcreteSets,
     nextAfter: nextAfter,
+    nextConsecutive: nextConsecutive,
+    formatConcreteNumber: formatConcreteNumber,
     noneMessage: noneMessage,
     missingMessage: missingMessage
   };

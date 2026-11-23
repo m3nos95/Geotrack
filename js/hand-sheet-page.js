@@ -80,9 +80,9 @@
     }
   }
 
-  function qrDataUrl(section, reportId) {
+  function qrDataUrl(section, reportId, kind) {
     if (!Next) return '';
-    return qrImage(Next.payloadUrl(pageUrl(), section, reportId));
+    return qrImage(Next.payloadUrl(pageUrl(), section, reportId, kind));
   }
 
   function thisCaption(section) {
@@ -124,7 +124,7 @@
     const sheet = Sheets && Sheets.sheetById(kind);
     if (!sheet) return;
     await whenQrReady();
-    const html = Sheets.printDocument(sheet, { qrDataUrl: qrDataUrl(sheet.section, reportIdForSheet(kind)) });
+    const html = Sheets.printDocument(sheet, { qrDataUrl: qrDataUrl(sheet.section, reportIdForSheet(kind), kind) });
     const win = window.open('', '_blank', 'width=820,height=900');
     if (!win) {
       if (typeof showToast === 'function') showToast('Pop-up blocked — allow pop-ups to print the sheet', 'error');
@@ -295,6 +295,7 @@
       const raw = await callLabTrakAI(Sheets.buildPrompt(sheet), image);
       const values = Sheets.normalizeRead(sheet, raw);
       pending = { kind: kind, values: values };
+      rememberRead(kind, values);
       showReview(sheet, values);
       setStatus(kind, 'Review the read. Nothing is saved until you confirm.');
     } catch (e) {
@@ -364,6 +365,118 @@
     if (typeof switchView === 'function') switchView('fieldcontrol');
     if (typeof fcSetModuleMode === 'function') fcSetModuleMode('event');
     if (typeof fcSetIntent === 'function') fcSetIntent('lab');
+    fillFieldForm(values, kind);
+    await startFC_Session();
+    if (!activeFC_sessionId) return;
+    fillFieldForm(values, kind);
+    await submitFieldSample();
+    window.hsCloseReview();
+  }
+
+  async function confirmConcrete(values) {
+    if (!values.cast_date) {
+      if (typeof showToast === 'function') showToast('Cast date is required', 'error');
+      return;
+    }
+    if (!values.required_fc) {
+      if (typeof showToast === 'function') showToast("Required f'c is required", 'error');
+      return;
+    }
+    const ages = ['age_7', 'age_14', 'age_28', 'age_56'].reduce(function (sum, key) {
+      return sum + (parseInt(values[key], 10) || 0);
+    }, 0);
+    if (ages < 1) {
+      if (typeof showToast === 'function') showToast('Add at least one cylinder', 'error');
+      return;
+    }
+    if (typeof switchView === 'function') switchView('concrete');
+    if (typeof switchConcreteTab === 'function') switchConcreteTab('intake');
+    fillConcreteForm(values);
+    await submitConcreteIntake();
+    window.hsCloseReview();
+  }
+
+  window.hsConfirmRead = async function () {
+    if (!pending || confirmBusy) return;
+    confirmBusy = true;
+    const values = reviewValues();
+    try {
+      if (pending.kind === 'concrete') await confirmConcrete(values);
+      else await confirmField(values, pending.kind);
+    } finally {
+      confirmBusy = false;
+    }
+  };
+
+  function showScanNote(msg) {
+    if (typeof showToast === 'function') showToast(msg, 'info');
+    if (typeof switchView === 'function') switchView('scan');
+    const note = document.getElementById('scanNextNote');
+    if (note) {
+      note.hidden = false;
+      note.textContent = msg;
+    }
+  }
+
+  const SHEET_READ_KEY = 'lt_hand_sheet_read';
+
+  function rememberRead(kind, values) {
+    try {
+      localStorage.setItem(SHEET_READ_KEY, JSON.stringify({ kind: kind, values: values }));
+    } catch (e) {}
+  }
+
+  function rememberedRead() {
+    try {
+      const raw = JSON.parse(localStorage.getItem(SHEET_READ_KEY) || 'null');
+      if (!raw || !raw.values) return null;
+      if (raw.kind !== 'soil' && raw.kind !== 'aggregate' && raw.kind !== 'concrete') return null;
+      return raw;
+    } catch (e) {
+      return null;
+    }
+  }
+
+  function currentSheetRead() {
+    if (pending && pending.values) {
+      const overlay = document.getElementById('hsReview');
+      const values = overlay && overlay.hidden === false ? reviewValues() : pending.values;
+      return { kind: pending.kind, values: values };
+    }
+    return rememberedRead();
+  }
+
+  function resolveKind(section, explicitKind, read) {
+    if (explicitKind === 'soil' || explicitKind === 'aggregate' || explicitKind === 'concrete') return explicitKind;
+    if (section === 'concrete') return 'concrete';
+    if (read && (read.kind === 'soil' || read.kind === 'aggregate')) return read.kind;
+    return section === 'field' ? 'soil' : '';
+  }
+
+  function localFieldNumbers(category) {
+    const rows = (typeof allSamples !== 'undefined' ? allSamples : []) || [];
+    return rows.filter(function (row) {
+      return row && !row.deleted_at && String(row.test_category || '').toLowerCase() === category;
+    }).map(function (row) { return row.test_no; });
+  }
+
+  async function fieldNextNumber(category) {
+    let dbNext = 1;
+    if (typeof getNextTestNumber === 'function') {
+      const next = await getNextTestNumber(category);
+      if (next != null) dbNext = next;
+    }
+    const localNext = Next ? Next.nextConsecutive(localFieldNumbers(category)) : 1;
+    return Math.max(dbNext, localNext);
+  }
+
+  function hideScanNote() {
+    const note = document.getElementById('scanNextNote');
+    if (note) note.hidden = true;
+  }
+
+  function fillFieldForm(values, kind) {
+    const category = kind === 'aggregate' ? 'aggregate' : 'soil';
     setInput('fc_s_category', category);
     setInput('fc_s_testno', values.sample_number);
     setInput('fc_s_contract', values.contract);
@@ -374,8 +487,6 @@
     setInput('fc_s_date', category === 'aggregate' ? values.agg_date : values.date);
     const testInput = document.getElementById('fc_s_testno');
     if (testInput && values.sample_number) testInput.dataset.userTouched = '1';
-    await startFC_Session();
-    if (!activeFC_sessionId) return;
     const catEl = document.getElementById('f_test_category');
     if (catEl) {
       catEl.value = category;
@@ -414,28 +525,9 @@
       setInput('f_special_requests', values.special_requests);
       if (typeof renderFcRequestTags === 'function') renderFcRequestTags();
     }
-    await submitFieldSample();
-    window.hsCloseReview();
   }
 
-  async function confirmConcrete(values) {
-    if (!values.cast_date) {
-      if (typeof showToast === 'function') showToast('Cast date is required', 'error');
-      return;
-    }
-    if (!values.required_fc) {
-      if (typeof showToast === 'function') showToast("Required f'c is required", 'error');
-      return;
-    }
-    const ages = ['age_7', 'age_14', 'age_28', 'age_56'].reduce(function (sum, key) {
-      return sum + (parseInt(values[key], 10) || 0);
-    }, 0);
-    if (ages < 1) {
-      if (typeof showToast === 'function') showToast('Add at least one cylinder', 'error');
-      return;
-    }
-    if (typeof switchView === 'function') switchView('concrete');
-    if (typeof switchConcreteTab === 'function') switchConcreteTab('intake');
+  function fillConcreteForm(values) {
     setInput('ci_set_id', values.sample_number);
     setInput('ci_contract', values.contract);
     setInput('ci_fa_project', values.fa_project);
@@ -492,89 +584,85 @@
     setInput('ci_fibers', values.fibers);
     setInput('ci_plant', values.plant);
     setInput('ci_corr_factor', values.corr_factor);
-    await submitConcreteIntake();
-    window.hsCloseReview();
+    const idField = document.getElementById('ci_set_id');
+    if (idField && values.sample_number) idField.style.opacity = '1';
   }
 
-  window.hsConfirmRead = async function () {
-    if (!pending || confirmBusy) return;
-    confirmBusy = true;
-    const values = reviewValues();
-    try {
-      if (pending.kind === 'concrete') await confirmConcrete(values);
-      else await confirmField(values, pending.kind);
-    } finally {
-      confirmBusy = false;
-    }
-  };
+  function showFilledReview(kind, values) {
+    const sheet = Sheets && Sheets.sheetById(kind);
+    if (!sheet) return;
+    pending = { kind: kind, values: values };
+    rememberRead(kind, values);
+    showReview(sheet, values);
+  }
 
-  function showScanNote(msg) {
-    if (typeof showToast === 'function') showToast(msg, 'info');
-    if (typeof switchView === 'function') switchView('scan');
-    const note = document.getElementById('scanNextNote');
-    if (note) {
-      note.hidden = false;
-      note.textContent = msg;
+  async function openNewFieldSample(kind, photographed) {
+    if (typeof activeFC_sessionId !== 'undefined' && activeFC_sessionId) {
+      if (typeof showToast === 'function') showToast('End the open field session before starting the next sample.', 'info');
+      return;
+    }
+    const category = kind === 'aggregate' ? 'aggregate' : 'soil';
+    const number = String(await fieldNextNumber(category));
+    const values = Object.assign({}, photographed || {});
+    values.sample_number = number;
+    const testInput = document.getElementById('fc_s_testno');
+    if (testInput) testInput.dataset.userTouched = '1';
+    if (typeof switchView === 'function') switchView('fieldcontrol');
+    if (typeof fcSetModuleMode === 'function') fcSetModuleMode('event');
+    const startEl = document.getElementById('fc_start_state');
+    const activeEl = document.getElementById('fc_active_state');
+    if (startEl) startEl.style.display = '';
+    if (activeEl && !(typeof activeFC_sessionId !== 'undefined' && activeFC_sessionId)) activeEl.style.display = 'none';
+    if (typeof fcSetIntent === 'function') fcSetIntent('lab');
+    if (photographed) fillFieldForm(values, kind);
+    else {
+      setInput('fc_s_category', category);
+      setInput('fc_s_testno', number);
+    }
+    hideScanNote();
+    if (photographed) showFilledReview(kind, values);
+    if (typeof showToast === 'function') {
+      showToast('Next ' + (category === 'aggregate' ? 'aggregate' : 'soil') + ' sample is ' + number + '. Nothing is saved until you confirm.', 'info');
     }
   }
 
-  async function fieldList() {
-    let rows = (typeof allSamples !== 'undefined' ? allSamples : []) || [];
-    const databaseClient = database();
-    if (databaseClient && typeof databaseClient.from === 'function') {
-      try {
-        const { data, error } = await databaseClient.from('samples')
-          .select('id,test_no,created_at,deleted_at,test_category,sample_type,record_kind')
-          .is('deleted_at', null)
-          .order('created_at', { ascending: true })
-          .limit(2000);
-        if (!error && data) rows = data;
-      } catch (e) { /* keep the samples already on this phone */ }
-    }
-    return Next.sortFieldSamples(rows);
-  }
-
-  async function concreteList() {
+  async function openNewConcreteSample(photographed) {
     if (typeof pullAndMergeConcreteSets === 'function' && database()) {
       try { await pullAndMergeConcreteSets(); } catch (e) {}
     }
-    const local = typeof loadConcreteSets === 'function' ? loadConcreteSets() : [];
-    return Next.sortConcreteSets(local);
+    const sets = typeof loadConcreteSets === 'function' ? loadConcreteSets() : [];
+    const nextNumber = Next.nextConsecutive(sets);
+    const number = Next.formatConcreteNumber(sets, nextNumber);
+    const values = Object.assign({}, photographed || {});
+    values.sample_number = number;
+    if (typeof switchView === 'function') switchView('concrete');
+    if (typeof switchConcreteTab === 'function') switchConcreteTab('intake');
+    if (photographed) fillConcreteForm(values);
+    else {
+      setInput('ci_set_id', number);
+      const idField = document.getElementById('ci_set_id');
+      if (idField) idField.style.opacity = '1';
+    }
+    hideScanNote();
+    if (photographed) showFilledReview('concrete', values);
+    if (typeof showToast === 'function') showToast('Next concrete sample is ' + number + '. Nothing is saved until you confirm.', 'info');
   }
 
-  window.ltOpenNextSample = async function (section, reportId) {
+  window.ltOpenNextSample = async function (section, reportId, kind) {
     if (!Next) return;
-    if (section !== 'field' && section !== 'concrete') {
+    void reportId;
+    const read = currentSheetRead();
+    const resolved = resolveKind(section, kind, read);
+    if (resolved !== 'soil' && resolved !== 'aggregate' && resolved !== 'concrete') {
       showScanNote('That code is not a Field Control or Concrete report.');
       return;
     }
-    const items = section === 'concrete' ? await concreteList() : await fieldList();
-    const result = Next.nextAfter(items, reportId);
-    if (result.status === 'missing') {
-      showScanNote(Next.missingMessage(section));
+    const photographed = read && read.kind === resolved ? read.values : null;
+    if (resolved === 'concrete') {
+      await openNewConcreteSample(photographed);
       return;
     }
-    if (result.status !== 'next' || !result.item) {
-      showScanNote(Next.noneMessage(section));
-      return;
-    }
-    const note = document.getElementById('scanNextNote');
-    if (note) note.hidden = true;
-    if (section === 'concrete') {
-      const loaded = typeof loadConcreteSets === 'function'
-        ? loadConcreteSets().some(function (set) { return set.id === result.item.id; })
-        : true;
-      if (!loaded) {
-        showScanNote('That concrete set is not on this phone yet.');
-        return;
-      }
-      if (typeof switchView === 'function') switchView('concrete');
-      if (typeof switchConcreteTab === 'function') switchConcreteTab('log');
-      if (typeof openConcreteSet === 'function') openConcreteSet(result.item.id);
-      if (typeof showToast === 'function') showToast('Opened the next concrete set', 'success');
-      return;
-    }
-    if (typeof fcResumeSessionById === 'function') await fcResumeSessionById(result.item.id);
+    await openNewFieldSample(resolved, photographed);
   };
 
   window.ltOpenThisSample = async function (section, reportId) {
@@ -625,7 +713,7 @@
       return true;
     }
     if (parsed.type !== 'next') return false;
-    await window.ltOpenNextSample(parsed.section, parsed.report);
+    await window.ltOpenNextSample(parsed.section, parsed.report, parsed.kind);
     return true;
   };
 
