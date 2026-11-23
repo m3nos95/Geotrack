@@ -95,8 +95,8 @@
     const src = qrImage(Next.payloadThisUrl(pageUrl(), section, reportId));
     if (!src) return '';
     const caption = thisCaption(section);
-    return '<span class="lt-next-qr-wrap"><img class="lt-next-qr" alt="' + esc(caption) + '" src="' + src + '">' +
-      '<span class="lt-next-qr-cap">' + esc(caption) + '</span></span>';
+    return '<span class="lt-next-qr-wrap"><img class="lt-next-qr" alt="Internal use only. ' + esc(caption) + '" src="' + src + '">' +
+      '<span class="lt-next-qr-cap"><span class="lt-next-qr-internal">Internal use only</span>' + esc(caption) + '</span></span>';
   };
 
   function setStatus(kind, text) {
