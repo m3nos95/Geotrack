@@ -605,6 +605,36 @@ check('SB-02 state plane is the Coastal Highway median and survives a saved proj
   };
   assert.deepStrictEqual(Geo.repairNorthBethany(other).restored, []);
   assert.strictEqual(other.borings.length, 1);
+  const median = { lat: 38.564541, lon: -75.06031, e: 758063.145, n: 205790.205, s: [{ num: 1 }] };
+  const stacked = {
+    borings: [
+      { job: 'T202270302Bethany', b: 'SB-01', lat: 38.583138, lon: -75.061317, e: 757749.011, n: 212562.051, s: [] },
+      Object.assign({ job: 'T202270302Bethany', b: 'SB-02' }, median, { s: [] }),
+      Object.assign({ job: 'Bethany', b: 'SB-02' }, median),
+      Object.assign({ job: 'N Bethany RRFB', b: 'SB-02' }, median, { s: [] }),
+      { job: 'T202270302 Marsh Road', b: '2', lat: median.lat, lon: median.lon, e: median.e, n: median.n, s: [] },
+      { job: 'T202270302 Marsh Road', b: '1', lat: 38.70, lon: -75.20, e: 700000, n: 260000, s: [] }
+    ],
+    cores: [],
+    jobs: {
+      'T202270302Bethany': { contract: 'T202270302' },
+      'T202270302 Marsh Road': { contract: 'T202270302' }
+    }
+  };
+  const once = Geo.repairNorthBethany(stacked);
+  const left = stacked.borings.filter(r => Math.abs(r.lat - median.lat) < 0.00006 && Math.abs(r.lon - median.lon) < 0.00006);
+  assert.strictEqual(left.length, 1);
+  assert.strictEqual(left[0].job, 'T202270302Bethany');
+  assert.strictEqual(left[0].b, 'SB-02');
+  assert.strictEqual(left[0].s.length, 1);
+  assert.ok(stacked.borings.some(r => r.job === 'T202270302Bethany' && r.b === 'SB-01'));
+  assert.ok(stacked.borings.some(r => r.job === 'T202270302 Marsh Road' && r.b === '1'));
+  assert.ok(!stacked.borings.some(r => r.b === '2'));
+  assert.ok(once.removed.indexOf('T202270302 Marsh Road/2') >= 0);
+  const twice = Geo.repairNorthBethany(stacked);
+  assert.deepStrictEqual(twice.restored, []);
+  assert.deepStrictEqual(twice.removed, []);
+  assert.strictEqual(stacked.borings.filter(r => r.b === 'SB-02').length, 1);
 });
 
 check('a file path is not stored as the project name', function () {
