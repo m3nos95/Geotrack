@@ -47,6 +47,11 @@ jobs:
             cp geo-report-center/import-geo.js _site/geotrak/import-geo.js
             cp geo-report-center/import-geo.js geotrak/import-geo.js || true
           fi
+          if [ -f geo-report-center/drive-folder.js ]; then
+            mkdir -p _site/geotrak
+            cp geo-report-center/drive-folder.js _site/geotrak/drive-folder.js
+            cp geo-report-center/drive-folder.js geotrak/drive-folder.js || true
+          fi
           touch _site/.nojekyll
           # Bust CDN/edge caches that latch onto old GeoTrak builds
           date -u +'%Y-%m-%dT%H:%M:%SZ' > _site/.pages-built-at
