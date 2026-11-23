@@ -23203,6 +23203,36 @@ async function loadProject(){
         }
       }
     }catch(e){ console.warn('geo inbox', e); }
+    let geoRestored=[];
+    let geoSourceProjects=null;
+    try{
+      if(dirHandle && typeof GeoImport!=='undefined' && GeoImport.restoreMissingBorings){
+        const projects=[];
+        const side=await readFileIf('geo-source.json');
+        if(side){
+          try{
+            const parsed=JSON.parse(side);
+            if(parsed && Array.isArray(parsed.projects)) projects.push.apply(projects, parsed.projects);
+          }catch(e){ console.warn('geo-source', e); }
+        }
+        const records=await projectGeoRecords(dirHandle);
+        if(records.length){
+          const bundle=GeoImport.parseGeoBundle(records);
+          if(bundle && bundle.projects && bundle.projects.length){
+            geoSourceProjects=bundle.projects;
+            projects.push.apply(projects, bundle.projects);
+          }
+        }
+        if(projects.length){
+          const back=GeoImport.restoreMissingBorings(db, projects);
+          geoRestored=(back && back.restored) || [];
+        }
+        if(GeoImport.replotStatePlane){
+          const moved=GeoImport.replotStatePlane(db);
+          if(moved && moved.moved && moved.moved.length) geoRestored=geoRestored.concat(moved.moved);
+        }
+      }
+    }catch(e){ console.warn('geo restore', e); }
     refs=[];
     nrcsByMukey={}; nrcsMeta=null;
     mukeyPriorsByMukey={}; mukeyPriorsByHydGeo={}; mukeyPriorsBySiteDna={}; mukeyPriorsBySiteDnaGamma={}; mukeyPriorsByHyd={}; mukeyPriorsMeta=null; analogCells=[]; analogCellsMeta=null;
@@ -23301,16 +23331,22 @@ async function loadProject(){
     setProjUi((dirHandle&&dirHandle.name?dirHandle.name+'/':'project/'), 'loaded');
     let loadMsg=`Project loaded — ${db.borings.length} borings (${mapped} mapped), ${refs.length} ref layer(s) ON`+(refFileN?` from ${refFileN} file(s)`:'')+(refSkipN?` · ${refSkipN} skipped`:'')+(nrcsN?`, NRCS props ${nrcsN} mukeys`:'')+(priorN?`, ${priorN} mukey analogs`:'')+(dnaN?`, ${dnaN} site-DNA buckets`:'')+(cellN?`, ${cellN} analog cells`:'')+(ancN?`, ${ancN} infil anchors`:'')+(dgirN?`, ${dgirN} DGS wells (markers off)`:'')+(gzN?`, ${gzN} geophys zones`:'')+(deldotBridges.length?`, ${deldotBridges.length} bridges`:'');
     if(purged&&purged.total) loadMsg+=` · purged ${purged.total} outside DE`;
-    if(geoInboxN && dirHandle){
+    if((geoInboxN || geoRestored.length) && dirHandle){
       try{
         await writeFile('db.json', JSON.stringify(db));
-        if(typeof GeoImport!=='undefined' && GeoImport.clearInbox) GeoImport.clearInbox();
-        loadMsg+=` · saved ${geoInboxN} boring(s) from a .GEO import`;
+        if(geoSourceProjects && typeof GeoImport!=='undefined' && GeoImport.toDbProjects){
+          await writeFile('geo-source.json', JSON.stringify({v:1, projects:GeoImport.toDbProjects(geoSourceProjects)}));
+        }
+        if(geoInboxN && typeof GeoImport!=='undefined' && GeoImport.clearInbox) GeoImport.clearInbox();
+        if(geoInboxN) loadMsg+=` · saved ${geoInboxN} boring(s) from a .GEO import`;
+        if(geoRestored.length) loadMsg+=` · restored ${geoRestored.length} boring(s) from the .GEO folder`;
       }catch(e){
         loadMsg+=` · .GEO import is in memory but db.json was not saved (${e.message})`;
       }
     } else if(geoInboxN){
       loadMsg+=` · ${geoInboxN} boring(s) from a .GEO import are in memory`;
+    } else if(geoRestored.length){
+      loadMsg+=` · restored ${geoRestored.length} boring(s) from the .GEO folder`;
     }
     toast(loadMsg, 6500);
     if(db.borings.length && !mapped){
@@ -41610,6 +41646,32 @@ async function walkGeoEntry(entry, prefix, out) {
   }
 }
 
+async function projectGeoRecords(dir){
+  if(!dir || typeof GeoImport==='undefined') return [];
+  const files=[];
+  const geoName=name=>/\.(mdt|gs|lim|ndx|pdt|xml)$/i.test(name) || /\.\$p\$$/i.test(name);
+  const zipName=name=>/\.zip$/i.test(name) && /geo/i.test(name);
+  async function addFile(handle, path){
+    const file=await handle.getFile();
+    if(file.size>12*1024*1024) return;
+    try{ file._geoPath=path; }catch(e){}
+    files.push(file);
+  }
+  async function addDir(handle, prefix){
+    for await (const [name, h] of handle.entries()){
+      if(h.kind!=='file') continue;
+      if(!geoName(name) && !zipName(name)) continue;
+      await addFile(h, prefix ? prefix+'/'+name : name);
+    }
+  }
+  for await (const [name, h] of dir.entries()){
+    if(h.kind==='file' && (geoName(name) || zipName(name))) await addFile(h, name);
+    else if(h.kind==='directory' && /\.geo$/i.test(name)) await addDir(h, name);
+  }
+  if(!files.length) return [];
+  return geoRecordsFromFiles(files);
+}
+
 async function geoRecordsFromFiles(fileList) {
   if (typeof GeoImport === 'undefined') throw new Error('The .GEO reader did not load. Reload the page.');
   const files = Array.from(fileList || []).filter(f => f && f.name);
@@ -41628,7 +41690,7 @@ async function geoRecordsFromFiles(fileList) {
       if (opened.tooBig) throw new Error(opened.message || GeoImport.tooBigMessage(f.name));
       if (opened.message && !opened.files.length) throw new Error(opened.message);
       records.push(...opened.files);
-    } else if (/\.(mdt|gs|lim|ndx|pdt)$/i.test(f.name) || /\.\$p\$$/i.test(f.name)) {
+    } else if (/\.(mdt|gs|lim|ndx|pdt|xml)$/i.test(f.name) || /\.\$p\$$/i.test(f.name)) {
       const path = f._geoPath || f.webkitRelativePath || f.name;
       records.push({ name: f.name, path: path, text: new TextDecoder('latin1').decode(buf) });
     }
@@ -41717,6 +41779,9 @@ async function onGeoDrop(e) {
   commit.addEventListener('click', () => {
     if (!geoPending || !geoPending.projects.length) return;
     const merged = GeoImport.mergeProjectsIntoDb(db, geoPending.projects);
+    if(dirHandle && GeoImport.toDbProjects){
+      writeFile('geo-source.json', JSON.stringify({v:1, projects:GeoImport.toDbProjects(geoPending.projects)})).catch(e=>console.warn('geo-source', e));
+    }
     saveDb();
     const where = dirHandle ? 'Saved into db.json.' : 'Open a project folder to save db.json.';
     const again = merged.replaced.length ? ' Replaced ' + merged.replaced.join(', ') + '.' : '';

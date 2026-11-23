@@ -501,6 +501,72 @@ check('a folder of .GEO projects imports together', function () {
   assert.strictEqual(byContract.T202208302.borings[0].s[0].p200, 2);
 });
 
+function indexedPair(key, value) {
+  return key + NUL + NUL + NUL + value + NUL + NUL + NUL + NUL + NUL;
+}
+
+check('opening a saved Bethany project puts SB-02 back on the coast', function () {
+  const gscomb = [
+    "00000000,SB-01, 1 (0.0'/24 in.)",
+    "00010000,SB-02, 1 (0.0'/24 in.)"
+  ].join('\n');
+  const sb01 = indexedPair('BORING', 'SB-01') + indexedPair('EAST', '759200') + indexedPair('NORTH', '199500') +
+    indexedPair('DRILL_CONTRAC', 'CGC Geoservices');
+  const sb02 = indexedPair('BORING', 'SB-02') + indexedPair('EAST', '758063.145') + indexedPair('NORTH', '205790.205') +
+    indexedPair('DRILL_RIG', 'CME 75 Truck') + indexedPair('DRILLER', 'Jason Truver');
+  const bundle = Geo.parseGeoBundle([
+    { name: 'T202270302Bethany.NDX', path: 'T202270302Bethany.GEO/T202270302Bethany.NDX', text: 'SB-01' },
+    { name: 'GSCOMB.MDT', path: 'T202270302Bethany.GEO/GSCOMB.MDT', text: gscomb },
+    { name: '0001.$P$', path: 'T202270302Bethany.GEO/0001.$P$', text: sb01 },
+    { name: '0002.$P$', path: 'T202270302Bethany.GEO/0002.$P$', text: sb02 }
+  ]);
+  const project = bundle.projects[0];
+  assert.strictEqual(project.contract, 'T202270302');
+  assert.strictEqual(project.name, 'Bethany');
+  const parsed2 = project.borings.find(b => b.b === 'SB-02');
+  assert.ok(Math.abs(parsed2.lat - 38.5645092) < 0.00001, parsed2.lat);
+  assert.ok(Math.abs(parsed2.lon - (-75.0603015)) < 0.00001, parsed2.lon);
+  const kept = project.borings.find(b => b.b === 'SB-01');
+  const db = {
+    borings: [{ job: 'Bethany', b: 'SB-01', lat: kept.lat, lon: kept.lon, e: kept.e, n: kept.n, s: [] }],
+    cores: [],
+    jobs: { Bethany: { contract: 'T202270302', source: 'geosystem' } }
+  };
+  const back = Geo.restoreMissingBorings(db, bundle.projects);
+  assert.deepStrictEqual(back.restored, ['Bethany/SB-02']);
+  const again = Geo.restoreMissingBorings(db, bundle.projects);
+  assert.deepStrictEqual(again.restored, []);
+  const rows = db.borings.filter(r => r.b === 'SB-02');
+  assert.strictEqual(rows.length, 1);
+  assert.ok(Math.abs(rows[0].lat - 38.5645092) < 0.00001);
+  assert.ok(rows[0].lon < -75.04 && rows[0].lon > -75.07);
+  const drifted = {
+    borings: [{ job: 'Bethany', b: 'SB-02', lat: 38.336, lon: -75.085, e: 758063.145, n: 205790.205, s: [] }],
+    cores: [],
+    jobs: {}
+  };
+  const moved = Geo.replotStatePlane(drifted);
+  assert.deepStrictEqual(moved.moved, ['Bethany/SB-02']);
+  assert.ok(Math.abs(drifted.borings[0].lat - 38.5645092) < 0.00001);
+  const still = Geo.replotStatePlane(drifted);
+  assert.deepStrictEqual(still.moved, []);
+  const renamed = {
+    borings: [{ job: 'T202270302 Bethany', b: 'SB-01', lat: kept.lat, lon: kept.lon, e: kept.e, n: kept.n, s: [] }],
+    cores: [],
+    jobs: {}
+  };
+  const onto = Geo.restoreMissingBorings(renamed, bundle.projects);
+  assert.deepStrictEqual(onto.restored, ['T202270302 Bethany/SB-02']);
+  const other = {
+    borings: [{ job: 'Pole Bridge Road', b: 'SB-01', lat: 39.1, lon: -75.5, e: 1, n: 2, s: [] }],
+    cores: [],
+    jobs: {}
+  };
+  const left = Geo.restoreMissingBorings(other, bundle.projects);
+  assert.ok(left.restored.indexOf('Pole Bridge Road/SB-02') === -1);
+  assert.strictEqual(other.borings.filter(r => r.job === 'Bethany' && r.b === 'SB-02').length, 1);
+});
+
 check('a file path is not stored as the project name', function () {
   const files = [
     { name: '9999.$P$', path: 'T202208302.GEO/9999.$P$', text: ['PROJECT', 'C:\\Users\\aaron\\Pole Bridge Road.dwg', 'STATE_CONTRACT', 'T202208302'].join(NUL) },
