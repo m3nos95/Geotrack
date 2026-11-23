@@ -1,6 +1,7 @@
 /**
  * Page wiring for handwritten sheets and the next-sample QR.
- * Reading a photo only fills the review. A sample is created when the tech confirms.
+ * Photographing a sheet takes a still and fills the review. It does not scan the next-sample code.
+ * A sample is created when the tech confirms.
  */
 (function () {
   'use strict';
@@ -138,6 +139,18 @@
     }, 250);
   };
 
+  let sheetCameraKind = '';
+  let sheetCameraStream = null;
+
+  function stopSheetCamera() {
+    if (sheetCameraStream) {
+      sheetCameraStream.getTracks().forEach(function (track) { track.stop(); });
+      sheetCameraStream = null;
+    }
+    const video = document.getElementById('hsCameraVideo');
+    if (video) video.srcObject = null;
+  }
+
   function fileInput(kind) {
     let input = document.getElementById('hs-file-' + kind);
     if (input) return input;
@@ -145,7 +158,6 @@
     input.type = 'file';
     input.id = 'hs-file-' + kind;
     input.accept = 'image/*';
-    input.setAttribute('capture', 'environment');
     input.hidden = true;
     input.addEventListener('change', function () {
       const file = input.files && input.files[0];
@@ -156,8 +168,62 @@
     return input;
   }
 
-  window.hsPhotograph = function (kind) {
-    fileInput(kind).click();
+  function cameraTitle(kind) {
+    if (kind === 'concrete') return 'Photograph the concrete sheet';
+    if (kind === 'aggregate') return 'Photograph the aggregate sheet';
+    return 'Photograph the soil sheet';
+  }
+
+  window.hsCloseSheetCamera = function () {
+    stopSheetCamera();
+    const overlay = document.getElementById('hsCamera');
+    if (overlay) overlay.hidden = true;
+    sheetCameraKind = '';
+  };
+
+  window.hsPhotograph = async function (kind) {
+    sheetCameraKind = kind;
+    const overlay = document.getElementById('hsCamera');
+    const title = document.getElementById('hsCameraTitle');
+    if (title) title.textContent = cameraTitle(kind);
+    const canCamera = overlay && navigator.mediaDevices && typeof navigator.mediaDevices.getUserMedia === 'function';
+    if (!canCamera) {
+      fileInput(kind).click();
+      return;
+    }
+    try {
+      stopSheetCamera();
+      sheetCameraStream = await navigator.mediaDevices.getUserMedia({
+        audio: false,
+        video: { facingMode: { ideal: 'environment' } }
+      });
+      const video = document.getElementById('hsCameraVideo');
+      if (video) {
+        video.srcObject = sheetCameraStream;
+        const played = video.play();
+        if (played && typeof played.catch === 'function') played.catch(function () {});
+      }
+      overlay.hidden = false;
+    } catch (e) {
+      stopSheetCamera();
+      if (typeof showToast === 'function') showToast('Camera unavailable. Choose a photo of the sheet.', 'info');
+      fileInput(kind).click();
+    }
+  };
+
+  window.hsTakeSheetPhoto = function () {
+    const kind = sheetCameraKind;
+    const video = document.getElementById('hsCameraVideo');
+    if (!kind || !video || !video.videoWidth) return;
+    const canvas = document.createElement('canvas');
+    canvas.width = video.videoWidth;
+    canvas.height = video.videoHeight;
+    canvas.getContext('2d').drawImage(video, 0, 0);
+    canvas.toBlob(function (blob) {
+      window.hsCloseSheetCamera();
+      if (!blob) return;
+      readPhoto(kind, new File([blob], 'sheet.jpg', { type: 'image/jpeg' }));
+    }, 'image/jpeg', 0.92);
   };
 
   function compressImage(file) {
