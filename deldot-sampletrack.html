@@ -7390,7 +7390,7 @@ NOTIFY pgrst, 'reload schema';</pre>
     <div class="page">
       <div class="card">
         <div class="card-title">Scan Sample QR Code</div>
-        <p style="color:var(--muted);font-size:12px;margin-bottom:16px;font-family:var(--mono);">Point the phone camera at a sample bag, or at the QR on a printed report or handwritten sheet. A report QR opens the next sample in that same section. Field Control stays in Field Control. Concrete stays in Concrete.</p>
+        <p style="color:var(--muted);font-size:12px;margin-bottom:16px;font-family:var(--mono);">Point the phone camera at a sample bag, a handwritten sheet, or a printed report. A report QR opens that same sample. Field Control stays in Field Control. Concrete stays in Concrete. A lab report opens that lab sample.</p>
         <div id="scanNextNote" class="hs-next-note" hidden></div>
         <div id="scanner-box" data-tour="scan-box">
           <div id="reader"></div>
@@ -9356,7 +9356,7 @@ NOTIFY pgrst, 'reload schema';</pre>
 // GLOBALS
 // ══════════════════════════════════════════════
 let db = null;
-const APP_BUILD = '2026.11.22-hand-sheet';
+const APP_BUILD = '2026.11.23-report-qr';
 const FC_CORE_ICON_SRC = 'docs/r18-reference/core-drill-icon-128.png';
 const BORELOG_ICON_SRC = 'docs/r18-reference/borelog-icon.webp';
 const BORELOG_PATH = 'deldot-borelog-v6-uscs.html';
@@ -23579,7 +23579,7 @@ async function renderAggregateReport(sample, calc) {
     </div>
     ${r18ComplianceBlock(r18SoilLabReporter(sample), { coarse: true })}
     <div class="car-sigs"><div><i></i><b>SOILS SUPERVISOR</b></div><div><i></i><b>GEOTECHNICAL ENGINEER</b></div></div>
-    <div class="car-foot"><span>AASHTO T-11 / T-27 • Section ${r18Esc(section)}</span>${typeof ltNextQrHtml === 'function' ? ltNextQrHtml('field', sample.id) : ''}<span>Generated: ${ddRptGenerated()}</span></div>
+    <div class="car-foot"><span>AASHTO T-11 / T-27 • Section ${r18Esc(section)}</span>${typeof ltThisQrHtml === 'function' ? ltThisQrHtml('lab', sample.id) : ''}<span>Generated: ${ddRptGenerated()}</span></div>
   </div>`;
   if (out) out.innerHTML = reportHTML;
 }
@@ -23897,7 +23897,7 @@ async function renderNuclearReport(sample, d) {
       </table>
     </div>
     ${r18ComplianceBlock(d.operator)}
-    ${ddRptFooter(`DMF-68C (REV 5/2025) • TEST NO.: ${sample.test_no}`, typeof ltNextQrHtml === 'function' ? ltNextQrHtml('field', sample.id) : '')}
+    ${ddRptFooter(`DMF-68C (REV 5/2025) • TEST NO.: ${sample.test_no}`, typeof ltThisQrHtml === 'function' ? ltThisQrHtml('field', sample.id) : '')}
   `);
 
   document.getElementById('lb44Output').innerHTML = reportHTML;
@@ -24282,7 +24282,7 @@ async function renderLB68(sample, d) {
     </div>
     ${r18ComplianceBlock(d.tested_by)}
     ${ddRptSignatures(['Construction Inspector', 'Field Control Supervisor', 'I.A. Supervisor'])}
-    ${ddRptFooter(`LB-68 (6/12/2015) • TEST NO.: ${fv(sample.test_no)}`, typeof ltNextQrHtml === 'function' ? ltNextQrHtml('field', sample.id) : '')}
+    ${ddRptFooter(`LB-68 (6/12/2015) • TEST NO.: ${fv(sample.test_no)}`, typeof ltThisQrHtml === 'function' ? ltThisQrHtml('field', sample.id) : '')}
   `, { wide: true });
 
   document.getElementById('lb44Output').innerHTML = reportHTML;
@@ -25165,7 +25165,7 @@ async function renderLB44(sample, labData, calc) {
       <div class="sig-block"><div class="sig-line"></div><div class="sig-lbl">Geotechnical Engineer</div></div>
       <div class="sig-block"><div class="sig-line"></div><div class="sig-lbl">QA Supervisor</div></div>
     </div>
-    ${ddRptFooter('LB-44 (Rev 5/2003) • Doc # 55-08/04/07/20', typeof ltNextQrHtml === 'function' ? ltNextQrHtml('field', sample.id) : '')}
+    ${ddRptFooter('LB-44 (Rev 5/2003) • Doc # 55-08/04/07/20', typeof ltThisQrHtml === 'function' ? ltThisQrHtml('lab', sample.id) : '')}
   </div>`;
 
   // Use already-computed borrow types and render inline
@@ -26573,20 +26573,24 @@ window.addEventListener('load', async () => {
   const sampleId = params.get('sample');
   const equipId = params.get('equip');
   const isNext = params.get('ltnext') === '1';
-  if (!sampleId && !equipId && !isNext) return;
-  if (isNext) {
+  const isThis = params.get('ltreport') === '1';
+  if (!sampleId && !equipId && !isNext && !isThis) return;
+  if (isThis || isNext) {
     for (let i = 0; i < 200; i++) {
       if (window._labtrakBootDone) break;
       await new Promise(r => setTimeout(r, 200));
     }
     try {
-      if (typeof ltOpenNextSample === 'function') {
+      if (isThis && typeof ltOpenThisSample === 'function') {
+        await ltOpenThisSample(params.get('section'), params.get('report') || '');
+      } else if (typeof ltOpenNextSample === 'function') {
         await ltOpenNextSample(params.get('section'), params.get('report') || '');
       }
     } catch (e) {
-      console.warn('next sample QR failed:', e);
+      console.warn('report QR failed:', e);
     }
-    clearQueryParam('ltnext');
+    if (isThis) clearQueryParam('ltreport');
+    if (isNext) clearQueryParam('ltnext');
     clearQueryParam('section');
     clearQueryParam('report');
     return;
@@ -38281,7 +38285,7 @@ function renderDMF13(set) {
 
     ${r18ComplianceBlock(set.sampledBy)}
     ${ddRptSignatures(['Sampled By', 'Contractor', 'Subcontractor', 'Job Inspector'], [set.sampledBy||'', '', '', ''])}
-    ${ddRptFooter('DMF-13 (REV 12/2024) · Signature Acknowledges Test Results', typeof ltNextQrHtml === 'function' ? ltNextQrHtml('concrete', set.id) : '')}
+    ${ddRptFooter('DMF-13 (REV 12/2024) · Signature Acknowledges Test Results', typeof ltThisQrHtml === 'function' ? ltThisQrHtml('concrete', set.id) : '')}
   `, { concrete: 'dmf13' });
 }
 
@@ -38537,7 +38541,7 @@ function renderDMP15(set) {
       </div>
     </div>
 
-    ${ddRptFooter(`DMP-15 (REV 10/2022) · Set: ${set.id}`, typeof ltNextQrHtml === 'function' ? ltNextQrHtml('concrete', set.id) : '')}
+    ${ddRptFooter(`DMP-15 (REV 10/2022) · Set: ${set.id}`, typeof ltThisQrHtml === 'function' ? ltThisQrHtml('concrete', set.id) : '')}
   `, { concrete: 'dmp15', wide: false });
 }
 
@@ -54092,9 +54096,9 @@ html:not([data-skin="retro"]) #app #soillab-view .card-title {
     </div>
   </div>
 </div>
-<script src="js/next-sample.js?v=20261122c"></script>
-<script src="js/hand-sheet.js?v=20261122c"></script>
-<script src="js/hand-sheet-page.js?v=20261122c"></script>
+<script src="js/next-sample.js?v=20261123a"></script>
+<script src="js/hand-sheet.js?v=20261123a"></script>
+<script src="js/hand-sheet-page.js?v=20261123a"></script>
 <script>
 (function () {
   function paintLabTrakLockup() {
