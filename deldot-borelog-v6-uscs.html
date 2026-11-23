@@ -404,7 +404,7 @@ nav{background:var(--surface);border-bottom:1px solid var(--border);box-shadow:0
   justify-content:center;z-index:9999;padding:20px;overflow-y:auto;}
 #geoImportOverlay.open{display:flex;}
 .geo-modal{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);
-  padding:28px 32px;max-width:600px;width:100%;box-shadow:0 8px 40px rgba(0,0,0,0.6);}
+  padding:28px 32px;max-width:720px;width:100%;box-shadow:0 8px 40px rgba(0,0,0,0.6);}
 .geo-modal .gm-title{font-family:var(--display);font-size:20px;color:var(--accent2);letter-spacing:2px;
   text-transform:uppercase;margin-bottom:4px;}
 .geo-modal .gm-sub{font-family:var(--mono);font-size:10px;color:var(--muted);letter-spacing:2px;margin-bottom:22px;}
@@ -588,7 +588,7 @@ html.comfort-mode .hab-pulse{animation:none !important;box-shadow:none !importan
       <div class="page-head">
         <div><h2>Projects</h2><div class="ph-sub">Top-level container for borings</div></div>
         <div style="display:flex;gap:10px;flex-wrap:wrap;">
-          <button class="btn btn-ghost" onclick="openGeoImport()" title="Import a GeoSystem LOGDRAFT .GEO project folder">⬆ IMPORT .GEO</button>
+          <button class="btn btn-ghost" onclick="openGeoImport()" title="Drop several .GEO folders or zips, or one folder that holds them">⬆ IMPORT .GEO</button>
           <button class="btn btn-ghost" onclick="syncBorelogNow()" title="Pull from LabTrak cloud and push local changes">☁ SYNC NOW</button>
           <button class="btn btn-primary" onclick="openProjectModal()">+ NEW PROJECT</button>
         </div>
@@ -984,19 +984,19 @@ html.comfort-mode .hab-pulse{animation:none !important;box-shadow:none !importan
 <div id="geoImportOverlay">
   <div class="geo-modal">
     <div class="gm-title">Import GeoSystem .GEO</div>
-    <div class="gm-sub">LOGDRAFT / LABSUITE PROJECT FOLDER IMPORT</div>
+    <div class="gm-sub">DROP SEVERAL .GEO FOLDERS OR ZIPS, OR ONE FOLDER OF THEM</div>
     <div class="geo-drop" id="geoDrop">
       <input type="file" id="geoFolderInput" class="geo-file-input" multiple>
       <input type="file" id="geoDirInput" class="geo-file-input" webkitdirectory directory multiple>
       <div class="gd-icon">📂</div>
-      <div class="gd-label" id="geoDropLabel">Drop the .GEO folder or a zip of it</div>
-      <div class="gd-sub" id="geoDropSub">You will see each boring before it is saved. A statewide GEO.zip stays on disk.</div>
+      <div class="gd-label" id="geoDropLabel">Drop .GEO folders or zips here</div>
+      <div class="gd-sub" id="geoDropSub">Several at once, or one folder that holds them. Each project is listed before it is saved.</div>
       <div class="geo-btns">
         <button type="button" class="btn btn-primary btn-sm" id="geoBrowseBtn">Browse files</button>
         <button type="button" class="btn btn-ghost btn-sm" id="geoFolderBtn">Choose folder</button>
       </div>
       <div class="gd-mobile" id="geoMobileHint">
-        <strong>Phone / tablet:</strong> Download the .GEO folder first, then choose the folder or multi-select its files. A large zip stays on a computer and is imported with import-geo-zips.bat.
+        <strong>Phone / tablet:</strong> Download the .GEO folders first, then choose the folder that holds them or multi-select the zips. A large statewide zip stays on a computer and is imported with import-geo-zips.bat.
       </div>
     </div>
     <div class="geo-log" id="geoLog"></div>
@@ -5003,14 +5003,14 @@ async function handleGeoDrop(e) {
   }
   if (used && collected.length) return handleGeoFiles(collected);
   if (dt && dt.files && dt.files.length) return handleGeoFiles(dt.files);
-  geoLog('err', 'Nothing in that drop. Drop the .GEO folder or a zip of it.');
+  geoLog('err', 'Nothing in that drop. Drop .GEO folders or zips, or a folder that holds them.');
 }
 
 async function pickGeoDirectory() {
   const log = $('geoLog');
   if (log) log.className = 'geo-log visible';
   if (geoSupportsDirectoryPicker()) {
-    geoLog('info', 'Choose the .GEO folder. Subfolders come along.');
+    geoLog('info', 'Choose one .GEO folder, or a folder that holds several. Every project inside is imported together.');
     try {
       const dir = await window.showDirectoryPicker({ mode: 'read' });
       const files = [];
@@ -5049,7 +5049,7 @@ function openGeoImport() {
   $('geoResult').innerHTML = '';
   const goBtn = $('geoGoBtn');
   goBtn.style.display = 'none';
-  goBtn.textContent = 'Import these borings';
+  goBtn.textContent = 'Import these projects';
   goBtn.disabled = false;
   goBtn.onclick = () => runGeoImport();
   _geoFiles = null;
@@ -5059,8 +5059,8 @@ function openGeoImport() {
   const sub = $('geoDropSub');
   const hint = $('geoMobileHint');
   const folderBtn = $('geoFolderBtn');
-  if (lbl) lbl.textContent = 'Drop the .GEO folder or a zip of it';
-  if (sub) sub.textContent = 'You will see each boring before it is saved. A statewide GEO.zip stays on disk — run import-geo-zips.bat beside it.';
+  if (lbl) lbl.textContent = 'Drop .GEO folders or zips here';
+  if (sub) sub.textContent = 'Several at once, or one folder that holds them. Each project is listed before it is saved. A statewide GEO.zip stays on disk — run import-geo-zips.bat beside it.';
   if (hint) hint.style.display = isGeoMobilePicker() ? 'block' : 'none';
   if (folderBtn) folderBtn.style.display = 'inline-block';
 }
@@ -5095,7 +5095,8 @@ async function geoRecordsFromFiles(fileList) {
       const opened = await GeoImport.unzipToTexts(buf);
       if (opened.tooBig) throw new Error(opened.message || GeoImport.tooBigMessage(f.name));
       if (opened.message && !opened.files.length) throw new Error(opened.message);
-      records.push(...opened.files);
+      const rooted = GeoImport.withZipRoot ? GeoImport.withZipRoot(f._geoPath || f.name, opened.files) : opened.files;
+      records.push(...rooted);
     } else if (/\.(mdt|gs|lim|ndx|pdt|xml)$/i.test(f.name) || /\.\$p\$$/i.test(f.name)) {
       const path = f._geoPath || f.webkitRelativePath || f.name;
       records.push({ name: f.name, path: path, text: geoDecodeLatin1(buf) });
@@ -5108,11 +5109,12 @@ function geoPreviewTable(bundle) {
   const rows = GeoImport.previewRows(bundle);
   if (!rows.length) return '';
   const cell = 'text-align:left;padding:4px 8px;border-bottom:1px solid rgba(255,255,255,.08)';
-  const body = rows.map(r =>
-    `<tr><td style="${cell}">${escape(r.boring)}</td><td style="${cell}">${r.samples}</td><td style="${cell}">${r.onMap ? 'yes' : 'no'}</td><td style="${cell}">${escape(r.notes || '')}</td></tr>`
-  ).join('');
+  const body = rows.map(r => {
+    const project = r.contract || r.job || '';
+    return `<tr><td style="${cell}">${escape(project)}</td><td style="${cell}">${escape(r.boring)}</td><td style="${cell}">${r.samples}</td><td style="${cell}">${r.onMap ? 'yes' : 'no'}</td><td style="${cell}">${escape(r.notes || '')}</td></tr>`;
+  }).join('');
   return `<table style="width:100%;border-collapse:collapse;font-size:11px;margin-top:8px"><thead><tr>
-    <th style="${cell}">Boring</th><th style="${cell}">Samples</th><th style="${cell}">On map</th><th style="${cell}">Notes</th>
+    <th style="${cell}">Project</th><th style="${cell}">Boring</th><th style="${cell}">Samples</th><th style="${cell}">On map</th><th style="${cell}">Notes</th>
     </tr></thead><tbody>${body}</tbody></table>`;
 }
 
@@ -5128,7 +5130,7 @@ async function handleGeoFiles(fileList) {
 
   const raw = fileList ? Array.from(fileList) : [];
   if (!raw.length) {
-    geoLog('err', 'Nothing selected. Drop the .GEO folder or a zip of it.');
+    geoLog('err', 'Nothing selected. Drop .GEO folders or zips, or a folder that holds them.');
     return;
   }
   geoLog('info', `Reading ${raw.length} file(s)…`);
@@ -5153,10 +5155,11 @@ async function handleGeoFiles(fileList) {
   });
   const res = $('geoResult');
   res.className = 'geo-result visible';
-  res.innerHTML = `<div class="gr-line">${boringCount} boring(s), ${sampleCount} sample(s). Check the list, then import.</div>${geoPreviewTable(bundle)}`;
+  const projectCount = bundle.projects.length;
+  res.innerHTML = `<div class="gr-line">${projectCount} project${projectCount===1?'':'s'}, ${boringCount} boring${boringCount===1?'':'s'}, ${sampleCount} sample${sampleCount===1?'':'s'}. Check the list, then import.</div>${geoPreviewTable(bundle)}`;
   $('geoGoBtn').style.display = 'inline-block';
   $('geoGoBtn').disabled = false;
-  $('geoGoBtn').textContent = 'Import these borings';
+  $('geoGoBtn').textContent = projectCount === 1 ? 'Import this project' : 'Import these projects';
   $('geoGoBtn').onclick = () => runGeoImport();
 }
 
@@ -5300,6 +5303,7 @@ async function runGeoImport(){
     $('geoGoBtn').onclick = () => { closeGeoImport(); if (firstProjId) openProject(firstProjId); };
     $('geoGoBtn').disabled = false;
     importOk = true;
+    if (document.querySelector('#view-projects.active')) renderProjects();
     await flushBorelogStoreAsync();
   } catch (err) {
     const shown = borelogStorageError(err);

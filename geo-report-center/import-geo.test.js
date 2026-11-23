@@ -450,6 +450,57 @@ check('grain size uses the decimals from GSSettings', function () {
   assert.strictEqual(p.borings[0].s[0].p200, 46.06);
 });
 
+check('two dropped zips stay separate, and one zip stays one project', async function () {
+  const bethany = [
+    { name: 'T202270302Bethany.NDX', path: 'T202270302Bethany.NDX', text: 'SB-01' },
+    { name: 'GSCOMB.MDT', path: 'GSCOMB.MDT', text: "00000000,SB-01, 1 (2.0'/24 in.)\n" },
+    { name: '00000000.GS', path: '00000000.GS', text: gs(100, 10, 90, 5, 20) }
+  ];
+  const pole = [
+    { name: 'T202208302Pole.NDX', path: 'T202208302Pole.NDX', text: 'B-1' },
+    { name: 'GSCOMB.MDT', path: 'GSCOMB.MDT', text: "00000000,B-1, 1 (2.0'/18 in.)\n" },
+    { name: '00000000.GS', path: '00000000.GS', text: gs(100, 80, 20, 2, 18) }
+  ];
+  const openedA = await Geo.unzipToTexts(makeZip(bethany.map(f => ({ name: f.path, data: f.text }))));
+  const openedB = await Geo.unzipToTexts(makeZip(pole.map(f => ({ name: f.path, data: f.text }))));
+  const records = Geo.withZipRoot('Jobs/T202270302Bethany.zip', openedA.files)
+    .concat(Geo.withZipRoot('Jobs/T202208302Pole.zip', openedB.files));
+  const bundle = Geo.parseGeoBundle(records);
+  assert.strictEqual(bundle.projects.length, 2);
+  const byContract = {};
+  bundle.projects.forEach(p => { byContract[p.contract] = p; });
+  assert.strictEqual(byContract.T202270302.borings[0].b, 'SB-01');
+  assert.strictEqual(byContract.T202270302.borings[0].s[0].gs_file, '00000000.GS');
+  assert.strictEqual(byContract.T202270302.borings[0].s[0].p200, 70);
+  assert.strictEqual(byContract.T202208302.borings[0].b, 'B-1');
+  assert.strictEqual(byContract.T202208302.borings[0].s[0].gs_file, '00000000.GS');
+  assert.strictEqual(byContract.T202208302.borings[0].s[0].p200, 2);
+  const one = await Geo.unzipToTexts(makeZip(projectFiles().map(f => ({ name: f.path, data: f.text }))));
+  const single = Geo.parseGeoBundle(Geo.withZipRoot('Bridge.zip', one.files));
+  assert.strictEqual(single.projects.length, 1);
+  assert.strictEqual(single.projects[0].contract, 'T202600001');
+  assert.strictEqual(single.projects[0].name, 'Bridge 12');
+  assert.strictEqual(single.projects[0].borings[0].s[0].p200, 70);
+});
+
+check('a folder of .GEO projects imports together', function () {
+  const bundle = Geo.parseGeoBundle([
+    { name: 'T202270302Bethany.NDX', path: 'Inbox/North Bethany.GEO/T202270302Bethany.NDX', text: 'SB-01' },
+    { name: 'GSCOMB.MDT', path: 'Inbox/North Bethany.GEO/GSCOMB.MDT', text: "00000000,SB-01, 1 (2.0'/24 in.)\n" },
+    { name: '00000000.GS', path: 'Inbox/North Bethany.GEO/00000000.GS', text: gs(100, 10, 90, 5, 20) },
+    { name: 'T202208302Pole.NDX', path: 'Inbox/Pole Bridge.GEO/T202208302Pole.NDX', text: 'B-1' },
+    { name: 'GSCOMB.MDT', path: 'Inbox/Pole Bridge.GEO/GSCOMB.MDT', text: "00000000,B-1, 1 (2.0'/18 in.)\n" },
+    { name: '00000000.GS', path: 'Inbox/Pole Bridge.GEO/00000000.GS', text: gs(100, 80, 20, 2, 18) }
+  ]);
+  assert.strictEqual(bundle.projects.length, 2);
+  const byContract = {};
+  bundle.projects.forEach(p => { byContract[p.contract] = p; });
+  assert.strictEqual(byContract.T202270302.name, 'North Bethany');
+  assert.strictEqual(byContract.T202270302.borings[0].s[0].p200, 70);
+  assert.strictEqual(byContract.T202208302.name, 'Pole Bridge');
+  assert.strictEqual(byContract.T202208302.borings[0].s[0].p200, 2);
+});
+
 check('a file path is not stored as the project name', function () {
   const files = [
     { name: '9999.$P$', path: 'T202208302.GEO/9999.$P$', text: ['PROJECT', 'C:\\Users\\aaron\\Pole Bridge Road.dwg', 'STATE_CONTRACT', 'T202208302'].join(NUL) },
