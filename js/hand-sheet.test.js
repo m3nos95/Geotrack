@@ -10,28 +10,43 @@ const html = fs.readFileSync(path.join(root, 'deldot-sampletrack.html'), 'utf8')
 const page = fs.readFileSync(path.join(__dirname, 'hand-sheet-page.js'), 'utf8');
 const edge = fs.readFileSync(path.join(root, 'supabase/functions/labtrak-ai/index.ts'), 'utf8');
 
-const field = sheets.sheetById('field');
+const soil = sheets.sheetById('soil');
+const aggregate = sheets.sheetById('aggregate');
 const concrete = sheets.sheetById('concrete');
-const fieldIds = sheets.fieldsOf(field).map(function (field) { return field.id; });
+const soilIds = sheets.fieldsOf(soil).map(function (field) { return field.id; });
+const aggregateIds = sheets.fieldsOf(aggregate).map(function (field) { return field.id; });
 const concreteIds = sheets.fieldsOf(concrete).map(function (field) { return field.id; });
 
-assert.ok(fieldIds.includes('sample_number') && fieldIds.includes('contract'));
-assert.notStrictEqual(fieldIds.indexOf('sample_number'), fieldIds.indexOf('contract'));
+assert.strictEqual(sheets.sheetById('field'), null);
+assert.strictEqual(soil.section, 'field');
+assert.strictEqual(aggregate.section, 'field');
+assert.strictEqual(soil.sampleKind, 'soil');
+assert.strictEqual(aggregate.sampleKind, 'aggregate');
+assert.deepStrictEqual(soilIds.filter(function (id) { return aggregateIds.indexOf(id) >= 0; }).sort(), ['contract', 'sample_number']);
+assert.ok(soilIds.includes('depth') && soilIds.includes('fa_project') && soilIds.includes('material'));
+assert.ok(!soilIds.includes('agg_material') && !soilIds.includes('category') && !soilIds.includes('sampled_at'));
+assert.ok(aggregateIds.includes('agg_material') && aggregateIds.includes('sampled_at') && aggregateIds.includes('size_no'));
+assert.ok(!aggregateIds.includes('depth') && !aggregateIds.includes('fa_project') && !aggregateIds.includes('agg_contract') && !aggregateIds.includes('category'));
 assert.ok(concreteIds.includes('sample_number') && concreteIds.includes('contract'));
-assert.ok(fieldIds.includes('fa_project') && fieldIds.includes('agg_material'));
 assert.ok(concreteIds.includes('cast_date') && concreteIds.includes('required_fc') && concreteIds.includes('age_28'));
+assert.ok(!concreteIds.includes('depth') && !concreteIds.includes('agg_material'));
 
-const printed = sheets.printDocument(field, { qrDataUrl: 'data:image/png;base64,abc' });
+const printed = sheets.printDocument(soil, { qrDataUrl: 'data:image/png;base64,abc' });
+const printedAgg = sheets.printDocument(aggregate, { qrDataUrl: 'data:image/png;base64,abc' });
 assert.ok(printed.includes('data-field="sample_number"'));
 assert.ok(printed.includes('data-field="contract"'));
-assert.strictEqual((printed.match(/data-field="/g) || []).length, fieldIds.length);
-assert.ok(printed.includes('class="qr"'));
-assert.ok(printed.includes('Scan for the next sample'));
+assert.ok(!printed.includes('data-field="agg_material"'));
+assert.ok(printedAgg.includes('data-field="contract"') && printedAgg.includes('data-field="agg_material"'));
+assert.ok(!printedAgg.includes('data-field="depth"'));
+assert.strictEqual((printed.match(/data-field="/g) || []).length, soilIds.length);
+assert.strictEqual((printedAgg.match(/data-field="/g) || []).length, aggregateIds.length);
+assert.ok(printed.includes('class="qr"') && printedAgg.includes('class="qr"'));
+assert.ok(printed.includes('Scan for the next sample') && printedAgg.includes('Scan for the next sample'));
 assert.ok(printed.includes('DelDOT Materials'));
-assert.ok(!/bridge|silhouette/i.test(printed));
-assert.ok(!sheets.printDocument(field, {}).includes('class="qr"'));
+assert.ok(!/bridge|silhouette/i.test(printed + printedAgg));
+assert.ok(!sheets.printDocument(soil, {}).includes('class="qr"'));
 
-const read = sheets.normalizeRead(field, {
+const read = sheets.normalizeRead(soil, {
   sample_number: ' 1143 ',
   contract: 'n/a',
   date: '3/4/2026',
@@ -97,15 +112,18 @@ assert.strictEqual(next.parseScan('https://lab.example/?ltreport=1&section=nope&
 assert.ok(/id="aiKey"/.test(html));
 assert.ok(/onclick="saveAiKey\(\)"/.test(html));
 assert.ok(/ANTHROPIC_API_KEY/.test(html));
-assert.ok(/hsPrintSheet\('field'\)/.test(html));
-assert.ok(/hsPrintSheet\('concrete'\)/.test(html));
-assert.ok(/hsPhotograph\('field'\)/.test(html));
+assert.strictEqual((html.match(/hsPrintSheet\('soil'\)/g) || []).length, 2);
+assert.strictEqual((html.match(/hsPrintSheet\('aggregate'\)/g) || []).length, 2);
+assert.strictEqual((html.match(/hsPhotograph\('soil'\)/g) || []).length, 2);
+assert.strictEqual((html.match(/hsPhotograph\('aggregate'\)/g) || []).length, 2);
+assert.ok(!/hsPrintSheet\('field'\)/.test(html));
+assert.strictEqual((html.match(/hsPrintSheet\('concrete'\)/g) || []).length, 2);
 assert.ok(/hsPhotograph\('concrete'\)/.test(html));
 assert.ok(/id="hsReview"/.test(html));
 assert.ok(/hsConfirmRead\(\)/.test(html));
 assert.ok(/js\/next-sample\.js\?v=20261123a/.test(html));
-assert.ok(/js\/hand-sheet\.js\?v=20261123a/.test(html));
-assert.ok(/js\/hand-sheet-page\.js\?v=20261123b/.test(html));
+assert.ok(/js\/hand-sheet\.js\?v=20261123c/.test(html));
+assert.ok(/js\/hand-sheet-page\.js\?v=20261123c/.test(html));
 const thisQr = page.slice(page.indexOf('window.ltThisQrHtml'), page.indexOf('function setStatus'));
 assert.ok(/Internal use only/.test(thisQr));
 assert.ok(/lt-next-qr-internal/.test(html));
@@ -129,7 +147,9 @@ assert.ok(!/vision\.googleapis|documentTextDetection|TEXT_DETECTION/.test(html +
 
 const sheetButtons = html.split('hs-sheet-card').slice(1).map(function (chunk) { return chunk.slice(0, 700); }).join('\n');
 assert.ok(!/startFC_Session|submitConcreteIntake|submitFieldSample/.test(sheetButtons));
-assert.ok(/async function confirmField/.test(page));
+assert.ok(/kind === 'aggregate' \? 'aggregate' : 'soil'/.test(page));
+assert.ok(/confirmField\(values, pending\.kind\)/.test(page));
+assert.ok(!/values\.category/.test(page));
 assert.ok(/startFC_Session\(/.test(page));
 assert.ok(/submitConcreteIntake\(/.test(page));
 assert.ok(/setAttribute\('capture', 'environment'\)/.test(page));

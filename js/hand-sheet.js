@@ -1,6 +1,8 @@
 /**
  * Predetermined handwritten sheets for Field Control and concrete.
- * One value per box. Contract number and sample number each have their own box.
+ * Field Control prints a soil sheet and an aggregate sheet. They share the
+ * contract number and sample number boxes. Each sheet only has the fields
+ * that type uses. One value per box.
  * The printed sheet can carry a next-sample QR. A finished report does not.
  */
 (function (root, factory) {
@@ -16,27 +18,30 @@
     return field;
   }
 
-  const FIELD = {
-    id: 'field',
+  const sharedHeader = [
+    f('sample_number', 'Sample number', { wide: true, hint: 'Test number. One number in this box.' }),
+    f('contract', 'Contract number', { wide: true, hint: 'One contract number in this box.' })
+  ];
+
+  const SOIL = {
+    id: 'soil',
     section: 'field',
-    title: 'Field Control sheet',
-    formCode: 'LABTRAK-FIELD-SHEET',
+    sampleKind: 'soil',
+    title: 'Soil sheet',
+    formCode: 'LABTRAK-SOIL-SHEET',
     sections: [
       {
         title: 'Header',
-        fields: [
-          f('sample_number', 'Sample number', { wide: true, hint: 'Test number. One number in this box.' }),
-          f('contract', 'Contract number', { wide: true, hint: 'One contract number in this box.' }),
-          f('category', 'Category', { hint: 'Write SOIL or AGGREGATE' }),
+        fields: sharedHeader.concat([
           f('location', 'Road / location'),
           f('material', 'Material type'),
           f('technician', 'Technician'),
           f('road', 'Road / route'),
           f('date', 'Date sampled', { kind: 'date' })
-        ]
+        ])
       },
       {
-        title: 'Soil sample — fill when the category is SOIL',
+        title: 'Soil sample',
         fields: [
           f('fa_project', 'F.A. project'),
           f('contractor', 'Contractor'),
@@ -48,24 +53,38 @@
           f('remarks', 'Remarks', { wide: true }),
           f('special_requests', 'Special requests', { wide: true })
         ]
+      }
+    ]
+  };
+
+  const AGGREGATE = {
+    id: 'aggregate',
+    section: 'field',
+    sampleKind: 'aggregate',
+    title: 'Aggregate sheet',
+    formCode: 'LABTRAK-AGGREGATE-SHEET',
+    sections: [
+      {
+        title: 'Header',
+        fields: sharedHeader.concat([
+          f('agg_material', 'Material'),
+          f('agg_sampled_by', 'Sampled by'),
+          f('agg_date', 'Date sampled', { kind: 'date' })
+        ])
       },
       {
-        title: 'Aggregate sample — fill when the category is AGGREGATE',
+        title: 'Aggregate sample',
         fields: [
           f('agg_size', 'Aggregate size'),
           f('size_no', 'Size no.'),
           f('lab_no', 'Lab no.'),
-          f('agg_material', 'Material'),
           f('est_qty', 'Est. quantity'),
           f('sampled_at', 'Sampled at'),
           f('examined_for', 'Examined for'),
           f('sampled_from', 'Sampled from'),
-          f('agg_contract', 'Aggregate contract'),
           f('supplied_by', 'Supplied by'),
           f('supply_location', 'Supply location'),
-          f('agg_contractor', 'Contractor'),
-          f('agg_sampled_by', 'Sampled by'),
-          f('agg_date', 'Date sampled', { kind: 'date' })
+          f('agg_contractor', 'Contractor')
         ]
       }
     ]
@@ -74,6 +93,7 @@
   const CONCRETE = {
     id: 'concrete',
     section: 'concrete',
+    sampleKind: 'concrete',
     title: 'Concrete sheet',
     formCode: 'LABTRAK-CONCRETE-SHEET',
     sections: [
@@ -157,8 +177,9 @@
   };
 
   function sheetById(id) {
+    if (id === 'soil') return SOIL;
+    if (id === 'aggregate') return AGGREGATE;
     if (id === 'concrete') return CONCRETE;
-    if (id === 'field') return FIELD;
     return null;
   }
 
@@ -276,7 +297,8 @@
   }
 
   return {
-    FIELD: FIELD,
+    SOIL: SOIL,
+    AGGREGATE: AGGREGATE,
     CONCRETE: CONCRETE,
     sheetById: sheetById,
     fieldsOf: fieldsOf,

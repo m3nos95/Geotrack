@@ -281,17 +281,17 @@
     el.value = value;
   }
 
-  async function confirmField(values) {
+  async function confirmField(values, kind) {
     if (typeof activeFC_sessionId !== 'undefined' && activeFC_sessionId) {
       if (typeof showToast === 'function') showToast('End the open field session before creating a sample from a sheet.', 'info');
       return;
     }
-    const category = /agg/i.test(values.category || '') ? 'aggregate' : 'soil';
+    const category = kind === 'aggregate' ? 'aggregate' : 'soil';
     if (category === 'soil' && !values.contract) {
       if (typeof showToast === 'function') showToast('Contract number is required', 'error');
       return;
     }
-    if (category === 'aggregate' && !(values.agg_material || values.material)) {
+    if (category === 'aggregate' && !values.agg_material) {
       if (typeof showToast === 'function') showToast('Material type is required', 'error');
       return;
     }
@@ -301,11 +301,11 @@
     setInput('fc_s_category', category);
     setInput('fc_s_testno', values.sample_number);
     setInput('fc_s_contract', values.contract);
-    setInput('fc_s_location', values.location);
-    setInput('fc_s_material', category === 'aggregate' ? (values.agg_material || values.material) : values.material);
-    setInput('fc_s_tech', values.technician);
+    setInput('fc_s_location', category === 'aggregate' ? values.sampled_at : values.location);
+    setInput('fc_s_material', category === 'aggregate' ? values.agg_material : values.material);
+    setInput('fc_s_tech', category === 'aggregate' ? values.agg_sampled_by : values.technician);
     setInput('fc_s_road', values.road);
-    setInput('fc_s_date', values.date);
+    setInput('fc_s_date', category === 'aggregate' ? values.agg_date : values.date);
     const testInput = document.getElementById('fc_s_testno');
     if (testInput && values.sample_number) testInput.dataset.userTouched = '1';
     await startFC_Session();
@@ -324,7 +324,7 @@
       setInput('a_sampled_at', values.sampled_at || values.location);
       setInput('a_examined_for', values.examined_for);
       setInput('a_sampled_from', values.sampled_from);
-      setInput('a_contract', values.agg_contract || values.contract);
+      setInput('a_contract', values.contract);
       setInput('a_supplied_by', values.supplied_by);
       setInput('a_supply_location', values.supply_location);
       setInput('a_contractor', values.agg_contractor || values.contractor);
@@ -436,7 +436,7 @@
     const values = reviewValues();
     try {
       if (pending.kind === 'concrete') await confirmConcrete(values);
-      else await confirmField(values);
+      else await confirmField(values, pending.kind);
     } finally {
       confirmBusy = false;
     }
