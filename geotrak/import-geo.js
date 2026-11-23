@@ -1337,6 +1337,106 @@ function firstChild(el, name) {
     return { added: added, replaced: replaced };
   }
 
+  /* A project opened after the old coast outline had already deleted SB-02.
+     The .GEO folder is still the source: put back any boring it has that the
+     saved db.json no longer contains, and fill a blank map point. */
+  function restoreJobName(db, project) {
+    var name = project && project.name;
+    if (name && (db.borings || []).some(function (r) { return r && r.job === name; })) return name;
+    if (name && db.jobs && db.jobs[name]) return name;
+    var contract = (project && project.contract) || '';
+    if (contract && db.jobs) {
+      var hits = Object.keys(db.jobs).filter(function (j) { return (db.jobs[j].contract || '') === contract; });
+      if (hits.length === 1) return hits[0];
+    }
+    var sourceIds = {};
+    ((project && project.borings) || []).forEach(function (b) { if (b && b.b) sourceIds[String(b.b)] = 1; });
+    var byJob = {};
+    (db.borings || []).forEach(function (r) {
+      if (!r || !r.job || r.b == null) return;
+      if (!byJob[r.job]) byJob[r.job] = { n: 0, hit: 0 };
+      byJob[r.job].n++;
+      if (sourceIds[String(r.b)]) byJob[r.job].hit++;
+    });
+    var sourceCount = Object.keys(sourceIds).length;
+    var tokens = String(name || '').toUpperCase().split(/[^A-Z0-9]+/).filter(function (t) { return t.length > 3; });
+    var overlap = Object.keys(byJob).filter(function (j) {
+      var info = byJob[j];
+      if (info.hit === 0 || info.hit !== info.n || info.n >= sourceCount) return false;
+      if (info.hit >= 2) return true;
+      var jobU = String(j).toUpperCase();
+      return tokens.some(function (t) { return jobU.indexOf(t) !== -1; });
+    });
+    if (overlap.length === 1) return overlap[0];
+    return name || '';
+  }
+
+  function restoreMissingBorings(db, projects) {
+    if (!db || typeof db !== 'object') db = { borings: [], cores: [], jobs: {} };
+    db.borings = db.borings || [];
+    db.jobs = db.jobs || {};
+    var restored = [];
+    (projects || []).forEach(function (p) {
+      if (!p || !(p.borings || []).length) return;
+      var job = restoreJobName(db, p);
+      if (!job) return;
+      (p.borings || []).forEach(function (b) {
+        if (!b || b.b == null || String(b.b) === '') return;
+        var row = null;
+        for (var i = 0; i < db.borings.length; i++) {
+          var r = db.borings[i];
+          if (r && r.job === job && String(r.b) === String(b.b)) { row = r; break; }
+        }
+        if (!row) {
+          var copy = dbBoring(b);
+          copy.job = job;
+          db.borings.push(copy);
+          restored.push(job + '/' + b.b);
+          return;
+        }
+        if ((row.lat == null || row.lon == null) && b.lat != null && b.lon != null) {
+          row.lat = b.lat;
+          row.lon = b.lon;
+          if (row.e == null) row.e = b.e;
+          if (row.n == null) row.n = b.n;
+          restored.push(job + '/' + b.b);
+        }
+      });
+      if (!db.jobs[job]) {
+        db.jobs[job] = {
+          contract: p.contract || '',
+          location: p.location || '',
+          imported: new Date().toISOString().slice(0, 10),
+          source: 'geosystem'
+        };
+      } else if (p.contract && !db.jobs[job].contract) {
+        db.jobs[job].contract = p.contract;
+      }
+    });
+    return { restored: restored };
+  }
+
+  /* East/north are the coordinates GeoSystem stored. If the saved lat/lon
+     drifted off that point, plot the state-plane pair again. */
+  function replotStatePlane(db) {
+    var moved = [];
+    (db && db.borings || []).forEach(function (r) {
+      if (!r) return;
+      var e = num(r.e);
+      var n = num(r.n);
+      if (e == null || n == null) return;
+      var loc = locate(e, n);
+      if (loc.lat == null || loc.lon == null) return;
+      var off = r.lat == null || r.lon == null ||
+        Math.abs(r.lat - loc.lat) > 0.0003 || Math.abs(r.lon - loc.lon) > 0.0003;
+      if (!off) return;
+      r.lat = loc.lat;
+      r.lon = loc.lon;
+      moved.push((r.job || '') + '/' + (r.b || ''));
+    });
+    return { moved: moved };
+  }
+
   function previewRows(bundle) {
     var rows = [];
     ((bundle && bundle.projects) || []).forEach(function (p) {
@@ -1545,6 +1645,8 @@ function firstChild(el, name) {
     parseGeoLIM: parseGeoLIM,
     parseGeoBundle: parseGeoBundle,
     mergeProjectsIntoDb: mergeProjectsIntoDb,
+    restoreMissingBorings: restoreMissingBorings,
+    replotStatePlane: replotStatePlane,
     toDbProjects: toDbProjects,
     previewRows: previewRows,
     delawareFtToLatLon: delawareFtToLatLon,
