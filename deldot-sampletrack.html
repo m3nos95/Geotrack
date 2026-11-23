@@ -1229,6 +1229,7 @@ nav:not(#r18-nav), .nav-top-row { display: none !important; }
 .hs-field { display: block; margin-bottom: 10px; }
 .hs-field span { display: block; font-size: 11px; color: var(--muted); margin-bottom: 3px; }
 .hs-field input { width: 100%; box-sizing: border-box; background: var(--panel); border: 1px solid var(--border); color: var(--text); border-radius: 8px; padding: 8px 10px; font-size: 16px; }
+#hsCameraVideo { width: 100%; max-height: 48vh; background: #041428; border-radius: 8px; object-fit: contain; }
 .hs-next-note { margin-top: 12px; padding: 10px 12px; border: 1px solid var(--border); border-radius: 8px; color: var(--text); background: var(--panel); font-size: 14px; }
 @media (min-width: 760px) {
   .hs-review { align-items: center; }
@@ -7396,7 +7397,7 @@ NOTIFY pgrst, 'reload schema';</pre>
     <div class="page">
       <div class="card">
         <div class="card-title">Scan Sample QR Code</div>
-        <p style="color:var(--muted);font-size:12px;margin-bottom:16px;font-family:var(--mono);">Point the phone camera at a sample bag, a handwritten sheet, or a printed report. A report QR opens that same sample. Field Control stays in Field Control. Concrete stays in Concrete. A lab report opens that lab sample.</p>
+        <p style="color:var(--muted);font-size:12px;margin-bottom:16px;font-family:var(--mono);">Point the phone camera at a sample bag or a printed report. A report QR opens that same sample. The next-sample code opens the next sample only when you scan that code. Photograph sheet reads a filled sheet. Field Control stays in Field Control. Concrete stays in Concrete. A lab report opens that lab sample.</p>
         <div id="scanNextNote" class="hs-next-note" hidden></div>
         <div id="scanner-box" data-tour="scan-box">
           <div id="reader"></div>
@@ -9367,7 +9368,7 @@ NOTIFY pgrst, 'reload schema';</pre>
 // GLOBALS
 // ══════════════════════════════════════════════
 let db = null;
-const APP_BUILD = '2026.11.23-soil-agg-sheets';
+const APP_BUILD = '2026.11.23-photo-reads-sheet';
 const FC_CORE_ICON_SRC = 'docs/r18-reference/core-drill-icon-128.png';
 const BORELOG_ICON_SRC = 'docs/r18-reference/borelog-icon.webp';
 const BORELOG_PATH = 'deldot-borelog-v6-uscs.html';
@@ -54096,6 +54097,17 @@ html:not([data-skin="retro"]) #app #soillab-view .card-title {
     <button onclick="document.getElementById('offlineBanner').classList.remove('visible')"
       style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:14px;margin-left:4px;">✕</button>
   </div>
+<div id="hsCamera" class="hs-review" hidden>
+  <div class="hs-review-card" role="dialog" aria-labelledby="hsCameraTitle" aria-modal="true">
+    <h2 id="hsCameraTitle">Photograph the sheet</h2>
+    <p>Frame the whole sheet, then take the photo. The handwriting is read into the review. This camera does not scan the next-sample code. Nothing is saved until you confirm.</p>
+    <video id="hsCameraVideo" autoplay playsinline muted></video>
+    <div class="btn-row">
+      <button type="button" class="btn btn-primary" id="hsTakePhotoBtn" onclick="hsTakeSheetPhoto()">Take photo</button>
+      <button type="button" class="btn btn-ghost" onclick="hsCloseSheetCamera()">Cancel</button>
+    </div>
+  </div>
+</div>
 <div id="hsReview" class="hs-review" hidden>
   <div class="hs-review-card" role="dialog" aria-labelledby="hsReviewTitle" aria-modal="true">
     <h2 id="hsReviewTitle">Review the read</h2>
@@ -54109,7 +54121,7 @@ html:not([data-skin="retro"]) #app #soillab-view .card-title {
 </div>
 <script src="js/next-sample.js?v=20261123a"></script>
 <script src="js/hand-sheet.js?v=20261123c"></script>
-<script src="js/hand-sheet-page.js?v=20261123c"></script>
+<script src="js/hand-sheet-page.js?v=20261123e"></script>
 <script>
 (function () {
   function paintLabTrakLockup() {
