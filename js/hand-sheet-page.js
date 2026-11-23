@@ -138,14 +138,18 @@
     }, 250);
   };
 
-  function fileInput(kind) {
-    let input = document.getElementById('hs-file-' + kind);
+  let photoKind = '';
+
+  function fileInput(kind, mode) {
+    const useCamera = mode === 'camera';
+    const id = 'hs-file-' + kind + (useCamera ? '-camera' : '-file');
+    let input = document.getElementById(id);
     if (input) return input;
     input = document.createElement('input');
     input.type = 'file';
-    input.id = 'hs-file-' + kind;
+    input.id = id;
     input.accept = 'image/*';
-    input.setAttribute('capture', 'environment');
+    if (useCamera) input.setAttribute('capture', 'environment');
     input.hidden = true;
     input.addEventListener('change', function () {
       const file = input.files && input.files[0];
@@ -156,8 +160,37 @@
     return input;
   }
 
+  function photoChoiceTitle(kind) {
+    if (kind === 'concrete') return 'Photograph the concrete sheet';
+    if (kind === 'aggregate') return 'Photograph the aggregate sheet';
+    return 'Photograph the soil sheet';
+  }
+
   window.hsPhotograph = function (kind) {
-    fileInput(kind).click();
+    photoKind = kind;
+    const title = document.getElementById('hsPhotoChoiceTitle');
+    if (title) title.textContent = photoChoiceTitle(kind);
+    const overlay = document.getElementById('hsPhotoChoice');
+    if (!overlay) {
+      fileInput(kind, 'file').click();
+      return;
+    }
+    overlay.hidden = false;
+    const first = overlay.querySelector('button');
+    if (first) first.focus();
+  };
+
+  window.hsClosePhotoChoice = function () {
+    const overlay = document.getElementById('hsPhotoChoice');
+    if (overlay) overlay.hidden = true;
+    photoKind = '';
+  };
+
+  window.hsChoosePhoto = function (mode) {
+    const kind = photoKind;
+    window.hsClosePhotoChoice();
+    if (!kind) return;
+    fileInput(kind, mode === 'camera' ? 'camera' : 'file').click();
   };
 
   function compressImage(file) {
