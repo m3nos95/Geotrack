@@ -259,7 +259,7 @@
   function printDocument(sheet, opts) {
     opts = opts || {};
     const qr = opts.qrDataUrl
-      ? '<div class="qr"><img alt="Scan for the next sample" src="' + escapeHtml(opts.qrDataUrl) + '"><div>Scan for the next sample</div></div>'
+      ? '<div class="qr"><img alt="Scan to open the next sample" src="' + escapeHtml(opts.qrDataUrl) + '"><div>Scan to open the next sample</div></div>'
       : '';
     let n = 0;
     const sections = (sheet.sections || []).map(function (section) {
