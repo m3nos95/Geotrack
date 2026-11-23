@@ -1374,6 +1374,15 @@ function firstChild(el, name) {
     return Promise.reject(new Error('This browser cannot open a zipped .GEO folder. Unzip it, then drop the folder.'));
   }
 
+  function withZipRoot(zipName, files) {
+    var root = String(zipName || 'project').replace(/\\/g, '/').replace(/\.zip$/i, '').replace(/^\/+|\/+$/g, '');
+    if (!root) root = 'project';
+    return (files || []).map(function (f) {
+      var path = String((f && (f.path || f.name)) || '').replace(/\\/g, '/').replace(/^\/+/, '');
+      return { name: f.name, path: root + '/' + path, text: f.text };
+    });
+  }
+
   function unzipToTexts(buf) {
     var u8 = buf instanceof Uint8Array ? buf : new Uint8Array(buf || []);
     var view = new DataView(u8.buffer, u8.byteOffset, u8.byteLength);
@@ -1528,6 +1537,7 @@ function firstChild(el, name) {
     INBOX_KEY: INBOX_KEY,
     tooBigMessage: tooBigMessage,
     looksLikeZip: looksLikeZip,
+    withZipRoot: withZipRoot,
     unzipToTexts: unzipToTexts,
     parseGeoPDollar: parseGeoPDollar,
     parseGeoMDT: parseGeoMDT,
