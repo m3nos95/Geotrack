@@ -5289,7 +5289,7 @@ NOTIFY pgrst, 'reload schema';</pre>
         A LabTrak administrator can open GeoTrak until their line is set to No GeoTrak.
         Field control stays on No GeoTrak.
         GeoTrak opens only after a LabTrak sign-in. The GeoTrak address by itself does not open the map.
-        Statewide reference data stays in the GeoTrak project folder on that computer (refs/ and db.json). It is not part of LabTrak and it is not published with this site.
+        Statewide reference data stays in the shared Google Drive folder. A GeoTrak admin pastes that folder link and the Google client ID once in GeoTrak settings. Every login with GeoTrak access gets them. A login without that access does not. The files are not part of LabTrak and they are not published with this site.
       </p>
       <div id="geotrakAccessList"></div>
       <p id="geotrakAccessNote" style="font-family:var(--mono);font-size:10px;color:var(--muted);margin:10px 0 0;line-height:1.5;"></p>
@@ -21105,6 +21105,59 @@ GRANT EXECUTE ON FUNCTION public.geotrak_can_read_user(TEXT) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.geotrak_can_write_access() TO authenticated;
 
 NOTIFY pgrst, 'reload schema';
+
+-- Office Drive settings. One client id and one folder URL.
+-- No client secret. Read requires a GeoTrak grant. Write requires a GeoTrak admin.
+CREATE TABLE IF NOT EXISTS public.geotrak_office (
+  id TEXT PRIMARY KEY DEFAULT 'office',
+  client_id TEXT NOT NULL DEFAULT '',
+  folder_url TEXT NOT NULL DEFAULT '',
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  CONSTRAINT geotrak_office_singleton CHECK (id = 'office')
+);
+
+ALTER TABLE public.geotrak_office ENABLE ROW LEVEL SECURITY;
+
+CREATE OR REPLACE FUNCTION public.geotrak_office_grant()
+RETURNS TEXT
+LANGUAGE SQL STABLE SECURITY DEFINER SET search_path = public
+AS $$
+  SELECT CASE
+    WHEN EXISTS (
+      SELECT 1 FROM public.geotrak_access AS a
+      WHERE a.user_id = public.st_app_user_id()
+        AND a.geotrak_role = 'none'
+    ) THEN NULL
+    WHEN EXISTS (
+      SELECT 1 FROM public.geotrak_access AS a
+      WHERE a.user_id = public.st_app_user_id()
+        AND a.geotrak_role = 'admin'
+    ) THEN 'admin'
+    WHEN EXISTS (
+      SELECT 1 FROM public.geotrak_access AS a
+      WHERE a.user_id = public.st_app_user_id()
+        AND a.geotrak_role = 'user'
+    ) THEN 'user'
+    WHEN public.st_current_role() = 'admin' THEN 'admin'
+    ELSE NULL
+  END
+$$;
+
+DROP POLICY IF EXISTS "geotrak_office read" ON public.geotrak_office;
+DROP POLICY IF EXISTS "geotrak_office write" ON public.geotrak_office;
+CREATE POLICY "geotrak_office read" ON public.geotrak_office
+  FOR SELECT TO authenticated
+  USING (public.geotrak_office_grant() IN ('user', 'admin'));
+CREATE POLICY "geotrak_office write" ON public.geotrak_office
+  FOR ALL TO authenticated
+  USING (public.geotrak_office_grant() = 'admin')
+  WITH CHECK (public.geotrak_office_grant() = 'admin');
+
+REVOKE ALL ON TABLE public.geotrak_office FROM anon;
+GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE public.geotrak_office TO authenticated;
+GRANT EXECUTE ON FUNCTION public.geotrak_office_grant() TO authenticated;
+
+NOTIFY pgrst, 'reload schema';
 `;
 
 function readGeoTrakAccessMap() {
@@ -21114,6 +21167,12 @@ function readGeoTrakAccessMap() {
 function writeGeoTrakAccessMap(map) {
   localStorage.setItem(GEOTRAK_ACCESS_KEY, JSON.stringify(map || {}));
 }
+function clearGeoTrakOfficeCache() {
+  ['geotrak_drive_client_id', 'geotrak_drive_folder_id', 'geotrak_drive_folder_name'].forEach(function (key) {
+    try { localStorage.removeItem(key); } catch (e) {}
+  });
+}
+clearGeoTrakOfficeCache();
 function geotrakGrantFor(user) {
   if (!user || !user.id) return null;
   const row = readGeoTrakAccessMap()[user.id];
@@ -27334,6 +27393,7 @@ function loginUser(user, silent = false) {
     if (_lpd) { const _lpo = JSON.parse(_lpd); currentProjectFilter = _lpo.contract; currentProjectName = _lpo.name; }
   } catch {}
   sessionStorage.setItem('st_current_user', JSON.stringify(safeUser));
+  if (typeof clearGeoTrakOfficeCache === 'function') clearGeoTrakOfficeCache();
   document.getElementById('userOverlay').classList.remove('open');
   applyRoleUI(user.role);
   if (typeof renderDashboard === 'function') renderDashboard();

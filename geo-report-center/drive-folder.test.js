@@ -123,6 +123,44 @@ check('a 401 refreshes the token once and retries', async () => {
   assert.strictEqual(downloads, 2);
 });
 
+check('the office record keeps the client id and folder URL, and has no client secret', () => {
+  const row = Drive.officeRecord({
+    clientId: '123-abc.apps.googleusercontent.com',
+    folderUrl: 'https://drive.google.com/drive/folders/abcDEF_123-xyz?usp=sharing',
+    folderName: 'GeoTrak refs',
+    clientSecret: 'must-not-stick',
+    client_secret: 'also-no'
+  });
+  assert.strictEqual(row.clientId, '123-abc.apps.googleusercontent.com');
+  assert.strictEqual(row.folderId, 'abcDEF_123-xyz');
+  assert.strictEqual(row.folderUrl, 'https://drive.google.com/drive/folders/abcDEF_123-xyz?usp=sharing');
+  assert.strictEqual(row.folderName, 'GeoTrak refs');
+  assert.strictEqual(row.clientSecret, undefined);
+  assert.strictEqual(JSON.stringify(row).indexOf('must-not-stick'), -1);
+  const fromId = Drive.officeRecord({ folderId: 'abcDEF_123-xyz' });
+  assert.strictEqual(fromId.folderUrl, 'https://drive.google.com/drive/folders/abcDEF_123-xyz');
+});
+
+check('only a GeoTrak grant can read the office Drive settings, and only an admin can save them', () => {
+  assert.strictEqual(Drive.officeGrant('none', true), '');
+  assert.strictEqual(Drive.officeGrant('user', true), 'user');
+  assert.strictEqual(Drive.officeGrant('admin', false), 'admin');
+  assert.strictEqual(Drive.officeGrant('', true), 'admin');
+  assert.strictEqual(Drive.officeGrant('', false), '');
+  assert.strictEqual(Drive.canReadOffice(''), false);
+  assert.strictEqual(Drive.canReadOffice('user'), true);
+  assert.strictEqual(Drive.canReadOffice('admin'), true);
+  assert.strictEqual(Drive.canWriteOffice('user'), false);
+  assert.strictEqual(Drive.canWriteOffice('admin'), true);
+  const store = {
+    box: { geotrak_drive_client_id: 'leftover', geotrak_drive_folder_id: 'abc', geotrak_drive_folder_name: 'Refs' },
+    getItem: function (k) { return this.box[k] || null; },
+    removeItem: function (k) { delete this.box[k]; }
+  };
+  Drive.clearOfficeLocal(store);
+  assert.deepStrictEqual(store.box, {});
+});
+
 (async () => {
   let failed = 0;
   for (const t of tests) {
