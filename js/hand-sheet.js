@@ -312,30 +312,31 @@
   function labtrakDocument(sheet, opts, sections) {
     return '<!DOCTYPE html><html><head><meta charset="utf-8"><title>' + escapeHtml(sheet.title) + '</title><style>' +
       '@page{size:letter;margin:0.4in}' +
-      'body{margin:0;color:#122033;background:#fff;font-family:Arial,sans-serif}' +
-      '.banner{position:relative;display:flex;align-items:center;gap:12px;background:#002349;color:#fff;min-height:2.05in;padding:0.16in 1.9in 0.22in 0.18in}' +
+      'html,body{margin:0;color:#122033;background:#fff;font-family:Arial,sans-serif}' +
+      '*,*:before,*:after{box-sizing:border-box}' +
+      '.banner{position:relative;display:flex;align-items:center;gap:10px;background:#002349;color:#fff;height:1.86in;padding:0.1in 1.78in 0.14in 0.16in}' +
       '.banner:after{content:"";position:absolute;left:0;right:0;bottom:0;height:7px;background:#f68304}' +
-      '.lockup{height:0.52in;width:auto;display:block}' +
+      '.lockup{height:0.42in;width:auto;display:block}' +
       '.lockup-fallback{display:flex;align-items:center;gap:8px}' +
-      '.mark{width:0.42in;height:0.36in;display:block}' +
-      '.word{font-size:22px;font-weight:800;letter-spacing:-0.03em}' +
-      '.slash{width:4px;height:0.42in;background:#f68304;transform:skewX(-18deg);border-radius:2px;flex:0 0 auto}' +
-      '.name{font-weight:700;line-height:1.05;font-size:16px}' +
-      '.name div+div{font-size:15px;font-weight:650}' +
-      '.qr{position:absolute;top:0.12in;right:0.12in;width:1.5in;background:#fff;color:#122033;text-align:center;padding:3px 3px 2px;z-index:1}' +
+      '.mark{width:0.36in;height:0.3in;display:block}' +
+      '.word{font-size:18px;font-weight:800;letter-spacing:-0.03em}' +
+      '.slash{width:4px;height:0.34in;background:#f68304;transform:skewX(-18deg);border-radius:2px;flex:0 0 auto}' +
+      '.name{font-weight:700;line-height:1.05;font-size:13px}' +
+      '.name div+div{font-size:12px;font-weight:650}' +
+      '.qr{position:absolute;top:0.06in;right:0.08in;width:1.5in;background:#fff;color:#122033;text-align:center;padding:2px 2px 1px;z-index:1}' +
       '.qr img{width:1.5in;height:1.5in;display:block}' +
-      '.qr div{font-size:7px;line-height:1.15;padding:2px 2px 0}' +
-      '.title{display:grid;grid-template-columns:1fr auto;gap:12px;align-items:center;padding:10px 2px 6px}' +
-      'h1{margin:0;font-size:22px;letter-spacing:0.02em;color:#0b2344;font-weight:800;text-transform:uppercase}' +
-      '.sub{margin-top:3px;font-size:10px;letter-spacing:0.04em;color:#5c6d80;font-weight:700}' +
-      '.meta{text-align:right;border-left:3px solid #f68304;padding-left:10px;color:#0b2344;font-weight:750;font-size:12px}' +
-      'h2{margin:10px 0 6px;background:#002349;color:#fff;font-size:11px;letter-spacing:0.04em;text-transform:uppercase;padding:6px 10px;border-bottom:3px solid #f68304}' +
-      '.grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}' +
-      '.box{border:1px solid #d7e0ea;border-radius:8px;min-height:58px;padding:4px 8px;background:#fff}' +
-      '.box.wide{grid-column:1 / -1;min-height:68px}' +
-      '.lab{font-size:11px;font-weight:700;color:#1c334d} .code{font-weight:500;color:#5c6d80}' +
-      '.hint{font-size:9px;color:#5c6d80} .write{height:26px}' +
-      '@media print{*{ -webkit-print-color-adjust:exact;print-color-adjust:exact }.box{break-inside:avoid}}' +
+      '.qr div{font-size:7px;line-height:1.1;padding:1px 1px 0}' +
+      '.title{display:grid;grid-template-columns:1fr auto;gap:8px;align-items:center;padding:4px 2px 2px}' +
+      'h1{margin:0;font-size:16px;line-height:1.1;letter-spacing:0.02em;color:#0b2344;font-weight:800;text-transform:uppercase}' +
+      '.sub{margin-top:1px;font-size:9px;line-height:1.15;letter-spacing:0.03em;color:#5c6d80;font-weight:700}' +
+      '.meta{text-align:right;border-left:3px solid #f68304;padding-left:8px;color:#0b2344;font-weight:750;font-size:11px;line-height:1.15}' +
+      'h2{margin:5px 0 3px;background:#002349;color:#fff;font-size:10px;line-height:1.1;letter-spacing:0.04em;text-transform:uppercase;padding:3px 8px;border-bottom:3px solid #f68304}' +
+      '.grid{display:grid;grid-template-columns:1fr 1fr;gap:5px}' +
+      '.box{border:1px solid #d7e0ea;border-radius:6px;min-height:57px;padding:2px 6px 3px;background:#fff}' +
+      '.box.wide{grid-column:1 / -1;min-height:61px}' +
+      '.lab{font-size:10px;line-height:1.15;font-weight:700;color:#1c334d} .code{font-weight:500;color:#5c6d80}' +
+      '.hint{font-size:8px;line-height:1.15;color:#5c6d80} .write{height:20px}' +
+      '@media print{*{ -webkit-print-color-adjust:exact;print-color-adjust:exact }.box,.banner{break-inside:avoid}}' +
       '</style></head><body><header class="banner">' + lockupMarkup(opts) +
       '<div class="slash"></div><div class="name"><div>Materials &amp; Research</div><div>Laboratory</div></div>' +
       qrMarkup(opts) + '</header><div class="title"><div><h1>' + escapeHtml(sheet.title) + '</h1>' +
