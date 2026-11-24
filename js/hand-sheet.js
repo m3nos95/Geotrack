@@ -344,8 +344,137 @@
       '<div class="meta">' + escapeHtml(sheet.formCode) + '</div></div>' + sections + '</body></html>';
   }
 
+  function boxHtml(field, n) {
+    const code = String(n).padStart(2, '0');
+    const wide = field.wide ? ' wide' : '';
+    const hint = field.hint ? '<div class="hint">' + escapeHtml(field.hint) + '</div>' : '';
+    return '<div class="box' + wide + '" data-field="' + escapeHtml(field.id) + '">' +
+      '<div class="lab"><span class="code">' + code + '</span> ' + escapeHtml(field.label) + '</div>' +
+      hint +
+      '<div class="write"></div></div>';
+  }
+
+  function rowsOf(fields) {
+    const rows = [];
+    let i = 0;
+    while (i < fields.length) {
+      const field = fields[i];
+      const next = fields[i + 1];
+      if (field.wide || !next || next.wide) {
+        rows.push([field]);
+        i += 1;
+      } else {
+        rows.push([field, next]);
+        i += 2;
+      }
+    }
+    return rows;
+  }
+
+  // Letter content box is 10.2in after the 0.4in page margin. The navy header
+  // takes 1.86in on every page. Boxes stay tall enough to write in.
+  const CONCRETE_PAGE = 10.2 * 96;
+  const CONCRETE_BANNER = 1.86 * 96;
+  const CONCRETE_TITLE = 40;
+  const CONCRETE_SLACK = 20;
+  const CONCRETE_H2 = 28;
+  const CONCRETE_GAP = 6;
+  const CONCRETE_BOX = 72;
+  const CONCRETE_WIDE = 84;
+
+  function concreteRowHeight(row) {
+    return row.length === 1 && row[0].wide ? CONCRETE_WIDE : CONCRETE_BOX;
+  }
+
+  function concretePages(sheet) {
+    const pages = [];
+    let page = { first: true, blocks: [], used: 0 };
+    let n = 0;
+    function limit() {
+      return CONCRETE_PAGE - CONCRETE_BANNER - CONCRETE_SLACK - (page.first ? CONCRETE_TITLE : 0);
+    }
+    function nextPage() {
+      if (page.blocks.length) pages.push(page);
+      page = { first: false, blocks: [], used: 0 };
+    }
+    (sheet.sections || []).forEach(function (section) {
+      const rows = rowsOf(section.fields || []);
+      let offset = 0;
+      while (offset < rows.length) {
+        const headingAndRow = CONCRETE_H2 + concreteRowHeight(rows[offset]);
+        if (page.blocks.length && page.used + headingAndRow > limit()) nextPage();
+        const block = { title: section.title, html: '' };
+        let cost = CONCRETE_H2;
+        let rowCount = 0;
+        while (offset < rows.length) {
+          const gap = rowCount ? CONCRETE_GAP : 0;
+          const height = concreteRowHeight(rows[offset]) + gap;
+          if (rowCount && page.used + cost + height > limit()) break;
+          block.html += rows[offset].map(function (field) {
+            n += 1;
+            return boxHtml(field, n);
+          }).join('');
+          cost += height;
+          rowCount += 1;
+          offset += 1;
+        }
+        block.html = '<h2>' + escapeHtml(block.title) + '</h2><div class="grid">' + block.html + '</div>';
+        page.blocks.push(block);
+        page.used += cost;
+      }
+    });
+    if (page.blocks.length) pages.push(page);
+    return pages;
+  }
+
+  function concreteDocument(sheet, opts) {
+    const pages = concretePages(sheet).map(function (page) {
+      const qr = page.first ? qrMarkup(opts) : '';
+      const title = page.first
+        ? '<div class="title"><div><h1>' + escapeHtml(sheet.title) + '</h1>' +
+          '<div class="sub">Delaware Department of Transportation | one value per box</div></div>' +
+          '<div class="meta">' + escapeHtml(sheet.formCode) + '</div></div>'
+        : '';
+      return '<section class="page"><header class="banner">' + lockupMarkup(opts) +
+        '<div class="slash"></div><div class="name"><div>Materials &amp; Research</div><div>Laboratory</div></div>' +
+        qr + '</header>' + title + page.blocks.map(function (block) { return block.html; }).join('') +
+        '</section>';
+    }).join('');
+    return '<!DOCTYPE html><html><head><meta charset="utf-8"><title>' + escapeHtml(sheet.title) + '</title><style>' +
+      '@page{size:letter;margin:0.4in}' +
+      'html,body{margin:0;color:#122033;background:#fff;font-family:Arial,sans-serif}' +
+      '*,*:before,*:after{box-sizing:border-box}' +
+      '.page{break-after:page;page-break-after:always}' +
+      '.page:last-child{break-after:auto;page-break-after:auto}' +
+      '.banner{position:relative;display:flex;align-items:center;gap:10px;background:#002349;color:#fff;height:1.86in;padding:0.1in 1.78in 0.14in 0.16in}' +
+      '.banner:after{content:"";position:absolute;left:0;right:0;bottom:0;height:7px;background:#f68304}' +
+      '.lockup{height:0.42in;width:auto;display:block}' +
+      '.lockup-fallback{display:flex;align-items:center;gap:8px}' +
+      '.mark{width:0.36in;height:0.3in;display:block}' +
+      '.word{font-size:18px;font-weight:800;letter-spacing:-0.03em}' +
+      '.slash{width:4px;height:0.34in;background:#f68304;transform:skewX(-18deg);border-radius:2px;flex:0 0 auto}' +
+      '.name{font-weight:700;line-height:1.05;font-size:13px}' +
+      '.name div+div{font-size:12px;font-weight:650}' +
+      '.qr{position:absolute;top:0.06in;right:0.08in;width:1.5in;background:#fff;color:#122033;text-align:center;padding:2px 2px 1px;z-index:1}' +
+      '.qr img{width:1.5in;height:1.5in;display:block}' +
+      '.qr div{font-size:7px;line-height:1.1;padding:1px 1px 0}' +
+      '.title{display:grid;grid-template-columns:1fr auto;gap:8px;align-items:center;padding:4px 2px 2px}' +
+      'h1{margin:0;font-size:16px;line-height:1.1;letter-spacing:0.02em;color:#0b2344;font-weight:800;text-transform:uppercase}' +
+      '.sub{margin-top:1px;font-size:9px;line-height:1.15;letter-spacing:0.03em;color:#5c6d80;font-weight:700}' +
+      '.meta{text-align:right;border-left:3px solid #f68304;padding-left:8px;color:#0b2344;font-weight:750;font-size:11px;line-height:1.15}' +
+      'h2{margin:5px 0 3px;background:#002349;color:#fff;font-size:10px;line-height:1.1;letter-spacing:0.04em;text-transform:uppercase;padding:3px 8px;border-bottom:3px solid #f68304}' +
+      '.grid{display:grid;grid-template-columns:1fr 1fr;gap:6px}' +
+      '.box{border:1px solid #d7e0ea;border-radius:6px;min-height:72px;padding:3px 8px 4px;background:#fff}' +
+      '.box.wide{grid-column:1 / -1;min-height:84px}' +
+      '.lab{font-size:11px;line-height:1.15;font-weight:700;color:#1c334d} .code{font-weight:500;color:#5c6d80}' +
+      '.hint{font-size:9px;line-height:1.15;color:#5c6d80} .write{height:28px}' +
+      '@media print{*{ -webkit-print-color-adjust:exact;print-color-adjust:exact }.box,.banner{break-inside:avoid}}' +
+      '</style></head><body>' + pages + '</body></html>';
+  }
+
   function printDocument(sheet, opts) {
     opts = opts || {};
+    if (sheet.id === 'concrete') return concreteDocument(sheet, opts);
     const sections = sheetMarkup(sheet);
     if (sheet.id === 'soil' || sheet.id === 'aggregate') return labtrakDocument(sheet, opts, sections);
     return plainDocument(sheet, opts, sections);
