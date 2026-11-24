@@ -1,8 +1,9 @@
 /*
  * Google Drive folder access for published GeoTrak.
  *
- * The Pages site holds no secret. The OAuth client id stays in the browser.
- * Drive API v3 is read-only. Listing a folder returns names and ids.
+ * The Pages site holds no secret. The OAuth client id and shared folder URL
+ * are one office record. A login receives them only with a GeoTrak grant.
+ * There is no client secret. Drive API v3 is read-only.
  * File bytes are fetched only when downloadText or getFile is called.
  */
 (function (root, factory) {
@@ -296,6 +297,46 @@
     return handle;
   }
 
+  var OFFICE_LOCAL_KEYS = [CLIENT_ID_KEY, FOLDER_ID_KEY, FOLDER_NAME_KEY];
+
+  function officeGrant(accessRole, isLabAdmin) {
+    var role = String(accessRole || '');
+    if (role === 'none') return '';
+    if (role === 'admin' || role === 'user') return role;
+    if (isLabAdmin) return 'admin';
+    return '';
+  }
+
+  function canReadOffice(grant) {
+    return grant === 'user' || grant === 'admin';
+  }
+
+  function canWriteOffice(grant) {
+    return grant === 'admin';
+  }
+
+  function officeRecord(input) {
+    var src = input || {};
+    var clientId = String(src.clientId != null ? src.clientId : (src.client_id || '')).trim();
+    var explicitUrl = String(src.folderUrl != null ? src.folderUrl : (src.folder_url || '')).trim();
+    var folderId = parseFolderId(explicitUrl) || parseFolderId(src.folderId || src.folder_id || '');
+    var folderUrl = explicitUrl || (folderId ? ('https://drive.google.com/drive/folders/' + folderId) : '');
+    var folderName = String(src.folderName != null ? src.folderName : (src.folder_name || '')).trim();
+    return {
+      clientId: clientId,
+      folderUrl: folderUrl,
+      folderId: folderId,
+      folderName: folderName || folderId
+    };
+  }
+
+  function clearOfficeLocal(storage) {
+    if (!storage) return;
+    OFFICE_LOCAL_KEYS.forEach(function (key) {
+      try { storage.removeItem(key); } catch (e) {}
+    });
+  }
+
   return {
     DRIVE_SCOPE: DRIVE_SCOPE,
     FOLDER_MIME: FOLDER_MIME,
@@ -317,6 +358,12 @@
     catalogFor: catalogFor,
     formatBytes: formatBytes,
     createClient: createClient,
-    directoryHandle: directoryHandle
+    directoryHandle: directoryHandle,
+    OFFICE_LOCAL_KEYS: OFFICE_LOCAL_KEYS,
+    officeGrant: officeGrant,
+    canReadOffice: canReadOffice,
+    canWriteOffice: canWriteOffice,
+    officeRecord: officeRecord,
+    clearOfficeLocal: clearOfficeLocal
   };
 });
