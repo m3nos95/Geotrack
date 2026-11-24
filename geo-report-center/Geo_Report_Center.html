@@ -7,8 +7,8 @@
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
 
-<meta name="geotrak-build" content="0.99.62-office-drive-2026">
-<meta name="geotrak-version" content="0.99.62">
+<meta name="geotrak-build" content="0.99.63-hide-folder-id-2026">
+<meta name="geotrak-version" content="0.99.63">
 
 <meta name="geotrak-pages-rev" content="2026-11-23T18:00Z">
 <title>DelDOT GeoTrak</title>
@@ -20837,7 +20837,7 @@ button,input,select,textarea{font-family:inherit}
   display:flex;align-items:center;gap:10px;padding:0 14px}
 #hdr h1 b{color:var(--amber)}
 #hdr .stats{display:none}
-#hdrTools{display:flex;align-items:center;gap:6px;flex-shrink:1;min-width:0}
+#hdrTools{display:flex;align-items:center;gap:6px;flex-shrink:0;min-width:0;position:relative;z-index:3}
 #hdrTools .hdr-tool{background:var(--panel2);color:var(--dim);border:1px solid var(--line);border-radius:4px;padding:5px 9px;font-size:11px;font-family:var(--mono);letter-spacing:.04em;text-transform:uppercase;cursor:pointer;white-space:nowrap}
 #hdrTools .hdr-tool:hover{border-color:var(--amber);color:var(--text)}
 #hdrTools .hdr-tool.on{border-color:var(--amber);color:var(--amber);background:rgba(240,168,74,.1)}
@@ -20853,7 +20853,7 @@ button,input,select,textarea{font-family:inherit}
 #hdrTools .hdr-tool.calming.on{border-color:var(--amber);color:var(--amber);background:rgba(240,168,74,.14)}
 
 /* ── Shipped polish (v0.81) ── */
-#hdr{backdrop-filter:blur(10px);background:rgba(18,26,34,.92)}
+#hdr{backdrop-filter:blur(10px);background:rgba(18,26,34,.92);z-index:1400}
 #hdr .brand h1{font-family:var(--display);font-weight:700;letter-spacing:.01em}
 #hdrTools .hdr-tool{transition:border-color .15s var(--ease),color .15s var(--ease),background .15s var(--ease),opacity .15s}
 .hbtn,.btn{transition:border-color .15s var(--ease),background .15s var(--ease),color .15s var(--ease),box-shadow .15s var(--ease)}
@@ -21123,7 +21123,7 @@ body.ra-icd-sizing, body.ra-icd-sizing .leaflet-container{cursor:nwse-resize !im
   #boringReqDock{left:10px;right:10px;width:auto}
   #measureDock,#raIcdDock{left:10px;right:10px;width:auto}
 }
-#hdrPop{position:absolute;top:44px;left:0;right:0;bottom:0;z-index:1600;pointer-events:none;display:none;overflow:visible}
+#hdrPop{position:absolute;top:var(--hdr-h, 44px);left:0;right:0;bottom:0;z-index:1600;pointer-events:none;display:none;overflow:visible}
 #hdrPop.open{display:block}
 #hdrPop .hdr-pop-panel{display:none;pointer-events:auto;position:absolute;top:8px;left:max(12px, min(28vw, 320px));width:min(520px,calc(100vw - 24px));max-height:min(70vh,640px);overflow:hidden;background:var(--panel);border:1px solid var(--line);border-radius:8px;box-shadow:0 16px 48px rgba(0,0,0,.55);padding:12px 14px 16px;box-sizing:border-box}
 #hdrPop .hdr-pop-panel.on{display:flex;flex-direction:column}
@@ -21142,8 +21142,15 @@ body.ra-icd-sizing, body.ra-icd-sizing .leaflet-container{cursor:nwse-resize !im
 .hbtn{background:var(--panel2);color:var(--text);border:1px solid var(--line);border-radius:4px;padding:5px 10px;font-size:12px;cursor:pointer}
 .hbtn:hover{border-color:var(--amber)}
 .hbtn.accent{border-color:var(--amber);color:var(--amber)}
-#projName{font-family:var(--mono);font-size:11px;color:var(--green)}
-main{position:absolute;top:44px;left:0;right:0;bottom:0}
+#projName{font-family:var(--mono);font-size:11px;color:var(--green);pointer-events:none;min-width:0;max-width:min(280px,36vw);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+main{position:absolute;top:var(--hdr-h, 44px);left:0;right:0;bottom:0}
+#boringReqDock,#measureDock,#raIcdDock,#statewideCalmingDock{top:calc(var(--hdr-h, 44px) + 8px)}
+@media (max-width:1200px){
+  #hdr{height:auto;min-height:44px;flex-wrap:wrap;align-items:center;row-gap:6px;padding:6px 10px 8px}
+  #hdrTools{order:20;flex:1 0 100%;max-width:100%;overflow-x:auto;overflow-y:hidden;-webkit-overflow-scrolling:touch}
+  #projName{order:21;max-width:100%}
+  #hdr .sp{display:none}
+}
 .page{position:absolute;inset:0;display:none}
 .page.on{display:block}
 #map{position:absolute;inset:0}
@@ -21956,7 +21963,7 @@ table.list td{padding:5px 8px;border-bottom:1px solid rgba(46,58,72,.5);font-fam
   <div class="brand" title="Delaware Department of Transportation">
     <img src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACgAAAAoCAYAAACM/rhtAAARW0lEQVR42q2ZeZRdRZ3HP1X3vnff3nunl3SSTjqdTmJCErKRxY4haCAEPEgHOcAEBwREMeDAcSdG8Zw5ikIGRIVxFAQVwuCMkRBFQjobDWmzkaWzdDqd7nR3en/7e3epmj8aRpRxGWfqv/qn6lO3fnVPfT8l+NuaoLHRoLnZBZACVt20sa5/cGRpPu8udD23QXmqUmsVARBCpqQhe03DbLMs863y0qK9v3tu0xml3xmtsdGkudkD9F+f+K+1jRslmzYpgDs+/88FLQd6rs/k8ze6dn6RQEeUBldrPC1Qemw4KTSG0JhCIAVoRMr0W2+GLOvni2urXnzyyS/E/3Tsvw9wbKXuCy+84P/6U82fSWfse1GqxvVcMsogJ8LKMIM67DNE1CdFQGrQmpwSOulq0o6nPTcrAjotQ9LDNEyQsisc8j/64CcbH1+3bp397hx/B2CTAVu8xWvvXTowmnnMc725rpsnoaOeGShiRlTLZbGkmB8codZKUaJTBIQLhklOSYa8AB1OlNZsMXsSUX08IZSbHyEmkoZpWhimcbCsMHRPy9ZH9747198KKKBJCrZ4H1j16XsT6fzDeHkjqSxXBCuM1SU5sb6kk8WBi0RVEqSBqyVeYQVKmpAaRRoSw81j4oGTIymjtGTLeXp4EtsHLa2zfV5U5k0My4uFrfuP/u57j+oxSPWndWm8D66pSYoTW7yGlXd9J5X1NiknLYZlhbqkrMh8vPaUuL/kKFN8cRx/iGxlA/a0RTj+MGrWB/HChXiuh7rhfpx0mpwRwJ63Gnn+GNP9I1wXPMOlha44oWvl2azlBdwRaStzdeXUBbGhc89sp6nJ4Phx/jxgY6Mptm3zGlbe9d1MTn3OtdNO3KqVd9Tk5FPVb9BAL3EZwV5zJ/S0w+zlUFOP0d+JPzNMwFD4Bs9jaA89chGFRGgPus+QM0PkqxuYrs7TVNBF0lcu92XG4bMHXE/7llVOXVAw9PIz22lsNOnsVO8DbGpqMo5v2+bNWvWpDams2uTaaScVnOL7xsSL4sGyVpxAAdmFazGlRg9cwAhHibbtxDqxF/tiHxd7Bjl9uod4DvJnjhOK9xIjjTV4Djdno2csxqyfQy5QjDx7mKuLeggHouI3mYmGmb/oeNq3tGbawtH+1198o6mpyTh+/Lj+Qw02NRls2eItXHvf4otDib3KzqlRa5Lx0KSL4rPlx4hnQPot5I0P4HW3E9v9LGkR4tcXAuzRdezPFdOrgtTXVtJ6upeoCdVGjvn+QZaanVxdPECkspJE3RLkhVNQXYc30EPBmd38S3wBX+ko04X5c570B+S4ktjSt7Y+0vIukwEIjjexefN1/tdbu7Zp1y4fluP0nTU5+dWy3xPPG5hX3waxEjiwg2hnKy91x9iYWELX3Ot56ozLBWUQz+T46OrZpPA40TVEt7Y4HZ1E5Qev5akTJv7+DuaM7Mc2QjB5FvLCKbKJDI3hCwzJcWJPIqZDKmHkbG/Jzfev/9Fb34l40IzR2LjR7Ozc5HU7tRvytro56fncOWWF5pPVb+D4I2CFoGw8Mp/GOrOfB05NpmXWeh5+6FY+sbqB/pERWg+cxQhbnOoe4hNXzGbnoQ7MgEF+ZIQv3LqUm266ks3tJbScHOaq8Hm8E/vRyThCaFwrxgrrPDvtqbIrlXP9knE9Z0dG+jse3tfYuNE0Ojub9U33bIy1nx9+3nXzITc4Xnyv9qSol/3kVtyEUT8XvXMLgb5T3N5+CSU3fIYn7ltBZ98gj/98HzPqKtl3qoec45EeSjGxppTS4iinz1xEmya7jnez8cZF3LBqOnucGn66q4vrKkZxPY2omIi6/CYi5w4wSSbZkpqCYQ/iKuas+eg1T259YVNu7JDEPnCL43g3jnohdXWlNO4rPUZCBzGdDJ5pEbtwmAfONlB6w6d5aP08Dp7pY9Hd/8bO3Sc4FU+z9rJpvHmwAxkNcLpriPWrZrHraBfCbzLaN0q0KMLSGeNZOaeKg6qKbbtOsbZsgFx5HfL4PnLaZJro46hbJY7EhQoZKjoSt8/2n91/QAoBmVz+Ftd1tRko5taiDrTpR6z5R7xYKbG3f8tLF8vovfR6vrF+HkppPv/jndjpHOHactqOdJLK5plQWw6uIjWcorW9j7XLG3DjGYxIgG8//waDiSyup9h0yzx6L72el/pKiZ3ajRpfj1x7B7q0iltjpzGDJbiuqzPZ/C1CCOSKdV+e4jnOgowyxcyokotDA2SyDrL7JGb1ZJJZl5+4C9j0qZUAbNvfzqu72/AVhkkPp5g7exIFkQC3feQSVNbGKAixdXcb8+sqiBRFwJAM9Azz8IstmIZEKcVDn76cn3gLSCo/hp1FDJwnE0+xKDTIzKiSGWUIz3UWrFj3pSlyYHCkUQiCORFSy2MJESaL17AIpSC08xm29kSoX7mSqRUhcrbLF3/8OsJn4CSzXLVsGrddO5+jh85hux4zZ45H5RzsTJ6db5/nYytm4CWyGLEQj//yLTovxtEIJpcHqV+xgq2DpYTPH0SdPoxXMp5IULI8PCJyIqyEIDgwONIobcddrDQYZkjPDwxCMIKY2ABVkyFaTLM9kTUrZgDwr9sPc/TtLoTPoKg4wqpLJ3PPIy+z41AnP3z5ANcsrgc0MhLk1ZbT1FUWUVpZCFqTHknz9Z/txZACrTXXrpxJs56CTiegZhpi5TpQivmhEQwzpJUG2/UWSU95Da6GiE+KWiuLm8vD/t/ga2thsG+EeHk9C6YWM5rK8dBzu5ERC5XK8fHLZ/Hve06iHZfAuAIGz/TRerqXeTNr0Nk82lO8vP8M61bMxEvlMAtCPPPKQY509COEYPbkIhLFkxmy/fjaD8DWH+IqQW0gQ8QnhavB87wGidYVnoKoKUSxmcf1NPR14jt7kAu2hVU6johf8s1f7ONi9xBoqKktpyQaYG9rO2Y0SC6Z5eZ1S7h+WQN3XTUPrTRG2KLlQAcl0SATasvxbBc3Z/PVZ3YBUGBJwuMquWBb+FKDiCtvxZu+mGJnhKjfEJ4CtKqUGh1WCAIGBLwcumoyzL8Cs242wxmPisoy+kbTPPZiC0YshMrZNC2fzpbdbQifgRvPcPs18/npF67ljqvmcvvqS1i2YAoqk0cYkv/Yd5Lrl09H2y5mNMivmo+z49A5AKxIhLgjxy6ynotKJQj4JAGhUAg0Oiz/cNESoDwIxRAN8yEQRnsePtPgwZ/uJp/MomyXmTPGk3dcTp7sAUNSXlnEI3euIu94jKbzKKW5ZtFUdNaGoJ+3T/dSGAkgIwE8pSGd58XdbbieQmmFRoLnoHf9EkYHxgLPe5opEGmJIudqcmaI2Lmj6EwaOz1MTXGA7XuPciSVQ0aDqLzDVfOn8PSrRxBBP9rx+MiiOg519LNsxngs39h/f/+pXgLRIEJrpjVUYzselqswQ35ESYSPLZuGaUjy6QwFIotXWI1Yug7ZeZjcrtfIKYFEI5BpEyH6DMnUpCf0cA5RPb4G59q7cd58hcqBbej4EI4KQTbPZZdO4fxAgv7eETAN5s0cT972uPK+Z/jWPauZWl1EJu8yfUIJM29dgXJcxpXGSGVs7l23GC0EPtMgmbX52c42Rru6qIkK8skkunkLxuA5hmURSUdpQyIQos80pNFmCnf5iOPqDq+QOckB9G+fw02OUBD2cVlolIPxKGbAx5KGar6/tRURstCOx8L6KrbsOk7K9bj7W/8JhgQEIuADrdFCgOOOlY8hxy7zWkM+D47FnZX9lETzxIuqEEvWYDY/S8cxh5SrdZEAQxpt0h8wW6QAz8mI1nwZJAbRgz2IhR9Gm36uifWgMzYfXjyVQ2cvkklm0dmxfnlhmKFTvWBKsHxjEIZA5x207ULeGQPyFNjuGKzrQcBPMBrkowW9aC2g+xS66zRk4rTmSvDcjJAC/AGzxSwrKmpOxVO5gM4E9iTH6XSRJcyqiWgnR9oqZLnVxaqyGVj+MNvfPIwI+LGkoL6qiKDf5OYbl7HvSCfab/4hhQmBeOfcjXXH+pqxtQzGXWame2kMXiBdWocxdQ4c3EF6dIQ92bk6oPqkFjpXVlTULIQQTF56W7NtO8vT/mq1peG0scLXTjI2HlFZS6SjleZEOVd2LsG1bLxEjmuvmM1IKscbvz/L7dctwm8IPD1GoPRYKNNav7OjGq1Bo1GeRko41jbKl3MvsdpqJzXnSqieQrTrMDtaOljXOdcL57uk3+/bfXbvjxpNrTWhgP9ZpfQHndwoPxmawIeqzyMmzcBcvJqUY/Ohc618qbydjX11lFX6qSmNsm3fSZTl4/vP7xv7LPwFkaHHAj1CQT7MF6vbuaq6m3hwIuZIL146Dj1HeTq1ACc3jOkzRSjgf1ZrjQTE7Ollz2t0f4FIyG1DIdWcriJ6cg/uhQ5kxQSSNnx53FFuCpxhXn0DU6oKcUZSeJn8Owfjf0jZWoNSY/Xnk5jRAPhL+OyEfr4x/gRJW2IuWYO34gaifSdoHilm23BEFZCQGt0/e3rZ84AQjY0bzebmTe4HVt79T6ms/XDCEe6scRXmyxNfg6JxKMdBLLgC9v4Ky0nxzf5LOF6/BicgsNMJXAE520OpsVqTUmAaAstnEAn4CFgmre2jnGrr56sVZ/lS6WHyVhRl+CBSiBxfB4d3s+b0Zbzd3+/GfNqMBP33H93xxHcaGzeaYmzdG8XmzcW+zS+8fdBz8tOHRLl3V60yvh39LfH6D2IuvRr15nZETzuR3BC/HCjjJf9Sai5bxjUrZzK3rghL/vGuesChswm2vn6M9l3N3GK08uFwJ0kVgFAUuWQt7oWzFBx5hQdGV/KDLssrURcNw2ed2LBu1twNG4Yd2KT/KHYuuHrDZf3D6T3Kzqq4VWs8NKlP3FNxgnjORHo28spP4L65nYJEN3HH4NeDxTS7tcSLJhEaV0UoFgUgnUiQ6e8jNtxBozzLNRUJCsgQD43DXHE96twxVH83BRGDxw5afKW7Rhfk2j3pD8ny4vCy/b/e/Ma7TOK9wX3Lli3erMvvvi+Rdb/r2mknHZzi+/qEC9xTeJB0aR1u6QTMwS68uZcjX3uOiOGA4zDgWvRkDOLuWIotMF2qfFnKLAeCEVJZF1U7G9nfiVqwGjM1QqjlRR5LLuDBCxMJZ884pj/siwXNz7392hOPvMvyfnnU2GiK5ma34UN3PpLJ63tdO+0krVrzk1UJ8bXKI0ScBIkV/wBWCHnyLdTEGdDZhtlxBH/AGjsvrouHwCmqwrEioDXSNFChAqicTOyVJ0gFivnawDye6onqaK7DNf1hX8gSj7a9/sP79J/ouD92M52dmqYmY2jbM69U1i0s9DCXWvZFvSdVqHZma+WEoEtD8jj+ky24FVPQlZPRQ73ooV4c28G+5HKcxhtwEqPoSTOhug6dGMYIR4j2nsAaucCOeCl3ds9na6/yCp0uDH/EDAWMR9p2/uBzuqnJYNs29bfrtyvuvi+Ryj+MZ8ukCrgiWGFcWZQU60vOszg0SKSqAvq7x/SbnUfXzYUZixBHdmMqB6O0Ao63kHIMWjIlPD0wnlfihe/ot5yJ4VexiHX/0VefeOTP6be/KjAXrrl3+VAi85jnepe4Tp6EiHmmVcTMqJLLAv1ifkGGyf40xWYeCwfsPHkzxJBt0JEL0eqMY0+qUB9LyjGBqROG6bMwTPNQSSz42bdefnT3/1Zgvk8Bb9682Xpy66l7Mll7A0qNH1PAJjkZVoYR1BGfFFFTiIChQUhyribpCZ1yPO05aRHQGRmS7rsKuDsU9G++Y239Yxs2bMj/HxTw+yX6+g0bCw+cGGrK5uyPu7a98L8lugJPg+I9Eh2NKd8r0f1vBQP+X8ybXrLl6c2bRv9/JPpfeIZY+fGvTB0YTi7N284iz3UalFYVWr3zDCFlSgrZZ5i+Nsvve7OsOLp3xy8eOv33PEP8Fw+Mpfdt4DtKAAAAAElFTkSuQmCC" width="28" height="28" alt="DelDOT">
 
-    <h1><b>DelDOT</b> GeoTrak<span class="badge">v0.99.62</span></h1>
+    <h1><b>DelDOT</b> GeoTrak<span class="badge">v0.99.63</span></h1>
 
   </div>
   <button class="tab on" data-p="map">Map</button>
@@ -23026,8 +23033,11 @@ function wireColdStartAndGuideOffer(){
   setTimeout(async ()=>{
     try{
       const hint=$('splashAutoHint');
-      if(hint && typeof officeDrive!=='undefined' && officeDrive.folderName){
-        hint.innerHTML=`Google Drive: <b>${esc(officeDrive.folderName)}</b> — continue signs in and lists the folder. Checked layers from this browser turn back on.`;
+      if(hint && typeof officeDrive!=='undefined' && officeDrive.folderId){
+        const title=(typeof GeoDrive!=='undefined')?GeoDrive.displayFolderName(officeDrive.folderName, officeDrive.folderId):'';
+        hint.innerHTML=title
+          ? `Google Drive: <b>${esc(title)}</b> — continue signs in and lists the folder. Checked layers from this browser turn back on.`
+          : 'Google Drive is connected — continue signs in and lists the folder. Checked layers from this browser turn back on.';
         return;
       }
       if(typeof idbGetProjectHandle!=='function')return;
@@ -23120,9 +23130,42 @@ async function ensureDirPermission(handle, mode){
     return false;
   }
 }
+function currentFolderId(){
+  if(typeof officeDrive!=='undefined' && officeDrive && officeDrive.folderId) return officeDrive.folderId;
+  if(typeof dirHandle!=='undefined' && dirHandle && dirHandle.id) return dirHandle.id;
+  return '';
+}
+function headerProjectLabel(name){
+  const drive=typeof dirHandle!=='undefined' && dirHandle && dirHandle.source==='drive';
+  if(typeof GeoDrive==='undefined' || !GeoDrive.displayFolderName){
+    return drive ? 'Google Drive' : (name||'no project folder');
+  }
+  const shown=GeoDrive.displayFolderName(name, currentFolderId());
+  if(drive) return shown || 'Google Drive';
+  if(!name) return 'no project folder';
+  if(!shown) return 'no project folder';
+  if(/\(needs reconnect\)/i.test(String(name))) return shown+' (needs reconnect)';
+  return shown.endsWith('/') ? shown : shown+'/';
+}
+function visibleProjectName(){
+  const name=(typeof dirHandle!=='undefined' && dirHandle && dirHandle.name) ? dirHandle.name : '';
+  const shown=(typeof GeoDrive!=='undefined' && GeoDrive.displayFolderName)
+    ? GeoDrive.displayFolderName(name, currentFolderId())
+    : '';
+  if(shown) return shown;
+  if(typeof dirHandle!=='undefined' && dirHandle && dirHandle.source==='drive') return 'Google Drive';
+  return 'project';
+}
+function syncHeaderOffset(){
+  const hdr=$('hdr');
+  if(!hdr) return;
+  const h=Math.max(44, Math.round(hdr.getBoundingClientRect().height));
+  document.documentElement.style.setProperty('--hdr-h', h+'px');
+}
 function setProjUi(name, mode){
   /* mode: idle | loaded | reconnect */
-  if($('projName')) $('projName').textContent=name||'no project folder';
+  if($('projName')) $('projName').textContent=headerProjectLabel(name);
+  syncHeaderOffset();
   const btn=$('openProj');
   if(!btn)return;
   if(mode==='reconnect') btn.textContent='Reconnect folder';
@@ -23133,6 +23176,13 @@ function setProjUi(name, mode){
   if(dbtn) dbtn.textContent=(dirHandle && dirHandle.source==='drive')?'Drive folder':'Google Drive';
   if(typeof syncColdStart==='function') syncColdStart();
 }
+window.addEventListener('resize', syncHeaderOffset);
+window.addEventListener('load', syncHeaderOffset);
+if(window.ResizeObserver){
+  const hdrEl=$('hdr');
+  if(hdrEl) new ResizeObserver(syncHeaderOffset).observe(hdrEl);
+}
+syncHeaderOffset();
 async function bindProjectHandle(handle, opts){
   opts=opts||{};
   if(!handle) return false;
@@ -23244,8 +23294,11 @@ function fillDriveInputs(){
     note.textContent='This login does not have GeoTrak access, so the office Drive settings stay blank.';
     return;
   }
+  const folderTitle=remembered ? GeoDrive.displayFolderName(remembered.name, remembered.id) : '';
   note.textContent=remembered
-    ? ('Office folder “'+remembered.name+'”. Every GeoTrak login uses it. Checked layers stay on this browser.')
+    ? (folderTitle
+      ? ('Office folder “'+folderTitle+'”. Every GeoTrak login uses it. Checked layers stay on this browser.')
+      : 'Office Google Drive folder is connected. Every GeoTrak login uses it. Checked layers stay on this browser.')
     : 'No office folder yet. A GeoTrak admin pastes the client ID and the shared folder link once.';
 }
 function officeDriveErrorText(error){
@@ -23307,8 +23360,11 @@ async function pullOfficeDrive(){
     if(officeDrive.folderId) setProjectSource('drive');
     fillDriveInputs();
     const hint=$('splashAutoHint');
-    if(hint && officeDrive.folderName && !$('splash').classList.contains('hidden')){
-      hint.innerHTML=`Google Drive: <b>${esc(officeDrive.folderName)}</b> — continue signs in and lists the folder. Checked layers from this browser turn back on.`;
+    if(hint && officeDrive.folderId && !$('splash').classList.contains('hidden')){
+      const title=GeoDrive.displayFolderName(officeDrive.folderName, officeDrive.folderId);
+      hint.innerHTML=title
+        ? `Google Drive: <b>${esc(title)}</b> — continue signs in and lists the folder. Checked layers from this browser turn back on.`
+        : 'Google Drive is connected — continue signs in and lists the folder. Checked layers from this browser turn back on.';
     }
     return officeDrive;
   }catch(e){
@@ -23463,7 +23519,7 @@ function closeDrivePanel(){
 async function connectDriveFolder(id, name, url){
   const client=ensureDriveClient();
   let metaName=name;
-  if(!metaName){
+  if(!metaName || !GeoDrive.displayFolderName(metaName, id)){
     const meta=await client.getFile(id);
     if(!GeoDrive.isFolder(meta)) throw new Error('That link is not a Google Drive folder.');
     metaName=meta.name;
@@ -23516,8 +23572,8 @@ async function loadDriveProject(){
     const restoredNote=restoredN
       ? ` Restored ${restoredN} checked file(s). ${waiting} left off stay on Drive.`
       : ' Turn a layer on to read that file. Checked layers are remembered in this browser.';
-    toast(`Google Drive “${dirHandle.name}” — db.json read. ${driveCatalog.length} reference file(s)${byteNote}.${restoredNote}`, 7000);
-    driveStatus('Connected to “'+dirHandle.name+'”.', 'good');
+    toast(`Google Drive — db.json read. ${driveCatalog.length} reference file(s)${byteNote}.${restoredNote}`, 7000);
+    driveStatus('Connected to Google Drive.', 'good');
   }catch(e){
     console.error(e);
     toastErr('Google Drive load failed: '+e.message);
@@ -23537,7 +23593,7 @@ async function tryAutoOpenDrive(){
     return true;
   }catch(e){
     console.warn('drive auto-open', e);
-    toast('Google Drive folder “'+folder.name+'” is remembered. Open Google Drive and sign in to use it.');
+    toast('Google Drive is remembered. Open Google Drive and sign in to use it.');
     return false;
   }
 }
@@ -35575,7 +35631,7 @@ function guideSetAwaitProject(on){
   }
 }
 function guideProjectLoadSummary(){
-  const name=(dirHandle&&dirHandle.name)?dirHandle.name:'project';
+  const name=visibleProjectName();
   const nBor=((db&&db.borings)||[]).length;
   const nRef=(typeof refs!=='undefined'&&refs)?refs.length:0;
   const nAnc=(typeof infilAnchors!=='undefined'&&infilAnchors)?infilAnchors.length:0;
@@ -35718,7 +35774,7 @@ const GUIDE_STEPS=[
       guideSetAwaitProject(true);
       const body=$('guideBody');
       if(guideProjectReady()){
-        const name=dirHandle&&dirHandle.name?dirHandle.name:'project';
+        const name=visibleProjectName();
         const nBor=((db&&db.borings)||[]).length;
         const nRef=(typeof refs!=='undefined'&&refs)?refs.length:0;
         if(body) body.innerHTML='A project may already be open (<b>'+esc(name)+'</b> · '+nBor+' boring'+(nBor===1?'':'s')+' · '+nRef+' layer'+(nRef===1?'':'s')+'). Click <b>Open project folder</b> / <b>Change folder</b> above and select the folder you want for this tour — that confirms <b>db.json</b> + <b>refs/</b> are loaded before the map click step.';

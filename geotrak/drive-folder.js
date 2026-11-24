@@ -337,6 +337,18 @@
     });
   }
 
+  function displayFolderName(name, folderId) {
+    var bare = String(name || '').trim()
+      .replace(/^Drive:\s*/i, '')
+      .replace(/\s*\(needs reconnect\)$/i, '')
+      .replace(/\/+$/, '')
+      .trim();
+    if (!bare) return '';
+    if (folderId && bare === String(folderId).trim()) return '';
+    if (/^[A-Za-z0-9_-]{20,}$/.test(bare) && /[0-9]/.test(bare) && /[a-z]/.test(bare) && /[A-Z]/.test(bare)) return '';
+    return bare;
+  }
+
   return {
     DRIVE_SCOPE: DRIVE_SCOPE,
     FOLDER_MIME: FOLDER_MIME,
@@ -364,6 +376,7 @@
     canReadOffice: canReadOffice,
     canWriteOffice: canWriteOffice,
     officeRecord: officeRecord,
-    clearOfficeLocal: clearOfficeLocal
+    clearOfficeLocal: clearOfficeLocal,
+    displayFolderName: displayFolderName
   };
 });
