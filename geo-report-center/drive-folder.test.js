@@ -161,6 +161,14 @@ check('only a GeoTrak grant can read the office Drive settings, and only an admi
   assert.deepStrictEqual(store.box, {});
 });
 
+check('a Drive folder id is not a name that can be drawn on the map', () => {
+  assert.strictEqual(Drive.displayFolderName('PleHZ50J4WsuqMNW68Tc/', 'PleHZ50J4WsuqMNW68Tc'), '');
+  assert.strictEqual(Drive.displayFolderName('Drive: PleHZ50J4WsuqMNW68Tc/', 'PleHZ50J4WsuqMNW68Tc'), '');
+  assert.strictEqual(Drive.displayFolderName('PleHZ50J4WsuqMNW68Tc'), '');
+  assert.strictEqual(Drive.displayFolderName('Statewide refs/', 'PleHZ50J4WsuqMNW68Tc'), 'Statewide refs');
+  assert.strictEqual(Drive.displayFolderName('GeoTrak project/', ''), 'GeoTrak project');
+});
+
 (async () => {
   let failed = 0;
   for (const t of tests) {
