@@ -456,6 +456,11 @@ nav{background:var(--surface);border-bottom:1px solid var(--border);box-shadow:0
   cursor:pointer;transition:all .12s;}
 .list-card .lc-btn:hover{border-color:var(--accent2);color:var(--text);}
 .list-card .lc-btn.danger:hover{border-color:var(--red2);color:var(--red2);}
+.proj-select-bar{display:flex;align-items:center;gap:14px;margin:-6px 0 14px;min-height:32px;}
+.proj-select-all{display:flex;align-items:center;gap:8px;font-family:var(--mono);font-size:11px;letter-spacing:1px;color:var(--muted);cursor:pointer;user-select:none;}
+.proj-check{width:16px;height:16px;accent-color:var(--accent2);cursor:pointer;}
+.proj-check-wrap{display:flex;align-items:center;margin-right:12px;flex-shrink:0;}
+#projectBulkBtn:disabled{opacity:0.45;cursor:default;}
 
 /* Map modal */
 #mapModal{position:fixed;inset:0;background:rgba(0,0,0,0.88);z-index:2000;display:none;align-items:flex-start;justify-content:center;overflow-y:auto;padding:30px 16px;}
@@ -593,6 +598,13 @@ html.comfort-mode .hab-pulse{animation:none !important;box-shadow:none !importan
           <button class="btn btn-ghost" onclick="syncBorelogNow()" title="Pull from LabTrak cloud and push local changes">☁ SYNC NOW</button>
           <button class="btn btn-primary" onclick="openProjectModal()">+ NEW PROJECT</button>
         </div>
+      </div>
+      <div id="projectSelectBar" class="proj-select-bar" hidden>
+        <label class="proj-select-all">
+          <input type="checkbox" id="projectSelectAll" class="proj-check" onchange="toggleAllListedProjects(this.checked)">
+          <span id="projectSelectCount">Select all</span>
+        </label>
+        <button type="button" class="btn btn-ghost btn-sm" id="projectBulkBtn" onclick="runListedProjectBulk()" disabled>ARCHIVE SELECTED</button>
       </div>
       <div id="projectList"></div>
     </div>
@@ -3499,9 +3511,72 @@ function backfillBorelogContractIds() {
   });
 }
 
+let _selectedProjectIds = new Set();
+let _projectBulkBusy = false;
+
 function toggleProjectArchive(){
   _showingArchive = !_showingArchive;
+  _selectedProjectIds.clear();
   renderProjects();
+}
+
+function listedProjectIds(){
+  if(_showingArchive) return (_archiveIndex || []).map(card => card && card.id).filter(Boolean);
+  return Object.keys(store.getProjects() || {});
+}
+
+function syncProjectSelectionToList(){
+  const live = new Set(listedProjectIds());
+  [..._selectedProjectIds].forEach(id => { if(!live.has(id)) _selectedProjectIds.delete(id); });
+}
+
+function updateProjectSelectionBar(){
+  const bar = $('projectSelectBar');
+  const btn = $('projectBulkBtn');
+  const allBox = $('projectSelectAll');
+  const countEl = $('projectSelectCount');
+  if(!bar) return;
+  const ids = listedProjectIds();
+  if(!ids.length){ bar.hidden = true; return; }
+  bar.hidden = false;
+  const selected = ids.filter(id => _selectedProjectIds.has(id)).length;
+  if(allBox){
+    allBox.checked = selected > 0 && selected === ids.length;
+    allBox.indeterminate = selected > 0 && selected < ids.length;
+  }
+  if(countEl) countEl.textContent = selected ? selected + ' selected' : 'Select all';
+  if(btn){
+    const verb = _showingArchive ? 'RESTORE SELECTED' : 'ARCHIVE SELECTED';
+    btn.textContent = selected ? verb + ' (' + selected + ')' : verb;
+    btn.disabled = _projectBulkBusy || selected === 0;
+  }
+}
+
+function setProjectChecked(id, checked){
+  if(checked) _selectedProjectIds.add(id);
+  else _selectedProjectIds.delete(id);
+  updateProjectSelectionBar();
+}
+
+function toggleAllListedProjects(checked){
+  listedProjectIds().forEach(id => {
+    if(checked) _selectedProjectIds.add(id);
+    else _selectedProjectIds.delete(id);
+  });
+  document.querySelectorAll('#projectList .proj-check').forEach(box => { box.checked = !!checked; });
+  updateProjectSelectionBar();
+}
+
+function projectCheckHtml(id){
+  const on = _selectedProjectIds.has(id) ? ' checked' : '';
+  return `<label class="proj-check-wrap" onclick="event.stopPropagation()">
+    <input type="checkbox" class="proj-check" aria-label="Select project"${on} onchange="setProjectChecked('${id}', this.checked)">
+  </label>`;
+}
+
+function selectedListedProjectIds(){
+  const live = new Set(listedProjectIds());
+  return [..._selectedProjectIds].filter(id => live.has(id));
 }
 
 function archiveCardLabel(card){
@@ -3526,6 +3601,7 @@ function renderArchivedProjects(list){
     const bc = card.boring_count || 0;
     const when = card.archived_at ? String(card.archived_at).slice(0, 10) : '';
     return `<div class="list-card">
+      ${projectCheckHtml(card.id)}
       <div style="flex:1;min-width:0;">
         <div class="lc-title">${escape(idn.title)}</div>
         <div class="lc-sub" style="margin-top:3px;font-size:11px;color:var(--muted);">${escape(idn.sub)}${idn.sub && when ? ' · ' : ''}${when ? 'archived ' + escape(when) : ''}</div>
@@ -3548,6 +3624,8 @@ function renderProjects(){
     if(sub) sub.textContent = 'Not loaded with the open projects';
     if(toggle) toggle.textContent = '‹ OPEN PROJECTS';
     renderArchivedProjects(list);
+    syncProjectSelectionToList();
+    updateProjectSelectionBar();
     return;
   }
   if(head) head.textContent = 'Projects';
@@ -3558,6 +3636,8 @@ function renderProjects(){
     (b.created_at||'').localeCompare(a.created_at||''));
   if(!projects.length){
     list.innerHTML = `<div class="empty-state"><div class="emoji">📁</div>No projects yet — hit "+ NEW PROJECT" to start.</div>`;
+    syncProjectSelectionToList();
+    updateProjectSelectionBar();
     return;
   }
   list.innerHTML = projects.map(p=>{
@@ -3565,6 +3645,7 @@ function renderProjects(){
     const idn = borelogProjectIdentity(p);
     const subName = idn.contract && idn.name ? idn.name : '';
     return `<div class="list-card" onclick="openProject('${p.id}')">
+      ${projectCheckHtml(p.id)}
       <div style="flex:1;min-width:0;">
         <div class="lc-title">${escape(idn.title)}</div>
         ${subName || p.contractor ? `<div class="lc-sub" style="margin-top:3px;font-size:11px;color:var(--muted);">${escape(subName)}${p.contractor ? (subName ? ' · ' : '') + escape(p.contractor) : ''}</div>` : ''}
@@ -3578,6 +3659,66 @@ function renderProjects(){
       </div>
     </div>`;
   }).join('');
+  syncProjectSelectionToList();
+  updateProjectSelectionBar();
+}
+
+function snapshotProjectForArchive(id){
+  const p = store.getProject(id);
+  if(!p) return null;
+  const all = store._all();
+  const borings = {};
+  const samples = {};
+  Object.values(all.borings || {}).forEach(b=>{ if(b && b.project_id===id) borings[b.id]=b; });
+  Object.values(all.samples || {}).forEach(s=>{ if(s && s.project_id===id) samples[s.id]=s; });
+  return {
+    project: p,
+    borings,
+    samples,
+    card: {
+      id: p.id,
+      name: p.name || '',
+      contract_no: p.contract_no || '',
+      federal_no: p.federal_no || '',
+      contractor: p.contractor || '',
+      county: p.county || '',
+      route: p.route || '',
+      location: p.location || '',
+      archived_at: new Date().toISOString(),
+      boring_count: Object.keys(borings).length,
+      sample_count: Object.keys(samples).length
+    }
+  };
+}
+
+async function commitArchiveProjects(ids){
+  const packs = [];
+  const seen = new Set();
+  (ids || []).forEach(id => {
+    if(!id || seen.has(id)) return;
+    seen.add(id);
+    const pack = snapshotProjectForArchive(id);
+    if(pack) packs.push(pack);
+  });
+  if(!packs.length) return [];
+  for(const pack of packs){
+    await _idbPut(borelogArchivePayloadKey(pack.project.id), {
+      project: pack.project, borings: pack.borings, samples: pack.samples
+    });
+  }
+  const packedIds = new Set(packs.map(pack => pack.project.id));
+  _archiveIndex = (_archiveIndex || []).filter(card => !packedIds.has(card.id));
+  packs.forEach(pack => _archiveIndex.unshift(pack.card));
+  await saveBorelogArchiveIndex();
+  let leftOpenProject = false;
+  packs.forEach(pack => {
+    if(currentProjectId===pack.project.id) leftOpenProject = true;
+    _selectedProjectIds.delete(pack.project.id);
+    _storeCore.delProject(pack.project.id);
+  });
+  await flushBorelogStoreAsync();
+  if(leftOpenProject){ currentProjectId=null; currentBoringId=null; }
+  return packs;
 }
 
 async function archiveProject(id){
@@ -3587,56 +3728,92 @@ async function archiveProject(id){
   const label = borelogProjectIdentity(p).title || p.name || 'this project';
   const msg = `Archive "${label}"? It leaves the open list and is not loaded with the other projects. The borings stay saved — this is not a delete.`;
   if(!confirm(msg)) return;
-  const all = store._all();
-  const borings = {};
-  const samples = {};
-  Object.values(all.borings || {}).forEach(b=>{ if(b && b.project_id===id) borings[b.id]=b; });
-  Object.values(all.samples || {}).forEach(s=>{ if(s && s.project_id===id) samples[s.id]=s; });
-  const card = {
-    id: p.id,
-    name: p.name || '',
-    contract_no: p.contract_no || '',
-    federal_no: p.federal_no || '',
-    contractor: p.contractor || '',
-    county: p.county || '',
-    route: p.route || '',
-    location: p.location || '',
-    archived_at: new Date().toISOString(),
-    boring_count: Object.keys(borings).length,
-    sample_count: Object.keys(samples).length
-  };
-  await _idbPut(borelogArchivePayloadKey(id), { project: p, borings, samples });
-  _archiveIndex = (_archiveIndex || []).filter(card => card.id !== id);
-  _archiveIndex.unshift(card);
-  await saveBorelogArchiveIndex();
-  _storeCore.delProject(id);
-  await flushBorelogStoreAsync();
-  if(currentProjectId===id){ currentProjectId=null; currentBoringId=null; showView('projects'); }
-  renderProjects();
+  const packs = await commitArchiveProjects([id]);
+  if(!packs.length) return;
+  if(!currentProjectId && document.querySelector('#view-projects') && !document.querySelector('#view-projects.active')) showView('projects');
+  else renderProjects();
   toast(bc ? `Archived ${label} (${bc} boring${bc===1?'':'s'})` : `Archived ${label}`);
 }
 
-async function restoreArchivedProject(id){
-  const payload = await _idbGet(borelogArchivePayloadKey(id));
-  if(!payload || !payload.project){
-    toast('That archived project could not be read', true);
-    return;
-  }
+async function archiveSelectedProjects(){
+  const ids = selectedListedProjectIds().filter(id => store.getProject(id));
+  if(!ids.length) return;
+  const packs = await commitArchiveProjects(ids);
+  renderProjects();
+  const n = packs.length;
+  toast(n === 1 ? 'Archived 1 project' : `Archived ${n} projects`);
+}
+
+async function commitRestoreProjects(ids){
   const all = store._all();
   all.projects = all.projects || {};
   all.borings = all.borings || {};
   all.samples = all.samples || {};
-  all.projects[payload.project.id] = payload.project;
-  Object.values(payload.borings || {}).forEach(b=>{ if(b && b.id) all.borings[b.id]=b; });
-  Object.values(payload.samples || {}).forEach(s=>{ if(s && s.id) all.samples[s.id]=s; });
+  const restored = [];
+  const failed = [];
+  const seen = new Set();
+  for(const id of (ids || [])){
+    if(!id || seen.has(id)) continue;
+    seen.add(id);
+    const payload = await _idbGet(borelogArchivePayloadKey(id));
+    if(!payload || !payload.project){ failed.push(id); continue; }
+    all.projects[payload.project.id] = payload.project;
+    Object.values(payload.borings || {}).forEach(b=>{ if(b && b.id) all.borings[b.id]=b; });
+    Object.values(payload.samples || {}).forEach(s=>{ if(s && s.id) all.samples[s.id]=s; });
+    restored.push(id);
+  }
+  if(!restored.length) return { restored, failed };
   store._save(all);
   await flushBorelogStoreAsync();
-  _archiveIndex = (_archiveIndex || []).filter(card => card.id !== id);
+  const done = new Set(restored);
+  _archiveIndex = (_archiveIndex || []).filter(card => !done.has(card.id));
   await saveBorelogArchiveIndex();
-  await _idbDelete(borelogArchivePayloadKey(id));
+  for(const id of restored){
+    await _idbDelete(borelogArchivePayloadKey(id));
+    _selectedProjectIds.delete(id);
+  }
+  return { restored, failed };
+}
+
+async function restoreArchivedProject(id){
+  const { restored } = await commitRestoreProjects([id]);
+  if(!restored.length){
+    toast('That archived project could not be read', true);
+    return;
+  }
   _showingArchive = false;
+  _selectedProjectIds.clear();
   renderProjects();
   toast('Project restored to the open list');
+}
+
+async function restoreSelectedProjects(){
+  const ids = selectedListedProjectIds();
+  if(!ids.length) return;
+  const { restored, failed } = await commitRestoreProjects(ids);
+  renderProjects();
+  if(!restored.length){
+    toast('Those archived projects could not be read', true);
+    return;
+  }
+  const n = restored.length;
+  const msg = n === 1 ? 'Restored 1 project to the open list' : `Restored ${n} projects to the open list`;
+  toast(failed.length ? msg + '. ' + failed.length + ' could not be read' : msg, !!failed.length);
+}
+
+async function runListedProjectBulk(){
+  if(_projectBulkBusy) return;
+  const ids = selectedListedProjectIds();
+  if(!ids.length) return;
+  _projectBulkBusy = true;
+  updateProjectSelectionBar();
+  try {
+    if(_showingArchive) await restoreSelectedProjects();
+    else await archiveSelectedProjects();
+  } finally {
+    _projectBulkBusy = false;
+    updateProjectSelectionBar();
+  }
 }
 
 function openProjectModal(editId){
