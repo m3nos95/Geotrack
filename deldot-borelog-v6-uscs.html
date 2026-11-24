@@ -1106,8 +1106,9 @@ function _idbDelete(key) {
   }));
 }
 
-/* Archive is not a delete. The project, borings, and samples stay in IndexedDB
-   under their own key and are not part of the open-project cache. */
+/* Archive is not a delete. The shared database holds the project.
+   The open cache does not keep an archived project's borings or samples.
+   A local payload is only a stand-in until that database write lands. */
 const ARCHIVE_INDEX_KEY = 'deldot_borelog_archive_index';
 let _archiveIndex = [];
 let _showingArchive = false;
@@ -1401,6 +1402,8 @@ const store = {
 
 /* ---------- SUPABASE SYNC ---------- */
 let _blDb = null;
+let _borelogArchiveColumn = true;
+let _borelogSqlToastShown = false;
 
 function _blTs(v) { return v ? new Date(v).getTime() : 0; }
 
@@ -1434,7 +1437,7 @@ function _labtrakProjectLink(p) {
 
 function projectToRow(p) {
   const { _cloudSynced, ...rest } = p;
-  return {
+  const row = {
     id: rest.id,
     labtrak_project_id: _labtrakProjectLink(rest),
     contract: rest.contract_no || '',
@@ -1456,6 +1459,9 @@ function projectToRow(p) {
     updated_at: rest.updated_at || new Date().toISOString(),
     deleted_at: null
   };
+  if (_borelogArchiveColumn && rest._archiveWrite === 'set') row.archived_at = rest.archived_at || new Date().toISOString();
+  if (_borelogArchiveColumn && rest._archiveWrite === 'clear') row.archived_at = null;
+  return row;
 }
 
 function rowToProject(r) {
@@ -1480,6 +1486,7 @@ function rowToProject(r) {
     remarks: r.remarks || '',
     created_at: r.created_at,
     updated_at: r.updated_at,
+    archived_at: r.archived_at || null,
     _cloudSynced: true,
   };
 }
@@ -1816,15 +1823,192 @@ function applyCloudSoftDeletedBorelog(merged, deletedProjIds, deletedBorIds, del
   });
 }
 
+function borelogMissingArchiveColumn(err) {
+  const msg = String((err && (err.message || err.details || err)) || '');
+  return /archived_at|42703|PGRST204|schema cache/i.test(msg);
+}
+
+function borelogSqlNeededToast() {
+  if (_borelogSqlToastShown) return;
+  _borelogSqlToastShown = true;
+  toast('In LabTrak Settings, choose Copy BoreLog SQL, paste it into the Supabase SQL editor, and click Run. Once is enough.', true);
+}
+
+function borelogDropProject(storeObj, id) {
+  if (!storeObj || !id) return;
+  if (storeObj.projects) delete storeObj.projects[id];
+  Object.keys(storeObj.borings || {}).forEach(bid => {
+    if (storeObj.borings[bid]?.project_id === id) delete storeObj.borings[bid];
+  });
+  Object.keys(storeObj.samples || {}).forEach(sid => {
+    if (storeObj.samples[sid]?.project_id === id) delete storeObj.samples[sid];
+  });
+}
+
+function archiveCardFromCloudRow(r, boringCount) {
+  return {
+    id: r.id,
+    name: r.name || '',
+    contract_no: r.contract || '',
+    federal_no: r.federal_no || '',
+    contractor: r.contractor || '',
+    county: r.county || '',
+    route: r.route || '',
+    location: r.location || '',
+    archived_at: r.archived_at,
+    boring_count: boringCount || 0,
+    sample_count: 0
+  };
+}
+
+async function probeBorelogArchiveColumn(db) {
+  const res = await db.from('borelog_projects').select('archived_at').limit(1);
+  if (res.error && borelogMissingArchiveColumn(res.error)) {
+    _borelogArchiveColumn = false;
+    return false;
+  }
+  if (res.error) throw res.error;
+  _borelogArchiveColumn = true;
+  return true;
+}
+
+async function fetchBorelogArchiveCards(db) {
+  if (!_borelogArchiveColumn) return [];
+  const res = await db.from('borelog_projects')
+    .select('id,name,contract,federal_no,contractor,county,route,location,archived_at')
+    .is('deleted_at', null)
+    .not('archived_at', 'is', null);
+  if (res.error) {
+    if (borelogMissingArchiveColumn(res.error)) {
+      _borelogArchiveColumn = false;
+      borelogSqlNeededToast();
+      return [];
+    }
+    throw res.error;
+  }
+  const rows = res.data || [];
+  const ids = rows.map(r => r.id).filter(Boolean);
+  const counts = {};
+  if (ids.length) {
+    const bor = await db.from('borelog_borings').select('project_id').in('project_id', ids).is('deleted_at', null);
+    if (!bor.error) (bor.data || []).forEach(row => {
+      counts[row.project_id] = (counts[row.project_id] || 0) + 1;
+    });
+  }
+  return rows.map(r => archiveCardFromCloudRow(r, counts[r.id] || 0));
+}
+
+async function rememberBorelogArchiveCards(cards) {
+  const incoming = cards || [];
+  const cloudIds = new Set(incoming.map(card => card.id));
+  const pending = [];
+  for (const card of (_archiveIndex || [])) {
+    if (!card || !card.id || cloudIds.has(card.id)) continue;
+    const payload = await _idbGet(borelogArchivePayloadKey(card.id));
+    if (payload && payload.project) pending.push(card);
+  }
+  _archiveIndex = incoming.concat(pending);
+  await saveBorelogArchiveIndex();
+}
+
+async function pushBorelogRows(db, table, rows) {
+  if (!rows.length) return null;
+  const res = await db.from(table).upsert(rows, { onConflict: 'id' });
+  return res.error || null;
+}
+
+async function pushArchivedPack(pack) {
+  const when = pack.card.archived_at || new Date().toISOString();
+  const project = Object.assign({}, pack.project, { archived_at: when, updated_at: when, _archiveWrite: 'set' });
+  pack.project.archived_at = when;
+  const db = getBorelogSupabaseClient();
+  if (!db || !_borelogArchiveColumn) {
+    borelogQueueUpsert('borelog_projects', project);
+    Object.values(pack.borings || {}).forEach(b => borelogQueueUpsert('borelog_borings', b));
+    Object.values(pack.samples || {}).forEach(s => borelogQueueUpsert('borelog_samples', s));
+    if (db && !_borelogArchiveColumn) borelogSqlNeededToast();
+    return 'offline';
+  }
+  const projectError = await pushBorelogRows(db, 'borelog_projects', [projectToRow(project)]);
+  const boringError = await pushBorelogRows(db, 'borelog_borings', Object.values(pack.borings || {}).map(boringToRow));
+  const sampleError = await pushBorelogRows(db, 'borelog_samples', Object.values(pack.samples || {}).map(sampleToRow));
+  const error = projectError || boringError || sampleError;
+  if (error) {
+    borelogQueueUpsert('borelog_projects', project);
+    Object.values(pack.borings || {}).forEach(b => borelogQueueUpsert('borelog_borings', b));
+    Object.values(pack.samples || {}).forEach(s => borelogQueueUpsert('borelog_samples', s));
+    if (borelogMissingArchiveColumn(error)) {
+      _borelogArchiveColumn = false;
+      borelogSqlNeededToast();
+    }
+    return 'failed';
+  }
+  await _idbDelete(borelogArchivePayloadKey(project.id));
+  return 'saved';
+}
+
+async function loadArchivedPayload(id) {
+  const local = await _idbGet(borelogArchivePayloadKey(id));
+  if (local && local.project) return local;
+  const db = getBorelogSupabaseClient();
+  if (!db) return null;
+  const [pRes, bRes, sRes] = await Promise.all([
+    db.from('borelog_projects').select('*').eq('id', id).is('deleted_at', null),
+    db.from('borelog_borings').select('*').eq('project_id', id).is('deleted_at', null),
+    db.from('borelog_samples').select('*').eq('project_id', id).is('deleted_at', null)
+  ]);
+  const projectRow = (pRes.data || [])[0];
+  if (pRes.error || bRes.error || sRes.error || !projectRow) return null;
+  const project = rowToProject(projectRow);
+  delete project.archived_at;
+  const borings = {};
+  (bRes.data || []).forEach(r => { const b = rowToBoring(r); borings[b.id] = b; });
+  const samples = {};
+  (sRes.data || []).forEach(r => { const s = rowToSample(r); samples[s.id] = s; });
+  return { project, borings, samples };
+}
+
+async function publishRestoredProject(payload) {
+  const project = Object.assign({}, payload.project, {
+    archived_at: null,
+    updated_at: new Date().toISOString(),
+    _archiveWrite: 'clear'
+  });
+  const db = getBorelogSupabaseClient();
+  if (!db) {
+    borelogQueueUpsert('borelog_projects', project);
+    Object.values(payload.borings || {}).forEach(b => borelogQueueUpsert('borelog_borings', b));
+    Object.values(payload.samples || {}).forEach(s => borelogQueueUpsert('borelog_samples', s));
+    return;
+  }
+  const projectError = await pushBorelogRows(db, 'borelog_projects', [projectToRow(project)]);
+  const boringError = await pushBorelogRows(db, 'borelog_borings', Object.values(payload.borings || {}).map(boringToRow));
+  const sampleError = await pushBorelogRows(db, 'borelog_samples', Object.values(payload.samples || {}).map(sampleToRow));
+  const error = projectError || boringError || sampleError;
+  if (error) {
+    borelogQueueUpsert('borelog_projects', project);
+    Object.values(payload.borings || {}).forEach(b => borelogQueueUpsert('borelog_borings', b));
+    Object.values(payload.samples || {}).forEach(s => borelogQueueUpsert('borelog_samples', s));
+    if (borelogMissingArchiveColumn(error)) {
+      _borelogArchiveColumn = false;
+      borelogSqlNeededToast();
+    }
+  }
+}
+
 async function pullAndMergeBorelog() {
   const db = getBorelogSupabaseClient();
   if (!db) return false;
+  const archiveCards = await fetchBorelogArchiveCards(db);
+  await rememberBorelogArchiveCards(archiveCards);
   const archivedIds = [...archivedProjectIdSet()];
   const excludeArchived = (query, column) => archivedIds.length
     ? query.not(column, 'in', `(${archivedIds.join(',')})`)
     : query;
+  let projectQuery = db.from('borelog_projects').select('*').is('deleted_at', null);
+  if (_borelogArchiveColumn) projectQuery = projectQuery.is('archived_at', null);
   const [pRes, bRes, sRes, pDel, bDel, sDel] = await Promise.all([
-    excludeArchived(db.from('borelog_projects').select('*').is('deleted_at', null), 'id'),
+    excludeArchived(projectQuery, 'id'),
     excludeArchived(db.from('borelog_borings').select('*').is('deleted_at', null), 'project_id'),
     excludeArchived(db.from('borelog_samples').select('*').is('deleted_at', null), 'project_id'),
     db.from('borelog_projects').select('id').not('deleted_at', 'is', null),
@@ -1900,6 +2084,7 @@ async function pullAndMergeBorelog() {
   });
   clearBorelogTombstonesForActiveCloud(activeProjIds, activeBorIds, cloudDeletedProj, keepProjectTombstones);
   purgeBorelogPendingDeletes(merged, pendingQueueDel);
+  archivedProjectIdSet().forEach(id => borelogDropProject(merged, id));
 
   store._save(merged);
   pruneOrphanBoringsInStore();
@@ -1960,11 +2145,13 @@ async function initBorelogSync() {
     if (probe.error) {
       if (/relation|does not exist|42P01/i.test(probe.error.message || '')) {
         updateBlSyncChip('off', 'NO TABLE');
-        toast('Run supabase migration 20260701_borelog_sync.sql', true);
+        borelogSqlNeededToast();
         return;
       }
       throw probe.error;
     }
+    const archiveReady = await probeBorelogArchiveColumn(db);
+    if (!archiveReady) borelogSqlNeededToast();
     await flushBorelogSyncQueue();
     await pullAndMergeBorelog();
     await flushBorelogSyncQueue();
@@ -3354,6 +3541,34 @@ function startApp(){
   });
 }
 
+let _borelogRefreshTimer = null;
+function scheduleBorelogCloudRefresh() {
+  if (_borelogRefreshTimer) return;
+  _borelogRefreshTimer = setTimeout(() => {
+    _borelogRefreshTimer = null;
+    refreshBorelogFromDatabase();
+  }, 400);
+}
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState === 'visible') scheduleBorelogCloudRefresh();
+});
+
+async function refreshBorelogFromDatabase() {
+  if (_borelogGeoImporting || !_blAuthOk) return;
+  if (document.visibilityState && document.visibilityState !== 'visible') return;
+  if (!getBorelogSupabaseClient()) return;
+  try {
+    await flushBorelogSyncQueue();
+    const ok = await pullAndMergeBorelog();
+    if (!ok) return;
+    if (document.querySelector('#view-projects.active')) renderProjects();
+    else if (currentProjectId && !store.getProject(currentProjectId)) showView('projects');
+    else if (document.querySelector('#view-borings.active') && currentProjectId) renderBorings();
+  } catch (e) {
+    console.warn('refreshBorelogFromDatabase:', e);
+  }
+}
+
 function scheduleBackgroundBorelogWork(attempt) {
   const n = attempt || 0;
   setTimeout(() => {
@@ -3718,6 +3933,7 @@ async function commitArchiveProjects(ids){
   });
   await flushBorelogStoreAsync();
   if(leftOpenProject){ currentProjectId=null; currentBoringId=null; }
+  for(const pack of packs) await pushArchivedPack(pack);
   return packs;
 }
 
@@ -3752,14 +3968,17 @@ async function commitRestoreProjects(ids){
   const restored = [];
   const failed = [];
   const seen = new Set();
+  const payloads = [];
   for(const id of (ids || [])){
     if(!id || seen.has(id)) continue;
     seen.add(id);
-    const payload = await _idbGet(borelogArchivePayloadKey(id));
+    const payload = await loadArchivedPayload(id);
     if(!payload || !payload.project){ failed.push(id); continue; }
+    payload.project.archived_at = null;
     all.projects[payload.project.id] = payload.project;
     Object.values(payload.borings || {}).forEach(b=>{ if(b && b.id) all.borings[b.id]=b; });
     Object.values(payload.samples || {}).forEach(s=>{ if(s && s.id) all.samples[s.id]=s; });
+    payloads.push(payload);
     restored.push(id);
   }
   if(!restored.length) return { restored, failed };
@@ -3772,6 +3991,7 @@ async function commitRestoreProjects(ids){
     await _idbDelete(borelogArchivePayloadKey(id));
     _selectedProjectIds.delete(id);
   }
+  for(const payload of payloads) await publishRestoredProject(payload);
   return { restored, failed };
 }
 
