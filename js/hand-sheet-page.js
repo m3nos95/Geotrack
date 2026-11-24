@@ -53,8 +53,9 @@
     return '';
   }
 
-  function qrImage(text) {
+  function qrImage(text, pixels) {
     if (!text || typeof QRCode === 'undefined') return '';
+    const size = pixels || 180;
     const holder = document.createElement('div');
     holder.setAttribute('aria-hidden', 'true');
     holder.style.position = 'absolute';
@@ -63,8 +64,8 @@
     try {
       new QRCode(holder, {
         text: text,
-        width: 180,
-        height: 180,
+        width: size,
+        height: size,
         colorDark: '#111111',
         colorLight: '#ffffff',
         correctLevel: QRCode.CorrectLevel.M
@@ -82,7 +83,7 @@
 
   function qrDataUrl(section, reportId, kind) {
     if (!Next) return '';
-    return qrImage(Next.payloadUrl(pageUrl(), section, reportId, kind));
+    return qrImage(Next.payloadUrl(pageUrl(), section, reportId, kind), 456);
   }
 
   function thisCaption(section) {
@@ -124,7 +125,11 @@
     const sheet = Sheets && Sheets.sheetById(kind);
     if (!sheet) return;
     await whenQrReady();
-    const html = Sheets.printDocument(sheet, { qrDataUrl: qrDataUrl(sheet.section, reportIdForSheet(kind), kind) });
+    const logo = (document.querySelector('.r18-side-logo') || {}).src || '';
+    const html = Sheets.printDocument(sheet, {
+      qrDataUrl: qrDataUrl(sheet.section, reportIdForSheet(kind), kind),
+      logoSrc: logo
+    });
     const win = window.open('', '_blank', 'width=820,height=900');
     if (!win) {
       if (typeof showToast === 'function') showToast('Pop-up blocked — allow pop-ups to print the sheet', 'error');
