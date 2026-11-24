@@ -589,6 +589,7 @@ html.comfort-mode .hab-pulse{animation:none !important;box-shadow:none !importan
         <div><h2>Projects</h2><div class="ph-sub">Top-level container for borings</div></div>
         <div style="display:flex;gap:10px;flex-wrap:wrap;">
           <button class="btn btn-ghost" onclick="openGeoImport()" title="Drop several .GEO folders or zips, or one folder that holds them">⬆ IMPORT .GEO</button>
+          <button class="btn btn-ghost" id="archiveToggleBtn" onclick="toggleProjectArchive()" title="Projects kept off the open list">VIEW ARCHIVE</button>
           <button class="btn btn-ghost" onclick="syncBorelogNow()" title="Pull from LabTrak cloud and push local changes">☁ SYNC NOW</button>
           <button class="btn btn-primary" onclick="openProjectModal()">+ NEW PROJECT</button>
         </div>
@@ -1084,6 +1085,59 @@ function _idbPut(key, val) {
   }));
 }
 
+function _idbDelete(key) {
+  return _openBorelogIdb().then(db => new Promise((resolve, reject) => {
+    const tx = db.transaction(IDB_KV, 'readwrite');
+    tx.objectStore(IDB_KV).delete(key);
+    tx.oncomplete = () => resolve();
+    tx.onerror = () => reject(tx.error);
+  }));
+}
+
+/* Archive is not a delete. The project, borings, and samples stay in IndexedDB
+   under their own key and are not part of the open-project cache. */
+const ARCHIVE_INDEX_KEY = 'deldot_borelog_archive_index';
+let _archiveIndex = [];
+let _showingArchive = false;
+
+function borelogArchivePayloadKey(id) { return 'deldot_borelog_archive:' + id; }
+
+function archivedProjectIdSet() {
+  return new Set((_archiveIndex || []).map(card => card && card.id).filter(Boolean));
+}
+
+async function loadBorelogArchiveIndex() {
+  let idx = null;
+  try { idx = await _idbGet(ARCHIVE_INDEX_KEY); } catch (e) { console.warn('archive index:', e); }
+  _archiveIndex = Array.isArray(idx) ? idx.filter(card => card && card.id) : [];
+  return _archiveIndex;
+}
+
+async function saveBorelogArchiveIndex() {
+  await _idbPut(ARCHIVE_INDEX_KEY, _archiveIndex || []);
+}
+
+function stripArchivedProjectsFromOpenStore() {
+  const ids = archivedProjectIdSet();
+  if (!ids.size || !_memStore) return;
+  let changed = false;
+  ids.forEach(id => {
+    if (_memStore.projects && _memStore.projects[id]) {
+      delete _memStore.projects[id];
+      changed = true;
+    }
+  });
+  ['borings', 'samples'].forEach(bucket => {
+    Object.keys(_memStore[bucket] || {}).forEach(key => {
+      if (ids.has(_memStore[bucket][key]?.project_id)) {
+        delete _memStore[bucket][key];
+        changed = true;
+      }
+    });
+  });
+  if (changed) _persistBorelogStore(_memStore);
+}
+
 async function initBorelogStore() {
   if (_memStore) return _memStore;
   let data = null;
@@ -1106,6 +1160,8 @@ async function initBorelogStore() {
     try { if (localStorage.getItem(STORE_KEY)) localStorage.removeItem(STORE_KEY); } catch (e) {}
   }
   _memStore = data || {};
+  await loadBorelogArchiveIndex();
+  stripArchivedProjectsFromOpenStore();
   return _memStore;
 }
 
@@ -1227,7 +1283,7 @@ function borelogStorageError(err) {
   if (/quota/i.test(msg) || err?.name === 'QuotaExceededError') {
     return new Error(
       'Browser storage is full for this site. Refresh the page and try the import again — ' +
-      'large projects now save to IndexedDB. If it still fails, delete old BoreLog projects ' +
+      'large projects now save to IndexedDB. If it still fails, archive old BoreLog projects ' +
       'or connect Supabase and use ☁ SYNC NOW.'
     );
   }
@@ -1751,10 +1807,14 @@ function applyCloudSoftDeletedBorelog(merged, deletedProjIds, deletedBorIds, del
 async function pullAndMergeBorelog() {
   const db = getBorelogSupabaseClient();
   if (!db) return false;
+  const archivedIds = [...archivedProjectIdSet()];
+  const excludeArchived = (query, column) => archivedIds.length
+    ? query.not(column, 'in', `(${archivedIds.join(',')})`)
+    : query;
   const [pRes, bRes, sRes, pDel, bDel, sDel] = await Promise.all([
-    db.from('borelog_projects').select('*').is('deleted_at', null),
-    db.from('borelog_borings').select('*').is('deleted_at', null),
-    db.from('borelog_samples').select('*').is('deleted_at', null),
+    excludeArchived(db.from('borelog_projects').select('*').is('deleted_at', null), 'id'),
+    excludeArchived(db.from('borelog_borings').select('*').is('deleted_at', null), 'project_id'),
+    excludeArchived(db.from('borelog_samples').select('*').is('deleted_at', null), 'project_id'),
     db.from('borelog_projects').select('id').not('deleted_at', 'is', null),
     db.from('borelog_borings').select('id').not('deleted_at', 'is', null),
     db.from('borelog_samples').select('id').not('deleted_at', 'is', null),
@@ -1788,6 +1848,7 @@ async function pullAndMergeBorelog() {
 
   (pRes.data || []).forEach(r => {
     const p = rowToProject(r);
+    if (archivedProjectIdSet().has(p.id)) return;
     if (pendingQueueDel.borelog_projects.has(p.id) || tombProj.has(p.id)) {
       if (tombProj.has(p.id) && !cloudDeletedProj.has(p.id)) keepProjectTombstones.add(p.id);
       return;
@@ -1799,6 +1860,7 @@ async function pullAndMergeBorelog() {
   });
   (bRes.data || []).forEach(r => {
     const b = rowToBoring(r);
+    if (archivedProjectIdSet().has(b.project_id)) return;
     if (tombProj.has(b.project_id) || pendingQueueDel.borelog_projects.has(b.project_id)) return;
     if (pendingQueueDel.borelog_borings.has(b.id)) return;
     if (cloudDeletedBor.has(b.id)) return;
@@ -1808,6 +1870,7 @@ async function pullAndMergeBorelog() {
   });
   (sRes.data || []).forEach(r => {
     const s = rowToSample(r);
+    if (archivedProjectIdSet().has(s.project_id)) return;
     if (tombProj.has(s.project_id) || pendingQueueDel.borelog_projects.has(s.project_id)) return;
     if (pendingQueueDel.borelog_samples.has(s.id)) return;
     if (cloudDeletedSamp.has(s.id)) return;
@@ -3436,8 +3499,61 @@ function backfillBorelogContractIds() {
   });
 }
 
+function toggleProjectArchive(){
+  _showingArchive = !_showingArchive;
+  renderProjects();
+}
+
+function archiveCardLabel(card){
+  const contract = String((card && card.contract_no) || '').trim();
+  const federal = String((card && card.federal_no) || '').trim();
+  const name = String((card && card.name) || '').trim();
+  return {
+    title: [contract, federal].filter(Boolean).join(' / ') || name || 'Project',
+    sub: contract && name ? name : ''
+  };
+}
+
+function renderArchivedProjects(list){
+  const cards = (_archiveIndex || []).slice().sort((a,b)=>
+    (b.archived_at||'').localeCompare(a.archived_at||''));
+  if(!cards.length){
+    list.innerHTML = `<div class="empty-state"><div class="emoji">📦</div>No archived projects. Archive takes a project off the open list without deleting it.</div>`;
+    return;
+  }
+  list.innerHTML = cards.map(card=>{
+    const idn = archiveCardLabel(card);
+    const bc = card.boring_count || 0;
+    const when = card.archived_at ? String(card.archived_at).slice(0, 10) : '';
+    return `<div class="list-card">
+      <div style="flex:1;min-width:0;">
+        <div class="lc-title">${escape(idn.title)}</div>
+        <div class="lc-sub" style="margin-top:3px;font-size:11px;color:var(--muted);">${escape(idn.sub)}${idn.sub && when ? ' · ' : ''}${when ? 'archived ' + escape(when) : ''}</div>
+      </div>
+      <div class="lc-actions">
+        <span class="lc-meta" style="margin-right:8px;">${bc} BORING${bc===1?'':'S'}</span>
+        <button class="lc-btn" onclick="restoreArchivedProject('${card.id}')">RESTORE</button>
+      </div>
+    </div>`;
+  }).join('');
+}
+
 function renderProjects(){
   const list = $('projectList');
+  const head = document.querySelector('#view-projects h2');
+  const sub = document.querySelector('#view-projects .ph-sub');
+  const toggle = $('archiveToggleBtn');
+  if(_showingArchive){
+    if(head) head.textContent = 'Archive';
+    if(sub) sub.textContent = 'Not loaded with the open projects';
+    if(toggle) toggle.textContent = '‹ OPEN PROJECTS';
+    renderArchivedProjects(list);
+    return;
+  }
+  if(head) head.textContent = 'Projects';
+  if(sub) sub.textContent = 'Top-level container for borings';
+  const archivedN = (_archiveIndex || []).length;
+  if(toggle) toggle.textContent = archivedN ? `VIEW ARCHIVE (${archivedN})` : 'VIEW ARCHIVE';
   const projects = Object.values(store.getProjects()).sort((a,b)=>
     (b.created_at||'').localeCompare(a.created_at||''));
   if(!projects.length){
@@ -3456,11 +3572,71 @@ function renderProjects(){
       <div class="lc-actions" onclick="event.stopPropagation()">
         <span class="lc-meta" style="margin-right:8px;">${bc} BORING${bc===1?'':'S'}</span>
         <button class="lc-btn" onclick="openProjectModal('${p.id}')">✎ EDIT</button>
+        <button class="lc-btn" onclick="archiveProject('${p.id}')">ARCHIVE</button>
         <button class="lc-btn danger" onclick="deleteProject('${p.id}')">DEL</button>
         <button class="btn btn-ghost btn-sm" onclick="openProject('${p.id}')">OPEN ›</button>
       </div>
     </div>`;
   }).join('');
+}
+
+async function archiveProject(id){
+  const p = store.getProject(id);
+  if(!p) return;
+  const bc = store.getBorings(id).length;
+  const label = borelogProjectIdentity(p).title || p.name || 'this project';
+  const msg = `Archive "${label}"? It leaves the open list and is not loaded with the other projects. The borings stay saved — this is not a delete.`;
+  if(!confirm(msg)) return;
+  const all = store._all();
+  const borings = {};
+  const samples = {};
+  Object.values(all.borings || {}).forEach(b=>{ if(b && b.project_id===id) borings[b.id]=b; });
+  Object.values(all.samples || {}).forEach(s=>{ if(s && s.project_id===id) samples[s.id]=s; });
+  const card = {
+    id: p.id,
+    name: p.name || '',
+    contract_no: p.contract_no || '',
+    federal_no: p.federal_no || '',
+    contractor: p.contractor || '',
+    county: p.county || '',
+    route: p.route || '',
+    location: p.location || '',
+    archived_at: new Date().toISOString(),
+    boring_count: Object.keys(borings).length,
+    sample_count: Object.keys(samples).length
+  };
+  await _idbPut(borelogArchivePayloadKey(id), { project: p, borings, samples });
+  _archiveIndex = (_archiveIndex || []).filter(card => card.id !== id);
+  _archiveIndex.unshift(card);
+  await saveBorelogArchiveIndex();
+  _storeCore.delProject(id);
+  await flushBorelogStoreAsync();
+  if(currentProjectId===id){ currentProjectId=null; currentBoringId=null; showView('projects'); }
+  renderProjects();
+  toast(bc ? `Archived ${label} (${bc} boring${bc===1?'':'s'})` : `Archived ${label}`);
+}
+
+async function restoreArchivedProject(id){
+  const payload = await _idbGet(borelogArchivePayloadKey(id));
+  if(!payload || !payload.project){
+    toast('That archived project could not be read', true);
+    return;
+  }
+  const all = store._all();
+  all.projects = all.projects || {};
+  all.borings = all.borings || {};
+  all.samples = all.samples || {};
+  all.projects[payload.project.id] = payload.project;
+  Object.values(payload.borings || {}).forEach(b=>{ if(b && b.id) all.borings[b.id]=b; });
+  Object.values(payload.samples || {}).forEach(s=>{ if(s && s.id) all.samples[s.id]=s; });
+  store._save(all);
+  await flushBorelogStoreAsync();
+  _archiveIndex = (_archiveIndex || []).filter(card => card.id !== id);
+  await saveBorelogArchiveIndex();
+  await _idbDelete(borelogArchivePayloadKey(id));
+  _showingArchive = false;
+  renderProjects();
+  toast('Project restored to the open list');
 }
 
 function openProjectModal(editId){
