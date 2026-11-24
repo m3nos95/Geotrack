@@ -42,8 +42,17 @@ assert.strictEqual((printed.match(/data-field="/g) || []).length, soilIds.length
 assert.strictEqual((printedAgg.match(/data-field="/g) || []).length, aggregateIds.length);
 assert.ok(printed.includes('class="qr"') && printedAgg.includes('class="qr"'));
 assert.ok(printed.includes('Scan to open the next sample') && printedAgg.includes('Scan to open the next sample'));
-assert.ok(printed.includes('DelDOT Materials'));
-assert.ok(!/bridge|silhouette/i.test(printed + printedAgg));
+assert.ok(printed.includes('#002349') && printedAgg.includes('#002349'));
+assert.ok(printed.includes('#f68304') && printedAgg.includes('#f68304'));
+assert.ok(printed.includes('DelDOT') && printed.includes('Materials &amp; Research'));
+assert.ok(printed.includes('size:letter') && printed.includes('width:1.5in;height:1.5in'));
+assert.ok(printed.includes('one value per box'));
+const printedConcrete = sheets.printDocument(concrete, { qrDataUrl: 'data:image/png;base64,abc' });
+assert.ok(printedConcrete.includes('DelDOT Materials'));
+assert.ok(printedConcrete.includes('width:92px'));
+assert.ok(!printedConcrete.includes('#002349'));
+assert.ok(!printedConcrete.includes('width:1.5in'));
+assert.ok(!/bridge|silhouette/i.test(printed + printedAgg + printedConcrete));
 assert.ok(!sheets.printDocument(soil, {}).includes('class="qr"'));
 
 const read = sheets.normalizeRead(soil, {
@@ -130,8 +139,12 @@ assert.ok(/hsPhotograph\('concrete'\)/.test(html));
 assert.ok(/id="hsReview"/.test(html));
 assert.ok(/hsConfirmRead\(\)/.test(html));
 assert.ok(/js\/next-sample\.js\?v=20261123b/.test(html));
-assert.ok(/js\/hand-sheet\.js\?v=20261123d/.test(html));
-assert.ok(/js\/hand-sheet-page\.js\?v=20261123f/.test(html));
+assert.ok(/js\/hand-sheet\.js\?v=20261124a/.test(html));
+assert.ok(/js\/hand-sheet-page\.js\?v=20261124a/.test(html));
+assert.ok(/qrImage\(Next\.payloadUrl\(pageUrl\(\), section, reportId, kind\), 456\)/.test(page));
+assert.ok(/qrImage\(Next\.payloadThisUrl\(pageUrl\(\), section, reportId\)\)/.test(page));
+assert.ok(/logoSrc: logo/.test(page));
+assert.ok(/\.lt-next-qr \{ width: 68px; height: 68px;/.test(html));
 assert.ok(/id="hsCamera"/.test(html));
 assert.ok(/hsTakeSheetPhoto\(\)/.test(html));
 assert.ok(/does not scan the next-sample code/.test(html));
